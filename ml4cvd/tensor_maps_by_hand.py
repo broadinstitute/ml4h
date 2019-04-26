@@ -30,7 +30,7 @@ TMAPS['ecg_rest_median'] = TensorMap('median', group='ecg_rest', shape=(600, 12)
                                'median_aVL': 10, 'median_aVR': 11})
 
 TMAPS['ecg_rest_median_stack'] = TensorMap('median', group='ecg_rest', shape=(600, 12, 1), activation='linear',
-                                           metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=10.0,
+                                           metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
                   channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4,
                                'median_V3': 5, 'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9,
                                'median_aVL': 10, 'median_aVR': 11})
