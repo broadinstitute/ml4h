@@ -99,12 +99,13 @@ def plot_metric_history(history, title, prefix='./figures/'):
 
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3):
-    margin = (np.max(truth)-np.min(truth))/100
+    margin = float((np.max(truth)-np.min(truth))/100)
     plt.figure(figsize=(16, 16))
     matplotlib.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     plt.scatter(prediction, truth)
+    print('prediction shape:', prediction.shape, truth.shape)
     if paths is not None:
         diff = np.abs(prediction-truth)
         argsorted = diff.argsort(axis=0)[:, 0]
