@@ -107,7 +107,7 @@ class TestTrainingModels(unittest.TestCase):
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
     def test_train_mri_sax_zoom(self):
-        delta = 4e-1
+        delta = 7e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.input_tensors = ['sax_inlinevf_zoom_weighted']
@@ -145,7 +145,7 @@ class TestTrainingModels(unittest.TestCase):
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
     def test_train_mri_systole_diastole(self):
-        delta = 4e-1
+        delta = 6e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.input_tensors = ['mri_systole_diastole_weighted']
