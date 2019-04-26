@@ -544,11 +544,6 @@ def _write_tensors_from_zipped_dicoms(x,
             shutil.rmtree(dicom_folder)
 
 
-def _write_genotype_tensor(sample_id: int, genotype_finder: GenotypeFinder, hd5):
-    npy_array_all = genotype_finder.get_all_genotypes(sample_id)
-    hd5.create_dataset("genotypes", data=npy_array_all, compression="gzip")
-
-
 def _write_tensors_from_dicoms(x,
                                y,
                                z,
