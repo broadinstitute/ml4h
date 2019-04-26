@@ -1,16 +1,12 @@
-import sys
 import unittest
 
 from keras.losses import logcosh
 
-# ML4CVD Imports
-sys.path.append("..")
-sys.path.append("../ml4cvd")
-# #from ..ml4cvd.DatabaseClient import BigQueryDatabaseClient, SqLiteDatabaseClient
-from ..ml4cvd.TensorMap import TensorMap
-from ..ml4cvd.arguments import parse_args
-from ..ml4cvd.tensor_maps_by_script import TMAPS
-from ..ml4cvd.recipes import test_multimodal_multitask, train_multimodal_multitask
+from DatabaseClient import BigQueryDatabaseClient, SqLiteDatabaseClient
+from TensorMap import TensorMap
+from arguments import parse_args
+from tensor_maps_by_script import TMAPS
+from recipes import test_multimodal_multitask, train_multimodal_multitask
 
 ALL_TENSORS = '/mnt/disks/data/generated/tensors/test/2019-03-21/'
 MODELS = '/mnt/ml4cvd/projects/jamesp/data/models/'
@@ -22,7 +18,7 @@ def _run_tests():
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTrainingModels))
     # TODO Add them to 'suites' when the pretrained model tests are updated to work with the tensors at ALL_TENSORS
     # suites.append(unittest.TestLoader().loadTestsFromTestCase(TestPretrainedModels))
-    #suites.append(unittest.TestLoader().loadTestsFromTestCase(TestDatabaseClient))
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(TestDatabaseClient))
 
     unittest.TextTestRunner(verbosity=3).run(unittest.TestSuite(suites))
 
@@ -416,28 +412,28 @@ class TestPretrainedModels(unittest.TestCase):
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
 
-# class TestDatabaseClient(unittest.TestCase):
-#     def test_database_client(self):
-#         args = parse_args()
-#
-#         bigquery_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
-#         sqlite_client = SqLiteDatabaseClient(db_file=args.db)
-#
-#         query = (
-#             'SELECT field, fieldid FROM {} '
-#             'WHERE fieldid BETWEEN 3120 AND 3190 '
-#             'ORDER BY field ASC '
-#             'LIMIT 7'
-#         )
-#
-#         table = 'dictionary'
-#         dataset = args.bigquery_dataset
-#
-#         bigquery_rows = bigquery_client.execute(query.format(f"`{dataset}.{table}`"))
-#         sqlite_rows = sqlite_client.execute(query.format(table))
-#
-#         for bq_row, sql_row in zip(bigquery_rows, sqlite_rows):
-#             self.assertEqual((bq_row[0], bq_row[1]), sql_row)
+class TestDatabaseClient(unittest.TestCase):
+    def test_database_client(self):
+        args = parse_args()
+
+        bigquery_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
+        sqlite_client = SqLiteDatabaseClient(db_file=args.db)
+
+        query = (
+            'SELECT field, fieldid FROM {} '
+            'WHERE fieldid BETWEEN 3120 AND 3190 '
+            'ORDER BY field ASC '
+            'LIMIT 7'
+        )
+
+        table = 'dictionary'
+        dataset = args.bigquery_dataset
+
+        bigquery_rows = bigquery_client.execute(query.format(f"`{dataset}.{table}`"))
+        sqlite_rows = sqlite_client.execute(query.format(table))
+
+        for bq_row, sql_row in zip(bigquery_rows, sqlite_rows):
+            self.assertEqual((bq_row[0], bq_row[1]), sql_row)
 
 
 # Back to the top!
