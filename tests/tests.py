@@ -4,12 +4,12 @@ import unittest
 from keras.losses import logcosh
 
 # ML4CVD Imports
-sys.path.append("../ml4cvd")
-#from DatabaseClient import BigQueryDatabaseClient, SqLiteDatabaseClient
-from TensorMap import TensorMap
-from arguments import parse_args
-from tensor_maps_by_script import TMAPS
-from recipes import test_multimodal_multitask, train_multimodal_multitask
+# sys.path.append("../ml4cvd")
+# #from ..ml4cvd.DatabaseClient import BigQueryDatabaseClient, SqLiteDatabaseClient
+from ..ml4cvd.TensorMap import TensorMap
+from ..ml4cvd.arguments import parse_args
+from ..ml4cvd.tensor_maps_by_script import TMAPS
+from ..ml4cvd.recipes import test_multimodal_multitask, train_multimodal_multitask
 
 ALL_TENSORS = '/mnt/disks/data/generated/tensors/test/2019-03-21/'
 MODELS = '/mnt/ml4cvd/projects/jamesp/data/models/'
