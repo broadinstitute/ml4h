@@ -351,6 +351,8 @@ def make_multimodal_to_multilabel_model(model_file: str,
         raise ValueError('No input activations.')
 
     for i, hidden_units in enumerate(dense_layers):
+        if conv_bn:
+            multimodal_activation = BatchNormalization()(multimodal_activation)
         if i == len(dense_layers)-1:
             multimodal_activation = Dense(units=hidden_units, activation=activation, name='embed')(multimodal_activation)
         else:
