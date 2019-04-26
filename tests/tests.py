@@ -4,7 +4,8 @@ import unittest
 from keras.losses import logcosh
 
 # ML4CVD Imports
-# sys.path.append("../ml4cvd")
+sys.path.append("..")
+sys.path.append("..ml4cvd")
 # #from ..ml4cvd.DatabaseClient import BigQueryDatabaseClient, SqLiteDatabaseClient
 from ..ml4cvd.TensorMap import TensorMap
 from ..ml4cvd.arguments import parse_args
