@@ -54,7 +54,7 @@ def evaluate_predictions(tm, y, test_labels, test_data, plot_title, plot_folder,
 
     if tm.name == 'median':
         plot_waves(y, test_labels[tm.output_name()], 'median_waves_'+plot_title, plot_folder)
-        #plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_'+plot_title, plot_folder)
+        plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_'+plot_title, plot_folder)
 
     return performance_metrics
 
@@ -109,9 +109,9 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
         diff = np.abs(prediction-truth)
         argsorted = diff.argsort(axis=0)[:, 0]
         for idx in argsorted[:top_k]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[int(idx)]))
+            plt.text(float(prediction[idx]+margin), float(truth[idx]+margin), os.path.basename(paths[int(idx)]))
         for idx in argsorted[-top_k:]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[int(idx)]))
+            plt.text(float(prediction[idx]+margin), float(truth[idx]+margin), os.path.basename(paths[int(idx)]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
