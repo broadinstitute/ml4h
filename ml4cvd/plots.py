@@ -23,38 +23,42 @@ COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'orange']
 
 
-def evaluate_predictions(tm, y, test_labels, test_data, plot_title, plot_folder, test_paths=None, max_melt=200000):
+def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=200000):
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
         logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(test_labels[tm.output_name()], axis=0), np.sum(y, axis=0)))
-        performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, title, folder))
     elif tm.is_categorical() and len(tm.shape) == 2:
         melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
         y = y.reshape(melt_shape)[:max_melt]
         y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical() and len(tm.shape) == 3:
         melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
         y = y.reshape(melt_shape)[:max_melt]
         y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
         melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
         y = y.reshape(melt_shape)[:max_melt]
         y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, plot_title, plot_folder))
+        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
         logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y.shape, test_labels[tm.output_name()].shape))
+    elif len(tm.shape) > 1:
+        prediction_flat = tm.rescale(y).flatten()
+        truth_flat = tm.rescale(test_labels[tm.output_name()]).flatten()
+        performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder, paths=test_paths))
     else:
-        performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), plot_title, prefix=plot_folder, paths=test_paths))
+        performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
 
     if tm.name == 'median':
-        plot_waves(y, test_labels[tm.output_name()], 'median_waves_'+plot_title, plot_folder)
-        plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_'+plot_title, plot_folder)
+        plot_waves(y, test_labels[tm.output_name()], 'median_waves_' + title, folder)
+        plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
 
     return performance_metrics
 
