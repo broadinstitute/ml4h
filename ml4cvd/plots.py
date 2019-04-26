@@ -111,7 +111,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.scatter(prediction, truth)
     if paths is not None:
         diff = np.abs(prediction-truth)
-        arg_sorted = diff.argsort()
+        arg_sorted = diff[:, 0].argsort()
         print('diff shape:', diff.shape, 'arg shape:', arg_sorted.shape, arg_sorted)
         for idx in arg_sorted[:top_k]:
             plt.text(float(prediction[idx]+margin), float(truth[idx]+margin), os.path.basename(paths[int(idx)]))
