@@ -52,7 +52,7 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
     elif len(tm.shape) > 1:
         prediction_flat = tm.rescale(y).flatten()
         truth_flat = tm.rescale(test_labels[tm.output_name()]).flatten()
-        performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder, paths=test_paths))
+        performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     else:
         performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
 
