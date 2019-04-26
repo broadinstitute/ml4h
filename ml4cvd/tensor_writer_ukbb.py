@@ -29,8 +29,6 @@ from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
 from scipy.ndimage.morphology import binary_closing  # Morphological operator
 
-from CachedFilteredGenotypeFeature import CachedFilteredGenotypeFeature
-from GenotypeFinder import GenotypeFinder
 from plots import plot_value_counter, plot_histograms
 from defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
 from defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
@@ -76,9 +74,7 @@ def write_tensors(a_id: str,
                   write_pngs: bool,
                   min_sample_id: int,
                   max_sample_id: int,
-                  min_values_to_print: int,
-                  ukbb7089_sample_id_to_hail_pkl_path: str,
-                  filtered_genotypes_array_path: str) -> None:
+                  min_values_to_print: int) -> None:
     """Write tensors as HD5 files containing any kind of data from UK BioBank
 
     One HD5 file is generated per sample.  Each file may contain many tensor encodings of data including:
@@ -128,15 +124,6 @@ def write_tensors(a_id: str,
                                                                                                                       continuous_field_ids,
                                                                                                                       min_sample_id, max_sample_id)
 
-    if ukbb7089_sample_id_to_hail_pkl_path is not None:
-        filtered_genotype_feature = CachedFilteredGenotypeFeature(filtered_genotypes_array_path, ukbb7089_sample_id_to_hail_pkl_path)
-        sample_ids = [s for s in sample_ids if not _prune_sample(s, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder,
-                                                                 xml_folder, filtered_genotype_feature, ukbb7089_sample_id_to_hail_pkl_path)]
-        # Initialize genotype tensor creation.  This will load all sample IDs at once.
-        genotype_finder = GenotypeFinder(filtered_genotype_feature, sample_ids)
-    else:
-        filtered_genotype_feature = None
-
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
@@ -144,8 +131,7 @@ def write_tensors(a_id: str,
         tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
         if not os.path.exists(os.path.dirname(tensor_path)):
             os.makedirs(os.path.dirname(tensor_path))
-        if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder, filtered_genotype_feature,
-                         ukbb7089_sample_id_to_hail_pkl_path):
+        if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder):
             continue
         try:
             with h5py.File(tensor_path, 'w') as hd5:
@@ -156,8 +142,6 @@ def write_tensors(a_id: str,
                                         continuous_stats, stats)
                 _write_tensors_from_icds(hd5, sample_id, icds, dates, stats)
                 _write_tensors_from_volumes(hd5, sample_id, lv_mass, lvef, lvesv, lvedv, continuous_stats)
-                if ukbb7089_sample_id_to_hail_pkl_path is not None:
-                    _write_genotype_tensor(sample_id, genotype_finder, hd5)
                 stats['Tensors written'] += 1
         except AttributeError:
             logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
@@ -1132,9 +1116,8 @@ def _log_extreme_n(stats, n) -> None:
 
 
 def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_field_ids: List[int],
-                  xml_field_ids: List[int], zip_folder: str, xml_folder: str,
-                  genotype_feature: CachedFilteredGenotypeFeature, ukbb7089_sample_id_to_hail_pkl_path: str):
-    """Return false if the sample ID is missing associated MRI, EKG, or GT data.  Or if the sample_id is below the given minimum."""
+                  xml_field_ids: List[int], zip_folder: str, xml_folder: str):
+    """Return True if the sample ID is missing associated MRI, EKG, or GT data.  Or if the sample_id is below the given minimum."""
 
     if sample_id < min_sample_id:
         return True
@@ -1144,9 +1127,7 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
         return True
     if len(xml_field_ids) > 0 and not _sample_has_ecgs(xml_folder, xml_field_ids, sample_id):
         return True
-    if ukbb7089_sample_id_to_hail_pkl_path is not None and sample_id not in genotype_feature.available_sample_id_set:
-        logging.info(f"Pruned {sample_id} has no pickled genotype.")
-        return True
+
     return False
 
 

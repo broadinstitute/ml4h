@@ -30,8 +30,7 @@ def run(args):
                           args.tensors, args.dicoms, args.volume_csv, args.lv_mass_csv, args.icd_csv, args.categorical_field_ids,
                           args.continuous_field_ids, args.mri_field_ids, args.xml_field_ids, args.x, args.y, args.z,
                           args.include_heart_zoom, args.zoom_x, args.zoom_y, args.zoom_width,  args.zoom_height,
-                          args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values, args.ukbb7089_sample_id_to_hail_pkl_path,
-                          args.filtered_genotypes_array_path)
+                          args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:

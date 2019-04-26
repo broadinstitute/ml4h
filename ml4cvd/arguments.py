@@ -213,12 +213,6 @@ def parse_args():
     parser.add_argument('--inspect_show_labels', default=True, action='store_true',
         help='Plot model architecture with labels for each layer.')
 
-    # Genotype parameters
-    parser.add_argument('--ukbb7089_sample_id_to_hail_pkl_path', default=None,
-                        type=str, help="Path to the sample-genotype map pkl file.")
-    parser.add_argument('--filtered_genotypes_array_path', default="/mnt/disks/data/raw/prs/filtered_genotypes_array.npy",
-                        type=str,  help="pkl file for the filtered variants.")
-
     args = parser.parse_args()
 
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
