@@ -14,11 +14,11 @@ def write_tensor_maps(args) -> None:
     tensor_maps_file = f"{args.output_folder}/{TENSOR_MAPS_FILE_NAME}.py"
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        _write_continuous_tensor_maps(f, args.bigquery_credentials_file)
-        _write_disease_tensor_maps(args.phenos_folder, f)
-        _write_disease_tensor_maps_time(args.phenos_folder, f)
-        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        #_write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
+        _write_megans_tensor_maps(f, args.bigquery_credentials_file)
+        #_write_disease_tensor_maps(args.phenos_folder, f)
+        #_write_disease_tensor_maps_time(args.phenos_folder, f)
+        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
@@ -144,7 +144,7 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
         f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
 
             
-def _write_continuous_tensor_maps(f: TextIO, bigquery_credentials_file: str):
+def _write_megans_tensor_maps(f: TextIO, bigquery_credentials_file: str):
     annotation_units = 2
     group = 'continuous'
     db_client = BigQueryDatabaseClient(credentials_file=bigquery_credentials_file)
@@ -153,29 +153,47 @@ def _write_continuous_tensor_maps(f: TextIO, bigquery_credentials_file: str):
     coding_table = "ukbb7089_201904.coding"
     phenotype_table = "ukbb7089_201904.phenotype"
 
-    temp_coding_table = "ms_working.coding_tmp"
-    query = f"""CREATE TABLE {temp_coding_table}
-        AS SELECT *,
-        CASE WHEN meaning IN ('Do not know', 'Prefer not to answer')
-        THEN TRUE
-        END AS missing,
-        CASE WHEN meaning = 'Less than one'
-        THEN '.5'
-        END AS value
-        FROM {coding_table}"""
-    db_client.execute(query.format())
+    query = f"""
+    WITH coding_tmp AS (
+        SELECT 
+            *,
+            CASE
+                WHEN meaning IN ('Do not know',  'Prefer not to answer', 'Ongoing when data entered') OR meaning LIKE "Still taking%" THEN TRUE
+            END AS missing,
+            CASE
+                WHEN meaning = 'Less than one' THEN '.5'
+            END AS value
+        FROM
+            {coding_table}
+    ), pheno_tmp AS (
+    SELECT 
+        sample_id, 
+        FieldID, 
+        COALESCE(c.value, p.value) new_value, 
+        COALESCE(c.missing, FALSE) missing 
+    FROM {phenotype_table} AS p
+    LEFT JOIN coding_tmp AS c 
+        ON TRUE
+        AND p.value = c.coding 
+        AND p.coding_file_id = c.coding_file_id
+    WHERE TRUE
+        AND instance = 0 
+        AND array_idx = 0
+    )
 
-    temp_phenotype_table = "ms_working.phenotype_tmp"
-    query = f"""CREATE TABLE {temp_phenotype_table} AS
-        SELECT sample_id,FieldID,COALESCE(c.value, p.value) new_value, COALESCE(c.missing, FALSE) missing FROM {phenotype_table} AS p
-        LEFT JOIN {temp_coding_table} AS c ON p.value = c.coding AND p.coding_file_id = c.coding_file_id
-        WHERE instance = 0 AND array_idx = 0"""
-    db_client.execute(query.format())
+    SELECT 
+        t.FieldID, 
+        Field, 
+        AVG(CAST(new_value AS FLOAT64)) mean, 
+        STDDEV(CAST(new_value AS FLOAT64)) std 
+    FROM pheno_tmp AS t
+    LEFT JOIN {dictionary_table} AS d ON d.FieldID = t.FieldID
+    WHERE TRUE
+        AND ValueType IN ('Integer', 'Continuous') 
+        AND NOT missing
+    GROUP BY t.FieldID, Field 
+    """
 
-    query = f"""SELECT t.FieldID, Field, AVG(CAST(new_value AS FLOAT64)) mean, STDDEV(CAST(new_value AS FLOAT64)) std FROM {temp_phenotype_table} AS t
-        LEFT JOIN {dictionary_table} as d ON d.FieldID = t.FieldID
-        WHERE ValueType IN ('Integer', 'Continuous') AND NOT missing
-        GROUP BY t.FieldID, Field"""
     field_data_for_tensor_maps = db_client.execute(query.format())
 
     f.write(f"\n\n#  Continuous tensor maps\n")
@@ -187,10 +205,6 @@ def _write_continuous_tensor_maps(f: TextIO, bigquery_credentials_file: str):
                 f"'not-missing': 1}}, normalization={{'mean': {row.mean}, 'std': {row.std}}}, "
                 f"annotation_units={annotation_units})\n")
 
-    query = f"DROP TABLE {temp_coding_table}"
-    db_client.execute(query.format())
-    query = f"DROP TABLE {temp_phenotype_table}"
-    db_client.execute(query.format())
 
 
 def _segmented_map(name):
