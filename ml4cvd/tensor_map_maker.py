@@ -14,11 +14,11 @@ def write_tensor_maps(args) -> None:
     tensor_maps_file = f"{args.output_folder}/{TENSOR_MAPS_FILE_NAME}.py"
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        #_write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
+        _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
         _write_megans_tensor_maps(f, args.bigquery_credentials_file)
-        #_write_disease_tensor_maps(args.phenos_folder, f)
-        #_write_disease_tensor_maps_time(args.phenos_folder, f)
-        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        _write_disease_tensor_maps(args.phenos_folder, f)
+        _write_disease_tensor_maps_time(args.phenos_folder, f)
+        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
