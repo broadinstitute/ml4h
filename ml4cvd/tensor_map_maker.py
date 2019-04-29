@@ -5,17 +5,18 @@ from typing import List
 from typing.io import TextIO
 from DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 
-from defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP
+from defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
 from tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 def write_tensor_maps(args) -> None:
     logging.info("Making tensor maps...")
 
     tensor_maps_file = f"{args.output_folder}/{TENSOR_MAPS_FILE_NAME}.py"
+    db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
         _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        _write_megans_tensor_maps(f, args.bigquery_credentials_file)
+        _write_megans_tensor_maps(f, db_client)
         _write_disease_tensor_maps(args.phenos_folder, f)
         _write_disease_tensor_maps_time(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
@@ -144,15 +145,12 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
         f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
 
             
-def _write_megans_tensor_maps(f: TextIO, bigquery_credentials_file: str):
+def _write_megans_tensor_maps(f: TextIO, db_client: BigQueryDatabaseClient):
     annotation_units = 2
     group = 'continuous'
-    db_client = BigQueryDatabaseClient(credentials_file=bigquery_credentials_file)
 
-    dictionary_table = "ukbb7089_201904.dictionary"
-    coding_table = "ukbb7089_201904.coding"
-    phenotype_table = "ukbb7089_201904.phenotype"
-
+    # Handle special coding values in continuous variables in order to generate summary statistics (mean and std dev) for
+    # each field across all samples. This will remove missing samples from the calculation and change the value of 'Less than one'
     query = f"""
     WITH coding_tmp AS (
         SELECT 
@@ -164,14 +162,14 @@ def _write_megans_tensor_maps(f: TextIO, bigquery_credentials_file: str):
                 WHEN meaning = 'Less than one' THEN '.5'
             END AS value
         FROM
-            {coding_table}
+            {CODING_TABLE}
     ), pheno_tmp AS (
     SELECT 
         sample_id, 
         FieldID, 
         COALESCE(c.value, p.value) new_value, 
         COALESCE(c.missing, FALSE) missing 
-    FROM {phenotype_table} AS p
+    FROM {PHENOTYPE_TABLE} AS p
     LEFT JOIN coding_tmp AS c 
         ON TRUE
         AND p.value = c.coding 
@@ -187,14 +185,14 @@ def _write_megans_tensor_maps(f: TextIO, bigquery_credentials_file: str):
         AVG(CAST(new_value AS FLOAT64)) mean, 
         STDDEV(CAST(new_value AS FLOAT64)) std 
     FROM pheno_tmp AS t
-    LEFT JOIN {dictionary_table} AS d ON d.FieldID = t.FieldID
+    LEFT JOIN {DICTIONARY_TABLE} AS d ON d.FieldID = t.FieldID
     WHERE TRUE
         AND ValueType IN ('Integer', 'Continuous') 
         AND NOT missing
     GROUP BY t.FieldID, Field 
     """
 
-    field_data_for_tensor_maps = db_client.execute(query.format())
+    field_data_for_tensor_maps = db_client.execute(query)
 
     f.write(f"\n\n#  Continuous tensor maps\n")
     for row in field_data_for_tensor_maps:
