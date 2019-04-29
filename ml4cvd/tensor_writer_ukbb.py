@@ -596,6 +596,10 @@ def _write_tensors_from_dicoms(x,
             full_mask = np.zeros((x, y), dtype=np.float32)
 
         for slicer in views[v]:
+            if MRI_PIXEL_WIDTH not in hd5:
+                hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
+            if MRI_PIXEL_HEIGHT not in hd5:
+                hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
             if slicer.pixel_array.shape[0] == mri_shape[0] and slicer.pixel_array.shape[1] == mri_shape[1]:
                 sx = min(slicer.Rows, x)
                 sy = min(slicer.Columns, y)
@@ -627,10 +631,6 @@ def _write_tensors_from_dicoms(x,
                     hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
                     if MRI_DATE not in hd5:
                         hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
-                    if MRI_PIXEL_WIDTH not in hd5:
-                        hd5.create_dataset(MRI_PIXEL_WIDTH, (1,), data=float(slicer.PixelSpacing[0]))
-                    if MRI_PIXEL_HEIGHT not in hd5:
-                        hd5.create_dataset(MRI_PIXEL_HEIGHT, (1,), data=float(slicer.PixelSpacing[1]))
                     if include_heart_zoom:
                         zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
                         zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
