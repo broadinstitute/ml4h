@@ -13,8 +13,9 @@ from metrics import per_class_precision, per_class_precision_3d, per_class_preci
 np.set_printoptions(threshold=np.inf)
 
 
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration',
-                         'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval', 'VentricularRate', 'lv_mass']
+CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'PAxis', 'PDuration', 'POffset', 'POnset', 'QOffset',
+                         'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval', 'VentricularRate',
+                         'lv_mass']
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
                                        '130_Place-of-birth-in-UK--east-coordinate_0_0',
