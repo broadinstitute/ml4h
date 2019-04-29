@@ -16,7 +16,7 @@ def write_tensor_maps(args) -> None:
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
         _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        _write_megans_tensor_maps(f, db_client)
+        _write_continuous_tensor_maps(f, db_client)
         _write_disease_tensor_maps(args.phenos_folder, f)
         _write_disease_tensor_maps_time(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
@@ -145,7 +145,7 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
         f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
 
             
-def _write_megans_tensor_maps(f: TextIO, db_client: BigQueryDatabaseClient):
+def _write_continuous_tensor_maps(f: TextIO, db_client: BigQueryDatabaseClient):
     annotation_units = 2
     group = 'continuous'
 
