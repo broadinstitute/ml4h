@@ -145,7 +145,7 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
         f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
 
             
-def _write_continuous_tensor_maps(f: TextIO, db_client: BigQueryDatabaseClient):
+def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
     annotation_units = 2
     group = 'continuous'
 
