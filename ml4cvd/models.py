@@ -245,7 +245,7 @@ def make_hidden_layer_model_from_file(parent_file: str, input_layer_name: str, o
 def make_hidden_layer_model(parent_model: Model, input_layer_name: str, output_layer_name: str):
     intermediate_layer_model = Model(inputs=parent_model.get_layer(input_layer_name).input, outputs=parent_model.get_layer(output_layer_name).output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
-    intermediate_layer_model.predict(np.zeros((1,) + parent_model.input_shape[1:]))
+    intermediate_layer_model.predict(np.zeros((1,) + parent_model.get_layer(input_layer_name).input_shape[1:]))
     return intermediate_layer_model
 
 
