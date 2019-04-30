@@ -177,7 +177,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
 def _get_tensor_maps_for_characters(embed_dependent_map, base_model: Model):
     embed_model = make_hidden_layer_model(base_model, embed_dependent_map.input_name(), 'embed')
     tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', dependent_map=embed_dependent_map, model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=3.0)
+    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=10.0)
     tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
     return [tm_embed, tm_burn_in], [tm_char]
 
