@@ -54,8 +54,10 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
         prediction_flat = tm.rescale(y).flatten()
         truth_flat = tm.rescale(test_labels[tm.output_name()]).flatten()
         performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
-    else:
+    elif tm.is_continuous():
         performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
+    else:
+        logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
     if tm.name == 'median':
         plot_waves(y, test_labels[tm.output_name()], 'median_waves_' + title, folder)
@@ -113,8 +115,9 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
-        for idx in arg_sorted[:top_k]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
+        # The path of the best prediction, ie the in-lier
+        plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
+        # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
             plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
@@ -145,8 +148,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
-            for idx in arg_sorted[:1]:
-                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+            plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             for idx in arg_sorted[-top_k:]:
                 plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
