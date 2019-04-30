@@ -823,7 +823,8 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
 
 def get_model_inputs_outputs(model_files: List[str],
                              tensor_maps_in: List[TensorMap],
-                             tensor_maps_out: List[TensorMap]) -> Dict[str, Dict[str, TensorMap]]:
+                             tensor_maps_out: List[TensorMap],
+                             base_model: Model=None) -> Dict[str, Dict[str, TensorMap]]:
     """Organizes given input and output tensors as nested dictionary.
 
     Returns:
@@ -861,8 +862,7 @@ def get_model_inputs_outputs(model_files: List[str],
                 if output_tensor_map.output_name() in hd5["model_weights"]:
                     model_inputs_outputs[output_prefix].append(output_tensor_map)
             if not got_tensor_maps_for_characters and 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
-                m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
-                char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in[0], m, multimodal_input=True)
+                char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in[0], base_model, multimodal_input=True)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)
                 model_inputs_outputs[output_prefix].extend(char_maps_out)
