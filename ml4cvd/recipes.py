@@ -309,12 +309,12 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         elif tm.is_continuous() and len(tm.shape) == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
-            coefs = get_pearson_coefficients(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]))
+            coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
-            coefs = get_pearson_coefficients(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]))
+            coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
 
 def _get_tensor_files(tensor_dir):
