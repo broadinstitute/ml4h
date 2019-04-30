@@ -174,8 +174,8 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     return m, char_model
 
 
-def _get_tensor_maps_for_characters(embed_dependent_map, base_model: Model):
-    embed_model = make_hidden_layer_model(base_model, 'embed')
+def _get_tensor_maps_for_characters(embed_dependent_map, base_model: Model, multimodal_input: bool=False):
+    embed_model = make_hidden_layer_model(base_model, 'embed', multimodal_input)
     tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', dependent_map=embed_dependent_map, model=embed_model)
     tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=3.0)
     tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
@@ -237,15 +237,18 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_hidden_layer_model_from_file(parent_file: str, layer_name: str, tensor_maps_out: List[TensorMap]):
+def make_hidden_layer_model_from_file(parent_file: str, layer_name: str, tensor_maps_out: List[TensorMap], multimodal_input: bool=False):
     parent_model = load_model(parent_file, custom_objects=get_metric_dict(tensor_maps_out))
-    return make_hidden_layer_model(parent_model, layer_name)
+    return make_hidden_layer_model(parent_model, layer_name, multimodal_input)
 
 
-def make_hidden_layer_model(parent_model: Model, layer_name: str):
+def make_hidden_layer_model(parent_model: Model, layer_name: str, multimodal_input: bool=False):
     intermediate_layer_model = Model(inputs=parent_model.input, outputs=parent_model.get_layer(layer_name).output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
-    intermediate_layer_model.predict(np.zeros((1,)+tuple(parent_model.input_shape[1:])))
+    if multimodal_input:
+        intermediate_layer_model.predict(np.zeros((1,) + parent_model.input_shape[0][1:]))
+    else:
+        intermediate_layer_model.predict(np.zeros((1,) + parent_model.input_shape[1:]))
     return intermediate_layer_model
 
 
@@ -861,7 +864,7 @@ def get_model_inputs_outputs(model_files: List[str],
                     model_inputs_outputs[output_prefix].append(output_tensor_map)
             if not got_tensor_maps_for_characters and 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
                 m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
-                char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in[0], m)
+                char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in[0], m, multimodal_input=True)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)
                 model_inputs_outputs[output_prefix].extend(char_maps_out)
