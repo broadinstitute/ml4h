@@ -145,12 +145,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
     :return: a tuple of the compiled keras model and the character emitting sub-model
     """
-    embed_model = make_hidden_layer_model(base_model, 'embed')
-    tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', dependent_map=tensor_maps_in[0], model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=3.0)
-    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
-    tensor_maps_in.extend([tm_embed, tm_burn_in])
-    tensor_maps_out.append(tm_char)
+    _extend_tensor_maps_for_characters(tensor_maps_in, tensor_maps_out, base_model)
     char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate)
     losses = []
     my_metrics = {}
@@ -175,6 +170,15 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
         logging.info('Loaded model weights from:{}'.format(model_layers))
 
     return m, char_model
+
+
+def _extend_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], base_model: Model):
+    embed_model = make_hidden_layer_model(base_model, 'embed')
+    tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', dependent_map=tensor_maps_in[0], model=embed_model)
+    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=3.0)
+    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
+    tensor_maps_in.extend([tm_embed, tm_burn_in])
+    tensor_maps_out.append(tm_char)
 
 
 def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
@@ -848,12 +852,15 @@ def get_model_inputs_outputs(model_files: List[str],
     for model_file in model_files:
         with h5py.File(model_file, 'r') as hd5:
             model_inputs_outputs = defaultdict(list)
-            for input_tensor in input_tensors:
-                if input_tensor.input_name() in hd5["model_weights"]:
-                    model_inputs_outputs[input_prefix].append(input_tensor)
-            for output_tensor in output_tensors:
-                if output_tensor.output_name() in hd5["model_weights"]:
-                    model_inputs_outputs[output_prefix].append(output_tensor)
+            for input_tensor_map in input_tensors:
+                if input_tensor_map.input_name() in hd5["model_weights"]:
+                    model_inputs_outputs[input_prefix].append(input_tensor_map)
+                elif 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
+                    m = load_model(model_file, custom_objects=get_metric_dict(output_tensors))
+                    _extend_tensor_maps_for_characters(model_inputs_outputs[input_prefix], model_inputs_outputs[output_prefix], m)
+            for output_tensor_map in output_tensors:
+                if output_tensor_map.output_name() in hd5["model_weights"]:
+                    model_inputs_outputs[output_prefix].append(output_tensor_map)
 
         models_inputs_outputs[model_file] = model_inputs_outputs
 
