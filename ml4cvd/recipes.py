@@ -306,11 +306,14 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
-        else:
+        elif tm.is_continuous() and len(tm.shape) == 1:
             plot_scatters(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
             coefs = get_pearson_coefficients(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
-
+        else:
+            plot_scatters(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
+            coefs = get_pearson_coefficients(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]))
+            log_pearson_coefficients(coefs, tm.name)
 
 def _get_tensor_files(tensor_dir):
     return [tensor_dir + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
