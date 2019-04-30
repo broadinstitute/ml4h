@@ -101,10 +101,10 @@ def compare_multimodal_multitask_models(args):
     output_prefix = "output"
 
     tensor_paths = _get_tensor_files(args.tensors)
-    generator = TensorGenerator(args.batch_size, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
-
-    input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generator, args.test_steps)
     models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+    generator = TensorGenerator(args.batch_size, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generator, args.test_steps)
+
     common_outputs = _get_common_outputs(models_inputs_outputs, output_prefix)
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, input_prefix, output_prefix)
     _calculate_and_plot_prediction_stats(args, predictions, output_data)
