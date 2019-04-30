@@ -135,7 +135,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/'):
     plt.figure(figsize=(28, 42))
     plt.rcParams.update({'font.size': 36})
     for k in predictions:
-        color = COLOR_ARRAY[abs(hash(k)) % len(COLOR_ARRAY)]
+        color = COLOR_ARRAY[abs(hash(str(k))) % len(COLOR_ARRAY)]
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
@@ -295,7 +295,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:
             continue
-        color = COLOR_ARRAY[abs(hash(key)) % len(COLOR_ARRAY)]
+        color = COLOR_ARRAY[abs(hash(str(key))) % len(COLOR_ARRAY)]
         label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -326,7 +326,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
-            color = COLOR_ARRAY[abs(hash(p + key)) % len(COLOR_ARRAY)]
+            color = COLOR_ARRAY[abs(hash(str(p+key))) % len(COLOR_ARRAY)]
             label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -354,7 +354,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     matplotlib.rcParams.update({'font.size': 34})
 
     for k in labels:
-        c = COLOR_ARRAY[abs(hash(k)) % len(COLOR_ARRAY)]
+        c = COLOR_ARRAY[abs(hash(str(k))) % len(COLOR_ARRAY)]
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
         plt.plot(recall, precision, lw=lw, color=c, label=k + ' area = %0.3f' % average_precision)
