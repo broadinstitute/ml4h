@@ -12,8 +12,8 @@ from metrics import per_class_precision, per_class_precision_3d, per_class_preci
 
 np.set_printoptions(threshold=np.inf)
 
-
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'PAxis', 'PDuration', 'POffset', 'POnset', 'QOffset',
+# 'PAxis', 'PDuration', 'POffset', 'POnset',
+CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'QOffset',
                          'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval', 'VentricularRate',
                          'lv_mass']
 
