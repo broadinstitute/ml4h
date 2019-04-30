@@ -360,7 +360,7 @@ class TensorMap(object):
                 if hasattr(hd5[self.name], "__shape__"):
                     continuous_data[0] = hd5[self.name][0]
                 else:
-                    continuous_data[0] = hd5[self.name]
+                    continuous_data[0] = hd5[self.name][()]
             missing = False
             for k in self.channel_map:
                 if k in hd5[self.group]:
