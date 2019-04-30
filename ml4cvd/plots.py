@@ -136,7 +136,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/'):
     plt.figure(figsize=(28, 42))
     plt.rcParams.update({'font.size': 36})
     for k in predictions:
-        color = COLOR_ARRAY[int(hashlib.sha1(k).hexdigest(), 16) % len(COLOR_ARRAY)]
+        color = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
@@ -227,7 +227,6 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     fig, axes = plt.subplots(rows, rows, figsize=(28, 24))
     for i, group in enumerate(continuous_stats):
         a = np.array(continuous_stats[group])
-
         ax = plt.subplot(rows, rows, i + 1)
         ax.set_title(group + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
         ax.hist(continuous_stats[group], bins=num_bins)
@@ -248,7 +247,7 @@ def plot_ecg(data, label, prefix='./figures/'):
     cols = math.ceil(len(data) / rows)
     fig, axes = plt.subplots(rows, cols, figsize=(28, 24))
     for i, k in enumerate(data):
-        color = COLOR_ARRAY[int(hashlib.sha1(k).hexdigest(), 16) % len(COLOR_ARRAY)]
+        color = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
         ax = plt.subplot(rows, cols, i + 1)
         ax.set_title(k)
         ax.plot(data[k], color=color, lw=lw, label=str(k))
@@ -296,7 +295,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:
             continue
-        color = COLOR_ARRAY[int(hashlib.sha1(key).hexdigest(), 16) % len(COLOR_ARRAY)]
+        color = COLOR_ARRAY[int(hashlib.sha1(key.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
         label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -327,7 +326,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
-            color = COLOR_ARRAY[int(hashlib.sha1(p+key).hexdigest(), 16) % len(COLOR_ARRAY)]
+            color = COLOR_ARRAY[int(hashlib.sha1(((p+key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
             label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -355,7 +354,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     matplotlib.rcParams.update({'font.size': 34})
 
     for k in labels:
-        c = COLOR_ARRAY[int(hashlib.sha1(k).hexdigest(), 16) % len(COLOR_ARRAY)]
+        c = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
         plt.plot(recall, precision, lw=lw, color=c, label=k + ' area = %0.3f' % average_precision)
@@ -386,7 +385,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
 
     for p in predictions:
         for k in labels:
-            c = COLOR_ARRAY[int(hashlib.sha1(p+k).hexdigest(), 16) % len(COLOR_ARRAY)]
+            c = COLOR_ARRAY[int(hashlib.sha1((p+k).encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
             label_text = "{}_{} area under ROC: {:.3f}".format(p, k, average_precision)
