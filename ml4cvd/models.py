@@ -245,7 +245,7 @@ def make_hidden_layer_model_from_file(parent_file: str, layer_name: str, tensor_
 def make_hidden_layer_model(parent_model: Model, layer_name: str):
     intermediate_layer_model = Model(inputs=parent_model.input, outputs=parent_model.get_layer(layer_name).output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
-    intermediate_layer_model.predict(np.zeros((1,)+parent_model.input_shape[1:]))
+    intermediate_layer_model.predict(np.zeros((1,)+tuple(parent_model.input_shape[1:])))
     return intermediate_layer_model
 
 
