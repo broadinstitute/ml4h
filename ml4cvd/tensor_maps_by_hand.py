@@ -165,8 +165,8 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
 
-TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
-TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
+TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
+TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
 
 TMAPS['end_systole_volume_mae'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                         loss='mean_absolute_error', channel_map={'end_systole_volume': 0},
