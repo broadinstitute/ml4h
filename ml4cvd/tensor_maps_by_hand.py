@@ -260,18 +260,18 @@ TMAPS['physical_activity_vigorous_duration'] = TensorMap('914_Duration-of-vigoro
                            channel_map={'914_Duration-of-vigorous-activity_0_0': 0},
                            normalization={'mean': 44.854488382965144, 'std': 48.159967071781466}, annotation_units=1)
 TMAPS['tv'] = TensorMap('1070_Time-spent-watching-television-TV_0_0', group='continuous',
-                            channel_map={'1070_Time-spent-watching-television-TV_0_0': 0, 'not-missing': 1},
+                            channel_map={'1070_Time-spent-watching-television-TV_0_0': 0},
                             normalization={'mean': 2.7753595642790914, 'std': 1.7135478462887321}, annotation_units=1)
 TMAPS['computer'] = TensorMap('1080_Time-spent-using-computer_0_0', group='continuous',
                             channel_map={'1080_Time-spent-using-computer_0_0': 0},
                             normalization={'mean': 0.9781465855433753, 'std': 1.4444414103121512}, annotation_units=1)
-TMAPS['car'] = TensorMap('1090_Time-spent-driving_0_0', group='continuous', channel_map={'1090_Time-spent-driving_0_0': 0, 'not-missing': 1},
+TMAPS['car'] = TensorMap('1090_Time-spent-driving_0_0', group='continuous', channel_map={'1090_Time-spent-driving_0_0': 0},
                             normalization={'mean': 0.8219851505445748, 'std': 1.304094814200189}, annotation_units=1)
 TMAPS['summer'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', group='continuous',
-                            channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0, 'not-missing': 1},
+                            channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0},
                             normalization={'mean': 3.774492304870845, 'std': 2.430483731404539}, annotation_units=1)
 TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='continuous',
-                            channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0, 'not-missing': 1},
+                            channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
 
 
