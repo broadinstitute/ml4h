@@ -107,7 +107,7 @@ def compare_multimodal_multitask_models(args):
 
     common_outputs = _get_common_outputs(models_inputs_outputs, output_prefix)
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, input_prefix, output_prefix)
-    _calculate_and_plot_prediction_stats(args, predictions, output_data)
+    _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
 
 
 def infer_multimodal_multitask(args):
@@ -283,7 +283,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
     return predictions
 
 
-def _calculate_and_plot_prediction_stats(args, predictions, outputs):
+def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
     for tm in args.tensor_maps_out:
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
@@ -302,16 +302,13 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs):
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
             plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
             plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
-
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
-
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
         else:
-            plot_scatters(predictions[tm], tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
-
-            coefs = get_pearson_coefficients(predictions[tm], tm.rescale(outputs[tm.output_name()]))
+            plot_scatters(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
+            coefs = get_pearson_coefficients(tm.rescale(predictions[tm]), tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
 
 

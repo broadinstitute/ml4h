@@ -132,14 +132,23 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     return {title + '_pearson': pearson}
 
 
-def plot_scatters(predictions, truth, title, prefix='./figures/'):
+def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3):
+    margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(28, 42))
     plt.rcParams.update({'font.size': 36})
+    plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     for k in predictions:
         color = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
+        if paths is not None:
+            diff = np.abs(predictions[k] - truth)
+            arg_sorted = diff[:, 0].argsort()
+            for idx in arg_sorted[:1]:
+                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+            for idx in arg_sorted[-top_k:]:
+                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
