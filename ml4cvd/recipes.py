@@ -101,12 +101,7 @@ def compare_multimodal_multitask_models(args):
     output_prefix = "output"
 
     tensor_paths = _get_tensor_files(args.tensors)
-    base_model = make_multimodal_to_multilabel_model(None, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                     args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
-                                                     args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
-                                                     args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
-                                                     args.pool_y, args.pool_z, args.padding, args.learning_rate)
-    models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out, base_model)
+    models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
     generator = TensorGenerator(args.batch_size, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
     input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generator, args.test_steps)
 
