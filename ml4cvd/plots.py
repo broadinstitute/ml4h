@@ -383,7 +383,7 @@ def subplot_rocs(rocs, title, prefix='./figures/'):
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
         axes[row, col].set_title('ROC: ' + title + '\n')
-        axes[row, col].set_legend(loc="lower right")
+        axes[row, col].legend(loc="lower right")
 
         row += 1
         if row == rows:
