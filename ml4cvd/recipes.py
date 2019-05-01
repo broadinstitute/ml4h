@@ -226,7 +226,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
             y = y_pred
         performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs))
     if len(rocs) > 0:
-        subplot_rocs(rocs, 'rocs_subplot', plot_path)
+        subplot_rocs(rocs, plot_path)
     return performance_metrics
 
 
