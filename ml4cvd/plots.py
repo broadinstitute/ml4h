@@ -383,7 +383,6 @@ def subplot_rocs(rocs, prefix='./figures/'):
         axes[row, col].set_ylim([-0.02, 1.03])
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
-
         axes[row, col].legend(loc="lower right")
 
         row += 1
@@ -397,6 +396,48 @@ def subplot_rocs(rocs, prefix='./figures/'):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
+
+
+def subplot_comparison_rocs(rocs, prefix='./figures/'):
+    """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
+    lw = 3
+    row = 0
+    col = 0
+
+    total_plots = len(rocs)
+    rows = max(2, int(math.sqrt(total_plots)))
+    cols = max(2, total_plots // rows)
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*22, cols*22))
+    for predictions, truth, labels in rocs:
+        for p in predictions:
+            fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
+            for key in labels:
+                if 'no_' in key and len(labels) == 2:
+                    continue
+                color = COLOR_ARRAY[int(hashlib.sha1(((p + key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
+                label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
+                axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+                axes[row, col].set_title('ROC: ' + key + '\n')
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_xlim([0.0, 1.0])
+        axes[row, col].set_ylim([-0.02, 1.03])
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].legend(loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
 
 def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve

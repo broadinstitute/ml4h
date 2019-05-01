@@ -13,9 +13,9 @@ from arguments import parse_args
 from defines import TENSOR_EXT
 from tensor_writer_ukbb import write_tensors
 from tensor_map_maker import write_tensor_maps
-from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs
 from explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_while_learning
 from metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
+from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs
 from tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
 
@@ -322,7 +322,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
     if len(rocs) > 0:
-        subplot_rocs(rocs, plot_folder)
+        subplot_comparison_rocs(rocs, plot_folder)
 
 
 def _get_tensor_files(tensor_dir):
