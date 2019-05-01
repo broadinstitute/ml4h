@@ -374,7 +374,7 @@ def subplot_rocs(rocs, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = COLOR_ARRAY[int(hashlib.sha1(((key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
-            label_text = "{}_{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+            label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
