@@ -13,7 +13,7 @@ from arguments import parse_args
 from defines import TENSOR_EXT
 from tensor_writer_ukbb import write_tensors
 from tensor_map_maker import write_tensor_maps
-from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
+from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs
 from explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_while_learning
 from metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
@@ -226,7 +226,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
             y = y_pred
         performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs))
     if len(rocs) > 0:
-
+        subplot_rocs(rocs, 'rocs_subplot', plot_path)
     return performance_metrics
 
 
