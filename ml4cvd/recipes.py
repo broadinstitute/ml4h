@@ -218,13 +218,13 @@ def plot_while_training(args):
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, output_folder, run_id, test_paths=None):
     performance_metrics = {}
-    rocs = {}
+    rocs = []
     plot_path = os.path.join(output_folder, run_id)
     y_pred = model.predict(test_data, batch_size=batch_size)
     for y, tm in zip(y_pred, tensor_maps_out):
         if len(tensor_maps_out) == 1:
             y = y_pred
-        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs))
+        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs))
     if len(rocs) > 0:
         subplot_rocs(rocs, 'rocs_subplot', plot_path)
     return performance_metrics
