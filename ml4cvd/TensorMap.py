@@ -60,7 +60,9 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '2405_Number-of-children-fathered_0_0',
                                        '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0',
                                        '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
-                                       '4429_Average-monthly-beer-plus-cider-intake_0_0']
+                                       '4429_Average-monthly-beer-plus-cider-intake_0_0',
+                                       '23104_Body-mass-index-BMI_0_0',
+                                       '22200_Year-of-birth_0_0']
 
 
 class TensorMap(object):
