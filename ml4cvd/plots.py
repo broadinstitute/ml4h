@@ -24,12 +24,13 @@ COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'orange']
 
 
-def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000):
+def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
         logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(test_labels[tm.output_name()], axis=0), np.sum(y, axis=0)))
         performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, title, folder))
+        rocs.append((y, test_labels[tm.output_name()], tm.channel_map)
     elif tm.is_categorical() and len(tm.shape) == 2:
         melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
         y = y.reshape(melt_shape)[:max_melt]
@@ -356,6 +357,45 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     plt.clf()
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
+
+def subplot_rocs(rocs, title, prefix='./figures/'):
+    """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
+    lw = 3
+    row = 0
+    col = 0
+
+    total_plots = len(rocs)
+    rows = max(2, int(math.sqrt(total_plots)))
+    cols = max(2, total_plots // rows)
+    fig, axes = plt.subplots(rows, cols, figsize=(48, 48))
+    for predicted, truth, labels in rocs:
+        fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
+        for key in labels:
+            if 'no_' in key and len(labels) == 2:
+                continue
+            color = COLOR_ARRAY[int(hashlib.sha1(((key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
+            label_text = "{}_{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+            axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_xlim([0.0, 1.0])
+        axes[row, col].set_ylim([-0.02, 1.03])
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].set_title('ROC: ' + title + '\n')
+        axes[row, col].set_legend(loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'rocs_together_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
 
 def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve
