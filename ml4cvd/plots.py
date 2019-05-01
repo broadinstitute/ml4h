@@ -33,22 +33,22 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
         rocs.append((y, test_labels[tm.output_name()], tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
         melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        # y = y.reshape(melt_shape)[:max_melt]
+        # y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
+        # performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        # performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical() and len(tm.shape) == 3:
         melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        # y = y.reshape(melt_shape)[:max_melt]
+        # y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
+        # performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        # performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
         melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        # y = y.reshape(melt_shape)[:max_melt]
+        # y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
+        # performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
+        # performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
         logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y.shape, test_labels[tm.output_name()].shape))
     elif len(tm.shape) > 1:
