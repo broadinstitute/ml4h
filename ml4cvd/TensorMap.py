@@ -12,10 +12,9 @@ from metrics import per_class_precision, per_class_precision_3d, per_class_preci
 
 np.set_printoptions(threshold=np.inf)
 
-# 'PAxis', 'PDuration', 'POffset', 'POnset',
 CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'QOffset',
                          'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval', 'VentricularRate',
-                         'lv_mass']
+                         'lv_mass', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0'] # 'PAxis', 'PDuration', 'POffset', 'POnset',
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
                                        '130_Place-of-birth-in-UK--east-coordinate_0_0',
@@ -60,9 +59,8 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '2405_Number-of-children-fathered_0_0',
                                        '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0',
                                        '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
-                                       '4429_Average-monthly-beer-plus-cider-intake_0_0',
-                                       '23104_Body-mass-index-BMI_0_0',
-                                       '22200_Year-of-birth_0_0']
+                                       '4429_Average-monthly-beer-plus-cider-intake_0_0'
+                                       ]
 
 
 class TensorMap(object):
