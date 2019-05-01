@@ -367,7 +367,7 @@ def subplot_rocs(rocs, prefix='./figures/'):
     total_plots = len(rocs)
     rows = max(2, int(math.sqrt(total_plots)))
     cols = max(2, total_plots // rows)
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*3.5, cols*3.5))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*6, cols*6))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
