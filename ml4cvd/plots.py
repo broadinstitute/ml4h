@@ -358,7 +358,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
-def subplot_rocs(rocs, title, prefix='./figures/'):
+def subplot_rocs(rocs, prefix='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
@@ -367,7 +367,7 @@ def subplot_rocs(rocs, title, prefix='./figures/'):
     total_plots = len(rocs)
     rows = max(2, int(math.sqrt(total_plots)))
     cols = max(2, total_plots // rows)
-    fig, axes = plt.subplots(rows, cols, figsize=(48, 48))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*3.5, cols*3.5))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
@@ -376,13 +376,14 @@ def subplot_rocs(rocs, title, prefix='./figures/'):
             color = COLOR_ARRAY[int(hashlib.sha1(((key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
             label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+            axes[row, col].set_title('ROC: ' + key + '\n')
 
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
         axes[row, col].set_ylim([-0.02, 1.03])
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].set_title('ROC: ' + title + '\n')
+
         axes[row, col].legend(loc="lower right")
 
         row += 1
