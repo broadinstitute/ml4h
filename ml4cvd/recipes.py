@@ -287,6 +287,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
 
 
 def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
+    rocs = []
     for tm in args.tensor_maps_out:
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
@@ -296,6 +297,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             for m in predictions[tm]:
                 logging.info(msg.format(tm.name, tm.channel_map, np.sum(outputs[tm.output_name()], axis=0), np.sum(predictions[tm][m], axis=0)))
             plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
+            rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
         elif tm.is_categorical_any_with_shape_len(4):
             for p in predictions[tm]:
                 y = predictions[tm][p]
@@ -319,6 +321,9 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
+    if len(rocs) > 0:
+        subplot_rocs(rocs, plot_folder)
+
 
 def _get_tensor_files(tensor_dir):
     return [tensor_dir + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
