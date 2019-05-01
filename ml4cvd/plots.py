@@ -30,7 +30,7 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
         logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
         logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(test_labels[tm.output_name()], axis=0), np.sum(y, axis=0)))
         performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, title, folder))
-        rocs.append((y, test_labels[tm.output_name()], tm.channel_map)
+        rocs.append((y, test_labels[tm.output_name()], tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
         melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
         y = y.reshape(melt_shape)[:max_melt]
