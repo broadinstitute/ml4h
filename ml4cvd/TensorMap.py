@@ -400,7 +400,7 @@ class TensorMap(object):
                             new_total = window_size * channels
                             tensor[:, self.channel_map[k], :] = np.reshape(hd5[self.group][k][:new_total], new_shape, order='F')
                         elif self.name == 'ecg_rest_fft':
-                            tensor[:, self.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[self.group][k])))
+                            tensor[:, self.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[self.group][k])) + EPS)
                         else:
                             tensor[:, self.channel_map[k]] = hd5[self.group][k]
             return self.zero_mean_std1(tensor)
