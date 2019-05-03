@@ -240,6 +240,8 @@ class TensorMap(object):
                 for i in range(0, len(np_tensor)):
                     if not_missing_in_channel_map and self.channel_map[NOT_MISSING] == i:
                         continue
+                    # If the not-missing channel exists in the channel_map and it is marked as "missing" (value of 0)
+                    # and the data itself is 0, then overwrite the value with a draw from a N(0,1)
                     if not_missing_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
                         np_tensor[i] = np.random.normal(1)
                     else:
