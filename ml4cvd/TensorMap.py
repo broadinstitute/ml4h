@@ -62,6 +62,10 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '4429_Average-monthly-beer-plus-cider-intake_0_0'
                                        ]
 
+MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
+
+NOT_MISSING = 'not-missing'
+
 
 class TensorMap(object):
     """Tensor maps encode the semantics, shapes and types of tensors available
@@ -231,17 +235,22 @@ class TensorMap(object):
             return np_tensor
 
         if 'mean' in self.normalization and 'std' in self.normalization:
+            not_missing_in_channel_map = NOT_MISSING in self.channel_map
             if self.is_continuous():
-                missing_idx = 1
-                if 'not-missing' in self.channel_map and 0 == np_tensor[missing_idx]:
-                    np_tensor[0] = np.random.normal(1)
-                else:
-                    np_tensor[0] -= self.normalization['mean']
-                    np_tensor[0] /= (self.normalization['std'] + EPS)
+                for i in range(0, len(np_tensor)):
+                    if not_missing_in_channel_map and self.channel_map[NOT_MISSING] == i:
+                        continue
+                    # If the not-missing channel exists in the channel_map and it is marked as "missing" (value of 0)
+                    # and the data itself is 0, then overwrite the value with a draw from a N(0,1)
+                    if not_missing_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
+                        np_tensor[i] = np.random.normal(1)
+                    else:
+                        np_tensor[i] -= self.normalization['mean']
+                        np_tensor[i] /= (self.normalization['std'] + EPS)
             else:
                 np_tensor -= self.normalization['mean']
                 np_tensor /= (self.normalization['std'] + EPS)
-            return np_tensor[0]
+            return np_tensor
 
     def rescale(self, np_tensor):
         if self.normalization is None:
@@ -251,6 +260,49 @@ class TensorMap(object):
             np_tensor *= self.normalization['std']
             np_tensor += self.normalization['mean']
             return np_tensor
+
+    # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
+    # at death into one channel)
+    def _merged_tensor_from_file(self, hd5):
+        if self.name == 'mothers_age_0':
+            data = np.zeros(self.shape, dtype=np.float32)
+            if 'Mother-still-alive_Yes_0_0' in hd5['categorical']:
+                if 'mother_alive' in self.channel_map.keys():
+                    data[self.channel_map['mother_alive']] = 1
+                if '1845_Mothers-age_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('1845_Mothers-age_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['mother_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            elif 'Mother-still-alive_No_0_0' in hd5['categorical']:
+                if 'mother_dead' in self.channel_map.keys():
+                    data[self.channel_map['mother_dead']] = 1
+                if '3526_Mothers-age-at-death_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('3526_Mothers-age-at-death_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['mother_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            return self.normalize(data)
+        elif self.name == 'fathers_age_0':
+            data = np.zeros(self.shape, dtype=np.float32)
+            if 'Father-still-alive_Yes_0_0' in hd5['categorical']:
+                if 'father_alive' in self.channel_map.keys():
+                    data[self.channel_map['father_alive']] = 1
+                if '2946_Fathers-age_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('2946_Fathers-age_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['father_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            elif 'Father-still-alive_No_0_0' in hd5['categorical']:
+                if 'father_dead' in self.channel_map.keys():
+                    data[self.channel_map['father_dead']] = 1
+                if '1807_Fathers-age-at-death_0_0' in hd5[self.group]:
+                    value = hd5[self.group].get('1807_Fathers-age-at-death_0_0')[0]
+                    if value > 0:
+                        data[self.channel_map['father_age']] = value
+                        data[self.channel_map[NOT_MISSING]] = 1
+            return self.normalize(data)
+        raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
 
     def tensor_from_file(self, hd5, dependents={}):
         """Reconstruct a tensor from an hd5 file
@@ -354,6 +406,8 @@ class TensorMap(object):
                 if channel in hd5['categorical']:
                     categorical_data[self.channel_map[channel]] = 1.0
             return categorical_data
+        elif self.name in MERGED_MAPS:
+            return self._merged_tensor_from_file(hd5)
         elif self.is_continuous():
             continuous_data = np.zeros(self.shape, dtype=np.float32)
             if self.name in hd5:
@@ -361,23 +415,27 @@ class TensorMap(object):
                     continuous_data[0] = hd5[self.name][0]
                 else:
                     continuous_data[0] = hd5[self.name][()]
-            missing = False
+            missing = True
             for k in self.channel_map:
                 if k in hd5[self.group]:
                     value = hd5[self.group][k][0]
+                    missing = False
                     if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
                         # -10 codes for "less than one"
-                        if value == -10:
+                        #TODO: Don't hard code these values
+                        if value in [-10, -1001]:
                             value = .5
                         # -2 codes for "unnable to walk"
                         # -3 codes for "prefer not to answer"
                         # -1 codes for "do not know"
                         # -11 codes for "still taking ..."
-                        elif value in [-3, -1, -2, -11]:
+                        if value in [-3, -1, -2, -11, -818, -121, -313, -906]:
+                            # need to set missing values to 0 so normalization works
+                            value = 0
                             missing = True
                     continuous_data[self.channel_map[k]] = value
-                    if 'not-missing' in self.channel_map and not missing:
-                        continuous_data[self.channel_map['not-missing']] = 1
+            if NOT_MISSING in self.channel_map and not missing:
+                continuous_data[self.channel_map[NOT_MISSING]] = 1
             if continuous_data[0] == 0 and self.name in CONTINUOUS_NEVER_ZERO:
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
