@@ -19,6 +19,8 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
+SUBPLOT_SIZE = 22
+
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon',
                'magenta', 'aquamarine', 'gold', 'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue',
                'orange']
@@ -72,7 +74,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, math.ceil(total_plots / rows))
+    cols = max(2, int(math.ceil(total_plots / rows)))
     f, axes = plt.subplots(rows, cols, sharex=True, figsize=(int(rows * 4.5), int(cols * 4.5)))
 
     for k in sorted(history.history.keys()):
@@ -142,7 +144,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     plt.rcParams.update({'font.size': 36})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     for k in predictions:
-        color = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+        color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
@@ -259,7 +261,7 @@ def plot_ecg(data, label, prefix='./figures/'):
     cols = math.ceil(len(data) / rows)
     fig, axes = plt.subplots(rows, cols, figsize=(28, 24))
     for i, k in enumerate(data):
-        color = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+        color = _hash_string_to_color(k)
         ax = plt.subplot(rows, cols, i + 1)
         ax.set_title(k)
         ax.plot(data[k], color=color, lw=lw, label=str(k))
@@ -307,7 +309,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:
             continue
-        color = COLOR_ARRAY[int(hashlib.sha1(key.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+        color = _hash_string_to_color(key)
         label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -338,7 +340,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
-            color = COLOR_ARRAY[int(hashlib.sha1(((p+key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
+            color = _hash_string_to_color(p+key)
             label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
@@ -363,17 +365,16 @@ def subplot_rocs(rocs, prefix='./figures/'):
     lw = 3
     row = 0
     col = 0
-
     total_plots = len(rocs)
     rows = max(2, int(math.sqrt(total_plots)))
     cols = max(2, total_plots // rows)
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*22, cols*22))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
-            color = COLOR_ARRAY[int(hashlib.sha1(((key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
+            color = _hash_string_to_color(key)
             label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             axes[row, col].set_title('ROC: ' + key + '\n')
@@ -403,18 +404,17 @@ def subplot_comparison_rocs(rocs, prefix='./figures/'):
     lw = 3
     row = 0
     col = 0
-
     total_plots = len(rocs)
     rows = max(2, int(math.sqrt(total_plots)))
     cols = max(2, total_plots // rows)
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*22, cols*22))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
             for key in labels:
                 if 'no_' in key and len(labels) == 2:
                     continue
-                color = COLOR_ARRAY[int(hashlib.sha1(((p + key).encode('utf-8'))).hexdigest(), 16) % len(COLOR_ARRAY)]
+                color = _hash_string_to_color(p + key)
                 label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 axes[row, col].set_title('ROC: ' + key + '\n')
@@ -447,7 +447,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     matplotlib.rcParams.update({'font.size': 34})
 
     for k in labels:
-        c = COLOR_ARRAY[int(hashlib.sha1(k.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+        c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
         plt.plot(recall, precision, lw=lw, color=c, label=k + ' area = %0.3f' % average_precision)
@@ -478,7 +478,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
 
     for p in predictions:
         for k in labels:
-            c = COLOR_ARRAY[int(hashlib.sha1((p+k).encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+            c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
             label_text = "{}_{} area under ROC: {:.3f}".format(p, k, average_precision)
@@ -537,6 +537,11 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     plt.savefig(figure_path)
     plt.clf()
     logging.info("Saved waves at: {}".format(figure_path))
+
+
+def _hash_string_to_color(string):
+    """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
+    return COLOR_ARRAY[int(hashlib.sha1(string.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
 
 
 if __name__ == '__main__':
