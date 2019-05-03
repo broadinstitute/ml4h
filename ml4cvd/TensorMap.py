@@ -235,12 +235,12 @@ class TensorMap(object):
             return np_tensor
 
         if 'mean' in self.normalization and 'std' in self.normalization:
-            not_missin_in_channel_map = NOT_MISSING in self.channel_map
+            not_missing_in_channel_map = NOT_MISSING in self.channel_map
             if self.is_continuous():
                 for i in range(0, len(np_tensor)):
-                    if not_missin_in_channel_map and self.channel_map[NOT_MISSING] == i:
+                    if not_missing_in_channel_map and self.channel_map[NOT_MISSING] == i:
                         continue
-                    if not_missin_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
+                    if not_missing_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
                         np_tensor[i] = np.random.normal(1)
                     else:
                         np_tensor[i] -= self.normalization['mean']
