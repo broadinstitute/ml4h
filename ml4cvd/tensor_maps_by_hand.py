@@ -237,7 +237,7 @@ TMAPS['fathers_age'] = TensorMap('fathers_age_0', group='continuous',
 
 TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=1, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1})
 
-TMAPS['top-80-class'] = TensorMap('top-80-class', group='categorical',
+TMAPS['random-forest-fields'] = TensorMap('top-80-class', group='categorical',
                                   channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
                                                'Medication-for-pain-relief-constipation-heartburn_Do-not-know': 1,
                                                'Medication-for-pain-relief-constipation-heartburn_Ibuprofen-eg-Nurofen': 2,
