@@ -256,8 +256,8 @@ class TensorMap(object):
             return np_tensor
 
         if 'mean' in self.normalization and 'std' in self.normalization:
-            np_tensor[:] *= self.normalization['std']
-            np_tensor[:] += self.normalization['mean']
+            np_tensor = np.array(np_tensor) * self.normalization['std']
+            np_tensor = np.array(np_tensor) + self.normalization['mean']
             return np_tensor
 
     # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
