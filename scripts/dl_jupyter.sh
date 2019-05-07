@@ -5,7 +5,7 @@
 PORT=${1:-8888}
 shift 1
 
-DOCKER_IMAGE=gcr.io/broad-ml4cvd/deeplearning:latest
+DOCKER_IMAGE=gcr.io/broad-ml4cvd/deeplearning:latest-gpu
 docker pull ${DOCKER_IMAGE}
 #Based on ufoym/deepo:all-py36-jupyter
 
