@@ -99,7 +99,7 @@ ${DOCKER_COMMAND} run -it \
 --ipc=host \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
--p ${PORT}:${PORT} \
+-p 127.0.0.1:${PORT}:${PORT} \
 ${DOCKER_IMAGE} jupyter notebook --no-browser --ip=0.0.0.0 --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}
 
 
