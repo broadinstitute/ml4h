@@ -784,6 +784,7 @@ def _inspect_model(model: Model,
 
 
 def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
+    import pydot
     for n in dot.get_nodes():
         if n.get_label():
             if 'Conv1' in n.get_label():
@@ -816,12 +817,13 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
         if not inspect_show_labels:
             n.set_label('\n')
 
-    with dot.subgraph(name='cluster1') as c:
+    with pydot.Subgraph(name='cluster1') as c:
         c.attr(fillcolor='blue:cyan', label='acluster', fontcolor='white',
                style='filled', gradientangle='270')
         c.attr('node', shape='box', fillcolor='red:yellow',
                style='filled', gradientangle='90')
         c.node('anode')
+        dot.add_subgraph(c)
     logging.info('Saving architecture diagram to:{}'.format(image_path))
     dot.write_png(image_path)
 
