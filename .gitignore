@@ -8,4 +8,4 @@ trained_models/*
 recipes_output/*
 .ipynb_checkpoints
 ml4cvd/ml4cvd/__pycache__/*
-ml4cvd/ml_tensorize.egg-info/*
+ml_tensorize.egg-info/*
