@@ -48,12 +48,12 @@ while getopts ":i:nth" opt ; do
         i)
             DOCKER_IMAGE=$OPTARG
             ;;
+        p)
+            PORT=$OPTARG
+            ;;
         n)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
             DOCKER_COMMAND=docker
-            ;;
-        p)
-            PORT=$OPTARG
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
