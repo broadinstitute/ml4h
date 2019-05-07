@@ -817,13 +817,10 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
         if not inspect_show_labels:
             n.set_label('\n')
 
-    with pydot.Subgraph(name='cluster1') as c:
-        c.attr(fillcolor='blue:cyan', label='acluster', fontcolor='white',
-               style='filled', gradientangle='270')
-        c.attr('node', shape='box', fillcolor='red:yellow',
-               style='filled', gradientangle='90')
-        c.node('anode')
-        dot.add_subgraph(c)
+    node_s = pydot.Node(label="Start", shape="box", fillcolor='blue:cyan')
+    layer1 = pydot.Subgraph(rank='source')
+    layer1.add_node(node_s)
+    dot.add_subgraph(layer1)
     logging.info('Saving architecture diagram to:{}'.format(image_path))
     dot.write_png(image_path)
 
