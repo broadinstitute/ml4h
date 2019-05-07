@@ -817,8 +817,8 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
         if not inspect_show_labels:
             n.set_label('\n')
 
-    node_s = pydot.Node(label="Start", shape="box", fillcolor='blue:cyan')
-    layer1 = pydot.Subgraph(rank='source')
+    node_s = pydot.Node(label="Start", shape="box", fillcolor='blue')
+    layer1 = pydot.Subgraph()
     layer1.add_node(node_s)
     dot.add_subgraph(layer1)
     logging.info('Saving architecture diagram to:{}'.format(image_path))
