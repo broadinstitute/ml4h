@@ -5,9 +5,9 @@ import apache_beam as beam
 import h5py
 from apache_beam import Pipeline
 from google.cloud import storage
-from tensorize.defines import TENSOR_EXT, GCS_BUCKET
 
-from tensorize.utils import dataset_name_from_meaning, to_float_or_false
+from ml4cvd.tensorize.defines import TENSOR_EXT, GCS_BUCKET
+from ml4cvd.tensorize.utils import dataset_name_from_meaning, to_float_or_false
 
 
 def tensorize_categorical_continuous_fields(pipeline: Pipeline,
