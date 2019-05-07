@@ -26,7 +26,7 @@ usage()
 
     Example: ./${SCRIPT_NAME} -n -p 8889  -i gcr.io/broad-ml4cvd/deeplearning:latest-cpu
 
-        -n                  Assume non-GPU-enabled machine and use the regular 'docker' launcher.
+        -c                  Use CPU docker image and use the regular 'docker' launcher.
                             By default, 'nvidia-docker' wrapper is used to launch Docker assuming the machine is GPU-enabled.
 
         -h                  Print this help text.
@@ -39,7 +39,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:nth" opt ; do
+while getopts ":ip:ch" opt ; do
     case ${opt} in
         h)
             usage
@@ -51,7 +51,7 @@ while getopts ":i:nth" opt ; do
         p)
             PORT=$OPTARG
             ;;
-        n)
+        c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
             DOCKER_COMMAND=docker
             ;;
