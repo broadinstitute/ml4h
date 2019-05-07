@@ -808,7 +808,7 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
                 n.set_fillcolor("goldenrod1")
             elif 'output_' in n.get_label():
                 n.set_fillcolor("darkolivegreen2")
-                legend['output_'] = "darkolivegreen2"
+                legend['Output'] = "darkolivegreen2"
             elif 'softmax' in n.get_label():
                 n.set_fillcolor("chartreuse")
                 legend['softmax'] = "chartreuse"
@@ -834,7 +834,7 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
     for l in legend:
         legend_node = pydot.Node('legend'+l, label=l, shape="box", fillcolor=legend[l])
         dot.add_node(legend_node)
-        
+
     logging.info('Saving architecture diagram to:{}'.format(image_path))
     dot.write_png(image_path)
 
