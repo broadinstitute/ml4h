@@ -784,7 +784,7 @@ def _inspect_model(model: Model,
 
 
 def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
-    #import pydot
+    import pydot_ng as pydot
     for n in dot.get_nodes():
         if n.get_label():
             if 'Conv1' in n.get_label():
@@ -817,10 +817,10 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
         if not inspect_show_labels:
             n.set_label('\n')
 
-    #node_s = pydot.Node(label="Start", shape="box", fillcolor='blue')
-    #layer1 = pydot.Subgraph()
-    #layer1.add_node(node_s)
-    #dot.add_node(node_s)
+    node_s = pydot.Node(label="Start", shape="box", fillcolor='blue')
+    layer1 = pydot.Subgraph()
+    layer1.add_node(node_s)
+    dot.add_node(node_s)
     logging.info('Saving architecture diagram to:{}'.format(image_path))
     dot.write_png(image_path)
 
