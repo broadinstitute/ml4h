@@ -110,4 +110,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
-${DOCKER_IMAGE} python "$@"
+${DOCKER_IMAGE} pip install /home/${USER}/ml; python "$@"
