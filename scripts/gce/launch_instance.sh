@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
-NAME=${1:-sam-p4}
+NAME=${1:-jpp-1}
 shift 1
-INSTANCE_TYPE=${1:-n1-standard-4}
+INSTANCE_TYPE=${1:-n1-standard-1}
 shift 1
 DISK_SIZE=${1:-100GB}
 shift 1
-ACCEL=${1:-nvidia-tesla-k80}
-shift 1
 
-echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE}"
+echo "Creating instance ${NAME} from family ml4cvd-image of type ${INSTANCE_TYPE}"
 
 echo "$@"
 
@@ -17,11 +15,10 @@ gcloud compute instances create ${NAME} \
 --project broad-ml4cvd \
 --zone us-central1-a \
 --image-project broad-ml4cvd \
---image-family dl-image \
---accelerator=type=${ACCEL},count=1 \
---maintenance-policy=TERMINATE \
+--image-family ml4cvd-image \
 --boot-disk-type=pd-ssd \
 --boot-disk-size=${DISK_SIZE} \
+--disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
 --machine-type ${INSTANCE_TYPE} \
