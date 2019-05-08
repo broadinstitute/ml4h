@@ -286,6 +286,12 @@ TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='con
                             channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
 
+TMAPS['test'] = TensorMap('test', group='multi_field_continuous',
+                          channel_map={'1883_Number-of-full-sisters_0_0': 0, '100015_Vitamin-C_0_0': 1},
+                          annotation_units=2,
+                          normalization={'1883_Number-of-full-sisters_0_0': [1.0770222705227819, 1.2215502368418467],
+                                         '100015_Vitamin-C_0_0': [154.23202566893315, 129.22786442031074]})
+
 TMAPS['random-forest-fields'] = TensorMap('top-80-class', group='categorical',
                                   channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
                                                'Medication-for-pain-relief-constipation-heartburn_Do-not-know': 1,
