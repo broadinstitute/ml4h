@@ -77,12 +77,12 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline,
     result.wait_until_finish()
 
 
-def get_write_tensor_from_sql():
-    # Defining this in global scope because passing it explicitly into a method used by beam.Map()
-    # gives a 'client not picklable` error.
+try:
     gcs_client = storage.Client()
     output_bucket = gcs_client.get_bucket(GCS_BUCKET)
-
+except OSError:
+    output_bucket ='nope'
+    logging.warning(f"no GCS storage client")
 
     def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
         # GroupByKey output is not a list of dicts, as expected, but something called an 'UnwindowedValue'.
@@ -123,4 +123,3 @@ def get_write_tensor_from_sql():
         except:
             logging.exception(f"Problem with processing sample id '{sample_id}'")
 
-    return write_tensor_from_sql
