@@ -24,7 +24,7 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
         for tensor_file in sorted([tensor_folder + tp for tp in os.listdir(tensor_folder) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]):
             with h5py.File(tensor_file, 'r') as hd5:
                 for tm in tensor_maps_out:
-                    if tm.is_categorical_date()
+                    if tm.is_categorical_date():
                         index = int(hd5[tm.name][0])
                         if index != 0:
                             disease_date = str2date(str(hd5[tm.name + '_date'][0]))
