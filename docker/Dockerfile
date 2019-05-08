@@ -15,6 +15,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 COPY ./config/* /app/
 
+RUN mkdir -p /ml/ml4cvd
+COPY ../setup.py /ml
+COPY ../ml4cvd/* /ml/ml4cvd
 WORKDIR /app
 
 # Note that some layers are kept separate to encourage layer re-use and to try
@@ -33,4 +36,4 @@ RUN ./ubuntu.sh
 RUN apt-get install python3-tk -y
 # Requirements for the tensorflow project
 RUN pip3 install -r tensorflow-requirements.txt
-RUN pip3 install ..
+RUN pip3 install /ml
