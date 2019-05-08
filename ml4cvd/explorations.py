@@ -24,14 +24,15 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
         for tensor_file in sorted([tensor_folder + tp for tp in os.listdir(tensor_folder) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]):
             with h5py.File(tensor_file, 'r') as hd5:
                 for tm in tensor_maps_out:
-                    try:
-                        tensor = tm.tensor_from_file(hd5)
-                        if tm.is_categorical_date() and tensor[1] == 1:
-                            f.write(f"{tensor_file}\tPrevalent {tm.name}\n")
-                        elif tm.is_categorical_date() and tensor[2] == 1:
-                            f.write(f"{tensor_file}\tIncident {tm.name}\n")
-                    except:
-                        pass  # Sorry
+                    if tm.is_categorical_date()
+                        index = int(hd5[tm.name][0])
+                        if index != 0:
+                            disease_date = str2date(str(hd5[tm.name + '_date'][0]))
+                            assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
+                            if disease_date < assess_date:
+                                f.write(f"{tensor_file}\tPrevalent {tm.name}\n")
+                            else:
+                                f.write(f"{tensor_file}\tIncident {tm.name}\n")
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap],
