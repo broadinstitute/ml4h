@@ -101,7 +101,7 @@ Attempting to run Docker with
         -v /home/${USER}/jupyter/root/:/root/
         -v /home/${USER}/:/home/${USER}/
         -v /mnt/:/mnt/
-        ${DOCKER_IMAGE} python $@
+        ${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; python $@"
 LAUNCH_MESSAGE
 
 ${DOCKER_COMMAND} run ${INTERACTIVE} \
@@ -110,4 +110,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; python ${@}"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; python $@"
