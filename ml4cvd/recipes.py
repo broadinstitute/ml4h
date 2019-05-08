@@ -54,7 +54,7 @@ def run(args):
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'find_tensors' == args.mode:
-            find_tensors(args.id, args.tensors, args.tensor_maps_out)
+            find_tensors(os.path.join(args.output_folder, args.id, 'found_tensors'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
