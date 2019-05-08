@@ -1,6 +1,5 @@
-h5py
-pydot
+h5py==2.9.0
+pydot==1.2.4
 keras==2.2.4
-keras-tqdm
-pydicom
-hyperopt
+pydicom==1.2.2
+hyperopt==0.1.2
