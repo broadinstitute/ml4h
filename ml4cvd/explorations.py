@@ -21,7 +21,7 @@ from defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
     with open(text_file, 'w') as f:
-        for tensor_file in [tensor_folder + tp for tp in os.listdir(tensor_folder) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT].sort():
+        for tensor_file in sorted([tensor_folder + tp for tp in os.listdir(tensor_folder) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]):
             with h5py.File(tensor_file, 'r') as hd5:
                 for tm in tensor_maps_out:
                     try:
