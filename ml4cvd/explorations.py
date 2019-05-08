@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 
 from keras.models import Model
 
-from TensorMap import TensorMap
-from plots import evaluate_predictions
-from defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
+from ml4cvd.TensorMap import TensorMap
+from ml4cvd.plots import evaluate_predictions
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
 
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
