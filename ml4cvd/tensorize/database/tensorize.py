@@ -1,8 +1,8 @@
 import logging
 import tempfile
 
-import apache_beam as beam
 import h5py
+import apache_beam as beam
 from apache_beam import Pipeline
 from google.cloud import storage
 
