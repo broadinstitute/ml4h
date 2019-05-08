@@ -13,7 +13,7 @@ from arguments import parse_args
 from defines import TENSOR_EXT
 from tensor_writer_ukbb import write_tensors
 from tensor_map_maker import write_tensor_maps
-from explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_while_learning
+from explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_while_learning, find_tensors
 from metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs
 from tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
@@ -53,6 +53,8 @@ def run(args):
             train_char_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
+        elif 'find_tensors' == args.mode:
+            find_tensors(args.id, args.tensors, args.tensor_maps_out)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
