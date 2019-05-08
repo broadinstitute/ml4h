@@ -1,2 +1,3 @@
-from .tensorize import database, defines
+from . import defines
+from .tensorize import database
 from .tensorize.database import tensorize

@@ -7,5 +7,5 @@ __pycache__/*
 trained_models/*
 recipes_output/*
 .ipynb_checkpoints
-ml4cvd/ml4cvd/__pycache__/*
-ml_tensorize.egg-info/*
+ml4cvd/__pycache__/*
+ml4cvd.egg-info/*

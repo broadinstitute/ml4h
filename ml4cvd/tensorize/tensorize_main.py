@@ -6,7 +6,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, GoogleCloudOptions, StandardOptions
 
 from ml4cvd.tensorize.database import tensorize
-from ml4cvd.tensorize.defines import GCS_BUCKET
+from ml4cvd.defines import GCS_BUCKET
 
 
 def parse_args():
