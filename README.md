@@ -167,6 +167,67 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
         * You can specify input arguments by expanding the `Parameters` text box on the window
          that can be opened using the menu `Run -> Edit Configurations...`.    
 
+### Create and Use VM Disk Images
+* Create a **fresh** VM (without using the custom instructions detailed at [Set Up a VM](#set-up-a-vm)) using
+an `Ubuntu` image such as `Ubuntu 18.04` (not all `Ubuntu` images work; for example, `18.10` did not have `gcsfuse` at the
+time of this writing)
+
+    ```
+    # feel free to customize the VM name
+    export VM_NAME=${USER}-create-ml4cvd-image
+    
+    gcloud compute instances create ${VM_NAME} \
+        --project=broad-ml4cvd \
+        --zone=us-central1-a \
+        --machine-type=n1-standard-1 \
+        --subnet=default \
+        --network-tier=PREMIUM \
+        --maintenance-policy=MIGRATE \
+        --service-account=783282864357-compute@developer.gserviceaccount.com \
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+        --image=ubuntu-1804-bionic-v20190429 \
+        --image-project=ubuntu-os-cloud \
+        --boot-disk-size=10GB \
+        --boot-disk-type=pd-standard \
+        --boot-disk-device-name=${VM_NAME}
+    ```
+* Log into your VM
+* Set up your SSH keys on the VM for GitHub
+* git clone git@github.com:broadinstitute/ml.git
+* cd ml
+* scripts/gce/ml4cvd-image.sh
+* Clean up your VM by deleting the `ml` repo you cloned and the SSH keys you set up, so they don't become part of the image
+you will be creating!
+* Stop your VM before attempting to create an image off of its boot disk:
+    ```
+    gcloud compute instances stop ${VM_NAME} \
+        --project=broad-ml4cvd \
+        --zone=us-central1-a
+    ```
+* Create the image:
+    ```
+    export DATE=`date +%Y-%m-%d`
+    
+    gcloud compute images create ml4cvd-image-${DATE} \
+        --project=broad-ml4cvd \
+        --family=ml4cvd-image \
+        --source-disk=${VM_NAME} \
+        --source-disk-zone=us-central1-a
+    ```
+* Launch an instance with the new image (using the `scripts/gce/launch_instance.sh` script with 
+`DISK_SIZE` set to `10GB`), login to it and verify that the correct disk(s) are mounted and 
+bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
+one in the `ml4cvd-image` family. 
+
+* The `ml4cvd-image` you created is sufficient for non-GPU machines but we will need more
+when running on GPU-enabled machines. However, those GPU-specific installations cause issues
+on non-GPU machines. Therefore, we will next create a separate GPU-specific image
+layered on top of the `ml4cvd-image`.
+
+* Set up your GitHub SSH keys on the last VM you logged into and clone the `ml` repo again.
+
+*  
+
 ## Data
 When you are on an instance, you can access data as follows:
 

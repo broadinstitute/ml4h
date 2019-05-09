@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # This setup script is separated from the default because it seems that there
 # may be issues with GPU-enabled docker machines if you run on a non-GPU
 # instance. See https://github.com/NVIDIA/nvidia-docker/issues/652 It should not
