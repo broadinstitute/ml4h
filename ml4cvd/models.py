@@ -798,8 +798,8 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
                 legend['Conv3'] = "deepskyblue3"
                 n.set_fillcolor("deepskyblue3")
             elif 'UpSampling' in n.get_label():
-                legend['UpSampling'] = "deepskyblue3"
-                n.set_fillcolor("deepskyblue3")
+                legend['UpSampling'] = "darkslategray2"
+                n.set_fillcolor("darkslategray2")
             elif 'Transpose' in n.get_label():
                 legend['Transpose'] = "deepskyblue2"
                 n.set_fillcolor("deepskyblue2")
