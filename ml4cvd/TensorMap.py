@@ -65,8 +65,10 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
 
-VALUE_IDX, MEAN_IDX = 0
-NOT_MISSING_IDX, STDEV_IDX = 1
+VALUE_IDX = 0
+MEAN_IDX = 0
+NOT_MISSING_IDX = 1
+STDEV_IDX = 1
 
 
 class TensorMap(object):
