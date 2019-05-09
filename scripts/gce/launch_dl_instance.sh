@@ -9,7 +9,7 @@ shift 1
 ACCEL=${1:-nvidia-tesla-k80}
 shift 1
 
-echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE}"
+echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE} with GPU ${ACCEL}..."
 
 echo "$@"
 

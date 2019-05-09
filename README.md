@@ -168,17 +168,36 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
          that can be opened using the menu `Run -> Edit Configurations...`.    
 
 ### Create and Use VM Disk Images
+* Make sure you have installed the
+[google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install) on your laptop.
+With [Homebrew](https://brew.sh/), you can use 
+    ```
+    brew cask install google-cloud-sdk
+    ```
+
+* Set up some environment variables to use throughout the rest of the section. Feel free to customize the
+ names as your heart may desire:
+    ```
+    export ML4CVD_IMAGE=ml4cvd-image
+    export DL_IMAGE=dl-image
+    export ACCELERATOR=nvidia-tesla-k80
+    export VM=${USER}-create-${ML4CVD_IMAGE}
+    export TEST_VM=${USER}-test-${ML4CVD_IMAGE}
+    export GPU_VM=${USER}-create-${DL_IMAGE}
+    export GPU_TEST_VM=${USER}-test-${DL_IMAGE}
+    export PROJECT=broad-ml4cvd 
+    export ZONE=us-central1-a
+    export DATE=`date +%Y-%m-%d`
+    ```
+
 * Create a **fresh** VM (without using the custom instructions detailed at [Set Up a VM](#set-up-a-vm)) using
 an `Ubuntu` image such as `Ubuntu 18.04` (not all `Ubuntu` images work; for example, `18.10` did not have `gcsfuse` at the
 time of this writing)
 
-    ```
-    # feel free to customize the VM name
-    export VM_NAME=${USER}-create-ml4cvd-image
-    
-    gcloud compute instances create ${VM_NAME} \
-        --project=broad-ml4cvd \
-        --zone=us-central1-a \
+    ```    
+    gcloud compute instances create ${VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE} \
         --machine-type=n1-standard-1 \
         --subnet=default \
         --network-tier=PREMIUM \
@@ -189,44 +208,146 @@ time of this writing)
         --image-project=ubuntu-os-cloud \
         --boot-disk-size=10GB \
         --boot-disk-type=pd-standard \
-        --boot-disk-device-name=${VM_NAME}
+        --boot-disk-device-name=${VM}
     ```
+
 * Log into your VM
+
 * Set up your SSH keys on the VM for GitHub
-* git clone git@github.com:broadinstitute/ml.git
-* cd ml
-* scripts/gce/ml4cvd-image.sh
+
+* Clone and go to the `ml` repo:
+    ```
+    git clone git@github.com:broadinstitute/ml.git && cd ml
+    ```
+
+* Run the installations we want to build into the image:
+    ```
+    sudo scripts/gce/ml4cvd-image.sh
+    ```
+
 * Clean up your VM by deleting the `ml` repo you cloned and the SSH keys you set up, so they don't become part of the image
 you will be creating!
-* Stop your VM before attempting to create an image off of its boot disk:
+
+* Exit out of the VM and stop it before attempting to create an image off of its boot disk:
     ```
-    gcloud compute instances stop ${VM_NAME} \
-        --project=broad-ml4cvd \
-        --zone=us-central1-a
+    gcloud compute instances stop ${VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE}
     ```
+
 * Create the image:
+    ```    
+    gcloud compute images create ${ML4CVD_IMAGE}-${DATE} \
+        --project=${PROJECT} \
+        --family=${ML4CVD_IMAGE} \
+        --source-disk=${VM} \
+        --source-disk-zone=${ZONE}
     ```
-    export DATE=`date +%Y-%m-%d`
-    
-    gcloud compute images create ml4cvd-image-${DATE} \
-        --project=broad-ml4cvd \
-        --family=ml4cvd-image \
-        --source-disk=${VM_NAME} \
-        --source-disk-zone=us-central1-a
+
+* Delete the VM:
     ```
-* Launch an instance with the new image (using the `scripts/gce/launch_instance.sh` script with 
-`DISK_SIZE` set to `10GB`), login to it and verify that the correct disk(s) are mounted and 
+    gcloud -q compute instances delete ${VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE}
+    ```
+
+* Launch a test instance with the new image:
+    ```
+        scripts/gce/launch_instance.sh ${TEST_VM}
+    ```
+
+* Login to `TEST_VM` and verify that the correct disk(s) are mounted and 
 bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
-one in the `ml4cvd-image` family. 
+one in the `ML4CVD_IMAGE` family. 
 
-* The `ml4cvd-image` you created is sufficient for non-GPU machines but we will need more
-when running on GPU-enabled machines. However, those GPU-specific installations cause issues
+* Exit out of the VM and delete it:
+    ```
+    gcloud -q compute instances delete ${TEST_VM} \
+            --project=${PROJECT} \
+            --zone=${ZONE}
+    ``` 
+
+* The `ML4CVD_IMAGE` you created is sufficient for non-GPU machines but we will need more
+when model-training on GPU-enabled machines. However, those GPU-specific installations cause issues
 on non-GPU machines. Therefore, we will next create a separate GPU-specific image
-layered on top of the `ml4cvd-image`.
+layered on top of the `ML4CVD_IMAGE`.
 
-* Set up your GitHub SSH keys on the last VM you logged into and clone the `ml` repo again.
+* First, let's create another VM using the `ML4CVD_IMAGE`, but this time with a GPU:
+    ```    
+    gcloud compute instances create ${GPU_VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE} \
+        --machine-type=n1-standard-1 \
+        --subnet=default \
+        --network-tier=PREMIUM \
+        --maintenance-policy=TERMINATE \
+        --service-account=783282864357-compute@developer.gserviceaccount.com \
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+        --image-project=${PROJECT} \
+        --image-family=${ML4CVD_IMAGE} \
+        --accelerator=type=${ACCELERATOR},count=1 \
+        --boot-disk-size=10GB \
+        --boot-disk-type=pd-standard \
+        --boot-disk-device-name=${GPU_VM}
+    ```
 
-*  
+* Same as before, set up your GitHub SSH keys on `GPU_VM` you logged into, and clone and go into the `ml` repo again.
+
+* Run the first part of the GPU installations, which will reboot the machine at the end:
+    ```
+    sudo scripts/gce/dl-image-part-1.sh
+    ```
+  If you run into permission issues, try
+    ```
+    chmod u+x scripts/gce/dl-image-part-{1,2}.sh
+    ``` 
+
+* Finish the installations with the part-2 version:
+    ```
+    sudo scripts/gce/dl-image-part-2.sh
+    ```
+
+* Same as before, clean up your VM by deleting the `ml` repo you cloned and the SSH keys you set up, so they don't become part of the image
+you will be creating!
+
+* Exit out of the VM and stop it before attempting to create an image off of its boot disk:
+    ```
+    gcloud compute instances stop ${GPU_VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE}
+    ```
+
+* Create the image:
+    ```    
+    gcloud compute images create ${DL_IMAGE}-${DATE} \
+        --project=${PROJECT} \
+        --family=${DL_IMAGE} \
+        --source-disk=${GPU_VM} \
+        --source-disk-zone=${ZONE}
+    ``` 
+
+* Delete the VM:
+    ```
+    gcloud -q compute instances delete ${GPU_VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE}
+    ```
+
+* Launch a test instance with the new GPU image:
+    ```
+        scripts/gce/launch_dl_instance.sh ${GPU_TEST_VM}
+    ```
+
+* Login to `GPU_TEST_VM` and verify that the correct disk(s) are mounted and 
+bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
+one in the `ML4CVD_IMAGE` family. 
+
+* Exit out of the VM and delete it:
+    ```
+    gcloud -q compute instances delete ${TEST_VM} \
+            --project=${PROJECT} \
+            --zone=${ZONE}
+    ```
 
 ## Data
 When you are on an instance, you can access data as follows:
