@@ -57,7 +57,6 @@ def tensorize_categorical_continuous_fields(pipeline: Pipeline,
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
     bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
-    write_tensor_from_sql = get_write_tensor_from_sql()
     # Query table in BQ
     steps = (
             pipeline
@@ -84,42 +83,42 @@ except OSError:
     output_bucket ='nope'
     logging.warning(f"no GCS storage client")
 
-    def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
-        # GroupByKey output is not a list of dicts, as expected, but something called an 'UnwindowedValue'.
-        # We convert it to list first to arrive at (key, [{dict1}, {dict2}, {dict3}...])
-        (sample_id, values) = sampleid_to_rows
-        rows = list(values)
 
-        try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                tensor_file = f"{sample_id}{TENSOR_EXT}"
-                tensor_path = f"{temp_dir}/{tensor_file}"
-                gcs_blob = output_bucket.blob(f"{output_path}/{tensor_file}")
-                logging.info(f"Writing tensor {tensor_file} to {gcs_blob.public_url} ...")
-                with h5py.File(tensor_path, 'w') as hd5:
-                    for row in rows:
-                        field_id = row['fieldid']
-                        field = row['field']
-                        instance = row['instance']
-                        array_idx = row['array_idx']
-                        value = row['value']
+def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
+    # GroupByKey output is not a list of dicts, as expected, but something called an 'UnwindowedValue'.
+    # We convert it to list first to arrive at (key, [{dict1}, {dict2}, {dict3}...])
+    (sample_id, values) = sampleid_to_rows
+    rows = list(values)
 
-                        hd5_dataset_name = None
-                        if tensor_type == 'categorical':
-                            meaning = row['meaning']
-                            hd5_dataset_name = dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
-                        elif tensor_type == 'continuous':
-                            hd5_dataset_name = dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
-                        else:
-                            continue
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tensor_file = f"{sample_id}{TENSOR_EXT}"
+            tensor_path = f"{temp_dir}/{tensor_file}"
+            gcs_blob = output_bucket.blob(f"{output_path}/{tensor_file}")
+            logging.info(f"Writing tensor {tensor_file} to {gcs_blob.public_url} ...")
+            with h5py.File(tensor_path, 'w') as hd5:
+                for row in rows:
+                    field_id = row['fieldid']
+                    field = row['field']
+                    instance = row['instance']
+                    array_idx = row['array_idx']
+                    value = row['value']
 
-                        float_value = to_float_or_false(value)
-                        if float_value is not False:
-                                hd5.create_dataset(hd5_dataset_name, data=[float_value])
-                        else:
-                            logging.warning(f"Cannot cast to float from '{value}' for field id '{field_id}' and sample id '{sample_id}'")
-                gcs_blob.upload_from_filename(tensor_path)
+                    hd5_dataset_name = None
+                    if tensor_type == 'categorical':
+                        meaning = row['meaning']
+                        hd5_dataset_name = dataset_name_from_meaning('categorical', [field, meaning, str(instance), str(array_idx)])
+                    elif tensor_type == 'continuous':
+                        hd5_dataset_name = dataset_name_from_meaning('continuous', [str(field_id), field, str(instance), str(array_idx)])
+                    else:
+                        continue
 
-        except:
-            logging.exception(f"Problem with processing sample id '{sample_id}'")
+                    float_value = to_float_or_false(value)
+                    if float_value is not False:
+                        hd5.create_dataset(hd5_dataset_name, data=[float_value])
+                    else:
+                        logging.warning(f"Cannot cast to float from '{value}' for field id '{field_id}' and sample id '{sample_id}'")
+            gcs_blob.upload_from_filename(tensor_path)
 
+    except:
+        logging.exception(f"Problem with processing sample id '{sample_id}'")
