@@ -470,6 +470,7 @@ class TensorMap(object):
                 print(k)
                 missing = True
                 if k in hd5['continuous']:
+                    print('made it here')
                     value = hd5[self.group][k][0]
                     missing = False
                     if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
@@ -480,9 +481,10 @@ class TensorMap(object):
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
-                    # Put value at index k, and put whether or not this value is missing in the following element.
+                    # Put value at index k, and put whether or not this value is not missing in the following element.
                     continuous_data[self.channel_map[k]] = value
-                continuous_data[self.channel_map[k] + 1] = missing
+                print(not missing)
+                continuous_data[self.channel_map[k] + 1] = not missing
             print(continuous_data)
             print(self.normalize_multi_field_continuous(continuous_data))
             return self.normalize_multi_field_continuous(continuous_data)

@@ -288,7 +288,7 @@ TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', group='con
 
 TMAPS['test'] = TensorMap('test', group='multi_field_continuous',
                           channel_map={'1883_Number-of-full-sisters_0_0': 0, '100015_Vitamin-C_0_0': 1},
-                          annotation_units=2,
+                          annotation_units=4,
                           normalization={'1883_Number-of-full-sisters_0_0': [1.0770222705227819, 1.2215502368418467],
                                          '100015_Vitamin-C_0_0': [154.23202566893315, 129.22786442031074]})
 
