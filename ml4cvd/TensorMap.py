@@ -270,8 +270,8 @@ class TensorMap(object):
             if np_tensor[idx + 1] == 0 and np_tensor[idx] == 0:
                 np_tensor[idx] = np.random.normal(1)
             else:
-                np_tensor[idx] -= self.normalization[idx, MEAN_IDX]
-                np_tensor[idx] /= (self.normalization[idx, STDEV_IDX] + EPS)
+                np_tensor[idx] -= self.normalization[k][MEAN_IDX]
+                np_tensor[idx] /= (self.normalization[k][STDEV_IDX] + EPS)
 
         return np_tensor
 
