@@ -19,6 +19,7 @@ import numpy as np
 
 from ml4cvd.logger import load_config
 from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 
 
 CATEGORICAL_PHENOTYPES = [54, 924, 943, 971, 981, 1011, 1100, 1239, 1249, 1259, 1329, 1339, 1349, 1359, 1369, 1379, 1389, 1408, 1418, 1428, 1448, 1468, 1478, 1508, 1518, 1528, 1538, 1548, 1558, 1618, 1628, 1647, 1677, 1687, 1697, 1707, 1717, 1727, 1747, 1757, 1767, 1777, 1787, 1797, 1835, 2178, 2188, 2207, 2247, 2316, 2306, 2415, 2443, 2453, 2463, 2473, 2674, 2694, 2724, 2784, 2814, 2877, 3079, 3616, 3637, 3773, 3799, 4717, 4825, 4935, 4957, 4968, 4979, 4990, 5001, 5012, 6015, 6017, 6148, 6149, 6150, 6152, 6153, 6154, 6155, 6157, 6159, 6162, 6164, 6177, 6179, 20001, 20003, 20004, 20116, 22001, 22609, 22610, 22611, 22612, 22613, 22614, 22615, 22616, 22650]
@@ -38,6 +39,7 @@ def parse_args():
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
     parser.add_argument('--output_tensors', default=[], nargs='+')
+    parser.add_argument('--input_continuous_tensors', default=[], nargs='+', help='Continuous tensor maps to be combined.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
 
@@ -215,7 +217,9 @@ def parse_args():
 
     args = parser.parse_args()
 
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    multi_field_tensor_map = generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
+    all_input_tensors = args.input_tensors + [multi_field_tensor_map]
+    args.tensor_maps_in = [TMAPS[it] for it in all_input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 

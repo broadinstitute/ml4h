@@ -464,7 +464,6 @@ class TensorMap(object):
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
         elif self.is_multi_field_continuous():
-            print(self.name)
             continuous_data = np.zeros(self.shape, dtype=np.float32)
             for k in self.channel_map:
                 missing = True
@@ -483,8 +482,6 @@ class TensorMap(object):
                     # this value is not missing in the following element.
                     continuous_data[self.channel_map[k] * 2] = value
                 continuous_data[self.channel_map[k] * 2 + 1] = not missing
-            print(continuous_data)
-            print(self.normalize_multi_field_continuous(continuous_data))
             return self.normalize_multi_field_continuous(continuous_data)
         elif self.is_ecg_rest():
             tensor = np.zeros(self.shape, dtype=np.float32)
