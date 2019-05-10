@@ -6,8 +6,7 @@
 ### Set up a VM
 Clone this repo and cd into it:
 ```
-git clone git@github.com:broadinstitute/ml.git
-cd ml
+git clone git@github.com:broadinstitute/ml.git && cd ml
 ```
 Make sure you have installed the [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install). With [Homebrew](https://brew.sh/), you can use 
 ```
@@ -98,7 +97,7 @@ Now open a browser on your laptop and go to the URL `http://localhost:8888`
 ### Run tests
 The command below will run all (integration and unit) tests:
 ```
-${HOME}/ml/scripts/tf.sh -t ${HOME}/ml/tests/tests.py --tensor_maps_dir ${HOME}/ml/
+${HOME}/ml/scripts/tf.sh -t ${HOME}/ml/ml4cvd/tests.py
 ```
 
 Most of the tests need a GPU-enabled machine so it's best to run them on your VM. Note that spurious failures with
@@ -114,7 +113,7 @@ AssertionError: 0.2925531914893617 != 0.7606382978723405 within 0.4 delta
 ----------------------------------------------------------------------
 ```
 are expected since models are not trained much in the interest of time and they may not have learnt enough. They can
-still be valuable as smoke tests since they exercise a lot of the code.
+still be valuable as smoke tests since they exercise a lot of the codebase.
 
 ### Set up a local development environment
 Setting up a Python environment with the right dependencies can be challenging. The first step below enables running 
@@ -167,7 +166,7 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
         * You can specify input arguments by expanding the `Parameters` text box on the window
          that can be opened using the menu `Run -> Edit Configurations...`.    
 
-### Create and Use VM Disk Images
+### Create and Use VM Boot Images
 * Make sure you have installed the
 [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install) on your laptop.
 With [Homebrew](https://brew.sh/), you can use 
@@ -191,8 +190,8 @@ With [Homebrew](https://brew.sh/), you can use
     ```
 
 * Create a **fresh** VM (without using the custom instructions detailed at [Set Up a VM](#set-up-a-vm)) using
-an `Ubuntu` image such as `Ubuntu 18.04` (not all `Ubuntu` images work; for example, `18.10` did not have `gcsfuse` at the
-time of this writing)
+an `Ubuntu` image such as `Ubuntu 18.04` (not all `Ubuntu` images work; for example, `18.10` did not have `gcsfuse`
+as of 5/10/19)
 
     ```    
     gcloud compute instances create ${VM} \
@@ -244,6 +243,8 @@ you will be creating!
         --source-disk-zone=${ZONE}
     ```
 
+* Verify that you can view your newly created image on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4cvd&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
+
 * Delete the VM:
     ```
     gcloud -q compute instances delete ${VM} \
@@ -253,7 +254,7 @@ you will be creating!
 
 * Launch a test instance with the new image:
     ```
-        scripts/gce/launch_instance.sh ${TEST_VM}
+    scripts/gce/launch_instance.sh ${TEST_VM}
     ```
 
 * Login to `TEST_VM` and verify that the correct disk(s) are mounted and 
@@ -301,6 +302,7 @@ layered on top of the `ML4CVD_IMAGE`.
     ```
     chmod u+x scripts/gce/dl-image-part-{1,2}.sh
     ``` 
+  This will reboot the VM at the end so you will have to log back in when that's done.
 
 * Finish the installations with the part-2 version:
     ```
@@ -326,6 +328,8 @@ you will be creating!
         --source-disk-zone=${ZONE}
     ``` 
 
+* Verify that the new image is listed on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4cvd&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
+
 * Delete the VM:
     ```
     gcloud -q compute instances delete ${GPU_VM} \
@@ -335,16 +339,34 @@ you will be creating!
 
 * Launch a test instance with the new GPU image:
     ```
-        scripts/gce/launch_dl_instance.sh ${GPU_TEST_VM}
+    scripts/gce/launch_dl_instance.sh ${GPU_TEST_VM}
     ```
 
 * Login to `GPU_TEST_VM` and verify that the correct disk(s) are mounted and 
 bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
-one in the `ML4CVD_IMAGE` family. 
+one in the `DL_IMAGE` family.
+
+* Because we don't know everyone's username, you need to run one more script to make sure
+that you are added as a docker user and that you have permission to pull down our docker
+instances from GCP's gcr.io. Run this while you're logged into your VM:
+    ```
+    /scripts/run-once.sh
+    ```
+
+  Note that you may see warnings like below, but these are expected:
+    ```
+    WARNING: Unable to execute `docker version`: exit status 1
+    This is expected if `docker` is not installed, or if `dockerd` cannot be reached...
+    Configuring docker-credential-gcr as a registry-specific credential helper. This is only supported by Docker client versions 1.13+
+    /home/username/.docker/config.json configured to use this credential helper for GCR registries
+    ```
+  You need to log out after that (`exit`) then ssh back in so everything takes effect.
+
+* [Run the tests](#run-tests)
 
 * Exit out of the VM and delete it:
     ```
-    gcloud -q compute instances delete ${TEST_VM} \
+    gcloud -q compute instances delete ${GPU_TEST_VM} \
             --project=${PROJECT} \
             --zone=${ZONE}
     ```
