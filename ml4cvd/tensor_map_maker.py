@@ -7,8 +7,8 @@ from typing.io import TextIO
 from ml4cvd.tensor_maps_by_script import TMAPS
 from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
-from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
+from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
