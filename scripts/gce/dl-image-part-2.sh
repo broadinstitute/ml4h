@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 
-#
-# 2018/09/11 additions
-# Enable NVidia-docker
-# 
-
-# Part 2 via https://askubuntu.com/a/1036265/411855
-# This may not be necessary
-#sudo apt-get install -y nvidia-cuda-toolkit gcc-6
+# Part-2 via https://askubuntu.com/a/1036265/411855
 
 # Now adding nvidia-docker
 # Via https://github.com/NVIDIA/nvidia-docker

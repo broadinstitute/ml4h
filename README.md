@@ -219,7 +219,14 @@ as of 5/10/19)
     git clone git@github.com:broadinstitute/ml.git && cd ml
     ```
 
-* Run the installations we want to build into the image:
+* Run the installations we want to build into the image after verifying that the script below has the
+desired auto-mounting specified under the `# Mount the persistent disks` section that should look something like
+    ```
+    # Mount the persistent disks
+    sudo mkdir -p /mnt/disks/data
+    echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
+    ```
+  Now run the script:  
     ```
     sudo scripts/gce/ml4cvd-image.sh
     ```
@@ -252,7 +259,12 @@ you will be creating!
         --zone=${ZONE}
     ```
 
-* Launch a test instance with the new image:
+* Launch a test instance with the new image after verifying that the script below has the desired persistent
+disks specified to be attached with a line that looks like
+    ```
+    --disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
+    ```
+  Now run the script:
     ```
     scripts/gce/launch_instance.sh ${TEST_VM}
     ```
@@ -337,7 +349,12 @@ you will be creating!
         --zone=${ZONE}
     ```
 
-* Launch a test instance with the new GPU image:
+* Launch a test instance with the new GPU image after verifying that the script below has the desired persistent
+disks specified to be attached with a line that looks like
+    ```
+    --disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
+    ```
+  Now run the script:
     ```
     scripts/gce/launch_dl_instance.sh ${GPU_TEST_VM}
     ```

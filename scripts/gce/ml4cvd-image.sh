@@ -27,7 +27,7 @@ echo "${GCP_BUCKET} /mnt/${GCP_BUCKET} gcsfuse rw,allow_other,implicit_dirs,defa
 echo "fc-9a7c5487-04c9-4182-b3ec-13de7f6b409b /mnt/imputed_v2 gcsfuse ro,allow_other,implicit_dirs,default_permissions,file_mode=777,dir_mode=777" | sudo tee -a /etc/fstab
 echo "fc-7d5088b4-7673-45b5-95c2-17ae00a04183 /mnt/imputed_v3 gcsfuse ro,allow_other,implicit_dirs,default_permissions,file_mode=777,dir_mode=777" | sudo tee -a /etc/fstab
 
-# Mount the data disk
+# Mount the persistent disks
 sudo mkdir -p /mnt/disks/data
 echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
 
