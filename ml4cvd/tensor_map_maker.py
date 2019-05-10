@@ -234,7 +234,8 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
         filtered = filtered[filtered.Field.str.contains(keyword, case=False)]
     return filtered
 
-def generate_multi_field_continuous_tensor_map(continuous_tensors):
+
+def generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> TensorMap:
     channel_map = {}
     normalization_map = {}
     counter = 0
