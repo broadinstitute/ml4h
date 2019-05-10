@@ -265,7 +265,7 @@ class TensorMap(object):
             return np_tensor
 
         for k in self.channel_map:
-            idx = self.channel_map[k]
+            idx = self.channel_map[k] * 2
             # If both the value (at idx) and not-missing channel (at idx + 1) are 0 then impute the value.
             if np_tensor[idx + 1] == 0 and np_tensor[idx] == 0:
                 np_tensor[idx] = np.random.normal(1)
@@ -469,7 +469,6 @@ class TensorMap(object):
             for k in self.channel_map:
                 missing = True
                 if k in hd5['continuous']:
-                    print('made it here')
                     value = hd5[self.group][k][0]
                     missing = False
                     if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
@@ -481,8 +480,8 @@ class TensorMap(object):
                             value = 0
                             missing = True
                     # Put value at index k, and put whether or not this value is not missing in the following element.
-                    continuous_data[self.channel_map[k]] = value
-                continuous_data[self.channel_map[k] + 1] = not missing
+                    continuous_data[self.channel_map[k] * 2] = value
+                continuous_data[self.channel_map[k] * 2 + 1] = not missing
             print(continuous_data)
             print(self.normalize_multi_field_continuous(continuous_data))
             return self.normalize_multi_field_continuous(continuous_data)
