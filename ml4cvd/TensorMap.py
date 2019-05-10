@@ -65,9 +65,7 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
 
-VALUE_IDX = 0
 MEAN_IDX = 0
-NOT_MISSING_IDX = 1
 STDEV_IDX = 1
 
 
@@ -131,7 +129,7 @@ class TensorMap(object):
 
         if self.shape is None:
             if self.is_multi_field_continuous():
-                self.shape = (len(channel_map), 2)
+                self.shape = (len(channel_map) * 2,)
             else:
                 self.shape = (len(channel_map),)
 
@@ -268,11 +266,12 @@ class TensorMap(object):
 
         for k in self.channel_map:
             idx = self.channel_map[k]
-            if np_tensor[idx, NOT_MISSING_IDX] == 0 and np_tensor[idx, VALUE_IDX] == 0:
-                np_tensor[idx, VALUE_IDX] = np.random.normal(1)
+            # If both the value (at idx) and not-missing channel (at idx + 1) are 0 then impute the value.
+            if np_tensor[idx + 1] == 0 and np_tensor[idx] == 0:
+                np_tensor[idx] = np.random.normal(1)
             else:
-                np_tensor[idx, VALUE_IDX] -= self.normalization[idx, MEAN_IDX]
-                np_tensor[idx, VALUE_IDX] /= (self.normalization[idx, STDEV_IDX] + EPS)
+                np_tensor[idx] -= self.normalization[idx, MEAN_IDX]
+                np_tensor[idx] /= (self.normalization[idx, STDEV_IDX] + EPS)
 
         return np_tensor
 
@@ -480,8 +479,8 @@ class TensorMap(object):
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
-                    continuous_data[self.channel_map[k], [VALUE_IDX]] = value
-                continuous_data[self.channel_map[k], [NOT_MISSING_IDX]] = missing
+                    continuous_data[self.channel_map[k]] = value
+                continuous_data[self.channel_map[k] + 1] = missing
             print(continuous_data)
             print(self.normalize_multi_field_continuous(continuous_data))
             return self.normalize_multi_field_continuous(continuous_data)

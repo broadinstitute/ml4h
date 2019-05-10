@@ -337,7 +337,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
             last_convolution2d = _dense_block2d(last_convolution2d, upsamplers, dense_blocks, block_size, activation,
                                                 conv_bn, (conv_x, conv_y), (pool_x, pool_y), conv_dropout, padding)
             input_multimodal.append(Flatten()(last_convolution2d))
-        elif len(tm.shape) == 2 and not tm.is_multi_field_continuous():
+        elif len(tm.shape) == 2:
             last_convolution1d = _conv_block1d(input_tensors[j], upsamplers,  conv_layers, max_pools, res_layers,
                                                activation, conv_bn, conv_width, conv_dropout, padding)
             last_convolution1d = _dense_block1d(last_convolution1d, upsamplers,  dense_blocks, block_size, activation,
