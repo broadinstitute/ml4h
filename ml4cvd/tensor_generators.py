@@ -97,12 +97,16 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                         paths_in_batch = []
 
             except IndexError:
+                print(traceback.format_exc())
                 stats[f"IndexError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except KeyError as e:
+                print(traceback.format_exc())
                 stats[f"KeyError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except ValueError as e:
+                print(traceback.format_exc())
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except OSError as e:
+                print(traceback.format_exc())
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
 
         stats['epochs'] += 1

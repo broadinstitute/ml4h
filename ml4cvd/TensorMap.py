@@ -479,7 +479,8 @@ class TensorMap(object):
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
-                    # Put value at index k, and put whether or not this value is not missing in the following element.
+                    # Put value at index k (times 2 to make space for the not-missing channels), and put whether or not
+                    # this value is not missing in the following element.
                     continuous_data[self.channel_map[k] * 2] = value
                 continuous_data[self.channel_map[k] * 2 + 1] = not missing
             print(continuous_data)
