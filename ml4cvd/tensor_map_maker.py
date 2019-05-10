@@ -4,8 +4,8 @@ import numpy as np
 from typing import List
 from typing.io import TextIO
 
-from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE
@@ -233,18 +233,6 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
     if keyword is not None:
         filtered = filtered[filtered.Field.str.contains(keyword, case=False)]
     return filtered
-
-TensorMap('blood-pressure', group='multi_field_continuous',
-              channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0,
-                           '4080_Systolic-blood-pressure-automated-reading_0_1': 1,
-                           '4079_Diastolic-blood-pressure-automated-reading_0_0': 2,
-                           '4079_Diastolic-blood-pressure-automated-reading_0_1': 3},
-              annotation_units=8,
-              normalization={
-                  '4080_Systolic-blood-pressure-automated-reading_0_0': [137.79964191990328, 19.292863700283757],
-                  '4080_Systolic-blood-pressure-automated-reading_0_1': [137.79964191990328, 19.292863700283757],
-                  '4079_Diastolic-blood-pressure-automated-reading_0_0': [82.20657551284782, 10.496040770224475],
-                  '4079_Diastolic-blood-pressure-automated-reading_0_1': [82.20657551284782, 10.496040770224475]})
 
 def generate_multi_field_continuous_tensor_map(continuous_tensors):
     channel_map = {}
