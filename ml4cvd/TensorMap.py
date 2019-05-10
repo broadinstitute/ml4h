@@ -467,6 +467,7 @@ class TensorMap(object):
             print(self.name)
             continuous_data = np.zeros(self.shape, dtype=np.float32)
             for k in self.channel_map:
+                print(k)
                 missing = True
                 if k in hd5['continuous']:
                     value = hd5[self.group][k][0]
@@ -479,6 +480,7 @@ class TensorMap(object):
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
+                    # Put value at index k, and put whether or not this value is missing in the following element.
                     continuous_data[self.channel_map[k]] = value
                 continuous_data[self.channel_map[k] + 1] = missing
             print(continuous_data)
