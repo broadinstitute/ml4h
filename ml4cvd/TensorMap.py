@@ -469,7 +469,7 @@ class TensorMap(object):
             for k in self.channel_map:
                 missing = True
                 if k in hd5['continuous']:
-                    value = hd5[self.group][k][0]
+                    value = hd5['continuous'][k][0]
                     missing = False
                     if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
                         # TODO: Don't hard code these values
