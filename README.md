@@ -232,9 +232,9 @@ desired auto-mounting specified under the `# Mount the persistent disks` section
     sudo mkdir -p /mnt/disks/data
     echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
     ```
-  Now run the script:  
+  Now run the script **without sudo**:  
     ```
-    sudo ./ml4cvd-image.sh
+    ./ml4cvd-image.sh
     ```
   If you run into permission issues, try
     ```
@@ -286,9 +286,11 @@ has the desired persistent disks specified to be attached with a line that looks
     gcloud --project ${PROJECT} compute ssh ${TEST_VM} --zone ${ZONE}
     ```
 
-* Verify that the correct disk(s) are mounted and 
-bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
-one in the `ML4CVD_IMAGE` family. 
+* The new image will be selected automatically because it is the latest
+  one in the `ML4CVD_IMAGE` family. Now, verify that the correct disk(s) are mounted and bucket(s) are `gcsfuse`d.
+    ```
+    ls /mnt/ml4cvd && ls /mnt/disks/*
+    ``` 
 
 * Exit out of the VM and delete it:
     ```
@@ -333,13 +335,13 @@ layered on top of the `ML4CVD_IMAGE`.
 
 * Run the first part of the GPU installations, which will reboot the machine at the end:
     ```
-    sudo ./dl-image-part-1.sh
+    ./dl-image-part-1.sh
     ```
   This will reboot the VM at the end so you will have to log back in when that's done.
 
 * Finish the installations with the part-2 version:
     ```
-    sudo ./dl-image-part-2.sh
+    ./dl-image-part-2.sh
     ```
 
 * Delete the scripts from your VM:
@@ -402,7 +404,7 @@ one in the `DL_IMAGE` family.
 that you are added as a docker user and that you have permission to pull down our docker
 instances from GCP's gcr.io. Run this while you're logged into your VM:
     ```
-    sudo scripts/vm_launch/run_once.sh
+    scripts/vm_launch/run_once.sh
     ```
 
   Note that you may see warnings like below, but these are expected:
