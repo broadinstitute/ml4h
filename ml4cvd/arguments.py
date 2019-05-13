@@ -217,8 +217,11 @@ def parse_args():
 
     args = parser.parse_args()
 
-    multi_field_tensor_map = _generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors] + [multi_field_tensor_map]
+    if len(args.input_continuous_tensors) > 0:
+        multi_field_tensor_map = _generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors] + [multi_field_tensor_map]
+    else:
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 
@@ -237,8 +240,6 @@ def parse_args():
 
 
 def _generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> TensorMap:
-    if len(continuous_tensors) == 0:
-        return None
     channel_map = {}
     normalization_map = {}
     counter = 0
