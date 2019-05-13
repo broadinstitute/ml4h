@@ -220,7 +220,10 @@ as of 5/10/19)
     gcloud compute scp scripts/vm_image/ml4cvd-image.sh ${VM}:/home/${USER}
     ```
 
-* Log into your VM
+* Log into your VM:
+    ```
+    gcloud --project ${PROJECT} compute ssh ${VM} --zone ${ZONE}
+    ```
 
 * Run the installations we want to build into the image after verifying that the script you copied has the
 desired auto-mounting specified under the `# Mount the persistent disks` section that should look something like
@@ -233,6 +236,10 @@ desired auto-mounting specified under the `# Mount the persistent disks` section
     ```
     sudo ./ml4cvd-image.sh
     ```
+  If you run into permission issues, try
+    ```
+    chmod u+x scripts/vm_image/dl-image-part-{1,2}.sh
+    ``` 
 
 * Delete the script from your VM:
     ```
@@ -274,7 +281,12 @@ has the desired persistent disks specified to be attached with a line that looks
     scripts/vm_launch/launch_instance.sh ${TEST_VM}
     ```
 
-* Login to `TEST_VM` and verify that the correct disk(s) are mounted and 
+* Login to `TEST_VM`:
+    ```
+    gcloud --project ${PROJECT} compute ssh ${TEST_VM} --zone ${ZONE}
+    ```
+
+* Verify that the correct disk(s) are mounted and 
 bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
 one in the `ML4CVD_IMAGE` family. 
 
@@ -315,20 +327,19 @@ layered on top of the `ML4CVD_IMAGE`.
     ```
 
 * Log into your VM
+    ```
+    gcloud --project ${PROJECT} compute ssh ${GPU_VM} --zone ${ZONE}
+    ```
 
 * Run the first part of the GPU installations, which will reboot the machine at the end:
     ```
-    sudo scripts/vm_image/dl-image-part-1.sh
+    sudo ./dl-image-part-1.sh
     ```
-  If you run into permission issues, try
-    ```
-    chmod u+x scripts/vm_image/dl-image-part-{1,2}.sh
-    ``` 
   This will reboot the VM at the end so you will have to log back in when that's done.
 
 * Finish the installations with the part-2 version:
     ```
-    sudo scripts/vm_image/dl-image-part-2.sh
+    sudo ./dl-image-part-2.sh
     ```
 
 * Delete the scripts from your VM:
@@ -371,15 +382,27 @@ disks specified to be attached with a line that looks like
     scripts/vm_launch/launch_dl_instance.sh ${GPU_TEST_VM}
     ```
 
-* Login to `GPU_TEST_VM` and verify that the correct disk(s) are mounted and 
+* Login to `GPU_TEST_VM`:
+    ```
+    gcloud --project ${PROJECT} compute ssh ${GPU_TEST_VM} --zone ${ZONE}
+    ```
+
+* Verify that the correct disk(s) are mounted and 
 bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
 one in the `DL_IMAGE` family.
 
+* Set up your SSH keys on the VM for GitHub to be able to clone the `ml` repo.
+
+* Clone and go to the `ml` repo on your laptop:
+    ```
+    git clone git@github.com:broadinstitute/ml.git && cd ml
+    ```
+    
 * Because we don't know everyone's username, you need to run one more script to make sure
 that you are added as a docker user and that you have permission to pull down our docker
 instances from GCP's gcr.io. Run this while you're logged into your VM:
     ```
-    /scripts/vm_launch/run-once.sh
+    sudo scripts/vm_launch/run_once.sh
     ```
 
   Note that you may see warnings like below, but these are expected:

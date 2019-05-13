@@ -5,6 +5,9 @@
 # instance. See https://github.com/NVIDIA/nvidia-docker/issues/652.
 # These scripts should not be run on a blank Ubuntu 18.04 VM, but instead on a ml4cvd-image.
 
+# TODO Peg the NVIDIA drivers to specific versions that are compatible with the versions
+# of related software defined within the Docker image
+
 # 2018/09/11 additions
 # Enable NVidia-docker
 # Via https://askubuntu.com/a/1036265/411855
