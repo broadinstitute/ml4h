@@ -253,7 +253,7 @@ def _generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> Te
 
     multi_field_continuous_tensor_map = TensorMap('generated-from-input-continuous-tensors', group='multi_field_continuous',
                                                   channel_map=channel_map,
-                                                  annotation_units=len(channel_map * 2),
+                                                  annotation_units=len(channel_map) * 2,
                                                   normalization=normalization_map)
 
     return multi_field_continuous_tensor_map
