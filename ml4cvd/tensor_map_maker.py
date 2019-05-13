@@ -233,26 +233,3 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
     if keyword is not None:
         filtered = filtered[filtered.Field.str.contains(keyword, case=False)]
     return filtered
-
-
-def generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> TensorMap:
-    channel_map = {}
-    normalization_map = {}
-    counter = 0
-    for tm in continuous_tensors:
-        if TMAPS[tm].normalization is None:
-            raise ValueError('All continuous tensor maps to be combined into one tensor map require normalization.')
-        current_channel_map = TMAPS[tm].channel_map
-        for k in current_channel_map:
-            if k == NOT_MISSING:
-                continue
-            channel_map[k] = counter
-            counter += 1
-            normalization_map[k] = [TMAPS[tm].normalization['mean'], TMAPS[tm].normalization['std']]
-
-    multi_field_continuous_tensor_map = TensorMap('generated-from-input-continuous-tensors', group='multi_field_continuous',
-                                                  channel_map=channel_map,
-                                                  annotation_units=len(channel_map * 2),
-                                                  normalization=normalization_map)
-
-    return multi_field_continuous_tensor_map

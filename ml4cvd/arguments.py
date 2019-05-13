@@ -19,7 +19,7 @@ import numpy as np
 
 from ml4cvd.logger import load_config
 from ml4cvd.tensor_maps_by_script import TMAPS
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
+from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 
 
 CATEGORICAL_PHENOTYPES = [54, 924, 943, 971, 981, 1011, 1100, 1239, 1249, 1259, 1329, 1339, 1349, 1359, 1369, 1379, 1389, 1408, 1418, 1428, 1448, 1468, 1478, 1508, 1518, 1528, 1538, 1548, 1558, 1618, 1628, 1647, 1677, 1687, 1697, 1707, 1717, 1727, 1747, 1757, 1767, 1777, 1787, 1797, 1835, 2178, 2188, 2207, 2247, 2316, 2306, 2415, 2443, 2453, 2463, 2473, 2674, 2694, 2724, 2784, 2814, 2877, 3079, 3616, 3637, 3773, 3799, 4717, 4825, 4935, 4957, 4968, 4979, 4990, 5001, 5012, 6015, 6017, 6148, 6149, 6150, 6152, 6153, 6154, 6155, 6157, 6159, 6162, 6164, 6177, 6179, 20001, 20003, 20004, 20116, 22001, 22609, 22610, 22611, 22612, 22613, 22614, 22615, 22616, 22650]
@@ -217,7 +217,7 @@ def parse_args():
 
     args = parser.parse_args()
 
-    multi_field_tensor_map = generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
+    multi_field_tensor_map = _generate_multi_field_continuous_tensor_map(args.input_continuous_tensors)
     all_input_tensors = args.input_tensors + [multi_field_tensor_map]
     args.tensor_maps_in = [TMAPS[it] for it in all_input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
@@ -236,3 +236,24 @@ def parse_args():
 
     return args
 
+def _generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> TensorMap:
+    channel_map = {}
+    normalization_map = {}
+    counter = 0
+    for tm in continuous_tensors:
+        if TMAPS[tm].normalization is None:
+            raise ValueError('All continuous tensor maps to be combined into one tensor map require normalization.')
+        current_channel_map = TMAPS[tm].channel_map
+        for k in current_channel_map:
+            if k == NOT_MISSING:
+                continue
+            channel_map[k] = counter
+            counter += 1
+            normalization_map[k] = [TMAPS[tm].normalization['mean'], TMAPS[tm].normalization['std']]
+
+    multi_field_continuous_tensor_map = TensorMap('generated-from-input-continuous-tensors', group='multi_field_continuous',
+                                                  channel_map=channel_map,
+                                                  annotation_units=len(channel_map * 2),
+                                                  normalization=normalization_map)
+
+    return multi_field_continuous_tensor_map
