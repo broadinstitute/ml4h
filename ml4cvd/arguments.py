@@ -237,6 +237,8 @@ def parse_args():
 
 
 def _generate_multi_field_continuous_tensor_map(continuous_tensors: [str]) -> TensorMap:
+    if len(continuous_tensors) == 0:
+        return None
     channel_map = {}
     normalization_map = {}
     counter = 0
