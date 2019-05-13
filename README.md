@@ -174,40 +174,81 @@ With [Homebrew](https://brew.sh/), you can use
     brew cask install google-cloud-sdk
     ```
 
-* Set up some environment variables to use throughout the rest of the section. Feel free to customize the
- names as your heart may desire:
+* Set up some environment variables to use throughout the rest of the section:
     ```
-    export ML4CVD_IMAGE=ml4cvd-image
-    export DL_IMAGE=dl-image
-    export ACCELERATOR=nvidia-tesla-k80
-    export VM=${USER}-create-${ML4CVD_IMAGE}
-    export TEST_VM=${USER}-test-${ML4CVD_IMAGE}
-    export GPU_VM=${USER}-create-${DL_IMAGE}
-    export GPU_TEST_VM=${USER}-test-${DL_IMAGE}
-    export PROJECT=broad-ml4cvd 
+    export PROJECT=broad-ml4cvd
+    export SERVICE_ACCOUNT=783282864357-compute@developer.gserviceaccount.com 
     export ZONE=us-central1-a
     export DATE=`date +%Y-%m-%d`
+    export BOOT_DISK_SIZE=10GB
+    export BOOT_DISK_TYPE=pd-standard
+    export MACHINE_TYPE=n1-standard-1
+    export BASE_IMAGE=ubuntu-1804-bionic-v20190429
+    export BASE_IMAGE_PROJECT=ubuntu-os-cloud
+    export CPU_IMAGE=ml4cvd-image
+    export GPU_IMAGE=dl-image
+    export CPU_VM=${USER}-create-${ML4CVD_IMAGE}
+    export CPU_TEST_VM=${USER}-test-${ML4CVD_IMAGE}
+    export GPU_VM=${USER}-create-${DL_IMAGE}
+    export GPU_TEST_VM=${USER}-test-${DL_IMAGE}
+    export CPU_MAINTAINANCE_POLICY=MIGRATE
+    export GPU_MAINTAINANCE_POLICY=TERMINATE
+    export ACCELERATOR=nvidia-tesla-k80
     ```
 
-* Create a **fresh** VM (without using the custom instructions detailed at [Set Up a VM](#set-up-a-vm)) using
-an `Ubuntu` image such as `Ubuntu 18.04` (not all `Ubuntu` images work; for example, `18.10` did not have `gcsfuse`
-as of 5/10/19)
+* If you want to create a **CPU-only (non-GPU)** VM image, set further environment variables as follows:
+    ```
+    export VM=${CPU_VM}
+    export TEST_VM=${CPU_TEST_VM}
+    export IMAGE=${CPU_IMAGE}
+    export IMAGE_PROJECT=${BASE_IMAGE_PROJECT}
+    export MAINTAINANCE_POLICY=${CPU_MAINTAINANCE_POLICY}
+    ```
+  If you want to create a **GPU** VM image, set those environment variables as follows:
+    ```
+    export VM=${GPU_VM}
+    export TEST_VM=${GPU_TEST_VM}
+    export IMAGE=${GPU_IMAGE}
+    export IMAGE_PROJECT=${PROJECT}
+    export MAINTAINANCE_POLICY=${CPU_MAINTAINANCE_POLICY}
+    ```
+  
 
+* If you're creating a CPU image, create a fresh VM using an `Ubuntu` image such as `Ubuntu 18.04`. Note that not all `Ubuntu` 
+images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
     ```    
     gcloud compute instances create ${VM} \
         --project=${PROJECT} \
         --zone=${ZONE} \
-        --machine-type=n1-standard-1 \
+        --machine-type=${MACHINE_TYPE} \
         --subnet=default \
         --network-tier=PREMIUM \
-        --maintenance-policy=MIGRATE \
-        --service-account=783282864357-compute@developer.gserviceaccount.com \
-        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-        --image=ubuntu-1804-bionic-v20190429 \
-        --image-project=ubuntu-os-cloud \
-        --boot-disk-size=10GB \
-        --boot-disk-type=pd-standard \
-        --boot-disk-device-name=${VM}
+        --maintenance-policy=${MAINTAINANCE_POLICY} \
+        --service-account=${SERVICE_ACCOUNT} \
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \        
+        --boot-disk-size=${BOOT_DISK_SIZE} \
+        --boot-disk-type=${BOOT_DISK_TYPE} \
+        --boot-disk-device-name=${VM} \        
+        --image-project=${IMAGE_PROJECT} \
+        --image=${BASE_IMAGE}        
+    ```
+  If you're creating a GPU image, create a fresh VM via the command below (note that the last two lines differ from above):
+    ```
+    gcloud compute instances create ${VM} \
+        --project=${PROJECT} \
+        --zone=${ZONE} \
+        --machine-type=${MACHINE_TYPE} \
+        --subnet=default \
+        --network-tier=PREMIUM \
+        --maintenance-policy=${MAINTAINANCE_POLICY} \
+        --service-account=${SERVICE_ACCOUNT} \
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \        
+        --boot-disk-size=${BOOT_DISK_SIZE} \
+        --boot-disk-type=${BOOT_DISK_TYPE} \
+        --boot-disk-device-name=${VM} \
+        --image-project=${IMAGE_PROJECT} \
+        --image-family=${CPU_IMAGE} \
+        --accelerator=type=${ACCELERATOR},count=1 \
     ```
 
 * Clone and go to the `ml` repo on your laptop:
@@ -215,9 +256,9 @@ as of 5/10/19)
     git clone git@github.com:broadinstitute/ml.git && cd ml
     ```
 
-* Copy the script that will install the `ml4cvd` image content, to your VM
+* Copy the scripts that will install the image content, to your VM
     ```
-    gcloud compute scp scripts/vm_image/ml4cvd-image.sh ${VM}:/home/${USER}
+    gcloud compute scp scripts/vm_image/* ${VM}:/home/${USER}
     ```
 
 * Log into your VM:
@@ -232,18 +273,22 @@ desired auto-mounting specified under the `# Mount the persistent disks` section
     sudo mkdir -p /mnt/disks/data
     echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
     ```
-  Now run the script **without sudo**:  
+  Now, if you're creating a **CPU** image, run the following script (**without sudo**):  
     ```
     ./ml4cvd-image.sh
     ```
-  If you run into permission issues, try
+  If you're creating a **GPU** image, first run:
     ```
-    chmod u+x scripts/vm_image/dl-image-part-{1,2}.sh
-    ``` 
+    ./dl-image-part-1.sh
+    ```
+  After that script finishes and reboots the VM, log back in and run the part-2 script:
+    ```
+    ./dl-image-part-2.sh
+    ```
 
-* Delete the script from your VM:
+* Delete the scripts from your VM:
     ```
-    rm ml4cvd-image.sh
+    rm *.sh
     ```
 
 * Exit out of the VM and stop it before attempting to create an image off of its boot disk:
@@ -255,9 +300,9 @@ desired auto-mounting specified under the `# Mount the persistent disks` section
 
 * Create the image:
     ```    
-    gcloud compute images create ${ML4CVD_IMAGE}-${DATE} \
+    gcloud compute images create ${IMAGE}-${DATE} \
         --project=${PROJECT} \
-        --family=${ML4CVD_IMAGE} \
+        --family=${IMAGE} \
         --source-disk=${VM} \
         --source-disk-zone=${ZONE}
     ```
@@ -286,113 +331,12 @@ has the desired persistent disks specified to be attached with a line that looks
     gcloud --project ${PROJECT} compute ssh ${TEST_VM} --zone ${ZONE}
     ```
 
-* The new image will be selected automatically because it is the latest
-  one in the `ML4CVD_IMAGE` family. Now, verify that the correct disk(s) are mounted and bucket(s) are `gcsfuse`d.
+* If you created a CPU image, that new image will be selected automatically because it is the latest
+  one in the specified image family. Now, verify that the correct disk(s) are mounted and bucket(s) are `gcsfuse`d.
     ```
     ls /mnt/ml4cvd && ls /mnt/disks/*
     ``` 
-
-* Exit out of the VM and delete it:
-    ```
-    gcloud -q compute instances delete ${TEST_VM} \
-            --project=${PROJECT} \
-            --zone=${ZONE}
-    ``` 
-
-* The `ML4CVD_IMAGE` you created is sufficient for non-GPU machines but we will need more
-when model-training on GPU-enabled machines. However, those GPU-specific installations cause issues
-on non-GPU machines. Therefore, we will next create a separate GPU-specific image
-layered on top of the `ML4CVD_IMAGE`.
-
-* First, let's create another VM using the `ML4CVD_IMAGE`, but this time with a GPU:
-    ```    
-    gcloud compute instances create ${GPU_VM} \
-        --project=${PROJECT} \
-        --zone=${ZONE} \
-        --machine-type=n1-standard-1 \
-        --subnet=default \
-        --network-tier=PREMIUM \
-        --maintenance-policy=TERMINATE \
-        --service-account=783282864357-compute@developer.gserviceaccount.com \
-        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-        --image-project=${PROJECT} \
-        --image-family=${ML4CVD_IMAGE} \
-        --accelerator=type=${ACCELERATOR},count=1 \
-        --boot-disk-size=10GB \
-        --boot-disk-type=pd-standard \
-        --boot-disk-device-name=${GPU_VM}
-    ```
-
-* Copy the scripts that will install the deep learning image content, to your VM
-    ```
-    gcloud compute scp scripts/vm_image/dl-image-part-{1,2}.sh ${GPU_VM}:/home/${USER}
-    ```
-
-* Log into your VM
-    ```
-    gcloud --project ${PROJECT} compute ssh ${GPU_VM} --zone ${ZONE}
-    ```
-
-* Run the first part of the GPU installations, which will reboot the machine at the end:
-    ```
-    ./dl-image-part-1.sh
-    ```
-  This will reboot the VM at the end so you will have to log back in when that's done.
-
-* Finish the installations with the part-2 version:
-    ```
-    ./dl-image-part-2.sh
-    ```
-
-* Delete the scripts from your VM:
-    ```
-    rm dl-image-part-{1,2}.sh
-    ```
-
-* Exit out of the VM and stop it before attempting to create an image off of its boot disk:
-    ```
-    gcloud compute instances stop ${GPU_VM} \
-        --project=${PROJECT} \
-        --zone=${ZONE}
-    ```
-
-* Create the image:
-    ```    
-    gcloud compute images create ${DL_IMAGE}-${DATE} \
-        --project=${PROJECT} \
-        --family=${DL_IMAGE} \
-        --source-disk=${GPU_VM} \
-        --source-disk-zone=${ZONE}
-    ``` 
-
-* Verify that the new image is listed on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4cvd&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
-
-* Delete the VM:
-    ```
-    gcloud -q compute instances delete ${GPU_VM} \
-        --project=${PROJECT} \
-        --zone=${ZONE}
-    ```
-
-* Launch a test instance with the new GPU image after verifying that the script below has the desired persistent
-disks specified to be attached with a line that looks like
-    ```
-    --disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
-    ```
-  Now run the script:
-    ```
-    scripts/vm_launch/launch_dl_instance.sh ${GPU_TEST_VM}
-    ```
-
-* Login to `GPU_TEST_VM`:
-    ```
-    gcloud --project ${PROJECT} compute ssh ${GPU_TEST_VM} --zone ${ZONE}
-    ```
-
-* Verify that the correct disk(s) are mounted and 
-bucket(s) are `gcsfuse`d. The new image will be selected automatically because it is the latest
-one in the `DL_IMAGE` family.
-
+    
 * Set up your SSH keys on the VM for GitHub to be able to clone the `ml` repo.
 
 * Clone and go to the `ml` repo on your laptop:
@@ -420,7 +364,7 @@ instances from GCP's gcr.io. Run this while you're logged into your VM:
 
 * Exit out of the VM and delete it:
     ```
-    gcloud -q compute instances delete ${GPU_TEST_VM} \
+    gcloud -q compute instances delete ${TEST_VM} \
             --project=${PROJECT} \
             --zone=${ZONE}
     ```
