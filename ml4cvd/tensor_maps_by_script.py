@@ -2624,3 +2624,9 @@ TMAPS['ventricular_arrhythmia_general_inclusive_definition_clinical_prevalent_in
 TMAPS['ventricular_arrhythmia_sudden_cardiac_death_prevalent_incident'] = TensorMap('ventricular_arrhythmia_sudden_cardiac_death', group='categorical_date', channel_map={'no_ventricular_arrhythmia_sudden_cardiac_death':0, 'prevalent_ventricular_arrhythmia_sudden_cardiac_death':1, 'incident_ventricular_arrhythmia_sudden_cardiac_death':2}, loss=weighted_crossentropy([1.0, 386, 168], 'ventricular_arrhythmia_sudden_cardiac_death_prevalent_incident'))
 TMAPS['ventricular_arrhythmia_ventricular_premature_depolarizations_prevalent_incident'] = TensorMap('ventricular_arrhythmia_ventricular_premature_depolarizations', group='categorical_date', channel_map={'no_ventricular_arrhythmia_ventricular_premature_depolarizations':0, 'prevalent_ventricular_arrhythmia_ventricular_premature_depolarizations':1, 'incident_ventricular_arrhythmia_ventricular_premature_depolarizations':2}, loss=weighted_crossentropy([1.0, 1176, 495], 'ventricular_arrhythmia_ventricular_premature_depolarizations_prevalent_incident'))
 TMAPS['ventricular_arrhythmia_vt_prevalent_incident'] = TensorMap('ventricular_arrhythmia_vt', group='categorical_date', channel_map={'no_ventricular_arrhythmia_vt':0, 'prevalent_ventricular_arrhythmia_vt':1, 'incident_ventricular_arrhythmia_vt':2}, loss=weighted_crossentropy([1.0, 319, 214], 'ventricular_arrhythmia_vt_prevalent_incident'))
+
+tms = ''
+for k in TMAPS:
+    if '_prevalent_incident' in k:
+        tms += k + ' '
+print(tms)
