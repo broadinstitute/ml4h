@@ -168,7 +168,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     logging.info("Saved scatter plot at: {}".format(figure_path))
 
 
-def subplot_scatters(scatters, title, prefix='./figures/', top_k=3):
+def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     lw = 3
     row = 0
     col = 0
@@ -203,11 +203,11 @@ def subplot_scatters(scatters, title, prefix='./figures/', top_k=3):
             if col >= cols:
                 break
 
-    figure_path = os.path.join(prefix, 'scatters_together_' + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'scatters_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    logging.info("Saved scatter plot at: {}".format(figure_path))
+    logging.info("Saved scatter together plot at: {}".format(figure_path))
 
 
 def plot_noise(noise):
