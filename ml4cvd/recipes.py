@@ -228,10 +228,12 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
         if len(tensor_maps_out) == 1:
             y = y_pred
         performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
-    if len(rocs) > 0:
+
+    if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
-    if len(scatters) > 0:
+    if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
+
     return performance_metrics
 
 
