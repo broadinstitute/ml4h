@@ -59,7 +59,7 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
         performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
         performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
-        scatters.append((tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), test_paths))
+        scatters.append((tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
@@ -176,7 +176,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     rows = max(2, int(math.sqrt(total_plots)))
     cols = max(2, total_plots // rows)
     fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
-    for prediction, truth, paths in scatters:
+    for prediction, truth, title, paths in scatters:
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
         axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
         axes[row, col].scatter(prediction, truth)
