@@ -311,7 +311,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+        label_text = "{} area:{:.3f}".format(key, roc_auc[labels[key]])
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
@@ -342,7 +342,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p+key)
-            label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
+            label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
 
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
@@ -376,7 +376,7 @@ def subplot_rocs(rocs, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(key)
-            label_text = "{} area under ROC: {:.3f}".format(key, roc_auc[labels[key]])
+            label_text = "{} area:{:.3f}".format(key, roc_auc[labels[key]])
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             axes[row, col].set_title('ROC: ' + key + '\n')
 
@@ -416,7 +416,7 @@ def subplot_comparison_rocs(rocs, prefix='./figures/'):
                 if 'no_' in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = "{}_{} area under ROC: {:.3f}".format(p, key, roc_auc[labels[key]])
+                label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 axes[row, col].set_title('ROC: ' + key + '\n')
 
@@ -482,7 +482,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = "{}_{} area under ROC: {:.3f}".format(p, k, average_precision)
+            label_text = "{}_{} area:{:.3f}".format(p, k, average_precision)
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
 
     plt.ylim([-0.02, 1.03])
