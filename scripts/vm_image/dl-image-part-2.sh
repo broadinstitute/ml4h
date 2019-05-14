@@ -20,6 +20,3 @@ sudo apt-get update
 # Install nvidia-docker2 and reload the Docker daemon configuration
 sudo apt-get install -y nvidia-docker2
 sudo pkill -SIGHUP dockerd
-
-# Test nvidia-smi with the latest official CUDA image that is 9.2 compatible
-docker run --runtime=nvidia --rm nvidia/cuda:9.2-runtime-ubuntu18.04 nvidia-smi

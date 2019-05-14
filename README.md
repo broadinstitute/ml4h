@@ -167,6 +167,23 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
          that can be opened using the menu `Run -> Edit Configurations...`.    
 
 ### Create and Use VM Boot Images
+Everytime we want new persistent disks automatically added to our VMs, we need to update the `mount`s in
+`scripts/vm_image/ml4cvd-image.sh`, and the `--disk` arguments in `scripts/vm_launch/launch_instance.sh` and
+`scripts/vm_launch/launch_dl_instance.sh`, and then follow the steps listed in this section.
+
+* Verify that `scripts/vm_image/ml4cvd-image.sh` has the
+desired auto-mounting specified under the `# Mount the persistent disks` section that should look something like
+    ```
+    # Mount the persistent disks
+    sudo mkdir -p /mnt/disks/data
+    echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
+    ```
+
+* Verify that `scripts/vm_image/dl-image.sh` has the desired disks specified to be attached, which should look something
+like
+    ```
+    --disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no
+    ```
 * Make sure you have installed the
 [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install) on your laptop.
 With [Homebrew](https://brew.sh/), you can use 
@@ -187,12 +204,10 @@ With [Homebrew](https://brew.sh/), you can use
     export BASE_IMAGE_PROJECT=ubuntu-os-cloud
     export CPU_IMAGE=ml4cvd-image
     export GPU_IMAGE=dl-image
-    export CPU_VM=${USER}-create-${ML4CVD_IMAGE}
-    export CPU_TEST_VM=${USER}-test-${ML4CVD_IMAGE}
-    export GPU_VM=${USER}-create-${DL_IMAGE}
-    export GPU_TEST_VM=${USER}-test-${DL_IMAGE}
-    export CPU_MAINTAINANCE_POLICY=MIGRATE
-    export GPU_MAINTAINANCE_POLICY=TERMINATE
+    export CPU_VM=${USER}-create-cpu-image
+    export CPU_TEST_VM=${USER}-test-cpu-image
+    export GPU_VM=${USER}-create-gpu-image
+    export GPU_TEST_VM=${USER}-test-gpu-image
     export ACCELERATOR=nvidia-tesla-k80
     ```
 
@@ -202,7 +217,6 @@ With [Homebrew](https://brew.sh/), you can use
     export TEST_VM=${CPU_TEST_VM}
     export IMAGE=${CPU_IMAGE}
     export IMAGE_PROJECT=${BASE_IMAGE_PROJECT}
-    export MAINTAINANCE_POLICY=${CPU_MAINTAINANCE_POLICY}
     ```
   If you want to create a **GPU** VM image, set those environment variables as follows:
     ```
@@ -210,7 +224,6 @@ With [Homebrew](https://brew.sh/), you can use
     export TEST_VM=${GPU_TEST_VM}
     export IMAGE=${GPU_IMAGE}
     export IMAGE_PROJECT=${PROJECT}
-    export MAINTAINANCE_POLICY=${CPU_MAINTAINANCE_POLICY}
     ```
   
 
@@ -222,13 +235,12 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
         --zone=${ZONE} \
         --machine-type=${MACHINE_TYPE} \
         --subnet=default \
-        --network-tier=PREMIUM \
-        --maintenance-policy=${MAINTAINANCE_POLICY} \
+        --maintenance-policy=MIGRATE \
         --service-account=${SERVICE_ACCOUNT} \
-        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \        
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
         --boot-disk-size=${BOOT_DISK_SIZE} \
         --boot-disk-type=${BOOT_DISK_TYPE} \
-        --boot-disk-device-name=${VM} \        
+        --boot-disk-device-name=${VM} \
         --image-project=${IMAGE_PROJECT} \
         --image=${BASE_IMAGE}        
     ```
@@ -239,16 +251,15 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
         --zone=${ZONE} \
         --machine-type=${MACHINE_TYPE} \
         --subnet=default \
-        --network-tier=PREMIUM \
-        --maintenance-policy=${MAINTAINANCE_POLICY} \
+        --maintenance-policy=TERMINATE \
         --service-account=${SERVICE_ACCOUNT} \
-        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \        
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
         --boot-disk-size=${BOOT_DISK_SIZE} \
         --boot-disk-type=${BOOT_DISK_TYPE} \
         --boot-disk-device-name=${VM} \
         --image-project=${IMAGE_PROJECT} \
         --image-family=${CPU_IMAGE} \
-        --accelerator=type=${ACCELERATOR},count=1 \
+        --accelerator=type=${ACCELERATOR},count=1
     ```
 
 * Clone and go to the `ml` repo on your laptop:
@@ -266,14 +277,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
     gcloud --project ${PROJECT} compute ssh ${VM} --zone ${ZONE}
     ```
 
-* Run the installations we want to build into the image after verifying that the script you copied has the
-desired auto-mounting specified under the `# Mount the persistent disks` section that should look something like
-    ```
-    # Mount the persistent disks
-    sudo mkdir -p /mnt/disks/data
-    echo "UUID=3c62f761-3d8a-42ef-a029-1bfc6fd9be3f /mnt/disks/data ext4 ro,norecovery,discard,defaults,nofail" | sudo tee -a /etc/fstab
-    ```
-  Now, if you're creating a **CPU** image, run the following script (**without sudo**):  
+* If you're creating a **CPU** image, run the following script (**without sudo**):  
     ```
     ./ml4cvd-image.sh
     ```
@@ -281,7 +285,11 @@ desired auto-mounting specified under the `# Mount the persistent disks` section
     ```
     ./dl-image-part-1.sh
     ```
-  After that script finishes and reboots the VM, log back in and run the part-2 script:
+  After the script finishes, it reboots the VM so you can expect to see a message like:
+    ```
+    Connection to [IP_ADDRESS] closed by remote host
+    ```
+  It will have logged you out so first, log back in, and then run the part-2 script:
     ```
     ./dl-image-part-2.sh
     ```
@@ -316,15 +324,14 @@ desired auto-mounting specified under the `# Mount the persistent disks` section
         --zone=${ZONE}
     ```
 
-* Launch a test instance with the new image after verifying that the script below (`launch_instance.sh`)
-has the desired persistent disks specified to be attached with a line that looks like
-    ```
-    --disk=name=data,device-name=data,mode=ro,boot=no,auto-delete=no \
-    ```
-  Now run the script:
+* If you built a CPU base image, launch a test instance with the new image:
     ```
     scripts/vm_launch/launch_instance.sh ${TEST_VM}
     ```
+  If you built a GPU image, run the following script instead:
+    ```
+    scripts/vm_launch/launch_dl_instance.sh ${TEST_VM}
+    ``` 
 
 * Login to `TEST_VM`:
     ```
