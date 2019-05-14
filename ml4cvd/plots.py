@@ -26,8 +26,7 @@ COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'orange']
 
 
-
-def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
+def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[], scatters=[]):
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
@@ -60,6 +59,7 @@ def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_path
         performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
         performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
+        scatters.append((tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
@@ -119,7 +119,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
-        # The path of the best prediction, ie the in-lier
+        # The path of the best prediction, ie the inlier
         plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
         # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
@@ -148,6 +148,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
+        plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
         plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson: %0.3f Pearson r^2: %0.3f' % (pearson, pearson_sqr))
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
@@ -161,6 +162,48 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     plt.legend(loc="lower right")
 
     figure_path = os.path.join(prefix, 'scatters_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    logging.info("Saved scatter plot at: {}".format(figure_path))
+
+
+def subplot_scatters(scatters, title, prefix='./figures/', top_k=3):
+    lw = 3
+    row = 0
+    col = 0
+    total_plots = len(scatters)
+    rows = max(2, int(math.sqrt(total_plots)))
+    cols = max(2, total_plots // rows)
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    for prediction, truth, paths in scatters:
+        axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
+        axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
+        axes[row, col].scatter(prediction, truth)
+        if paths is not None:
+            margin = float((np.max(truth) - np.min(truth)) / 100)
+            diff = np.abs(prediction - truth)
+            arg_sorted = diff[:, 0].argsort()
+            # The path of the best prediction, ie the inlier
+            axes[row, col].text(prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            # Plot the paths of the worst predictions ie the outliers
+            for idx in arg_sorted[-top_k:]:
+                axes[row, col].text(prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        axes[row, col].set_xlabel('Predictions')
+        axes[row, col].set_ylabel('Actual')
+        axes[row, col].set_title(title + '\n')
+        pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+        logging.info("Pearson coefficient is: {}".format(pearson))
+        axes[row, col].text(np.min(truth), np.max(truth), 'Pearson:%0.3f R^2:%0.3f' % (pearson, (pearson * pearson)))
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'scatters_together_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
