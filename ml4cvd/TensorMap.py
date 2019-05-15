@@ -65,6 +65,10 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
 
+#TODO: These values should ultimatly come from the coding table
+CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
+CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
+
 MEAN_IDX = 0
 STDEV_IDX = 1
 
@@ -445,15 +449,9 @@ class TensorMap(object):
                     value = hd5[self.group][k][0]
                     missing = False
                     if k in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
-                        # -10 codes for "less than one"
-                        #TODO: Don't hard code these values
-                        if value in [-10, -1001]:
+                        if value in CODING_VALUES_LESS_THAN_ONE:
                             value = .5
-                        # -2 codes for "unnable to walk"
-                        # -3 codes for "prefer not to answer"
-                        # -1 codes for "do not know"
-                        # -11 codes for "still taking ..."
-                        if value in [-3, -1, -2, -11, -818, -121, -313, -906]:
+                        if value in CODING_VALUES_MISSING:
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
@@ -471,10 +469,9 @@ class TensorMap(object):
                     value = hd5['continuous'][k][0]
                     missing = False
                     if self.name in CONTINUOUS_WITH_CATEGORICAL_ANSWERS:
-                        # TODO: Don't hard code these values
-                        if value in [-10, -1001]:
+                        if value in CODING_VALUES_LESS_THAN_ONE:
                             value = .5
-                        if value in [-3, -1, -2, -11, -818, -121, -313, -906]:
+                        if value in CODING_VALUES_MISSING:
                             # need to set missing values to 0 so normalization works
                             value = 0
                             missing = True
