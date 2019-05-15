@@ -70,7 +70,7 @@ CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
 CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
 
 MEAN_IDX = 0
-STDEV_IDX = 1
+STD_IDX = 1
 
 
 class TensorMap(object):
@@ -275,7 +275,7 @@ class TensorMap(object):
                 np_tensor[idx] = np.random.normal(1)
             else:
                 np_tensor[idx] -= self.normalization[k][MEAN_IDX]
-                np_tensor[idx] /= (self.normalization[k][STDEV_IDX] + EPS)
+                np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
 
         return np_tensor
 
