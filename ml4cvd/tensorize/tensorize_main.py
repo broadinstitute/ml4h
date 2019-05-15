@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     pipeline = beam.Pipeline(options=pipeline_opts)
 
-    tensorize.tensorize_categorical_continuous_fields(pipeline,
-                                                      args.gcs_output_path,
-                                                      args.bigquery_dataset,
-                                                      args.tensor_type)
+    tensorize.tensorize_sql_fields(pipeline,
+                                   args.gcs_output_path,
+                                   args.bigquery_dataset,
+                                   args.tensor_type)
