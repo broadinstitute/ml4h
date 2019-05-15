@@ -387,7 +387,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f"ROC Label {label_text}")
-            
+
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
