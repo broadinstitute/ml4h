@@ -16,6 +16,8 @@ def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str,
         query = _get_categorical_query(sql_dataset)
     elif tensor_type == 'continuous':
         query = _get_continuous_query(sql_dataset)
+    elif tensor_type == 'icd':
+        query = _get_icd_query(sql_dataset)
     else:
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
