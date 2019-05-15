@@ -66,16 +66,16 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
             logging.info(f"Writing tensor {tensor_file} to {gcs_blob.public_url} ...")
             with h5py.File(tensor_path, 'w') as hd5:
                 if tensor_type == 'icd':
-                    icds = list(set([row['value'] for row in rows]))
+                    icds = sorted(list(set([row['value'] for row in rows])))
                     hd5.create_dataset('icd', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
                 elif tensor_type == 'categorical':
                     for row in rows:
                         hd5_dataset_name = dataset_name_from_meaning('categorical', [row['field'], row['meaning'], str(row['instance']), str(row['array_idx'])])
-                        _write_float_or_warn(row, hd5_dataset_name, hd5)
+                        _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
                 elif tensor_type == 'continuous':
                     for row in rows:
                         hd5_dataset_name = dataset_name_from_meaning('continuous', [str(row['fieldid']), row['field'], str(row['instance']), str(row['array_idx'])])
-                        _write_float_or_warn(row['value'], hd5_dataset_name, hd5)
+                        _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
 
             gcs_blob.upload_from_filename(tensor_path)
     except:
