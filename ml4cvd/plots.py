@@ -192,7 +192,6 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        logging.info("Pearson coefficient is: {}".format(pearson))
         axes[row, col].text(np.min(truth), np.max(truth), 'Pearson:%0.3f R^2:%0.3f' % (pearson, (pearson * pearson)))
 
         row += 1
@@ -355,6 +354,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         color = _hash_string_to_color(key)
         label_text = "{} area:{:.3f}".format(key, roc_auc[labels[key]])
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+        logging.info(f"ROC Label {label_text}")
 
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
@@ -386,7 +386,8 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             color = _hash_string_to_color(p+key)
             label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-
+            logging.info(f"ROC Label {label_text}")
+            
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
