@@ -47,6 +47,10 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
+
+    if not os.path.exists(os.path.dirname(args.destination)):
+        os.makedirs(os.path.dirname(args.destination))
+
     for source_folder in args.sources:
         for source_file in os.listdir(source_folder):
             if not source_file.endswith(TENSOR_EXT):
