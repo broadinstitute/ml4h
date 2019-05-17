@@ -27,38 +27,12 @@ python .merge_hd5s.py \
 """
 
 
-def copy_groups(group_name: str, source_folder: str, destination_folder: str):
-    message = f"Attempting to copy hd5 files from '{source_folder}' to '{destination_folder}'... "
-    logging.debug(message)
-
-    if not os.path.exists(source_folder):
-        raise ValueError('Source directory does not exist: ', source_folder)
-
-    # If dest_dir doesn't exist, create it
-    if not os.path.exists(destination_folder):
-        os.makedirs(destination_folder)
-
-    # Iterate over files in src_dir
-    for source_file in os.listdir(source_folder):
-        if not source_file.endswith(TENSOR_EXT):
-            continue
-        # Name the destination file with the same as the source's
-        with h5py.File(os.path.join(destination_folder, source_file), 'a') as destination_file:
-            _copy_group(group_name, os.path.join(source_folder, source_file), destination_file)
-
-    msg_succeeded = f"Successfully copied the group '{group_name}' from hd5 files in '{source_folder}' to '{destination_folder}'... "
-    logging.debug(msg_succeeded)
-
-
-def _copy_group(group_name: str, source_file_path: str, destination_file: h5py.File):
-    with h5py.File(source_file_path, 'r') as source_file:
-        # Get the name of the parent for the group we want to copy
-        group_path = source_file[f"{HD5_GROUP_CHAR}{group_name}"].parent.name
-
-        # If the group doesn't exist in the destination, create it (along with parents, if any)
-        group_id = destination_file.require_group(group_path)
-        source_file.copy(f"{HD5_GROUP_CHAR}{group_name}", group_id, name=f"{HD5_GROUP_CHAR}{group_name}")
-        logging.debug(f"Copied hd5 group '{group_name}' from source '{source_file_path}' to '{destination_file.filename}'...")
+def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
+    for k in source_file[group_path]:
+        if isinstance(source_file[k], h5py.Dataset):
+            destination_file.create_dataset(group_path + k, data=source_file[k])
+        else:
+            _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
 
 
 def parse_args():
@@ -73,5 +47,10 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
-    for group, source in zip(args.groups, args.sources):
-        copy_groups(group, source, args.destination)
+    for source_folder in args.sources:
+        for source_file in os.listdir(source_folder):
+            if not source_file.endswith(TENSOR_EXT):
+                continue
+            with h5py.File(os.path.join(args.destination, source_file), 'a') as destination_file:
+                with h5py.File(source_file, 'r') as source_file:
+                    _copy_hd5_datasets(source_file, destination_file)
