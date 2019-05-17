@@ -3,7 +3,7 @@ import h5py
 import logging
 import argparse
 
-from ..defines import TENSOR_EXT, HD5_GROUP_CHAR
+from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
 """ 
 This script copies the hd5 groups specified as 'groups' from all hd5 files within the 'sources'
