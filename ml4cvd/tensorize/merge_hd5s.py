@@ -55,6 +55,6 @@ if __name__ == "__main__":
         for source_file in os.listdir(source_folder):
             if not source_file.endswith(TENSOR_EXT):
                 continue
-            with h5py.File(os.path.join(args.destination, source_file), 'a') as destination_file:
-                with h5py.File(source_file, 'r') as source_file:
-                    _copy_hd5_datasets(source_file, destination_file)
+            with h5py.File(os.path.join(args.destination, source_file), 'a') as destination_hd5:
+                with h5py.File(source_file, 'r') as source_hd5:
+                    _copy_hd5_datasets(source_hd5, destination_hd5)
