@@ -300,9 +300,12 @@ def plot_histograms_from_tensor_files(id: str,
     for hd5_file_name in os.listdir(tensor_folder_path):
         if hd5_file_name.endswith(TENSOR_EXT):
             tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
+            logging.debug(f"Collecting continuous stats from tensor at {tensor_file_path}...")
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
 
+    logging.debug(f"Collected continuous stats for {len(stats)} fields.")
     first_n_fields_stats = dict(list(stats.items())[0:num_fields])
+    logging.debug(f"Plotting histograms for {len(first_n_fields_stats)} of those fields...")
     plot_histograms_as_pdf(first_n_fields_stats, id, output_folder_path)
 
 
