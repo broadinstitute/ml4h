@@ -259,7 +259,7 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_as_pdf(continuous_stats,
+def plot_histograms_as_pdf(stats,
                            title,
                            prefix='./figures/',
                            num_rows=2,
@@ -269,54 +269,54 @@ def plot_histograms_as_pdf(continuous_stats,
 
     figure_path = os.path.join(prefix, 'histograms_' + title + PDF_EXT)
     with PdfPages(figure_path) as pdf:
-        for stats_chunk in _chunks(continuous_stats, num_rows * num_cols):
+        for stats_chunk in _chunks(stats, num_rows * num_cols):
             fig, axes = plt.subplots(num_rows, num_cols, figsize=(28, 24))
             for i, group in enumerate(stats_chunk):
-                a = np.array(continuous_stats[group])
+                a = np.array(stats[group])
                 ax = plt.subplot(num_rows, num_cols, i + 1)
                 ax.set_title(group + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
-                ax.hist(continuous_stats[group], bins=num_bins)
+                ax.hist(stats[group], bins=num_bins)
             plt.tight_layout()
             pdf.savefig()
 
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_from_tensor_files(hd5_folder_path: str, num_fields=None) -> None:
+def plot_histograms_from_tensor_files(id: str, tensor_folder_path: str, num_fields: int = None) -> None:
     """
-    :param hd5_folder_path: directory with tensor files to plot histograms from
+    :param id: name for the plotting run
+    :param tensor_folder_path: directory with tensor files to plot histograms from
     :param num_fields: number of fields to histogram; by default all fields are plotted
     """
-    if not os.path.exists(hd5_folder_path):
-        raise ValueError('Source directory does not exist: ', hd5_folder_path)
+
+    if not os.path.exists(tensor_folder_path):
+        raise ValueError('Source directory does not exist: ', tensor_folder_path)
 
     stats = defaultdict(list)
-    for hd5_file_name in os.listdir(hd5_folder_path):
+    for hd5_file_name in os.listdir(tensor_folder_path):
         if hd5_file_name.endswith(TENSOR_EXT):
-            tensor_file_path = os.path.join(hd5_folder_path, hd5_file_name)
+            tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
 
     first_n_fields_stats = dict(list(stats.items())[0:num_fields])
-    plot_histograms_as_pdf(first_n_fields_stats, f"{num_fields}_fields")
+    plot_histograms_as_pdf(first_n_fields_stats, id)
 
 
-def _collect_continuous_stats_from_tensor_file(hd5_file_path: str, stats) -> None:
+def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats) -> None:
     def _field_meaning_to_value_dict(_, obj):
         if _is_continuous_scalar_hd5_dataset(obj):
-            # print(f"name: {name}; obj.name: {obj.name}; obj.shape: {obj.shape}; len(obj.shape): {len(obj.shape)}; value: {obj[0]}")
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
             field_id = dataset_name_parts[0]
             field_meaning = dataset_name_parts[1]
             field_value = obj[0]
             instance = dataset_name_parts[2]
             array_idx = dataset_name_parts[3]
-            # print(f"field_id: {field_id}; field_meaning: {field_meaning}; instance: {instance}; array_idx: {array_idx}; field_value: {field_value}")
             stats[field_meaning].append(field_value)
 
     def _is_continuous_scalar_hd5_dataset(obj) -> bool:
         return isinstance(obj, h5py.Dataset) and obj.name.startswith('/continuous') and len(obj.shape) == 1
 
-    with h5py.File(hd5_file_path, 'r') as hd5_handle:
+    with h5py.File(tensor_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_value_dict)
 
 

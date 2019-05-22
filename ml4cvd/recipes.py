@@ -57,7 +57,7 @@ def run(args):
         elif 'find_tensors' == args.mode:
             find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         elif 'report_tensors' == args.mode:
-            plot_histograms_from_tensor_files('/Users/kyuksel/ml4cvd/tensors/survey_tensors_2_70')
+            plot_histograms_from_tensor_files(args.id, args.tensors, args.num_fields)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
