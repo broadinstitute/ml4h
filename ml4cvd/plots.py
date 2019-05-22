@@ -5,6 +5,8 @@ import os
 import math
 import logging
 import hashlib
+from itertools import islice
+from typing import Iterable
 
 import h5py
 import numpy as np
@@ -13,9 +15,10 @@ from collections import Counter, OrderedDict, defaultdict
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
+from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, TENSOR_EXT
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, TENSOR_EXT, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -256,7 +259,34 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_from_tensor_files(hd5_folder_path: str) -> None:
+def plot_histograms_as_pdf(continuous_stats,
+                           title,
+                           prefix='./figures/',
+                           num_rows=2,
+                           num_cols=2,
+                           num_bins=50):
+    matplotlib.rcParams.update({'font.size': 14})
+
+    figure_path = os.path.join(prefix, 'histograms_' + title + PDF_EXT)
+    with PdfPages(figure_path) as pdf:
+        for stats_chunk in _chunks(continuous_stats, num_rows * num_cols):
+            fig, axes = plt.subplots(num_rows, num_cols, figsize=(28, 24))
+            for i, group in enumerate(stats_chunk):
+                a = np.array(continuous_stats[group])
+                ax = plt.subplot(num_rows, num_cols, i + 1)
+                ax.set_title(group + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
+                ax.hist(continuous_stats[group], bins=num_bins)
+            plt.tight_layout()
+            pdf.savefig()
+
+    logging.info(f"Saved histograms plot at: {figure_path}")
+
+
+def plot_histograms_from_tensor_files(hd5_folder_path: str, num_fields=None) -> None:
+    """
+    :param hd5_folder_path: directory with tensor files to plot histograms from
+    :param num_fields: number of fields to histogram; by default all fields are plotted
+    """
     if not os.path.exists(hd5_folder_path):
         raise ValueError('Source directory does not exist: ', hd5_folder_path)
 
@@ -266,7 +296,8 @@ def plot_histograms_from_tensor_files(hd5_folder_path: str) -> None:
             tensor_file_path = os.path.join(hd5_folder_path, hd5_file_name)
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
 
-    plot_histograms(stats, "my-title")
+    first_n_fields_stats = dict(list(stats.items())[0:num_fields])
+    plot_histograms_as_pdf(first_n_fields_stats, f"{num_fields}_fields")
 
 
 def _collect_continuous_stats_from_tensor_file(hd5_file_path: str, stats) -> None:
@@ -288,6 +319,16 @@ def _collect_continuous_stats_from_tensor_file(hd5_file_path: str, stats) -> Non
     with h5py.File(hd5_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_value_dict)
 
+
+def _chunks(d: dict, size: int) -> Iterable[defaultdict]:
+    """
+    :param d: dictionary to be chunked                                                                                               S
+    :param size: size of chunks
+    :return: iterator of dictionary chunks
+    """
+    it = iter(d)
+    for i in range(0, len(d), size):
+        yield {k: d[k] for k in islice(it, size)}
 
 # def _h5py_dataset_iterator(g, prefix=''):
 #     for key in g.keys():
