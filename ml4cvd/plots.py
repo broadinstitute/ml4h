@@ -282,10 +282,14 @@ def plot_histograms_as_pdf(stats,
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_from_tensor_files(id: str, tensor_folder_path: str, num_fields: int = None) -> None:
+def plot_histograms_from_tensor_files(id: str,
+                                      tensor_folder_path: str,
+                                      output_folder_path: str,
+                                      num_fields: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder_path: directory with tensor files to plot histograms from
+    :param output_folder_path: folder containing the output plot
     :param num_fields: number of fields to histogram; by default all fields are plotted
     """
 
@@ -299,7 +303,7 @@ def plot_histograms_from_tensor_files(id: str, tensor_folder_path: str, num_fiel
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
 
     first_n_fields_stats = dict(list(stats.items())[0:num_fields])
-    plot_histograms_as_pdf(first_n_fields_stats, id)
+    plot_histograms_as_pdf(first_n_fields_stats, id, output_folder_path)
 
 
 def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats) -> None:
