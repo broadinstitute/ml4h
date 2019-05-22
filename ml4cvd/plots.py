@@ -313,12 +313,17 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats) -> 
     def _field_meaning_to_value_dict(_, obj):
         if _is_continuous_scalar_hd5_dataset(obj):
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
-            field_id = dataset_name_parts[0]
-            field_meaning = dataset_name_parts[1]
-            field_value = obj[0]
-            instance = dataset_name_parts[2]
-            array_idx = dataset_name_parts[3]
-            stats[field_meaning].append(field_value)
+            if len(dataset_name_parts) == 4:
+                field_id = dataset_name_parts[0]
+                field_meaning = dataset_name_parts[1]
+                field_value = obj[0]
+                instance = dataset_name_parts[2]
+                array_idx = dataset_name_parts[3]
+                stats[field_meaning].append(field_value)
+            # TODO: Check what to do for datasets like /continuous/VentricularRate
+            else:
+                logging.debug(f"Skipping dataset '{obj.name}' because it is not "
+                              f"in format <field_id>_<field_meaning>_<instance>_<array_idx>")
 
     def _is_continuous_scalar_hd5_dataset(obj) -> bool:
         return isinstance(obj, h5py.Dataset) and obj.name.startswith('/continuous') and len(obj.shape) == 1
