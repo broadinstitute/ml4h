@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, TENSOR_EXT, PDF_EXT
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, TENSOR_EXT, PDF_EXT, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -299,11 +299,12 @@ def plot_histograms_from_tensor_files(id: str,
     if not os.path.exists(tensor_folder_path):
         raise ValueError('Source directory does not exist: ', tensor_folder_path)
 
+    logging.debug(f"Collecting continuous stats from tensors at {tensor_folder_path}...")
+
     stats = defaultdict(list)
     for hd5_file_name in os.listdir(tensor_folder_path):
         if hd5_file_name.endswith(TENSOR_EXT):
             tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
-            logging.debug(f"Collecting continuous stats from tensor at {tensor_file_path}...")
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
 
     logging.debug(f"Collected continuous stats for {len(stats)} fields.")
@@ -319,20 +320,30 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats) -> 
             if len(dataset_name_parts) == 4:
                 field_id = dataset_name_parts[0]
                 field_meaning = dataset_name_parts[1]
-                field_value = obj[0]
+                field_value = _handle_if_special_value(obj[0])
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
                 stats[field_meaning].append(field_value)
-            # TODO: Check what to do for datasets like /continuous/VentricularRate
             else:
+                # TODO: Unskip datasets like /continuous/VentricularRate
                 logging.debug(f"Skipping dataset '{obj.name}' because it is not "
                               f"in format <field_id>_<field_meaning>_<instance>_<array_idx>")
 
-    def _is_continuous_scalar_hd5_dataset(obj) -> bool:
-        return isinstance(obj, h5py.Dataset) and obj.name.startswith('/continuous') and len(obj.shape) == 1
-
     with h5py.File(tensor_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_value_dict)
+
+
+def _is_continuous_scalar_hd5_dataset(obj) -> bool:
+    return isinstance(obj, h5py.Dataset) and obj.name.startswith('/continuous') and len(obj.shape) == 1
+
+
+def _handle_if_special_value(value):
+    if value in CODING_VALUES_MISSING:
+        return 0
+    elif value in CODING_VALUES_LESS_THAN_ONE:
+        return 0.5
+    else:
+        return value
 
 
 def _chunks(d: dict, size: int) -> Iterable[defaultdict]:
@@ -344,26 +355,6 @@ def _chunks(d: dict, size: int) -> Iterable[defaultdict]:
     it = iter(d)
     for i in range(0, len(d), size):
         yield {k: d[k] for k in islice(it, size)}
-
-# def _h5py_dataset_iterator(g, prefix=''):
-#     for key in g.keys():
-#         item = g[key]
-#         path = '{}/{}'.format(prefix, key)
-#         if isinstance(item, h5py.Dataset): # capture object if dataset
-#             yield (path, item)
-#         elif isinstance(item, h5py.Group): # recurse if group
-#             yield from _h5py_dataset_iterator(item, path)
-
-
-# def h5py_dataset_iterator(hd5_handle, group='/', prefix=''):
-#     for key in hd5_handle.keys():
-#         item = hd5_handle[key]
-#         path = f"{prefix}/{key}"
-#         if path.startswith(group):
-#             if isinstance(item, h5py.Dataset):  # capture object if dataset
-#                 yield (path, item)
-#             elif isinstance(item, h5py.Group):  # recurse if group
-#                 yield from h5py_dataset_iterator(item, path)
 
 
 def plot_ecg(data, label, prefix='./figures/'):
