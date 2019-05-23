@@ -30,8 +30,10 @@ python .merge_hd5s.py \
 def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
     for k in source_file[group_path]:
         if isinstance(source_file[group_path + k], h5py.Dataset):
+            logging.info(f"copying dataset {group_path + k}")
             destination_file.create_dataset(group_path + k, data=source_file[group_path + k])
         else:
+            logging.info(f"copying group {group_path + k}")
             _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
 
 
