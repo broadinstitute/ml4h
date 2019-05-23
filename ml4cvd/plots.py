@@ -5,6 +5,7 @@ import os
 import math
 import logging
 import hashlib
+import random
 from itertools import islice
 from textwrap import wrap
 from typing import Iterable
@@ -14,6 +15,7 @@ import numpy as np
 from collections import Counter, OrderedDict, defaultdict
 
 import matplotlib
+
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -30,7 +32,6 @@ SUBPLOT_SIZE = 22
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon',
                'magenta', 'aquamarine', 'gold', 'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue',
                'orange']
-
 
 
 def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
@@ -288,21 +289,29 @@ def plot_histograms_as_pdf(stats,
 def plot_histograms_from_tensor_files(id: str,
                                       tensor_folder_path: str,
                                       output_folder_path: str,
+                                      num_samples: int = None,
                                       num_fields: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder_path: directory with tensor files to plot histograms from
     :param output_folder_path: folder containing the output plot
+    :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     :param num_fields: number of fields to histogram; by default all fields are plotted
     """
 
     if not os.path.exists(tensor_folder_path):
         raise ValueError('Source directory does not exist: ', tensor_folder_path)
 
-    logging.debug(f"Collecting continuous stats from tensors at {tensor_folder_path}...")
+    all_tensor_files = os.listdir(tensor_folder_path)
+    if num_samples is not None:
+        tensor_files = random.sample(all_tensor_files, num_samples)
+    else:
+        tensor_files = all_tensor_files
+
+    logging.debug(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder_path}...")
 
     stats = defaultdict(list)
-    for hd5_file_name in os.listdir(tensor_folder_path):
+    for hd5_file_name in tensor_files:
         if hd5_file_name.endswith(TENSOR_EXT):
             tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
