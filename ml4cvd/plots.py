@@ -6,6 +6,7 @@ import math
 import logging
 import hashlib
 from itertools import islice
+from textwrap import wrap
 from typing import Iterable
 
 import h5py
@@ -262,19 +263,21 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
 def plot_histograms_as_pdf(stats,
                            title,
                            prefix='./figures/',
-                           num_rows=2,
-                           num_cols=2,
-                           num_bins=50):
+                           num_rows=4,
+                           num_cols=6,
+                           num_bins=50,
+                           title_text_width=50):
     matplotlib.rcParams.update({'font.size': 14})
 
     figure_path = os.path.join(prefix, 'histograms_' + title + PDF_EXT)
     with PdfPages(figure_path) as pdf:
         for stats_chunk in _chunks(stats, num_rows * num_cols):
-            fig, axes = plt.subplots(num_rows, num_cols, figsize=(28, 24))
+            fig, axes = plt.subplots(num_rows, num_cols, figsize=(44, 24))
             for i, group in enumerate(stats_chunk):
                 a = np.array(stats[group])
                 ax = plt.subplot(num_rows, num_cols, i + 1)
-                ax.set_title(group + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
+                title_text = '\n'.join(wrap(group, title_text_width))
+                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
                 ax.hist(stats[group], bins=num_bins)
             plt.tight_layout()
             pdf.savefig()
