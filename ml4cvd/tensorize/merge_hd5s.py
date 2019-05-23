@@ -20,10 +20,8 @@ If any of the destination files contains the specified group already, it errors 
 
 Example command line:
 python .merge_hd5s.py \
-    --groups continuous categorical \
-    --sources /path/to/src/continuous/tensor/directory /path/to/src/categorical/tensor/directory \
-    --dest /path/to/output/directory \
-    --logging_level DEBUG
+    --sources /path/to/src/continuous/tensor/directory/ /path/to/src/categorical/tensor/directory/ \
+    --destination /path/to/output/directory/ 
 """
 
 
@@ -40,22 +38,21 @@ def merge_hd5s_into_destination(destination, sources):
                     _copy_hd5_datasets(source_hd5, destination_hd5)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--sources', nargs='+', help='List of source directories with hd5 files')
-    parser.add_argument('--destination', help='Destination directory to copy hd5 groups to')
-    parser.add_argument('--groups', nargs='+')
-    parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-    return parser.parse_args()
-
-
 def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
     for k in source_file[group_path]:
         if isinstance(source_file[group_path + k], h5py.Dataset):
             destination_file.create_dataset(group_path + k, data=source_file[group_path + k])
         else:
-            logging.info(f"copying group {group_path + k}")
+            logging.debug(f"copying group {group_path + k}")
             _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sources', nargs='+', help='List of source directories with hd5 files')
+    parser.add_argument('--destination', help='Destination directory to copy hd5 groups to')
+    parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
