@@ -793,7 +793,7 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
             if ecg_flag in diagnosis_str:
                 hd5.create_dataset(categorical_group + ecg_flag_label, data=[1])
             else:
-                hd5.create_dataset(categorical_group + 'no_'+ecg_flag_label, data=[1])
+                hd5.create_dataset(categorical_group + 'no_' + ecg_flag_label, data=[1])
 
         for c in root.findall("./StripData/WaveformData"):
             lead_data = list(map(float, c.text.strip().split(',')))
