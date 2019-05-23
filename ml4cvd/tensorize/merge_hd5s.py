@@ -6,17 +6,14 @@ import argparse
 from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
 """ 
-This script copies the hd5 groups specified as 'groups' from all hd5 files within the 'sources'
+This script copies all the hd5 datasets from all hd5 files within the 'sources'
 directories to the same-named files within the 'destination' directory.
 
 If the tensor files are not in a local filesystem, they can be downloaded via gsutil:
 gsutil -m cp -r <gcs bucket with tensors> <local directory>
 
-Each source directory in 'sources' must contain the group in 'groups', respectively.
-
 If the destination directory and/or file(s) don't exist, it creates them.
-
-If any of the destination files contains the specified group already, it errors out.
+If any of the source files contain the same dataset at the same group path, it errors out.
 
 Example command line:
 python .merge_hd5s.py \
@@ -50,7 +47,7 @@ def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR)
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--sources', nargs='+', help='List of source directories with hd5 files')
-    parser.add_argument('--destination', help='Destination directory to copy hd5 groups to')
+    parser.add_argument('--destination', help='Destination directory to copy hd5 datasets to')
     parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     return parser.parse_args()
 
