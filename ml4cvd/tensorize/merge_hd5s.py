@@ -27,14 +27,17 @@ python .merge_hd5s.py \
 """
 
 
-def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
-    for k in source_file[group_path]:
-        if isinstance(source_file[group_path + k], h5py.Dataset):
-            logging.info(f"copying dataset {group_path + k}")
-            destination_file.create_dataset(group_path + k, data=source_file[group_path + k])
-        else:
-            logging.info(f"copying group {group_path + k}")
-            _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
+def merge_hd5s_into_destination(destination, sources):
+    if not os.path.exists(os.path.dirname(destination)):
+        os.makedirs(os.path.dirname(destination))
+
+    for source_folder in sources:
+        for source_file in os.listdir(source_folder):
+            if not source_file.endswith(TENSOR_EXT):
+                continue
+            with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
+                with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
+                    _copy_hd5_datasets(source_hd5, destination_hd5)
 
 
 def parse_args():
@@ -46,17 +49,16 @@ def parse_args():
     return parser.parse_args()
 
 
+def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
+    for k in source_file[group_path]:
+        if isinstance(source_file[group_path + k], h5py.Dataset):
+            destination_file.create_dataset(group_path + k, data=source_file[group_path + k])
+        else:
+            logging.info(f"copying group {group_path + k}")
+            _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
+
+
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
-
-    if not os.path.exists(os.path.dirname(args.destination)):
-        os.makedirs(os.path.dirname(args.destination))
-
-    for source_folder in args.sources:
-        for source_file in os.listdir(source_folder):
-            if not source_file.endswith(TENSOR_EXT):
-                continue
-            with h5py.File(os.path.join(args.destination, source_file), 'a') as destination_hd5:
-                with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
-                    _copy_hd5_datasets(source_hd5, destination_hd5)
+    merge_hd5s_into_destination(args.destination, args.sources)
