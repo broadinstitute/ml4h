@@ -29,7 +29,7 @@ python .merge_hd5s.py \
 
 def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
     for k in source_file[group_path]:
-        if isinstance(source_file[k], h5py.Dataset):
+        if isinstance(source_file[group_path + k], h5py.Dataset):
             destination_file.create_dataset(group_path + k, data=source_file[k])
         else:
             _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
