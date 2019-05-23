@@ -55,9 +55,9 @@ TMAPS['ecg_normal'] = TensorMap('ecg_normal', group='categorical', loss=weighted
                   channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3})
 TMAPS['ecg_infarct'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_infarct': 0, 'infarct': 1},
                              loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'))
-TMAPS['ecg_poor_data'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_poor_data_quality': 0, 'poor_data_quality': 1},
+TMAPS['ecg_poor_data'] = TensorMap('ecg_poor_data', group='categorical', channel_map={'no_poor_data_quality': 0, 'poor_data_quality': 1},
                              loss=weighted_crossentropy([1.0, 8.0], 'ecg_poor_data'))
-TMAPS['ecg_block'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_block': 0, 'block': 1},
+TMAPS['ecg_block'] = TensorMap('ecg_block', group='categorical', channel_map={'no_block': 0, 'block': 1},
                              loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'))
 
 
