@@ -148,7 +148,11 @@ def plot_histograms_from_tensor_files(id: str,
     logging.debug(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder_path}...")
 
     stats = defaultdict(list)
+    file_count = 0
     for hd5_file_name in tensor_files:
+        file_count += 1
+        if file_count % 100 == 0:
+            logging.debug(f"Processed {file_count} tensors.")
         if hd5_file_name.endswith(TENSOR_EXT):
             tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
@@ -291,6 +295,6 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: Def
 
 def _is_continuous_nonmissing_scalar_hd5_dataset(obj) -> bool:
     return obj.name.startswith('/continuous') and \
+           isinstance(obj, h5py.Dataset) and \
            obj[0] not in CODING_VALUES_MISSING and \
-           len(obj.shape) == 1 and \
-           isinstance(obj, h5py.Dataset)
+           len(obj.shape) == 1
