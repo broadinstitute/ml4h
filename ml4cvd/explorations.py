@@ -264,18 +264,21 @@ def _sample_with_heat(preds, temperature=1.0):
 def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: DefaultDict[str, list]) -> None:
     def _field_meaning_to_values_dict(_, obj):
         if _is_continuous_scalar_hd5_dataset(obj):
+            field_value = _handle_if_special_value(obj[0])
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
-            if len(dataset_name_parts) == 4:
+            if len(dataset_name_parts) == 4:  # e.g. /continuous/1488_Tea-intake_0_0
                 field_id = dataset_name_parts[0]
                 field_meaning = dataset_name_parts[1]
-                field_value = _handle_if_special_value(obj[0])
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
                 stats[field_meaning].append(field_value)
+            elif len(dataset_name_parts) == 1:  # e.g. /continuous/VentricularRate
+                field_meaning = dataset_name_parts[0]
+                stats[field_meaning].append(field_value)
             else:
-                # TODO: Unskip datasets like /continuous/VentricularRate
                 logging.debug(f"Skipping dataset '{obj.name}' because it is not "
-                              f"in format <field_id>_<field_meaning>_<instance>_<array_idx>")
+                              f"in format <field_id>_<field_meaning>_<instance>_<array_idx> "
+                              f"or <field_meaning>")
 
     with h5py.File(tensor_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_values_dict)
