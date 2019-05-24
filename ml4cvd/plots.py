@@ -5,23 +5,20 @@ import os
 import math
 import logging
 import hashlib
-import random
 from itertools import islice
-from textwrap import wrap
-from typing import Iterable
+from typing import Iterable, DefaultDict
 
-import h5py
 import numpy as np
+from textwrap import wrap
 from collections import Counter, OrderedDict, defaultdict
 
 import matplotlib
-
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.backends.backend_pdf import PdfPages
-from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_recall_curve, average_precision_score
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, TENSOR_EXT, PDF_EXT, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -31,6 +28,7 @@ SUBPLOT_SIZE = 22
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
+
 
 def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[]):
     performance_metrics = {}
@@ -259,109 +257,41 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_as_pdf(stats,
-                           title,
+def plot_histograms_as_pdf(stats: DefaultDict[str, list],
+                           title: str,
                            prefix='./figures/',
                            num_rows=4,
                            num_cols=6,
                            num_bins=50,
-                           title_text_width=50):
-    matplotlib.rcParams.update({'font.size': 14})
+                           title_text_width=50) -> None:
+    def _chunks(d: dict, size: int) -> Iterable[defaultdict]:
+        """
+        :param d: dictionary to be chunked                                                                                               S
+        :param size: size of chunks
+        :return: iterator of dictionary chunks
+        """
+        it = iter(d)
+        for i in range(0, len(d), size):
+            yield {k: d[k] for k in islice(it, size)}
+
+    subplot_width = 7.4 * num_cols
+    subplot_height = 6 * num_rows
+    matplotlib.rcParams.update({'font.size': 14, 'figure.figsize': (subplot_width, subplot_height)})
 
     figure_path = os.path.join(prefix, 'histograms_' + title + PDF_EXT)
     with PdfPages(figure_path) as pdf:
         for stats_chunk in _chunks(stats, num_rows * num_cols):
-            fig, axes = plt.subplots(num_rows, num_cols, figsize=(44, 24))
+            plt.subplots(num_rows, num_cols)
             for i, group in enumerate(stats_chunk):
-                a = np.array(stats[group])
+                values = stats[group]
                 ax = plt.subplot(num_rows, num_cols, i + 1)
                 title_text = '\n'.join(wrap(group, title_text_width))
-                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(a), np.std(a)))
-                ax.hist(stats[group], bins=num_bins)
+                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(values), np.std(values)))
+                ax.hist(values, bins=num_bins)
             plt.tight_layout()
             pdf.savefig()
 
     logging.info(f"Saved histograms plot at: {figure_path}")
-
-
-def plot_histograms_from_tensor_files(id: str,
-                                      tensor_folder_path: str,
-                                      output_folder_path: str,
-                                      num_samples: int = None,
-                                      num_fields: int = None) -> None:
-    """
-    :param id: name for the plotting run
-    :param tensor_folder_path: directory with tensor files to plot histograms from
-    :param output_folder_path: folder containing the output plot
-    :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
-    :param num_fields: number of fields to histogram; by default all fields are plotted
-    """
-
-    if not os.path.exists(tensor_folder_path):
-        raise ValueError('Source directory does not exist: ', tensor_folder_path)
-
-    all_tensor_files = os.listdir(tensor_folder_path)
-    if num_samples is not None:
-        tensor_files = random.sample(all_tensor_files, num_samples)
-    else:
-        tensor_files = all_tensor_files
-
-    logging.debug(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder_path}...")
-
-    stats = defaultdict(list)
-    for hd5_file_name in tensor_files:
-        if hd5_file_name.endswith(TENSOR_EXT):
-            tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
-            _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
-
-    logging.debug(f"Collected continuous stats for {len(stats)} fields.")
-    first_n_fields_stats = dict(list(stats.items())[0:num_fields])
-    logging.debug(f"Plotting histograms for {len(first_n_fields_stats)} of those fields...")
-    plot_histograms_as_pdf(first_n_fields_stats, id, output_folder_path)
-
-
-def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats) -> None:
-    def _field_meaning_to_value_dict(_, obj):
-        if _is_continuous_scalar_hd5_dataset(obj):
-            dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
-            if len(dataset_name_parts) == 4:
-                field_id = dataset_name_parts[0]
-                field_meaning = dataset_name_parts[1]
-                field_value = _handle_if_special_value(obj[0])
-                instance = dataset_name_parts[2]
-                array_idx = dataset_name_parts[3]
-                stats[field_meaning].append(field_value)
-            else:
-                # TODO: Unskip datasets like /continuous/VentricularRate
-                logging.debug(f"Skipping dataset '{obj.name}' because it is not "
-                              f"in format <field_id>_<field_meaning>_<instance>_<array_idx>")
-
-    with h5py.File(tensor_file_path, 'r') as hd5_handle:
-        hd5_handle.visititems(_field_meaning_to_value_dict)
-
-
-def _is_continuous_scalar_hd5_dataset(obj) -> bool:
-    return isinstance(obj, h5py.Dataset) and obj.name.startswith('/continuous') and len(obj.shape) == 1
-
-
-def _handle_if_special_value(value):
-    if value in CODING_VALUES_MISSING:
-        return 0
-    elif value in CODING_VALUES_LESS_THAN_ONE:
-        return 0.5
-    else:
-        return value
-
-
-def _chunks(d: dict, size: int) -> Iterable[defaultdict]:
-    """
-    :param d: dictionary to be chunked                                                                                               S
-    :param size: size of chunks
-    :return: iterator of dictionary chunks
-    """
-    it = iter(d)
-    for i in range(0, len(d), size):
-        yield {k: d[k] for k in islice(it, size)}
 
 
 def plot_ecg(data, label, prefix='./figures/'):

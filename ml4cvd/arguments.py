@@ -67,7 +67,7 @@ def parse_args():
     parser.add_argument('--app_csv', default='/mnt/disks/data/raw/tsvs/ukb_app17488_app7089_link.csv',
         help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
     parser.add_argument('--tensors', default='/mnt/disks/data/generated/tensors/test/2019-03-21/',
-        help='Path to folder containing tensors.')
+        help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/',
         help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file',
