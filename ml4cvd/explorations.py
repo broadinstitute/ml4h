@@ -263,8 +263,13 @@ def _sample_with_heat(preds, temperature=1.0):
 
 def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: DefaultDict[str, list]) -> None:
     def _field_meaning_to_values_dict(_, obj):
-        if _is_continuous_scalar_hd5_dataset(obj):
-            field_value = _handle_if_special_value(obj[0])
+        if _is_continuous_nonmissing_scalar_hd5_dataset(obj):
+            value_in_tensor_file = obj[0]
+            if value_in_tensor_file in CODING_VALUES_LESS_THAN_ONE:
+                field_value = 0.5
+            else:
+                field_value = value_in_tensor_file
+
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
             if len(dataset_name_parts) == 4:  # e.g. /continuous/1488_Tea-intake_0_0
                 field_id = dataset_name_parts[0]
@@ -284,14 +289,8 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: Def
         hd5_handle.visititems(_field_meaning_to_values_dict)
 
 
-def _is_continuous_scalar_hd5_dataset(obj) -> bool:
-    return isinstance(obj, h5py.Dataset) and obj.name.startswith('/continuous') and len(obj.shape) == 1
-
-
-def _handle_if_special_value(value):
-    if value in CODING_VALUES_MISSING:
-        return 0
-    elif value in CODING_VALUES_LESS_THAN_ONE:
-        return 0.5
-    else:
-        return value
+def _is_continuous_nonmissing_scalar_hd5_dataset(obj) -> bool:
+    return obj.name.startswith('/continuous') and \
+           obj[0] not in CODING_VALUES_MISSING and \
+           len(obj.shape) == 1 and \
+           isinstance(obj, h5py.Dataset)
