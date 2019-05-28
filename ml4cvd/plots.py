@@ -205,34 +205,35 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    logging.info("Saved scatter together plot at: {}".format(figure_path))
+    logging.info(f"Saved scatters together at: {figure_path}")
 
-
-def subplot_comparison_scatters(scatters, prefix='./figures/'):
+def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
     col = 0
-    total_plots = len(rocs)
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
+    total_plots = len(scatters)
+    rows = cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    #cols = max(2, int(math.ceil(total_plots / rows)))
     fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
-    for predictions, truth, labels in scatters:
-        for p in predictions:
-            for key in labels:
-                if 'no_' in key and len(labels) == 2:
-                    continue
-                color = _hash_string_to_color(p + key)
-                label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
-                axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-                axes[row, col].set_title('ROC: ' + key + '\n')
-
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_xlim([0.0, 1.0])
-        axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
-        axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].legend(loc="lower right")
+    for predictions, truth, title, paths in scatters:
+        for k in predictions:
+            color = _hash_string_to_color(title+k)
+            pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+            pearson_sqr = pearson * pearson
+            plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
+            plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr))
+            if paths is not None:
+                margin = float((np.max(truth) - np.min(truth)) / 100)
+                diff = np.abs(predictions[k] - truth)
+                arg_sorted = diff[:, 0].argsort()
+                plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                for idx in arg_sorted[-top_k:]:
+                    plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        plt.xlabel('Predictions')
+        plt.ylabel('Actual')
+        plt.title(title + '\n')
+        plt.legend(loc="lower right")
 
         row += 1
         if row == rows:
@@ -245,6 +246,7 @@ def subplot_comparison_scatters(scatters, prefix='./figures/'):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
+    logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
 def plot_noise(noise):
