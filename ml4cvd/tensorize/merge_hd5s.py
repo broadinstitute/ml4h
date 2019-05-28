@@ -60,4 +60,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
-    merge_hd5s_into_destination(args.destination, args.sources)
+    merge_hd5s_into_destination(args.destination, args.sources, args.min_sample_id, args.max_sample_id)
