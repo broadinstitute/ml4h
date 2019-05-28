@@ -8,7 +8,7 @@ import h5py
 import logging
 import datetime
 import numpy as np
-from typing import Dict, List, Tuple, Generator, Optional, Iterable, DefaultDict
+from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -152,7 +152,7 @@ def plot_histograms_from_tensor_files(id: str,
     for hd5_file_name in tensor_files:
         file_count += 1
         if file_count % 100 == 0:
-            logging.debug(f"Processed {file_count} tensors.")
+            logging.debug(f"Processed {file_count} tensors for histograming.")
         if hd5_file_name.endswith(TENSOR_EXT):
             tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
@@ -267,7 +267,7 @@ def _sample_with_heat(preds, temperature=1.0):
 
 def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: DefaultDict[str, list]) -> None:
     def _field_meaning_to_values_dict(_, obj):
-        if _is_continuous_nonmissing_scalar_hd5_dataset(obj):
+        if _is_continuous_valid_scalar_hd5_dataset(obj):
             value_in_tensor_file = obj[0]
             if value_in_tensor_file in CODING_VALUES_LESS_THAN_ONE:
                 field_value = 0.5
@@ -293,7 +293,7 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: Def
         hd5_handle.visititems(_field_meaning_to_values_dict)
 
 
-def _is_continuous_nonmissing_scalar_hd5_dataset(obj) -> bool:
+def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
     return obj.name.startswith('/continuous') and \
            isinstance(obj, h5py.Dataset) and \
            obj[0] not in CODING_VALUES_MISSING and \
