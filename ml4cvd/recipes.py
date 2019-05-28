@@ -322,8 +322,8 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         elif tm.is_continuous() and len(tm.shape) == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
+            scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
-            scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title))
             log_pearson_coefficients(coefs, tm.name)
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
