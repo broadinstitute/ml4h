@@ -208,6 +208,45 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     logging.info("Saved scatter together plot at: {}".format(figure_path))
 
 
+def subplot_comparison_scatters(scatters, prefix='./figures/'):
+    """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
+    lw = 3
+    row = 0
+    col = 0
+    total_plots = len(rocs)
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    for predictions, truth, labels in scatters:
+        for p in predictions:
+            for key in labels:
+                if 'no_' in key and len(labels) == 2:
+                    continue
+                color = _hash_string_to_color(p + key)
+                label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
+                axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+                axes[row, col].set_title('ROC: ' + key + '\n')
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_xlim([0.0, 1.0])
+        axes[row, col].set_ylim([-0.02, 1.03])
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].legend(loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
 def plot_noise(noise):
     samples = 240
     real_weight = 2.0
