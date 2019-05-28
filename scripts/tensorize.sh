@@ -78,7 +78,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":t:i:n:s:e:x:m:c:a:h" opt ; do
+while getopts ":t:i:c:a:n:s:e:x:m:h" opt ; do
     case ${opt} in
         h)
             usage
