@@ -331,11 +331,10 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
 
-
     if len(rocs) > 1:
         subplot_comparison_rocs(rocs, plot_folder)
     if len(scatters) > 1:
-        subplot_scatters(scatters, plot_folder)
+        subplot_comparison_rocs(scatters, plot_folder)
 
 def _get_tensor_files(tensor_dir):
     return [tensor_dir + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
