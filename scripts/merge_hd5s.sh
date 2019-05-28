@@ -116,32 +116,16 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
     echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
 
         cat <<LAUNCH_CMDLINE_MESSAGE
-            $HOME/ml/scripts/tf.sh -nt $HOME/ml/ml4cvd/recipes.py
-                --mode tensorize
-                --tensors $TENSOR_PATH
-                --output_folder $TENSOR_PATH
-                --id $ID
-                --include_heart_zoom
-                --mri_field_id $MRI_FIELD
-                --xml_field_id $XML_FIELD
-                --categorical_field_ids $CATEGORICAL_FIELD_IDS
-                --continuous_field_ids $CONTINUOUS_FIELD_IDS
-                --dicoms ./dicoms_$MIN_SAMPLE_ID/
-                --min_sample_id $MIN_SAMPLE_ID
-                --max_sample_id $MAX_SAMPLE_ID &
+                $HOME/ml/scripts/tf.sh -nt $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+		--destination $DESTINATION \
+		--sources $SOURCES \
+		--min_sample_id $MIN_SAMPLE_ID \
+		--max_sample_id $MAX_SAMPLE_ID &
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml/scripts/tf.sh -nt $HOME/ml/ml4cvd/recipes.py \
-		--mode tensorize \
-		--tensors $TENSOR_PATH \
-		--output_folder $TENSOR_PATH \
-		--id $ID \
-		--include_heart_zoom \
-		--mri_field_id $MRI_FIELD \
-		--xml_field_id $XML_FIELD \
-		--categorical_field_ids $CATEGORICAL_FIELD_IDS \
-		--continuous_field_ids $CONTINUOUS_FIELD_IDS \
-		--dicoms ./dicoms_$MIN_SAMPLE_ID/ \
+    $HOME/ml/scripts/tf.sh -nt $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+		--destination $DESTINATION \
+		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
 		--max_sample_id $MAX_SAMPLE_ID &
 
