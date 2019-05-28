@@ -174,7 +174,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     total_plots = len(scatters)
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
     cols = max(2, int(math.ceil(total_plots / rows)))
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for prediction, truth, title, paths in scatters:
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
         axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
@@ -412,7 +412,7 @@ def subplot_rocs(rocs, prefix='./figures/'):
     total_plots = len(rocs)
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
     cols = max(2, int(math.ceil(total_plots / rows)))
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
