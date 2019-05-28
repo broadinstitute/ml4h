@@ -207,6 +207,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     plt.savefig(figure_path)
     logging.info(f"Saved scatters together at: {figure_path}")
 
+
 def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
