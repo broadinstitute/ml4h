@@ -730,7 +730,7 @@ def _dense_block1d(x: K.placeholder,
 
             if i == 0:
                 up_conv = Conv1D(filters=db_filters, kernel_size=conv_width, activation=activation, padding=padding)
-                upsamplers.append((residual1d, up_conv, UpSampling1D(pool_size)))
+                upsamplers.append((residual1d, up_conv, UpSampling1D(pool_x)))
                 x = AveragePooling1D(pool_x, strides=pool_x)(x)
                 dense_connections = [x]
             else:
