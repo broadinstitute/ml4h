@@ -149,8 +149,8 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
                 --include_heart_zoom
                 --mri_field_id $MRI_FIELD
                 --xml_field_id $XML_FIELD
-                --categorical_field_ids <too long to list>
-                --continuous_field_ids <too long to list>
+                --categorical_field_ids $CATEGORICAL_FIELD_IDS
+                --continuous_field_ids $CONTINUOUS_FIELD_IDS
                 --dicoms ./dicoms_$MIN_SAMPLE_ID/
                 --min_sample_id $MIN_SAMPLE_ID
                 --max_sample_id $MAX_SAMPLE_ID &
