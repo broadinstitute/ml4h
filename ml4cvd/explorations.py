@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_as_pdf
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 
@@ -123,11 +123,11 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
-def plot_histograms_from_tensor_files(id: str,
-                                      tensor_folder_path: str,
-                                      output_folder_path: str,
-                                      num_samples: int = None,
-                                      num_fields: int = None) -> None:
+def plot_histograms_from_tensor_files_in_pdf(id: str,
+                                             tensor_folder_path: str,
+                                             output_folder_path: str,
+                                             num_samples: int = None,
+                                             num_fields: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder_path: directory with tensor files to plot histograms from
@@ -150,17 +150,16 @@ def plot_histograms_from_tensor_files(id: str,
     stats = defaultdict(list)
     file_count = 0
     for hd5_file_name in tensor_files:
-        file_count += 1
-        if file_count % 100 == 0:
-            logging.debug(f"Processed {file_count} tensors for histograming.")
         if hd5_file_name.endswith(TENSOR_EXT):
             tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
             _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
-
+            file_count += 1
+            if file_count % 1000 == 0:
+                logging.debug(f"Processed {file_count} tensors for histograming.")
     logging.debug(f"Collected continuous stats for {len(stats)} fields.")
     first_n_fields_stats = dict(list(stats.items())[0:num_fields])
     logging.debug(f"Plotting histograms for {len(first_n_fields_stats)} of those fields...")
-    plot_histograms_as_pdf(first_n_fields_stats, id, output_folder_path)
+    plot_histograms_in_pdf(first_n_fields_stats, id, output_folder_path)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
@@ -285,10 +284,8 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: Def
                 field_meaning = dataset_name_parts[0]
                 stats[field_meaning].append(field_value)
             else:
-                logging.debug(f"Skipping dataset '{obj.name}' because it is not "
-                              f"in format <field_id>_<field_meaning>_<instance>_<array_idx> "
-                              f"or <field_meaning>")
-
+                raise ValueError(f"Dataset name '{obj.name}' is not in format "
+                                 f"<field_id>_<field_meaning>_<instance>_<array_idx> or <field_meaning>")
     with h5py.File(tensor_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_values_dict)
 

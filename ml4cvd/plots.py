@@ -257,7 +257,7 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_as_pdf(stats: DefaultDict[str, List[float]],
+def plot_histograms_in_pdf(stats: DefaultDict[str, List[float]],
                            output_file_name: str,
                            output_folder_path: str = './figures',
                            num_rows: int = 4,
