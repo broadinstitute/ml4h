@@ -112,7 +112,8 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         np.random.shuffle(train_paths)
         for k in stats:
             logging.info("{}: {}".format(k, stats[k]))
-        logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.\n\n{stats['Tensors presented']/stats['epochs']} per batch.\n")
+        logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
+        logging.info(f"\n\nPresented about {stats['Tensors presented']/stats['epochs']} tensors this 'epoch'.\n")
 
 
 def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths):
