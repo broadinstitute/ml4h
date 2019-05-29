@@ -129,7 +129,11 @@ def infer_multimodal_multitask(args):
     
     with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv'), mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        inference_writer.writerow(['sample_id'] + [ot for ot, otm in zip(args.output_tensors, args.tensor_maps_out) if len(otm.shape) == 1])
+        header = ['sample_id']
+        for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
+            if len(otm.shape) == 1:
+                header.extend([ot+'_prediction', ot+'_actual'])
+        inference_writer.writerow(header)
 
         while True:
             input_data, true_label, tensor_path = next(generate_test)
@@ -150,8 +154,9 @@ def infer_multimodal_multitask(args):
 
             tensor_paths_inferred[tensor_path] = True
             stats['count'] += 1
-            if stats['count'] % 500 == 0:
+            if stats['count'] % 50 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path}")
+                break
 
 
 def train_shallow_model(args):
