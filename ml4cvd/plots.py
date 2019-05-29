@@ -174,7 +174,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
     total_plots = len(scatters)
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
     cols = max(2, int(math.ceil(total_plots / rows)))
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for prediction, truth, title, paths in scatters:
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
         axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
@@ -214,9 +214,9 @@ def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.
     row = 0
     col = 0
     total_plots = len(scatters)
-    rows = cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    #cols = max(2, int(math.ceil(total_plots / rows)))
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, title, paths in scatters:
         for k in predictions:
             c = _hash_string_to_color(title+k)
@@ -452,9 +452,9 @@ def subplot_rocs(rocs, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    #cols = max(2, int(math.ceil(total_plots / rows)))
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
@@ -492,9 +492,9 @@ def subplot_comparison_rocs(rocs, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    #cols = max(2, int(math.ceil(total_plots / rows)))
-    fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
+    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
+    cols = max(2, int(math.ceil(total_plots / rows)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
