@@ -5,16 +5,19 @@ import os
 import math
 import logging
 import hashlib
-import numpy as np
-from typing import List, Dict, Tuple, Optional
+from itertools import islice
 from collections import Counter, OrderedDict, defaultdict
+from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
+import numpy as np
+from textwrap import wrap
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_recall_curve, average_precision_score
+from matplotlib.backends.backend_pdf import PdfPages
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -338,6 +341,53 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
+def plot_histograms_in_pdf(stats: DefaultDict[str, List[float]],
+                           output_file_name: str,
+                           output_folder_path: str = './figures',
+                           num_rows: int = 4,
+                           num_cols: int = 6,
+                           num_bins: int = 50,
+                           title_text_width: int = 50) -> None:
+    """
+    Plots histograms of field values given in 'stats' in pdf
+    :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
+    :param output_file_name: name of output file in pdf
+    :param output_folder_path: directory that output file will be written to
+    :param num_rows: number of histograms that will be plotted vertically per pdf page
+    :param num_cols: number of histograms that will be plotted horizontally per pdf page
+    :param num_bins: number of histogram bins
+    :param title_text_width: max number of characters that a plot title line will span; longer lines will be wrapped into multiple lines
+    :return: None
+    """
+    def _chunks(d: Dict[str, List[float]], size: int) -> Iterable[DefaultDict[str, List[float]]]:
+        """
+        :param d: dictionary to be chunked                                                                                               S
+        :param size: size of chunks
+        :return: iterator of dictionary chunks
+        """
+        it = iter(d)
+        for i in range(0, len(d), size):
+            yield {k: d[k] for k in islice(it, size)}
+
+    subplot_width = 7.4 * num_cols
+    subplot_height = 6 * num_rows
+    matplotlib.rcParams.update({'font.size': 14, 'figure.figsize': (subplot_width, subplot_height)})
+
+    figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
+    with PdfPages(figure_path) as pdf:
+        for stats_chunk in _chunks(stats, num_rows * num_cols):
+            plt.subplots(num_rows, num_cols)
+            for i, group in enumerate(stats_chunk):
+                ax = plt.subplot(num_rows, num_cols, i + 1)
+                title_text = '\n'.join(wrap(group, title_text_width))
+                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(stats[group]), np.std(stats[group])))
+                ax.hist(stats[group], bins=min(num_bins, len(set(stats[group]))))
+            plt.tight_layout()
+            pdf.savefig()
+
+    logging.info(f"Saved histograms plot at: {figure_path}")
+
+
 def plot_ecg(data, label, prefix='./figures/'):
     lw = 3
     matplotlib.rcParams.update({'font.size': 36})
@@ -395,7 +445,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = "{} area:{:.3f}".format(key, roc_auc[labels[key]])
+        label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f"ROC Label {label_text}")
 
