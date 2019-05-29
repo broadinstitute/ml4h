@@ -446,7 +446,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = "{} area:{:.3f}".format(key, roc_auc[labels[key]])
+        label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f"ROC Label {label_text}")
 
