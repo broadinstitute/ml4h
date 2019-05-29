@@ -5,12 +5,12 @@ import os
 import math
 import logging
 import hashlib
+import numpy as np
+from textwrap import wrap
 from itertools import islice
 from collections import Counter, OrderedDict, defaultdict
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
-import numpy as np
-from textwrap import wrap
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
@@ -477,7 +477,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p+key)
-            label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
+            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f"ROC Label {label_text}")
 
@@ -497,7 +497,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
-def subplot_rocs(rocs, prefix='./figures/'):
+def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
@@ -512,9 +512,10 @@ def subplot_rocs(rocs, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(key)
-            label_text = "{} area:{:.3f}".format(key, roc_auc[labels[key]])
+            label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             axes[row, col].set_title('ROC: ' + key + '\n')
+            logging.info(f"ROC Label {label_text}")
 
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
@@ -537,7 +538,7 @@ def subplot_rocs(rocs, prefix='./figures/'):
     plt.savefig(figure_path)
 
 
-def subplot_comparison_rocs(rocs, prefix='./figures/'):
+def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
@@ -553,9 +554,10 @@ def subplot_comparison_rocs(rocs, prefix='./figures/'):
                 if 'no_' in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = "{}_{} area:{:.3f}".format(p, key, roc_auc[labels[key]])
+                label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 axes[row, col].set_title('ROC: ' + key + '\n')
+                logging.info(f"ROC Label {label_text}")
 
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
@@ -604,7 +606,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-    logging.info("Saved Precision Recall curve at: {}".format(figure_path))
+    logging.info(f"Saved Precision Recall curve at: {figure_path}")
     return labels_to_areas
 
 
