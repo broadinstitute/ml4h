@@ -137,25 +137,25 @@ def infer_multimodal_multitask(args):
 
         while True:
             input_data, true_label, tensor_path = next(generate_test)
-            if tensor_path in tensor_paths_inferred:
-                logging.info(f"Done inferring values for {stats['count']} tensors. Looped over at tensor:{tensor_path}")
+            if tensor_path[0] in tensor_paths_inferred:
+                logging.info(f"Done inferring values for {stats['count']} tensors. Looped over at tensor:{tensor_path[0]}")
                 break
 
             prediction = model.predict(input_data)
             if len(args.tensor_maps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path).replace(TENSOR_EXT, '')]  # extract sample id
+            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1:
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     csv_row.append(str(true_label[tm.output_name()][0][0]))
             inference_writer.writerow(csv_row)
 
-            tensor_paths_inferred[tensor_path] = True
+            tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
             if stats['count'] % 50 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path}")
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
                 break
 
 
