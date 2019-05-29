@@ -6,6 +6,7 @@ import math
 import logging
 import hashlib
 import numpy as np
+from typing import List, Dict, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
 
 import matplotlib
@@ -167,7 +168,8 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     logging.info("Saved scatter plot at: {}".format(figure_path))
 
 
-def subplot_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
+def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]],
+                     prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
     lw = 3
     row = 0
     col = 0
@@ -179,7 +181,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
         axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
         axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
-        if paths is not None:
+        if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
             margin = float((np.max(truth) - np.min(truth)) / 100)
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
@@ -208,9 +210,8 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
     logging.info(f"Saved scatters together at: {figure_path}")
 
 
-def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
-    """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
-    lw = 3
+def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]],
+                                prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
     row = 0
     col = 0
     total_plots = len(scatters)
@@ -224,7 +225,7 @@ def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.
             r_sqr = pearson * pearson
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
             axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
-            if paths is not None:
+            if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
