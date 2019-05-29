@@ -10,7 +10,7 @@ from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4cvd.arguments import parse_args
-from ml4cvd.defines import TENSOR_EXT, EPS
+from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.tensor_writer_ukbb import write_tensors
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -149,7 +149,7 @@ def infer_multimodal_multitask(args):
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1:
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if np.abs(tm.rescale(true_label[tm.output_name()])[0][0]) < EPS:  # Hack to handle missing LV Mass that was set to 0
+                    if np.abs(tm.rescale(true_label[tm.output_name()])[0][0]) < 1e-4:  # Hack to handle missing LV Mass that was set to 0
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
