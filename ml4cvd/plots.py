@@ -108,13 +108,13 @@ def plot_metric_history(history, title, prefix='./figures/'):
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
-def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3):
+def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
     plt.figure(figsize=(16, 16))
     matplotlib.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-    plt.scatter(prediction, truth)
+    plt.scatter(prediction, truth, marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
@@ -138,7 +138,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     return {title + '_pearson': pearson}
 
 
-def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3):
+def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(16, 16))
     plt.rcParams.update({'font.size': 18})
@@ -148,7 +148,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr))
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr), marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
@@ -167,7 +167,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     logging.info("Saved scatter plot at: {}".format(figure_path))
 
 
-def subplot_scatters(scatters, prefix='./figures/', top_k=3):
+def subplot_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
     lw = 3
     row = 0
     col = 0
@@ -178,7 +178,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     for prediction, truth, title, paths in scatters:
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
         axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
-        axes[row, col].scatter(prediction, truth)
+        axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
         if paths is not None:
             margin = float((np.max(truth) - np.min(truth)) / 100)
             diff = np.abs(prediction - truth)
@@ -208,7 +208,7 @@ def subplot_scatters(scatters, prefix='./figures/', top_k=3):
     logging.info(f"Saved scatters together at: {figure_path}")
 
 
-def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3):
+def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3, alpha=0.5):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
     row = 0
@@ -219,11 +219,11 @@ def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3):
     fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
     for predictions, truth, title, paths in scatters:
         for k in predictions:
-            color = _hash_string_to_color(title+k)
+            c = _hash_string_to_color(title+k)
             pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-            pearson_sqr = pearson * pearson
-            axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
-            axes[row, col].scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr))
+            r_sqr = pearson * pearson
+            axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
+            axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
             if paths is not None:
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
