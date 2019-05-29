@@ -157,9 +157,8 @@ def infer_multimodal_multitask(args):
 
             tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
-            if stats['count'] % 50 == 0:
+            if stats['count'] % 500 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
-                break
 
 
 def train_shallow_model(args):
