@@ -222,19 +222,19 @@ def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3):
             color = _hash_string_to_color(title+k)
             pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
             pearson_sqr = pearson * pearson
-            plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
-            plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr))
+            axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
+            axes[row, col].scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr))
             if paths is not None:
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
-                plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                axes[row, col].text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
                 for idx in arg_sorted[-top_k:]:
-                    plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-        plt.xlabel('Predictions')
-        plt.ylabel('Actual')
-        plt.title(title + '\n')
-        plt.legend(loc="lower right")
+                    axes[row, col].text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+        axes[row, col].set_xlabel('Predictions')
+        axes[row, col].set_ylabel('Actual')
+        axes[row, col].set_title(title + '\n')
+        axes[row, col].legend(loc="lower right")
 
         row += 1
         if row == rows:
@@ -492,8 +492,8 @@ def subplot_comparison_rocs(rocs, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
+    rows = cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    #cols = max(2, int(math.ceil(total_plots / rows)))
     fig, axes = plt.subplots(rows, cols, figsize=(rows*SUBPLOT_SIZE, cols*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
         for p in predictions:
