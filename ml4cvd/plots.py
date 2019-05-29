@@ -79,8 +79,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
     rows = max(2, int(math.ceil(math.sqrt(total_plots))))
     cols = max(2, int(math.ceil(total_plots / rows)))
-    f, axes = plt.subplots(rows, cols, sharex=True, figsize=(int(rows * 4.5), int(cols * 4.5)))
-
+    f, axes = plt.subplots(rows, cols, figsize=(int(cols*4.5), int(rows*4.5)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
             axes[row, col].plot(history.history[k])

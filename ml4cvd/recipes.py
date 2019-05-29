@@ -119,7 +119,7 @@ def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    # hard code batch size to 1 so we can iterate over filenames and generated tensors together in the tensor_paths for loop
+    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -129,7 +129,7 @@ def infer_multimodal_multitask(args):
     
     with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv' ), mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        inference_writer.writerow(['sample_id'] + [ot for ot,otm in zip(args.output_tensors, args.tensor_maps_out) if len(otm.shape)==1])
+        inference_writer.writerow(['sample_id'] + [ot for ot, otm in zip(args.output_tensors, args.tensor_maps_out) if len(otm.shape) == 1])
 
         while True:
             tensor_batch = next(generate_test)
