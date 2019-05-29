@@ -243,7 +243,7 @@ def subplot_comparison_scatters(scatters, prefix='./figures/', top_k=3):
             if col >= cols:
                 break
 
-    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'scatters_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
