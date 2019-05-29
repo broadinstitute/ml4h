@@ -127,31 +127,31 @@ def infer_multimodal_multitask(args):
                                                 args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
                                                 args.pool_z, args.padding, args.learning_rate)
     
-    with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv' ), mode='w') as inference_file:
+    with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv'), mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         inference_writer.writerow(['sample_id'] + [ot for ot, otm in zip(args.output_tensors, args.tensor_maps_out) if len(otm.shape) == 1])
 
         while True:
-            tensor_batch = next(generate_test)
-            tensor_path = tensor_batch[2][0]
+            input_data, true_label, tensor_path = next(generate_test)
             if tensor_path in tensor_paths_inferred:
-                print('Done inferring tensors. Looped over at tensor:', tensor_path)
+                logging.info(f"Done inferring values for {stats['count']} tensors. Looped over at tensor:{tensor_path}")
                 break
 
-            prediction = model.predict(tensor_batch[0])
+            prediction = model.predict(input_data)
             if len(args.tensor_maps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path).replace(TENSOR_EXT, '')] # extract sample id
-            for y,tm in zip(prediction, args.tensor_maps_out):
+            csv_row = [os.path.basename(tensor_path).replace(TENSOR_EXT, '')]  # extract sample id
+            for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1:
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
+                    csv_row.append(str(true_label[tm.output_name()][0][0]))
             inference_writer.writerow(csv_row)
 
             tensor_paths_inferred[tensor_path] = True
             stats['count'] += 1
-            if stats['count']% 500 == 0:
-                print('Wrote:', stats['count'], 'rows of inference.  Last tensor:', tensor_path)
+            if stats['count'] % 500 == 0:
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path}")
 
 
 def train_shallow_model(args):
