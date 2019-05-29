@@ -149,7 +149,7 @@ def infer_multimodal_multitask(args):
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1:
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    csv_row.append(str(true_label[tm.output_name()][0][0]))
+                    csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
             inference_writer.writerow(csv_row)
 
             tensor_paths_inferred[tensor_path[0]] = True
