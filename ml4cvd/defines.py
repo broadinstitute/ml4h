@@ -1,4 +1,4 @@
-EPS = 1e-7
+EPS = 1e-5
 
 DICOM_EXT = '.dcm'
 IMAGE_EXT = '.png'
