@@ -257,7 +257,7 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_in_pdf(stats: DefaultDict[str, List[float]],
+def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
                            output_file_name: str,
                            output_folder_path: str = './figures',
                            num_rows: int = 4,
@@ -275,7 +275,7 @@ def plot_histograms_in_pdf(stats: DefaultDict[str, List[float]],
     :param title_text_width: max number of characters that a plot title line will span; longer lines will be wrapped into multiple lines
     :return: None
     """
-    def _chunks(d: Dict[str, List[float]], size: int) -> Iterable[DefaultDict[str, List[float]]]:
+    def _chunks(d: Dict[str, Dict[str, List[float]]], size: int) -> Iterable[DefaultDict[str, List[float]]]:
         """
         :param d: dictionary to be chunked                                                                                               S
         :param size: size of chunks
