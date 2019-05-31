@@ -175,7 +175,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
 
 
 def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
-    embed_model = make_hidden_layer_model(base_model, [tm.input_name() for tm in tensor_maps_in], 'embed')
+    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, 'embed')
     tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', dependent_maps=tensor_maps_in, model=embed_model)
     tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=10.0)
     tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char)
@@ -237,14 +237,14 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_hidden_layer_model_from_file(parent_file: str, input_layer_names: List[str], output_layer_name: str, tensor_maps_out: List[TensorMap]):
+def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[TensorMap], output_layer_name: str, tensor_maps_out: List[TensorMap]):
     parent_model = load_model(parent_file, custom_objects=get_metric_dict(tensor_maps_out))
-    return make_hidden_layer_model(parent_model, input_layer_names, output_layer_name)
+    return make_hidden_layer_model(parent_model, tensor_maps_in, output_layer_name)
 
 
-def make_hidden_layer_model(parent_model: Model, input_layer_names: List[str], output_layer_name: str):
-    parent_inputs = [parent_model.get_layer(input_name).input for input_name in input_layer_names]
-    dummy_input = {input_name: np.zeros((1,) + parent_model.get_layer(input_name).input_shape[1:]) for input_name in input_layer_names}
+def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str):
+    parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+    dummy_input = {input_name: np.zeros((1,) + parent_model.get_layer(input_name).input_shape[1:]) for input_name in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=parent_model.get_layer(output_layer_name).output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input)
