@@ -524,6 +524,8 @@ class TensorMap(object):
         elif self.is_hidden_layer():
             input_dict = {}
             for tm in self.dependent_maps:
+                if tm.is_hidden_layer():
+                    continue
                 input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
             return self.model.predict(input_dict)
         elif self.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals

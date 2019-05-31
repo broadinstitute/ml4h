@@ -888,6 +888,9 @@ def get_model_inputs_outputs(model_files: List[str],
                 model_inputs_outputs[output_prefix].extend(char_maps_out)
                 tensor_maps_out.extend(char_maps_out)
                 got_tensor_maps_for_characters = True
+                logging.info(f"Doing char model dance:{[tm.input_name() for tm in tensor_maps_in]}")
+                logging.info(f"Doing char model dance out:{[tm.output_name() for tm in tensor_maps_out]}")
+
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
