@@ -261,7 +261,7 @@ def tsne_embedding(model, test_data, test_paths):
     w1 = d1.get_weights()
     for w in w1:
         print(w.shape)
-    embed_model = make_hidden_layer_model(model, 'input_categorical-phenotypes-965_categorical', layer_name)
+    embed_model = make_hidden_layer_model(model, ['input_categorical-phenotypes-965_categorical'], layer_name)
     embed_model.summary()
     print(list(test_data.keys()))
     x_embed = embed_model.predict(test_data)

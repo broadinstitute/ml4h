@@ -92,8 +92,9 @@ class TensorMap(object):
                  loss_weight=1.0,
                  channel_map=None,
                  hd5_override=None,
-                 dependent_map=None,
                  normalization=None,
+                 dependent_map=None,
+                 dependent_maps=None,
                  annotation_units=32):
         """TensorMap constructor
 
@@ -109,6 +110,7 @@ class TensorMap(object):
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
         :param hd5_override: Override default behavior of tensor_from_file
         :param dependent_map: TensorMap that depends on or is determined by this one
+        :param dependent_map: List of TensorMaps that depend on or are determined by this one
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         """
@@ -123,8 +125,9 @@ class TensorMap(object):
         self.loss_weight = loss_weight
         self.channel_map = channel_map
         self.hd5_override = hd5_override
-        self.dependent_map = dependent_map
         self.normalization = normalization
+        self.dependent_map = dependent_map
+        self.dependent_maps = dependent_maps
         self.annotation_units = annotation_units
         self.initialization = None  # Not yet implemented
 
@@ -275,7 +278,6 @@ class TensorMap(object):
                 np_tensor[idx] /= (self.normalization[k][STD_IDX] + EPS)
 
         return np_tensor
-
 
     def rescale(self, np_tensor):
         if self.normalization is None:
@@ -520,8 +522,10 @@ class TensorMap(object):
                 window_offset += 1
             return tensor
         elif self.is_hidden_layer():
-            dependents[self.dependent_map] = np.expand_dims(self.dependent_map.tensor_from_file(hd5), axis=0)
-            return self.model.predict(dependents[self.dependent_map])
+            input_dict = {}
+            for tm in self.dependent_maps:
+                input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
+            return self.model.predict(input_dict)
         elif self.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals
             dataset_key = np.random.choice(list(self.dependent_map.channel_map.keys()))
             one_hot = np.zeros(self.dependent_map.shape)
