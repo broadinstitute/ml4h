@@ -14,7 +14,9 @@ from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
+from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
+from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
@@ -676,6 +678,52 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     plt.savefig(figure_path)
     plt.clf()
     logging.info("Saved waves at: {}".format(figure_path))
+
+
+def plot_tsne(x_embed, label_dict, categorical_labels, continuous_labels, figure_path):
+    n_components = 2
+    max_rows = 24
+    perplexities = [16, 25, 95]
+    (fig, subplots) = plt.subplots(min(max_rows, len(label_dict)), len(perplexities), figsize=(40, max_rows * 12))
+    plt.rcParams.update({'font.size': 22})
+
+    p2y = {}
+    for i, perplexity in enumerate(perplexities):
+        tsne = manifold.TSNE(n_components=n_components, init='random', random_state=0, perplexity=perplexity)
+        p2y[perplexity] = tsne.fit_transform(x_embed)
+
+    j = -1
+    for k in label_dict:
+        j += 1
+        if j == max_rows:
+            break
+        if k in categorical_labels:
+            red = label_dict[k] == 1.0
+            green = label_dict[k] != 1.0
+        elif k in continuous_labels:
+            colors = label_dict[k]
+        print('process key:', k)
+        for i, perplexity in enumerate(perplexities):
+            ax = subplots[j, i]
+            ax.set_title(k)  # +", Perplexity=%d" % perplexity)
+            if k in categorical_labels:
+                ax.scatter(p2y[perplexity][green, 0], p2y[perplexity][green, 1], marker='.', c="g", alpha=0.5)
+                ax.scatter(p2y[perplexity][red, 0], p2y[perplexity][red, 1], marker='.', c="r", alpha=0.5)
+                ax.legend(['no_' + k, k], loc='lower left')
+            elif k in continuous_labels:
+                points = ax.scatter(p2y[perplexity][:, 0], p2y[perplexity][:, 1], marker='.', c=colors, alpha=0.5, cmap='jet')
+                if i == len(perplexities) - 1:
+                    fig.colorbar(points, ax=ax)
+
+            ax.xaxis.set_major_formatter(NullFormatter())
+            ax.yaxis.set_major_formatter(NullFormatter())
+            ax.axis('tight')
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+    logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
 def _hash_string_to_color(string):

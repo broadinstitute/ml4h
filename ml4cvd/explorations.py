@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.models import make_hidden_layer_model
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
@@ -252,6 +253,53 @@ def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray],
                 burn_in[0, window_size-j-1, ECG_CHAR_2_IDX[c]] = 1.0
             count += 1
         logging.info(f"Model text:{sentence}")
+
+
+def tsne_embedding(model, test_data, test_paths):
+    layer_name = 'embed'
+    d1 = model.get_layer(layer_name)
+    w1 = d1.get_weights()
+    for w in w1:
+        print(w.shape)
+    embed_model = make_hidden_layer_model(model, 'input_categorical-phenotypes-965_categorical', layer_name)
+    embed_model.summary()
+    print(list(test_data.keys()))
+    x_embed = embed_model.predict(test_data)
+    y_pred = model.predict(test_data)
+
+    categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0',
+                          'stroke', 'ischemic_stroke', 'heart_failure', 'death', 'diabetes_type_2', 'allergic_rhinitis', 'anxiety', 'asthma',
+                          'atrial_fibrillation_or_flutter', 'back_pain']
+    continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0', '1070_Time-spent-watching-television-TV_0_0',
+                         '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0', '21002_Weight_0_0']
+
+    label_dict = {k: np.zeros((len(test_paths))) for k in categorical_labels + continuous_labels}
+    to_delete = []
+    for i, tp in enumerate(test_paths):
+        hd5 = h5py.File(tp, 'r')
+        # print(list(hd5['continuous'].keys()))
+        for k in categorical_labels:
+            if k in hd5['categorical']:
+                label_dict[k][i] = 1
+            elif k in hd5 and hd5[k][0] == 1:
+                label_dict[k][i] = 1
+        for mk in continuous_labels:
+            for k in mk.split('|'):
+                if k in hd5['continuous']:
+                    if hd5['continuous'][k][0] < 0:
+                        to_delete.append(i)
+                    else:
+                        label_dict[mk][i] = hd5['continuous'][k][0]
+                elif k == mk:
+                    to_delete.append(i)
+
+    print(list(label_dict.keys()))
+    print(x_embed.shape)
+    print('Will delete:', len(to_delete), 'because they are missing or invalid continuous values.')
+    for k in label_dict:
+        label_dict[k] = np.delete(label_dict[k], to_delete)
+    x_embed = np.delete(x_embed, to_delete, axis=0)
+    print(x_embed.shape)
 
 
 def _sample_with_heat(preds, temperature=1.0):
