@@ -146,7 +146,8 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
     else:
         tensor_files = all_tensor_files
 
-    logging.info(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder}...")
+    num_tensor_files = len(tensor_files)
+    logging.info(f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}...")
 
     # Declare the container to hold {field_1: {sample_1: [values], sample_2: [values], field_2:...}}
     stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
@@ -157,7 +158,7 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
         if file_count % 1000 == 0:
             logging.debug(f"Processed {file_count} tensors for histograming.")
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
-    plot_histograms_in_pdf(stats, id, output_folder)
+    plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):

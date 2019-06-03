@@ -260,26 +260,28 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
 
 
 def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
+                           all_samples_count: int,
                            output_file_name: str,
                            output_folder_path: str = './figures',
                            num_rows: int = 4,
                            num_cols: int = 6,
                            num_bins: int = 50,
-                           title_text_width: int = 50) -> None:
+                           title_line_width: int = 50) -> None:
     """
     Plots histograms of field values given in 'stats' in pdf
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
+    :param all_samples_count: total number of samples fields were drawn from; samples don't necessarily have values for each field
     :param output_file_name: name of output file in pdf
     :param output_folder_path: directory that output file will be written to
     :param num_rows: number of histograms that will be plotted vertically per pdf page
     :param num_cols: number of histograms that will be plotted horizontally per pdf page
     :param num_bins: number of histogram bins
-    :param title_text_width: max number of characters that a plot title line will span; longer lines will be wrapped into multiple lines
+    :param title_line_width: max number of characters that a plot title line will span; longer lines will be wrapped into multiple lines
     :return: None
     """
     def _sorted_chunks(d: Dict[str, Dict[str, List[float]]], size: int) -> Iterable[DefaultDict[str, List[float]]]:
         """
-        :param d: dictionary to be chunked                                                                                               S
+        :param d: dictionary to be chunked
         :param size: size of chunks
         :return: iterator of dictionary chunks with keys alphabetically sorted
         """
@@ -298,10 +300,11 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
             for i, field in enumerate(stats_chunk):
                 field_values = reduce(operator.concat, stats_chunk[field].values())
                 field_sample_count = len(stats_chunk[field].keys())
+                missingness = int(100 * (all_samples_count - field_sample_count) / all_samples_count)
                 ax = plt.subplot(num_rows, num_cols, i + 1)
-                wrapped_title_text = '\n'.join(wrap(field, title_text_width))
-                title_stats = f"Mean: {np.mean(field_values):.2f} STD: {np.std(field_values):.2f} #Samples: {field_sample_count}"
-                ax.set_title(wrapped_title_text + "\n" + title_stats)
+                title_text = '\n'.join(wrap(field, title_line_width))
+                title_stats = '\n'.join(wrap(f"Mean:{np.mean(field_values):.2f} STD:{np.std(field_values):.2f} Missing:{missingness}% #Samples:{field_sample_count}", title_line_width))
+                ax.set_title(title_text + "\n" + title_stats)
                 ax.hist(field_values, bins=min(num_bins, len(set(field_values))))
             plt.tight_layout()
             pdf.savefig()
