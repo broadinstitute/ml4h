@@ -277,13 +277,13 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
     :param title_text_width: max number of characters that a plot title line will span; longer lines will be wrapped into multiple lines
     :return: None
     """
-    def _chunks(d: Dict[str, Dict[str, List[float]]], size: int) -> Iterable[DefaultDict[str, List[float]]]:
+    def _sorted_chunks(d: Dict[str, Dict[str, List[float]]], size: int) -> Iterable[DefaultDict[str, List[float]]]:
         """
         :param d: dictionary to be chunked                                                                                               S
         :param size: size of chunks
-        :return: iterator of dictionary chunks
+        :return: iterator of dictionary chunks with keys alphabetically sorted
         """
-        it = iter(d)
+        it = iter(dict(sorted(d.items())))
         for i in range(0, len(d), size):
             yield {k: d[k] for k in islice(it, size)}
 
@@ -293,7 +293,7 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
 
     figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
     with PdfPages(figure_path) as pdf:
-        for stats_chunk in _chunks(stats, num_rows * num_cols):
+        for stats_chunk in _sorted_chunks(stats, num_rows * num_cols):
             plt.subplots(num_rows, num_cols)
             for i, field in enumerate(stats_chunk):
                 field_values = reduce(operator.concat, stats_chunk[field].values())
