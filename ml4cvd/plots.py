@@ -9,7 +9,7 @@ import hashlib
 from textwrap import wrap
 from functools import reduce
 from itertools import islice
-from typing import Iterable, DefaultDict, Dict, List
+from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
 
 import numpy as np
