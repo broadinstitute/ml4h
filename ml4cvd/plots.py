@@ -1,10 +1,12 @@
 # plots.py
 
 # Imports
+import operator
 import os
 import math
 import logging
 import hashlib
+from functools import reduce
 from itertools import islice
 from typing import Iterable, DefaultDict, Dict, List
 
@@ -293,11 +295,12 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
     with PdfPages(figure_path) as pdf:
         for stats_chunk in _chunks(stats, num_rows * num_cols):
             plt.subplots(num_rows, num_cols)
-            for i, group in enumerate(stats_chunk):
+            for i, field in enumerate(stats_chunk):
+                field_values = reduce(operator.concat, stats_chunk[field].values())
                 ax = plt.subplot(num_rows, num_cols, i + 1)
-                title_text = '\n'.join(wrap(group, title_text_width))
-                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(stats[group]), np.std(stats[group])))
-                ax.hist(stats[group], bins=min(num_bins, len(set(stats[group]))))
+                title_text = '\n'.join(wrap(field, title_text_width))
+                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(field_values), np.std(field_values)))
+                ax.hist(field_values, bins=min(num_bins, len(set(field_values))))
             plt.tight_layout()
             pdf.savefig()
 
