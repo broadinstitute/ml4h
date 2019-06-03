@@ -297,9 +297,11 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
             plt.subplots(num_rows, num_cols)
             for i, field in enumerate(stats_chunk):
                 field_values = reduce(operator.concat, stats_chunk[field].values())
+                field_sample_count = len(stats_chunk[field].keys())
                 ax = plt.subplot(num_rows, num_cols, i + 1)
-                title_text = '\n'.join(wrap(field, title_text_width))
-                ax.set_title(title_text + '\n Mean:%0.3f STD:%0.3f' % (np.mean(field_values), np.std(field_values)))
+                wrapped_title_text = '\n'.join(wrap(field, title_text_width))
+                title_stats = f"Mean: {np.mean(field_values):.2f} STD: {np.std(field_values):.2f} #Samples: {field_sample_count}"
+                ax.set_title(wrapped_title_text + "\n" + title_stats)
                 ax.hist(field_values, bins=min(num_bins, len(set(field_values))))
             plt.tight_layout()
             pdf.savefig()
