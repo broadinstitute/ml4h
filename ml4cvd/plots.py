@@ -399,6 +399,7 @@ def plot_heatmap_in_pdf(stats: Dict[str, Dict[str, List[float]]],
                         all_samples_count: int,
                         output_file_name: str,
                         output_folder_path: str = './figures') -> None:
+
     """
     Plots histograms of field values given in 'stats' in pdf
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
