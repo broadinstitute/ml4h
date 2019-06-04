@@ -276,7 +276,9 @@ def make_multimodal_to_multilabel_model(model_file: str,
                                         pool_y: int,
                                         pool_z: int,
                                         padding: str,
-                                        learning_rate: float) -> Model:
+                                        learning_rate: float,
+                                        u_reconnect: bool=True,
+                                        ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
 	This model factory can be used to make networks for classification, regression, and segmentation
@@ -391,10 +393,11 @@ def make_multimodal_to_multilabel_model(model_file: str,
                     last_convolution3d = layers.concatenate([up_conv(upsampler(last_convolution3d)), x])
                 else:
                     last_convolution3d = upsampler(last_convolution3d)
-            #flat_activation = Flatten()(last_convolution3d)
-            #multimodal_activation = layers.concatenate([multimodal_activation, flat_activation])
             conv_label = Conv3D(tm.shape[channel_axis], (1, 1, 1), activation="linear")(last_convolution3d)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
+            if u_reconnect:
+                flat_activation = Flatten()(conv_label)
+                multimodal_activation = layers.concatenate([multimodal_activation, flat_activation])
         elif len(tm.shape) == 3:
             for x, up_conv, upsampler in reversed(upsamplers):
                 if u_connect:

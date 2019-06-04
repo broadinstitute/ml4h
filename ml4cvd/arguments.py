@@ -170,6 +170,8 @@ def parse_args():
         help='Number of convolutional layers within a block.')
     parser.add_argument('--u_connect', default=False, action='store_true',
         help='Connect early convolutional layers to later ones of the same size, as in U-Net.')
+    parser.add_argument('--u_reconnect', default=False, action='store_true',
+        help='Connect last U-Net segmentation convolutions back into the dense model.')
     parser.add_argument('--aligned_dimension', default=16, type=int,
         help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument('--max_parameters', default=9000000, type=int,
