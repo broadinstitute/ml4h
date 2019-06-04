@@ -391,8 +391,8 @@ def make_multimodal_to_multilabel_model(model_file: str,
                     last_convolution3d = layers.concatenate([up_conv(upsampler(last_convolution3d)), x])
                 else:
                     last_convolution3d = upsampler(last_convolution3d)
-                flat_activation = Flatten()(last_convolution3d)
-                multimodal_activation = layers.concatenate([multimodal_activation, flat_activation])
+            #flat_activation = Flatten()(last_convolution3d)
+            #multimodal_activation = layers.concatenate([multimodal_activation, flat_activation])
             conv_label = Conv3D(tm.shape[channel_axis], (1, 1, 1), activation="linear")(last_convolution3d)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif len(tm.shape) == 3:
