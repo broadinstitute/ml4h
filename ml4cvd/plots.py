@@ -395,6 +395,25 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
+def plot_heatmap_in_pdf(stats: Dict[str, Dict[str, List[float]]],
+                        all_samples_count: int,
+                        output_file_name: str,
+                        output_folder_path: str = './figures') -> None:
+    """
+    Plots histograms of field values given in 'stats' in pdf
+    :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
+    :param all_samples_count: total number of samples fields were drawn from; samples don't necessarily have values for each field
+    :param output_file_name: name of output file in pdf
+    :param output_folder_path: directory that output file will be written to
+    :return: None
+    """
+    figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
+    with PdfPages(figure_path) as pdf:
+        pdf.savefig()
+
+    logging.info(f"Saved heatmap at: {figure_path}")
+
+
 def plot_ecg(data, label, prefix='./figures/'):
     lw = 3
     matplotlib.rcParams.update({'font.size': 36})

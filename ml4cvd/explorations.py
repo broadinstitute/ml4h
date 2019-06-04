@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 
@@ -159,6 +159,44 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
             logging.debug(f"Processed {file_count} tensors for histograming.")
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
     plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
+
+
+def plot_heatmap_from_tensor_files_in_pdf(id: str,
+                                          tensor_folder: str,
+                                          output_folder: str,
+                                          num_samples: int = None) -> None:
+    """
+    :param id: name for the plotting run
+    :param tensor_folder: directory with tensor files to plot histograms from
+    :param output_folder: folder containing the output plot
+    :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
+    """
+
+    if not os.path.exists(tensor_folder):
+        raise ValueError('Source directory does not exist: ', tensor_folder)
+    all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
+    if num_samples is not None:
+        if len(all_tensor_files) < num_samples:
+            logging.warning(f"{num_samples} was specified as number of samples to use but there are only "
+                            f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...")
+            num_samples = len(all_tensor_files)
+        tensor_files = np.random.choice(all_tensor_files, num_samples, replace=False)
+    else:
+        tensor_files = all_tensor_files
+
+    num_tensor_files = len(tensor_files)
+    logging.info(f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}...")
+
+    # Declare the container to hold {field_1: {sample_1: [values], sample_2: [values], field_2:...}}
+    stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    file_count = 0
+    for tensor_file in tensor_files:
+        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
+        file_count += 1
+        if file_count % 1000 == 0:
+            logging.debug(f"Processed {file_count} tensors for histograming.")
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
+    plot_heatmap_in_pdf(stats, num_tensor_files, id, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
