@@ -395,8 +395,8 @@ def make_multimodal_to_multilabel_model(model_file: str,
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
             sx = _conv_block3d(conv_label, [], conv_layers, max_pools, res_layers, activation, conv_bn,
                                (conv_x, conv_y, conv_z), conv_dropout, padding)
-            # sx = _dense_block3d(sx, [], dense_blocks, block_size, activation, conv_bn, (conv_x, conv_y, conv_z),
-            #                     (pool_x, pool_y, pool_z), conv_dropout, padding)
+            sx = _dense_block3d(sx, [], dense_blocks, block_size, activation, conv_bn, (conv_x, conv_y, conv_z),
+                                (pool_x, pool_y, pool_z), conv_dropout, padding)
             flat_activation = Flatten()(sx)
             for hidden_units in dense_layers:
                 flat_activation = Dense(units=hidden_units, activation=activation)(flat_activation)
