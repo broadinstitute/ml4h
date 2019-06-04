@@ -275,7 +275,6 @@ def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                 field_value = 0.5
             else:
                 field_value = value_in_tensor_file
-
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
             if len(dataset_name_parts) == 4:  # e.g. /continuous/1488_Tea-intake_0_0
                 field_id = dataset_name_parts[0]
@@ -283,12 +282,9 @@ def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
                 stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
-            elif len(dataset_name_parts) == 1:  # e.g. /continuous/VentricularRate
+            else:  # e.g. /continuous/VentricularRate
                 field_meaning = dataset_name_parts[0]
                 stats[field_meaning][sample_id].append(field_value)
-            else:
-                raise ValueError(f"Dataset name '{obj.name}' is not in format "
-                                 f"<field_id>_<field_meaning>_<instance>_<array_idx> or <field_meaning>")
     tensor_file_path = os.path.join(tensor_folder, tensor_file)
     sample_id = os.path.splitext(tensor_file)[0]
     with h5py.File(tensor_file_path, 'r') as hd5_handle:
