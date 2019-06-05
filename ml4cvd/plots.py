@@ -414,13 +414,20 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     #
     # logging.info(f"Saved heatmap at: {figure_path}")
 
-    field_pairs = combinations(stats.keys(), 2)
+    fields = stats.keys()
+    num_fields = len(fields)
+    field_pairs = combinations(fields, 2)
     table_rows: DefaultDict[Tuple[str, str, int], float] = defaultdict(float)
+    logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
+    processed_field_pair_count = 0
     for field1, field2 in field_pairs:
         common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
         num_common_samples = len(common_samples)
         # print(f"field1: {field1} -- field2: {field2} -- common_samples: {common_samples}")
-        if num_common_samples > 0:
+        processed_field_pair_count += 1
+        if processed_field_pair_count % 500 == 0:
+            logging.debug(f"Processed {processed_field_pair_count} field pairs.")
+        if num_common_samples > 20:
             # TODO: Check if values per same sample are in the right order for different fields
             field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
             field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
