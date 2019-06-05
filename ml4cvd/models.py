@@ -517,6 +517,56 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~ Predicting ~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# def big_batch_from_minibatch_generator(model, tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
+#     """Collect predicitons on minibatches into bigger batches
+#
+#     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
+#
+#     Arguments:
+#         model: the model to predict with
+#         tensor_maps_in: list of TensorMaps that are input names to a model
+#         tensor_maps_out: list of TensorMaps that are output from a model
+#         generator: TensorGenerator of minibatches
+#         minibatches: number of times to call generator and collect a minibatch
+#         keep_paths: also return the list of tensor files loaded
+#
+#     Returns:
+#         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
+#     """
+#     input_tensors = {tm.input_name(): [] for tm in tensor_maps_in}
+#     output_tensors = {tm.output_name(): [] for tm in tensor_maps_out}
+#     predictions = {tm.output_name(): [] for tm in tensor_maps_out}
+#     paths = []
+#
+#     for _ in range(minibatches):
+#         next_batch = next(generator)
+#         for key in input_tensors:
+#             input_tensors[key] = next_batch[0][key]
+#
+#         y_pred = model.predict(input_tensors)
+#         for y, tm in zip(y_pred, tensor_maps_out):
+#             if len(tensor_maps_out) == 1:
+#                 y = y_pred
+#             predictions[tm.output_name()].extend(y)
+#             output_tensors[tm.output_name()].extend(np.copy(next_batch[1][key]))
+#
+#         if keep_paths:
+#             paths.extend(next_batch[2])
+#     for key in input_tensors:
+#         input_tensors[key] = np.array(input_tensors[key])
+#         logging.info("Input tensor '{}' has shape {}".format(key, input_tensors[key].shape))
+#     for key in output_tensors:
+#         output_tensors[key] = np.array(output_tensors[key])
+#         logging.info("Output tensor '{}' has shape {}".format(key, output_tensors[key].shape))
+#
+#     if keep_paths:
+#         return input_tensors, output_tensors, paths
+#     else:
+#         return input_tensors, output_tensors
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Model Builders ~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def _conv_block3d(x: K.placeholder,
