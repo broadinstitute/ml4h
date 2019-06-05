@@ -44,6 +44,8 @@ def run(args):
             tsne_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
+        elif 'compare_scalar' == args.mode:
+            compare_multimodal_scalar_task_models(args)
         elif 'segmentation_to_pngs' == args.mode:
             segmentation_to_pngs(args)
         elif 'plot_while_training' == args.mode:
@@ -130,6 +132,15 @@ def compare_multimodal_multitask_models(args):
     common_outputs = _get_common_outputs(models_inputs_outputs, output_prefix)
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, input_prefix, output_prefix)
     _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
+
+
+def compare_multimodal_scalar_task_models(args):
+    tensor_paths = _get_tensor_files(args.tensors)
+    models_io = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+    generator = TensorGenerator(args.batch_size, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    outs = _get_common_outputs(models_io, "output")
+    predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generator, args.test_steps, outs, "input", "output")
+    _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
 
 
 def infer_multimodal_multitask(args):
@@ -377,6 +388,58 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
                     predictions[tm][model_name] = y_pred[i]
 
     return predictions
+
+
+def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, steps, outputs, input_prefix, output_prefix):
+    """Makes multi-modal predictions for a given number of models.
+
+    Returns:
+        dict: The nested dictionary of predicted values.
+
+            {
+                'tensor_map_1':
+                    {
+                        'model_1': [[value1, value2], [...]],
+                        'model_2': [[value3, value4], [...]]
+                    },
+                'tensor_map_2':
+                    {
+                        'model_2': [[value5, value6], [...]],
+                        'model_3': [[value7, value8], [...]]
+                    }
+            }
+    """
+    predictions = defaultdict(dict)
+    test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
+    test_paths = []
+    for model_file in models_inputs_outputs.keys():
+        args.model_file = model_file
+        args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
+        args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
+
+        model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                    args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
+                                                    args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
+                                                    args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
+                                                    args.pool_y, args.pool_z, args.padding, args.learning_rate)
+
+        model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        predictions[tm][model_name] = []
+        for _ in range(steps):
+            input_data, labels, paths = next(generator)
+            # We can feed 'model.predict()' the entire input data because it knows what subset to use
+            y_prediction = model.predict(input_data)
+            test_paths.extend(paths)
+            for i, tm in enumerate(args.tensor_maps_out):
+                if tm in outputs and tm.output_name() in test_labels:
+                    test_labels[tm.output_name()].extend(labels)
+                    if len(args.tensor_maps_out) == 1:
+                        predictions[tm][model_name].extend(y_prediction)
+                    else:
+                        predictions[tm][model_name].extend(y_prediction[i])
+
+    return predictions, test_labels, test_paths
+
 
 
 def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
