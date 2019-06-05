@@ -19,7 +19,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
+from ml4cvd.models import make_hidden_layer_model
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
+
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -680,7 +682,19 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     logging.info("Saved waves at: {}".format(figure_path))
 
 
-def plot_tsne(x_embed, label_dict, categorical_labels, continuous_labels, figure_path):
+def plot_tsne(model, batch_size, test_data, test_paths, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
+    print(list(label_dict.keys()))
+    print(len(test_paths))
+    layer_name = 'embed'
+    d1 = model.get_layer(layer_name)
+    w1 = d1.get_weights()
+    for w in w1:
+        print(w.shape)
+    embed_model = make_hidden_layer_model(model, args.tensor_maps_in, layer_name)
+    embed_model.summary()
+    print(list(test_data.keys()))
+    x_embed = embed_model.predict(test_data, batch_size=batch_size)
+
     n_components = 2
     max_rows = 24
     perplexities = [16, 25, 95]
@@ -697,7 +711,7 @@ def plot_tsne(x_embed, label_dict, categorical_labels, continuous_labels, figure
         j += 1
         if j == max_rows:
             break
-        if k in categorical_labels:
+        if k in categorical_labels + gene_labels:
             red = label_dict[k] == 1.0
             green = label_dict[k] != 1.0
         elif k in continuous_labels:
@@ -706,7 +720,7 @@ def plot_tsne(x_embed, label_dict, categorical_labels, continuous_labels, figure
         for i, perplexity in enumerate(perplexities):
             ax = subplots[j, i]
             ax.set_title(k)  # +", Perplexity=%d" % perplexity)
-            if k in categorical_labels:
+            if k in categorical_labels+gene_labels:
                 ax.scatter(p2y[perplexity][green, 0], p2y[perplexity][green, 1], marker='.', c="g", alpha=0.5)
                 ax.scatter(p2y[perplexity][red, 0], p2y[perplexity][red, 1], marker='.', c="r", alpha=0.5)
                 ax.legend(['no_' + k, k], loc='lower left')

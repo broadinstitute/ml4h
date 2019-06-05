@@ -17,8 +17,8 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tensors_to_label_dictionary
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 
 
 def run(args):
@@ -40,6 +40,8 @@ def run(args):
             compare_multimodal_multitask_models(args)
         elif 'infer' == args.mode:
             infer_multimodal_multitask(args)
+        elif 'tsne' == args.mode:
+            tsne_multimodal_multitask(args)
         elif 'segmentation_to_pngs' == args.mode:
             segmentation_to_pngs(args)
         elif 'plot_while_training' == args.mode:
@@ -159,6 +161,27 @@ def infer_multimodal_multitask(args):
             stats['count'] += 1
             if stats['count'] % 500 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+
+
+def tsne_multimodal_multitask(args):
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
+                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
+                                                                                       args.icd_csv, args.balance_by_icds)
+
+    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
+                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
+                                                args.pool_z, args.padding, args.learning_rate)
+
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
+    continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
+                         '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
+                         '21002_Weight_0_0']
+
+    plot_tsne(model, args.batch_size, test_data, tensors_to_label_dictionary(test_paths), categorical_labels, continuous_labels, os.path.join(args.output_folder, 'tsne'+args.id+IMAGE_EXT)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, test_paths)
 
 
 def train_shallow_model(args):
