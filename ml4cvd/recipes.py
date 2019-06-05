@@ -432,10 +432,10 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         test_paths.extend(paths)
         for tl in test_labels:
             test_labels[tl].extend(np.copy(labels[tl]))
-            
+
         for model_name in models:
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
-            y_prediction = model.predict(input_data)
+            y_prediction = models[model_name].predict(input_data)
 
             for i, tm in enumerate(args.tensor_maps_out):
                 if tm in outputs and tm.output_name() in test_labels:
