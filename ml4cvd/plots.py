@@ -685,7 +685,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     n_components = 2
     rows = min(24, len(label_dict))
     perplexities = [16, 25, 95]
-    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*8, rows*8))
+    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     plt.rcParams.update({'font.size': 22})
 
     p2y = {}
@@ -696,7 +696,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     j = -1
     for k in label_dict:
         j += 1
-        if j == max_rows:
+        if j == rows:
             break
         if k in categorical_labels + gene_labels:
             red = label_dict[k] == 1.0
