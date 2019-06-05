@@ -431,10 +431,10 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
             y_prediction = model.predict(input_data)
             test_paths.extend(paths)
             for i, tm in enumerate(args.tensor_maps_out):
-                if j == 0:
-                    predictions[tm][model_name] = []
                 if tm in outputs and tm.output_name() in test_labels:
                     test_labels[tm.output_name()].extend(np.copy(labels[tm.output_name()]))
+                    if j == 0:
+                        predictions[tm][model_name] = []
                     if len(args.tensor_maps_out) == 1:
                         predictions[tm][model_name].extend(np.copy(y_prediction))
                     else:
