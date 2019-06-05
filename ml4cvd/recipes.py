@@ -42,6 +42,8 @@ def run(args):
             infer_multimodal_multitask(args)
         elif 'tsne' == args.mode:
             tsne_multimodal_multitask(args)
+        elif 'test_scalar' == args.mode:
+            test_multimodal_scalar_tasks(args)
         elif 'segmentation_to_pngs' == args.mode:
             segmentation_to_pngs(args)
         elif 'plot_while_training' == args.mode:
@@ -102,6 +104,19 @@ def test_multimodal_multitask(args):
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, paths)
   
+
+def test_multimodal_scalar_tasks(args):
+    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                             args.valid_ratio, args.test_ratio, args.icd_csv, args.balance_by_icds)
+
+    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
+                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
+                                                args.pool_z, args.padding, args.learning_rate)
+
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.output_folder, args.id)
+
 
 def compare_multimodal_multitask_models(args):
     input_prefix = "input"
@@ -265,6 +280,39 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
         if len(tensor_maps_out) == 1:
             y = y_pred
         performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+
+    if len(rocs) > 1:
+        subplot_rocs(rocs, plot_path)
+    if len(scatters) > 1:
+        subplot_scatters(scatters, plot_path)
+
+    return performance_metrics
+
+
+def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, output_folder, run_id):
+    predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
+    test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
+    test_paths = []
+    for i in range(steps):
+        batch_data, batch_labels, batch_paths = next(test_generator)
+        y_pred = model.predict(batch_data)
+        test_paths.extend(batch_paths)
+        for y, tm in zip(y_pred, tensor_maps_out):
+            if len(tensor_maps_out) == 1:
+                y = y_pred
+            if tm.output_name() in test_labels:
+                test_labels[tm.output_name()].extend(batch_labels[tm.output_name()])
+                predictions[tm.output_name()].extend(y)
+
+    plot_path = os.path.join(output_folder, run_id)
+    performance_metrics = {}
+    scatters = []
+    rocs = []
+    for tm in tensor_maps_out:
+        if tm.output_name() in test_labels:
+            py = predictions[tm.output_name()]
+            ty = test_labels[tm.output_name()]
+            performance_metrics.update(evaluate_predictions(tm, py, ty, None, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
