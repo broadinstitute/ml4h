@@ -681,7 +681,7 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     logging.info("Saved waves at: {}".format(figure_path))
 
 
-def plot_tsne(categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
+def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
     n_components = 2
     max_rows = 24
     perplexities = [16, 25, 95]

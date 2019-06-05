@@ -181,10 +181,10 @@ def tsne_multimodal_multitask(args):
                          '21002_Weight_0_0']
     gene_labels = []
     samples2genes = {}
-    embed_model_predict(model, args.tensor_maps_in, 'embed', test_data, args.batch_size)
+    x_embed = embed_model_predict(model, args.tensor_maps_in, 'embed', test_data, args.batch_size)
     plot_path = os.path.join(args.output_folder, 'tsne'+args.id+IMAGE_EXT)
     label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
-    plot_tsne(categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
+    plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, test_paths)
 
 
