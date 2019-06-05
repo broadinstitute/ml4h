@@ -19,7 +19,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
-from ml4cvd.models import make_hidden_layer_model
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 
@@ -682,19 +681,7 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     logging.info("Saved waves at: {}".format(figure_path))
 
 
-def plot_tsne(model, batch_size, test_data, test_paths, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
-    print(list(label_dict.keys()))
-    print(len(test_paths))
-    layer_name = 'embed'
-    d1 = model.get_layer(layer_name)
-    w1 = d1.get_weights()
-    for w in w1:
-        print(w.shape)
-    embed_model = make_hidden_layer_model(model, args.tensor_maps_in, layer_name)
-    embed_model.summary()
-    print(list(test_data.keys()))
-    x_embed = embed_model.predict(test_data, batch_size=batch_size)
-
+def plot_tsne(categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
     n_components = 2
     max_rows = 24
     perplexities = [16, 25, 95]

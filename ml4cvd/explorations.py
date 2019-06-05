@@ -255,19 +255,10 @@ def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray],
         logging.info(f"Model text:{sentence}")
 
 
-def tensors_to_label_dictionary(test_paths):
-
-    categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
-    continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
-                         '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
-                         '21002_Weight_0_0']
-
-    gene_labels = []
-    samples2genes = {}
+def tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths):
     label_dict = {k: np.zeros((len(test_paths))) for k in categorical_labels + continuous_labels + gene_labels}
     for i, tp in enumerate(test_paths):
         hd5 = h5py.File(tp, 'r')
-        # print(list(hd5['continuous'].keys()))
         for k in categorical_labels:
             if k in hd5['categorical']:
                 label_dict[k][i] = 1

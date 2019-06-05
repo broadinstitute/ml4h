@@ -566,6 +566,17 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
 #     else:
 #         return input_tensors, output_tensors
 
+def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
+    d1 = model.get_layer(embed_layer)
+    w1 = d1.get_weights()
+    for w in w1:
+        print(w.shape)
+    embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
+    embed_model.summary()
+    print(list(test_data.keys()))
+    return embed_model.predict(test_data, batch_size=batch_size)
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Model Builders ~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
