@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap_in_pdf
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, tabulate_correlations
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 
@@ -161,10 +161,10 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
     plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
 
-def plot_heatmap_from_tensor_files_in_pdf(id: str,
-                                          tensor_folder: str,
-                                          output_folder: str,
-                                          num_samples: int = None) -> None:
+def tabulate_correlations_from_tensor_files(id: str,
+                                            tensor_folder: str,
+                                            output_folder: str,
+                                            num_samples: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -196,7 +196,7 @@ def plot_heatmap_from_tensor_files_in_pdf(id: str,
         if file_count % 1000 == 0:
             logging.debug(f"Processed {file_count} tensors for histograming.")
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
-    plot_heatmap_in_pdf(stats, num_tensor_files, id, output_folder)
+    tabulate_correlations(stats, num_tensor_files, id, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):

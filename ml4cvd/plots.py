@@ -8,7 +8,7 @@ import logging
 import hashlib
 from textwrap import wrap
 from functools import reduce
-from itertools import islice
+from itertools import combinations, islice
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
 
@@ -395,10 +395,10 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_heatmap_in_pdf(stats: Dict[str, Dict[str, List[float]]],
-                        all_samples_count: int,
-                        output_file_name: str,
-                        output_folder_path: str = './figures') -> None:
+def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
+                          all_samples_count: int,
+                          output_file_name: str,
+                          output_folder_path: str = './figures') -> None:
 
     """
     Plots histograms of field values given in 'stats' in pdf
@@ -408,11 +408,30 @@ def plot_heatmap_in_pdf(stats: Dict[str, Dict[str, List[float]]],
     :param output_folder_path: directory that output file will be written to
     :return: None
     """
-    figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
-    with PdfPages(figure_path) as pdf:
-        pdf.savefig()
+    # figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
+    # with PdfPages(figure_path) as pdf:
+    #     pdf.savefig()
+    #
+    # logging.info(f"Saved heatmap at: {figure_path}")
 
-    logging.info(f"Saved heatmap at: {figure_path}")
+    field_pairs = combinations(stats.keys(), 2)
+    table_rows: DefaultDict[Tuple[str, str], float] = defaultdict(float)
+    for field1, field2 in field_pairs:
+        common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
+        # print(f"field1: {field1} -- field2: {field2} -- common_samples: {common_samples}")
+        if len(common_samples) > 0:
+            # TODO: Check if values per same sample are in the right order for different fields
+            field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
+            field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
+            if len(field1_values) == len(field2_values):
+                table_rows[(field1, field2)] = np.corrcoef(field1_values, field2_values)[1, 0]
+        else:
+            continue
+    # TODO: Why do they end up not getting sorted as expected??
+    sorted_table_rows = sorted(table_rows.items(), key=lambda row: row[1], reverse=True)
+    print(f"Total number of correlations: {len(sorted_table_rows)}")
+    for k, v in sorted_table_rows[0:500]:
+        print(f"{k}: {v}")
 
 
 def plot_ecg(data, label, prefix='./figures/'):

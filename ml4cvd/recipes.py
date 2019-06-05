@@ -18,8 +18,9 @@ from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, plot_histograms_from_tensor_files_in_pdf, \
-    plot_while_learning, find_tensors, plot_heatmap_from_tensor_files_in_pdf
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters
+    plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, \
+    subplot_scatters, subplot_comparison_scatters
 
 
 def run(args):
@@ -51,8 +52,8 @@ def run(args):
             ecg_dates(args.tensors, args.output_folder, args.id)
         elif 'plot_histograms' == args.mode:
             plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.num_samples)
-        elif 'plot_heatmap' == args.mode:
-            plot_heatmap_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.num_samples)
+        elif 'tabulate_correlations' == args.mode:
+            tabulate_correlations_from_tensor_files(args.id, args.tensors, args.output_folder, args.num_samples)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
         elif 'train_char' == args.mode:
