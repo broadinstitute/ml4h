@@ -591,7 +591,7 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
             if col >= cols:
                 break
 
-    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'rocs_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
