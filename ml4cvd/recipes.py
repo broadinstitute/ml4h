@@ -10,7 +10,7 @@ from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4cvd.arguments import parse_args
-from ml4cvd.defines import TENSOR_EXT
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT
 from ml4cvd.tensor_writer_ukbb import write_tensors
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
