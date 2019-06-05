@@ -441,9 +441,12 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                         predictions[tm][model_name].extend(np.copy(y_prediction[i]))
 
     for tm in predictions:
+        print(tm.output_name(), 'labels', len(test_labels[tm.output_name()]))
         test_labels[tm.output_name()] = np.array(test_labels[tm.output_name()])
         for m in predictions[tm]:
+            print(tm.output_name(), ' model', m,  len(predictions[tm][m]))
             predictions[tm][m] = np.array(predictions[tm][m])
+
     return predictions, test_labels, test_paths
 
 
