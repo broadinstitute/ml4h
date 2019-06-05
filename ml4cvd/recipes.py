@@ -447,11 +447,12 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     return predictions, test_labels, test_paths
 
 
-
 def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
     rocs = []
     scatters = []
     for tm in args.tensor_maps_out:
+        if tm not in predictions:
+            continue
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
 
