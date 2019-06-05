@@ -20,7 +20,7 @@ from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
-
+from ml4cvd.TensorMap import TensorMap
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -32,46 +32,62 @@ COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
 
 
-def evaluate_predictions(tm, y, test_labels, test_data, title, folder, test_paths=None, max_melt=5000, rocs=[], scatters=[]):
+def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str]=None,
+                         max_melt: int=5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]]=[],
+                         scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]]=[]) -> Dict[str, float]:
+    """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
+    Accumulates data in the rocs and scatters lists to facilitate subplotting.
+
+    :param tm: The TensorMap predictions to evaluate
+    :param y_predictions: The predictions
+    :param y_truth: The truth
+    :param title: A title for the plots
+    :param folder: The folder to save the plots at
+    :param test_paths: The tensor paths that were predicted
+    :param max_melt: For multi-dimensional prediction the maximum number of prediction to allow in the flattened array
+    :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
+    :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
+    :return: Dictionary of performance metrics with string keys for labels and float values
+    """
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
-        logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y.shape[0]))
-        logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(test_labels[tm.output_name()], axis=0), np.sum(y, axis=0)))
-        performance_metrics.update(plot_roc_per_class(y, test_labels[tm.output_name()], tm.channel_map, title, folder))
-        rocs.append((y, test_labels[tm.output_name()], tm.channel_map))
+        logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y_predictions.shape[0]))
+        logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(y_truth, axis=0), np.sum(y_predictions, axis=0)))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
-        melt_shape = (y.shape[0]*y.shape[1], y.shape[2])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
+        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
+        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical() and len(tm.shape) == 3:
-        melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
+        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
+        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
-        melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
-        y = y.reshape(melt_shape)[:max_melt]
-        y_truth = test_labels[tm.output_name()].reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y, y_truth, tm.channel_map, title, folder))
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
+        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
+        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
-        logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y.shape, test_labels[tm.output_name()].shape))
+        logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y_predictions.shape, y_truth.shape))
     elif len(tm.shape) > 1:
-        prediction_flat = tm.rescale(y).flatten()
-        truth_flat = tm.rescale(test_labels[tm.output_name()]).flatten()
+        prediction_flat = tm.rescale(y_predictions).flatten()
+        truth_flat = tm.rescale(y_truth[tm.output_name()]).flatten()
         performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
-        performance_metrics.update(plot_scatter(tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, prefix=folder, paths=test_paths))
-        scatters.append((tm.rescale(y), tm.rescale(test_labels[tm.output_name()]), title, test_paths))
+        performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
+        scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
-    if tm.name == 'median':
-        plot_waves(y, test_labels[tm.output_name()], 'median_waves_' + title, folder)
-        plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
+    # if tm.name == 'median':
+    #     plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
+    #     plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
 
     return performance_metrics
 

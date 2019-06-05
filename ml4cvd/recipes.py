@@ -279,7 +279,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
     for y, tm in zip(y_pred, tensor_maps_out):
         if len(tensor_maps_out) == 1:
             y = y_pred
-        performance_metrics.update(evaluate_predictions(tm, y, test_labels, test_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+        y_truth = test_labels[tm.output_name()]
+        performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
@@ -310,9 +311,9 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     rocs = []
     for tm in tensor_maps_out:
         if tm.output_name() in test_labels:
-            py = predictions[tm.output_name()]
-            ty = test_labels[tm.output_name()]
-            performance_metrics.update(evaluate_predictions(tm, py, ty, None, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+            y_predict = predictions[tm.output_name()]
+            y_truth = test_labels[tm.output_name()]
+            performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
