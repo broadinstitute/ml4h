@@ -708,11 +708,11 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             ax = subplots[j, i]
             ax.set_title(k)  # +", Perplexity=%d" % perplexity)
             if k in categorical_labels+gene_labels:
-                ax.scatter(p2y[perplexity][green, 0], p2y[perplexity][green, 1], marker='.', c="g", alpha=0.5)
-                ax.scatter(p2y[perplexity][red, 0], p2y[perplexity][red, 1], marker='.', c="r", alpha=0.5)
+                ax.scatter(p2y[perplexity][green, 0], p2y[perplexity][green, 1], c="g", alpha=0.5)
+                ax.scatter(p2y[perplexity][red, 0], p2y[perplexity][red, 1], c="r", alpha=0.5)
                 ax.legend(['no_' + k, k], loc='lower left')
             elif k in continuous_labels:
-                points = ax.scatter(p2y[perplexity][:, 0], p2y[perplexity][:, 1], marker='.', c=colors, alpha=0.5, cmap='jet')
+                points = ax.scatter(p2y[perplexity][:, 0], p2y[perplexity][:, 1], c=colors, alpha=0.5, cmap='jet')
                 if i == len(perplexities) - 1:
                     fig.colorbar(points, ax=ax)
 
