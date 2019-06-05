@@ -412,6 +412,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     predictions = defaultdict(dict)
     test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
     test_paths = []
+    models = {}
     for model_file in models_inputs_outputs.keys():
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
@@ -424,15 +425,20 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                                                     args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        models[model_name] = model
 
-        for j in range(steps):
-            input_data, labels, paths = next(generator)
+    for j in range(steps):
+        input_data, labels, paths = next(generator)
+        test_paths.extend(paths)
+        for tl in test_labels:
+            test_labels[tl].extend(np.copy(labels[tl]))
+            
+        for model_name in models:
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
             y_prediction = model.predict(input_data)
-            test_paths.extend(paths)
+
             for i, tm in enumerate(args.tensor_maps_out):
                 if tm in outputs and tm.output_name() in test_labels:
-                    test_labels[tm.output_name()].extend(np.copy(labels[tm.output_name()]))
                     if j == 0:
                         predictions[tm][model_name] = []
                     if len(args.tensor_maps_out) == 1:
