@@ -180,7 +180,7 @@ def tsne_multimodal_multitask(args):
                          '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
                          '21002_Weight_0_0']
 
-    plot_tsne(model, args.batch_size, test_data, tensors_to_label_dictionary(test_paths), categorical_labels, continuous_labels, os.path.join(args.output_folder, 'tsne'+args.id+IMAGE_EXT)
+    plot_tsne(model, args.batch_size, test_data, tensors_to_label_dictionary(test_paths), categorical_labels, continuous_labels, os.path.join(args.output_folder, 'tsne'+args.id+IMAGE_EXT))
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, test_paths)
 
 
