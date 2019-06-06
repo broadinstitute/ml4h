@@ -255,7 +255,11 @@ def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray],
         logging.info(f"Model text:{sentence}")
 
 
-def tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths):
+def tensors_to_label_dictionary(categorical_labels: List,
+                                continuous_labels: List,
+                                gene_labels: List,
+                                samples2genes: Dict[str, str],
+                                test_paths: List) -> Dict[str, np.ndarray]:
     label_dict = {k: np.zeros((len(test_paths))) for k in categorical_labels + continuous_labels + gene_labels}
     for i, tp in enumerate(test_paths):
         hd5 = h5py.File(tp, 'r')
@@ -272,9 +276,6 @@ def tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labe
             if tp in samples2genes and samples2genes[tp] == k:
                 label_dict[k][i] = 1
 
-    print(list(label_dict.keys()))
-    print(len(test_paths))
-    print(list(label_dict.keys()))
     return label_dict
 
 

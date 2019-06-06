@@ -94,7 +94,7 @@ class TensorMap(object):
                  hd5_override=None,
                  normalization=None,
                  dependent_map=None,
-                 dependent_maps=None,
+                 required_inputs=None,
                  annotation_units=32):
         """TensorMap constructor
 
@@ -110,7 +110,7 @@ class TensorMap(object):
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
         :param hd5_override: Override default behavior of tensor_from_file
         :param dependent_map: TensorMap that depends on or is determined by this one
-        :param dependent_map: List of TensorMaps that depend on or are determined by this one
+        :param required_inputs: List of TensorMaps that are required by this one, used by hidden layer TensorMaps
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         """
@@ -127,7 +127,7 @@ class TensorMap(object):
         self.hd5_override = hd5_override
         self.normalization = normalization
         self.dependent_map = dependent_map
-        self.dependent_maps = dependent_maps
+        self.required_inputs = required_inputs
         self.annotation_units = annotation_units
         self.initialization = None  # Not yet implemented
 
@@ -523,7 +523,7 @@ class TensorMap(object):
             return tensor
         elif self.is_hidden_layer():
             input_dict = {}
-            for tm in self.dependent_maps:
+            for tm in self.required_inputs:
                 input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
             return self.model.predict(input_dict)
         elif self.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals

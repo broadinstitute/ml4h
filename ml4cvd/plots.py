@@ -51,8 +51,8 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     """
     performance_metrics = {}
     if tm.is_categorical_any() and len(tm.shape) == 1:
-        logging.info('For tm:{} with channel map:{} examples:{}'.format(tm.name, tm.channel_map, y_predictions.shape[0]))
-        logging.info('\nSum Truth:{} \nSum pred :{}'.format(np.sum(y_truth, axis=0), np.sum(y_predictions, axis=0)))
+        logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
+        logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
@@ -74,7 +74,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
-        logging.info('a dist has y shape:{} and test labels has shape:{}'.format(y_predictions.shape, y_truth.shape))
+        logging.info(f"a dist has y shape:{y_predictions.shape} and test labels has shape:{y_truth.shape}")
     elif len(tm.shape) > 1:
         prediction_flat = tm.rescale(y_predictions).flatten()
         truth_flat = tm.rescale(y_truth[tm.output_name()]).flatten()
