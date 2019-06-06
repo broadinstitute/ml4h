@@ -194,8 +194,8 @@ def tabulate_correlations_from_tensor_files(id: str,
         _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
         file_count += 1
         if file_count % 1000 == 0:
-            logging.debug(f"Processed {file_count} tensors for histograming.")
-    logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
+            logging.debug(f"Processed {file_count} tensors for tabulating correlations.")
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating correlations among them...")
     tabulate_correlations(stats, num_tensor_files, id, output_folder)
 
 

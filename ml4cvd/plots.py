@@ -423,17 +423,15 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     for field1, field2 in field_pairs:
         common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
         num_common_samples = len(common_samples)
-        # print(f"field1: {field1} -- field2: {field2} -- common_samples: {common_samples}")
         processed_field_pair_count += 1
-        if processed_field_pair_count % 500 == 0:
+        if processed_field_pair_count % 50000 == 0:
             logging.debug(f"Processed {processed_field_pair_count} field pairs.")
         if num_common_samples > 20:
-            # TODO: Check if values per same sample are in the right order for different fields
             field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
             field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
             if len(field1_values) == len(field2_values):
                 corr = np.corrcoef(field1_values, field2_values)[1, 0]
-                # TODO: How to handle NaN's
+                # TODO: Any drawback to NaNs?
                 if not math.isnan(corr):
                     table_rows[(field1, field2, num_common_samples)] = corr
         else:
