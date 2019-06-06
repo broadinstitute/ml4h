@@ -196,7 +196,7 @@ def tabulate_correlations_from_tensor_files(id: str,
         if file_count % 1000 == 0:
             logging.debug(f"Processed {file_count} tensors for tabulating correlations.")
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating correlations among them...")
-    tabulate_correlations(stats, num_tensor_files, id, output_folder)
+    tabulate_correlations(stats, id, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):

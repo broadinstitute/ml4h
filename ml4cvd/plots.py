@@ -396,28 +396,21 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
 
 
 def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
-                          all_samples_count: int,
                           output_file_name: str,
                           output_folder_path: str = './figures') -> None:
 
     """
-    Plots histograms of field values given in 'stats' in pdf
+    Tabulate in pdf correlations of field values given in 'stats'
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
-    :param all_samples_count: total number of samples fields were drawn from; samples don't necessarily have values for each field
     :param output_file_name: name of output file in pdf
     :param output_folder_path: directory that output file will be written to
     :return: None
     """
-    # figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
-    # with PdfPages(figure_path) as pdf:
-    #     pdf.savefig()
-    #
-    # logging.info(f"Saved heatmap at: {figure_path}")
 
     fields = stats.keys()
     num_fields = len(fields)
     field_pairs = combinations(fields, 2)
-    table_rows: DefaultDict[Tuple[str, str, int], float] = defaultdict(float)
+    table_rows: List[list] = []
     logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
     processed_field_pair_count = 0
     for field1, field2 in field_pairs:
@@ -433,14 +426,31 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
                 corr = np.corrcoef(field1_values, field2_values)[1, 0]
                 # TODO: Any drawback to NaNs?
                 if not math.isnan(corr):
-                    table_rows[(field1, field2, num_common_samples)] = corr
+                    table_rows.append([field1, field2, corr, num_common_samples])
         else:
             continue
     # TODO: NaNs appear to mess up the sorting!
-    sorted_table_rows = sorted(table_rows.items(), key=lambda row: row[1], reverse=True)
+    sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)[0:100]
     logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
-    for k, v in sorted_table_rows[0:500]:
-        logging.info(f"{k}: {v}")
+    for row in sorted_table_rows[0:min(len(sorted_table_rows), 500)]:
+        logging.info(row)
+
+    figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
+    # with PdfPages(figure_path) as pdf:
+    col_labels = ("Field 1", "Field 2", "Pearson Corr", "Sample Size")
+    num_rows, num_cols = len(sorted_table_rows) + 1, len(col_labels)
+    height_cell, width_cell = 0.02, 0.6
+    height_pad, width_pad = 0, 0
+    fig = plt.figure(figsize=(num_cols * width_cell + width_pad, num_rows * height_cell + height_pad))
+    ax = fig.add_subplot(111)
+    ax.axis('off')
+    ax.table(cellText=sorted_table_rows,
+             colLabels=col_labels,
+             loc='center')
+    # pdf.savefig()
+    plt.savefig(f"{figure_path}")
+    
+    logging.info(f"Saved correlations table at: {figure_path}")
 
 
 def plot_ecg(data, label, prefix='./figures/'):
