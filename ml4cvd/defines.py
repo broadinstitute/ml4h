@@ -3,6 +3,7 @@ EPS = 1e-7
 DICOM_EXT = '.dcm'
 IMAGE_EXT = '.png'
 PDF_EXT = '.pdf'
+CSV_EXT = '.csv'
 TENSOR_EXT = '.hd5'
 
 JOIN_CHAR = '_'

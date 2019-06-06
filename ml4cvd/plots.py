@@ -13,13 +13,14 @@ from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
 
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, CSV_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -397,13 +398,15 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
 
 def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
                           output_file_name: str,
-                          output_folder_path: str = './figures') -> None:
+                          output_folder_path: str = './figures',
+                          min_samples: int = None) -> None:
 
     """
     Tabulate in pdf correlations of field values given in 'stats'
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
     :param output_file_name: name of output file in pdf
     :param output_folder_path: directory that output file will be written to
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many samples
     :return: None
     """
 
@@ -419,36 +422,26 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
         processed_field_pair_count += 1
         if processed_field_pair_count % 50000 == 0:
             logging.debug(f"Processed {processed_field_pair_count} field pairs.")
-        if num_common_samples > 20:
+        if num_common_samples > 0:
             field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
             field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
             if len(field1_values) == len(field2_values):
                 corr = np.corrcoef(field1_values, field2_values)[1, 0]
                 # TODO: Any drawback to NaNs?
                 if not math.isnan(corr):
-                    table_rows.append([field1, field2, corr, num_common_samples])
+                    table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
         else:
             continue
     # TODO: NaNs appear to mess up the sorting!
-    sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)[0:100]
+    sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)
     logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
-    for row in sorted_table_rows[0:min(len(sorted_table_rows), 500)]:
+    for row in sorted_table_rows:
         logging.info(row)
 
-    figure_path = os.path.join(output_folder_path, output_file_name + PDF_EXT)
-    # with PdfPages(figure_path) as pdf:
-    col_labels = ("Field 1", "Field 2", "Pearson Corr", "Sample Size")
-    num_rows, num_cols = len(sorted_table_rows) + 1, len(col_labels)
-    height_cell, width_cell = 0.02, 0.6
-    height_pad, width_pad = 0, 0
-    fig = plt.figure(figsize=(num_cols * width_cell + width_pad, num_rows * height_cell + height_pad))
-    ax = fig.add_subplot(111)
-    ax.axis('off')
-    ax.table(cellText=sorted_table_rows,
-             colLabels=col_labels,
-             loc='center')
-    # pdf.savefig()
-    plt.savefig(f"{figure_path}")
+    figure_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
+    table_header = ["Field 1", "Field 2", "Pearson R", "Pearson R^2",  "Sample Size"]
+    df = pd.DataFrame(sorted_table_rows, columns=table_header)
+    df.to_csv(figure_path, index=False)
     
     logging.info(f"Saved correlations table at: {figure_path}")
 
