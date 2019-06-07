@@ -399,7 +399,7 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
 def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
                           output_file_name: str,
                           min_samples: int,
-                          output_folder_path: str = './figures') -> None:
+                          output_folder_path: str) -> None:
 
     """
     Tabulate in pdf correlations of field values given in 'stats'
@@ -420,7 +420,7 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
         common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
         num_common_samples = len(common_samples)
         processed_field_pair_count += 1
-        if processed_field_pair_count % 50000 == 0:
+        if processed_field_pair_count % 1000 == 0:
             logging.debug(f"Processed {processed_field_pair_count} field pairs.")
         if num_common_samples >= min_samples:
             field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
