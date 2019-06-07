@@ -420,7 +420,7 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
         common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
         num_common_samples = len(common_samples)
         processed_field_pair_count += 1
-        if processed_field_pair_count % 1000 == 0:
+        if processed_field_pair_count % 100 == 0:
             logging.debug(f"Processed {processed_field_pair_count} field pairs.")
         if num_common_samples >= min_samples:
             field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
