@@ -164,23 +164,24 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
 def tabulate_correlations_from_tensor_files(id: str,
                                             tensor_folder: str,
                                             output_folder: str,
-                                            num_samples: int = None) -> None:
+                                            min_samples: int,
+                                            max_samples: int = None) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
     :param output_folder: folder containing the output plot
-    :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
+    :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
     if not os.path.exists(tensor_folder):
         raise ValueError('Source directory does not exist: ', tensor_folder)
     all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
-    if num_samples is not None:
-        if len(all_tensor_files) < num_samples:
-            logging.warning(f"{num_samples} was specified as number of samples to use but there are only "
+    if max_samples is not None:
+        if len(all_tensor_files) < max_samples:
+            logging.warning(f"{max_samples} was specified as number of samples to use but there are only "
                             f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...")
-            num_samples = len(all_tensor_files)
-        tensor_files = np.random.choice(all_tensor_files, num_samples, replace=False)
+            max_samples = len(all_tensor_files)
+        tensor_files = np.random.choice(all_tensor_files, max_samples, replace=False)
     else:
         tensor_files = all_tensor_files
 
@@ -196,7 +197,7 @@ def tabulate_correlations_from_tensor_files(id: str,
         if file_count % 1000 == 0:
             logging.debug(f"Processed {file_count} tensors for tabulating correlations.")
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating correlations among them...")
-    tabulate_correlations(stats, id, output_folder)
+    tabulate_correlations(stats, id, min_samples, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
