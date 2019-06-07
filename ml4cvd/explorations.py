@@ -336,7 +336,7 @@ def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
         _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
         file_count += 1
         if file_count % 1000 == 0:
-            logging.debug(f"Processed {file_count} tensors for histograming.")
+            logging.debug(f"Collected continuous stats from {file_count}.")
 
     return stats, num_tensor_files
 
