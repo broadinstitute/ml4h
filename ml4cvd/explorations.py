@@ -170,6 +170,7 @@ def tabulate_correlations_from_tensor_files(id: str,
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
     :param output_folder: folder containing the output plot
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples; default: 3
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 

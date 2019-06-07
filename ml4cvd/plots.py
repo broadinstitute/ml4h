@@ -420,19 +420,18 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
         common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
         num_common_samples = len(common_samples)
         processed_field_pair_count += 1
-        if processed_field_pair_count % 100 == 0:
+        if processed_field_pair_count % 10000 == 0:
             logging.debug(f"Processed {processed_field_pair_count} field pairs.")
         if num_common_samples >= min_samples:
             field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
             field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
             if len(field1_values) == len(field2_values):
                 corr = np.corrcoef(field1_values, field2_values)[1, 0]
-                # TODO: Any drawback to excluding NaNs?
                 if not math.isnan(corr):
                     table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
         else:
             continue
-    # TODO: NaNs appear to mess up the sorting!
+    # Note: NaNs mess up sorting if not removed previously
     sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)
     logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
 
