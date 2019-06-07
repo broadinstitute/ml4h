@@ -8,19 +8,18 @@ import logging
 import hashlib
 from textwrap import wrap
 from functools import reduce
-from itertools import combinations, islice
+from itertools import islice
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
 
 import numpy as np
-import pandas as pd
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, CSV_EXT
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -394,53 +393,6 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
             pdf.savefig()
 
     logging.info(f"Saved histograms plot at: {figure_path}")
-
-
-def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
-                          output_file_name: str,
-                          min_samples: int,
-                          output_folder_path: str) -> None:
-
-    """
-    Tabulate in pdf correlations of field values given in 'stats'
-    :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
-    :param output_file_name: name of output file in pdf
-    :param output_folder_path: directory that output file will be written to
-    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples; default: 3
-    :return: None
-    """
-
-    fields = stats.keys()
-    num_fields = len(fields)
-    field_pairs = combinations(fields, 2)
-    table_rows: List[list] = []
-    logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
-    processed_field_pair_count = 0
-    for field1, field2 in field_pairs:
-        common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
-        num_common_samples = len(common_samples)
-        processed_field_pair_count += 1
-        if processed_field_pair_count % 10000 == 0:
-            logging.debug(f"Processed {processed_field_pair_count} field pairs.")
-        if num_common_samples >= min_samples:
-            field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
-            field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
-            if len(field1_values) == len(field2_values):
-                corr = np.corrcoef(field1_values, field2_values)[1, 0]
-                if not math.isnan(corr):
-                    table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
-        else:
-            continue
-    # Note: NaNs mess up sorting if not removed previously
-    sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)
-    logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
-
-    figure_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
-    table_header = ["Field 1", "Field 2", "Pearson R", "Pearson R^2",  "Sample Size"]
-    df = pd.DataFrame(sorted_table_rows, columns=table_header)
-    df.to_csv(figure_path, index=False)
-    
-    logging.info(f"Saved correlations table at: {figure_path}")
 
 
 def plot_ecg(data, label, prefix='./figures/'):

@@ -51,7 +51,7 @@ def run(args):
         elif 'plot_ecg_dates' == args.mode:
             ecg_dates(args.tensors, args.output_folder, args.id)
         elif 'plot_histograms' == args.mode:
-            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.num_samples)
+            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'tabulate_correlations' == args.mode:
             tabulate_correlations_from_tensor_files(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
