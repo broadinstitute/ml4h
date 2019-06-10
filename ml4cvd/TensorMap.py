@@ -427,6 +427,16 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 'end_systole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvesv = float(hd5['continuous/end_systole_volume'][0])
+            continuous_data[0] = -3.8 + (lvesv * 0.87)
+            return self.normalize(continuous_data)
+        elif self.name == 'end_diastole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvedv = float(hd5['continuous/end_diastole_volume'][0])
+            continuous_data[0] = 16.8 + (lvedv * 0.88)
+            return self.normalize(continuous_data)
         elif self.name == 'ejection_fraction_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
             lvesv = float(hd5['continuous/end_systole_volume'][0])
