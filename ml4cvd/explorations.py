@@ -4,7 +4,7 @@
 import math
 import operator
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 from functools import reduce
 from itertools import combinations
 
@@ -286,29 +286,53 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     table_rows: List[list] = []
     logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
     processed_field_pair_count = 0
+    nan_counter = Counter()  # keep track of if we've seen a field have NaNs
     for field1, field2 in field_pairs:
-        common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
-        num_common_samples = len(common_samples)
-        processed_field_pair_count += 1
-        if processed_field_pair_count % 50000 == 0:
-            logging.debug(f"Processed {processed_field_pair_count} field pairs.")
-        if num_common_samples >= min_samples:
-            field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
-            field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
-            if len(field1_values) == len(field2_values):
-                corr = np.corrcoef(field1_values, field2_values)[1, 0]
-                if not math.isnan(corr):
-                    table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
+        if field1 not in nan_counter.keys() and field2 not in nan_counter.keys():
+            common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
+            num_common_samples = len(common_samples)
+            processed_field_pair_count += 1
+            if processed_field_pair_count % 50000 == 0:
+                logging.debug(f"Processed {processed_field_pair_count} field pairs.")
+            if num_common_samples >= min_samples:
+                field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
+                field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
+
+                num_field1_nans = len(list(filter(math.isnan, field1_values)))
+                num_field2_nans = len(list(filter(math.isnan, field2_values)))
+                at_least_one_field_has_nans = False
+                if num_field1_nans != 0:
+                    nan_counter[field1] = True
+                    at_least_one_field_has_nans = True
+                if num_field2_nans != 0:
+                    nan_counter[field2] = True
+                    at_least_one_field_has_nans = True
+                if at_least_one_field_has_nans:
+                    continue
+
+                if len(field1_values) == len(field2_values):
+                    if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
+                        logging.debug(f"Not calculating correlation for fields {field1} and {field2} because at least one of "
+                                      f"the fields has all the same values for the {num_common_samples} common samples.")
+                        continue
+                    corr = np.corrcoef(field1_values, field2_values)[1, 0]
+                    if not math.isnan(corr):
+                        table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
+                    else:
+                        logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
                 else:
-                    logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
-            else:
-                logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
-                              f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
+                    logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                                  f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
         else:
             continue
+
     # Note: NaNs mess up sorting unless they are handled specially by a custom sorting function
     sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)
     logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
+
+    fields_with_nans = nan_counter.keys()
+    if len(fields_with_nans) != 0:
+        logging.warning(f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.")
 
     table_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
     table_header = ["Field 1", "Field 2", "Pearson R", "Pearson R^2",  "Sample Size"]
