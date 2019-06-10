@@ -23,8 +23,9 @@ from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, \
-    CSV_EXT
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
+
+CSV_EXT = '.csv'
 
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
@@ -154,7 +155,7 @@ def tabulate_correlations_from_tensor_files(id: str,
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
     :param output_folder: folder containing the output plot
-    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples; default: 3
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
@@ -298,18 +299,23 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
                 corr = np.corrcoef(field1_values, field2_values)[1, 0]
                 if not math.isnan(corr):
                     table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
+                else:
+                    logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
+            else:
+                logging.info(f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                             f"because they have different number of values ({len(field1)} vs. {len(field2)}).")
         else:
             continue
     # Note: NaNs mess up sorting unless they are handled specially by a custom sorting function
     sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)
     logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
 
-    figure_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
+    table_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
     table_header = ["Field 1", "Field 2", "Pearson R", "Pearson R^2",  "Sample Size"]
     df = pd.DataFrame(sorted_table_rows, columns=table_header)
-    df.to_csv(figure_path, index=False)
+    df.to_csv(table_path, index=False)
 
-    logging.info(f"Saved correlations table at: {figure_path}")
+    logging.info(f"Saved correlations table at: {table_path}")
 
 
 def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
