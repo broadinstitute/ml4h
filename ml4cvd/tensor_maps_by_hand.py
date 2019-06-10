@@ -173,7 +173,7 @@ TMAPS['end_diastole_volume'] = TensorMap('end_diastole_volume', group='continuou
 TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
-TMAPS['ejection_fraction_corrected'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
+TMAPS['ejection_fraction_corrected'] = TensorMap('ejection_fraction_corrected', group='continuous', activation='linear',
                                    normalization={'mean': 0.50, 'std': 0.046},
 
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
