@@ -427,6 +427,14 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 'ejection_fraction_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
+            lvesv = float(hd5['continuous/end_systole_volume'][0])
+            lvesv_corrected = -3.8 + (lvesv * 0.87)
+            lvedv = float(hd5['continuous/end_diastole_volume'][0])
+            lvedv_corrected = 16.8 + (lvedv * 0.88)
+            continuous_data[0] = (lvedv_corrected - lvesv_corrected) / lvedv_corrected
+            return self.normalize(continuous_data)
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:
