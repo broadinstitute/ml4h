@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument('--bigquery_dataset',
                         default='broad-ml4cvd.ukbb7089_r10data',
                         help='BigQuery dataset containing tables we want to query.')
-    parser.add_argument('--xml_folder', default='/mnt/disks/data/raw/ecgs/',
+    parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/',
         help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/data/raw/mris/cardiac/',
         help='Path to folder of zipped dicom images.')
