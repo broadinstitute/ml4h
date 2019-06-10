@@ -183,6 +183,12 @@ TMAPS['end_diastole_volume_corrected'] = TensorMap('end_diastole_volume_correcte
 TMAPS['ejection_fraction_corrected'] = TensorMap('ejection_fraction_corrected', group='continuous', activation='linear',
                                    normalization={'mean': 0.3, 'std': 0.02},
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction_corrected': 0})
+TMAPS['ejection_fraction_correctedp'] = TensorMap('ejection_fraction_corrected', group='continuous', activation='linear',
+                                                 normalization={'mean': 0.3, 'std': 0.02}, loss='logcosh', loss_weight=2.0,
+                                                 channel_map={'ejection_fraction_corrected': 0},
+                                                 parents=['output_end_systole_volume_corrected_continuous',
+                                                          'output_end_diastole_volume_corrected_continuous'])
+
 
 TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
 TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
