@@ -302,8 +302,8 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
                 else:
                     logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
             else:
-                logging.info(f"Not calculating correlation for fields '{field1}' and '{field2}' "
-                             f"because they have different number of values ({len(field1)} vs. {len(field2)}).")
+                logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                              f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
         else:
             continue
     # Note: NaNs mess up sorting unless they are handled specially by a custom sorting function
