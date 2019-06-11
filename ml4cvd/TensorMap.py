@@ -256,7 +256,7 @@ class TensorMap(object):
                     # and the data itself is 0, then overwrite the value with a draw from a N(0,1)
                     if not_missing_in_channel_map and np_tensor[self.channel_map[NOT_MISSING]] == 0 and np_tensor[i] == 0:
                         np_tensor[i] = np.random.normal(1)
-                    else:
+                    elif np_tensor[i] != 0:
                         np_tensor[i] -= self.normalization['mean']
                         np_tensor[i] /= (self.normalization['std'] + EPS)
             else:
