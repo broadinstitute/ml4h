@@ -276,7 +276,7 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
     :param output_file_name: name of output file in pdf
     :param output_folder_path: directory that output file will be written to
-    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples; default: 3
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
     :return: None
     """
 
