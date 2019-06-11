@@ -391,7 +391,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
 
 
 def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, steps, outputs, input_prefix, output_prefix):
-    """Makes multi-modal predictions for a given number of models.
+    """Makes multi-modal scalar predictions for a given number of models.
 
     Returns:
         dict: The nested dictionary of predicted values.
@@ -447,10 +447,10 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                         predictions[tm][model_name].extend(np.copy(y_prediction[i]))
 
     for tm in predictions:
-        print(tm.output_name(), 'labels', len(test_labels[tm.output_name()]))
+        logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")
         test_labels[tm.output_name()] = np.array(test_labels[tm.output_name()])
         for m in predictions[tm]:
-            print(tm.output_name(), ' model', m,  len(predictions[tm][m]))
+            logging.info(f"{tm.output_name()} model: {m} prediction length:{len(predictions[tm][m])}")
             predictions[tm][m] = np.array(predictions[tm][m])
 
     return predictions, test_labels, test_paths
