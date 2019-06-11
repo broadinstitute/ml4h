@@ -236,9 +236,12 @@ def _load_meta_data_for_tensor_writing(sql_cursor: sqlite3.Cursor,
         for row in lol[1:]:
             sample_id = int(row[0])
             if min_sample_id <= sample_id <= max_sample_id:
-                lvesv[sample_id] = float(row[2])
-                lvedv[sample_id] = float(row[4])
-                lvef[sample_id] = float(row[6])
+                if row[2] != 'NA':
+                    lvesv[sample_id] = float(row[2])
+                if row[4] != 'NA':
+                    lvedv[sample_id] = float(row[4])
+                if row[6] != 'NA':
+                    lvef[sample_id] = float(row[6])
 
     lv_mass = {}
     with open(lv_mass_csv, 'r') as lvm:
@@ -247,7 +250,7 @@ def _load_meta_data_for_tensor_writing(sql_cursor: sqlite3.Cursor,
         for row in lol[1:]:
             # column 0 is the original app's sample ID. Column 1 is app 7089's sample ID.
             sample_id = int(row[1])
-            if min_sample_id <= sample_id <= max_sample_id and len(row[13]) > 0:
+            if min_sample_id <= sample_id <= max_sample_id and len(row[13]) > 0 and row[13] != 'NA':
                 # Zero-based column #13 is the LV mass
                 lv_mass[sample_id] = float(row[13])
 
