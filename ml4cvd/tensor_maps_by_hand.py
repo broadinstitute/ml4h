@@ -161,7 +161,6 @@ TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_m
                              normalization={'mean': 165.9, 'std': 26.3})
 
 
-
 TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_1'] = TensorMap('full_1', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_m0'] = TensorMap('median_0', shape=ECG_BIKE_MEDIAN_SIZE, group='ecg_bike',

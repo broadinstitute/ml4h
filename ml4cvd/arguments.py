@@ -60,9 +60,9 @@ def parse_args():
         help='Path to folder of phenotype defining CSVs.')    
     parser.add_argument('--dicoms', default='./dicoms/',
         help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
-    parser.add_argument('--icd_csv', default='/mnt/disks/data/raw/tsvs/modified.zmerge.prs.full.csv.20190219',
+    parser.add_argument('--icd_csv', default='/mnt/ml4cvd/projects/jamesp/data/modified.zmerge.prs.full.csv.20190222',
         help='Path to CSV with ICD status for UKBB Sample IDs')
-    parser.add_argument('--volume_csv', default='/mnt/disks/data/raw/tsvs/round2_4sdfixedpoint_parsed_lvedv_lvesv_lvef.tsv',
+    parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/round3_parsed_lvedv_lvesv_lvef.tsv',
         help='Path to left ventricle volumes')
     parser.add_argument('--app_csv', default='/mnt/disks/data/raw/tsvs/ukb_app17488_app7089_link.csv',
         help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
