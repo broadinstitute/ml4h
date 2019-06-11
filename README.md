@@ -40,6 +40,8 @@ such as `Homebrew`, you may want to uninstall that first, to avoid potential con
     sudo conda update -n base -c defaults conda
     ```
     The version used at the time of this writing was `4.6.1`.
+    
+    If you plan to run jupyter locally, you should also (after you have `conda activate ml4cvd`, run `pip install ~/ml` (or wherever you have stored the repo)
 * Activate the environment:
     ```
     source activate ml4cvd
