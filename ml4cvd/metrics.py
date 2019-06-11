@@ -97,6 +97,11 @@ def ignore_zeros_l2(y_true, y_pred):
     return mean_squared_error(y_true * mask, y_pred * mask)
 
 
+def ignore_zeros_logcosh(y_true, y_pred):
+    mask = K.cast(K.not_equal(y_true, 0), K.floatx())
+    return logcosh(y_true * mask, y_pred * mask)
+
+
 def sum_pred_loss(y_true, y_pred):
     return K.sum(y_pred, axis=-1)
 
