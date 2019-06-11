@@ -1,13 +1,18 @@
 # explorations.py
 
 # Imports
+import math
+import operator
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
+from functools import reduce
+from itertools import combinations
 
 import h5py
 import logging
 import datetime
 import numpy as np
+import pandas as pd
 from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import matplotlib
@@ -20,6 +25,8 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import make_hidden_layer_model
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
+
+CSV_EXT = '.csv'
 
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
@@ -125,42 +132,37 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
 
 
 def plot_histograms_from_tensor_files_in_pdf(id: str,
-                                             tensor_folder_path: str,
-                                             output_folder_path: str,
-                                             num_samples: int = None,
-                                             num_fields: int = None) -> None:
+                                             tensor_folder: str,
+                                             output_folder: str,
+                                             max_samples: int = None) -> None:
     """
     :param id: name for the plotting run
-    :param tensor_folder_path: directory with tensor files to plot histograms from
-    :param output_folder_path: folder containing the output plot
-    :param num_samples: specifies how many tensor files to down-sample from; by default all tensors are used
-    :param num_fields: number of fields to histogram; by default all fields are plotted
+    :param tensor_folder: directory with tensor files to plot histograms from
+    :param output_folder: folder containing the output plot
+    :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
-    if not os.path.exists(tensor_folder_path):
-        raise ValueError('Source directory does not exist: ', tensor_folder_path)
+    stats, num_tensor_files = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
+    plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
-    all_tensor_files = os.listdir(tensor_folder_path)
-    if num_samples is not None:
-        tensor_files = np.random.choice(all_tensor_files, num_samples, replace=False)
-    else:
-        tensor_files = all_tensor_files
 
-    logging.debug(f"Collecting continuous stats from {len(tensor_files)} of {len(all_tensor_files)} tensors at {tensor_folder_path}...")
+def tabulate_correlations_from_tensor_files(id: str,
+                                            tensor_folder: str,
+                                            output_folder: str,
+                                            min_samples: int,
+                                            max_samples: int = None) -> None:
+    """
+    :param id: name for the plotting run
+    :param tensor_folder: directory with tensor files to plot histograms from
+    :param output_folder: folder containing the output plot
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
+    :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
+    """
 
-    stats = defaultdict(list)
-    file_count = 0
-    for hd5_file_name in tensor_files:
-        if hd5_file_name.endswith(TENSOR_EXT):
-            tensor_file_path = os.path.join(tensor_folder_path, hd5_file_name)
-            _collect_continuous_stats_from_tensor_file(tensor_file_path, stats)
-            file_count += 1
-            if file_count % 1000 == 0:
-                logging.debug(f"Processed {file_count} tensors for histograming.")
-    logging.debug(f"Collected continuous stats for {len(stats)} fields.")
-    first_n_fields_stats = dict(list(stats.items())[0:num_fields])
-    logging.debug(f"Plotting histograms for {len(first_n_fields_stats)} of those fields...")
-    plot_histograms_in_pdf(first_n_fields_stats, id, output_folder_path)
+    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...")
+    tabulate_correlations(stats, id, min_samples, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
@@ -290,7 +292,116 @@ def _sample_with_heat(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: DefaultDict[str, list]) -> None:
+def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
+                          output_file_name: str,
+                          min_samples: int,
+                          output_folder_path: str) -> None:
+
+    """
+    Tabulate in pdf correlations of field values given in 'stats'
+    :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
+    :param output_file_name: name of output file in pdf
+    :param output_folder_path: directory that output file will be written to
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
+    :return: None
+    """
+
+    fields = stats.keys()
+    num_fields = len(fields)
+    field_pairs = combinations(fields, 2)
+    table_rows: List[list] = []
+    logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
+    processed_field_pair_count = 0
+    nan_counter = Counter()  # keep track of if we've seen a field have NaNs
+    for field1, field2 in field_pairs:
+        if field1 not in nan_counter.keys() and field2 not in nan_counter.keys():
+            common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
+            num_common_samples = len(common_samples)
+            processed_field_pair_count += 1
+            if processed_field_pair_count % 50000 == 0:
+                logging.debug(f"Processed {processed_field_pair_count} field pairs.")
+            if num_common_samples >= min_samples:
+                field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
+                field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
+
+                num_field1_nans = len(list(filter(math.isnan, field1_values)))
+                num_field2_nans = len(list(filter(math.isnan, field2_values)))
+                at_least_one_field_has_nans = False
+                if num_field1_nans != 0:
+                    nan_counter[field1] = True
+                    at_least_one_field_has_nans = True
+                if num_field2_nans != 0:
+                    nan_counter[field2] = True
+                    at_least_one_field_has_nans = True
+                if at_least_one_field_has_nans:
+                    continue
+
+                if len(field1_values) == len(field2_values):
+                    if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
+                        logging.debug(f"Not calculating correlation for fields {field1} and {field2} because at least one of "
+                                      f"the fields has all the same values for the {num_common_samples} common samples.")
+                        continue
+                    corr = np.corrcoef(field1_values, field2_values)[1, 0]
+                    if not math.isnan(corr):
+                        table_rows.append([field1, field2, corr, corr * corr, num_common_samples])
+                    else:
+                        logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
+                else:
+                    logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                                  f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
+        else:
+            continue
+
+    # Note: NaNs mess up sorting unless they are handled specially by a custom sorting function
+    sorted_table_rows = sorted(table_rows, key=operator.itemgetter(2), reverse=True)
+    logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
+
+    fields_with_nans = nan_counter.keys()
+    if len(fields_with_nans) != 0:
+        logging.warning(f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.")
+
+    table_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
+    table_header = ["Field 1", "Field 2", "Pearson R", "Pearson R^2",  "Sample Size"]
+    df = pd.DataFrame(sorted_table_rows, columns=table_header)
+    df.to_csv(table_path, index=False)
+
+    logging.info(f"Saved correlations table at: {table_path}")
+
+
+def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
+                                                max_samples: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
+    if not os.path.exists(tensor_folder):
+        raise ValueError('Source directory does not exist: ', tensor_folder)
+    all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
+    if max_samples is not None:
+        if len(all_tensor_files) < max_samples:
+            logging.warning(f"{max_samples} was specified as number of samples to use but there are only "
+                            f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...")
+            max_samples = len(all_tensor_files)
+        tensor_files = np.random.choice(all_tensor_files, max_samples, replace=False)
+    else:
+        tensor_files = all_tensor_files
+
+    num_tensor_files = len(tensor_files)
+    logging.info(f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}...")
+
+    # Declare the container to hold {field_1: {sample_1: [values], sample_2: [values], field_2:...}}
+    stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    file_count = 0
+    for tensor_file in tensor_files:
+        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
+        file_count += 1
+        if file_count % 1000 == 0:
+            logging.debug(f"Collected continuous stats from {file_count}.")
+
+    return stats, num_tensor_files
+
+
+def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
+                                               tensor_file: str,
+                                               stats: DefaultDict[str, DefaultDict[str, List[float]]]) -> None:
+    # Inlining the method below to be able to reference more from the scope than the arguments of the function
+    # 'h5py.visititems()' expects. It expects a func(<name>, <object>) => <None or return value>).
     def _field_meaning_to_values_dict(_, obj):
         if _is_continuous_valid_scalar_hd5_dataset(obj):
             value_in_tensor_file = obj[0]
@@ -298,20 +409,18 @@ def _collect_continuous_stats_from_tensor_file(tensor_file_path: str, stats: Def
                 field_value = 0.5
             else:
                 field_value = value_in_tensor_file
-
             dataset_name_parts = os.path.basename(obj.name).split(JOIN_CHAR)
             if len(dataset_name_parts) == 4:  # e.g. /continuous/1488_Tea-intake_0_0
                 field_id = dataset_name_parts[0]
                 field_meaning = dataset_name_parts[1]
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
-                stats[field_meaning].append(field_value)
-            elif len(dataset_name_parts) == 1:  # e.g. /continuous/VentricularRate
+                stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
+            else:  # e.g. /continuous/VentricularRate
                 field_meaning = dataset_name_parts[0]
-                stats[field_meaning].append(field_value)
-            else:
-                raise ValueError(f"Dataset name '{obj.name}' is not in format "
-                                 f"<field_id>_<field_meaning>_<instance>_<array_idx> or <field_meaning>")
+                stats[field_meaning][sample_id].append(field_value)
+    tensor_file_path = os.path.join(tensor_folder, tensor_file)
+    sample_id = os.path.splitext(tensor_file)[0]
     with h5py.File(tensor_file_path, 'r') as hd5_handle:
         hd5_handle.visititems(_field_meaning_to_values_dict)
 
