@@ -28,7 +28,7 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
-SUBPLOT_SIZE = 23
+SUBPLOT_SIZE = 16
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
@@ -98,9 +98,9 @@ def plot_metric_history(history, title, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
-    f, axes = plt.subplots(rows, cols, figsize=(int(cols*4.5), int(rows*4.5)))
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
             axes[row, col].plot(history.history[k])
@@ -197,8 +197,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
     row = 0
     col = 0
     total_plots = len(scatters)
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for prediction, truth, title, paths in scatters:
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
@@ -238,8 +238,8 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
     row = 0
     col = 0
     total_plots = len(scatters)
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, title, paths in scatters:
         for k in predictions:
@@ -529,8 +529,8 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
@@ -570,8 +570,8 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
     row = 0
     col = 0
     total_plots = len(rocs)
-    rows = max(2, int(math.ceil(math.sqrt(total_plots))))
-    cols = max(2, int(math.ceil(total_plots / rows)))
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
         for p in predictions:
