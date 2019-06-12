@@ -176,6 +176,9 @@ TMAPS['aligned_distance'] = TensorMap('aligned_distance', group='continuous', ch
 
 TMAPS['lv_mass'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='linear', loss=ignore_zeros_logcosh,
+                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},

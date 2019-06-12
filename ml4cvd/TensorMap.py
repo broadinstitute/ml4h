@@ -12,7 +12,7 @@ from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_clas
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'lv_mass',
+CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume',
                          'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
                          'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0']  # 'PAxis', 'PDuration', 'POffset', 'POnset',
 
