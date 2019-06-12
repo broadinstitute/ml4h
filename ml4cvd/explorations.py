@@ -64,7 +64,7 @@ def fix_volumes(tensors, volume_csv):
     for tp in os.listdir(tensors):
         if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
             continue
-        with h5py.File(tp, 'r') as hd5:
+        with h5py.File(tensors + tp, 'r') as hd5:
             sample_id = tp.replace(TENSOR_EXT, '')
             if sample_id in lvesv and 'end_systole_volume' in hd5['continuous']:
                 data = hd5['continuous' + HD5_GROUP_CHAR + 'end_systole_volume']
