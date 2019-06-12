@@ -49,7 +49,7 @@ def sort_csv(input_csv_file):
     with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
         with open(input_csv_file, mode='r') as input_csv:
             csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_reader = csv.reader(open(input_csv), delimiter='\t')
+            csv_reader = csv.reader(input_csv, delimiter='\t')
             csv_writer.writerow(csv_reader[0]+['discrepancy'])
             csv_sorted = sorted(csv_reader[1:], key=lambda row: math.abs(float(row[6])-float(row[5])), reverse=True)
             [csv_writer.writerow(row + [float(row[6])-float(row[5])]) for row in csv_sorted]
