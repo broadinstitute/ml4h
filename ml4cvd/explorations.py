@@ -1,12 +1,13 @@
 # explorations.py
 
 # Imports
+import os
+import csv
 import math
 import operator
-import os
-from collections import defaultdict, Counter
 from functools import reduce
 from itertools import combinations
+from collections import defaultdict, Counter
 
 import h5py
 import logging
@@ -22,7 +23,6 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_hidden_layer_model
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
@@ -43,6 +43,16 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
                                 f.write(f"{tensor_file}\tPrevalent {tm.name}\n")
                             else:
                                 f.write(f"{tensor_file}\tIncident {tm.name}\n")
+
+
+def sort_csv(input_csv_file, output_csv_file):
+    with open(output_csv_file, mode='w') as output_csv:
+        with open(input_csv_file, mode='r') as input_csv:
+            csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csv_reader = csv.reader(open(input_csv), delimiter='\t')
+            csv_writer.writerow(csv_reader[0]+['discrepancy'])
+            csv_sorted = sorted(csv_reader[1:], key=lambda row: math.abs(float(row[6])-float(row[5])), reverse=True)
+            [csv_writer.writerow(row + [float(row[6])-float(row[5])]) for row in csv_sorted]
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap],
