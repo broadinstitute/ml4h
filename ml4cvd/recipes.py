@@ -68,7 +68,7 @@ def run(args):
         elif 'find_tensors' == args.mode:
             find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         elif 'sort_csv':
-            sort_csv(args.volume_csv)
+            sort_csv(args.app_csv, args.volume_csv)
         else:
             raise ValueError('Unknown mode:', args.mode)
 

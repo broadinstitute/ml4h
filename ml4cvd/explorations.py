@@ -45,15 +45,24 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
                                 f.write(f"{tensor_file}\tIncident {tm.name}\n")
 
 
-def sort_csv(input_csv_file):
+def sort_csv(input_csv_file, volume_csv):
+    lvef = {}
+    with open(volume_csv, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter='\t'))
+        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
+        for row in lol[1:]:
+            sample_id = int(row[0])
+            if row[6] != 'NA':
+                lvef[sample_id] = float(row[6])
+
     print('try:', input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT))
     with open(input_csv_file, mode='r') as input_csv:
         with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
             csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csv_reader = csv.reader(input_csv, delimiter='\t')
             csv_writer.writerow(next(csv_reader)+['discrepancy'])
-            csv_sorted = sorted(csv_reader, key=lambda row: abs(float(row[6])-float(row[5])), reverse=True)
-            [csv_writer.writerow(row + [float(row[6])-float(row[5])]) for row in csv_sorted]
+            csv_sorted = sorted(csv_reader, key=lambda row: abs(float(lvef[row[0]])-float(row[5])), reverse=True)
+            [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap],
