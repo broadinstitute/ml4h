@@ -74,13 +74,13 @@ def fix_volumes(tensors, volume_csv):
 
             if sample_id in lvedv and 'end_diastole_volume' in hd5['continuous']:
                 data = hd5['continuous' + HD5_GROUP_CHAR + 'end_diastole_volume']
-                data[0] = lvesv[sample_id]
+                data[0] = lvedv[sample_id]
             elif sample_id in lvedv:
                 hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_diastole_volume', data=[lvedv[sample_id]])
 
-            if sample_id in lvesv and 'ejection_fraction' in hd5['continuous']:
+            if sample_id in lvef and 'ejection_fraction' in hd5['continuous']:
                 data = hd5['continuous' + HD5_GROUP_CHAR + 'ejection_fraction']
-                data[0] = lvesv[sample_id]
+                data[0] = lvef[sample_id]
             elif sample_id in lvesv:
                 hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'ejection_fraction', data=[lvef[sample_id]])
 
