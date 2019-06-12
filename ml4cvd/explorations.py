@@ -46,8 +46,9 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
 
 
 def sort_csv(input_csv_file):
-    with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
-        with open(input_csv_file, mode='r') as input_csv:
+    print('try:', input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT))
+    with open(input_csv_file, mode='r') as input_csv:
+        with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
             csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csv_reader = csv.reader(input_csv, delimiter='\t')
             csv_writer.writerow(next(csv_reader)+['discrepancy'])
