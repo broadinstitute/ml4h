@@ -52,8 +52,8 @@ def sort_csv(input_csv_file, volume_csv):
         logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
         for row in lol[1:]:
             sample_id = row[0]
-            if row[6] != 'NA':
-                lvef[sample_id] = float(row[6])
+            if row[5] != 'NA':
+                lvef[sample_id] = float(row[5])
 
     print('try:', input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT))
     with open(input_csv_file, mode='r') as input_csv:
