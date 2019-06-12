@@ -24,7 +24,7 @@ from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, HD5_GROUP_CHAR
 
 CSV_EXT = '.tsv'
 
@@ -43,6 +43,43 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
                                 f.write(f"{tensor_file}\tPrevalent {tm.name}\n")
                             else:
                                 f.write(f"{tensor_file}\tIncident {tm.name}\n")
+
+
+def fix_volumes(tensors, volume_csv):
+    lvef = {}
+    lvesv = {}
+    lvedv = {}
+    with open(volume_csv, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter='\t'))
+        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
+        for row in lol[1:]:
+            sample_id = row[0]
+            lvesv[sample_id] = float(row[1])
+            lvedv[sample_id] = float(row[3])
+            lvef[sample_id] = float(row[5])
+
+    for tp in os.listdir(tensors):
+        if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
+            continue
+        with h5py.File(tp, 'r') as hd5:
+            sample_id = tp.replace(TENSOR_EXT, '')
+            if sample_id in lvesv:
+                data = hd5['continuous' + HD5_GROUP_CHAR + 'end_systole_volume']
+                data[0] = lvesv[sample_id]
+            else:
+                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_systole_volume', data=[lvesv[sample_id]])
+
+            if sample_id in lvedv:
+                data = hd5['continuous' + HD5_GROUP_CHAR + 'end_diastole_volume']
+                data[0] = lvesv[sample_id]
+            else:
+                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_diastole_volume', data=[lvedv[sample_id]])
+
+            if sample_id in lvesv:
+                data = hd5['continuous' + HD5_GROUP_CHAR + 'ejection_fraction']
+                data[0] = lvesv[sample_id]
+            else:
+                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'ejection_fraction', data=[lvef[sample_id]])
 
 
 def sort_csv(input_csv_file, volume_csv):
