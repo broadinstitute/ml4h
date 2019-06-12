@@ -52,7 +52,7 @@ def sort_csv(input_csv_file):
             csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csv_reader = csv.reader(input_csv, delimiter='\t')
             csv_writer.writerow(next(csv_reader)+['discrepancy'])
-            csv_sorted = sorted(csv_reader, key=lambda row: math.abs(float(row[6])-float(row[5])), reverse=True)
+            csv_sorted = sorted(csv_reader, key=lambda row: abs(float(row[6])-float(row[5])), reverse=True)
             [csv_writer.writerow(row + [float(row[6])-float(row[5])]) for row in csv_sorted]
 
 
