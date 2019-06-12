@@ -236,12 +236,12 @@ def _load_meta_data_for_tensor_writing(sql_cursor: sqlite3.Cursor,
         for row in lol[1:]:
             sample_id = int(row[0])
             if min_sample_id <= sample_id <= max_sample_id:
-                if row[2] != 'NA':
-                    lvesv[sample_id] = float(row[2])
-                if row[4] != 'NA':
-                    lvedv[sample_id] = float(row[4])
-                if row[6] != 'NA':
-                    lvef[sample_id] = float(row[6])
+                if row[1] != 'NA':
+                    lvesv[sample_id] = float(row[1])
+                if row[3] != 'NA':
+                    lvedv[sample_id] = float(row[3])
+                if row[5] != 'NA':
+                    lvef[sample_id] = float(row[5])
 
     lv_mass = {}
     with open(lv_mass_csv, 'r') as lvm:
