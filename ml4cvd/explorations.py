@@ -26,7 +26,7 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
-CSV_EXT = '.csv'
+CSV_EXT = '.tsv'
 
 
 def find_tensors(text_file, tensor_folder, tensor_maps_out):
