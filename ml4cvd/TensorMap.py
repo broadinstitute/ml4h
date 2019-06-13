@@ -7,8 +7,8 @@ from dateutil import relativedelta
 from keras.utils import to_categorical
 
 from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, \
-    CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, \
-    IMPUTATION_RANDOM
+    CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, \
+    TENSOR_MAP_GROUP_CONTINUOUS, IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -247,6 +247,9 @@ class TensorMap(object):
     def is_imputation_random(self):
         return self.is_multi_field_continuous() and self.imputation == IMPUTATION_RANDOM
 
+    def is_imputation_mean(self):
+        return self.is_multi_field_continuous() and self.imputation == IMPUTATION_MEAN
+
     def zero_mean_std1(self, np_tensor):
         np_tensor -= np.mean(np_tensor)
         np_tensor /= np.std(np_tensor) + EPS
@@ -309,8 +312,10 @@ class TensorMap(object):
             return ValueError('Imputation requires normalization.')
         if self.is_imputation_random():
             return np.random.normal(1)
-        else:
+        elif self.is_imputation_mean():
             return 0
+        else:
+            return ValueError('Imputation method unknown.')
 
     def rescale(self, np_tensor):
         if self.normalization is None:
