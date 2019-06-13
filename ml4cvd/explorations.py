@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-
+import seaborn as sns
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
@@ -165,6 +165,24 @@ def tabulate_correlations_from_tensor_files(id: str,
     tabulate_correlations(stats, id, min_samples, output_folder)
 
 
+def plot_heatmap_from_tensor_files(id: str,
+                                   tensor_folder: str,
+                                   output_folder: str,
+                                   min_samples: int,
+                                   max_samples: int = None) -> None:
+    """
+    :param id: name for the plotting run
+    :param tensor_folder: directory with tensor files to plot histograms from
+    :param output_folder: folder containing the output plot
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
+    :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
+    """
+
+    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...")
+    plot_heatmap(stats, id, min_samples, output_folder)
+
+
 def mri_dates(tensors: str, output_folder: str, run_id: str):
     incident_dates = []
     prevalent_dates = []
@@ -281,7 +299,6 @@ def tensors_to_label_dictionary(categorical_labels: List,
     return label_dict
 
 
-
 def _sample_with_heat(preds, temperature=1.0):
     # helper function to sample an index from a probability array
     preds = np.asarray(preds).astype('float64')
@@ -366,6 +383,82 @@ def tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     df.to_csv(table_path, index=False)
 
     logging.info(f"Saved correlations table at: {table_path}")
+
+
+def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
+                 output_file_name: str,
+                 min_samples: int,
+                 output_folder_path: str) -> None:
+
+    """
+    Tabulate in pdf correlations of field values given in 'stats'
+    :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
+    :param output_file_name: name of output file in pdf
+    :param output_folder_path: directory that output file will be written to
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
+    :return: None
+    """
+    no_correlations_calculated = 0
+    fields = stats.keys()
+    num_fields = len(fields)
+    field_pairs = combinations(fields, 2)
+    correlations_by_field_pairs: DefaultDict[Tuple[str, str], float] = defaultdict(float)
+    logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
+    processed_field_pair_count = 0
+    nan_counter = Counter()  # keep track of if we've seen a field have NaNs
+    for field1, field2 in field_pairs:
+        if field1 not in nan_counter.keys() and field2 not in nan_counter.keys():
+            common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
+            num_common_samples = len(common_samples)
+            processed_field_pair_count += 1
+            if processed_field_pair_count % 50000 == 0:
+                logging.debug(f"Processed {processed_field_pair_count} field pairs.")
+            if num_common_samples >= min_samples:
+                field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
+                field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
+
+                num_field1_nans = len(list(filter(math.isnan, field1_values)))
+                num_field2_nans = len(list(filter(math.isnan, field2_values)))
+                at_least_one_field_has_nans = False
+                if num_field1_nans != 0:
+                    nan_counter[field1] = True
+                    at_least_one_field_has_nans = True
+                if num_field2_nans != 0:
+                    nan_counter[field2] = True
+                    at_least_one_field_has_nans = True
+                if at_least_one_field_has_nans:
+                    continue
+
+                if len(field1_values) == len(field2_values):
+                    if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
+                        logging.debug(f"Not calculating correlation for fields {field1} and {field2} because at least one of "
+                                      f"the fields has all the same values for the {num_common_samples} common samples.")
+                        continue
+                    corr = np.corrcoef(field1_values, field2_values)[1, 0]
+                    if not math.isnan(corr):
+                        correlations_by_field_pairs[(field1, field2)] = corr
+                    else:
+                        logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
+                else:
+                    logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                                  f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
+        else:
+            continue
+
+    logging.info(f"Total number of correlations: {len(correlations_by_field_pairs)}")
+
+    fields_with_nans = nan_counter.keys()
+    if len(fields_with_nans) != 0:
+        logging.warning(f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.")
+
+    ser = pd.Series(list(correlations_by_field_pairs.values()),
+                    index=pd.MultiIndex.from_tuples(correlations_by_field_pairs.keys()))
+    df = ser.unstack().fillna(no_correlations_calculated)
+    heatmap = sns.heatmap(df)
+    fig = heatmap.get_figure()
+    heatmap_path = os.path.join(output_folder_path, output_file_name + IMAGE_EXT)
+    fig.savefig(heatmap_path)
+    logging.info(f"Plotted heatmap at: {heatmap_path}")
 
 
 def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
