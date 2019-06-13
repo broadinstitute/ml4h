@@ -305,11 +305,12 @@ class TensorMap(object):
         return np_tensor
 
     def impute(self):
+        if self.normalization is None:
+            return ValueError('Imputation requires normalization.')
         if self.is_imputation_random():
             return np.random.normal(1)
         else:
             return 0
-
 
     def rescale(self, np_tensor):
         if self.normalization is None:
