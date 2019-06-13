@@ -232,13 +232,7 @@ def parse_args():
 
 def _process_args(args):
     if len(args.input_continuous_tensors) > 0:
-        if args.mode == "compare":
-            multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, True, IMPUTATION_RANDOM),
-                                      generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, True, IMPUTATION_MEAN),
-                                      generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, False, IMPUTATION_RANDOM),
-                                      generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, False, IMPUTATION_MEAN)]
-        else:
-            multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors,
+        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors,
                                                                                  args.include_missing_continuous_channel,
                                                                                  args.imputation_method_for_continuous_fields)]
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors] + multi_field_tensor_map

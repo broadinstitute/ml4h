@@ -7,7 +7,8 @@ from dateutil import relativedelta
 from keras.utils import to_categorical
 
 from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, \
-    TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, IMPUTATION_RANDOM
+    CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, \
+    IMPUTATION_RANDOM
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -93,9 +94,9 @@ class TensorMap(object):
                  loss_weight=1.0,
                  channel_map=None,
                  hd5_override=None,
-                 normalization=None,
                  dependent_map=None,
                  required_inputs=None,
+                 normalization=None,
                  annotation_units=32,
                  imputation=None):
         """TensorMap constructor
@@ -115,6 +116,7 @@ class TensorMap(object):
         :param required_inputs: List of TensorMaps that are required by this one, used by hidden layer TensorMaps
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
+        :param imputation: Method of imputation for missing values. Options are mean or random.
         """
         self.name = name
         self.loss = loss

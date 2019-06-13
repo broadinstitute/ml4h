@@ -498,8 +498,6 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     matplotlib.rcParams.update({'font.size': 36})
 
     for p in predictions:
-        if p != "no_missing_channel_and_cat_965":
-            continue
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
         for key in labels:
             if 'no_' in key and len(labels) == 2:
