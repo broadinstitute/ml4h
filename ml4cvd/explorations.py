@@ -4,6 +4,7 @@
 import math
 import operator
 import os
+import random
 from collections import defaultdict, Counter
 from functools import reduce
 from itertools import combinations
@@ -451,13 +452,31 @@ def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
     if len(fields_with_nans) != 0:
         logging.warning(f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.")
 
+    # correlations_by_field_pairs = dict(random.sample(correlations_by_field_pairs.items(), 15))
     ser = pd.Series(list(correlations_by_field_pairs.values()),
                     index=pd.MultiIndex.from_tuples(correlations_by_field_pairs.keys()))
     df = ser.unstack().fillna(no_correlations_calculated)
-    heatmap = sns.heatmap(df)
-    fig = heatmap.get_figure()
+
+    # Set up the matplotlib figure
+    plt.subplots(figsize=(66, 60))
+
+    # Generate a mask for the upper triangle
+    mask = np.zeros_like(df, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = True
+
+    # Generate a custom diverging colormap
+    cmap = sns.diverging_palette(220, 10, as_cmap=True)
+
+    ax = sns.heatmap(df, mask=mask, cmap=cmap, square=True, vmin=-1, vmax=1)
+
+    # Set colourbar label font size
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=55)
+    
+    fig = ax.get_figure()
     heatmap_path = os.path.join(output_folder_path, output_file_name + IMAGE_EXT)
     fig.savefig(heatmap_path)
+
     logging.info(f"Plotted heatmap at: {heatmap_path}")
 
 
