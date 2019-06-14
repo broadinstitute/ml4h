@@ -363,14 +363,14 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_from_tensor_files(stats: Dict[str, Dict[str, List[float]]],
-                                      all_samples_count: int,
-                                      output_file_name: str,
-                                      output_folder_path: str = './figures',
-                                      num_rows: int = 4,
-                                      num_cols: int = 6,
-                                      num_bins: int = 50,
-                                      title_line_width: int = 50) -> None:
+def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
+                           all_samples_count: int,
+                           output_file_name: str,
+                           output_folder_path: str = './figures',
+                           num_rows: int = 4,
+                           num_cols: int = 6,
+                           num_bins: int = 50,
+                           title_line_width: int = 50) -> None:
     """
     Plots histograms of field values given in 'stats' in pdf
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx

@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_from_tensor_files, plot_heatmap
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 CSV_EXT = '.csv'
@@ -142,7 +142,7 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
 
     stats, num_tensor_files = collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
-    plot_histograms_from_tensor_files(stats, num_tensor_files, id, output_folder)
+    plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
 
 def plot_heatmap_from_tensor_files(id: str,
