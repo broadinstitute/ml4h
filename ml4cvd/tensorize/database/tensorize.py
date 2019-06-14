@@ -76,6 +76,12 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                     for row in rows:
                         hd5_dataset_name = dataset_name_from_meaning('continuous', [str(row['fieldid']), row['field'], str(row['instance']), str(row['array_idx'])])
                         _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
+                elif tensor_type == 'disease':
+                    for row in rows:
+                        hd5.create_dataset(row['disease'], data=[float(row['has_disease'])])
+                        if sample_id in dates[disease]:
+                            disease_date = dates[disease][sample_id].strftime('%Y-%m-%d')
+                            hd5.create_dataset(disease + '_date', (1,), data=disease_date, dtype=h5py.special_dtype(vlen=str))
 
             gcs_blob.upload_from_filename(tensor_path)
     except:

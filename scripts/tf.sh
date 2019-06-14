@@ -26,7 +26,7 @@ usage()
 
     Example: ./${SCRIPT_NAME} -n -t -i gcr.io/broad-ml4cvd/deeplearning:latest-cpu recipes.py --mode tensorize ...
 
-        -n                  Assume non-GPU-enabled machine and use the regular 'docker' launcher.
+        -c                  if set use CPU docker image and machine and use the regular 'docker' launcher.
                             By default, 'nvidia-docker' wrapper is used to launch Docker assuming the machine is GPU-enabled.
 
         -t                  Run Docker container interactively.
@@ -48,7 +48,7 @@ while getopts ":i:nth" opt ; do
         i)
             DOCKER_IMAGE=$OPTARG
             ;;
-        n)
+        c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
             DOCKER_COMMAND=docker
             ;;
