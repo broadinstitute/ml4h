@@ -472,12 +472,12 @@ def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
     # Set colourbar label font size
     cbar = ax.collections[0].colorbar
     cbar.ax.tick_params(labelsize=55)
-    
+
     fig = ax.get_figure()
     heatmap_path = os.path.join(output_folder_path, output_file_name + IMAGE_EXT)
     fig.savefig(heatmap_path)
 
-    logging.info(f"Plotted heatmap at: {heatmap_path}")
+    logging.info(f"Plotted heatmap ({df.shape[0]}x{df.shape[1]}) at: {heatmap_path}")
 
 
 def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
