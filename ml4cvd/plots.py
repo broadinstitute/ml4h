@@ -8,11 +8,13 @@ import logging
 import hashlib
 from textwrap import wrap
 from functools import reduce
-from itertools import islice
+from itertools import islice, combinations
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
 
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
@@ -361,14 +363,14 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
-                           all_samples_count: int,
-                           output_file_name: str,
-                           output_folder_path: str = './figures',
-                           num_rows: int = 4,
-                           num_cols: int = 6,
-                           num_bins: int = 50,
-                           title_line_width: int = 50) -> None:
+def plot_histograms_from_tensor_files(stats: Dict[str, Dict[str, List[float]]],
+                                      all_samples_count: int,
+                                      output_file_name: str,
+                                      output_folder_path: str = './figures',
+                                      num_rows: int = 4,
+                                      num_cols: int = 6,
+                                      num_bins: int = 50,
+                                      title_line_width: int = 50) -> None:
     """
     Plots histograms of field values given in 'stats' in pdf
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
@@ -412,6 +414,101 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
             pdf.savefig()
 
     logging.info(f"Saved histograms plot at: {figure_path}")
+
+
+def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
+                 output_file_name: str,
+                 min_samples: int,
+                 output_folder_path: str) -> None:
+
+    """
+    Plot heatmap of correlations between field pairs derived from 'stats'
+    :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
+    :param output_file_name: name of output file in pdf
+    :param output_folder_path: directory that output file will be written to
+    :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
+    :return: None
+    """
+    no_correlations_calculated = 0
+    fields = stats.keys()
+    num_fields = len(fields)
+    field_pairs = combinations(fields, 2)
+    correlations_by_field_pairs: DefaultDict[Tuple[str, str], float] = defaultdict(float)
+    logging.info(f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.")
+    processed_field_pair_count = 0
+    nan_counter = Counter()  # keep track of if we've seen a field have NaNs
+    for field1, field2 in field_pairs:
+        if field1 not in nan_counter.keys() and field2 not in nan_counter.keys():
+            common_samples = set(stats[field1].keys()).intersection(stats[field2].keys())
+            num_common_samples = len(common_samples)
+            processed_field_pair_count += 1
+            if processed_field_pair_count % 50000 == 0:
+                logging.debug(f"Processed {processed_field_pair_count} field pairs.")
+            if num_common_samples >= min_samples:
+                field1_values = reduce(operator.concat, [stats[field1][sample] for sample in common_samples])
+                field2_values = reduce(operator.concat, [stats[field2][sample] for sample in common_samples])
+
+                num_field1_nans = len(list(filter(math.isnan, field1_values)))
+                num_field2_nans = len(list(filter(math.isnan, field2_values)))
+                at_least_one_field_has_nans = False
+                if num_field1_nans != 0:
+                    nan_counter[field1] = True
+                    at_least_one_field_has_nans = True
+                if num_field2_nans != 0:
+                    nan_counter[field2] = True
+                    at_least_one_field_has_nans = True
+                if at_least_one_field_has_nans:
+                    continue
+
+                if len(field1_values) == len(field2_values):
+                    if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
+                        logging.debug(f"Not calculating correlation for fields {field1} and {field2} because at least one of "
+                                      f"the fields has all the same values for the {num_common_samples} common samples.")
+                        continue
+                    corr = np.corrcoef(field1_values, field2_values)[1, 0]
+                    if not math.isnan(corr):
+                        correlations_by_field_pairs[(field1, field2)] = corr
+                    else:
+                        logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
+                else:
+                    logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                                  f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
+        else:
+            continue
+
+    logging.info(f"Total number of correlations: {len(correlations_by_field_pairs)}")
+
+    fields_with_nans = nan_counter.keys()
+    if len(fields_with_nans) != 0:
+        logging.warning(f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.")
+
+    # correlations_by_field_pairs = dict(random.sample(correlations_by_field_pairs.items(), 15))
+    ser = pd.Series(list(correlations_by_field_pairs.values()),
+                    index=pd.MultiIndex.from_tuples(correlations_by_field_pairs.keys()))
+    df = ser.unstack().fillna(no_correlations_calculated)
+
+    # Set up the matplotlib figure
+    plt.subplots(figsize=(66, 60))
+
+    # Generate a mask for the upper triangle
+    mask = np.zeros_like(df, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = True
+
+    # Generate a custom diverging colourmap
+    cmap = sns.diverging_palette(220, 10, as_cmap=True)
+
+    # Plot
+    ax = sns.heatmap(df, mask=mask, cmap=cmap, square=True, vmin=-1, vmax=1)
+
+    # Set colourbar label font size
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=55)
+
+    fig = ax.get_figure()
+    heatmap_path = os.path.join(output_folder_path, output_file_name + IMAGE_EXT)
+    fig.savefig(heatmap_path)
+
+    logging.info(f"Plotted heatmap ({df.shape[0]}x{df.shape[1]}) at: {heatmap_path}")
 
 
 def plot_ecg(data, label, prefix='./figures/'):
