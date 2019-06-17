@@ -328,8 +328,8 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     rocs = []
     for tm in tensor_maps_out:
         if tm.output_name() in test_labels:
-            y_predict = predictions[tm.output_name()]
-            y_truth = test_labels[tm.output_name()]
+            y_predict = np.array(predictions[tm.output_name()])
+            y_truth = np.array(test_labels[tm.output_name()])
             performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
