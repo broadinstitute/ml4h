@@ -951,7 +951,7 @@ def append_float_csv(tensors, csv_file, group):
     data_maps = defaultdict(dict)
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter='\t'))
-        fields = lol[0][1:]  # Assumes sample id is the first field
+        fields = lol[0]  # Assumes sample id is the first field
         logging.info(f"CSV of MRI volumes header:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
