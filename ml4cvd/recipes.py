@@ -71,7 +71,7 @@ def run(args):
         elif 'fix_volumes' == args.mode:
             fix_volumes(args.tensors, args.volume_csv)
         elif 'append_csv' == args.mode:
-            append_float_csv(args.tensors, args.app_csv, 'continuous')
+            append_float_csv(args.tensors, args.app_csv, 'continuous', ' ')
         else:
             raise ValueError('Unknown mode:', args.mode)
 
