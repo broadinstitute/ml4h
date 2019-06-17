@@ -972,7 +972,7 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                         if field in hd5[group]:
                             data = hd5[hd5_key]
                             if data_maps[sample_id]['annotation'] in ['unreviewed', 'good']:
-                                data[0] = data_maps[sample_id][field]
+                                data[0] = float(data_maps[sample_id][field])
                                 stats['updated'] += 1
                             else:
                                 data[0] = 0.0
