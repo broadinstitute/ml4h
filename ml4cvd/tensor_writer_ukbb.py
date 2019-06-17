@@ -16,6 +16,7 @@ import zipfile
 import pydicom
 import datetime
 import operator
+import traceback
 import numpy as np
 from typing import Dict, List, Tuple
 from timeit import default_timer as timer
@@ -946,6 +947,7 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 
 
 def append_float_csv(tensors, csv_file, group):
+    stats = Counter()
     data_maps = defaultdict(dict)
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter='\t'))
@@ -968,11 +970,16 @@ def append_float_csv(tensors, csv_file, group):
                         if field in hd5[group]:
                             data = hd5[hd5_key]
                             data[0] = data_maps[sample_id][field]
+                            stats['updated'] += 1
                         else:
                             hd5.create_dataset(hd5_key, data=[data_maps[sample_id][field]])
+                            stats['created'] += 1
         except:
-            print('couldnt open', tp)
+            print('couldnt open', tp, traceback.format_exc())
+            stats['failed'] += 1
 
+    for k in stats:
+        logging.info("{}: {}".format(k, stats[k]))
 
 # TODO Use 'with' or explicitly close files opened in this method
 def _ukbb_stats(run_id, output_folder, phenos_folder, volume_csv, icd_csv, app_csv, zip_folder) -> None:
