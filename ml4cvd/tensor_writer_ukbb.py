@@ -951,20 +951,20 @@ def append_float_csv(tensors, csv_file, group):
     data_maps = defaultdict(dict)
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter='\t'))
-        logging.info(f"CSV of MRI volumes header:{enumerate(lol[0])}")
         fields = lol[0][1:]  # Assumes sample id is the first field
+        logging.info(f"CSV of MRI volumes header:{fields)}")
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: float(row[i+1]) for i in range(len(fields))}
-
-    logging.info(f"Total tensors to append to:{len(os.listdir(tensors))}")
+            logging.info(f"Data maps:{data_maps[sample_id]}")
+    logging.info(f"Data maps:{len(data_maps)}")
     for tp in os.listdir(tensors):
         if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
             continue
         try:
             with h5py.File(tensors + tp, 'a') as hd5:
                 sample_id = tp.replace(TENSOR_EXT, '')
-                logging.info(f"Try with:{sample_id}")
+                #logging.info(f"Try with:{sample_id}")
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
                         hd5_key = group + HD5_GROUP_CHAR + field
