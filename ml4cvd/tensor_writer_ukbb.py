@@ -964,10 +964,11 @@ def append_float_csv(tensors, csv_file, group):
         try:
             with h5py.File(tensors + tp, 'a') as hd5:
                 sample_id = tp.replace(TENSOR_EXT, '')
-
+                logging.info(f"Try with:{sample_id}")
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
                         hd5_key = group + HD5_GROUP_CHAR + field
+                        logging.info(f"Try field:{field}")
                         if field in hd5[group]:
                             data = hd5[hd5_key]
                             data[0] = data_maps[sample_id][field]
