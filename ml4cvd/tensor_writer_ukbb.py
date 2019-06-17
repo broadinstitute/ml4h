@@ -956,7 +956,7 @@ def append_float_csv(tensors, csv_file, group):
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: float(row[i+1]) for i in range(len(fields))}
-            logging.info(f"Data maps:{data_maps[sample_id]}")
+            #logging.info(f"Data maps:{data_maps[sample_id]}")
     logging.info(f"Data maps:{len(data_maps)}")
     for tp in os.listdir(tensors):
         if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
