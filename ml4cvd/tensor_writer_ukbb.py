@@ -945,6 +945,35 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
     return disease2tsv
 
 
+def append_float_csv(tensors, csv_file, group):
+    data_maps = defaultdict(dict)
+    with open(csv_file, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter='\t'))
+        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
+        fields = lol[0][1:]  # Assumes sample id is the first field
+        for row in lol[1:]:
+            sample_id = row[0]
+            data_maps[sample_id] = {fields[i]: float(row[i+1]) for i in range(len(fields))}
+
+    for tp in os.listdir(tensors):
+        if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
+            continue
+        try:
+            with h5py.File(tensors + tp, 'a') as hd5:
+                sample_id = tp.replace(TENSOR_EXT, '')
+
+                if sample_id in data_maps:
+                    for field in data_maps[sample_id]:
+                        hd5_key = group + HD5_GROUP_CHAR + field
+                        if field in hd5[group]:
+                            data = hd5[hd5_key]
+                            data[0] = data_maps[sample_id][field]
+                        else:
+                            hd5.create_dataset(hd5_key, data=[data_maps[sample_id][field]])
+        except:
+            print('couldnt open', tp)
+
+
 # TODO Use 'with' or explicitly close files opened in this method
 def _ukbb_stats(run_id, output_folder, phenos_folder, volume_csv, icd_csv, app_csv, zip_folder) -> None:
     stats = Counter()

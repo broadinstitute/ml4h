@@ -19,10 +19,10 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.tensor_generators import TensorGenerator
 from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, HD5_GROUP_CHAR
 
@@ -86,6 +86,7 @@ def fix_volumes(tensors, volume_csv):
                     hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'ejection_fraction', data=[lvef[sample_id]])
         except:
             print('couldnt open', tp)
+
 
 def sort_csv(input_csv_file, volume_csv):
     lvef = {}
@@ -342,6 +343,11 @@ def tensors_to_label_dictionary(categorical_labels: List,
 
     return label_dict
 
+
+def test_labels_to_label_dictionary(labels) -> Dict[str, np.ndarray]:
+    # Not implemented
+    # label_dict = {k: np.zeros((labels[k].shape[0])) for k in labels if len(labels[k].shape) == 1}
+    pass
 
 
 def _sample_with_heat(preds, temperature=1.0):

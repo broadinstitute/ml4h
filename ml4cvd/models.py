@@ -22,9 +22,9 @@ from keras.layers.convolutional import Conv1D, Conv2D, Conv3D, UpSampling1D, UpS
 from keras.layers.convolutional import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D
 
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.metrics import get_metric_dict
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
-from ml4cvd.metrics import sum_pred_loss, get_metric_dict, paired_angle_between_batches
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
