@@ -164,9 +164,14 @@ def optimize_dense_layers_multimodal_multitask(args):
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT))
 
     # Re-train the best model so it's easy to view it at the end of the logs
-    updated_args = args_from_best_trials(args, trials)
-    model = make_multimodal_to_multilabel_model(updated_args)
-    train_model_from_generators(updated_args, model, generate_train, generate_test)
+    args = args_from_best_trials(args, trials)
+    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
+    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+                                args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
 
 def optimize_lr_multimodal_multitask(args):
