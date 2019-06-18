@@ -148,6 +148,8 @@ class TensorMap(object):
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
+        elif self.loss is None:
+            self.loss = 'mse'
 
         if self.metrics is None and self.is_categorical_any():
             self.metrics = ['categorical_accuracy']
