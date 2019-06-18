@@ -989,6 +989,44 @@ def append_float_csv(tensors, csv_file, group, delimiter):
     for k in stats:
         logging.info("{}: {}".format(k, stats[k]))
 
+
+def append_gene_csv(tensors, csv_file, delimiter):
+    stats = Counter()
+    data_maps = defaultdict(dict)
+    with open(csv_file, 'r') as volumes:
+        lol = list(csv.reader(volumes, delimiter=delimiter))
+        fields = lol[0][1:]  # Assumes sample id is the first field
+        logging.info(f"CSV of genes header:{fields}")
+        for row in lol[1:]:
+            sample_id = row[0]
+            data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
+
+    logging.info(f"Data maps:{len(data_maps)}")
+    for tp in os.listdir(tensors):
+        if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
+            continue
+        try:
+            with h5py.File(tensors + tp, 'a') as hd5:
+                sample_id = tp.replace(TENSOR_EXT, '')
+                if sample_id in data_maps:
+                    for field in data_maps[sample_id]:
+                        if data_maps[sample_id][field] in hd5:
+                            data = hd5[data_maps[sample_id][field]]
+                            data[0] = 1.0
+                            stats['updated'] += 1
+                        else:
+                            hd5.create_dataset(data_maps[sample_id][field], data=[1.0])
+                            stats['created'] += 1
+                else:
+                    stats['sample id missing']
+        except:
+            print('couldnt open', tp, traceback.format_exc())
+            stats['failed'] += 1
+
+    for k in stats:
+        logging.info("{}: {}".format(k, stats[k]))
+
+
 # TODO Use 'with' or explicitly close files opened in this method
 def _ukbb_stats(run_id, output_folder, phenos_folder, volume_csv, icd_csv, app_csv, zip_folder) -> None:
     stats = Counter()

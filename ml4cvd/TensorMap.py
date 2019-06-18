@@ -207,8 +207,11 @@ class TensorMap(object):
     def is_categorical_date(self):
         return self.group == 'categorical_date'
 
+    def is_categorical_flag(self):
+        return self.group == 'categorical_flag'
+
     def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date()
+        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag()
 
     def is_continuous(self):
         return self.group == 'continuous'
@@ -348,6 +351,13 @@ class TensorMap(object):
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             index = int(hd5[self.name][0])
             categorical_data[index] = 1.0
+            return categorical_data
+        elif self.is_categorical_flag():
+            categorical_data = np.zeros(self.shape, dtype=np.float32)
+            if self.name in hd5:
+                categorical_data[1] = 1.0
+            else:
+                categorical_data[0] = 1.0
             return categorical_data
         elif self.is_categorical_date():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
