@@ -51,8 +51,10 @@ def run(args):
 
 def optimize_conv_layers_multimodal_multitask(args):
     stats = Counter()
-    generate_train, generate_valid, _ = test_train_valid_tensor_generators(args)
-    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_valid, args.validation_steps, False)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
+    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_test, args.test_steps, False)
     
     dense_blocks_sets = [[16, 16], [32, 32], [32, 24, 16], [64, 32, 16], [32, 32, 32], [16, 16, 16], [64, 48, 32], [128, 64, 32], [48, 32, 24, 16], [24, 24, 24, 24], [128, 96, 64, 48]]
     conv_layers_sets = [[128], [64], [48], [32], [24],  [16]]
@@ -69,14 +71,19 @@ def optimize_conv_layers_multimodal_multitask(args):
     def loss_from_multimodal_multitask(x):
         try:
             set_args_from_x(args, x)
-            model = make_multimodal_to_multilabel_model(args)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                        args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                        args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                        args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                        args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
             
             if model.count_params() > args.max_parameters:
-                logging.info('Model too big in hyperparameter optimization, max parameters is:{}, this model has:{}. Returning max loss.'.format(args.max_parameters, model.count_params()))
+                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 del model
                 return MAX_LOSS
 
-            model = train_model_from_generators(args, model, generate_train, generate_valid)
+            model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
             logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
@@ -104,28 +111,34 @@ def optimize_conv_layers_multimodal_multitask(args):
     # Re-train the best model so it's easy to view it at the end of the logs
     updated_args = args_from_best_trials(args, trials, param_lists)
     model = make_multimodal_to_multilabel_model(updated_args)
-    train_model_from_generators(updated_args, model, generate_train, generate_valid)
+    train_model_from_generators(updated_args, model, generate_train, generate_test)
 
 
 def optimize_dense_layers_multimodal_multitask(args):
     stats = Counter()
-    generate_train, generate_valid, _ = test_train_valid_tensor_generators(args)
-    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_valid, args.validation_steps, False)
-
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
+    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_test, args.test_steps, False)
     space = {'num_layers': hp.uniform('num_layers', 1, 6),
              'layer_width': hp.loguniform('layer_width', 2, 7)}
 
     def loss_from_multimodal_multitask(x):
         try:
             args.dense_layers = [int(x['layer_width'])] * int(x['num_layers'])
-            model = make_multimodal_to_multilabel_model(args)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+                                                        args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
+                                                        args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
+                                                        args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
+                                                        args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
 
             if model.count_params() > args.max_parameters:
-                logging.info('Model too big in hyperparameter optimization, max parameters is:{}, this model has:{}. Returning max loss.'.format(args.max_parameters, model.count_params()))
+                logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 del model
                 return MAX_LOSS
 
-            model = train_model_from_generators(args, model, generate_train, generate_valid)
+            model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
             logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
@@ -153,7 +166,7 @@ def optimize_dense_layers_multimodal_multitask(args):
     # Re-train the best model so it's easy to view it at the end of the logs
     updated_args = args_from_best_trials(args, trials)
     model = make_multimodal_to_multilabel_model(updated_args)
-    train_model_from_generators(updated_args, model, generate_train, generate_valid)
+    train_model_from_generators(updated_args, model, generate_train, generate_test)
 
 
 def optimize_lr_multimodal_multitask(args):

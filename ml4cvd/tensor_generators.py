@@ -17,8 +17,8 @@ import logging
 import traceback
 import threading
 import numpy as np
-from typing import List
 from collections import Counter
+from typing import List, Dict, Tuple, Generator, Optional
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -276,9 +276,9 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio, test_ratio):
+def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio, test_ratio, test_modulo):
     lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    print(list(enumerate(lol[0])))
+    logging.info(f"ICD CSV Header: {list(enumerate(lol[0]))}")
     stats = Counter()
     sample2group = {}
     for row in lol[1:]:
@@ -288,34 +288,32 @@ def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio
             if row[icd_index] == '1':
                 sample2group[sample_id] = i+1 # group 0 means no ICD code
                 stats['group_'+str(i+1)] += 1
-    print(stats)
-    
-    test_paths = [[] for _ in range(len(icds)+1)] 
+    logging.info(f"ICD CSV Sample stats: {stats}")
+
+    test_paths = [[] for _ in range(len(icds)+1)]
     train_paths = [[] for _ in range(len(icds)+1)] 
     valid_paths = [[] for _ in range(len(icds)+1)]                
     for root, dirs, files in os.walk(tensors):
         for name in files:
-            splitted = os.path.splitext(name)
-            if splitted[-1].lower() != TENSOR_EXT:
+            splits = os.path.splitext(name)
+            if splits[-1].lower() != TENSOR_EXT:
                 continue
                 
-            sample_id = os.path.basename(splitted[0])
+            sample_id = os.path.basename(splits[0])
             group = 0
             if sample_id in sample2group:
                 group = sample2group[sample_id]
             dice = np.random.rand()
-            if dice < valid_ratio:
-                valid_paths[group].append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
+            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))
-            else:   
+            elif dice < (valid_ratio+test_ratio):
+                valid_paths[group].append(os.path.join(root, name))
+            else:
                 train_paths[group].append(os.path.join(root, name))
 
-    logging.info('Found {} training {} validation and {} testing tensors without ICD codes.'.format(
-        len(train_paths[0]), len(valid_paths[0]), len(test_paths[0])))
+    logging.info(f"Found {len(train_paths[0])} training {len(valid_paths[0])} validation and {len(test_paths[0])} testing tensors without ICD codes.")
     for i, icd_group in enumerate(icds):
-        logging.info('For ICD indexes:{} Found {} for training {} for validation and {} for testing'.format(
-            icd_group, len(train_paths[i+1]), len(valid_paths[i+1]), len(test_paths[i+1])))
+        logging.info(f"ICD index:{icd_group} {len(train_paths[i+1])} training, {len(valid_paths[i+1])} valid, {len(test_paths[i+1])} test tensors.")
     
     return train_paths, valid_paths, test_paths
 
@@ -329,10 +327,29 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        test_modulo: int,
                                        icd_csv: str,
                                        balance_by_icds: List[str],
-                                       keep_paths: bool=False,
-                                       keep_paths_test: bool=True):
+                                       keep_paths: bool = False,
+                                       keep_paths_test: bool = True) -> Tuple[
+        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
+        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
+        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
+    """ Get 3 tensor generator functions for training, validation and testing data.
+
+    :param maps_in: list of TensorMaps that are input names to a model
+    :param maps_out: list of TensorMaps that are output from a model
+    :param tensors: directory containing tensors
+    :param batch_size: number of examples in each mini-batch
+    :param valid_ratio: rate of tensors to use for validation
+    :param test_ratio: rate of tensors to use for testing
+    :param test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
+    :param icd_csv: CSV file with ICD data for each sample ID
+    :param balance_by_icds: if not empty, generator will provide batches balanced amongst the ICD codes in this list.
+                            Specified as an integer index into icd_csv, but provided on command line and treated as a string here.
+    :param keep_paths: also return the list of tensor files loaded for training and validation tensors
+    :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
+    :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
+    """
     if len(balance_by_icds) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_icds(tensors, icd_csv, balance_by_icds, valid_ratio, test_ratio)
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_icds(tensors, icd_csv, balance_by_icds, valid_ratio, test_ratio, test_modulo)
         weights = [1.0/len(balance_by_icds) for _ in range(len(balance_by_icds)+1)]
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
