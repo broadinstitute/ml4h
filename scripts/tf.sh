@@ -39,7 +39,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:nth" opt ; do
+while getopts ":i:cth" opt ; do
     case ${opt} in
         h)
             usage
