@@ -119,7 +119,7 @@ def optimize_dense_layers_multimodal_multitask(args):
     generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
                                                                           args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
                                                                           args.balance_by_icds, False, False)
-    test_data, test_labels = big_batch_from_minibatch_generator(args, generate_test, args.test_steps, False)
+    test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
     space = {'num_layers': hp.uniform('num_layers', 1, 6),
              'layer_width': hp.loguniform('layer_width', 2, 7)}
 
