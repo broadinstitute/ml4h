@@ -283,7 +283,7 @@ def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio
     for row in lol[1:]:
         sample_id = row[0]
         sample2group[sample_id] = 0
-        for i,icd_index in enumerate(icds):
+        for i, icd_index in enumerate(icds):
             if row[icd_index] == '1':
                 sample2group[sample_id] = i+1 # group 0 means no ICD code
                 stats['group_'+str(i+1)] += 1
