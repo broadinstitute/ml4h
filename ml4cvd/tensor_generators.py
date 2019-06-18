@@ -235,7 +235,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
         return input_tensors, output_tensors
 
 
-def get_test_train_valid_paths(tensors, valid_ratio, test_ratio):
+def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
     """Return 3 disjoint lists of tensor paths.
 
     The paths are split in training, validation and testing lists
@@ -245,6 +245,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio):
         tensors: directory containing tensors
         valid_ratio: rate of tensors in validation list
         test_ratio: rate of tensors in testing list
+        test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
 
     Returns:
         A tuple of 3 lists of hd5 tensor file paths
@@ -260,10 +261,10 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio):
             if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
                 continue
             dice = np.random.rand()
-            if dice < valid_ratio:
-                valid_paths.append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
+            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths.append(os.path.join(root, name))
+            elif dice < (valid_ratio+test_ratio):
+                valid_paths.append(os.path.join(root, name))
             else:   
                 train_paths.append(os.path.join(root, name))
     
@@ -325,6 +326,7 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        batch_size: int,
                                        valid_ratio: float,
                                        test_ratio: float,
+                                       test_modulo: int,
                                        icd_csv: str,
                                        balance_by_icds: List[str],
                                        keep_paths: bool=False,
@@ -336,7 +338,7 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio)
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
