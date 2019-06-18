@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from ml4cvd.arguments import parse_args
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
-from ml4cvd.tensor_writer_ukbb import write_tensors, append_float_csv
+from ml4cvd.tensor_writer_ukbb import write_tensors, append_float_csv, append_gene_csv
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, tensors_to_label_dictionary, sort_csv, fix_volumes
@@ -72,6 +72,8 @@ def run(args):
             fix_volumes(args.tensors, args.volume_csv)
         elif 'append_csv' == args.mode:
             append_float_csv(args.tensors, args.app_csv, 'continuous', ' ')
+        elif 'append_gene_csv' == args.mode:
+            append_gene_csv(args.tensors, args.app_csv, '\t')
         else:
             raise ValueError('Unknown mode:', args.mode)
 
