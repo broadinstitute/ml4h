@@ -140,7 +140,7 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
-    stats, num_tensor_files = collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    stats, num_tensor_files = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
     plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
 
@@ -158,7 +158,7 @@ def plot_heatmap_from_tensor_files(id: str,
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
-    stats, _ = collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...")
     plot_heatmap(stats, id, min_samples, output_folder)
 
@@ -176,7 +176,7 @@ def tabulate_correlations_from_tensor_files(id: str,
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
-    stats, _ = collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...")
     _tabulate_correlations(stats, id, min_samples, output_folder)
 
@@ -308,9 +308,9 @@ def _sample_with_heat(preds, temperature=1.0):
 
 
 def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
-                          output_file_name: str,
-                          min_samples: int,
-                          output_folder_path: str) -> None:
+                           output_file_name: str,
+                           min_samples: int,
+                           output_folder_path: str) -> None:
 
     """
     Tabulate in pdf correlations of field values given in 'stats'
@@ -383,8 +383,8 @@ def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     logging.info(f"Saved correlations table at: {table_path}")
 
 
-def collect_continuous_stats_from_tensor_files(tensor_folder: str,
-                                               max_samples: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
+def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
+                                                max_samples: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
     if not os.path.exists(tensor_folder):
         raise ValueError('Source directory does not exist: ', tensor_folder)
     all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
