@@ -344,10 +344,16 @@ def tensors_to_label_dictionary(categorical_labels: List,
     return label_dict
 
 
-def test_labels_to_label_dictionary(labels) -> Dict[str, np.ndarray]:
-    # Not implemented
-    # label_dict = {k: np.zeros((labels[k].shape[0])) for k in labels if len(labels[k].shape) == 1}
-    pass
+def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> Dict[str, np.ndarray]:
+    label_dict = {tm.name: np.zeros((examples)) for tm in test_labels}
+    for tm in test_labels:
+        for i in range(examples):
+            if tm.shape[0] == 1:
+                label_dict[tm.name][i] = test_labels[tm][i]
+            else:
+                label_dict[tm.name][i] = np.argmax(test_labels[tm][i])
+    return label_dict
+
 
 
 def _sample_with_heat(preds, temperature=1.0):

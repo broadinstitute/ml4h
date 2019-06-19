@@ -16,7 +16,7 @@ from ml4cvd.tensor_writer_ukbb import write_tensors, append_float_csv, append_ge
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, tensors_to_label_dictionary, sort_csv, fix_volumes
-from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files
+from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
 from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus, embed_model_predict
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 
@@ -40,8 +40,6 @@ def run(args):
             compare_multimodal_multitask_models(args)
         elif 'infer' == args.mode:
             infer_multimodal_multitask(args)
-        elif 'tsne' == args.mode:
-            tsne_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
@@ -327,7 +325,8 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
     if len(embeddings) > 0:
-        _tsne_wrapper(model, 'embed', test_paths, test_data=None, embeddings=embeddings)
+        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+        _tsne_wrapper(model, 'embed', test_paths, test_data=None, test_labels=test_labels_1d, embeddings=embeddings)
 
 
     return performance_metrics
@@ -501,7 +500,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         subplot_comparison_scatters(scatters, plot_folder)
 
 
-def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, embeddings=None):
+def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, test_labels=None, embeddings=None):
     categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
     continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
                          '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
@@ -517,6 +516,8 @@ def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, embeddin
 
     plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
     label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
+    if test_labels is not None:
+        label_dict.update(test_labels_to_label_dictionary(test_labels, len(test_paths)))
     plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
 
 
