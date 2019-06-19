@@ -352,7 +352,7 @@ def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], ex
     for tm in test_labels:
         for i in range(examples):
             if tm.is_continuous():
-                label_dict[tm.name][i] = test_labels[tm][i]
+                label_dict[tm.name][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm.name)
             else:
                 label_dict[tm.name][i] = np.argmax(test_labels[tm][i])
