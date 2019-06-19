@@ -736,9 +736,9 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
                 for c in categorical_colors:
                     ax.scatter(p2y[p][categorical_subsets[c], 0], p2y[p][categorical_subsets[c], 1], c=categorical_colors[c], alpha=0.5)
                 if max(label_dict[k]) == 1:
-                    ax.legend(['undiagnosed ' + k, k], loc='lower left')
+                    ax.legend(['no ' + k, k], loc='lower left')
                 elif max(label_dict[k]) == 2:
-                    ax.legend(['undiagnosed ' + k, 'prevalent ' + k, 'incident ' + k], loc='lower left')
+                    ax.legend(['no ' + k, 'prevalent ' + k, 'incident ' + k], loc='lower left')
                 else:
                     ax.legend(list(categorical_colors.keys()), loc='lower left')
             elif k in continuous_labels:
