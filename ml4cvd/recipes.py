@@ -266,6 +266,7 @@ def plot_while_training(args):
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, output_folder, run_id, test_paths=None):
+    layer_names = [layer.name for layer in model.layers]
     plot_path = os.path.join(output_folder, run_id)
     performance_metrics = {}
     scatters = []
@@ -273,6 +274,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
 
     y_predictions = model.predict(test_data, batch_size=batch_size)
     for y, tm in zip(y_predictions, tensor_maps_out):
+        if tm.output_name() not in layer_names:
+            continue
         if len(tensor_maps_out) == 1:
             y = y_predictions
         y_truth = test_labels[tm.output_name()]
@@ -291,14 +294,14 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
 def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, output_folder, run_id):
     predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
-    layers_names = [layer.name for layer in model.layers]
+    layer_names = [layer.name for layer in model.layers]
     embeddings = []
     test_paths = []
     for i in range(steps):
         batch_data, batch_labels, batch_paths = next(test_generator)
         y_pred = model.predict(batch_data)
         test_paths.extend(batch_paths)
-        if 'embed' in layers_names:
+        if 'embed' in layer_names:
             x_embed = embed_model_predict(model, args.tensor_maps_in, 'embed', batch_data, 2)
             print(x_embed.shape)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
@@ -315,7 +318,7 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     scatters = []
     rocs = []
     for tm in tensor_maps_out:
-        if tm.output_name() in test_labels:
+        if tm.output_name() in test_labels and tm.output_name() in layer_names:
             y_predict = np.array(predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
             performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
