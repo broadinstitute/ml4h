@@ -713,30 +713,37 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     plt.rcParams.update({'font.size': 22})
 
     p2y = {}
-    for i, perplexity in enumerate(perplexities):
-        tsne = manifold.TSNE(n_components=n_components, init='random', random_state=0, perplexity=perplexity)
-        p2y[perplexity] = tsne.fit_transform(x_embed)
+    for i, p in enumerate(perplexities):
+        tsne = manifold.TSNE(n_components=n_components, init='random', random_state=0, perplexity=p)
+        p2y[p] = tsne.fit_transform(x_embed)
 
     j = -1
+    categorical_colors = {0: 'green', 1: 'red', 2: 'blue', 3: 'orange'}
     for k in label_dict:
         j += 1
         if j == rows:
             break
+        categorical_subsets = {}
         if k in categorical_labels + gene_labels:
-            red = label_dict[k] == 1.0
-            green = label_dict[k] != 1.0
+            for c in categorical_colors:
+                categorical_subsets[c] = label_dict[k] == c
         elif k in continuous_labels:
             colors = label_dict[k]
         print('process key:', k)
-        for i, perplexity in enumerate(perplexities):
+        for i, p in enumerate(perplexities):
             ax = subplots[j, i]
             ax.set_title(k)  # +", Perplexity=%d" % perplexity)
             if k in categorical_labels+gene_labels:
-                ax.scatter(p2y[perplexity][green, 0], p2y[perplexity][green, 1], c="g", alpha=0.5)
-                ax.scatter(p2y[perplexity][red, 0], p2y[perplexity][red, 1], c="r", alpha=0.5)
-                ax.legend(['no_' + k, k], loc='lower left')
+                for c in categorical_colors:
+                    ax.scatter(p2y[p][categorical_subsets[c], 0], p2y[p][categorical_subsets[c], 1], c=categorical_colors[c], alpha=0.5)
+                if max(label_dict[k]) == 1:
+                    ax.legend(['undiagnosed ' + k, k], loc='lower left')
+                elif max(label_dict[k]) == 2:
+                    ax.legend(['undiagnosed ' + k, 'prevalent ' + k, 'incident ' + k], loc='lower left')
+                else:
+                    ax.legend(list(categorical_colors.keys()), loc='lower left')
             elif k in continuous_labels:
-                points = ax.scatter(p2y[perplexity][:, 0], p2y[perplexity][:, 1], c=colors, alpha=0.5, cmap='jet')
+                points = ax.scatter(p2y[p][:, 0], p2y[p][:, 1], c=colors, alpha=0.5, cmap='jet')
                 if i == len(perplexities) - 1:
                     fig.colorbar(points, ax=ax)
 
