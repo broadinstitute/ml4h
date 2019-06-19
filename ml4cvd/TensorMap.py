@@ -344,7 +344,7 @@ class TensorMap(object):
             tm: The TensorMap that describes the type of tensor to make
             hd5: The file where the tensor was saved
             dependents: A dict that maps dependent TensorMaps to numpy arrays
-                if tm has a dependent tensor it will be constructed and added here
+                if self has a dependent TensorMap it will be constructed and added here
 
         Returns
             A numpy array whose dimension and type is dictated by tm
