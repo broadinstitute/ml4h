@@ -345,13 +345,15 @@ def tensors_to_label_dictionary(categorical_labels: List,
 
 
 def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> Dict[str, np.ndarray]:
-    label_dict = {tm.name: np.zeros((examples)) for tm in test_labels}
+    label_dict = {tm.name: np.zeros((examples,)) for tm in test_labels}
     for tm in test_labels:
         for i in range(examples):
-            if tm.shape[0] == 1:
+            if tm.is_continuous():
                 label_dict[tm.name][i] = test_labels[tm][i]
             else:
                 label_dict[tm.name][i] = np.argmax(test_labels[tm][i])
+    for label in label_dict:
+        print(label, 'labels has:', label_dict[label])
     return label_dict
 
 
