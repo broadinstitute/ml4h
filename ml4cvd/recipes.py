@@ -293,7 +293,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
 
 def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, output_folder, run_id):
     layer_names = [layer.name for layer in model.layers]
-    predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
+    model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
+    scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
     embeddings = []
     test_paths = []
@@ -309,18 +310,19 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         for tm_output_name in test_labels:
             test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
 
-        for y, tm_output_name in zip(y_pred, predictions.keys()):
-            if len(predictions) == 1:
+        for y, tm_output_name in zip(y_pred, model_predictions):
+            if len(scalar_predictions) == 1:
                 y = y_pred
-            predictions[tm_output_name].extend(np.copy(y))
+            if tm_output_name in scalar_predictions:
+                scalar_predictions[tm_output_name].extend(np.copy(y))
 
     plot_path = os.path.join(output_folder, run_id)
     performance_metrics = {}
     scatters = []
     rocs = []
     for tm in tensor_maps_out:
-        if tm.output_name() in predictions:
-            y_predict = np.array(predictions[tm.output_name()])
+        if tm.output_name() in scalar_predictions:
+            y_predict = np.array(scalar_predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
             performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
