@@ -158,7 +158,7 @@ def plot_heatmap_from_tensor_files(id: str,
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
 
-    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
+    stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples, ['0'], 0)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...")
     plot_heatmap(stats, id, min_samples, output_folder)
 
@@ -384,7 +384,9 @@ def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
 
 
 def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
-                                                max_samples: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
+                                                max_samples: int = None,
+                                                instances: List[str] = ['0', '1', '2'],
+                                                max_arr_idx: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
     if not os.path.exists(tensor_folder):
         raise ValueError('Source directory does not exist: ', tensor_folder)
     all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
@@ -404,7 +406,7 @@ def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
     stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
     file_count = 0
     for tensor_file in tensor_files:
-        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats)
+        _collect_continuous_stats_from_tensor_file(tensor_folder, tensor_file, stats, instances, max_arr_idx)
         file_count += 1
         if file_count % 1000 == 0:
             logging.debug(f"Collected continuous stats from {file_count}.")
@@ -414,7 +416,9 @@ def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
 
 def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                                                tensor_file: str,
-                                               stats: DefaultDict[str, DefaultDict[str, List[float]]]) -> None:
+                                               stats: DefaultDict[str, DefaultDict[str, List[float]]],
+                                               instances: List[str],
+                                               max_arr_idx) -> None:
     # Inlining the method below to be able to reference more from the scope than the arguments of the function
     # 'h5py.visititems()' expects. It expects a func(<name>, <object>) => <None or return value>).
     def _field_meaning_to_values_dict(_, obj):
@@ -430,8 +434,9 @@ def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                 field_meaning = dataset_name_parts[1]
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
-                if instance == '0' and array_idx == '0':
-                    stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
+                if instance in instances:
+                    if max_arr_idx is None or (max_arr_idx is not None and int(array_idx) <= max_arr_idx):
+                        stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
             else:  # e.g. /continuous/VentricularRate
                 field_meaning = dataset_name_parts[0]
                 stats[field_meaning][sample_id].append(field_value)
