@@ -268,14 +268,15 @@ def plot_while_training(args):
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, output_folder, run_id, test_paths=None):
+    plot_path = os.path.join(output_folder, run_id)
     performance_metrics = {}
     scatters = []
     rocs = []
-    plot_path = os.path.join(output_folder, run_id)
-    y_pred = model.predict(test_data, batch_size=batch_size)
-    for y, tm in zip(y_pred, tensor_maps_out):
+
+    y_predictions = model.predict(test_data, batch_size=batch_size)
+    for y, tm in zip(y_predictions, tensor_maps_out):
         if len(tensor_maps_out) == 1:
-            y = y_pred
+            y = y_predictions
         y_truth = test_labels[tm.output_name()]
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
@@ -284,7 +285,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
 
-    _tsne_wrapper(model, 'embed', test_data, test_paths)
+    _tsne_wrapper(model, 'embed', test_paths, test_data=test_data, embeddings=None)
 
     return performance_metrics
 
@@ -292,11 +293,18 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
 def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, output_folder, run_id):
     predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
+    layers_names = [layer.name for layer in model.layers]
+    embeddings = []
     test_paths = []
     for i in range(steps):
         batch_data, batch_labels, batch_paths = next(test_generator)
         y_pred = model.predict(batch_data)
         test_paths.extend(batch_paths)
+        if 'embed' in layers_names:
+            x_embed = embed_model_predict(model, args.tensor_maps_in, 'embed', batch_data, 2)
+            print(x_embed.shape)
+            embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
+
         for y, tm in zip(y_pred, tensor_maps_out):
             if len(tensor_maps_out) == 1:
                 y = y_pred
@@ -318,6 +326,9 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         subplot_rocs(rocs, plot_path)
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
+    if len(embeddings) > 0:
+        _tsne_wrapper(model, 'embed', test_paths, test_data=None, embeddings=embeddings)
+
 
     return performance_metrics
 
@@ -490,7 +501,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         subplot_comparison_scatters(scatters, plot_folder)
 
 
-def _tsne_wrapper(model, hidden_layer_name, test_data, test_paths):
+def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, embeddings=None):
     categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
     continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
                          '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
@@ -500,11 +511,13 @@ def _tsne_wrapper(model, hidden_layer_name, test_data, test_paths):
     if hidden_layer_name not in [layer.name for layer in model.layers]:
         logging.warning(f"Can't compute t-SNE, layer:{hidden_layer_name} not in provided model.")
         return
-    
-    x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer_name, test_data, args.batch_size)
+
+    if embeddings is None:
+        embeddings = embed_model_predict(model, args.tensor_maps_in, hidden_layer_name, test_data, args.batch_size)
+
     plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
     label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
-    plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
+    plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
 
 
 def _get_tensor_files(tensor_dir):
