@@ -199,31 +199,6 @@ def infer_multimodal_multitask(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
-def tsne_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
-                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.icd_csv, args.balance_by_icds)
-
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
-
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
-    continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
-                         '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
-                         '21002_Weight_0_0']
-    gene_labels = []
-    samples2genes = {}
-    x_embed = embed_model_predict(model, args.tensor_maps_in, 'embed', test_data, args.batch_size)
-    plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
-    label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
-    plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, test_paths)
-
-
 def train_shallow_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
                                                                                        args.batch_size, args.valid_ratio, args.test_ratio,
@@ -308,6 +283,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
         subplot_rocs(rocs, plot_path)
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
+
+    _tsne_wrapper(model, 'embed', test_data, test_paths)
 
     return performance_metrics
 
@@ -511,6 +488,23 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         subplot_comparison_rocs(rocs, plot_folder)
     if len(scatters) > 1:
         subplot_comparison_scatters(scatters, plot_folder)
+
+
+def _tsne_wrapper(model, hidden_layer_name, test_data, test_paths):
+    categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
+    continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
+                         '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
+                         '21002_Weight_0_0']
+    gene_labels = []
+    samples2genes = {}
+    if hidden_layer_name not in [layer.name for layer in model.layers]:
+        logging.warning(f"Can't compute t-SNE, layer:{hidden_layer_name} not in provided model.")
+        return
+    
+    x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer_name, test_data, args.batch_size)
+    plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
+    label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
+    plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
 
 
 def _get_tensor_files(tensor_dir):
