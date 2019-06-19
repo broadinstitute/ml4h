@@ -306,8 +306,8 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
             print(x_embed.shape)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
-        for tm in test_labels:
-            test_labels[tm.output_name()].extend(np.copy(batch_labels[tm.output_name()]))
+        for tm_output_name in test_labels:
+            test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
 
         for y, tm_output_name in zip(y_pred, predictions.keys()):
             if len(predictions) == 1:
@@ -318,17 +318,18 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     performance_metrics = {}
     scatters = []
     rocs = []
-    for tm_output_name in predictions:
-        y_predict = np.array(predictions[tm_output_name])
-        y_truth = np.array(test_labels[tm_output_name])
-        performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+    for tm in tensor_maps_out:
+        if tm.output_name() in predictions:
+            y_predict = np.array(predictions[tm.output_name()])
+            y_truth = np.array(test_labels[tm.output_name()])
+            performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
     if len(embeddings) > 0:
-        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in test_labels}
+        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
         _tsne_wrapper(model, 'embed', test_paths, test_data=None, test_labels=test_labels_1d, embeddings=embeddings)
 
 
