@@ -430,7 +430,8 @@ def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
                 field_meaning = dataset_name_parts[1]
                 instance = dataset_name_parts[2]
                 array_idx = dataset_name_parts[3]
-                stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
+                if instance == '0' and array_idx == '0':
+                    stats[f"{field_meaning}{JOIN_CHAR}{field_id}{JOIN_CHAR}{instance}"][sample_id].append(field_value)
             else:  # e.g. /continuous/VentricularRate
                 field_meaning = dataset_name_parts[0]
                 stats[field_meaning][sample_id].append(field_value)
