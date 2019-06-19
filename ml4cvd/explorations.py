@@ -357,8 +357,7 @@ def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], ex
             else:
                 label_dict[tm.name][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm.name)
-    for label in label_dict:
-        print(label, 'labels has:', label_dict[label])
+
     return label_dict, categorical_labels, continuous_labels
 
 
