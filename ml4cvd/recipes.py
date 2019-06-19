@@ -333,7 +333,6 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
         _tsne_wrapper(model, 'embed', test_paths, test_data=None, test_labels=test_labels_1d, embeddings=embeddings)
 
-
     return performance_metrics
 
 

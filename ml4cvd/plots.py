@@ -28,7 +28,7 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
-SUBPLOT_SIZE = 16
+SUBPLOT_SIZE = 8
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
@@ -135,7 +135,6 @@ def plot_metric_history(history, title, prefix='./figures/'):
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
     plt.figure(figsize=(16, 16))
-    matplotlib.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     plt.scatter(prediction, truth, marker='.', alpha=alpha)
@@ -165,7 +164,6 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
 def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(16, 16))
-    plt.rcParams.update({'font.size': 18})
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     for k in predictions:
         color = _hash_string_to_color(k)
@@ -464,7 +462,6 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
     lw = 3
     plt.figure(figsize=(28, 22))
-    matplotlib.rcParams.update({'font.size': 36})
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -495,7 +492,6 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 3
     plt.figure(figsize=(28, 22))
-    matplotlib.rcParams.update({'font.size': 36})
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -610,7 +606,6 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     lw = 4.0
     labels_to_areas = {}
     plt.figure(figsize=(22, 18))
-    matplotlib.rcParams.update({'font.size': 34})
 
     for k in labels:
         c = _hash_string_to_color(k)
@@ -640,7 +635,6 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
     # Compute Precision-Recall and plot curve for each model
     lw = 4.0
     plt.figure(figsize=(22, 18))
-    matplotlib.rcParams.update({'font.size': 34})
 
     for p in predictions:
         for k in labels:
@@ -710,7 +704,6 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     rows = min(24, len(label_dict))
     perplexities = [16, 25, 95]
     (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    plt.rcParams.update({'font.size': 22})
 
     p2y = {}
     for i, p in enumerate(perplexities):
