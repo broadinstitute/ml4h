@@ -344,18 +344,22 @@ def tensors_to_label_dictionary(categorical_labels: List,
     return label_dict
 
 
-def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> Dict[str, np.ndarray]:
+def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], examples: int) -> \
+        Tuple[Dict[str, np.ndarray], List[str], List[str]]:
     label_dict = {tm.name: np.zeros((examples,)) for tm in test_labels}
+    categorical_labels = []
+    continuous_labels = []
     for tm in test_labels:
         for i in range(examples):
             if tm.is_continuous():
                 label_dict[tm.name][i] = test_labels[tm][i]
+                continuous_labels.append(tm.name)
             else:
                 label_dict[tm.name][i] = np.argmax(test_labels[tm][i])
+                categorical_labels.append(tm.name)
     for label in label_dict:
         print(label, 'labels has:', label_dict[label])
-    return label_dict
-
+    return label_dict, categorical_labels, continuous_labels
 
 
 def _sample_with_heat(preds, temperature=1.0):
