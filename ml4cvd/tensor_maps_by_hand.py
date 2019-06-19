@@ -162,6 +162,20 @@ TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_m
                              normalization={'mean': 165.9, 'std': 26.3})
 
 
+TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
+                        normalization={'mean': 48.7, 'std': 23.1})
+TMAPS['p-duration-sentinel'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
+                            normalization={'mean': 96.1, 'std': 18.85})
+TMAPS['p-offset-sentinel'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
+                          normalization={'mean': 369.1, 'std': 28.42})
+TMAPS['p-onset-sentinel'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
+                         normalization={'mean': 275.1, 'std': 26.420})
+TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0},  sentinel=0, metrics=['logcosh'],
+                             normalization={'mean': 1036.1, 'std': 185.0})
+TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
+                                     normalization={'mean': 165.9, 'std': 26.3})
+
+
 TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_1'] = TensorMap('full_1', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_m0'] = TensorMap('median_0', shape=ECG_BIKE_MEDIAN_SIZE, group='ecg_bike',
