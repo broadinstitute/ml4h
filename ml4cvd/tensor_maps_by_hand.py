@@ -178,7 +178,8 @@ TMAPS['lv_mass'] = TensorMap('lv_mass', group='continuous', activation='linear',
                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='linear', loss=ignore_zeros_logcosh,
                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-
+TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation='linear', sentinel=0,
+                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},
@@ -223,21 +224,7 @@ TMAPS['ejection_fraction_correctedp'] = TensorMap('ejection_fraction_corrected',
 TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
 TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
 
-TMAPS['end_systole_volume_mae'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
-                                        loss='mean_absolute_error', channel_map={'end_systole_volume': 0},
-                                        normalization={'mean': 47.0, 'std': 10.0})
-TMAPS['end_diastole_volume_mae'] = TensorMap('end_diastole_volume', group='continuous', activation='linear',
-                                         loss='mean_absolute_error', channel_map={'end_diastole_volume': 0},
-                                         normalization={'mean': 142.0, 'std': 21.0})
-TMAPS['ejection_fraction_mae'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
-                                       normalization={'mean': 0.50, 'std': 0.046},
-                                       loss='mean_absolute_error', loss_weight=1.0,
-                                       channel_map={'ejection_fraction': 0})
-TMAPS['ejection_fraction_maep'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
-                                        normalization={'mean': 0.50, 'std': 0.046},
-                                        loss='mean_absolute_error', loss_weight=1.0,
-                                        channel_map={'ejection_fraction': 0},
-                                        parents=['end_systole_volume', 'end_diastole_volume'])
+
 TMAPS['end_systole_volumep'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                      loss='logcosh', channel_map={'end_systole_volume': 0},
                                      normalization={'mean': 47.0, 'std': 10.0},
@@ -259,10 +246,7 @@ TMAPS['ejection_fractionp'] = TensorMap('ejection_fraction', group='continuous',
                                     loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
                                     parents=['output_end_systole_volume_continuous',
                                              'output_end_diastole_volume_continuous'])
-TMAPS['ejection_fractionpp'] = TensorMap('ejection_fraction', group='continuous', activation='linear',
-                                     normalization={'mean': 0.50, 'std': 0.046},
-                                     loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
-                                     parents=['output_' + MRI_SEGMENTED + '_categorical'])
+
 
 TMAPS['lax-view-detect'] = TensorMap('lax-view-detect', group='categorical',
                                  channel_map={'cine_segmented_lax_2ch': 0, 'cine_segmented_lax_3ch': 1,

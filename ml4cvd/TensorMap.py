@@ -8,7 +8,7 @@ from keras.utils import to_categorical
 
 from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
+from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
 
 np.set_printoptions(threshold=np.inf)
 
@@ -89,6 +89,7 @@ class TensorMap(object):
                  model=None,
                  metrics=None,
                  parents=None,
+                 sentinel=None,
                  activation=None,
                  loss_weight=1.0,
                  channel_map=None,
@@ -106,6 +107,7 @@ class TensorMap(object):
         :param model: Model for hidden layer tensor maps
         :param metrics: List of metric functions of strings
         :param parents: List of tensorMaps which must be attached to the graph before this one
+        :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param activation: String specifying activation function
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
@@ -122,6 +124,7 @@ class TensorMap(object):
         self.group = group
         self.metrics = metrics
         self.parents = parents
+        self.sentinel = sentinel
         self.activation = activation
         self.loss_weight = loss_weight
         self.channel_map = channel_map
@@ -146,6 +149,8 @@ class TensorMap(object):
 
         if self.loss is None and self.is_categorical_any():
             self.loss = 'categorical_crossentropy'
+        elif self.loss is None and self.is_continuous() and self.sentinel is not None:
+            self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
         elif self.loss is None:
