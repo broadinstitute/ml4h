@@ -300,19 +300,18 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     test_paths = []
     for i in range(steps):
         batch_data, batch_labels, batch_paths = next(test_generator)
-        y_pred = model.predict(batch_data)
+        y_predictions = model.predict(batch_data)
         test_paths.extend(batch_paths)
         if 'embed' in layer_names:
             x_embed = embed_model_predict(model, args.tensor_maps_in, 'embed', batch_data, 2)
-            print(x_embed.shape)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
         for tm_output_name in test_labels:
             test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
 
-        for y, tm_output_name in zip(y_pred, model_predictions):
+        for y, tm_output_name in zip(y_predictions, model_predictions):
             if len(scalar_predictions) == 1:
-                y = y_pred
+                y = y_predictions
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
 
