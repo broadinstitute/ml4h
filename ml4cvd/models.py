@@ -521,8 +521,6 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
     embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
-    embed_model.summary()
-    print(list(test_data.keys()))
     return embed_model.predict(test_data, batch_size=batch_size)
 
 

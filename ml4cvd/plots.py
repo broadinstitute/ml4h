@@ -729,7 +729,6 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
                 categorical_subsets[c] = label_dict[k] == c
         elif k in continuous_labels:
             colors = label_dict[k]
-        print('process key:', k)
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
             ax.set_title(k)  # +", Perplexity=%d" % perplexity)
