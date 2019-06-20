@@ -515,7 +515,7 @@ def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, test_lab
         embeddings = embed_model_predict(model, args.tensor_maps_in, hidden_layer_name, test_data, args.batch_size)
 
     plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
-    label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
+    label_dict = tensors_to_label_dictionary([], [], gene_labels, samples2genes, test_paths)
     if test_labels is not None:
         tm_label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
         label_dict.update(tm_label_dict)
