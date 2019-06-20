@@ -505,10 +505,6 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
 
 
 def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, test_labels=None, embeddings=None):
-    categorical_labels = ['Genetic-sex_Female_0_0', 'hypertension', 'coronary_artery_disease', 'Handedness-chiralitylaterality_Righthanded_0_0']
-    continuous_labels = ['22200_Year-of-birth_0_0|34_Year-of-birth_0_0', '21001_Body-mass-index-BMI_0_0',
-                         '1070_Time-spent-watching-television-TV_0_0', '102_Pulse-rate-automated-reading_0_0', '1488_Tea-intake_0_0',
-                         '21002_Weight_0_0']
     gene_labels = []
     samples2genes = {}
     if hidden_layer_name not in [layer.name for layer in model.layers]:
@@ -521,10 +517,9 @@ def _tsne_wrapper(model, hidden_layer_name, test_paths, test_data=None, test_lab
     plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
     label_dict = tensors_to_label_dictionary(categorical_labels, continuous_labels, gene_labels, samples2genes, test_paths)
     if test_labels is not None:
-        tm_label_dict, cat_labels, cont_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
+        tm_label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
         label_dict.update(tm_label_dict)
-        categorical_labels.extend(cat_labels)
-        continuous_labels.extend(cont_labels)
+
     plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path)
 
 
