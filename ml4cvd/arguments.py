@@ -250,10 +250,11 @@ def _process_args(args):
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
+        f.write(f"python {' '.join(sys.argv)}\n\n")
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
-    logging.info(f"Command Line was {sys.argv}")
+    logging.info(f"Command Line was:\npython {' '.join(sys.argv)}\n\n")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
 
