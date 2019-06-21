@@ -98,7 +98,7 @@ def train_multimodal_multitask(args):
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, test_paths)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, args.output_folder, args.id, test_paths)
 
 
 def test_multimodal_multitask(args):
@@ -112,7 +112,7 @@ def test_multimodal_multitask(args):
                                                 args.pool_z, args.padding, args.learning_rate)
 
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, paths)
+    return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, args.output_folder, args.id, paths)
   
 
 def test_multimodal_scalar_tasks(args):
@@ -125,7 +125,7 @@ def test_multimodal_scalar_tasks(args):
                                                 args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
                                                 args.pool_z, args.padding, args.learning_rate)
 
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.output_folder, args.id)
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, args.output_folder, args.id)
 
 
 def compare_multimodal_multitask_models(args):
@@ -207,7 +207,7 @@ def train_shallow_model(args):
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, test_paths)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, args.output_folder, args.id, test_paths)
 
 
 def train_char_model(args):
@@ -227,7 +227,7 @@ def train_char_model(args):
     test_batch, _, test_paths = next(generate_test)
     sample_from_char_model(char_model, test_batch, test_paths)
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.output_folder, args.id, paths)
+    return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, args.output_folder, args.id, paths)
 
 
 def segmentation_to_pngs(args):
@@ -265,7 +265,7 @@ def plot_while_training(args):
                         args.batch_size, args.training_steps, plot_folder, args.id, args.write_pngs)
 
 
-def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, output_folder, run_id, test_paths=None):
+def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, hidden_layer, output_folder, run_id, test_paths=None):
     layer_names = [layer.name for layer in model.layers]
     plot_path = os.path.join(output_folder, run_id)
     performance_metrics = {}
@@ -286,12 +286,12 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
 
-    _tsne_wrapper(model, 'embed', test_paths, test_data=test_data, embeddings=None)
+    _tsne_wrapper(model, hidden_layer, test_paths, test_data=test_data, embeddings=None)
 
     return performance_metrics
 
 
-def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, output_folder, run_id):
+def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, hidden_layer, output_folder, run_id):
     layer_names = [layer.name for layer in model.layers]
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
@@ -302,8 +302,8 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         batch_data, batch_labels, batch_paths = next(test_generator)
         y_predictions = model.predict(batch_data)
         test_paths.extend(batch_paths)
-        if 'embed' in layer_names:
-            x_embed = embed_model_predict(model, args.tensor_maps_in, 'embed', batch_data, 2)
+        if hidden_layer in layer_names:
+            x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer, batch_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
         for tm_output_name in test_labels:
@@ -331,7 +331,7 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         subplot_scatters(scatters, plot_path)
     if len(embeddings) > 0:
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-        _tsne_wrapper(model, 'embed', test_paths, test_data=None, test_labels=test_labels_1d, embeddings=embeddings)
+        _tsne_wrapper(model, hidden_layer, test_paths, test_data=None, test_labels=test_labels_1d, embeddings=embeddings)
 
     return performance_metrics
 

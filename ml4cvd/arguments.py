@@ -184,6 +184,8 @@ def parse_args():
         help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument('--max_parameters', default=9000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
+    parser.add_argument('--hidden_layer', default='embed',
+        help='Name of a hidden layer for inspections.')
 
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int,
@@ -237,9 +239,8 @@ def parse_args():
 def _process_args(args):
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors,
-                                                                                 args.include_missing_continuous_channel,
-                                                                                 args.imputation_method_for_continuous_fields)]
+        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
+                                                                             args.imputation_method_for_continuous_fields)]
         args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
 
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
@@ -255,6 +256,6 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
-    logging.info(f"Command Line was:\npython {' '.join(sys.argv)}\n\n")
+    logging.info(f"Command Line was:\n\npython {' '.join(sys.argv)}\n\n")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
 
