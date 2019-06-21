@@ -18,6 +18,8 @@ def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str,
         query = _get_continuous_query(sql_dataset)
     elif tensor_type == 'icd':
         query = _get_icd_query(sql_dataset)
+    elif tensor_type == 'disease':
+        query = _get_disease_query(sql_dataset)
     else:
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
@@ -78,10 +80,9 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                         _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
                 elif tensor_type == 'disease':
                     for row in rows:
-                        hd5.create_dataset(row['disease'], data=[float(row['has_disease'])])
-                        if sample_id in dates[disease]:
-                            disease_date = dates[disease][sample_id].strftime('%Y-%m-%d')
-                            hd5.create_dataset(disease + '_date', (1,), data=disease_date, dtype=h5py.special_dtype(vlen=str))
+                        hd5.create_dataset('categorical' + HD5_GROUP_CHAR + row['disease'].lower(), data=[float(row['has_disease'])])
+                        hd5_date = 'dates' + HD5_GROUP_CHAR + row['disease'].lower() + '_date'
+                        hd5.create_dataset(hd5_date, (1,), data=str(row['censor_date']), dtype=h5py.special_dtype(vlen=str))
 
             gcs_blob.upload_from_filename(tensor_path)
     except:
@@ -145,4 +146,10 @@ def _get_continuous_query(dataset):
 def _get_icd_query(dataset):
     return f"""
         SELECT sample_id, value FROM `{dataset}.phenotype` WHERE fieldid IN (41202, 41204, 40001, 40002, 40006);
+    """
+
+
+def _get_disease_query(dataset):
+    return f"""
+        SELECT sample_id, disease, has_disease, censor_date, has_died, death_censor_date FROM `{dataset}.disease`;
     """
