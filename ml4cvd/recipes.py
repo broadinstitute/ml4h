@@ -277,7 +277,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
         if tm.output_name() not in layer_names:
             continue
         if len(tensor_maps_out) == 1:
-            print('y pred is:', y_predictions)
+            print('y pred shape is:', y_predictions.shape, 'y shape:', y.shape)
             y = y_predictions
         y_truth = test_labels[tm.output_name()]
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
