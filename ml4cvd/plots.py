@@ -701,6 +701,9 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
 
 
 def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
+    if len(x_embed.shape) > 2:
+        x_embed = np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))
+
     n_components = 2
     rows = min(24, len(label_dict))
     perplexities = [16, 25, 95]
