@@ -287,7 +287,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
 
-    _tsne_wrapper(model, hidden_layer, test_paths, test_data=test_data, test_labels=test_labels, embeddings=None)
+    test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+    _tsne_wrapper(model, hidden_layer, test_paths, test_data=test_data, test_labels=test_labels_1d, embeddings=None)
 
     return performance_metrics
 
