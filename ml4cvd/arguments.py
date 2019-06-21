@@ -11,6 +11,7 @@
 
 # Imports
 import os
+import sys
 import logging
 import argparse
 import operator
@@ -253,5 +254,6 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
-    logging.info('Total TensorMaps:{} Arguments are {}'.format(len(TMAPS), args))
+    logging.info(f"Command Line was {sys.argv}")
+    logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
 

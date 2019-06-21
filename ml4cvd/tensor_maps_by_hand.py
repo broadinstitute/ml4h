@@ -2406,7 +2406,7 @@ TMAPS['categorical-phenotypes-965'] = TensorMap('categorical-phenotypes-965', gr
                                                          'Workplace-very-dusty_Sometimes_0_3': 963,
                                                          'Workplace-very-dusty_Sometimes_0_4': 964})
 
-TMAPS['categorical-phenotypes-instance-1'] = TensorMap('categorical-phenotypes-instance-1', group='categorical', annotation_units=128,
+TMAPS['categorical-phenotypes-665'] = TensorMap('categorical-phenotypes-665', group='categorical', annotation_units=128,
                                             channel_map={'Able-to-walk-or-cycle-unaided-for-10-minutes_Yes_0_0': 0,
                                                          'Adopted-as-a-child_No_0_0': 1,
                                                          'Adopted-as-a-child_Yes_0_0': 2,
