@@ -20,6 +20,8 @@ def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str,
         query = _get_icd_query(sql_dataset)
     elif tensor_type == 'disease':
         query = _get_disease_query(sql_dataset)
+    elif tensor_type == 'death':
+        _get_death_and_censor_query(sql_dataset)
     else:
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
@@ -83,7 +85,12 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                         hd5.create_dataset('categorical' + HD5_GROUP_CHAR + row['disease'].lower(), data=[float(row['has_disease'])])
                         hd5_date = 'dates' + HD5_GROUP_CHAR + row['disease'].lower() + '_date'
                         hd5.create_dataset(hd5_date, (1,), data=str(row['censor_date']), dtype=h5py.special_dtype(vlen=str))
-
+                elif tensor_type == 'death':
+                    for row in rows:
+                        hd5.create_dataset('categorical' + HD5_GROUP_CHAR + 'death', data=[float(row['has_died'])])
+                        d = 'dates' + HD5_GROUP_CHAR
+                        hd5.create_dataset(d+'death_censor', (1,), data=str(row['death_censor_date']), dtype=h5py.special_dtype(vlen=str))
+                        hd5.create_dataset(d+'phenotype_censor', (1,), data=str(row['phenotype_censor_date']), dtype=h5py.special_dtype(vlen=str))
             gcs_blob.upload_from_filename(tensor_path)
     except:
         logging.exception(f"Problem with processing sample id '{sample_id}'")
@@ -151,5 +158,13 @@ def _get_icd_query(dataset):
 
 def _get_disease_query(dataset):
     return f"""
-        SELECT sample_id, disease, has_disease, censor_date, has_died, death_censor_date FROM `{dataset}.disease` WHERE has_disease=1;
+        SELECT sample_id, disease, has_disease, censor_date FROM `{dataset}.disease` WHERE has_disease=1;
+    """
+
+
+def _get_death_and_censor_query(dataset):
+    return f"""
+        SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date, c.lost_to_followup_date 
+        FROM `{dataset}.disease` d INNER JOIN `{dataset}.censor` c 
+         ON c.sample_id = d.sample_id ORDER BY d.sample_id;
     """
