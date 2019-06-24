@@ -195,7 +195,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                     for k in stats:
                         logging.info('{} has: {}'.format(k, stats[k]))
                     logging.info(F"Generator looped over {len(tlist)} tensors from CSV group {i}.")
-                    logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors presented.")
+
 
 def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
     """Collect minibatches into bigger batches
