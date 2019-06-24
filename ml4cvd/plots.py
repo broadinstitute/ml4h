@@ -700,7 +700,7 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     logging.info("Saved waves at: {}".format(figure_path))
 
 
-def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path):
+def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label_dict, figure_path, alpha):
     x_embed = np.array(x_embed)
     if len(x_embed.shape) > 2:
         x_embed = np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))
@@ -732,7 +732,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             ax.set_title(k)  # +", Perplexity=%d" % perplexity)
             if k in categorical_labels+gene_labels:
                 for c in categorical_colors:
-                    ax.scatter(p2y[p][categorical_subsets[c], 0], p2y[p][categorical_subsets[c], 1], c=categorical_colors[c], alpha=0.5)
+                    ax.scatter(p2y[p][categorical_subsets[c], 0], p2y[p][categorical_subsets[c], 1], c=categorical_colors[c], alpha=alpha)
                 if max(label_dict[k]) == 1:
                     ax.legend(['no ' + k, k], loc='lower left')
                 elif max(label_dict[k]) == 2:
@@ -740,7 +740,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
                 else:
                     ax.legend(list(categorical_colors.keys()), loc='lower left')
             elif k in continuous_labels:
-                points = ax.scatter(p2y[p][:, 0], p2y[p][:, 1], c=colors, alpha=0.5, cmap='jet')
+                points = ax.scatter(p2y[p][:, 0], p2y[p][:, 1], c=colors, alpha=alpha, cmap='jet')
                 if i == len(perplexities) - 1:
                     fig.colorbar(points, ax=ax)
 

@@ -213,7 +213,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         channel_map += "}"
         f.write(f"""TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', {channel_map}, 
                 normalization={{'mean': {row.mean}, 'std': {row.std}}}, 
-                annotation_units={row.max_array})\n""")
+                annotation_units={row.max_array+1})\n""")
 
 
 def _segmented_map(name):
