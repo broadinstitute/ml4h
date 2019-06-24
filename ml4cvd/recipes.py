@@ -279,7 +279,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
         if len(tensor_maps_out) == 1:
             print('y pred shape is:', y_predictions.shape, 'y shape:', y.shape)
             y = y_predictions
-        y_truth = test_labels[tm.output_name()]
+        y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
