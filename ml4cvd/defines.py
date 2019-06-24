@@ -41,7 +41,7 @@ ECG_IDX_2_CHAR = {0: '!', 1: ' ', 2: "'", 3: '(', 4: ')', 5: '-', 6: '/', 7: '1'
                   45: 'm', 46: 'n', 47: 'o', 48: 'p', 49: 'q', 50: 'r', 51: 's', 52: 't', 53: 'u', 54: 'v', 55: 'w',
                   56: 'x', 57: 'y', 58: 'z'}
 
-TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
+TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script2'
 
 #BigQuery tables
 SQL_DATASET = "ukbb7089_201904"

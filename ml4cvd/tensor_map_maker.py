@@ -22,11 +22,11 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        _write_continuous_tensor_maps(f, db_client)
-        _write_disease_tensor_maps(args.phenos_folder, f)
-        _write_disease_tensor_maps_time(args.phenos_folder, f)
-        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        #_write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
+        _write_continuous_tensor_maps(f, db_client, False)
+        #_write_disease_tensor_maps(args.phenos_folder, f)
+        #_write_disease_tensor_maps_time(args.phenos_folder, f)
+        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
@@ -152,7 +152,7 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
         f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
 
             
-def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
+def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
     group = 'continuous'
 
     # Handle special coding values in continuous variables in order to generate summary statistics (mean and std dev) for
@@ -207,11 +207,13 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
         name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
-            channel_map = channel_map + "'" + name + "_0_" + str(i) + "': " + str(i) + ", "
-        channel_map = channel_map + "'not-missing': " + str(row.max_array + 1) + "}"
+            channel_map += f"'{name}_0_{i}': {i}, "
+        if include_missing:
+            channel_map += "'not-missing': " + str(row.max_array + 1)
+        channel_map += "}"
         f.write(f"""TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', {channel_map}, 
                 normalization={{'mean': {row.mean}, 'std': {row.std}}}, 
-                annotation_units={row.max_array + 2})\n""")
+                annotation_units={row.max_array})\n""")
 
 
 def _segmented_map(name):
@@ -234,6 +236,7 @@ def _get_all_available_fields(available_fields_pd, keyword: str = None, category
     if keyword is not None:
         filtered = filtered[filtered.Field.str.contains(keyword, case=False)]
     return filtered
+
 
 def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], include_missing: bool, imputation_method: str) -> TensorMap:
     if include_missing:

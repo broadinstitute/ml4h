@@ -151,5 +151,5 @@ def _get_icd_query(dataset):
 
 def _get_disease_query(dataset):
     return f"""
-        SELECT sample_id, disease, has_disease, censor_date, has_died, death_censor_date FROM `{dataset}.disease`;
+        SELECT sample_id, disease, has_disease, censor_date, has_died, death_censor_date FROM `{dataset}.disease` WHERE has_disease=1;
     """
