@@ -27,7 +27,7 @@ The data can also be accessed through [BigQuery](https://console.cloud.google.co
 ### ECG: XML
 119,097 ECGGs (12-lead resting and 3-lead exercise):
 
-`/mnt/disks/data/raw/ecgs/{resting,exercise}/*.xml`
+`/mnt/disks/data/raw/ecgs/*.xml`
 
 ### Direct Genotypes 
 ~800k/person:
@@ -43,8 +43,7 @@ The data can also be accessed through [BigQuery](https://console.cloud.google.co
 Once you have a virtual machine and an environment setup it is time to start learning.
 The first step is to create training data by writing tensors to the disk.  
 
-To write tensors with default categorical and continuous phenotypes, and no MRI or EKG data, `source activate` your
-`conda` environment and run:
+To write tensors with default categorical and continuous phenotypes, and no MRI or EKG data
 ```
 ${HOME}/ml/scripts/tf.sh ${HOME}/ml/ml4cvd/recipes.py --mode tensorize --tensors ${HOME}/my_tensors/ --max_sample_id 1003000 --mri_field_id  --xml_field_id
 ```

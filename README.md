@@ -21,11 +21,10 @@ Make sure you have installed the [google cloud tools (gcloud)](https://cloud.goo
 brew cask install google-cloud-sdk
 ```
 
-If you don't have your gcloud already configed -- set the project to broad-ml4cvd
+If you don't have your gcloud already configured -- set the project to broad-ml4cvd (This step is optional, scripts will also set projects directly when you run them.)
 
 ```gcloud config set project broad-ml4cvd```
 
-**TODO**: Refactor instance creation scripts to centralized location with other useful scripts.
 
 ### Conda (Python package manager)
 * Download onto your laptop the Miniconda `bash` or `.pkg` installer for `Python 3.7` and `Mac OS X` 
@@ -96,7 +95,7 @@ git clone git@github.com:broadinstitute/ml.git
 
 Because we don't know everyone's username, you need to run one more script to make sure that you are added as a docker user and that you have permission to pull down our docker instances from GCP's gcr.io. Run this while you're logged into your VM:
 ```
-bash /ml/scripts/vm_launch/run-once.sh
+./ml/scripts/vm_launch/run-once.sh
 ```
 
 Note that you may see warnings like below, but these are expected:
@@ -114,7 +113,7 @@ You need to log out after that (`exit`) then ssh back in so everything takes eff
 Now let's run a Jupyter notebook.  On your VM run:
 
 ```
-${HOME}/ml/scripts/jupyter.sh 
+${HOME}/ml/scripts/jupyter.sh -p 8889
 ```
 Add a ```-c``` if you want a CPU version.
 
