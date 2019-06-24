@@ -276,23 +276,22 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio, test_ratio, test_modulo):
-    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    logging.info(f"ICD CSV Header: {list(enumerate(lol[0]))}")
+def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo):
     stats = Counter()
     sample2group = {}
-    for row in lol[1:]:
-        sample_id = row[0]
-        sample2group[sample_id] = 0
-        for i, icd_index in enumerate(icds):
-            if row[icd_index] == '1':
-                sample2group[sample_id] = i+1 # group 0 means no ICD code
-                stats['group_'+str(i+1)] += 1
-    logging.info(f"ICD CSV Sample stats: {stats}")
+    for i, b_csv in enumerate(balance_csvs):
+        lol = list(csv.reader(open(b_csv, 'r'), delimiter='\t'))
+        logging.info(f"Class Balance CSV Header: {list(enumerate(lol[0]))}")
 
-    test_paths = [[] for _ in range(len(icds)+1)]
-    train_paths = [[] for _ in range(len(icds)+1)] 
-    valid_paths = [[] for _ in range(len(icds)+1)]                
+        for row in lol[1:]:
+            sample_id = row[0]
+            sample2group[sample_id] = i+1  # group 0 means background class
+            stats['group_'+str(i+1)] += 1
+    logging.info(f"Balancing with CSVs of Sample IDs stats: {stats}")
+
+    test_paths = [[] for _ in range(len(balance_csvs)+1)]
+    train_paths = [[] for _ in range(len(balance_csvs)+1)]
+    valid_paths = [[] for _ in range(len(balance_csvs)+1)]
     for root, dirs, files in os.walk(tensors):
         for name in files:
             splits = os.path.splitext(name)
@@ -311,9 +310,9 @@ def get_test_train_valid_paths_split_by_icds(tensors, icd_csv, icds, valid_ratio
             else:
                 train_paths[group].append(os.path.join(root, name))
 
-    logging.info(f"Found {len(train_paths[0])} training {len(valid_paths[0])} validation and {len(test_paths[0])} testing tensors without ICD codes.")
-    for i, icd_group in enumerate(icds):
-        logging.info(f"ICD index:{icd_group} {len(train_paths[i+1])} training, {len(valid_paths[i+1])} valid, {len(test_paths[i+1])} test tensors.")
+    logging.info(f"Found {len(train_paths[0])} training {len(valid_paths[0])} validation and {len(test_paths[0])} testing tensors outside the CSVs.")
+    for i, csv_group in enumerate(balance_csvs):
+        logging.info(f"CSV:{csv_group} \nhas: {len(train_paths[i+1])} training, {len(valid_paths[i+1])} valid, {len(test_paths[i+1])} test tensors.")
     
     return train_paths, valid_paths, test_paths
 
@@ -325,8 +324,7 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        valid_ratio: float,
                                        test_ratio: float,
                                        test_modulo: int,
-                                       icd_csv: str,
-                                       balance_by_icds: List[str],
+                                       balance_csvs: List[str],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
@@ -341,16 +339,14 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     :param valid_ratio: rate of tensors to use for validation
     :param test_ratio: rate of tensors to use for testing
     :param test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
-    :param icd_csv: CSV file with ICD data for each sample ID
-    :param balance_by_icds: if not empty, generator will provide batches balanced amongst the ICD codes in this list.
-                            Specified as an integer index into icd_csv, but provided on command line and treated as a string here.
+    :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
-    if len(balance_by_icds) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_icds(tensors, icd_csv, balance_by_icds, valid_ratio, test_ratio, test_modulo)
-        weights = [1.0/len(balance_by_icds) for _ in range(len(balance_by_icds)+1)]
+    if len(balance_csvs) > 0:
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
+        weights = [1.0/len(balance_csvs) for _ in range(len(balance_csvs)+1)]
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)

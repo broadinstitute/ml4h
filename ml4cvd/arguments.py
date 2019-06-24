@@ -145,7 +145,7 @@ def parse_args():
                         help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.')
     parser.add_argument('--max_models', default=16, type=int,
                         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
-    parser.add_argument('--balance_by_icds', default=[], nargs='*', type=int, help='Balances minibatches with samples with different ICD status')
+    parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')

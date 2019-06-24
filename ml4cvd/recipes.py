@@ -86,7 +86,7 @@ def run(args):
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
                                                                                        args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.icd_csv, args.balance_by_icds)
+                                                                                       args.test_modulo, args.balance_csvs)
 
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -104,7 +104,7 @@ def train_multimodal_multitask(args):
 
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv, args.balance_by_icds)
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
 
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -119,7 +119,7 @@ def test_multimodal_multitask(args):
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv, args.balance_by_icds)
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
 
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -203,7 +203,7 @@ def infer_multimodal_multitask(args):
 def train_shallow_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
                                                                                        args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.icd_csv, args.balance_by_icds)
+                                                                                       args.test_modulo, args.balance_csvs)
 
     model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
@@ -224,7 +224,7 @@ def train_char_model(args):
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
                                                                                        args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.icd_csv, args.balance_by_icds)
+                                                                                       args.test_modulo, args.balance_csvs)
 
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
@@ -238,7 +238,7 @@ def train_char_model(args):
 
 def segmentation_to_pngs(args):
     _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size*args.test_steps,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv, args.balance_by_icds)
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
 
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
@@ -256,8 +256,7 @@ def segmentation_to_pngs(args):
 
 def plot_while_training(args):
     generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
-                                                                          args.balance_by_icds)
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
 
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
