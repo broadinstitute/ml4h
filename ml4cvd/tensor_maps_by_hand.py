@@ -20,6 +20,7 @@ TMAPS = dict()
 
 TMAPS['akap9_lof'] = TensorMap('AKAP9', group='categorical_flag', channel_map={'no_akap9_lof': 0, 'akap9_lof': 1})
 TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no_dsc2_lof': 0, 'dsc2_lof': 1})
+TMAPS['ryr2_lof'] = TensorMap('RYR2', group='categorical_flag', channel_map={'no_ryr2_lof': 0, 'ryr2_lof': 1})
 TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
 
 TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
