@@ -21,7 +21,7 @@ def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str,
     elif tensor_type == 'disease':
         query = _get_disease_query(sql_dataset)
     elif tensor_type == 'death':
-        _get_death_and_censor_query(sql_dataset)
+        query = _get_death_and_censor_query(sql_dataset)
     else:
         raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
 
@@ -164,7 +164,7 @@ def _get_disease_query(dataset):
 
 def _get_death_and_censor_query(dataset):
     return f"""
-        SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date, c.lost_to_followup_date 
+        SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date 
         FROM `{dataset}.disease` d INNER JOIN `{dataset}.censor` c 
          ON c.sample_id = d.sample_id ORDER BY d.sample_id;
     """
