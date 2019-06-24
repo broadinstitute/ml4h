@@ -196,7 +196,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
     WHERE TRUE
         AND ValueType IN ('Integer', 'Continuous') 
         AND NOT missing
-    GROUP BY t.FieldID, Field 
+    GROUP BY t.FieldID, Field ORDER BY t.FieldID
     """
 
     field_data_for_tensor_maps = db_client.execute(query)
