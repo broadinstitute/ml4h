@@ -183,6 +183,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                     stats['OSError:'+str(e)] += 1
                 except ValueError as e:
                     stats['ValueError:'+str(e)] += 1
+                except RuntimeError:
+                    stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 _log_first_error(stats)
         
         for i, tlist in enumerate(paths_lists):
