@@ -24,9 +24,9 @@ def write_tensor_maps(args) -> None:
         f.write(_get_tensor_map_file_imports())
         #_write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
         _write_continuous_tensor_maps(f, db_client, False)
-        #_write_disease_tensor_maps(args.phenos_folder, f)
-        #_write_disease_tensor_maps_time(args.phenos_folder, f)
-        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        _write_disease_tensor_maps(args.phenos_folder, f)
+        _write_disease_tensor_maps_time(args.phenos_folder, f)
+        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
@@ -125,8 +125,8 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO)-> None:
         total = len(status[d])
         diseased = np.sum(list(status[d].values()))
         factor = int(total / (diseased * 2))
-        f.write(f"TMAPS['{d}'] = TensorMap('{d}', group = 'categorical_index', channel_map = {{'no_{d}':0, '{d}':1}}, "
-                f"loss = weighted_crossentropy([1.0, {factor}], '{d}'))\n")
+        f.write(f"TMAPS['{d}'] = TensorMap('{d}', group='categorical_index', channel_map={{'no_{d}':0, '{d}':1}}, "
+                f"loss=weighted_crossentropy([1.0, {factor}], '{d}'))\n")
 
 
 def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO) -> None:
@@ -149,7 +149,7 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
     f.write(f"\n\n#  TensorMaps for date regression on MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
     for d in sorted(list(disease2tsv.keys())):
-        f.write(f"TMAPS['{d}_time']=TensorMap('{d}',group='diagnosis_time',channel_map={{'{d}_time':0}},loss='mse')\n")
+        f.write(f"TMAPS['{d}_time'] = TensorMap('{d}', group='diagnosis_time', channel_map={{'{d}_time':0}}, loss='mse')\n")
 
             
 def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
