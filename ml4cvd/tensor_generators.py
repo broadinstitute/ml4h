@@ -172,8 +172,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
-                            for i, num_samples in enumerate(samples):
-                                stats['train_paths_'+str(i)] += num_samples
+                            for i, n in enumerate(samples):
+                                stats['train_paths_'+str(i)] += n
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
@@ -192,10 +192,10 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                 stats['epochs_list_number_'+str(i)] += 1
                 stats['train_paths_'+str(i)] = 0
                 if len(tlist) > 1000 or stats['epochs_list_number_'+str(i)] % 5 == 0:
-                    logging.info("Generator looped over {} tensors from ICD group: {}".format(len(tlist), i))
                     for k in stats:
                         logging.info('{} has: {}'.format(k, stats[k]))
-
+                    logging.info(F"Generator looped over {len(tlist)} tensors from CSV group {i}.")
+                    logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors presented.")
 
 def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
     """Collect minibatches into bigger batches
