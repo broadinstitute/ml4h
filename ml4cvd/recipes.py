@@ -276,8 +276,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
-        if not isinstance(y_predictions, list):
-            print('y pred shape is:', y_predictions.shape, 'y shape:', y.shape)
+        if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
