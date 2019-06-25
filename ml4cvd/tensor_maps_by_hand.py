@@ -16,7 +16,7 @@ def _get_lead_cm(length):
     return lead_cm, lead_weights
 
 
-diploid_genotypes = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 0}
+diploid_genotypes = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
 
 TMAPS = dict()
 
