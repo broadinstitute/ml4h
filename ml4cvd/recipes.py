@@ -69,7 +69,7 @@ def run(args):
         elif 'fix_volumes' == args.mode:
             fix_volumes(args.tensors, args.volume_csv)
         elif 'append_csv' == args.mode:
-            append_float_csv(args.tensors, args.app_csv, 'continuous', '\t')
+            append_float_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, '\t')
         else:
