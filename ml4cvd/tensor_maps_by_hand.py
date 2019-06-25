@@ -3,7 +3,7 @@ import numpy as np
 from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
-from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_CHAR_2_IDX, IMPUTATION_RANDOM
+from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM
 
 
 def _get_lead_cm(length):
@@ -16,13 +16,13 @@ def _get_lead_cm(length):
     return lead_cm, lead_weights
 
 
-diploid_genotypes = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
+diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
 
 TMAPS = dict()
 
-TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_genotypes)
-TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_genotypes)
-TMAPS['rs2042995'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_genotypes)
+TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([1, .5, 2], 'rs3829740'))
+TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([.5, 1, 10], 'rs2234962'))
+TMAPS['rs2042995'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([.5, 1, 6], 'rs2042995'))
 
 TMAPS['akap9_lof'] = TensorMap('AKAP9', group='categorical_flag', channel_map={'no_akap9_lof': 0, 'akap9_lof': 1})
 TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no_dsc2_lof': 0, 'dsc2_lof': 1})

@@ -28,15 +28,15 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
-SUBPLOT_SIZE = 8
+SUBPLOT_SIZE = 6
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkseagreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange']
 
 
-def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str]=None,
-                         max_melt: int=5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]]=[],
-                         scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]]=[]) -> Dict[str, float]:
+def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
+                         max_melt: int = 5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+                         scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = []) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
 
