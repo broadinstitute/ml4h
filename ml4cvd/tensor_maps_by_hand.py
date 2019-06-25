@@ -16,7 +16,13 @@ def _get_lead_cm(length):
     return lead_cm, lead_weights
 
 
+diploid_genotypes = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 0}
+
 TMAPS = dict()
+
+TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_genotypes)
+TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_genotypes)
+TMAPS['rs2042995'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_genotypes)
 
 TMAPS['akap9_lof'] = TensorMap('AKAP9', group='categorical_flag', channel_map={'no_akap9_lof': 0, 'akap9_lof': 1})
 TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no_dsc2_lof': 0, 'dsc2_lof': 1})
