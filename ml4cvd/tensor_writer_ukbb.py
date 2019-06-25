@@ -978,7 +978,7 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                                 data[0] = 0.0
                                 stats['zeroed'] += 1
                         else:
-                            hd5.create_dataset(hd5_key, data=[data_maps[sample_id][field]])
+                            hd5.create_dataset(hd5_key, data=[float(data_maps[sample_id][field])])
                             stats['created'] += 1
                 else:
                     stats['sample id missing']
