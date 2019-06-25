@@ -394,8 +394,14 @@ class TensorMap(object):
         """
         if self.is_categorical_index():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            index = int(hd5[self.name][0])
-            categorical_data[index] = 1.0
+            if self.name in hd5:
+                index = int(hd5[self.name][0])
+                categorical_data[index] = 1.0
+            elif self.name in hd5['categorical']:
+                index = int(hd5['categorical'][self.name][0])
+                categorical_data[index] = 1.0
+            else:
+                raise ValueError(f"No categorical index found for tensor map: {self.name}.")
             return categorical_data
         elif self.is_categorical_flag():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
