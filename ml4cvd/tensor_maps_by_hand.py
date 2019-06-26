@@ -20,9 +20,14 @@ diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant'
 
 TMAPS = dict()
 
-TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([1, .5, 2], 'rs3829740'))
-TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([.5, 1, 10], 'rs2234962'))
-TMAPS['rs2042995'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([.2, 2, 10], 'rs2042995'))
+TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_cm)
+TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_cm)
+TMAPS['rs2042995'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_cm)
+
+TMAPS['rs3829740_weighted'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([1, 1, 1.5], 'rs3829740'))
+TMAPS['rs2234962_weighted'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([.8, 1, 2], 'rs2234962'))
+TMAPS['rs2042995_weighted'] = TensorMap('rs2042995', group='categorical_index', channel_map=diploid_cm, loss=weighted_crossentropy([.6, 2, 3], 'rs2042995'))
+
 
 TMAPS['akap9_lof'] = TensorMap('AKAP9', group='categorical_flag', channel_map={'no_akap9_lof': 0, 'akap9_lof': 1})
 TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no_dsc2_lof': 0, 'dsc2_lof': 1})
