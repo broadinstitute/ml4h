@@ -1,5 +1,7 @@
 import os
+import csv
 import logging
+import operator
 import numpy as np
 from typing import List
 from typing.io import TextIO
@@ -22,11 +24,13 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        #_write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
-        _write_continuous_tensor_maps(f, db_client, False)
-        _write_disease_tensor_maps(args.phenos_folder, f)
-        _write_disease_tensor_maps_time(args.phenos_folder, f)
-        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        # _write_dynamic_mri_tensor_maps(args.x, args.y, args.z, args.zoom_width, args.zoom_height, args.label_weights, args.t, f)
+        # _write_continuous_tensor_maps(f, db_client, False)
+        # _write_disease_tensor_maps(args.phenos_folder, f)
+        # _write_disease_tensor_maps_time(args.phenos_folder, f)
+        # _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
@@ -151,7 +155,33 @@ def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
     for d in sorted(list(disease2tsv.keys())):
         f.write(f"TMAPS['{d}_time'] = TensorMap('{d}', group='diagnosis_time', channel_map={{'{d}_time':0}}, loss='mse')\n")
 
-            
+
+def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient):
+    # phecode_csv = '/home/sam/phecode_definitions1.2.csv'
+    total_samples = 500000
+    remove_chars = ";.,/()-[]&' "
+    phecode2phenos = {}
+    with open(phecode_csv, 'r') as my_csv:
+        lol = list(csv.reader(my_csv, delimiter=','))
+        headers = lol[0]
+        print(headers)
+        for row in lol[1:]:
+            pheno = row[1].strip().replace("'s", "s")
+            for c in remove_chars:
+                pheno = pheno.replace(c, '_')
+            pheno = pheno.lower().strip('_').replace('___', '_').replace('__', '_')
+            phecode2phenos['phecode_'+row[0].lstrip('0').strip()] = pheno
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` GROUP BY disease"
+    count_result = db_client.execute(query)
+    phecode2counts = {}
+    for row in count_result:
+        phecode2counts[row['disease']] = float(row['total'])
+    for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
+        factor = int(total_samples / (phecode2counts[p] * 2))
+        f.write(f"TMAPS['{p}_phe'] = TensorMap('{p}_phe', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
+                f"loss=weighted_crossentropy([1.0, {factor}], '{p}_phe'))\n")
+
+
 def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
     group = 'continuous'
 
