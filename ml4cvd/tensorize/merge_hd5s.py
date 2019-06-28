@@ -40,14 +40,19 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
                     _copy_hd5_datasets(source_hd5, destination_hd5)
 
 
-def _copy_hd5_datasets(source_file, destination_file, group_path=HD5_GROUP_CHAR):
-    for k in source_file[group_path]:
-        if isinstance(source_file[group_path][k], h5py.Dataset):
-            destination_file.create_dataset(group_path + k, data=source_file[group_path][k])
+def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR):
+    for k in source_hd5[group_path]:
+        if k in source_hd5[group_path]:
+            try:
+                if isinstance(source_hd5[group_path][k], h5py.Dataset):
+                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
+                else:
+                    logging.debug(f"copying group {group_path + k}")
+                    _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
+            except:
+                print('something erroring at:', source_hd5.keys(), 'in group', source_hd5[group_path], 'gp:',  group_path, '  k', k, destination_hd5.keys())
         else:
-            logging.debug(f"copying group {group_path + k}")
-            _copy_hd5_datasets(source_file, destination_file, group_path=group_path + k + HD5_GROUP_CHAR)
-
+            print('something styrange at:', source_hd5.keys(), 'in group', source_hd5[group_path], 'gp:',  group_path, '  k', k, destination_hd5.keys())
 
 def parse_args():
     parser = argparse.ArgumentParser()
