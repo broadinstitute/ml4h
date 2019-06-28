@@ -163,8 +163,6 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
     phecode2phenos = {}
     with open(phecode_csv, 'r') as my_csv:
         lol = list(csv.reader(my_csv, delimiter=','))
-        headers = lol[0]
-        print(headers)
         for row in lol[1:]:
             pheno = row[1].strip().replace("'s", "s")
             for c in remove_chars:
@@ -179,8 +177,8 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
     for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
         if k in phecode2counts:
             factor = int(total_samples / (phecode2counts[k] * 2))
-            f.write(f"TMAPS['{p}_phe'] = TensorMap('{p}_phe', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
-                    f"loss=weighted_crossentropy([1.0, {factor}], '{p}_phe'))\n")
+            f.write(f"TMAPS['{p}_phe'] = TensorMap('{k}', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
+                    f"loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n")
 
 
 def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
