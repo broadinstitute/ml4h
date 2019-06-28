@@ -176,11 +176,30 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
         phecode2counts[row['disease']] = float(row['total'])
     for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
         if k in phecode2counts:
-            factor = int(total_samples / (phecode2counts[k] * 2))
+            factor = int(total_samples / (1+phecode2counts[k]))
             f.write(f"TMAPS['{p}_phe'] = TensorMap('{k}', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
                     f"loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n")
 
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE prevalent_disease=1 GROUP BY disease"
+    count_result = db_client.execute(query)
+    phecode2prevalent = {}
+    for row in count_result:
+        phecode2prevalent[row['disease']] = float(row['total'])
 
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE incident_disease=1 GROUP BY disease"
+    count_result = db_client.execute(query)
+    phecode2incident = {}
+    for row in count_result:
+        phecode2incident[row['disease']] = float(row['total'])
+
+    for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
+        if k in phecode2incident and k in phecode2prevalent:
+            factor_i = int(total_samples / (1 + phecode2incident[k]))
+            factor_p = int(total_samples / (1 + phecode2prevalent[k]))
+            f.write(f"TMAPS['{p}_phe_pi'] = TensorMap('{k}', group='categorical_flag', channel_map={{'no_{p}':0, '{p}_prevalent':1, '{p}_incident':2}}, "
+                    f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{p}_pi'))\n")
+
+        
 def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
     group = 'continuous'
 
