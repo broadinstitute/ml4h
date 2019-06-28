@@ -405,7 +405,7 @@ class TensorMap(object):
             return categorical_data
         elif self.is_categorical_flag():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            if self.name in hd5:
+            if self.name in hd5 or self.name in hd5['categorical']:
                 categorical_data[1] = 1.0
             else:
                 categorical_data[0] = 1.0
