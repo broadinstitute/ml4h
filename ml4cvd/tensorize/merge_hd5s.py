@@ -41,6 +41,8 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
                         _copy_hd5_datasets(source_hd5, destination_hd5)
                     except KeyError:
                         logging.warning(f"Key error at {source_file} trying to write to:{destination}")
+                    except RuntimeError:
+                        logging.warning(f"RuntimeError error at {source_file} trying to write to:{destination}")
 
 
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR):
