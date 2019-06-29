@@ -91,6 +91,7 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                     for row in rows:
                         hd5.create_dataset('categorical' + HD5_GROUP_CHAR + 'death', data=[float(row['has_died'])])
                         d = 'dates' + HD5_GROUP_CHAR
+                        hd5.create_dataset(d+'enroll_date', (1,), data=str(row['enroll_date']), dtype=h5py.special_dtype(vlen=str))
                         hd5.create_dataset(d+'death_censor', (1,), data=str(row['death_censor_date']), dtype=h5py.special_dtype(vlen=str))
                         hd5.create_dataset(d+'phenotype_censor', (1,), data=str(row['phenotype_censor_date']), dtype=h5py.special_dtype(vlen=str))
             gcs_blob.upload_from_filename(tensor_path)
@@ -166,10 +167,11 @@ def _get_disease_query(dataset):
 
 def _get_death_and_censor_query(dataset):
     return f"""
-        SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date 
+        SELECT distinct(d.sample_id), d.has_died, d.death_censor_date, c.phenotype_censor_date, d.enroll_date
         FROM `{dataset}.disease` d INNER JOIN `{dataset}.censor` c 
          ON c.sample_id = d.sample_id ORDER BY d.sample_id;
     """
+
 
 def _get_phecode_query(dataset):
     return f"""

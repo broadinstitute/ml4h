@@ -421,11 +421,13 @@ class TensorMap(object):
             if index != 0:
                 if self.name + '_date' in hd5:
                     disease_date = _str2date(str(hd5[self.name + '_date'][0]))
+                    assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
                 elif self.name + '_date' in hd5['dates']:
                     disease_date = _str2date(str(hd5['dates'][self.name + '_date'][0]))
+                    assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
+                    #assess_date = _str2date(str(hd5['dates']['enroll_date'][0]))
                 else:
                     raise ValueError(f"No date found for tensor map: {self.name}.")
-                assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
                 index = 1 if disease_date < assess_date else 2
             categorical_data[index] = 1.0
             return categorical_data

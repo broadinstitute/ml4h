@@ -2,7 +2,6 @@ import os
 import h5py
 import logging
 import argparse
-import traceback
 
 from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 

@@ -397,8 +397,7 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
     date_query = "SELECT p.instance, p.array_idx, p.value FROM phenotype p "
     date_query += "WHERE p.fieldid=53 and p.sample_id=%d;"
     for data_row in sql_cursor.execute(date_query % sample_id):
-        hd5.create_dataset('assessment-date_{}_{}'.format(data_row[0], data_row[1]), (1,), data=data_row[2],
-                           dtype=h5py.special_dtype(vlen=str))
+        hd5.create_dataset('assessment-date_{}_{}'.format(data_row[0], data_row[1]), (1,), data=data_row[2], dtype=h5py.special_dtype(vlen=str))
     _job_title_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
     _icd10_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
 
