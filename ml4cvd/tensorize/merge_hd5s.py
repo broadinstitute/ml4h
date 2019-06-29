@@ -38,20 +38,20 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
                 with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
-                    _copy_hd5_datasets(source_hd5, destination_hd5)
+                    try:
+                        _copy_hd5_datasets(source_hd5, destination_hd5)
+                    except KeyError:
+                        logging.warning(f"Key error at {source_file} trying to write to:{destination}")
 
 
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR):
     for k in source_hd5[group_path]:
-        try:
-            if isinstance(source_hd5[group_path][k], h5py.Dataset):
-                destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
-            else:
-                logging.debug(f"copying group {group_path + k}")
-                _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
-        except:
-            print(f"Error while attempting to merge tensor:\n{traceback.format_exc()}\n")
-            print('in group', source_hd5[group_path], 'gp:', group_path, '  k', k, "/nsomething erroring at:", source_hd5.keys(), destination_hd5.keys())
+
+        if isinstance(source_hd5[group_path][k], h5py.Dataset):
+            destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
+        else:
+            logging.debug(f"copying group {group_path + k}")
+            _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
 
 
 def parse_args():
