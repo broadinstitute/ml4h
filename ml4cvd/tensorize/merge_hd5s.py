@@ -2,6 +2,7 @@ import os
 import h5py
 import logging
 import argparse
+import traceback
 
 from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
@@ -42,17 +43,16 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR):
     for k in source_hd5[group_path]:
-        if k in source_hd5[group_path]:
-            try:
-                if isinstance(source_hd5[group_path][k], h5py.Dataset):
-                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
-                else:
-                    logging.debug(f"copying group {group_path + k}")
-                    _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
-            except:
-                print('something erroring at:', source_hd5.keys(), 'in group', source_hd5[group_path], 'gp:',  group_path, '  k', k, destination_hd5.keys())
-        else:
-            print('something styrange at:', source_hd5.keys(), 'in group', source_hd5[group_path], 'gp:',  group_path, '  k', k, destination_hd5.keys())
+        try:
+            if isinstance(source_hd5[group_path][k], h5py.Dataset):
+                destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
+            else:
+                logging.debug(f"copying group {group_path + k}")
+                _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
+        except:
+            print(f"Error while attempting to merge tensor:\n{traceback.format_exc()}\n")
+            print('in group', source_hd5[group_path], 'gp:', group_path, '  k', k, "/nsomething erroring at:", source_hd5.keys(), destination_hd5.keys())
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
