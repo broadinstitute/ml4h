@@ -65,7 +65,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":d:s:n:e:h" opt ; do
+while getopts ":d:s:n:b:e:h" opt ; do
     case ${opt} in
         h)
             usage
@@ -80,7 +80,7 @@ while getopts ":d:s:n:e:h" opt ; do
         n)
             NUM_JOBS=$OPTARG
             ;;
-        s)
+        b)
             SAMPLE_IDS_START=$OPTARG
             ;;
         e)
