@@ -2735,6 +2735,8 @@ TMAPS['voice_disturbance_phe'] = TensorMap('phecode_473.4', group='categorical_f
 TMAPS['von_willebrands_disease_phe'] = TensorMap('phecode_286.11', group='categorical_flag', channel_map={'no_von_willebrands_disease':0, 'von_willebrands_disease':1}, loss=weighted_crossentropy([1.0, 3267], 'phecode_286_11'))
 TMAPS['wegeners_granulomatosis_phe'] = TensorMap('phecode_446.4', group='categorical_flag', channel_map={'no_wegeners_granulomatosis':0, 'wegeners_granulomatosis':1}, loss=weighted_crossentropy([1.0, 2008], 'phecode_446_4'))
 TMAPS['wheezing_phe'] = TensorMap('phecode_512.1', group='categorical_flag', channel_map={'no_wheezing':0, 'wheezing':1}, loss=weighted_crossentropy([1.0, 1225], 'phecode_512_1'))
+
+
 TMAPS['abdominal_aortic_aneurysm_phe_pi'] = TensorMap('phecode_442.11', group='categorical_flag', channel_map={'no_abdominal_aortic_aneurysm':0, 'abdominal_aortic_aneurysm_prevalent':1, 'abdominal_aortic_aneurysm_incident':2}, loss=weighted_crossentropy([1.0, 1724, 435], 'abdominal_aortic_aneurysm_pi'))
 TMAPS['abdominal_hernia_phe_pi'] = TensorMap('phecode_550', group='categorical_flag', channel_map={'no_abdominal_hernia':0, 'abdominal_hernia_prevalent':1, 'abdominal_hernia_incident':2}, loss=weighted_crossentropy([1.0, 16, 14], 'abdominal_hernia_pi'))
 TMAPS['abdominal_pain_phe_pi'] = TensorMap('phecode_785', group='categorical_flag', channel_map={'no_abdominal_pain':0, 'abdominal_pain_prevalent':1, 'abdominal_pain_incident':2}, loss=weighted_crossentropy([1.0, 16, 19], 'abdominal_pain_pi'))

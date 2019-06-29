@@ -412,9 +412,19 @@ class TensorMap(object):
             return categorical_data
         elif self.is_categorical_date():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            index = int(hd5[self.name][0])
+            if self.name in hd5:
+                index = int(hd5[self.name][0])
+            elif self.name in hd5['categorical']:
+                index = int(hd5['categorical'][self.name][0])
+            else:
+                index = 0  # Assume no disease if the tensor does not have the dataset
             if index != 0:
-                disease_date = _str2date(str(hd5[self.name + '_date'][0]))
+                if self.name + '_date' in hd5:
+                    disease_date = _str2date(str(hd5[self.name + '_date'][0]))
+                elif self.name + '_date' in hd5['dates']:
+                    disease_date = _str2date(str(hd5['dates'][self.name + '_date'][0]))
+                else:
+                    raise ValueError(f"No date found for tensor map: {self.name}.")
                 assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
                 index = 1 if disease_date < assess_date else 2
             categorical_data[index] = 1.0
