@@ -64,7 +64,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     Returns:
         Never!
     """ 
-    assert(len(train_paths) > 0)
+    assert len(train_paths) > 0
 
     stats = Counter()
     paths_in_batch = []
@@ -141,7 +141,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     Returns:
         Never!
     """ 
-    assert(len(paths_lists) > 0 and len(paths_lists) == len(weights))
+    assert len(paths_lists) > 0 and len(paths_lists) == len(weights)
 
     stats = Counter()
     paths_in_batch = []
@@ -258,7 +258,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
     train_paths = []
     valid_paths = []
 
-    assert(valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0)
+    assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
 
     for root, dirs, files in os.walk(tensors):
         for name in files:
