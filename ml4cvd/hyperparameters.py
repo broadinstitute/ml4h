@@ -52,8 +52,7 @@ def run(args):
 def optimize_conv_layers_multimodal_multitask(args):
     stats = Counter()
     generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
-                                                                          args.balance_by_icds, False, False)
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args, generate_test, args.test_steps, False)
     
     dense_blocks_sets = [[16, 16], [32, 32], [32, 24, 16], [64, 32, 16], [32, 32, 32], [16, 16, 16], [64, 48, 32], [128, 64, 32], [48, 32, 24, 16], [24, 24, 24, 24], [128, 96, 64, 48]]
