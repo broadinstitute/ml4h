@@ -55,10 +55,10 @@ def optimize_conv_layers_multimodal_multitask(args):
                                                                           args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
-    dense_blocks_sets = [[32, 24, 16], [64, 32, 16], [128, 64, 32], [32, 24, 16, 12], [48, 32, 24, 16]]
+    dense_blocks_sets = [[32, 24, 16], [64, 32, 16, 8], [32, 24, 16, 12], [48, 32, 24, 16]]
     conv_layers_sets = [[64], [48], [32], [24]]
-    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [16], [8]]
-    pool_zs = [1, 2]
+    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
+    pool_zs = [1]
     param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_z': pool_zs}
     space = {
         'pool_z': hp.choice('pool_z', pool_zs),
