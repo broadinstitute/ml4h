@@ -103,11 +103,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             except ValueError:
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except OSError:
-                try:
-                    os.remove(tp)
-                except:
-                    print('\n\n\n\n\n OSError  \n\n\n\n')
-                #stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+                stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except RuntimeError:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             _log_first_error(stats)
