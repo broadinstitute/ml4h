@@ -716,30 +716,28 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
         p2y[p] = tsne.fit_transform(x_embed)
 
     j = -1
-    categorical_colors = {0: 'green', 1: 'red', 2: 'blue', 3: 'orange'}
-    for k in label_dict:
+    for tm in label_dict:
         j += 1
         if j == rows:
             break
         categorical_subsets = {}
-        if k in categorical_labels + gene_labels:
-            for c in categorical_colors:
-                categorical_subsets[c] = label_dict[k] == c
-        elif k in continuous_labels:
-            colors = label_dict[k]
+        if tm in categorical_labels + gene_labels:
+            for c in tm.channel_map:
+                categorical_subsets[tm.channel_map[c]] = label_dict[tm] == tm.channel_map[c]
+        elif tm in continuous_labels:
+            colors = label_dict[tm]
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
-            ax.set_title(k)  # +", Perplexity=%d" % perplexity)
-            if k in categorical_labels+gene_labels:
-                for c in categorical_colors:
-                    ax.scatter(p2y[p][categorical_subsets[c], 0], p2y[p][categorical_subsets[c], 1], c=categorical_colors[c], alpha=alpha)
-                if max(label_dict[k]) == 1:
-                    ax.legend(['no ' + k, k], loc='lower left')
-                elif max(label_dict[k]) == 2:
-                    ax.legend(['no ' + k, 'prevalent ' + k, 'incident ' + k], loc='lower left')
-                else:
-                    ax.legend(list(categorical_colors.keys()), loc='lower left')
-            elif k in continuous_labels:
+            ax.set_title(tm.name + ", Perplexity=%d" % p)
+            if tm in categorical_labels + gene_labels:
+                color_labels = []
+                for c in tm.channel_map:
+                    channel_index = tm.channel_map[c]
+                    color = _hash_string_to_color(c)
+                    color_labels.append(c)
+                    ax.scatter(p2y[p][categorical_subsets[channel_index], 0], p2y[p][categorical_subsets[channel_index], 1], c=color, alpha=alpha)
+                ax.legend(color_labels, loc='lower left')
+            elif tm in continuous_labels:
                 points = ax.scatter(p2y[p][:, 0], p2y[p][:, 1], c=colors, alpha=alpha, cmap='jet')
                 if i == len(perplexities) - 1:
                     fig.colorbar(points, ax=ax)
