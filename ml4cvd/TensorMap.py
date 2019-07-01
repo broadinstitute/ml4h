@@ -548,7 +548,7 @@ class TensorMap(object):
                     continuous_data[self.channel_map[k]] = value
             if NOT_MISSING in self.channel_map and not missing:
                 continuous_data[self.channel_map[NOT_MISSING]] = 1
-            if continuous_data[0] == 0 and self.name in CONTINUOUS_NEVER_ZERO:
+            if continuous_data[0] == 0 and (self.sentinel == None and self.name in CONTINUOUS_NEVER_ZERO):
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
             return self.normalize(continuous_data)
         elif self.is_multi_field_continuous():
