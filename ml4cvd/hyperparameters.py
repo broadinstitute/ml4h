@@ -55,9 +55,9 @@ def optimize_conv_layers_multimodal_multitask(args):
                                                                           args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
-    dense_blocks_sets = [[16, 16], [32, 32], [32, 24, 16], [64, 32, 16], [32, 32, 32], [16, 16, 16], [64, 48, 32], [128, 64, 32], [48, 32, 24, 16], [24, 24, 24, 24], [128, 96, 64, 48]]
-    conv_layers_sets = [[128], [64], [48], [32], [24],  [16]]
-    dense_layers_sets = [[16, 64], [12, 16], [8, 128], [48], [32], [16], [8]]
+    dense_blocks_sets = [[32, 24, 16], [64, 32, 16], [128, 64, 32], [32, 24, 16, 12], [48, 32, 24, 16]]
+    conv_layers_sets = [[64], [48], [32], [24]]
+    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [16], [8]]
     pool_zs = [1, 2]
     param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_z': pool_zs}
     space = {
@@ -109,13 +109,13 @@ def optimize_conv_layers_multimodal_multitask(args):
 
     # Re-train the best model so it's easy to view it at the end of the logs
     args = args_from_best_trials(args, trials)
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
-                                                args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
-                                                args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
-                                                args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
-                                                args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
-    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-                                args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y, args.conv_z,
+                                                args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding,
+                                                args.learning_rate)
+    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
+                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
 
 def optimize_dense_layers_multimodal_multitask(args):
@@ -130,11 +130,11 @@ def optimize_dense_layers_multimodal_multitask(args):
     def loss_from_multimodal_multitask(x):
         try:
             args.dense_layers = [int(x['layer_width'])] * int(x['num_layers'])
-            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
-                                                        args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
-                                                        args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
-                                                        args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
-                                                        args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
+            model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                        args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                        args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
+                                                        args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y, args.pool_z,
+                                                        args.padding, args.learning_rate)
 
             if model.count_params() > args.max_parameters:
                 logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
