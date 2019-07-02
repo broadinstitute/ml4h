@@ -191,8 +191,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     logging.info("Saved scatter plot at: {}".format(figure_path))
 
 
-def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]],
-                     prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]], prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
     lw = 3
     row = 0
     col = 0
@@ -204,8 +203,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
         axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
         axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
+        margin = float((np.max(truth) - np.min(truth)) / 100)
         if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
-            margin = float((np.max(truth) - np.min(truth)) / 100)
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
             # The path of the best prediction, ie the inlier
@@ -217,7 +216,7 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        axes[row, col].text(np.min(truth), np.max(truth), 'Pearson:%0.3f R^2:%0.3f' % (pearson, (pearson * pearson)))
+        axes[row, col].text(np.min(truth), np.max(truth) + margin*3, 'Pearson:%0.3f R:%0.3f' % (pearson, (pearson * pearson)))
 
         row += 1
         if row == rows:
