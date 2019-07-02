@@ -168,9 +168,9 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                             break
                     logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
-                        plt.imsave(folder+str(yi)+'_truth_epoch_{0:03d}'.format(i)+IMAGE_EXT, np.argmax(labels[tm.output_name()][yi], axis=-1))
-                        plt.imsave(folder+str(yi)+'_prediction_epoch_{0:03d}'.format(i)+IMAGE_EXT, np.argmax(y[yi], axis=-1))
-                        plt.imsave(folder+str(yi)+'_mri_slice_epoch_{0:03d}'.format(i)+IMAGE_EXT, data[im.input_name()][yi,:,:,0])
+                        plt.imsave(f"{folder}batch_index_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][yi], axis=-1))
+                        plt.imsave(f"{folder}batch_index_{yi}_prediction_epoch_{i:03d}{IMAGE_EXT}", np.argmax(y[yi], axis=-1))
+                        plt.imsave(f"{folder}batch_index_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", data[im.input_name()][yi,:,:,0])
                 elif tm.is_categorical_any() and len(tm.shape) == 4:
                     for im in tensor_maps_in:
                         if im.dependent_map == tm:
@@ -182,12 +182,12 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                             prediction = np.argmax(y[yi,:,:,j,:], axis=-1)
                             true_donut = np.ma.masked_where(truth == 2, data[im.input_name()][yi,:,:,j,0])
                             predict_donut = np.ma.masked_where(prediction == 2, data[im.input_name()][yi,:,:,j,0])
-                            plt.imsave(folder+str(yi)+'_slice_{0:03d}_prediction_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, prediction)
-                            plt.imsave(folder+str(yi)+'_slice_{0:03d}_predict_donut_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, predict_donut)
+                            plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}", prediction)
+                            plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_predict_donut_epoch_{i:03d}{IMAGE_EXT}", predict_donut)
                             if i == 0:
-                                plt.imsave(folder+str(yi)+'_slice_{0:03d}_truth_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, truth)
-                                plt.imsave(folder+str(yi)+'_slice_{0:03d}_true_donut_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, true_donut)
-                                plt.imsave(folder+str(yi)+'_slice_{0:03d}_mri_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, data[im.input_name()][yi,:,:,j,0])
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth)
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_true_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut)
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", data[im.input_name()][yi,:,:,j,0])
 
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
