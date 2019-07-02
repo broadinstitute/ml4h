@@ -97,7 +97,7 @@ def train_multimodal_multitask(args):
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    out_path = os.path.join(args.output_folder, args.id)
+    out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
 
@@ -112,7 +112,7 @@ def test_multimodal_multitask(args):
                                                 args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
                                                 args.pool_z, args.padding, args.learning_rate)
 
-    out_path = os.path.join(args.output_folder, args.id)
+    out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
   
@@ -127,7 +127,7 @@ def test_multimodal_scalar_tasks(args):
                                                 args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
                                                 args.pool_z, args.padding, args.learning_rate)
 
-    p = os.path.join(args.output_folder, args.id)
+    p = os.path.join(args.output_folder, args.id + '/')
     return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
@@ -209,7 +209,7 @@ def train_shallow_model(args):
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    p = os.path.join(args.output_folder, args.id)
+    p = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.alpha)
 
@@ -231,7 +231,7 @@ def train_char_model(args):
     test_batch, _, test_paths = next(generate_test)
     sample_from_char_model(char_model, test_batch, test_paths)
 
-    output_path = os.path.join(args.output_folder, args.id)
+    output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
 

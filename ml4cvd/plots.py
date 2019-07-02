@@ -216,7 +216,7 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        axes[row, col].text(np.min(truth), np.max(truth) + margin*3, 'Pearson:%0.3f R:%0.3f' % (pearson, (pearson * pearson)))
+        axes[row, col].text(np.min(truth), np.max(truth) + margin*10, 'Pearson:%0.3f R:%0.3f' % (pearson, (pearson * pearson)))
 
         row += 1
         if row == rows:
