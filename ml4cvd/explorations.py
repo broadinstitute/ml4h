@@ -148,11 +148,10 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
 def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
                         generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
                         data: Dict[str, np.ndarray], labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
-                        training_steps: int, folder: str, run_id: str, write_pngs: bool):
+                        training_steps: int, folder: str, write_pngs: bool):
 
-    metric_folder = os.path.join(folder, run_id, 'training_metrics/')
-    if not os.path.exists(metric_folder):
-        os.makedirs(metric_folder)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
     for i in range(epochs):
         rocs = []
@@ -194,9 +193,9 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                     y = predictions[0]
                 evaluate_predictions(tm, y, labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", metric_folder, test_paths, rocs=rocs, scatters=scatters)
         if len(rocs) > 1:
-            subplot_rocs(rocs, metric_folder+f"epoch_{i:03d}_")
+            subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
         if len(scatters) > 1:
-            subplot_scatters(scatters, metric_folder+f"epoch_{i:03d}_")
+            subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
 
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 

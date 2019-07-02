@@ -267,7 +267,7 @@ def plot_while_training(args):
 
     plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
     plot_while_learning(model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
-                        args.batch_size, args.training_steps, plot_folder, args.id, args.write_pngs)
+                        args.batch_size, args.training_steps, plot_folder, args.write_pngs)
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
