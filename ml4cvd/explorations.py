@@ -23,7 +23,7 @@ from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_generators import TensorGenerator
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, subplot_rocs, subplot_scatters
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, HD5_GROUP_CHAR
 
 CSV_EXT = '.tsv'
@@ -149,9 +149,14 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                         generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
                         data: Dict[str, np.ndarray], labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
                         training_steps: int, folder: str, run_id: str, write_pngs: bool):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+
+    metric_folder = os.path.join(folder, run_id, 'training_metrics/')
+    if not os.path.exists(metric_folder):
+        os.makedirs(metric_folder)
+
     for i in range(epochs):
+        rocs = []
+        scatters = []
         predictions = model.predict(data, batch_size=batch_size)
         for y, tm in zip(predictions, tensor_maps_out):
             if len(tensor_maps_out) == 1:
@@ -185,11 +190,13 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                                 plt.imsave(folder+str(yi)+'_slice_{0:03d}_mri_epoch_{1:03d}'.format(j, i)+IMAGE_EXT, data[im.input_name()][yi,:,:,j,0])
 
             elif write_pngs:
-                title = tm.name+'_epoch_{0:03d}'.format(i)
-                metric_folder = os.path.join(folder, run_id, 'training_metrics/')
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
-                evaluate_predictions(tm, y, labels, data, title, metric_folder)
+                evaluate_predictions(tm, y, labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", metric_folder, test_paths, rocs=rocs, scatters=scatters)
+        if len(rocs) > 1:
+            subplot_rocs(rocs, metric_folder+f"epoch_{i:03d}_")
+        if len(scatters) > 1:
+            subplot_scatters(scatters, metric_folder+f"epoch_{i:03d}_")
 
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
