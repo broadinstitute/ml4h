@@ -188,7 +188,7 @@ def infer_multimodal_multitask(args):
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1:
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if np.abs(tm.rescale(true_label[tm.output_name()])[0][0]) < 1e-4:  # Hack to handle missing LV Mass that was set to 0
+                    if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
