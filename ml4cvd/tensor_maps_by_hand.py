@@ -211,7 +211,7 @@ TMAPS['lv_mass'] = TensorMap('lv_mass', group='continuous', activation='linear',
 TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='linear', loss=ignore_zeros_logcosh,
                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation='linear', sentinel=0,
-                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+                                      channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},
@@ -235,6 +235,12 @@ TMAPS['corrected_extracted_lvef'] = TensorMap('corrected_extracted_lvef', group=
                                    loss='logcosh', loss_weight=1.0, channel_map={'corrected_extracted_lvef': 0})
 
 
+TMAPS['corrected_extracted_lvesv_sentinel'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear', loss='logcosh', sentinel=0.0,
+                                                        channel_map={'corrected_extracted_lvesv': 0}, normalization={'mean': 47.0, 'std': 10.0})
+TMAPS['corrected_extracted_lvedv_sentinel'] = TensorMap('corrected_extracted_lvedv', group='continuous', activation='linear', loss='logcosh', sentinel=0.0,
+                                                        channel_map={'corrected_extracted_lvedv': 0}, normalization={'mean': 142.0, 'std': 21.0})
+TMAPS['corrected_extracted_lvef_sentinel'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear', loss='logcosh', sentinel=0.0,
+                                                       normalization={'mean': 0.50, 'std': 0.046}, channel_map={'corrected_extracted_lvef': 0})
 
 
 TMAPS['end_systole_volume_corrected'] = TensorMap('end_systole_volume_corrected', group='continuous', activation='linear',
