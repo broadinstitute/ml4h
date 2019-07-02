@@ -226,7 +226,7 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
             if col >= cols:
                 break
 
-    figure_path = os.path.join(prefix, 'scatters_together' + IMAGE_EXT)
+    figure_path = prefix + 'scatters_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -556,7 +556,7 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
                 break
 
     plt.tight_layout()
-    figure_path = os.path.join(prefix, 'rocs_together' + IMAGE_EXT)
+    figure_path = prefix + 'rocs_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
