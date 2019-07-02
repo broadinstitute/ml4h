@@ -74,8 +74,8 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
         y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
         y_truth = y_truth.reshape(melt_shape)[:max_melt]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        #performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        #performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.name == 'aligned_distance':
         logging.info(f"a dist has y shape:{y_predictions.shape} and test labels has shape:{y_truth.shape}")
     elif len(tm.shape) > 1:
@@ -84,7 +84,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
-        performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
+        #performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
@@ -216,7 +216,7 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        axes[row, col].text(np.min(truth), np.max(truth) + margin*10, 'Pearson:%0.3f R:%0.3f' % (pearson, (pearson * pearson)))
+        axes[row, col].text(np.min(truth), np.max(truth) + margin*8, 'Pearson:%0.3f r:%0.3f' % (pearson, (pearson * pearson)))
 
         row += 1
         if row == rows:
