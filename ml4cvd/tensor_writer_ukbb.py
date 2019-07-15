@@ -36,9 +36,9 @@ from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_
 from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
 
 
-MRI_MIN_RADIUS = 1
+MRI_MIN_RADIUS = 2
 MRI_BIG_RADIUS_FACTOR = 0.9
-MRI_SMALL_RADIUS_FACTOR = 0.18
+MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
@@ -686,14 +686,14 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
         small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
         big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
-        myocardium_structure = _unit_disk(small_radius)
-        m1 = binary_closing(arr, myocardium_structure).astype(np.int)
-        ventricle_structure = _unit_disk(big_radius)
-        m2 = binary_closing(arr, ventricle_structure).astype(np.int)
+        small_structure = _unit_disk(small_radius)
+        m1 = binary_closing(arr, small_structure).astype(np.int)
+        big_structure = _unit_disk(big_radius)
+        m2 = binary_closing(arr, big_structure).astype(np.int)
         merged = m1 + m2
         if np.count_nonzero(merged == 1) == 0:
-            merged = binary_erosion(m1, myocardium_structure).astype(np.int) + m2
-            logging.info(f"Try erosion")
+            erode_structure = _unit_disk(small_radius*2)
+            merged = binary_erosion(m1, erode_structure).astype(np.int) + m2
         if debug:
             logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
         return arr, merged
