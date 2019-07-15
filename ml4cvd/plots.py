@@ -14,7 +14,7 @@ from collections import Counter, OrderedDict, defaultdict
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
+#import seaborn as sns
 import matplotlib
 
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
