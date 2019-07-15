@@ -553,8 +553,8 @@ def _write_tensors_from_dicoms(x,
                     if write_pngs:
                         overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
                         # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
+                        plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
+                        plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
                     if ventricle_pixels == 0:
                         continue
                     extracted_an_overlay = True
