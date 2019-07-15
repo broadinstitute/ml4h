@@ -684,6 +684,7 @@ def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
         m1 = binary_closing(arr, myocardium_structure).astype(np.int)
         ventricle_structure = _unit_disk(big_radius)
         m2 = binary_closing(arr, ventricle_structure).astype(np.int)
+        logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
         return arr, m1 + m2
 
 
