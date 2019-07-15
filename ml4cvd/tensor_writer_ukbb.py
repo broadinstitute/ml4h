@@ -692,8 +692,8 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         m2 = binary_closing(arr, big_structure).astype(np.int)
         merged = m1 + m2
         if np.count_nonzero(merged == 1) == 0:
-            erode_structure = _unit_disk(small_radius*2)
-            merged = m2 - binary_erosion(m1, erode_structure).astype(np.int)
+            erode_structure = _unit_disk(small_radius*1.5)
+            merged = merged - binary_erosion(m1, erode_structure).astype(np.int)
         if debug:
             logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
         return arr, merged
