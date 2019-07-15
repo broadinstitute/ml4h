@@ -115,122 +115,122 @@ class TestTrainingModels(unittest.TestCase):
 
         for k in performances:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
-    # def test_train_mri_sax_zoom(self):
-    #     delta = 7e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.input_tensors = ['sax_inlinevf_zoom_weighted']
-    #     args.output_tensors = ['sax_inlinevf_zoom_mask_weighted', 'end_systole_volume', 'end_diastole_volume',
-    #                            'ejection_fractionp', 'allergic_rhinitis', 'asthma', 'atrial_fibrillation_or_flutter',
-    #                            'back_pain', 'breast_cancer', 'coronary_artery_disease_soft', 'diabetes_type_2',
-    #                            'hypertension', 'myocardial_infarction']
-    #     args.epochs = 1
-    #     args.batch_size = 4
-    #     args.training_steps = 24
-    #     args.validation_steps = 1
-    #     args.test_steps = 36
-    #     args.t = 48
-    #     args.pool_z = 2
-    #     args.u_connect = True
-    #     args.learning_rate = 0.0001
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = train_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'end_systole_volume_pearson': 0.010191148347492063,
-    #                 'end_diastole_volume_pearson': 0.07746212713601273,
-    #                 'ejection_fraction_pearson': 0.039482962469710864, 'no_allergic_rhinitis': 0.6583710407239819,
-    #                 'allergic_rhinitis': 0.655697243932538, 'no_asthma': 0.4921536796536796,
-    #                 'asthma': 0.49607683982683987, 'no_atrial_fibrillation_or_flutter': 0.3950320512820513,
-    #                 'atrial_fibrillation_or_flutter': 0.3950320512820512, 'no_back_pain': 0.5713760117733627,
-    #                 'back_pain': 0.5673289183222958, 'no_breast_cancer': 0.32195723684210525,
-    #                 'breast_cancer': 0.3223684210526316, 'no_coronary_artery_disease_soft': 0.37866666666666665,
-    #                 'coronary_artery_disease_soft': 0.37733333333333335, 'no_diabetes_type_2': 0.5410830999066294,
-    #                 'diabetes_type_2': 0.5401493930905695, 'no_hypertension': 0.5034782608695653,
-    #                 'hypertension': 0.5039613526570048, 'no_myocardial_infarction': 0.5632911392405063,
-    #                 'myocardial_infarction': 0.564873417721519}
-    #
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
-    # def test_train_mri_systole_diastole(self):
-    #     delta = 6e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.input_tensors = ['mri_systole_diastole_weighted']
-    #     args.output_tensors = ['mri_systole_diastole_segmented_weighted', 'end_systole_volume', 'end_diastole_volume',
-    #                            'ejection_fractionp', 'allergic_rhinitis', 'asthma', 'atrial_fibrillation_or_flutter',
-    #                            'back_pain', 'breast_cancer', 'coronary_artery_disease_soft', 'diabetes_type_2',
-    #                            'hypertension', 'myocardial_infarction']
-    #     args.epochs = 1
-    #     args.batch_size = 12
-    #     args.training_steps = 96
-    #     args.validation_steps = 1
-    #     args.test_steps = 36
-    #     args.u_connect = True
-    #     args.learning_rate = 0.0005
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = train_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'background': 0.9997983811584907, 'ventricle': 0.3717467509311169, 'myocardium': 0.1753433358365212,
-    #                 'end_systole_volume_pearson': 0.1376, 'end_diastole_volume_pearson': 0.13085844389045515,
-    #                 'ejection_fraction_pearson': 0.09538719107146973, 'no_allergic_rhinitis': 0.46750762240688715,
-    #                 'allergic_rhinitis': 0.4675076224068871, 'no_asthma': 0.5619121188712681,
-    #                 'asthma': 0.5619121188712682, 'no_atrial_fibrillation_or_flutter': 0.6406823580220254,
-    #                 'atrial_fibrillation_or_flutter': 0.6406823580220254, 'no_back_pain': 0.5318302387267905,
-    #                 'back_pain': 0.5318302387267904, 'no_breast_cancer': 0.5274939903846154,
-    #                 'breast_cancer': 0.5274939903846154, 'no_coronary_artery_disease_soft': 0.589689578713969,
-    #                 'coronary_artery_disease_soft': 0.589689578713969, 'no_diabetes_type_2': 0.6338928856914469,
-    #                 'diabetes_type_2': 0.6338928856914469, 'no_hypertension': 0.5819672131147541,
-    #                 'hypertension': 0.5819672131147541, 'no_myocardial_infarction': 0.6285789335434726,
-    #                 'myocardial_infarction': 0.6285789335434726}
-    #
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
-    # def test_train_mri_systole_diastole_pi(self):
-    #     delta = 6e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.input_tensors = ['mri_systole_diastole_weighted']
-    #     args.output_tensors = ['mri_systole_diastole_segmented_weighted', 'end_systole_volume', 'end_diastole_volume',
-    #                            'ejection_fractionp', 'allergic_rhinitis_prevalent_incident',
-    #                            'asthma_prevalent_incident', 'atrial_fibrillation_or_flutter_prevalent_incident',
-    #                            'back_pain_prevalent_incident', 'breast_cancer_prevalent_incident',
-    #                            'coronary_artery_disease_soft_prevalent_incident',
-    #                            'diabetes_type_2_prevalent_incident', 'hypertension_prevalent_incident',
-    #                            'myocardial_infarction_prevalent_incident']
-    #     args.epochs = 1
-    #     args.batch_size = 12
-    #     args.training_steps = 96
-    #     args.validation_steps = 1
-    #     args.test_steps = 36
-    #     args.u_connect = True
-    #     args.learning_rate = 0.0005
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = train_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'background': 0.9994056020189077, 'ventricle': 0.3217267098772595, 'myocardium': 0.13751608768060483,
-    #                 'end_systole_volume_pearson': -0.11803115474509973, 'end_diastole_volume_pearson': 0.07460391201856462,
-    #                 'ejection_fraction_pearson': 0.014315858148787145, 'no_allergic_rhinitis': 0.4270341364261374,
-    #                 'prevalent_allergic_rhinitis': 0.5918604651162791, 'incident_allergic_rhinitis': 0.437839186576009,
-    #                 'no_asthma': 0.4421774889807788, 'prevalent_asthma': 0.4578408195429472, 'incident_asthma': 0.4612041884816754,
-    #                 'no_atrial_fibrillation_or_flutter': 0.33988339451522354, 'prevalent_atrial_fibrillation_or_flutter': 0.3615023474178404,
-    #                 'incident_atrial_fibrillation_or_flutter': 0.2651053864168618, 'no_back_pain': 0.5578817733990148,
-    #                 'prevalent_back_pain': 0.307563025210084, 'incident_back_pain': 0.553459920988913, 'no_breast_cancer': 0.49939903846153844,
-    #                 'prevalent_breast_cancer': 0.6088992974238876, 'incident_breast_cancer': 0.45130641330166266,
-    #                 'no_coronary_artery_disease_soft': 0.4605321507760532, 'prevalent_coronary_artery_disease_soft': 0.3188862621486735,
-    #                 'incident_coronary_artery_disease_soft': 0.49899026987332473, 'no_diabetes_type_2': 0.47961630695443647,
-    #                 'prevalent_diabetes_type_2': 0.5485625485625485, 'incident_diabetes_type_2': 0.4376984126984127,
-    #                 'no_hypertension': 0.6255949233209941, 'prevalent_hypertension': 0.4478044259066156, 'incident_hypertension': 0.6184678890849811,
-    #                 'no_myocardial_infarction': 0.5187811925400578, 'prevalent_myocardial_infarction': 0.5925058548009368,
-    #                 'incident_myocardial_infarction': 0.4287383177570093}
-    #
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
+    def test_train_mri_sax_zoom(self):
+        delta = 7e-1
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.input_tensors = ['sax_inlinevf_zoom_weighted']
+        args.output_tensors = ['sax_inlinevf_zoom_mask_weighted', 'end_systole_volume', 'end_diastole_volume',
+                               'ejection_fractionp', 'allergic_rhinitis', 'asthma', 'atrial_fibrillation_or_flutter',
+                               'back_pain', 'breast_cancer', 'coronary_artery_disease_soft', 'diabetes_type_2',
+                               'hypertension', 'myocardial_infarction']
+        args.epochs = 1
+        args.batch_size = 4
+        args.training_steps = 24
+        args.validation_steps = 1
+        args.test_steps = 36
+        args.t = 48
+        args.pool_z = 2
+        args.u_connect = True
+        args.learning_rate = 0.0001
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = train_multimodal_multitask(args)
+        print('expected = ', performances)
+        expected = {'end_systole_volume_pearson': 0.010191148347492063,
+                    'end_diastole_volume_pearson': 0.07746212713601273,
+                    'ejection_fraction_pearson': 0.039482962469710864, 'no_allergic_rhinitis': 0.6583710407239819,
+                    'allergic_rhinitis': 0.655697243932538, 'no_asthma': 0.4921536796536796,
+                    'asthma': 0.49607683982683987, 'no_atrial_fibrillation_or_flutter': 0.3950320512820513,
+                    'atrial_fibrillation_or_flutter': 0.3950320512820512, 'no_back_pain': 0.5713760117733627,
+                    'back_pain': 0.5673289183222958, 'no_breast_cancer': 0.32195723684210525,
+                    'breast_cancer': 0.3223684210526316, 'no_coronary_artery_disease_soft': 0.37866666666666665,
+                    'coronary_artery_disease_soft': 0.37733333333333335, 'no_diabetes_type_2': 0.5410830999066294,
+                    'diabetes_type_2': 0.5401493930905695, 'no_hypertension': 0.5034782608695653,
+                    'hypertension': 0.5039613526570048, 'no_myocardial_infarction': 0.5632911392405063,
+                    'myocardial_infarction': 0.564873417721519}
+
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
+    def test_train_mri_systole_diastole(self):
+        delta = 6e-1
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.input_tensors = ['mri_systole_diastole_weighted']
+        args.output_tensors = ['mri_systole_diastole_segmented_weighted', 'end_systole_volume', 'end_diastole_volume',
+                               'ejection_fractionp', 'allergic_rhinitis', 'asthma', 'atrial_fibrillation_or_flutter',
+                               'back_pain', 'breast_cancer', 'coronary_artery_disease_soft', 'diabetes_type_2',
+                               'hypertension', 'myocardial_infarction']
+        args.epochs = 1
+        args.batch_size = 12
+        args.training_steps = 96
+        args.validation_steps = 1
+        args.test_steps = 36
+        args.u_connect = True
+        args.learning_rate = 0.0005
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = train_multimodal_multitask(args)
+        print('expected = ', performances)
+        expected = {'background': 0.9997983811584907, 'ventricle': 0.3717467509311169, 'myocardium': 0.1753433358365212,
+                    'end_systole_volume_pearson': 0.1376, 'end_diastole_volume_pearson': 0.13085844389045515,
+                    'ejection_fraction_pearson': 0.09538719107146973, 'no_allergic_rhinitis': 0.46750762240688715,
+                    'allergic_rhinitis': 0.4675076224068871, 'no_asthma': 0.5619121188712681,
+                    'asthma': 0.5619121188712682, 'no_atrial_fibrillation_or_flutter': 0.6406823580220254,
+                    'atrial_fibrillation_or_flutter': 0.6406823580220254, 'no_back_pain': 0.5318302387267905,
+                    'back_pain': 0.5318302387267904, 'no_breast_cancer': 0.5274939903846154,
+                    'breast_cancer': 0.5274939903846154, 'no_coronary_artery_disease_soft': 0.589689578713969,
+                    'coronary_artery_disease_soft': 0.589689578713969, 'no_diabetes_type_2': 0.6338928856914469,
+                    'diabetes_type_2': 0.6338928856914469, 'no_hypertension': 0.5819672131147541,
+                    'hypertension': 0.5819672131147541, 'no_myocardial_infarction': 0.6285789335434726,
+                    'myocardial_infarction': 0.6285789335434726}
+
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
+    def test_train_mri_systole_diastole_pi(self):
+        delta = 6e-1
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.input_tensors = ['mri_systole_diastole_weighted']
+        args.output_tensors = ['mri_systole_diastole_segmented_weighted', 'end_systole_volume', 'end_diastole_volume',
+                               'ejection_fractionp', 'allergic_rhinitis_prevalent_incident',
+                               'asthma_prevalent_incident', 'atrial_fibrillation_or_flutter_prevalent_incident',
+                               'back_pain_prevalent_incident', 'breast_cancer_prevalent_incident',
+                               'coronary_artery_disease_soft_prevalent_incident',
+                               'diabetes_type_2_prevalent_incident', 'hypertension_prevalent_incident',
+                               'myocardial_infarction_prevalent_incident']
+        args.epochs = 1
+        args.batch_size = 12
+        args.training_steps = 96
+        args.validation_steps = 1
+        args.test_steps = 36
+        args.u_connect = True
+        args.learning_rate = 0.0005
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = train_multimodal_multitask(args)
+        print('expected = ', performances)
+        expected = {'background': 0.9994056020189077, 'ventricle': 0.3217267098772595, 'myocardium': 0.13751608768060483,
+                    'end_systole_volume_pearson': -0.11803115474509973, 'end_diastole_volume_pearson': 0.07460391201856462,
+                    'ejection_fraction_pearson': 0.014315858148787145, 'no_allergic_rhinitis': 0.4270341364261374,
+                    'prevalent_allergic_rhinitis': 0.5918604651162791, 'incident_allergic_rhinitis': 0.437839186576009,
+                    'no_asthma': 0.4421774889807788, 'prevalent_asthma': 0.4578408195429472, 'incident_asthma': 0.4612041884816754,
+                    'no_atrial_fibrillation_or_flutter': 0.33988339451522354, 'prevalent_atrial_fibrillation_or_flutter': 0.3615023474178404,
+                    'incident_atrial_fibrillation_or_flutter': 0.2651053864168618, 'no_back_pain': 0.5578817733990148,
+                    'prevalent_back_pain': 0.307563025210084, 'incident_back_pain': 0.553459920988913, 'no_breast_cancer': 0.49939903846153844,
+                    'prevalent_breast_cancer': 0.6088992974238876, 'incident_breast_cancer': 0.45130641330166266,
+                    'no_coronary_artery_disease_soft': 0.4605321507760532, 'prevalent_coronary_artery_disease_soft': 0.3188862621486735,
+                    'incident_coronary_artery_disease_soft': 0.49899026987332473, 'no_diabetes_type_2': 0.47961630695443647,
+                    'prevalent_diabetes_type_2': 0.5485625485625485, 'incident_diabetes_type_2': 0.4376984126984127,
+                    'no_hypertension': 0.6255949233209941, 'prevalent_hypertension': 0.4478044259066156, 'incident_hypertension': 0.6184678890849811,
+                    'no_myocardial_infarction': 0.5187811925400578, 'prevalent_myocardial_infarction': 0.5925058548009368,
+                    'incident_myocardial_infarction': 0.4287383177570093}
+
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
 
 class TestPretrainedModels(unittest.TestCase):
