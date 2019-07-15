@@ -56,15 +56,12 @@ def write_tensors(a_id: str,
                   db: str,
                   xml_folder: str,
                   zip_folder: str,
-                  phenos_folder: str,
                   output_folder: str,
                   tensors: str,
                   dicoms: str,
                   volume_csv: str,
                   lv_mass_csv: str,
                   icd_csv: str,
-                  categorical_field_ids: List[int],
-                  continuous_field_ids: List[int],
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
                   x: int,
@@ -88,15 +85,12 @@ def write_tensors(a_id: str,
     :param db: Path to SQL database for UKBB
     :param xml_folder: Path to folder containing ECG XML files
     :param zip_folder: Path to folder containing zipped DICOM files
-    :param phenos_folder: Path to folder containing phenotype CSVs
     :param output_folder: Folder to write outputs to (mostly for debugging)
     :param tensors: Folder to populate with HD5 tensors
     :param dicoms: Folder where zipped DICOM will be decompressed
     :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
     :param lv_mass_csv: CSV containing LV mass and other data from a subset of samples with MRI
     :param icd_csv: CSV of diagnoses
-    :param categorical_field_ids: List of categorical field IDs from UKBB
-    :param continuous_field_ids: List of continuous field IDs from UKBB
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
     :param x: Maximum x dimension of MRIs
@@ -119,16 +113,10 @@ def write_tensors(a_id: str,
     """
     stats = Counter()
     continuous_stats = defaultdict(list)
-    conn = sqlite3.connect(db)
-    sql_cursor = conn.cursor()
 
     lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
     logging.info('CSV of ICDs header:{}'.format(list(enumerate(lol[0]))))
-    field_meanings, dates, status, lvef, lvesv, lvedv, lv_mass, icds, sample_ids = _load_meta_data_for_tensor_writing(sql_cursor, phenos_folder,
-                                                                                                                      volume_csv, lv_mass_csv,
-                                                                                                                      icd_csv, categorical_field_ids,
-                                                                                                                      continuous_field_ids,
-                                                                                                                      min_sample_id, max_sample_id)
+    lvef, lvesv, lvedv, lv_mass, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
 
     for sample_id in sorted(sample_ids):
 
@@ -141,12 +129,8 @@ def write_tensors(a_id: str,
             continue
         try:
             with h5py.File(tensor_path, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms,
-                                                  mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
-                _write_tensors_from_sql(sql_cursor, hd5, sample_id, categorical_field_ids, continuous_field_ids, field_meanings, write_pngs,
-                                        continuous_stats, stats)
-                _write_tensors_from_icds(hd5, sample_id, icds, dates, stats)
                 _write_tensors_from_volumes(hd5, sample_id, lv_mass, lvef, lvesv, lvedv, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
@@ -173,61 +157,29 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def _load_meta_data_for_tensor_writing(sql_cursor: sqlite3.Cursor,
-                                       phenos_folder: str,
-                                       volume_csv: str,
+def _load_meta_data_for_tensor_writing(volume_csv: str,
                                        lv_mass_csv: str,
-                                       icd_csv: str,
-                                       categorical_field_ids: List[int],
-                                       continuous_field_ids: List[int],
                                        min_sample_id: int,
-                                       max_sample_id: int) -> Tuple[Dict[str, str],
-                                                                    Dict[str, Dict[int, List[datetime.date]]],
-                                                                    Dict[str, Dict[int, List[int]]],
+                                       max_sample_id: int) -> Tuple[Dict[int, float],
                                                                     Dict[int, float],
                                                                     Dict[int, float],
                                                                     Dict[int, float],
-                                                                    Dict[str, Dict[int, List[int]]],
                                                                     List[int]]:
     """ Gather metadata necessary to write tensors from UK biobank
 
     Loads the field IDs of survey data, dates of assessment, diagnosis of diseases,
     ejection fractions, diastolic volumes, systolic volumes, and sample IDs to make tensors from.
 
-    :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
-    :param phenos_folder: Path to folder containing phenotype CSVs
     :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
     :param lv_mass_csv: TSV containing left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964
-    :param icd_csv: CSV of diagnoses
-    :param categorical_field_ids: List of categorical field IDs from UKBB
-    :param continuous_field_ids: List of continuous field IDs from UKBB
     :param min_sample_id: Minimum sample id to generate, for parallelization
     :param max_sample_id: Maximum sample id to generate, for parallelization
-    :return: Tuple of metadata
-        field_meanings: Dict mapping field IDs (as strings) to their meaning as a string
-        dates: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to the date of their diagnosis or last update
-        status: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to an int (1 if they have the disease, 0 if not)
+    :return: Tuple of metadata containers
         lvef: Dictionary mapping sample IDs (as ints) to left ventricle ejection fraction as a float
         lvesv: Dictionary mapping sample IDs (as ints) to left ventricle end systole volume as a float
         lvedv: Dictionary mapping sample IDs (as ints) to left ventricle end diastole volume as a float
-        icds: Nested Dictionary mapping each disease string to a dictionary
-                mapping sample ids to an int (1 if they have the disease, 0 if not)
         sample_ids: List of sample IDs (as ints) to generate tensors for
     """
-    field_meanings = {}
-    for fid in categorical_field_ids + continuous_field_ids:
-        for field_row in sql_cursor.execute("SELECT field FROM dictionary WHERE fieldid=%d" % (fid)):
-            field_meanings[fid] = field_row[0]
-
-    disease2tsv = get_disease2tsv(phenos_folder)
-    logging.info('Got disease TSVs:{}'.format(disease2tsv))
-    dates = _get_disease_censor_dates(disease2tsv, min_sample_id, max_sample_id)
-    logging.info('Got dates for diseases:{}'.format(list(dates.keys())))
-    status = disease_censor_status(disease2tsv, min_sample_id, max_sample_id)
-    logging.info('Got statuses and dates for diseases:{}'.format(list(status.keys())))
-
     lvef = {}
     lvesv = {}
     lvedv = {}
@@ -255,20 +207,8 @@ def _load_meta_data_for_tensor_writing(sql_cursor: sqlite3.Cursor,
                 # Zero-based column #13 is the LV mass
                 lv_mass[sample_id] = float(row[13])
 
-    sample_ids = []
-    icds = defaultdict(dict)
-    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    logging.info('CSV of ICDs header:{}'.format(list(enumerate(lol[0]))))
-    for row in lol[1:]:
-        sample_id = int(row[0])
-        if min_sample_id <= sample_id <= max_sample_id:
-            sample_ids.append(sample_id)
-            for disease in disease2tsv:
-                if sample_id not in status[disease]:
-                    continue
-                icds[disease][sample_id] = status[disease][sample_id]
-
-    return field_meanings, dates, status, lvef, lvesv, lvedv, lv_mass, icds, sample_ids
+    sample_ids = range(min_sample_id, max_sample_id)
+    return lvef, lvesv, lvedv, lv_mass, sample_ids
 
 
 def _sample_has_mris(zip_folder, sample_id) -> bool:

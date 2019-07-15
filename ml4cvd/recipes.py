@@ -27,11 +27,9 @@ def run(args):
         start_time = timer()
 
         if 'tensorize' == args.mode:
-            write_tensors(args.id, args.db, args.xml_folder, args.zip_folder, args.phenos_folder, args.output_folder,
-                          args.tensors, args.dicoms, args.volume_csv, args.lv_mass_csv, args.icd_csv, args.categorical_field_ids,
-                          args.continuous_field_ids, args.mri_field_ids, args.xml_field_ids, args.x, args.y, args.z,
-                          args.include_heart_zoom, args.zoom_x, args.zoom_y, args.zoom_width,  args.zoom_height,
-                          args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values)
+            write_tensors(args.id, args.db, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.volume_csv, args.lv_mass_csv,
+                          args.icd_csv, args.mri_field_ids, args.xml_field_ids, args.x, args.y, args.z, args.include_heart_zoom, args.zoom_x, args.zoom_y,
+                          args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
