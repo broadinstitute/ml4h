@@ -28,7 +28,7 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
-from scipy.ndimage.morphology import binary_closing  # Morphological operator
+from scipy.ndimage.morphology import binary_closing, binary_opening  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
@@ -683,12 +683,12 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         min_pos = (np.min(idx[0]), np.min(idx[1]))
         max_pos = (np.max(idx[0]), np.max(idx[1]))
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
-        small_radius = max(MRI_MIN_RADIUS, short_side * 0.185)
+        small_radius = max(MRI_MIN_RADIUS, short_side * 0.1)
         big_radius = max(MRI_MIN_RADIUS+1, short_side * 0.9)
         myocardium_structure = _unit_disk(small_radius)
         m1 = binary_closing(arr, myocardium_structure).astype(np.int)
         ventricle_structure = _unit_disk(big_radius)
-        m2 = binary_closing(arr, ventricle_structure).astype(np.int)
+        m2 = binary_opening(arr, ventricle_structure).astype(np.int)
         if debug:
             logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
         return arr, m1 + m2
