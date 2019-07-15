@@ -38,7 +38,7 @@ from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, 
 
 MRI_MIN_RADIUS = 1
 MRI_BIG_RADIUS_FACTOR = 0.9
-MRI_SMALL_RADIUS_FACTOR = 0.1
+MRI_SMALL_RADIUS_FACTOR = 0.18
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
