@@ -550,6 +550,11 @@ def _write_tensors_from_dicoms(x,
                     got_an_overlay = True
                     overlay, mask = _get_overlay_from_dicom(slicer)
                     ventricle_pixels = np.count_nonzero(mask == 1)
+                    if write_pngs:
+                        overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
+                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
+                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
+                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
                     if ventricle_pixels == 0:
                         continue
                     extracted_an_overlay = True
@@ -578,12 +583,8 @@ def _write_tensors_from_dicoms(x,
                         zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
                         hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
                         hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
-                    if write_pngs:
-                        overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
-                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                        plt.imsave(tensors + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
-                        if include_heart_zoom:
+                        if write_pngs:
+                            # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
                             plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
                             plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
 
