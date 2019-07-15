@@ -524,6 +524,7 @@ def _write_tensors_from_dicoms(x,
     systoles = {}
     systoles_pix = {}
     got_an_overlay = False
+    overlay_not_mitral = False
     extracted_an_overlay = False
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
@@ -550,15 +551,19 @@ def _write_tensors_from_dicoms(x,
                     got_an_overlay = True
                     overlay, mask = _get_overlay_from_dicom(slicer)
                     ventricle_pixels = np.count_nonzero(mask == 1)
+                    cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
+
                     if write_pngs:
                         overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
                         # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
                         plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
                         plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
+                    if ventricle_pixels == 0 and slicer.InstanceNumber < 500:
+                        logging.warning(f"Could not extract overlay and this is not mitral valve")
+                        overlay_not_mitral = True
                     if ventricle_pixels == 0:
                         continue
                     extracted_an_overlay = True
-                    cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
                     if not cur_angle in diastoles:
                         diastoles[cur_angle] = slicer
                         diastoles_pix[cur_angle] = ventricle_pixels
@@ -620,6 +625,7 @@ def _write_tensors_from_dicoms(x,
         logging.warning(f"Could not extract overlay above ^")
     stats['Overlays found:'] += int(got_an_overlay)
     stats['Overlays extracted:'] += int(extracted_an_overlay)
+    stats['Overlays not mitral:'] += int(overlay_not_mitral)
 
 
 def _has_overlay(d) -> bool:
