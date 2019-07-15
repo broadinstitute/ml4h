@@ -590,7 +590,8 @@ def _write_tensors_from_dicoms(x,
     diastoles_pix = {}
     systoles = {}
     systoles_pix = {}
-
+    got_an_overlay = False
+    extracted_an_overlay = False
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         stats['mri shape:' + str(mri_shape)] += 1
@@ -613,10 +614,12 @@ def _write_tensors_from_dicoms(x,
                 if v != MRI_TO_SEGMENT:
                     mri_data[:sx, :sy, slicer.InstanceNumber - 1] = slice_data
                 elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
+                    got_an_overlay = True
                     overlay, mask = _get_overlay_from_dicom(slicer)
                     ventricle_pixels = np.count_nonzero(mask == 1)
                     if ventricle_pixels == 0:
                         continue
+                    extracted_an_overlay = True
                     cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
                     if not cur_angle in diastoles:
                         diastoles[cur_angle] = slicer
@@ -650,6 +653,7 @@ def _write_tensors_from_dicoms(x,
                         if include_heart_zoom:
                             plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
                             plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
+
                 if write_pngs:
                     plt.imsave(tensors + v + '_' + str(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
 
@@ -678,6 +682,8 @@ def _write_tensors_from_dicoms(x,
                     plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
         else:
             hd5.create_dataset(v, data=mri_data, compression='gzip')
+    stats['Overlays found:'] += int(got_an_overlay)
+    stats['Overlays extracted:'] += int(extracted_an_overlay)
 
 
 def _has_overlay(d) -> bool:
