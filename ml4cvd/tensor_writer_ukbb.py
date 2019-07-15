@@ -553,14 +553,14 @@ def _write_tensors_from_dicoms(x,
                     ventricle_pixels = np.count_nonzero(mask == 1)
                     cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
 
-                    if write_pngs:
-                        overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
-                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                        plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                        plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
                     if ventricle_pixels == 0 and slicer.InstanceNumber < 500:
                         logging.warning(f"Could not extract overlay and this is not mitral valve at {sample_str}, slice: {slicer.InstanceNumber}")
                         overlay_not_mitral = True
+                        overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
+                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
+                        plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
+                        plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
+                        plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
                     if ventricle_pixels == 0:
                         continue
                     extracted_an_overlay = True
