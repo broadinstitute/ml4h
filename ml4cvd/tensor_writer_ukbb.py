@@ -28,7 +28,7 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
-from scipy.ndimage.morphology import binary_closing  # Morphological operator
+from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
@@ -690,9 +690,13 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         m1 = binary_closing(arr, myocardium_structure).astype(np.int)
         ventricle_structure = _unit_disk(big_radius)
         m2 = binary_closing(arr, ventricle_structure).astype(np.int)
+        merged = m1 + m2
+        if np.count_nonzero(merged == 1) == 0:
+            merged = binary_erosion(m1, myocardium_structure).astype(np.int) + m2
+            logging.info(f"Try erosion")
         if debug:
             logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
-        return arr, m1 + m2
+        return arr, merged
 
 
 def _unit_disk(r) -> np.ndarray:
