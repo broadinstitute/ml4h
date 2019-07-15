@@ -559,7 +559,7 @@ def _write_tensors_from_dicoms(x,
                         plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
                         plt.imsave(tensors + sample_str + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
                     if ventricle_pixels == 0 and slicer.InstanceNumber < 500:
-                        logging.warning(f"Could not extract overlay and this is not mitral valve")
+                        logging.warning(f"Could not extract overlay and this is not mitral valve at {sample_str}, slice: {slicer.InstanceNumber}")
                         overlay_not_mitral = True
                     if ventricle_pixels == 0:
                         continue
