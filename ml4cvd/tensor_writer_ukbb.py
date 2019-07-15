@@ -561,6 +561,7 @@ def _write_tensors_from_dicoms(x,
                         plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
                         plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
                         plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
+                        _get_overlay_from_dicom(slicer, debug=True)
                     if ventricle_pixels == 0:
                         continue
                     extracted_an_overlay = True
@@ -640,7 +641,7 @@ def _has_overlay(d) -> bool:
         return False
 
 
-def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
+def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
     """Get an overlay from a DICOM file
 
     Morphological operators are used to transform the pixel outline of the myocardium
@@ -688,7 +689,8 @@ def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
         m1 = binary_closing(arr, myocardium_structure).astype(np.int)
         ventricle_structure = _unit_disk(big_radius)
         m2 = binary_closing(arr, ventricle_structure).astype(np.int)
-        # logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
+        if debug:
+            logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
         return arr, m1 + m2
 
 
