@@ -622,6 +622,8 @@ def _write_tensors_from_dicoms(x,
                     plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
         else:
             hd5.create_dataset(v, data=mri_data, compression='gzip')
+    if got_an_overlay and not extracted_an_overlay:
+        logging.warning(f"Could not extract overlay above ^")
     stats['Overlays found:'] += int(got_an_overlay)
     stats['Overlays extracted:'] += int(extracted_an_overlay)
 
