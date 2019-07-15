@@ -66,11 +66,9 @@ class TestTrainingModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = train_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'no_coronary_artery_disease_soft': 0.764146664489559,
-                    'coronary_artery_disease_soft': 0.764146664489559, 'no_diabetes_type_2': 0.7512766412867321,
-                    'diabetes_type_2': 0.7512766412867321, 'no_hypertension': 0.7033089900362318,
-                    'hypertension': 0.7033089900362319, 'no_myocardial_infarction': 0.7825570906328632,
-                    'myocardial_infarction': 0.7825570906328634}
+        expected = {'no_coronary_artery_disease_soft': 0.528143258213825, 'coronary_artery_disease_soft': 0.528143258213825,
+                    'no_diabetes_type_2': 0.6547365677800461, 'diabetes_type_2': 0.654736567780046, 'no_hypertension': 0.4729961761211761,
+                    'hypertension': 0.4729961761211761, 'no_myocardial_infarction': 0.5480460307260938, 'myocardial_infarction': 0.5480460307260938}
 
         for k in performances:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
