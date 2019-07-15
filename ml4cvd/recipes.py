@@ -291,7 +291,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
         subplot_scatters(scatters, plot_path)
 
     test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-    _tsne_wrapper(model, hidden_layer, alpha, test_paths, test_labels_1d, test_data=test_data, tensor_maps_in=tensor_maps_in, batch_size=batch_size)
+    _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data, tensor_maps_in=tensor_maps_in, batch_size=batch_size)
 
     return performance_metrics
 
@@ -335,7 +335,7 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         subplot_scatters(scatters, plot_path)
     if len(embeddings) > 0:
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-        _tsne_wrapper(model, hidden_layer, alpha, test_paths, test_labels_1d, embeddings=embeddings)
+        _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, embeddings=embeddings)
 
     return performance_metrics
 
@@ -508,7 +508,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         subplot_comparison_scatters(scatters, plot_folder)
 
 
-def _tsne_wrapper(model, hidden_layer_name, alpha, test_paths, test_labels, test_data=None, tensor_maps_in=None, batch_size=16, embeddings=None):
+def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_labels, test_data=None, tensor_maps_in=None, batch_size=16, embeddings=None):
     """Plot 2D t-SNE of a model's hidden layer colored by many different co-variates.
 
     Callers must provide either model's embeddings or test_data on which embeddings will be inferred
@@ -516,6 +516,7 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, test_paths, test_labels, test
     :param model: Keras model
     :param hidden_layer_name: String name of the hidden layer whose embeddings will be visualized
     :param alpha: Transparency of each data point
+    :param plot_path: Image file name and path for the t_SNE plot
     :param test_paths: Paths for hd5 file containing each sample
     :param test_labels: Dictionary mapping TensorMaps to numpy arrays of labels (co-variates) to color code the t-SNE plots with
     :param test_data: Input data for the model necessary if embeddings is None
@@ -534,7 +535,6 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, test_paths, test_labels, test
     label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
 
     gene_labels = []
-    plot_path = os.path.join(args.output_folder, args.id, 'tsne_'+args.id+IMAGE_EXT)
     plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
 
 
