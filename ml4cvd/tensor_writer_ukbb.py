@@ -53,7 +53,6 @@ ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration'
 
 
 def write_tensors(a_id: str,
-                  db: str,
                   xml_folder: str,
                   zip_folder: str,
                   output_folder: str,
@@ -61,7 +60,6 @@ def write_tensors(a_id: str,
                   dicoms: str,
                   volume_csv: str,
                   lv_mass_csv: str,
-                  icd_csv: str,
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
                   x: int,
@@ -82,7 +80,6 @@ def write_tensors(a_id: str,
      survey responses, MRI, and ECG.
 
     :param a_id: User chosen string to identify this run
-    :param db: Path to SQL database for UKBB
     :param xml_folder: Path to folder containing ECG XML files
     :param zip_folder: Path to folder containing zipped DICOM files
     :param output_folder: Folder to write outputs to (mostly for debugging)
@@ -90,7 +87,6 @@ def write_tensors(a_id: str,
     :param dicoms: Folder where zipped DICOM will be decompressed
     :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
     :param lv_mass_csv: CSV containing LV mass and other data from a subset of samples with MRI
-    :param icd_csv: CSV of diagnoses
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
     :param x: Maximum x dimension of MRIs
@@ -106,18 +102,12 @@ def write_tensors(a_id: str,
     :param max_sample_id: Maximum sample id to generate, for parallelization
     :param min_values_to_print: Minimum number of samples that have responded to question for it to be included in the
             categorical or continuous dictionaries printed after tensor generation
-    :param ukbb7089_sample_id_to_hail_pkl_path: path to the pkl file containing all available genotypes.
-    :param filtered_genotypes_array_path: path to the filtered genotypes.
 
     :return: None
     """
     stats = Counter()
     continuous_stats = defaultdict(list)
-
-    lol = list(csv.reader(open(icd_csv, 'r'), delimiter='\t'))
-    logging.info('CSV of ICDs header:{}'.format(list(enumerate(lol[0]))))
     lvef, lvesv, lvedv, lv_mass, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
-
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
@@ -487,7 +477,7 @@ def _write_tensors_from_zipped_dicoms(x,
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
                 _write_tensors_from_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height,
-                                           write_pngs, tensors, dicom_folder, hd5, stats)
+                                           write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -504,6 +494,7 @@ def _write_tensors_from_dicoms(x,
                                tensors,
                                dicom_folder,
                                hd5,
+                               sample_str,
                                stats) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -595,7 +586,7 @@ def _write_tensors_from_dicoms(x,
                             plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
 
                 if write_pngs:
-                    plt.imsave(tensors + v + '_' + str(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
+                    plt.imsave(tensors + sample_str + '_' + v + '_' + str(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
 
         if v == MRI_TO_SEGMENT:
             # if len(diastoles) == 0:
