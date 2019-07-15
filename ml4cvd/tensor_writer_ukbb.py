@@ -35,6 +35,8 @@ from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_C
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
 from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
 
+
+MRI_MIN_RADIUS = 4
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
@@ -669,8 +671,8 @@ def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
         min_pos = (np.min(idx[0]), np.min(idx[1]))
         max_pos = (np.max(idx[0]), np.max(idx[1]))
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
-        small_radius = max(2, short_side * 0.185)
-        big_radius = max(2, short_side * 0.9)
+        small_radius = max(MRI_MIN_RADIUS, short_side * 0.185)
+        big_radius = max(MRI_MIN_RADIUS+1, short_side * 0.9)
         myocardium_structure = _unit_disk(small_radius)
         m1 = binary_closing(arr, myocardium_structure).astype(np.int)
         ventricle_structure = _unit_disk(big_radius)
