@@ -36,7 +36,7 @@ from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_
 from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
 
 
-MRI_MIN_RADIUS = 4
+MRI_MIN_RADIUS = 2
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
@@ -621,8 +621,12 @@ def _write_tensors_from_dicoms(x,
                     plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
         else:
             hd5.create_dataset(v, data=mri_data, compression='gzip')
+
+    if got_an_overlay and overlay_not_mitral:
+        logging.warning(f"Not mitral and not extracted above ^")
     if got_an_overlay and not extracted_an_overlay:
         logging.warning(f"Could not extract overlay above ^")
+
     stats['Overlays found:'] += int(got_an_overlay)
     stats['Overlays extracted:'] += int(extracted_an_overlay)
     stats['Overlays not mitral:'] += int(overlay_not_mitral)
@@ -684,7 +688,7 @@ def _get_overlay_from_dicom(d) -> Tuple[np.ndarray, np.ndarray]:
         m1 = binary_closing(arr, myocardium_structure).astype(np.int)
         ventricle_structure = _unit_disk(big_radius)
         m2 = binary_closing(arr, ventricle_structure).astype(np.int)
-        logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
+        # logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
         return arr, m1 + m2
 
 
