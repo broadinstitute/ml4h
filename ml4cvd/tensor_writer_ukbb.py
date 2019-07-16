@@ -543,60 +543,61 @@ def _write_tensors_from_dicoms(x,
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
             if MRI_PIXEL_HEIGHT not in hd5:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
-            if slicer.pixel_array.shape[0] == mri_shape[0] and slicer.pixel_array.shape[1] == mri_shape[1]:
-                sx = min(slicer.Rows, x)
-                sy = min(slicer.Columns, y)
-                slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-                if v != MRI_TO_SEGMENT:
-                    mri_data[:sx, :sy, slicer.InstanceNumber - 1] = slice_data
-                elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
-                    got_an_overlay = True
-                    overlay, mask = _get_overlay_from_dicom(slicer)
-                    ventricle_pixels = np.count_nonzero(mask == 1)
-                    cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
 
-                    if ventricle_pixels == 0 and slicer.InstanceNumber < 500:
-                        logging.warning(f"Could not extract overlay and this is not mitral valve at {sample_str}, slice: {slicer.InstanceNumber}")
-                        _get_overlay_from_dicom(slicer, debug=True)
-                        overlay_not_mitral = True
-                    if write_pngs:
-                        overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
-                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                        plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
-                        plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                        plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
+            #if slicer.pixel_array.shape[0] == mri_shape[0] and slicer.pixel_array.shape[1] == mri_shape[1]:
+            sx = min(slicer.Rows, x)
+            sy = min(slicer.Columns, y)
+            slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+            if v != MRI_TO_SEGMENT:
+                mri_data[:sx, :sy, slicer.InstanceNumber - 1] = slice_data
+            elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
+                got_an_overlay = True
+                overlay, mask = _get_overlay_from_dicom(slicer)
+                ventricle_pixels = np.count_nonzero(mask == 1)
+                cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
 
-                    if ventricle_pixels == 0:
-                        continue
-                    extracted_an_overlay = True
-                    if not cur_angle in diastoles:
+                if ventricle_pixels == 0 and slicer.InstanceNumber < 500:
+                    logging.warning(f"Could not extract overlay and this is not mitral valve at {sample_str}, slice: {slicer.InstanceNumber}")
+                    _get_overlay_from_dicom(slicer, debug=True)
+                    overlay_not_mitral = True
+                if write_pngs:
+                    overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
+                    # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
+
+                if ventricle_pixels == 0:
+                    continue
+                extracted_an_overlay = True
+                if not cur_angle in diastoles:
+                    diastoles[cur_angle] = slicer
+                    diastoles_pix[cur_angle] = ventricle_pixels
+                    systoles[cur_angle] = slicer
+                    systoles_pix[cur_angle] = ventricle_pixels
+                else:
+                    if ventricle_pixels > diastoles_pix[cur_angle]:
                         diastoles[cur_angle] = slicer
                         diastoles_pix[cur_angle] = ventricle_pixels
+                    if ventricle_pixels < systoles_pix[cur_angle]:
                         systoles[cur_angle] = slicer
                         systoles_pix[cur_angle] = ventricle_pixels
-                    else:
-                        if ventricle_pixels > diastoles_pix[cur_angle]:
-                            diastoles[cur_angle] = slicer
-                            diastoles_pix[cur_angle] = ventricle_pixels
-                        if ventricle_pixels < systoles_pix[cur_angle]:
-                            systoles[cur_angle] = slicer
-                            systoles_pix[cur_angle] = ventricle_pixels
 
-                    full_slice[:sx, :sy] = slice_data
-                    full_mask[:sx, :sy] = mask
-                    hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
-                    hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
-                    if MRI_DATE not in hd5:
-                        hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
-                    if include_heart_zoom:
-                        zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                        zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-                        hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
-                        hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
-                        if write_pngs:
-                            # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-                            plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
-                            plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
+                full_slice[:sx, :sy] = slice_data
+                full_mask[:sx, :sy] = mask
+                hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
+                hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
+                if MRI_DATE not in hd5:
+                    hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
+                if include_heart_zoom:
+                    zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+                    zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+                    hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
+                    hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
+                    if write_pngs:
+                        # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
+                        plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
+                        plt.imsave(tensors + v + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
 
         if v == MRI_TO_SEGMENT:
             # if len(diastoles) == 0:
@@ -625,9 +626,9 @@ def _write_tensors_from_dicoms(x,
             hd5.create_dataset(v, data=mri_data, compression='gzip')
 
     if got_an_overlay and overlay_not_mitral:
-        logging.warning(f"Not mitral and not extracted above ^")
+        logging.warning(f"Not mitral and not extracted from sample: {sample_str}")
     if got_an_overlay and not extracted_an_overlay:
-        logging.warning(f"Could not extract overlay above ^")
+        logging.warning(f"Could not extract overlay from sample: {sample_str}")
 
     stats['Overlays found:'] += int(got_an_overlay)
     stats['Overlays extracted:'] += int(extracted_an_overlay)
