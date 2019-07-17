@@ -128,7 +128,7 @@ def test_multimodal_scalar_tasks(args):
                                                 args.pool_z, args.padding, args.learning_rate)
 
     p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_in, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
