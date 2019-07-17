@@ -521,8 +521,6 @@ def _write_tensors_from_dicoms(x,
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
             if MRI_PIXEL_HEIGHT not in hd5:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
-            if MRI_DATE not in hd5:
-                hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
 
             sx = min(slicer.Rows, x)
             sy = min(slicer.Columns, y)
