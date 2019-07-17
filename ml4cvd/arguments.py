@@ -56,7 +56,7 @@ def parse_args():
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
     parser.add_argument('--icd_csv', default='/mnt/ml4cvd/projects/jamesp/data/modified.zmerge.prs.full.csv.20190222',
                         help='Path to CSV with ICD status for UKBB Sample IDs')
-    parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/round3_parsed_lvedv_lvesv_lvef.tsv',
+    parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/cMRI_20190618_manual_qc.all.tsv',
                         help='Path to left ventricle volumes')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
     parser.add_argument('--tensors', default='/mnt/disks/data/generated/tensors/test/2019-03-21/',
