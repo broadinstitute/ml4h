@@ -44,49 +44,6 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
                                 f.write(f"{tensor_file}\tIncident {tm.name}\n")
 
 
-def fix_volumes(tensors, volume_csv):
-    lvef = {}
-    lvesv = {}
-    lvedv = {}
-    with open(volume_csv, 'r') as volumes:
-        lol = list(csv.reader(volumes, delimiter='\t'))
-        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
-        for row in lol[1:]:
-            sample_id = row[0]
-            if row[1] != 'NA':
-                lvesv[sample_id] = float(row[1])
-            if row[3] != 'NA':
-                lvedv[sample_id] = float(row[3])
-            if row[5] != 'NA':
-                lvef[sample_id] = float(row[5])
-
-    for tp in os.listdir(tensors):
-        if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
-            continue
-        try:
-            with h5py.File(tensors + tp, 'a') as hd5:
-                sample_id = tp.replace(TENSOR_EXT, '')
-                if sample_id in lvesv and 'end_systole_volume' in hd5['continuous']:
-                    data = hd5['continuous' + HD5_GROUP_CHAR + 'end_systole_volume']
-                    data[0] = lvesv[sample_id]
-                elif sample_id in lvesv:
-                    hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_systole_volume', data=[lvesv[sample_id]])
-
-                if sample_id in lvedv and 'end_diastole_volume' in hd5['continuous']:
-                    data = hd5['continuous' + HD5_GROUP_CHAR + 'end_diastole_volume']
-                    data[0] = lvedv[sample_id]
-                elif sample_id in lvedv:
-                    hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_diastole_volume', data=[lvedv[sample_id]])
-
-                if sample_id in lvef and 'ejection_fraction' in hd5['continuous']:
-                    data = hd5['continuous' + HD5_GROUP_CHAR + 'ejection_fraction']
-                    data[0] = lvef[sample_id]
-                elif sample_id in lvesv:
-                    hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'ejection_fraction', data=[lvef[sample_id]])
-        except:
-            print('couldnt open', tp)
-
-
 def sort_csv(input_csv_file, volume_csv):
     lvef = {}
     with open(volume_csv, 'r') as volumes:
