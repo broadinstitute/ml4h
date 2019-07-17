@@ -37,6 +37,7 @@ from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, 
 
 
 MRI_MIN_RADIUS = 2
+MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
@@ -525,9 +526,7 @@ def _write_tensors_from_dicoms(x,
     diastoles_pix = {}
     systoles = {}
     systoles_pix = {}
-    got_an_overlay = False
-    overlay_not_mitral = False
-    extracted_an_overlay = False
+
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         stats['mri shape:' + str(mri_shape)] += 1
@@ -544,32 +543,26 @@ def _write_tensors_from_dicoms(x,
             if MRI_PIXEL_HEIGHT not in hd5:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
 
-            #if slicer.pixel_array.shape[0] == mri_shape[0] and slicer.pixel_array.shape[1] == mri_shape[1]:
             sx = min(slicer.Rows, x)
             sy = min(slicer.Columns, y)
             slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
             if v != MRI_TO_SEGMENT:
                 mri_data[:sx, :sy, slicer.InstanceNumber - 1] = slice_data
             elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
-                got_an_overlay = True
-                overlay, mask = _get_overlay_from_dicom(slicer)
-                ventricle_pixels = np.count_nonzero(mask == 1)
+                if _is_mitral_valve_segmentation(slicer):
+                    stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
+                    continue
+
+                overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
                 cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
 
-                if ventricle_pixels == 0 and slicer.InstanceNumber < 500:
-                    logging.warning(f"Could not extract overlay and this is not mitral valve at {sample_str}, slice: {slicer.InstanceNumber}")
-                    _get_overlay_from_dicom(slicer, debug=True)
-                    overlay_not_mitral = True
                 if write_pngs:
-                    overlay = np.ma.masked_where(overlay != 0, slicer.pixel_array)
+                    overlayed = np.ma.masked_where(overlay != 0, slicer.pixel_array)
                     # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
                     plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
                     plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlay)
+                    plt.imsave(tensors + sample_str + '_' + v + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlayed)
 
-                if ventricle_pixels == 0:
-                    continue
-                extracted_an_overlay = True
                 if not cur_angle in diastoles:
                     diastoles[cur_angle] = slicer
                     diastoles_pix[cur_angle] = ventricle_pixels
@@ -606,7 +599,7 @@ def _write_tensors_from_dicoms(x,
                 sx = min(diastoles[angle].Rows, x)
                 sy = min(diastoles[angle].Columns, y)
                 full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-                overlay, full_mask[:sx, :sy] = _get_overlay_from_dicom(diastoles[angle])
+                overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(diastoles[angle])
                 hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
                 hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
                 if write_pngs:
@@ -616,7 +609,7 @@ def _write_tensors_from_dicoms(x,
                 sx = min(systoles[angle].Rows, x)
                 sy = min(systoles[angle].Columns, y)
                 full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-                overlay, full_mask[:sx, :sy] = _get_overlay_from_dicom(systoles[angle])
+                overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(systoles[angle])
                 hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
                 hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
                 if write_pngs:
@@ -625,15 +618,6 @@ def _write_tensors_from_dicoms(x,
         else:
             hd5.create_dataset(v, data=mri_data, compression='gzip')
 
-    if got_an_overlay and overlay_not_mitral:
-        logging.warning(f"Not mitral and not extracted from sample: {sample_str}")
-    if got_an_overlay and not extracted_an_overlay:
-        logging.warning(f"Could not extract overlay from sample: {sample_str}")
-
-    stats['Overlays found:'] += int(got_an_overlay)
-    stats['Overlays extracted:'] += int(extracted_an_overlay)
-    stats['Overlays not mitral:'] += int(overlay_not_mitral)
-
 
 def _has_overlay(d) -> bool:
     try:
@@ -641,6 +625,10 @@ def _has_overlay(d) -> bool:
         return True
     except KeyError:
         return False
+
+
+def _is_mitral_valve_segmentation(d) -> bool:
+    return d.ImagePositionPatient[0] < 0
 
 
 def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
@@ -672,32 +660,35 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
     if bits_allocated == 1:
         expected_bit_length = expected_length
         bit = 0
-        arr = np.ndarray(shape=(length_of_pixel_array * 8), dtype=np_dtype)
+        overlay = np.ndarray(shape=(length_of_pixel_array * 8), dtype=np_dtype)
         for byte in overlay_raw:
             for bit in range(bit, bit + 8):
-                arr[bit] = byte & 0b1
+                overlay[bit] = byte & 0b1
                 byte >>= 1
             bit += 1
-        arr = arr[:expected_bit_length]
+        overlay = overlay[:expected_bit_length]
     if overlay_frames == 1:
-        arr = arr.reshape(rows, cols)
-        idx = np.where(arr == 1)
+        overlay = overlay.reshape(rows, cols)
+        idx = np.where(overlay == 1)
         min_pos = (np.min(idx[0]), np.min(idx[1]))
         max_pos = (np.max(idx[0]), np.max(idx[1]))
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
         small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
         big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
         small_structure = _unit_disk(small_radius)
-        m1 = binary_closing(arr, small_structure).astype(np.int)
+        m1 = binary_closing(overlay, small_structure).astype(np.int)
         big_structure = _unit_disk(big_radius)
-        m2 = binary_closing(arr, big_structure).astype(np.int)
-        merged = m1 + m2
-        if np.count_nonzero(merged == 1) == 0:
+        m2 = binary_closing(overlay, big_structure).astype(np.int)
+        anatomical_mask = m1 + m2
+        ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
+        myocardium_pixels = np.count_nonzero(anatomical_mask == 2)
+        if ventricle_pixels and myocardium_pixels > MRI_MAX_MYOCARDIUM:
             erode_structure = _unit_disk(small_radius*1.5)
-            merged = merged - binary_erosion(m1, erode_structure).astype(np.int)
+            anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+            ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
         if debug:
             logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius}")
-        return arr, merged
+        return overlay, anatomical_mask, ventricle_pixels
 
 
 def _unit_disk(r) -> np.ndarray:
