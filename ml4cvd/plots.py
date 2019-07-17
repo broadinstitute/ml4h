@@ -849,6 +849,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             ax.yaxis.set_major_formatter(NullFormatter())
             ax.axis('tight')
 
+    figure_path += 'tsne_plot' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
