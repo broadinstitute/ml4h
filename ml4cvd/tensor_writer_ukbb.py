@@ -32,8 +32,8 @@ from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morpholog
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
-from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE
-from ml4cvd.defines import MRI_DATE, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK
+from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
+from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 
 
 MRI_MIN_RADIUS = 2
@@ -46,6 +46,7 @@ MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
                        'cine_segmented_sax_inlinevf']
+
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -112,7 +113,7 @@ def write_tensors(a_id: str,
     """
     stats = Counter()
     continuous_stats = defaultdict(list)
-    lvef, lvesv, lvedv, lv_mass, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
+    nested_dictionary, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
@@ -126,7 +127,7 @@ def write_tensors(a_id: str,
             with h5py.File(tensor_path, 'w') as hd5:
                 _write_tensors_from_zipped_dicoms(x, y, z, include_heart_zoom, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicoms, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
-                _write_tensors_from_volumes(hd5, sample_id, lv_mass, lvef, lvesv, lvedv, continuous_stats)
+                _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
             logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
@@ -152,14 +153,7 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def _load_meta_data_for_tensor_writing(volume_csv: str,
-                                       lv_mass_csv: str,
-                                       min_sample_id: int,
-                                       max_sample_id: int) -> Tuple[Dict[int, float],
-                                                                    Dict[int, float],
-                                                                    Dict[int, float],
-                                                                    Dict[int, float],
-                                                                    List[int]]:
+def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sample_id: int, max_sample_id: int) -> Tuple[Dict[int, Dict[str, float]], List[int]]:
     """ Gather metadata necessary to write tensors from UK biobank
 
     Loads the field IDs of survey data, dates of assessment, diagnosis of diseases,
@@ -170,26 +164,18 @@ def _load_meta_data_for_tensor_writing(volume_csv: str,
     :param min_sample_id: Minimum sample id to generate, for parallelization
     :param max_sample_id: Maximum sample id to generate, for parallelization
     :return: Tuple of metadata containers
-        lvef: Dictionary mapping sample IDs (as ints) to left ventricle ejection fraction as a float
-        lvesv: Dictionary mapping sample IDs (as ints) to left ventricle end systole volume as a float
-        lvedv: Dictionary mapping sample IDs (as ints) to left ventricle end diastole volume as a float
+        nested_dictionary: Dictionary mapping sample IDs (as ints) to dictionaries mapping strings to values from the CSV
         sample_ids: List of sample IDs (as ints) to generate tensors for
     """
-    lvef = {}
-    lvesv = {}
-    lvedv = {}
+    nested_dictionary = defaultdict(dict)
     with open(volume_csv, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter='\t'))
-        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
+        logging.info(f"CSV of MRI volumes header:{list(enumerate(lol[0]))}" )
+        fields = lol[0][1:]  # Assumes sample id is the first field
         for row in lol[1:]:
             sample_id = int(row[0])
             if min_sample_id <= sample_id <= max_sample_id:
-                if row[1] != 'NA':
-                    lvesv[sample_id] = float(row[1])
-                if row[3] != 'NA':
-                    lvedv[sample_id] = float(row[3])
-                if row[5] != 'NA':
-                    lvef[sample_id] = float(row[5])
+                nested_dictionary[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
 
     lv_mass = {}
     with open(lv_mass_csv, 'r') as lvm:
@@ -200,10 +186,10 @@ def _load_meta_data_for_tensor_writing(volume_csv: str,
             sample_id = int(row[1])
             if min_sample_id <= sample_id <= max_sample_id and len(row[13]) > 0 and row[13] != 'NA':
                 # Zero-based column #13 is the LV mass
-                lv_mass[sample_id] = float(row[13])
+                nested_dictionary[sample_id]['lv_mass'] = float(row[13])
 
     sample_ids = range(min_sample_id, max_sample_id)
-    return lvef, lvesv, lvedv, lv_mass, sample_ids
+    return nested_dictionary, sample_ids
 
 
 def _sample_has_mris(zip_folder, sample_id) -> bool:
@@ -383,35 +369,28 @@ def _icd10_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
         hd5.create_dataset('icd10', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
 
 
-def _write_tensors_from_volumes(hd5: h5py.File,
-                                sample_id: int,
-                                lv_mass: Dict[int, float],
-                                lvef: Dict[int, float],
-                                lvesv: Dict[int, float],
-                                lvedv: Dict[int, float],
-                                continuous_stats: Dict[str, List[float]]) -> None:
+def _write_tensors_from_dictionary_of_scalars(hd5: h5py.File,
+                                              sample_id: int,
+                                              nested_dictionary: Dict[int, Dict[str, float]],
+                                              continuous_stats: Dict[str, List[float]]) -> None:
     """Write volumes of the left ventricle into tensor file of a particular sample if we have them
 
     :param hd5: HD5 File where all tensors for this sample ID are saved
     :param sample_id: The sample ID whose tensor we are currently writing
-    :param lv_mass: Dictionary mapping sample IDs (as ints) to left ventricular mass as a float
-    :param lvef: Dictionary mapping sample IDs (as ints) to left ventricle ejection fraction as a float
-    :param lvesv: Dictionary mapping sample IDs (as ints) to left ventricle end systole volume as a float
-    :param lvedv: Dictionary mapping sample IDs (as ints) to left ventricle end diastole volume as a float
+    :param nested_dictionary: Dictionary mapping sample IDs (as ints) to dictionaries mapping strings to values from the CSV
     :param continuous_stats: Dictionary mapping field meanings to the list of continuous values found for them
     :return: None
     """
-    if sample_id in lvef and sample_id in lvesv and sample_id in lvedv:
-        hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_systole_volume', data=[lvesv[sample_id]])
-        continuous_stats['end_systole_volume'].append(lvesv[sample_id])
-        hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'end_diastole_volume', data=[lvedv[sample_id]])
-        continuous_stats['end_diastole_volume'].append(lvedv[sample_id])
-        hd5.create_dataset('continuous' + HD5_GROUP_CHAR + 'ejection_fraction', data=[lvef[sample_id]])
-        continuous_stats['ejection_fraction'].append(lvef[sample_id])
-
-    if sample_id in lv_mass:
-        hd5.create_dataset('lv_mass', data=[lv_mass[sample_id]])
-        continuous_stats['lv_mass'].append(lv_mass[sample_id])
+    for value_name in nested_dictionary[sample_id]:
+        if value_name == 'annotation':
+            hd5.create_dataset('categorical' + HD5_GROUP_CHAR + MRI_ANNOTATION_NAME, data=[MRI_ANNOTATION_CHANNEL_MAP[nested_dictionary[sample_id][value_name]]])
+        elif value_name == MRI_DATE:
+            hd5.create_dataset('dates' + HD5_GROUP_CHAR + value_name, (1,), data=nested_dictionary[sample_id][value_name], dtype=h5py.special_dtype(vlen=str))
+        else:  # assumes if not handled above it should be a float
+            value = _to_float_or_false(nested_dictionary[sample_id][value_name])
+            if value:
+                hd5.create_dataset('continuous' + HD5_GROUP_CHAR + value_name, data=[value])
+                continuous_stats[value_name].append(value)
 
 
 def _write_tensors_from_icds(hd5: h5py.File,
@@ -542,6 +521,8 @@ def _write_tensors_from_dicoms(x,
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
             if MRI_PIXEL_HEIGHT not in hd5:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
+            if MRI_DATE not in hd5:
+                hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
 
             sx = min(slicer.Rows, x)
             sy = min(slicer.Columns, y)
@@ -580,8 +561,7 @@ def _write_tensors_from_dicoms(x,
                 full_mask[:sx, :sy] = mask
                 hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
                 hd5.create_dataset(MRI_SEGMENTED + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_mask, compression='gzip')
-                if MRI_DATE not in hd5:
-                    hd5.create_dataset(MRI_DATE, (1,), data=_date_from_dicom(slicer), dtype=h5py.special_dtype(vlen=str))
+
                 if include_heart_zoom:
                     zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
                     zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
@@ -1083,7 +1063,6 @@ def _print_disease_tensor_maps(phenos_folder) -> None:
         factor = int(total / (diseased * 2))
         print("'{}': TensorMap('{}', group='categorical_index', channel_map={{'no_{}':0, '{}':1}}, loss=weighted_crossentropy([1.0, {}], '{}')),".format(
             d, d, d, d, factor, d))
-
 
 
 def _print_disease_tensor_maps_incident_prevalent(phenos_folder) -> None:
