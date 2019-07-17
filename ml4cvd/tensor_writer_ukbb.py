@@ -383,7 +383,9 @@ def _write_tensors_from_dictionary_of_scalars(hd5: h5py.File,
     """
     for value_name in nested_dictionary[sample_id]:
         if value_name == 'annotation':
-            hd5.create_dataset('categorical' + HD5_GROUP_CHAR + MRI_ANNOTATION_NAME, data=[MRI_ANNOTATION_CHANNEL_MAP[nested_dictionary[sample_id][value_name]]])
+            value = nested_dictionary[sample_id][value_name]
+            if value in MRI_ANNOTATION_CHANNEL_MAP:
+                hd5.create_dataset('categorical' + HD5_GROUP_CHAR + MRI_ANNOTATION_NAME, data=[MRI_ANNOTATION_CHANNEL_MAP[value]])
         elif value_name == MRI_DATE:
             hd5.create_dataset('dates' + HD5_GROUP_CHAR + value_name, (1,), data=nested_dictionary[sample_id][value_name], dtype=h5py.special_dtype(vlen=str))
         else:  # assumes if not handled above it should be a float
@@ -658,8 +660,8 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         big_structure = _unit_disk(big_radius)
         m2 = binary_closing(overlay, big_structure).astype(np.int)
         anatomical_mask = m1 + m2
-        ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
-        myocardium_pixels = np.count_nonzero(anatomical_mask == 2)
+        ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle']) == 0
+        myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         if ventricle_pixels and myocardium_pixels > MRI_MAX_MYOCARDIUM:
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
