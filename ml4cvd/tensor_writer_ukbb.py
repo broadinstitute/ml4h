@@ -170,14 +170,13 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
     nested_dictionary = defaultdict(dict)
     with open(volume_csv, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter='\t'))
-        logging.info(f"CSV of MRI volumes header:{list(enumerate(lol[0]))}" )
+        logging.info(f"CSV of MRI volumes header:{list(enumerate(lol[0]))}")
         fields = lol[0][1:]  # Assumes sample id is the first field
         for row in lol[1:]:
             sample_id = int(row[0])
             if min_sample_id <= sample_id <= max_sample_id:
-                nested_dictionary[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
+                nested_dictionary[sample_id] = {fields[i].strip().lower(): row[i+1] for i in range(len(fields))}
 
-    lv_mass = {}
     with open(lv_mass_csv, 'r') as lvm:
         lol = list(csv.reader(lvm, delimiter='\t'))
         logging.info('CSV of returned MRI mass, etc, header:{}'.format(list(enumerate(lol[0]))))
