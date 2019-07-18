@@ -575,7 +575,8 @@ def _dense_block3d(x: K.placeholder,
                    kernel: Tuple[int, int, int],
                    pool_size: Tuple[int, int, int],
                    conv_dropout: float,
-                   padding: str):
+                   padding: str,
+                   pool_mode: str='average'):
     for db_filters in dense_blocks:
         for i in range(block_size):
             residual3d = x
@@ -591,7 +592,10 @@ def _dense_block3d(x: K.placeholder,
             if i == 0:
                 up_conv = Conv3D(filters=db_filters, kernel_size=kernel, activation=activation, padding=padding)
                 upsamplers.append((residual3d, up_conv, UpSampling3D(pool_size)))
-                x = AveragePooling3D(pool_size, strides=pool_size)(x)
+                if pool_mode == 'average':
+                    x = AveragePooling3D(pool_size, strides=pool_size)(x)
+                elif pool_mode == 'max':
+                    x = MaxPooling3D(pool_size, strides=pool_size)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]
@@ -646,7 +650,8 @@ def _dense_block2d(x: K.placeholder,
                    kernel: Tuple[int, int],
                    pool_size: Tuple[int, int],
                    conv_dropout: float,
-                   padding: str):
+                   padding: str,
+                   pool_mode: str='average'):
     for db_filters in dense_blocks:
         for i in range(block_size):
             residual2d = x
@@ -662,7 +667,10 @@ def _dense_block2d(x: K.placeholder,
             if i == 0:
                 up_conv = Conv2D(filters=db_filters, kernel_size=kernel, activation=activation, padding=padding)
                 upsamplers.append((residual2d, up_conv, UpSampling2D(pool_size)))
-                x = AveragePooling2D(pool_size, strides=pool_size)(x)
+                if pool_mode == 'average':
+                    x = AveragePooling2D(pool_size, strides=pool_size)(x)
+                elif pool_mode == 'max':
+                    x = MaxPooling2D(pool_size, strides=pool_size)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]
@@ -717,7 +725,8 @@ def _dense_block1d(x: K.placeholder,
                    conv_width: int,
                    conv_dropout: float,
                    pool_x: int,
-                   padding: str):
+                   padding: str,
+                   pool_mode: str='max'):
     for db_filters in dense_blocks:
         for i in range(block_size):
             residual1d = x
@@ -733,7 +742,10 @@ def _dense_block1d(x: K.placeholder,
             if i == 0:
                 up_conv = Conv1D(filters=db_filters, kernel_size=conv_width, activation=activation, padding=padding)
                 upsamplers.append((residual1d, up_conv, UpSampling1D(pool_x)))
-                x = AveragePooling1D(pool_x, strides=pool_x)(x)
+                if pool_mode == 'average':
+                    x = AveragePooling2D(pool_size, strides=pool_size)(x)
+                elif pool_mode == 'max':
+                    x = MaxPooling2D(pool_size, strides=pool_size)(x)
                 dense_connections = [x]
             else:
                 dense_connections += [x]
