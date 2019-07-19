@@ -22,16 +22,13 @@ python .merge_hd5s.py \
 """
 
 
-def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_id, intersect):
+def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_id, intersect, inplace):
     if not os.path.exists(os.path.dirname(destination)):
         os.makedirs(os.path.dirname(destination))
 
     sample_sets = [os.listdir(source_folder) for source_folder in sources]
-    if len(os.listdir(destination)) > 0:  # Allow for in-place merge
+    if inplace:
         sample_sets.append(os.listdir(destination))
-        print("added destination:", destination)
-    for ss in sample_sets:
-        print("sample set first fiddy:", ss[:50])
     sample_set = set(sample_sets[0]).intersection(*sample_sets[1:])
     print("sample set:", sample_set)
     for source_folder in sources:
@@ -41,7 +38,6 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
             if not min_sample_id <= int(os.path.splitext(source_file)[0]) < max_sample_id:
                 continue
             if intersect and source_file not in sample_set:
-                print(f"{source_file} from {source_folder} is not in intersection")
                 continue
 
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
@@ -71,6 +67,7 @@ def parse_args():
     parser.add_argument('--min_sample_id', default=0, type=int, help='Minimum sample id to write to tensor.')
     parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument("--logging_level", default='INFO', help="Logging level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    parser.add_argument('--inplace', default=False, action='store_true', help='Merge into pre-existing destination tensors')
     parser.add_argument('--intersect', default=False, action='store_true',
                         help='Only merge files if the sample id is in every source directory (and if destination if destination is not empty')
     return parser.parse_args()
@@ -79,4 +76,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
-    merge_hd5s_into_destination(args.destination, args.sources, args.min_sample_id, args.max_sample_id, args.intersect)
+    merge_hd5s_into_destination(args.destination, args.sources, args.min_sample_id, args.max_sample_id, args.intersect, args.inplace)
