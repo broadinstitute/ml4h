@@ -155,6 +155,7 @@ def compare_multimodal_scalar_task_models(args):
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
+    inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
@@ -164,7 +165,7 @@ def infer_multimodal_multitask(args):
                                                 args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
                                                 args.pool_z, args.padding, args.learning_rate)
     
-    with open(os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv'), mode='w') as inference_file:
+    with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
@@ -196,6 +197,7 @@ def infer_multimodal_multitask(args):
             stats['count'] += 1
             if stats['count'] % 500 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+        logging.info(f"Inference finished. File at: {inference_tsv}")
 
 
 def train_shallow_model(args):
