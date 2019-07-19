@@ -62,7 +62,7 @@ def optimize_conv_layers_multimodal_multitask(args):
     pool_zs = [1]
     param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_x': pool_xs, 'pool_z': pool_zs}
     space = {
-        'pool_x': hp.choice('pool_z', pool_xs),
+        'pool_x': hp.choice('pool_x', pool_xs),
         'pool_z': hp.choice('pool_z', pool_zs),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),      
