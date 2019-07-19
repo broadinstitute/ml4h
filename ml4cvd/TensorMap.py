@@ -406,10 +406,12 @@ class TensorMap(object):
             return categorical_data
         elif self.is_categorical_flag():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            if self.name in hd5 or self.name in hd5['categorical']:
-                categorical_data[1] = 1.0
-            else:
-                categorical_data[0] = 1.0
+            index = 0
+            if self.name in hd5 and int(hd5[self.name][0]) != 0:
+                index = 1
+            elif self.name in hd5['categorical']  and int(hd5['categorical'][self.name][0]) != 0:
+                index = 1
+            categorical_data[index] = 1.0
             return categorical_data
         elif self.is_categorical_date():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
