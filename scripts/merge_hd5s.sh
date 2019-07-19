@@ -7,6 +7,7 @@
 DESTINATION=
 SOURCES=
 NUM_JOBS=96
+INTERSECT=""
 SAMPLE_IDS_START=1000000
 SAMPLE_IDS_END=6030000
 
@@ -34,6 +35,8 @@ usage()
         -s      <id>        (Required) List of source directories containing tensors in quotes
 
         -n      <num>       Number of jobs to run in parallel. Default: 96.
+
+        -i      <str>       Intersect mode (intersect or nothing)
 
         -s      <id>        Smallest sample ID to start with. Default: 1000000.
 
@@ -65,7 +68,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":d:s:n:b:e:h" opt ; do
+while getopts ":d:s:n:b:e:hi" opt ; do
     case ${opt} in
         h)
             usage
@@ -85,6 +88,9 @@ while getopts ":d:s:n:b:e:h" opt ; do
             ;;
         e)
             SAMPLE_IDS_END=$OPTARG
+            ;;
+        i)
+            INTERSECT="--intersect"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -120,14 +126,16 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
-		--max_sample_id $MAX_SAMPLE_ID &
+		--max_sample_id $MAX_SAMPLE_ID \
+		$INTERSECT &
 LAUNCH_CMDLINE_MESSAGE
 
     $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
-		--max_sample_id $MAX_SAMPLE_ID &
+		--max_sample_id $MAX_SAMPLE_ID \
+		$INTERSECT &
 
     let COUNTER=COUNTER+1
     let MIN_SAMPLE_ID=MIN_SAMPLE_ID+INCREMENT
