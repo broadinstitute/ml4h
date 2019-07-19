@@ -189,7 +189,7 @@ def infer_multimodal_multitask(args):
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
                         csv_row.append("NA")
-                    elif abs(true_label[tm.output_name()][0][0]) < 0.01:  # LV MASSS HACK
+                    elif abs(tm.rescale(true_label[tm.output_name()][0][0])) < 0.01:  # LV MASSS HACK
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
