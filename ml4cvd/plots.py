@@ -33,9 +33,9 @@ PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
 SUBPLOT_SIZE = 6
 
-COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'darkgreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold', 'aqua',
-               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'lime_green', 'wheat', 'chocolate', 'crimson',
-               'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru', 'orangered', 'tan',
+COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'darkgreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
+               'aqua', 'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'lime_green', 'wheat', 'chocolate', 'tan',
+               'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru', 'orangered',
                'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'darkkhaki' ]
 
 
