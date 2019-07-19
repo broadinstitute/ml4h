@@ -55,14 +55,13 @@ def optimize_conv_layers_multimodal_multitask(args):
                                                                           args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
-    dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24, 16]]
+    dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
     conv_layers_sets = [[64], [48], [32], [24]]
     dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
-    pool_xs = [2, 4, 8, 16]
     pool_zs = [1]
-    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_x': pool_xs}
+    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets}
     space = {
-        'pool_x': hp.choice('pool_x', pool_xs),
+        'pool_x': hp.loguniform('pool_x', 1, 16),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),      
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
@@ -70,6 +69,7 @@ def optimize_conv_layers_multimodal_multitask(args):
 
     def loss_from_multimodal_multitask(x):
         try:
+            x['pool_x'] = int(x['pool_x'])
             set_args_from_x(args, x)
             model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                         args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
