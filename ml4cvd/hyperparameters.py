@@ -60,10 +60,9 @@ def optimize_conv_layers_multimodal_multitask(args):
     dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
     pool_xs = [2, 4, 8, 16]
     pool_zs = [1]
-    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_x': pool_xs, 'pool_z': pool_zs}
+    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets}
     space = {
         'pool_x': hp.choice('pool_x', pool_xs),
-        'pool_z': hp.choice('pool_z', pool_zs),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),      
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
@@ -225,7 +224,7 @@ def optimize_lr_multimodal_multitask(args):
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT))
 
     # Re-train the best model so it's easy to view it at the end of the logs
-    set_args_from_nested_x(args, best_x)
+
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                 args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
                                                 args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
@@ -295,25 +294,7 @@ def set_args_from_x(args, x):
                 args.__dict__[k] = float(x[k])
             else:
                 args.__dict__[k] = x[k]
-
-    # if 'conv_x' in x:
-    #     args.conv_x = int(x['conv_x'])
-    # if 'conv_y' in x:
-    #     args.conv_y = int(x['conv_y'])
-    # if 'conv_z' in x:
-    #     args.conv_z = int(x['conv_z'])
-    # if 'pool_z' in x:
-    #     args.pool_z = x['pool_z']
-    # if 'conv_layers' in x:
-    #     args.conv_layers = x['conv_layers']
-    # if 'dense_blocks' in x:
-    #     args.dense_blocks = x['dense_blocks']
-    # if 'dense_layers' in x:
-    #     args.dense_layers = x['dense_layers']
-    # if 'learning_rate' in x:
-    #     args.learning_rate = x['learning_rate']
-    # if 'input_tensor_maps' in x:
-    #     args.input_tensors = list(x['input_tensor_maps'])
+    logging.info(f"Set arguments to: {args}")
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
@@ -336,7 +317,7 @@ def set_args_from_nested_x(args, x):
     if 'learning_rate' in x:
         args.learning_rate = x['learning_rate'][0]
     if 'input_tensor_maps' in x:
-        args.input_tensors = list(x['input_tensor_maps'][0]) 
+        args.input_tensors = list(x['input_tensor_maps'][0])
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
@@ -374,6 +355,7 @@ def string_from_trials(trials, index, param_lists={}):
 def args_from_best_trials(args, trials, param_lists={}):
     best_trial_idx = np.argmin(trials.losses())
     x = trials.trials[best_trial_idx]['misc']['vals']
+    logging.info(f"got best x {x}")
     for k in x:
         v = x[k][0]
         if k in param_lists:
