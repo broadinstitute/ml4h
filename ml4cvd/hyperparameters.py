@@ -100,16 +100,10 @@ def optimize_conv_layers_multimodal_multitask(args):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-
-    logging.info('bestx: {}'.format(best_x))
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary below) is {}'.format(string_from_best_trials(trials, param_lists)))
-
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT), param_lists)
 
     # Re-train the best model so it's easy to view it at the end of the logs
-    args = args_from_best_trials(args, trials)
+    args = args_from_best_trials(args, trials, param_lists)
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                 args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
                                                 args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
@@ -355,7 +349,7 @@ def string_from_trials(trials, index, param_lists={}):
 def args_from_best_trials(args, trials, param_lists={}):
     best_trial_idx = np.argmin(trials.losses())
     x = trials.trials[best_trial_idx]['misc']['vals']
-    logging.info(f"got best x {x}")
+    logging.info(f"got best x {x} best model is:{string_from_trials(trials, best_trial_idx, param_lists)}")
     for k in x:
         v = x[k][0]
         if k in param_lists:
