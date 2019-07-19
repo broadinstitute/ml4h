@@ -302,6 +302,8 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
+
+    logging.info(f" in scalar predict {model_predictions} scalar predict names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
     embeddings = []
     test_paths = []
     for i in range(steps):
