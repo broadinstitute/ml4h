@@ -318,7 +318,7 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
             test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
 
         for y, tm_output_name in zip(y_predictions, model_predictions):
-            if len(scalar_predictions) == 1:
+            if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                 y = y_predictions
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
