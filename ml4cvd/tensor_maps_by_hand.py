@@ -165,18 +165,18 @@ TMAPS['t-offsetp'] = TensorMap('TOffset', group='continuous', channel_map={'TOff
 TMAPS['t-axisp'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, loss='logcosh',
                         normalization={'mean': 40.8, 'std': 32.6}, parents=['output_median_ecg_rest'])
 
-TMAPS['p-axis-no0'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                        normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration-no0'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                            normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset-no0'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                          normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset-no0'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                         normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval-no0'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                             normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                             normalization={'mean': 165.9, 'std': 26.3})
+# TMAPS['p-axis-no0'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
+#                         normalization={'mean': 48.7, 'std': 23.1})
+# TMAPS['p-duration-no0'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
+#                             normalization={'mean': 96.1, 'std': 18.85})
+# TMAPS['p-offset-no0'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
+#                           normalization={'mean': 369.1, 'std': 28.42})
+# TMAPS['p-onset-no0'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
+#                          normalization={'mean': 275.1, 'std': 26.420})
+# TMAPS['pp-interval-no0'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
+#                              normalization={'mean': 1036.1, 'std': 185.0})
+# TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
+#                              normalization={'mean': 165.9, 'std': 26.3})
 
 
 TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
