@@ -102,16 +102,12 @@ def optimize_conv_layers_multimodal_multitask(args):
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT), param_lists)
 
-    # Re-train the best model so it's easy to view it at the end of the logs
     args = args_from_best_trials(args, trials, param_lists)
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                 args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
                                                 args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
                                                 args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
                                                 args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
-
-    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
-                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
 
 def optimize_dense_layers_multimodal_multitask(args):
@@ -155,23 +151,15 @@ def optimize_dense_layers_multimodal_multitask(args):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-
-    logging.info('bestx: {}'.format(best_x))
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary below) is {}'.format(string_from_best_trials(trials)))
-
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT))
 
     # Re-train the best model so it's easy to view it at the end of the logs
     args = args_from_best_trials(args, trials)
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                 args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
                                                 args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
                                                 args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
                                                 args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
-    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-                                args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
 
 def optimize_lr_multimodal_multitask(args):
@@ -209,23 +197,15 @@ def optimize_lr_multimodal_multitask(args):
     
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary directly above) is {}'.format(string_from_best_trials(trials)))
-    logging.info('bestx: {}'.format(best_x))
-
     plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT))
 
-    # Re-train the best model so it's easy to view it at the end of the logs
-
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+    # Rebuild the best model so it's easy to view it at the end of the logs
+    args = args_from_best_trials(args, trials)
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                 args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
                                                 args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
                                                 args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
                                                 args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
-    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-                                args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
 
 def optimize_input_tensor_maps(args):
@@ -262,21 +242,16 @@ def optimize_input_tensor_maps(args):
             return MAX_LOSS
     
     trials = hyperopt.Trials()
-    best = fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    best_x = trials.trials[np.argmin(trials.losses())]['misc']['vals']
-        
-    args.input_tensors = input_tensor_map_sets[best_x['input_tensor_maps'][0]]
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
+    fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
+    plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT), param_lists)
+
+    # Rebuild the best model so it's easy to view it at the end of the logs
+    args = args_from_best_trials(args, trials, param_lists)
+    _ = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in,
                                                 args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
                                                 args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size,
                                                 args.conv_bn, args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
                                                 args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.padding, args.learning_rate)
-    model = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
-    logging.info('trials.losses {}'.format(trials.losses()))
-    logging.info('best model (summary directly above) is {}'.format(string_from_best_trials(trials)), param_lists)
-    plot_trials(trials, os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT), param_lists)
 
 
 def set_args_from_x(args, x):
@@ -301,11 +276,21 @@ def string_from_arch_dict(x):
     return s
 
 
-def string_from_best_trials(trials, param_lists={}):
-    s = ''
+def args_from_best_trials(args, trials, param_lists={}):
     best_trial_idx = np.argmin(trials.losses())
-    logging.info('At iteration {} model had the lowest loss of: {}'.format(best_trial_idx, trials.losses()[best_trial_idx]))
-    return string_from_trials(trials, best_trial_idx, param_lists={})
+    x = trials.trials[best_trial_idx]['misc']['vals']
+    logging.info(f"got best x {x} best model is:{string_from_trials(trials, best_trial_idx, param_lists)}")
+    for k in x:
+        v = x[k][0]
+        if k in param_lists:
+            args.__dict__[k] = param_lists[k][int(v)]
+        elif k in ['conv_x', 'conv_y', 'conv_z']:
+            args.__dict__[k] = int(v)
+        else:
+            args.__dict__[k] = v
+    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    return args   
 
 
 def string_from_trials(trials, index, param_lists={}):
@@ -321,21 +306,6 @@ def string_from_trials(trials, index, param_lists={}):
         else:
             s += str(v)
     return s
-
-
-def args_from_best_trials(args, trials, param_lists={}):
-    best_trial_idx = np.argmin(trials.losses())
-    x = trials.trials[best_trial_idx]['misc']['vals']
-    logging.info(f"got best x {x} best model is:{string_from_trials(trials, best_trial_idx, param_lists)}")
-    for k in x:
-        v = x[k][0]
-        if k in param_lists:
-            args.__dict__[k] = param_lists[k][int(v)]
-        elif k in ['conv_x', 'conv_y', 'conv_z']:
-            args.__dict__[k] = int(v)
-        else:
-            args.__dict__[k] = v
-    return args   
 
 
 def plot_trials(trials, figure_path, param_lists={}):
