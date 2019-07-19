@@ -293,29 +293,6 @@ def set_args_from_x(args, x):
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
 
-def set_args_from_nested_x(args, x):
-    if 'conv_x' in x:
-        args.conv_x = int(x['conv_x'][0])
-    if 'conv_y' in x:
-        args.conv_y = int(x['conv_y'][0])
-    if 'conv_z' in x:
-        args.conv_z = int(x['conv_z'][0])
-    if 'pool_z' in x:
-        args.pool_z = x['pool_z'][0]
-    if 'conv_layers' in x:
-        args.conv_layers = x['conv_layers'][0]
-    if 'dense_blocks' in x:
-        args.dense_blocks = x['dense_blocks'][0]
-    if 'dense_layers' in x:
-        args.dense_layers = x['dense_layers'][0]
-    if 'learning_rate' in x:
-        args.learning_rate = x['learning_rate'][0]
-    if 'input_tensor_maps' in x:
-        args.input_tensors = list(x['input_tensor_maps'][0])
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-
-
 def string_from_arch_dict(x):
     s = ''
     for k in x:
