@@ -30,6 +30,7 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
     if len(os.listdir(destination)) > 0:  # Allow for in-place merge
         sample_sets.append(os.listdir(destination))
     sample_set = set(sample_sets[0]).intersection(*sample_sets[1:])
+    print("sample set:", sample_set)
     for source_folder in sources:
         for source_file in os.listdir(source_folder):
             if not source_file.endswith(TENSOR_EXT):
