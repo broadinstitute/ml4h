@@ -29,6 +29,9 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
     sample_sets = [os.listdir(source_folder) for source_folder in sources]
     if len(os.listdir(destination)) > 0:  # Allow for in-place merge
         sample_sets.append(os.listdir(destination))
+        print("added destination:", destination)
+    for ss in sample_sets:
+        print("sample set first fiddy:", ss[:50])
     sample_set = set(sample_sets[0]).intersection(*sample_sets[1:])
     print("sample set:", sample_set)
     for source_folder in sources:
