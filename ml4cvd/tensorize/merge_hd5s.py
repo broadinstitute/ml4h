@@ -26,18 +26,19 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
     if not os.path.exists(os.path.dirname(destination)):
         os.makedirs(os.path.dirname(destination))
 
-    sample_sets = [os.listdir(source_folder) for source_folder in sources]
     if inplace:
-        sample_sets.append(os.listdir(destination))
-    sample_set = set(sample_sets[0]).intersection(*sample_sets[1:])
-    print("sample set:", sample_set)
+        sample_set = os.listdir(destination)
+    elif intersect:
+        sample_sets = [os.listdir(source_folder) for source_folder in sources]
+        sample_set = set(sample_sets[0]).intersection(*sample_sets[1:])
+
     for source_folder in sources:
         for source_file in os.listdir(source_folder):
             if not source_file.endswith(TENSOR_EXT):
                 continue
             if not min_sample_id <= int(os.path.splitext(source_file)[0]) < max_sample_id:
                 continue
-            if intersect and source_file not in sample_set:
+            if (intersect or inplace) and source_file not in sample_set:
                 continue
 
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
