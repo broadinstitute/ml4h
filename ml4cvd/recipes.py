@@ -176,7 +176,7 @@ def infer_multimodal_multitask(args):
         while True:
             input_data, true_label, tensor_path = next(generate_test)
             if tensor_path[0] in tensor_paths_inferred:
-                logging.info(f"Done inferring values for {stats['count']} tensors. Looped over at tensor:{tensor_path[0]}")
+                logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
             prediction = model.predict(input_data)
@@ -199,7 +199,6 @@ def infer_multimodal_multitask(args):
             stats['count'] += 1
             if stats['count'] % 500 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
-        logging.info(f"Inference finished. File at: {inference_tsv}")
 
 
 def train_shallow_model(args):
