@@ -314,7 +314,8 @@ def plot_trials(trials, figure_path, param_lists={}):
     best_loss = min(lplot)
     worst_loss = max(lplot)
     std = np.std(lplot)
-    plt.figure(figsize=(16, 16))
+    plt.figure(figsize=(36, 46))
+    matplotlib.rcParams.update({'font.size': 10})
     plt.plot(lplot)
     for i in range(len(trials.trials)):
         if best_loss+std > lplot[i]:
