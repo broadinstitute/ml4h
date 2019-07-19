@@ -55,12 +55,14 @@ def optimize_conv_layers_multimodal_multitask(args):
                                                                           args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
-    dense_blocks_sets = [[32, 24, 16], [64, 32, 16, 8], [32, 24, 16, 12], [48, 32, 24, 16]]
+    dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24, 16]]
     conv_layers_sets = [[64], [48], [32], [24]]
     dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
+    pool_xs = [2, 4, 8, 16]
     pool_zs = [1]
-    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_z': pool_zs}
+    param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets, 'pool_x': pool_xs, 'pool_z': pool_zs}
     space = {
+        'pool_x': hp.choice('pool_z', pool_xs),
         'pool_z': hp.choice('pool_z', pool_zs),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),      
@@ -285,24 +287,33 @@ def optimize_input_tensor_maps(args):
 
 
 def set_args_from_x(args, x):
-    if 'conv_x' in x:
-        args.conv_x = int(x['conv_x'])
-    if 'conv_y' in x:
-        args.conv_y = int(x['conv_y'])
-    if 'conv_z' in x:
-        args.conv_z = int(x['conv_z'])
-    if 'pool_z' in x:
-        args.pool_z = x['pool_z']
-    if 'conv_layers' in x:
-        args.conv_layers = x['conv_layers']
-    if 'dense_blocks' in x:
-        args.dense_blocks = x['dense_blocks']
-    if 'dense_layers' in x:
-        args.dense_layers = x['dense_layers']
-    if 'learning_rate' in x:
-        args.learning_rate = x['learning_rate']
-    if 'input_tensor_maps' in x:
-        args.input_tensors = list(x['input_tensor_maps'])                    
+    for k in args.__dict__:
+        if k in x:
+            if isinstance(args.__dict__[k], int):
+                args.__dict__[k] = int(x[k])
+            elif isinstance(args.__dict__[k], float):
+                args.__dict__[k] = float(x[k])
+            else:
+                args.__dict__[k] = x[k]
+
+    # if 'conv_x' in x:
+    #     args.conv_x = int(x['conv_x'])
+    # if 'conv_y' in x:
+    #     args.conv_y = int(x['conv_y'])
+    # if 'conv_z' in x:
+    #     args.conv_z = int(x['conv_z'])
+    # if 'pool_z' in x:
+    #     args.pool_z = x['pool_z']
+    # if 'conv_layers' in x:
+    #     args.conv_layers = x['conv_layers']
+    # if 'dense_blocks' in x:
+    #     args.dense_blocks = x['dense_blocks']
+    # if 'dense_layers' in x:
+    #     args.dense_layers = x['dense_layers']
+    # if 'learning_rate' in x:
+    #     args.learning_rate = x['learning_rate']
+    # if 'input_tensor_maps' in x:
+    #     args.input_tensors = list(x['input_tensor_maps'])
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
