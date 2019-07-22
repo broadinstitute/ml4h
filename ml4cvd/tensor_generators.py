@@ -284,7 +284,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
     stats = Counter()
     sample2group = {}
     for i, b_csv in enumerate(balance_csvs):
-        lol = list(csv.reader(open(b_csv, 'r'), delimiter='\t'))
+        lol = list(csv.reader(open(b_csv, 'r'), delimiter=','))
         logging.info(f"Class Balance CSV Header: {list(enumerate(lol[0]))}")
 
         for row in lol[1:]:
