@@ -180,6 +180,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
                 except KeyError as e:
+                    stats['Key Problems from list ' + str(i)] += 1
                     stats['KeyError:'+str(e)] += 1
                 except OSError as e:
                     stats['OSError:'+str(e)] += 1
