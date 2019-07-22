@@ -192,6 +192,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
         for i, tensor_list in enumerate(paths_lists):
             if len(tensor_list) <= stats['train_paths_'+str(i)]:
                 stats['epochs_list_number_'+str(i)] += 1
+                stats['Tensors presented from train_paths_' + str(i)] += stats['train_paths_'+str(i)]
                 stats['train_paths_'+str(i)] = 0
                 for k in stats:
                     logging.info(f"{k} has: {stats[k]}")
