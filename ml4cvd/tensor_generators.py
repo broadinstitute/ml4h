@@ -313,7 +313,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             else:
                 train_paths[group].append(os.path.join(root, name))
 
-    for i in len(train_paths):
+    for i in range(len(train_paths)):
         if len(train_paths[i]) == 0 or len(valid_paths[i]) == 0 or len(test_paths[i]) == 0:
             my_error = f"Not enough tensors at {tensors}\nGot {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test."
             raise ValueError(my_error)
