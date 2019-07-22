@@ -86,10 +86,18 @@ func main() {
 		go func(row []string) {
 			defer func() { <-sem }()
 
-			if out, err := exec.Command(ukbFetch, fmt.Sprintf("-a%s", ukbKey), fmt.Sprintf("-e%s", row[0]), fmt.Sprintf("-d%s", row[1])).CombinedOutput(); err != nil {
-				log.Println(fmt.Errorf("Output: %s | Error: %s", string(out), err.Error()))
-				log.Println("Sleeping 30 seconds and retrying")
-				time.Sleep(30 * time.Second)
+			nErrors := 0
+			for {
+				if out, err := exec.Command(ukbFetch, fmt.Sprintf("-a%s", ukbKey), fmt.Sprintf("-e%s", row[0]), fmt.Sprintf("-d%s", row[1])).CombinedOutput(); err != nil && nErrors < 3 {
+					nErrors++
+					log.Println(fmt.Errorf("Output: %s | Error: %s", string(out), err.Error()))
+					log.Println("Sleeping 30 seconds and retrying")
+					time.Sleep(30 * time.Second)
+					continue
+				}
+
+				// If we already errored 3x or we had no error, break the loop
+				break
 			}
 		}(append([]string{}, row...))
 
