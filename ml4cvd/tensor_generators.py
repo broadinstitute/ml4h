@@ -150,7 +150,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     samples = [int(w*batch_size) for w in weights]
 
     while True:
-        for i, tensor_list, num_samples in enumerate(zip(paths_lists, samples)):
+        for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
             for tp in np.random.choice(tensor_list, num_samples):
                 try:
                     with h5py.File(tp, 'r') as hd5:
