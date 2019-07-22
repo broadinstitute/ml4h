@@ -932,6 +932,7 @@ def append_gene_csv(tensors, csv_file, delimiter):
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
 
     logging.info(f"Data maps:{len(data_maps)}")
+    hd5_prefix = 'categorical' + HD5_GROUP_CHAR
     for tp in os.listdir(tensors):
         if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
             continue
@@ -940,12 +941,12 @@ def append_gene_csv(tensors, csv_file, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-                        if data_maps[sample_id][field] in hd5:
+                        if field in hd5[hd5_prefix]:
                             data = hd5[data_maps[sample_id][field]]
                             data[0] = 1.0
                             stats['updated'] += 1
                         else:
-                            hd5.create_dataset(data_maps[sample_id][field], data=[1.0])
+                            hd5.create_dataset(hd5_prefix + field, data=[1.0])
                             stats['created'] += 1
                 else:
                     stats['sample id missing']
