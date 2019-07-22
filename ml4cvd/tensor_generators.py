@@ -320,7 +320,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
         if i == 0:
             logging.info(f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.")
         else:
-            logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i+1])} train, {len(valid_paths[i+1])} valid, {len(test_paths[i+1])} test tensors.")
+            logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
     
     return train_paths, valid_paths, test_paths
 
