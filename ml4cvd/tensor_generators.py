@@ -150,8 +150,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     samples = [int(w*batch_size) for w in weights]
 
     while True:
-        for tlist, num_samples in zip(paths_lists, samples):
-            for tp in np.random.choice(tlist, num_samples):
+        for tensor_list, num_samples in zip(paths_lists, samples):
+            for tp in np.random.choice(tensor_list, num_samples):
                 try:
                     with h5py.File(tp, 'r') as hd5:
                         dependents = {}
@@ -189,14 +189,13 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                     stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 _log_first_error(stats)
         
-        for i, tlist in enumerate(paths_lists):
-            if len(tlist) <= stats['train_paths_'+str(i)]:
+        for i, tensor_list in enumerate(paths_lists):
+            if len(tensor_list) <= stats['train_paths_'+str(i)]:
                 stats['epochs_list_number_'+str(i)] += 1
                 stats['train_paths_'+str(i)] = 0
-                if len(tlist) > 1000 or stats['epochs_list_number_'+str(i)] % 5 == 0:
-                    for k in stats:
-                        logging.info('{} has: {}'.format(k, stats[k]))
-                    logging.info(F"Generator looped over {len(tlist)} tensors from CSV group {i}.")
+                for k in stats:
+                    logging.info(f"{k} has: {stats[k]}")
+                logging.info(f"Generator looped over {len(tensor_list)} tensors from CSV group {i}.")
 
 
 def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
@@ -314,9 +313,14 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             else:
                 train_paths[group].append(os.path.join(root, name))
 
-    logging.info(f"Found {len(train_paths[0])} training {len(valid_paths[0])} validation and {len(test_paths[0])} testing tensors outside the CSVs.")
-    for i, csv_group in enumerate(balance_csvs):
-        logging.info(f"CSV:{csv_group} \nhas: {len(train_paths[i+1])} training, {len(valid_paths[i+1])} valid, {len(test_paths[i+1])} test tensors.")
+    for i in len(train_paths):
+        if len(train_paths[i]) == 0 or len(valid_paths[i]) == 0 or len(test_paths[i]) == 0:
+            my_error = f"Not enough tensors at {tensors}\nGot {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test."
+            raise ValueError(my_error)
+        if i == 0:
+            logging.info(f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.")
+        else:
+            logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i+1])} train, {len(valid_paths[i+1])} valid, {len(test_paths[i+1])} test tensors.")
     
     return train_paths, valid_paths, test_paths
 
