@@ -150,7 +150,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     samples = [int(w*batch_size) for w in weights]
 
     while True:
-        for tensor_list, num_samples in zip(paths_lists, samples):
+        for i, tensor_list, num_samples in enumerate(zip(paths_lists, samples)):
             for tp in np.random.choice(tensor_list, num_samples):
                 try:
                     with h5py.File(tp, 'r') as hd5:
@@ -166,7 +166,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
 
                         paths_in_batch.append(tp)
                         stats['batch_index'] += 1
-                        stats['Tensors presented'] += 1
+                        stats['Tensors presented from list '+str(i)] += 1
                         if stats['batch_index'] == batch_size:
                             if keep_paths:
                                 yield in_batch, out_batch, paths_in_batch
@@ -174,8 +174,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
-                            for i, n in enumerate(samples):
-                                stats['train_paths_'+str(i)] += n
+                            for j, n in enumerate(samples):
+                                stats['train_paths_'+str(j)] += n
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
@@ -192,7 +192,6 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
         for i, tensor_list in enumerate(paths_lists):
             if len(tensor_list) <= stats['train_paths_'+str(i)]:
                 stats['epochs_list_number_'+str(i)] += 1
-                stats['Tensors presented from train_paths_' + str(i)] += stats['train_paths_'+str(i)]
                 stats['train_paths_'+str(i)] = 0
                 for k in stats:
                     logging.info(f"{k} has: {stats[k]}")
