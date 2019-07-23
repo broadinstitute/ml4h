@@ -523,10 +523,14 @@ def _write_tensors_from_dicoms(x,
             full_mask = np.zeros((x, y), dtype=np.float32)
 
         for slicer in views[v]:
-            if MRI_PIXEL_WIDTH not in hd5:
+            if MRI_PIXEL_WIDTH not in hd5 and 'liver' not in v:
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT not in hd5:
+            if MRI_PIXEL_HEIGHT not in hd5 and 'liver' not in v:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
+            if MRI_PIXEL_WIDTH + '_liver' not in hd5 and 'liver' in v:
+                hd5.create_dataset(MRI_PIXEL_WIDTH + '_liver', data=float(slicer.PixelSpacing[0]))
+            if MRI_PIXEL_HEIGHT + '_liver' not in hd5 and 'liver' in v:
+                hd5.create_dataset(MRI_PIXEL_HEIGHT + '_liver', data=float(slicer.PixelSpacing[1]))
 
             sx = min(slicer.Rows, x)
             sy = min(slicer.Columns, y)
