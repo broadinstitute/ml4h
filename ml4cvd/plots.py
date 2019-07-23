@@ -816,7 +816,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     p2y = {}
     for i, p in enumerate(perplexities):
-        tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=123, perplexity=p, method='exact')
+        tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=123, perplexity=p, method='exact', learning_rate=20, n_iter_without_progress=1000, min_grad_norm=0.0)
         p2y[p] = tsne.fit_transform(x_embed)
 
     j = -1

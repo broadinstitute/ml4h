@@ -45,7 +45,7 @@ MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
-                       'cine_segmented_sax_inlinevf']
+                       'cine_segmented_sax_inlinevf', 'gre_mullti_echo_10_te_liver']
 
 
 ECG_BIKE_FIELD = '6025'
