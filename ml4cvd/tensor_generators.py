@@ -167,6 +167,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                         paths_in_batch.append(tp)
                         stats['batch_index'] += 1
                         stats['Tensors presented from list '+str(i)] += 1
+                        stats['train_paths_' + str(i)] += 1
                         if stats['batch_index'] == batch_size:
                             if keep_paths:
                                 yield in_batch, out_batch, paths_in_batch
@@ -174,8 +175,6 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
-                            for j, n in enumerate(samples):
-                                stats['train_paths_'+str(j)] += n
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1

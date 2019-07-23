@@ -17,12 +17,15 @@ import pandas as pd
 from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import matplotlib
+
+from ml4cvd.models import embed_model_predict
+
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from keras.models import Model
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap, subplot_rocs, subplot_scatters
+from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap, subplot_rocs, subplot_scatters, plot_tsne
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, HD5_GROUP_CHAR
 
 CSV_EXT = '.tsv'
@@ -103,7 +106,7 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
 
 def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
                         generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
-                        data: Dict[str, np.ndarray], labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
+                        test_data: Dict[str, np.ndarray], test_labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
                         training_steps: int, folder: str, write_pngs: bool):
 
     if not os.path.exists(folder):
@@ -112,7 +115,7 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
     for i in range(epochs):
         rocs = []
         scatters = []
-        predictions = model.predict(data, batch_size=batch_size)
+        predictions = model.predict(test_data, batch_size=batch_size)
         for y, tm in zip(predictions, tensor_maps_out):
             if len(tensor_maps_out) == 1:
                 predictions = [predictions]
@@ -121,37 +124,43 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                     for im in tensor_maps_in:
                         if im.dependent_map == tm:
                             break
-                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{labels[tm.output_name()].shape} to folder:{folder}")
+                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
-                        plt.imsave(f"{folder}batch_index_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][yi], axis=-1))
+                        plt.imsave(f"{folder}batch_index_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(test_labels[tm.output_name()][yi], axis=-1))
                         plt.imsave(f"{folder}batch_index_{yi}_prediction_epoch_{i:03d}{IMAGE_EXT}", np.argmax(y[yi], axis=-1))
-                        plt.imsave(f"{folder}batch_index_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", data[im.input_name()][yi,:,:,0])
+                        plt.imsave(f"{folder}batch_index_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, 0])
                 elif tm.is_categorical_any() and len(tm.shape) == 4:
                     for im in tensor_maps_in:
                         if im.dependent_map == tm:
                             break
-                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{labels[tm.output_name()].shape} to folder:{folder}")
+                    logging.info(f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}")
                     for yi in range(y.shape[0]):
                         for j in range(y.shape[3]):
-                            truth = np.argmax(labels[tm.output_name()][yi,:,:,j,:], axis=-1)
+                            truth = np.argmax(test_labels[tm.output_name()][yi, :, :, j, :], axis=-1)
                             prediction = np.argmax(y[yi,:,:,j,:], axis=-1)
-                            true_donut = np.ma.masked_where(truth == 2, data[im.input_name()][yi,:,:,j,0])
-                            predict_donut = np.ma.masked_where(prediction == 2, data[im.input_name()][yi,:,:,j,0])
+                            true_donut = np.ma.masked_where(truth == 2, test_data[im.input_name()][yi, :, :, j, 0])
+                            predict_donut = np.ma.masked_where(prediction == 2, test_data[im.input_name()][yi, :, :, j, 0])
                             plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}", prediction)
                             plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_predict_donut_epoch_{i:03d}{IMAGE_EXT}", predict_donut)
                             if i == 0:
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth)
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_true_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut)
-                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", data[im.input_name()][yi,:,:,j,0])
+                                plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, j, 0])
 
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
-                evaluate_predictions(tm, y, labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
+                evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
         if len(rocs) > 1:
             subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
         if len(scatters) > 1:
             subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
+
+        embeddings = embed_model_predict(model, tensor_maps_in, 'embed', test_data, batch_size)
+        label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
+
+        gene_labels = []
+        plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, folder+f"tsne_epoch_{i:03d}_", 0.7)
 
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
