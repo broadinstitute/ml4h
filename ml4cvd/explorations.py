@@ -150,11 +150,11 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
-                evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
-        if len(rocs) > 1:
-            subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
-        if len(scatters) > 1:
-            subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
+        #         evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
+        # if len(rocs) > 1:
+        #     subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
+        # if len(scatters) > 1:
+        #     subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
 
         embeddings = embed_model_predict(model, tensor_maps_in, 'embed', test_data, batch_size)
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
