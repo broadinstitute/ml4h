@@ -514,7 +514,7 @@ class TensorMap(object):
             return self.zero_mean_std1(tensor)
         elif self.name in MRI_ANNOTATION_GOOD_NEEDED:
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            if not hd5['categorical/' + MRI_ANNOTATION_NAME][0] in [MRI_ANNOTATION_CHANNEL_MAP['good'], MRI_ANNOTATION_CHANNEL_MAP['unreviewed']]:
+            if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != [MRI_ANNOTATION_CHANNEL_MAP['good']]:
                 if self.sentinel is not None:
                     continuous_data[:] = self.sentinel
                     return continuous_data
