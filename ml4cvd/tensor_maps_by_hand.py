@@ -260,6 +260,9 @@ TMAPS['ejection_fraction_correctedp'] = TensorMap('ejection_fraction_corrected',
                                                  parents=['output_end_systole_volume_corrected_continuous',
                                                           'output_end_diastole_volume_corrected_continuous'])
 
+TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', group='continuous', channel_map={'22402_Liver-fat-percentage_2_0': 0},
+                               normalization={'mean': 3.91012, 'std': 4.64437}, annotation_units=1, loss='logcosh', loss_weight=1.0)
+TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', (256, 256, 10), group='root_array')
 
 TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
 TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})

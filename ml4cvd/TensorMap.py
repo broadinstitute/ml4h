@@ -232,6 +232,9 @@ class TensorMap(object):
     def is_multi_field_continuous(self):
         return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS or self.group == TENSOR_MAP_GROUP_CONTINUOUS
 
+    def is_root_array(self):
+        return self.group == 'root_array'
+
     def is_multi_field_continuous_with_missing_channel(self):
         return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS
 
@@ -502,6 +505,10 @@ class TensorMap(object):
             dependents[self.dependent_map][:, :, 6, :] = to_categorical(np.array(hd5['diastole_mask_b8']), self.dependent_map.shape[-1])
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
+            return self.zero_mean_std1(tensor)
+        elif self.is_root_array():
+            tensor = np.zeros(self.shape, dtype=np.float32)
+            tensor = np.array(hd5[self.name], dtype=np.float32)
             return self.zero_mean_std1(tensor)
         elif self.name == 'end_systole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
