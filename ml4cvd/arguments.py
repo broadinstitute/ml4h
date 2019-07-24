@@ -119,10 +119,9 @@ def parse_args():
     parser.add_argument('--dense_blocks', nargs='*', default=[32, 24, 16], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
     parser.add_argument('--u_connect', default=False, action='store_true', help='Connect early convolutional layers to later ones of the same size, as in U-Net.')
-    parser.add_argument('--aligned_dimension', default=16, type=int,
-                        help='Dimensionality of aligned embedded space for multi-modal alignment models.')
+    parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument('--max_parameters', default=9000000, type=int,
-        help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
+                        help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
 
     # Training and Hyper-Parameter Optimization Parameters
