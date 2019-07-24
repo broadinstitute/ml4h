@@ -140,7 +140,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
-    plt.figure(figsize=(16, 16))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     plt.scatter(prediction, truth, marker='.', alpha=alpha)
@@ -169,12 +169,11 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
 
 def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth) - np.min(truth)) / 100)
-    plt.figure(figsize=(16, 16))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     for k in predictions:
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        pearson_sqr = pearson * pearson
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
         plt.scatter(predictions[k], truth, color=color, label=str(k) + f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
