@@ -24,10 +24,6 @@ from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 from ml4cvd.tensor_maps_by_script import TMAPS
 
 
-CATEGORICAL_PHENOTYPES = [54, 924, 943, 971, 981, 1011, 1100, 1239, 1249, 1259, 1329, 1339, 1349, 1359, 1369, 1379, 1389, 1408, 1418, 1428, 1448, 1468, 1478, 1508, 1518, 1528, 1538, 1548, 1558, 1618, 1628, 1647, 1677, 1687, 1697, 1707, 1717, 1727, 1747, 1757, 1767, 1777, 1787, 1797, 1835, 2178, 2188, 2207, 2247, 2316, 2306, 2415, 2443, 2453, 2463, 2473, 2674, 2694, 2724, 2784, 2814, 2877, 3079, 3616, 3637, 3773, 3799, 4717, 4825, 4935, 4957, 4968, 4979, 4990, 5001, 5012, 6015, 6017, 6148, 6149, 6150, 6152, 6153, 6154, 6155, 6157, 6159, 6162, 6164, 6177, 6179, 20001, 20003, 20004, 20116, 22001, 22609, 22610, 22611, 22612, 22613, 22614, 22615, 22616, 22650]
-CONTINUOUS_PHENOTYPES = [34, 48, 49, 50, 102, 137, 864, 874, 884, 894, 904, 914, 1070, 1080, 1090, 1309, 1438, 1478, 1488, 1498, 1568, 4237, 4239, 4288, 4407, 20015, 20023, 21001, 21002, 22200, 22602, 22603, 22003, 22009, 23098, 23099, 23104, 23106, 23120, 23128, 30000, 30010, 30020, 30030, 30040, 30050, 30060, 30070 ]
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -70,9 +66,9 @@ def parse_args():
                         help='Path to left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964')
 
     # Data selection parameters
-    parser.add_argument('--categorical_field_ids', nargs='*', default=CATEGORICAL_PHENOTYPES, type=int,
+    parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.')
-    parser.add_argument('--continuous_field_ids', nargs='*', default=CONTINUOUS_PHENOTYPES, type=int,
+    parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which continuous real-valued input features will be collected.')
     parser.add_argument('--include_array', default=False, action='store_true', help='Include array idx for UKBB phenotypes.')
     parser.add_argument('--include_instance', default=False, action='store_true', help='Include instances for UKBB phenotypes.')

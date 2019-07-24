@@ -5,14 +5,13 @@
 ################### VARIABLES ############################################
 
 TENSOR_PATH=
-ID="tensorization_run"
 NUM_JOBS=96
 SAMPLE_IDS_START=1000000
 SAMPLE_IDS_END=6030000
 XML_FIELD=  # exclude ecg data
 MRI_FIELD=  # exclude mri data
-CONTINUOUS_FIELD_IDS=
-CATEGORICAL_FIELD_IDS=
+RECIPES_ARGS=
+
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -25,16 +24,15 @@ usage()
     This script can be used to create tensors from the UKBB data.
 
     Usage: ${SCRIPT_NAME}    -t <tensor_path>
-                          [-i <id_string>] [-n <num_jobs>]
-                          [-s <sample_id_start>] [-e <sample_id_end>]
-                          [-x <xml_field_id>] [-m <mri_field_id>] [-c <CONTINUOUS_FIELD_IDS>] [-a <CATEGORICAL_FIELD_IDS>]
+                          [-n <num_jobs>]
+                          [-s <sample_id_start>]
+                          [-e <sample_id_end>]
+                          [-a <RECIPES_ARGS>]
                           [-h]
 
-    Example: ./${SCRIPT_NAME} -t /mnt/disks/data/generated/tensors/test/2019-02-05/ -i my_run -n 96 -s 1000000 -e 6030000 -x "20205 6025" -m "20208 20209"
+    Example: ./${SCRIPT_NAME} -t /mnt/disks/data/generated/tensors/test/2019-02-05/ -n 96 -s 1000000 -e 6030000 -a "--xml_field_ids 20205 6025 --mri_field_ids 20208 20209"
 
         -t      <path>      (Required) Absolute path to directory to write output tensors to.
-
-        -i      <id>        ID string used to distinguish the run. Default: 'tensorization_run'.
 
         -n      <num>       Number of jobs to run in parallel. Default: 96.
 
@@ -42,13 +40,7 @@ usage()
 
         -e      <id>        Largest sample ID to start with. Default: 6030000.
 
-        -x      <ids>       ECG field IDs. Default: None - no ECG data is used.
-
-        -m      <ids>       MRI field IDs. Default: None - no MRI data is used.
-
-        -c      <ids>       CONTINUOUS field IDs. Default: ${CONTINUOUS_FIELD_IDS}.
-
-        -a      <ids>       CATEGORICAL field IDs. Default: ${CATEGORICAL_FIELD_IDS}.
+        -a      <ids>       Argument string to pass directly to recipes.py
 
         -h                  Print this help text
 
@@ -76,7 +68,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":t:i:c:a:n:s:e:x:m:h" opt ; do
+while getopts ":t:a:n:s:e:h" opt ; do
     case ${opt} in
         h)
             usage
@@ -84,9 +76,6 @@ while getopts ":t:i:c:a:n:s:e:x:m:h" opt ; do
             ;;
         t)
             TENSOR_PATH=$OPTARG
-            ;;
-        i)
-            ID=$OPTARG
             ;;
         n)
             NUM_JOBS=$OPTARG
@@ -97,17 +86,8 @@ while getopts ":t:i:c:a:n:s:e:x:m:h" opt ; do
         e)
             SAMPLE_IDS_END=$OPTARG
             ;;
-        x)
-            XML_FIELD=$OPTARG
-            ;;
-        m)
-            MRI_FIELD=$OPTARG
-            ;;
-        c)
-            CONTINUOUS_FIELD_IDS=$OPTARG
-            ;;
         a)
-            CATEGORICAL_FIELD_IDS=$OPTARG
+            PYTHON_ARGS=$OPTARG
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -140,17 +120,13 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
 
         cat <<LAUNCH_CMDLINE_MESSAGE
             $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/recipes.py
-                --mode tensorize
-                --tensors $TENSOR_PATH
-                --output_folder $TENSOR_PATH
-                --id $ID
-                --include_heart_zoom
-                --mri_field_id $MRI_FIELD
-                --xml_field_id $XML_FIELD
-                --categorical_field_ids $CATEGORICAL_FIELD_IDS
-                --continuous_field_ids $CONTINUOUS_FIELD_IDS
-                --dicoms ./dicoms_$MIN_SAMPLE_ID/
-                --min_sample_id $MIN_SAMPLE_ID
+                --mode tensorize \
+                --tensors $TENSOR_PATH \
+                --output_folder $TENSOR_PATH \
+                --include_heart_zoom \
+                $PYTHON_ARGS \
+                --dicoms ./dicoms_$MIN_SAMPLE_ID/ \
+                --min_sample_id $MIN_SAMPLE_ID \
                 --max_sample_id $MAX_SAMPLE_ID &
 LAUNCH_CMDLINE_MESSAGE
 
@@ -158,12 +134,8 @@ LAUNCH_CMDLINE_MESSAGE
 		--mode tensorize \
 		--tensors $TENSOR_PATH \
 		--output_folder $TENSOR_PATH \
-		--id $ID \
 		--include_heart_zoom \
-		--mri_field_id $MRI_FIELD \
-		--xml_field_id $XML_FIELD \
-		--categorical_field_ids $CATEGORICAL_FIELD_IDS \
-		--continuous_field_ids $CONTINUOUS_FIELD_IDS \
+		$PYTHON_ARGS \
 		--dicoms ./dicoms_$MIN_SAMPLE_ID/ \
 		--min_sample_id $MIN_SAMPLE_ID \
 		--max_sample_id $MAX_SAMPLE_ID &
