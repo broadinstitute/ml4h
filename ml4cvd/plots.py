@@ -33,10 +33,10 @@ PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
 SUBPLOT_SIZE = 6
 
-COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'darkgreen', 'green', 'salmon', 'magenta', 'aquamarine', 'gold',
-               'aqua', 'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'lime_green', 'wheat', 'chocolate', 'tan',
-               'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru', 'orangered',
-               'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'darkkhaki' ]
+COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'gold',
+               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'lime_green', 'wheat', 'chocolate', 'tan',
+               'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru',
+               'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered', 'darkkhaki']
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
@@ -176,7 +176,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
