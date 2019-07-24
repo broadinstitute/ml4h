@@ -157,7 +157,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.title(title + '\n')
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
     logging.info("Pearson coefficient is: {}".format(pearson))
-    plt.text(np.min(truth), np.max(truth), 'Pearson:%0.3f R^2:%0.3f' % (pearson, (pearson * pearson)))
+    plt.text(np.min(truth), np.max(truth), f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom', transform=plt.transAxes)
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -176,7 +176,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         pearson_sqr = pearson * pearson
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + ' Pearson:%0.3f r^2:%0.3f' % (pearson, pearson_sqr), marker='.', alpha=alpha)
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
@@ -220,7 +220,7 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        axes[row, col].text(0, 1, 'Pearson:%0.3f R:%0.3f' % (pearson, (pearson * pearson)), verticalalignment='bottom', transform=axes[row, col].transAxes)
+        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
 
         row += 1
         if row == rows:
