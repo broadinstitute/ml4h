@@ -171,11 +171,11 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
 def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+    plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
     for k in predictions:
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color, linewidth=4)
+        plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color)
         plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
@@ -196,7 +196,6 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
 
 
 def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]], prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
-    lw = 3
     row = 0
     col = 0
     total_plots = len(scatters)
@@ -204,8 +203,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for prediction, truth, title, paths in scatters:
-        axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=lw)
-        axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=lw)
+        axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
+        axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)])
         axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
         margin = float((np.max(truth) - np.min(truth)) / 100)
         if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
