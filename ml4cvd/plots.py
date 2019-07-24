@@ -157,7 +157,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
-    plt.legend(loc="lower right")
+    plt.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -186,7 +186,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
-    plt.legend(loc="lower right")
+    plt.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, 'scatters_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -260,7 +260,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
-        axes[row, col].legend(loc="lower right")
+        plt.legend(loc="upper left")
 
         row += 1
         if row == rows:
