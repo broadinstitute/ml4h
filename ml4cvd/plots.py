@@ -143,7 +143,9 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-    plt.scatter(prediction, truth, marker='.', alpha=alpha)
+    pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+    logging.info("Pearson coefficient is: {}".format(pearson))
+    plt.scatter(prediction, truth, label=f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
@@ -155,9 +157,8 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
-    pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-    logging.info("Pearson coefficient is: {}".format(pearson))
-    plt.text(0, 1, f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom', transform=plt.gcf().transFigure)
+    plt.legend(loc="lower right")
+    
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
