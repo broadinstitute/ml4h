@@ -501,7 +501,7 @@ def _write_tensors_from_dicoms(x,
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
         if d.SeriesDescription.lower() in MRI_SERIES_TO_WRITE:
-            if d.SeriesDescription.lower() == 'gre_mullti_echo_10_te_liver' and d.LargestImagePixelValue > 256:
+            if d.SeriesDescription.lower() == 'gre_mullti_echo_10_te_liver' and d.LargestImagePixelValue > 1024:
                 views[d.SeriesDescription.lower() + '_12bit'].append(d)
             else:
                 views[d.SeriesDescription.lower()].append(d)

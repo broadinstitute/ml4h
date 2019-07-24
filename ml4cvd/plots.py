@@ -158,7 +158,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.ylabel('Actual')
     plt.title(title + '\n')
     plt.legend(loc="lower right")
-    
+
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
