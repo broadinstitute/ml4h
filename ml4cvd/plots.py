@@ -157,7 +157,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.title(title + '\n')
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
     logging.info("Pearson coefficient is: {}".format(pearson))
-    plt.text(np.min(truth), np.max(truth), f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom', transform=plt.transAxes)
+    plt.text(0, 1, f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom')
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
