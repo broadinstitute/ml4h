@@ -6,9 +6,9 @@ from dateutil import relativedelta
 
 from keras.utils import to_categorical
 
-from ml4cvd.defines import EPS, JOIN_CHAR, MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, \
-    CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, \
-    TENSOR_MAP_GROUP_CONTINUOUS, IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.defines import CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
+from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
 
@@ -66,6 +66,8 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
                                        '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
                                        '4429_Average-monthly-beer-plus-cider-intake_0_0'
                                        ]
+
+MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef']
 
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
@@ -508,25 +510,16 @@ class TensorMap(object):
             return self.zero_mean_std1(tensor)
         elif self.is_root_array():
             tensor = np.zeros(self.shape, dtype=np.float32)
-            tensor = np.array(hd5[self.name], dtype=np.float32)
+            tensor[:] = np.array(hd5[self.name], dtype=np.float32)
             return self.zero_mean_std1(tensor)
-        elif self.name == 'end_systole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
+        elif self.name in MRI_ANNOTATION_GOOD_NEEDED:
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            lvesv = float(hd5['continuous/end_systole_volume'][0])
-            continuous_data[0] = -3.8 + (lvesv * 0.87)
-            return self.normalize(continuous_data)
-        elif self.name == 'end_diastole_volume_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
-            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            lvedv = float(hd5['continuous/end_diastole_volume'][0])
-            continuous_data[0] = 16.8 + (lvedv * 0.88)
-            return self.normalize(continuous_data)
-        elif self.name == 'ejection_fraction_corrected':  # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
-            continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
-            lvesv = float(hd5['continuous/end_systole_volume'][0])
-            lvesv_corrected = -3.8 + (lvesv * 0.87)
-            lvedv = float(hd5['continuous/end_diastole_volume'][0])
-            lvedv_corrected = 16.8 + (lvedv * 0.88)
-            continuous_data[0] = (lvedv_corrected - lvesv_corrected) / lvedv_corrected
+            if not hd5['categorical/' + MRI_ANNOTATION_NAME][0] in [MRI_ANNOTATION_CHANNEL_MAP['good'], MRI_ANNOTATION_CHANNEL_MAP['unreviewed']]:
+                if self.sentinel is not None:
+                    continuous_data[:] = self.sentinel
+                    return continuous_data
+                raise ValueError('MRI Critic annotation not good or unreviewed.')
+            continuous_data[:] = float(hd5['continuous'][self.name][0])
             return self.normalize(continuous_data)
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)

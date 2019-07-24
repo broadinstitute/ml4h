@@ -226,6 +226,8 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
 
 
+
+# Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
 TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
                                     normalization={'mean': 47.0, 'std': 10.0})
@@ -236,7 +238,6 @@ TMAPS['corrected_extracted_lvef'] = TensorMap('corrected_extracted_lvef', group=
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', loss_weight=1.0, channel_map={'corrected_extracted_lvef': 0})
 
-
 TMAPS['corrected_extracted_lvesv_sentinel'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear', sentinel=0.0,
                                                         channel_map={'corrected_extracted_lvesv': 0}, normalization={'mean': 47.0, 'std': 10.0})
 TMAPS['corrected_extracted_lvedv_sentinel'] = TensorMap('corrected_extracted_lvedv', group='continuous', activation='linear', sentinel=0.0,
@@ -244,21 +245,6 @@ TMAPS['corrected_extracted_lvedv_sentinel'] = TensorMap('corrected_extracted_lve
 TMAPS['corrected_extracted_lvef_sentinel'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear', sentinel=0.0,
                                                        normalization={'mean': 0.50, 'std': 0.046}, channel_map={'corrected_extracted_lvef': 0})
 
-
-TMAPS['end_systole_volume_corrected'] = TensorMap('end_systole_volume_corrected', group='continuous', activation='linear',
-                                    loss='logcosh', channel_map={'end_systole_volume_corrected': 0},
-                                    normalization={'mean': 47.0, 'std': 10.0})
-TMAPS['end_diastole_volume_corrected'] = TensorMap('end_diastole_volume_corrected', group='continuous', activation='linear',
-                                     loss='logcosh', channel_map={'end_diastole_volume_corrected': 0},
-                                     normalization={'mean': 142.0, 'std': 21.0})
-TMAPS['ejection_fraction_corrected'] = TensorMap('ejection_fraction_corrected', group='continuous', activation='linear',
-                                   normalization={'mean': 0.3, 'std': 0.02},
-                                   loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction_corrected': 0})
-TMAPS['ejection_fraction_correctedp'] = TensorMap('ejection_fraction_corrected', group='continuous', activation='linear',
-                                                 normalization={'mean': 0.3, 'std': 0.02}, loss='logcosh', loss_weight=1.0,
-                                                 channel_map={'ejection_fraction_corrected': 0},
-                                                 parents=['output_end_systole_volume_corrected_continuous',
-                                                          'output_end_diastole_volume_corrected_continuous'])
 
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', group='continuous', channel_map={'22402_Liver-fat-percentage_2_0': 0},
                                normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', loss='logcosh', loss_weight=1.0)
