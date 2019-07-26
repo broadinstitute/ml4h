@@ -498,6 +498,7 @@ def _write_tensors_from_dicoms(x,
 
     """
     views = defaultdict(list)
+    min_ideal_series = 9e9
     for dicom in os.listdir(dicom_folder):
         if os.path.splitext(dicom)[-1] != DICOM_EXT:
             continue
@@ -509,6 +510,8 @@ def _write_tensors_from_dicoms(x,
         elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
             views[series].append(d)
             stats[series] += 1
+        if series in MRI_LIVER_IDEAL_PROTOCOL:
+            min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
     diastoles = {}
     diastoles_pix = {}
@@ -545,7 +548,7 @@ def _write_tensors_from_dicoms(x,
             if v != MRI_TO_SEGMENT:
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
-                    slice_index = _slice_index_from_ideal_protocol(slicer)
+                    slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
 
                 if slice_index >= mri_data.shape[2]:
                     logging.info(f"got fugged up at:{v}, {mri_data.shape}")
@@ -633,8 +636,8 @@ def _is_mitral_valve_segmentation(d) -> bool:
     return d.ImagePositionPatient[0] < 0
 
 
-def _slice_index_from_ideal_protocol(d):
-    return 6*(d.InstanceNumber-1) + ((d.SeriesNumber-29)//2)
+def _slice_index_from_ideal_protocol(d, min_ideal_series):
+    return 6*(d.InstanceNumber-1) + ((d.SeriesNumber-min_ideal_series)//2)
 
 
 def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
