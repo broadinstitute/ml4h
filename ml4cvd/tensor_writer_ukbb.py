@@ -517,7 +517,7 @@ def _write_tensors_from_dicoms(x,
 
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
-        stats['mri shape:' + str(mri_shape)] += 1
+        stats[v + ' mri shape:' + str(mri_shape)] += 1
         if v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             x = views[v][0].Rows
             y = views[v][0].Columns
