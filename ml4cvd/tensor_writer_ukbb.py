@@ -48,7 +48,7 @@ MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine
                        'cine_segmented_sax_inlinevf']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_fitparams',  'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit']
-MRI_LIVER_IDEAL_PROTOCOL = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn_12bit']
+MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -522,6 +522,7 @@ def _write_tensors_from_dicoms(x,
             x = views[v][0].Rows
             y = views[v][0].Columns
             z = len(views[v])
+
         if v != MRI_TO_SEGMENT:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
         else:

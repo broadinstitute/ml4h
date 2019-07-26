@@ -254,8 +254,6 @@ TMAPS['lms_ideal_optimised_low_flip_6dyn'] = TensorMap('lms_ideal_optimised_low_
 TMAPS['lms_ideal_optimised_low_flip_6dyn_12bit'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_12bit', (160, 160, 10), group='root_array')
 TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', (160, 160, 10), group='root_array')
 TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', (160, 160, 10), group='root_array')
-TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', (160, 160, 10), group='root_array')
-TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', (160, 160, 10), group='root_array')
 
 TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
 TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
