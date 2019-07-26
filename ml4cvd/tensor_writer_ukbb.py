@@ -519,7 +519,7 @@ def _write_tensors_from_dicoms(x,
         if v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             x = views[v][0].Rows
             y = views[v][0].Columns
-
+            z = len(views[v])
         if v != MRI_TO_SEGMENT:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
         else:
