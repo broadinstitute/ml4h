@@ -634,7 +634,7 @@ def _is_mitral_valve_segmentation(d) -> bool:
 
 
 def _slice_index_from_ideal_protocol(d):
-    return (3*(d.InstanceNumber-1)) + (d.SeriesNumber % 6)//2
+    return 6*(d.InstanceNumber-1) + ((d.SeriesNumber-29)//2)
 
 
 def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
