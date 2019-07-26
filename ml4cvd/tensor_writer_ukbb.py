@@ -199,7 +199,9 @@ def _sample_has_mris(zip_folder, sample_id) -> bool:
         zip_folder + sample_str + '_20209_0_0.zip') or os.path.exists(
         zip_folder + sample_str + '_20209_1_0.zip') or os.path.exists(
         zip_folder + sample_str + '_20203_2_0.zip') or os.path.exists(
-        zip_folder + sample_str + '_20208_2_0.zip')
+        zip_folder + sample_str + '_20208_2_0.zip') or os.path.exists(
+        zip_folder + sample_str + '_20204_2_0.zip') or os.path.exists(
+        zip_folder + sample_str + '_20254_2_0.zip')
 
 
 def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
