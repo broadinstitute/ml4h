@@ -45,8 +45,9 @@ MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
-                       'cine_segmented_sax_inlinevf', 'gre_mullti_echo_10_te_liver', 'gre_mullti_echo_10_te_liver_12bit']
-
+                       'cine_segmented_sax_inlinevf']
+MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i_liver','shmolli_192i_liver_fitparams',  'shmolli_192i_liver_t1map']
+MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_liver_12bit']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -500,12 +501,12 @@ def _write_tensors_from_dicoms(x,
         if os.path.splitext(dicom)[-1] != DICOM_EXT:
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
-        if d.SeriesDescription.lower() in MRI_SERIES_TO_WRITE:
-            if d.SeriesDescription.lower() == 'gre_mullti_echo_10_te_liver' and d.LargestImagePixelValue > 1024:
-                views[d.SeriesDescription.lower() + '_12bit'].append(d)
-            else:
-                views[d.SeriesDescription.lower()].append(d)
-            stats[d.SeriesDescription.lower()] += 1
+        series = d.SeriesDescription.lower().replace(' ', '_')
+        if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 1024:
+            views[d.SeriesDescription.lower() + '_12bit'].append(d)
+        elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
+            views[d.SeriesDescription.lower()].append(d)
+        stats[series] += 1
 
     diastoles = {}
     diastoles_pix = {}
@@ -515,7 +516,10 @@ def _write_tensors_from_dicoms(x,
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         stats['mri shape:' + str(mri_shape)] += 1
-
+        if v in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
+            x = views[v][0].Rows
+            y = views[v][0].Columns
+            
         if v != MRI_TO_SEGMENT:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
         else:
@@ -523,14 +527,14 @@ def _write_tensors_from_dicoms(x,
             full_mask = np.zeros((x, y), dtype=np.float32)
 
         for slicer in views[v]:
-            if MRI_PIXEL_WIDTH not in hd5 and 'liver' not in v:
+            if MRI_PIXEL_WIDTH not in hd5 and v in MRI_SERIES_TO_WRITE:
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT not in hd5 and 'liver' not in v:
+            if MRI_PIXEL_HEIGHT not in hd5 and v in MRI_SERIES_TO_WRITE:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
-            if MRI_PIXEL_WIDTH + '_liver' not in hd5 and 'liver' in v:
-                hd5.create_dataset(MRI_PIXEL_WIDTH + '_liver', data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT + '_liver' not in hd5 and 'liver' in v:
-                hd5.create_dataset(MRI_PIXEL_HEIGHT + '_liver', data=float(slicer.PixelSpacing[1]))
+            if MRI_PIXEL_WIDTH + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+                hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
+            if MRI_PIXEL_HEIGHT + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+                hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
             sx = min(slicer.Rows, x)
             sy = min(slicer.Columns, y)
