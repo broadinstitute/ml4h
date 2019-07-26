@@ -502,10 +502,10 @@ def _write_tensors_from_dicoms(x,
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
         series = d.SeriesDescription.lower().replace(' ', '_')
-        if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 1024:
-            views[d.SeriesDescription.lower() + '_12bit'].append(d)
+        if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
+            views[series + '_12bit'].append(d)
         elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
-            views[d.SeriesDescription.lower()].append(d)
+            views[series].append(d)
         stats[series] += 1
 
     diastoles = {}
