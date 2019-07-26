@@ -546,6 +546,10 @@ def _write_tensors_from_dicoms(x,
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer)
+
+                if slice_index >= mri_data.shape[2]:
+                    logging.info(f"got fugged up at:{v}, {mri_data.shape}")
+                    slice_index = mri_data.shape[2] - 1
                 mri_data[:sx, :sy, slice_index] = slice_data
             elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
                 if _is_mitral_valve_segmentation(slicer):
@@ -630,7 +634,7 @@ def _is_mitral_valve_segmentation(d) -> bool:
 
 
 def _slice_index_from_ideal_protocol(d):
-    return (3*(d.InstanceNumber-1)) + (d.SeriesNumber%6)//2
+    return (3*(d.InstanceNumber-1)) + (d.SeriesNumber % 6)//2
 
 
 def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
