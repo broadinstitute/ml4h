@@ -36,7 +36,7 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
         for source_file in os.listdir(source_folder):
             if not source_file.endswith(TENSOR_EXT):
                 continue
-            if not min_sample_id <= int(os.path.splitext(source_file)[0]) < max_sample_id:
+            if not (min_sample_id <= int(os.path.splitext(source_file)[0]) < max_sample_id):
                 continue
             if (intersect or inplace) and source_file not in sample_set:
                 continue
@@ -49,15 +49,15 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
                         logging.warning(f"Key error at {source_file} trying to write to:{destination}")
                     except RuntimeError:
                         logging.warning(f"RuntimeError error at {source_file} trying to write to:{destination}")
+        logging.info(f"Done copying source folder {source_folder}")
 
 
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR):
     for k in source_hd5[group_path]:
-
         if isinstance(source_hd5[group_path][k], h5py.Dataset):
             destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
         else:
-            logging.debug(f"copying group {group_path + k}")
+            logging.info(f"copying group {group_path + k}")
             _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR)
 
 
