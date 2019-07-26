@@ -519,7 +519,7 @@ def _write_tensors_from_dicoms(x,
         if v in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
             x = views[v][0].Rows
             y = views[v][0].Columns
-            
+
         if v != MRI_TO_SEGMENT:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
         else:
@@ -531,9 +531,9 @@ def _write_tensors_from_dicoms(x,
                 hd5.create_dataset(MRI_PIXEL_WIDTH, data=float(slicer.PixelSpacing[0]))
             if MRI_PIXEL_HEIGHT not in hd5 and v in MRI_SERIES_TO_WRITE:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT, data=float(slicer.PixelSpacing[1]))
-            if MRI_PIXEL_WIDTH + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            if MRI_PIXEL_WIDTH + '_' + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
                 hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
-            if MRI_PIXEL_HEIGHT + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
                 hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
             sx = min(slicer.Rows, x)
