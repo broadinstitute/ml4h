@@ -48,6 +48,7 @@ MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine
                        'cine_segmented_sax_inlinevf']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_fitparams',  'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit']
+MRI_LIVER_IDEAL_PROTOCOL = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -502,11 +503,12 @@ def _write_tensors_from_dicoms(x,
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
         series = d.SeriesDescription.lower().replace(' ', '_')
-        if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
+        if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 1024:
             views[series + '_12bit'].append(d)
+            stats[series + '_12bit'] += 1
         elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
             views[series].append(d)
-        stats[series] += 1
+            stats[series] += 1
 
     diastoles = {}
     diastoles_pix = {}
@@ -540,7 +542,10 @@ def _write_tensors_from_dicoms(x,
             sy = min(slicer.Columns, y)
             slice_data = slicer.pixel_array.astype(np.float32)[:sx, :sy]
             if v != MRI_TO_SEGMENT:
-                mri_data[:sx, :sy, slicer.InstanceNumber - 1] = slice_data
+                slice_index = slicer.InstanceNumber - 1
+                if v in MRI_LIVER_IDEAL_PROTOCOL:
+                    slice_index = _slice_index_from_ideal_protocol(slicer)
+                mri_data[:sx, :sy, slice_index] = slice_data
             elif v == MRI_TO_SEGMENT and _has_overlay(slicer):
                 if _is_mitral_valve_segmentation(slicer):
                     stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
@@ -621,6 +626,10 @@ def _has_overlay(d) -> bool:
 
 def _is_mitral_valve_segmentation(d) -> bool:
     return d.ImagePositionPatient[0] < 0
+
+
+def _slice_index_from_ideal_protocol(d):
+    return (3*(d.InstanceNumber-1)) + (d.SeriesNumber%6)//2
 
 
 def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
