@@ -917,7 +917,7 @@ def append_float_csv(tensors, csv_file, group, delimiter):
         logging.info(f"CSV of floats header:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
-            data_maps[sample_id] = {fields[i]: float(row[i+1]) for i in range(len(fields))}
+            data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
 
     logging.info(f"Data maps:{len(data_maps)}")
     for tp in os.listdir(tensors):
@@ -928,16 +928,16 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-                        if field == 'annotation':
-                            continue
-                        hd5_key = group + HD5_GROUP_CHAR + field
-                        if field in hd5[group]:
-                            data = hd5[hd5_key]
-                            data[0] = data_maps[sample_id][field]
-                            stats['updated'] += 1
-                        else:
-                            hd5.create_dataset(hd5_key, data=[data_maps[sample_id][field]])
-                            stats['created'] += 1
+                        value = _to_float_or_false(data_maps[sample_id][field])
+                        if value:
+                            hd5_key = group + HD5_GROUP_CHAR + field
+                            if field in hd5[group]:
+                                data = hd5[hd5_key]
+                                data[0] = value
+                                stats['updated'] += 1
+                            else:
+                                hd5.create_dataset(hd5_key, data=[value])
+                                stats['created'] += 1
                 else:
                     stats['sample id missing']
         except:
