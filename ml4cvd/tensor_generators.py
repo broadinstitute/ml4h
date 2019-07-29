@@ -106,7 +106,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except RuntimeError:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            _log_first_error(stats)
+            _log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
@@ -187,7 +187,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                     stats['ValueError:'+str(e)] += 1
                 except RuntimeError:
                     stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-                _log_first_error(stats)
+                _log_first_error(stats, tp)
         
         for i, tensor_list in enumerate(paths_lists):
             if len(tensor_list) <= stats['train_paths_'+str(i)]:
@@ -366,8 +366,9 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     return generate_train, generate_valid, generate_test
 
 
-def _log_first_error(stats: Counter):
+def _log_first_error(stats: Counter, tensor_path: str):
     for k in stats:
         if 'Error' in k and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
             logging.info(f"Got first error: {k}")
+            logging.info(f"At tensor path: {tensor_path}")
