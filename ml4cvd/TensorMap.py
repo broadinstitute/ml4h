@@ -464,6 +464,11 @@ class TensorMap(object):
             return self.zero_mean_std1(tensor)
         elif self.name == 'aligned_distance':
             return np.zeros((1,), dtype=np.float32)
+        elif self.name == 'lms_ideal_optimised_low_flip_6dyn_4slice':
+            whole_liver = np.array(hd5['lms_ideal_optimised_low_flip_6dyn'])
+            cur_index = np.random.randint(whole_liver.shape[2] - self.shape[2])
+            tensor = whole_liver[:, :, cur_index:cur_index+4]
+            return self.zero_mean_std1(tensor)
         elif self.name == 'mri_slice':
             cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
             tensor = np.zeros(self.shape, dtype=np.float32)

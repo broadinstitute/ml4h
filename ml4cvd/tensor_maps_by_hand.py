@@ -252,10 +252,13 @@ TMAPS['liver_fat_sentinel'] = TensorMap('22402_Liver-fat-percentage_2_0', group=
                                normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
 TMAPS['liver_fat_echo_predicted'] = TensorMap('liver_fat_sentinel_prediction', group='continuous', channel_map={'liver_fat_sentinel_prediction': 0},
                                normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', loss='logcosh')
+
 TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', (160, 160, 10), group='root_array')
 TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', (160, 160, 10), group='root_array')
 TMAPS['lms_ideal_optimised_low_flip_6dyn'] = TensorMap('lms_ideal_optimised_low_flip_6dyn', (232, 256, 36), group='root_array')
 TMAPS['lms_ideal_optimised_low_flip_6dyn_12bit'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_12bit', (232, 256, 36), group='root_array')
+TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_4slice', (232, 256, 4))
+
 TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', (384, 288, 7), group='root_array')
 TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (384, 288, 7), group='root_array')
 TMAPS['shmolli_192i_fitparams'] = TensorMap('shmolli_192i_fitparams', (384, 288, 7), group='root_array')
