@@ -914,10 +914,10 @@ def append_float_csv(tensors, csv_file, group, delimiter):
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
-        logging.info(f"CSV of MRI volumes header:{fields}")
+        logging.info(f"CSV of floats header:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
-            data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
+            data_maps[sample_id] = {fields[i]: float(row[i+1]) for i in range(len(fields))}
 
     logging.info(f"Data maps:{len(data_maps)}")
     for tp in os.listdir(tensors):
@@ -933,14 +933,10 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                         hd5_key = group + HD5_GROUP_CHAR + field
                         if field in hd5[group]:
                             data = hd5[hd5_key]
-                            if data_maps[sample_id]['annotation'] in ['unreviewed', 'good']:
-                                data[0] = float(data_maps[sample_id][field])
-                                stats['updated'] += 1
-                            else:
-                                data[0] = 0.0
-                                stats['zeroed'] += 1
+                            data[0] = data_maps[sample_id][field]
+                            stats['updated'] += 1
                         else:
-                            hd5.create_dataset(hd5_key, data=[float(data_maps[sample_id][field])])
+                            hd5.create_dataset(hd5_key, data=[data_maps[sample_id][field]])
                             stats['created'] += 1
                 else:
                     stats['sample id missing']
