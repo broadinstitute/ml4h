@@ -252,6 +252,8 @@ TMAPS['liver_fat_sentinel'] = TensorMap('22402_Liver-fat-percentage_2_0', group=
                                normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
 TMAPS['liver_fat_echo_predicted'] = TensorMap('liver_fat_sentinel_prediction', group='continuous', channel_map={'liver_fat_sentinel_prediction': 0},
                                normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', loss='logcosh')
+TMAPS['liver_fat_echo_predicted_sentinel'] = TensorMap('liver_fat_sentinel_prediction', group='continuous', channel_map={'liver_fat_sentinel_prediction': 0},
+                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
 
 TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', (160, 160, 10), group='root_array')
 TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', (160, 160, 10), group='root_array')
