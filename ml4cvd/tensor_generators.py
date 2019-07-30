@@ -275,10 +275,6 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
 
-    print("\n\nTest paths \n\n\n")
-    for tp in test_paths:
-        print(os.path.basename(os.path.splitext(tp)[0]))
-
     return train_paths, valid_paths, test_paths
 
 
