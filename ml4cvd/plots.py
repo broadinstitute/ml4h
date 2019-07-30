@@ -1,31 +1,32 @@
 # plots.py
 
 # Imports
-import operator
 import os
 import math
 import logging
 import hashlib
+import operator
 from textwrap import wrap
 from functools import reduce
 from itertools import islice, product
-from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 from collections import Counter, OrderedDict, defaultdict
+from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-#import seaborn as sns
-import matplotlib
+import seaborn as sns
 
+import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
+
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'

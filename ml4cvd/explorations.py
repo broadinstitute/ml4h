@@ -5,28 +5,26 @@ import os
 import csv
 import math
 import operator
+import datetime
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter
+from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import h5py
 import logging
-import datetime
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
-
-import matplotlib
-
-from ml4cvd.models import embed_model_predict
-
-matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
-import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from keras.models import Model
 
+import matplotlib
+matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
+import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
+
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.plots import evaluate_predictions, plot_histograms_in_pdf, plot_heatmap, subplot_rocs, subplot_scatters, plot_tsne
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, HD5_GROUP_CHAR
+from ml4cvd.models import embed_model_predict
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_tsne, evaluate_predictions, subplot_rocs, subplot_scatters
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR
 
 CSV_EXT = '.tsv'
 
@@ -150,11 +148,11 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
-        #         evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
-        # if len(rocs) > 1:
-        #     subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
-        # if len(scatters) > 1:
-        #     subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
+                evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
+        if len(rocs) > 1:
+            subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
+        if len(scatters) > 1:
+            subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
 
         embeddings = embed_model_predict(model, tensor_maps_in, 'embed', test_data, batch_size)
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
@@ -166,7 +164,7 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
-def plot_histograms_from_tensor_files_in_pdf(id: str,
+def plot_histograms_from_tensor_files_in_pdf(run_id: str,
                                              tensor_folder: str,
                                              output_folder: str,
                                              max_samples: int = None) -> None:
@@ -176,10 +174,9 @@ def plot_histograms_from_tensor_files_in_pdf(id: str,
     :param output_folder: folder containing the output plot
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
-
     stats, num_tensor_files = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...")
-    plot_histograms_in_pdf(stats, num_tensor_files, id, output_folder)
+    plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
 
 def plot_heatmap_from_tensor_files(id: str,
@@ -194,13 +191,12 @@ def plot_heatmap_from_tensor_files(id: str,
     :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
-
     stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples, ['0'], 0)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...")
     plot_heatmap(stats, id, min_samples, output_folder)
 
 
-def tabulate_correlations_from_tensor_files(id: str,
+def tabulate_correlations_from_tensor_files(run_id: str,
                                             tensor_folder: str,
                                             output_folder: str,
                                             min_samples: int,
@@ -212,10 +208,9 @@ def tabulate_correlations_from_tensor_files(id: str,
     :param min_samples: calculate correlation coefficient only if both fields have values from that many common samples
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
-
     stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...")
-    _tabulate_correlations(stats, id, min_samples, output_folder)
+    _tabulate_correlations(stats, run_id, min_samples, output_folder)
 
 
 def mri_dates(tensors: str, output_folder: str, run_id: str):
