@@ -571,11 +571,12 @@ def make_translation_model(model_file: str,
         elif len(tm.shape) == 3:
             print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Pooling2D'))
             print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Conv2D'))
-
+            all_filters = conv_layers + dense_blocks
             for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling2D'))):
+                _get_layer_index_offset_str(name, 1)
                 if u_connect:
                     last_convolution2d = UpSampling2D((pool_x, pool_y))(last_convolution2d)
-                    last_convolution2d = Conv2D(filters=conv_layers[i], kernel_size=(conv_x, conv_y), activation=activation, padding=padding)(last_convolution2d)
+                    last_convolution2d = Conv2D(filters=all_filters[-(1+i)], kernel_size=(conv_x, conv_y), activation=activation, padding=padding)(last_convolution2d)
                     last_convolution2d = concatenate([last_convolution2d, layers[name]])
                 else:
                     last_convolution2d = UpSampling2D((pool_x, pool_y))(last_convolution2d)
