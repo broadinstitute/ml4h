@@ -552,6 +552,7 @@ def make_translation_model(model_file: str,
     loss_weights = []
     output_predictions = {}
     output_tensor_maps_to_process = tensor_maps_out.copy()
+    print(layers)
     while len(output_tensor_maps_to_process) > 0:
         tm = output_tensor_maps_to_process.pop(0)
 
@@ -568,6 +569,8 @@ def make_translation_model(model_file: str,
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif len(tm.shape) == 3:
             print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'MaxPool2D'))
+            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Conv2D'))
+
             for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'MaxPool2D'))):
                 last_convolution2d = layers['Conv2D' + JOIN_CHAR + _get_layer_index_offset_str(name, 1)]
                 if u_connect:
@@ -862,6 +865,8 @@ def _get_layer_index_offset_str(named_layer, offset):
 
 
 def _get_layer_kind_sorted(named_layers, kind):
+    print(sorted(named_layers.items(), key=operator.itemgetter(0)))
+    print('annnd ::', kind)
     return [named_layers[k] for k, _ in sorted(named_layers.items(), key=operator.itemgetter(0)) if kind in k]
 
 
