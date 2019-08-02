@@ -525,7 +525,7 @@ class TensorMap(object):
             continuous_data[:] = float(hd5['continuous'][self.name][0])
             if continuous_data[0] == 0 and (self.sentinel == None and self.name in CONTINUOUS_NEVER_ZERO):
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
-            elif self.sentinel is not None:
+            elif continuous_data[0] == 0 and self.sentinel is not None:
                 continuous_data[:] = self.sentinel
                 return continuous_data
             return self.normalize(continuous_data)
