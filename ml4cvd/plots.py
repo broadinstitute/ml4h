@@ -236,8 +236,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
     logging.info(f"Saved scatters together at: {figure_path}")
 
 
-def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]],
-                                prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
+                                alpha: float = 0.5):
     row = 0
     col = 0
     total_plots = len(scatters)
@@ -251,6 +251,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
             r_sqr = pearson * pearson
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
             axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
+            axes[row, col].legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
@@ -261,7 +262,6 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
-        plt.legend(loc="upper left")
 
         row += 1
         if row == rows:
