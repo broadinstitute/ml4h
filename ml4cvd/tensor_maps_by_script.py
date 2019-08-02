@@ -8,8 +8,8 @@ from ml4cvd.defines import MRI_SEGMENTED_CHANNEL_MAP
 
 
 TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-lax', (256, 256, 48), dependent_map=TMAPS['lax-view-detect'])
-TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-sax', (256, 256, 48), dependent_map=TMAPS['sax-view-detect'])
-TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-slax', (256, 256, 48), dependent_map=TMAPS['slax-view-detect'])
+TMAPS['mri-xyt-sax'] = TensorMap('mri-xyt-sax', (256, 256, 48), dependent_map=TMAPS['sax-view-detect'])
+TMAPS['mri-xyt-slax'] = TensorMap('mri-xyt-slax', (256, 256, 48), dependent_map=TMAPS['slax-view-detect'])
 TMAPS['mri_slice_segmented'] = TensorMap('mri_slice_segmented', (256, 256, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['mri_slice_segmented_weighted'] = TensorMap('mri_slice_segmented', (256, 256, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([20.0, 250.0, 250.0], 'mri_slice_segmented'))
 TMAPS['mri_slice'] = TensorMap('mri_slice', (256, 256, 1), dependent_map=TMAPS['mri_slice_segmented'])
