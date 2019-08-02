@@ -527,7 +527,8 @@ def make_translation_model(model_file: str,
             last_convolution3d = _conv_block3d(input_tensors[j], [], conv_layers, max_pools, res_layers, activation, conv_bn, (conv_x, conv_y, conv_z), conv_dropout, padding)
             input_multimodal.append(Flatten()(last_convolution3d))
         elif len(tm.shape) == 3:
-            _conv_block2d_new(input_tensors[j], layers, conv_layers, max_pools, res_layers, activation, conv_bn, (conv_x, conv_y), conv_dropout, padding)
+            last_convolution2d = _conv_block2d_new(input_tensors[j], layers, conv_layers, max_pools, res_layers, activation, conv_bn, (conv_x, conv_y), conv_dropout, padding)
+            last_convolution2d = _dense_block2d_new(last_convolution2d, layers, dense_blocks, block_size, activation, conv_bn, (conv_x, conv_y), (pool_x, pool_y), conv_dropout, padding)
         elif len(tm.shape) == 2:
             last_convolution1d = _conv_block1d(input_tensors[j], [],  conv_layers, max_pools, res_layers, activation, conv_bn, conv_width, conv_dropout, padding)
             input_multimodal.append(Flatten()(last_convolution1d))
@@ -568,11 +569,10 @@ def make_translation_model(model_file: str,
             conv_label = Conv3D(tm.shape[channel_axis], (1, 1, 1), activation="linear")(last_convolution3d)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif len(tm.shape) == 3:
-            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'MaxPool2D'))
+            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'MaxPooling2D'))
             print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Conv2D'))
 
-            for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'MaxPool2D'))):
-                last_convolution2d = layers['Conv2D' + JOIN_CHAR + _get_layer_index_offset_str(name, 1)]
+            for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'MaxPooling2D'))):
                 if u_connect:
                     last_convolution2d = UpSampling2D((pool_x, pool_y))(last_convolution2d)
                     last_convolution2d = Conv2D(filters=conv_layers[i], kernel_size=(conv_x, conv_y), activation=activation, padding=padding)(last_convolution2d)
@@ -840,7 +840,6 @@ def _conv_block2d_new(x: K.placeholder,
             layers[f"SpatialDropout2D_{str(len(layers))}"] = SpatialDropout2D(conv_dropout)(x)
         if i >= max_pool_diff:
             pool_size = (max_pools[i - max_pool_diff], max_pools[i - max_pool_diff])
-            layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation=activation, padding=padding)
             layers[f"MaxPooling2D_{str(len(layers))}"] = MaxPooling2D(pool_size=pool_size)(x)
             if i >= residual_diff:
                 layers[f"MaxPooling2D_{str(len(layers))}"] = MaxPooling2D(pool_size=pool_size)(residual2d)
@@ -865,8 +864,6 @@ def _get_layer_index_offset_str(named_layer, offset):
 
 
 def _get_layer_kind_sorted(named_layers, kind):
-    print(sorted(named_layers.items(), key=operator.itemgetter(0)))
-    print('annnd ::', kind)
     return [named_layers[k] for k, _ in sorted(named_layers.items(), key=operator.itemgetter(0)) if kind in k]
 
 
@@ -905,6 +902,40 @@ def _dense_block2d(x: K.placeholder,
                 dense_connections += [x]
                 x = concatenate(dense_connections, axis=CHANNEL_AXIS)
     return x
+
+
+def _dense_block2d_new(x: K.placeholder,
+                       layers: Dict[str, K.placeholder],
+                       dense_blocks: List[int],
+                       block_size: int,
+                       activation: str,
+                       conv_bn: bool,
+                       kernel: Tuple[int, int],
+                       pool_size: Tuple[int, int],
+                       conv_dropout: float,
+                       padding: str,
+                       pool_mode='average'):
+    for db_filters in dense_blocks:
+        for i in range(block_size):
+            residual2d = x
+            if conv_bn and i > 0:
+                layers[f"BatchNormalization_{str(len(layers))}"] = BatchNormalization(axis=CHANNEL_AXIS)(x)
+                layers[f"Activation_{str(len(layers))}"] = Activation(activation)(x)
+                x = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation='linear', padding=padding)(x)
+            else:
+                x = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation=activation, padding=padding)(x)
+            if conv_dropout > 0:
+                x = layers[f"SpatialDropout2D_{str(len(layers))}"] = SpatialDropout2D(conv_dropout)(x)
+
+            if i == 0:
+                if pool_mode == 'average':
+                    x = layers[f"AveragePooling2D{JOIN_CHAR}{str(len(layers))}"] = AveragePooling2D(pool_size, strides=pool_size)(x)
+                elif pool_mode == 'max':
+                    x = layers[f"MaxPooling2D{JOIN_CHAR}{str(len(layers))}"] = MaxPooling2D(pool_size, strides=pool_size)(x)
+                dense_connections = [x]
+            else:
+                dense_connections += [x]
+                layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
 
 
 def _conv_block1d(x: K.placeholder,
