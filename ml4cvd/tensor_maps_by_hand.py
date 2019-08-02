@@ -292,9 +292,9 @@ TMAPS['ejection_fractionp'] = TensorMap('ejection_fraction', group='continuous',
                                     parents=['output_end_systole_volume_continuous',
                                              'output_end_diastole_volume_continuous'])
 
-TMAPS['cine_segmented_lax_2ch'] = TensorMap('lax-cine_segmented_lax_2ch', (256, 256, 48), group='root_array')
-TMAPS['cine_segmented_lax_3ch'] = TensorMap('lax-cine_segmented_lax_2ch', (256, 256, 48), group='root_array')
-TMAPS['cine_segmented_lax_4ch'] = TensorMap('lax-cine_segmented_lax_2ch', (256, 256, 48), group='root_array')
+TMAPS['cine_segmented_lax_2ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 48), group='root_array')
+TMAPS['cine_segmented_lax_3ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 48), group='root_array')
+TMAPS['cine_segmented_lax_4ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 48), group='root_array')
 TMAPS['lax-view-detect'] = TensorMap('lax-view-detect', group='categorical',
                                  channel_map={'cine_segmented_lax_2ch': 0, 'cine_segmented_lax_3ch': 1,
                                               'cine_segmented_lax_4ch': 2})
