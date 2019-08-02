@@ -226,7 +226,6 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
 
 
-
 # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
 TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
