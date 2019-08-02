@@ -567,6 +567,7 @@ def make_translation_model(model_file: str,
             conv_label = Conv3D(tm.shape[channel_axis], (1, 1, 1), activation="linear")(last_convolution3d)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif len(tm.shape) == 3:
+            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'MaxPool2D'))
             for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'MaxPool2D'))):
                 last_convolution2d = layers['Conv2D' + JOIN_CHAR + _get_layer_index_offset_str(name, 1)]
                 if u_connect:
