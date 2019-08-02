@@ -834,24 +834,24 @@ def _conv_block2d_new(x: K.placeholder,
     for i, c in enumerate(conv_layers):
         residual2d = x
         if conv_bn and i > 0:
-            layers[f"BatchNormalization_{str(len(layers))}"] = BatchNormalization(axis=CHANNEL_AXIS)(x)
-            layers[f"Activation_{str(len(layers))}"] = Activation(activation)(x)
-            layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation='linear', padding=padding)(x)
+            x = layers[f"BatchNormalization_{str(len(layers))}"] = BatchNormalization(axis=CHANNEL_AXIS)(x)
+            x = layers[f"Activation_{str(len(layers))}"] = Activation(activation)(x)
+            x = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation='linear', padding=padding)(x)
         else:
-            layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation=activation, padding=padding)(x)
+            x = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=c, kernel_size=kernel, activation=activation, padding=padding)(x)
         if conv_dropout > 0:
-            layers[f"SpatialDropout2D_{str(len(layers))}"] = SpatialDropout2D(conv_dropout)(x)
+            x = layers[f"SpatialDropout2D_{str(len(layers))}"] = SpatialDropout2D(conv_dropout)(x)
         if i >= max_pool_diff:
             pool_size = (max_pools[i - max_pool_diff], max_pools[i - max_pool_diff])
-            layers[f"MaxPooling2D_{str(len(layers))}"] = MaxPooling2D(pool_size=pool_size)(x)
+            x = layers[f"MaxPooling2D_{str(len(layers))}"] = MaxPooling2D(pool_size=pool_size)(x)
             if i >= residual_diff:
-                layers[f"MaxPooling2D_{str(len(layers))}"] = MaxPooling2D(pool_size=pool_size)(residual2d)
+                residual2d = layers[f"MaxPooling2D_{str(len(layers))}"] = MaxPooling2D(pool_size=pool_size)(residual2d)
         if i >= residual_diff:
             if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual2d)[CHANNEL_AXIS]:
-                layers[f"add_{str(len(layers))}"] = add([x, residual2d])
+                x = layers[f"add_{str(len(layers))}"] = add([x, residual2d])
             else:
-                layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual2d)
-                layers[f"add_{str(len(layers))}"] = add([x, residual2d])
+                residual2d = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual2d)
+                x = layers[f"add_{str(len(layers))}"] = add([x, residual2d])
 
     return _get_last_layer(layers)
 
@@ -934,8 +934,8 @@ def _dense_block2d_new(x: K.placeholder,
     for db_filters in dense_blocks:
         for i in range(block_size):
             if conv_bn and i > 0:
-                layers[f"BatchNormalization_{str(len(layers))}"] = BatchNormalization(axis=CHANNEL_AXIS)(x)
-                layers[f"Activation_{str(len(layers))}"] = Activation(activation)(x)
+                x = layers[f"BatchNormalization_{str(len(layers))}"] = BatchNormalization(axis=CHANNEL_AXIS)(x)
+                x = layers[f"Activation_{str(len(layers))}"] = Activation(activation)(x)
                 x = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=db_filters, kernel_size=kernel, activation='linear', padding=padding)(x)
             else:
                 x = layers[f"Conv2D_{str(len(layers))}"] = Conv2D(filters=db_filters, kernel_size=kernel, activation=activation, padding=padding)(x)
@@ -950,7 +950,7 @@ def _dense_block2d_new(x: K.placeholder,
                 dense_connections = [x]
             else:
                 dense_connections += [x]
-                layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+                x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
     return _get_last_layer(layers)
 
 def _conv_block1d(x: K.placeholder,
