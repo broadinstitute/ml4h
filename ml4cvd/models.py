@@ -877,7 +877,7 @@ def _get_layer_index_offset_str(named_layer, offset):
 
 
 def _get_layer_kind_sorted(named_layers, kind):
-    return [named_layers[k] for k, _ in sorted(named_layers.items(), key=operator.itemgetter(0)) if kind in k]
+    return [k for k, _ in sorted(named_layers.items(), key=operator.itemgetter(0)) if kind in k]
 
 
 def _dense_block2d(x: K.placeholder,
