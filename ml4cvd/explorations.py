@@ -65,23 +65,23 @@ def sort_csv(input_csv_file, volume_csv):
             [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
 
 
-def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap],
-                        tensor_maps_out: List[TensorMap],
-                        data: Dict[str, np.ndarray],
-                        labels: Dict[str, np.ndarray],
-                        paths: List[str],
-                        folder: str):
+def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
+                        labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
     for y, tm in zip(predictions, tensor_maps_out):
+        if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+            y = predictions
         logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if tm.is_categorical_any() and len(tm.shape) == 3:
+        if len(tm.shape) == 3:
+            input_map = None
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
-                    break
+                    input_map = tm
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(labels[tm.output_name()][i], axis=-1))
                 plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(y[i], axis=-1))
-                plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[im.input_name()][i, :, :, 0])
+                if input_map is not None:
+                    plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[input_map.input_name()][i, :, :, 0])
 
         elif tm.is_categorical_any() and len(tm.shape) == 4:
             for im in tensor_maps_in:
