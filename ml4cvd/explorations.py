@@ -75,9 +75,9 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             input_map = None
             for im in tensor_maps_in:
                 if tm.is_categorical_any() and im.dependent_map == tm:
-                    input_map = tm
+                    input_map = im
                 elif len(tm.shape) == len(im.shape):
-                    input_map = tm
+                    input_map = im
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical_any():
