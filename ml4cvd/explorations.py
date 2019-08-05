@@ -78,11 +78,14 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                     input_map = tm
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(labels[tm.output_name()][i], axis=-1))
-                plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(y[i], axis=-1))
-                if input_map is not None:
-                    plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[input_map.input_name()][i, :, :, 0])
-
+                if tm.is_categorical_any():
+                    plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(labels[tm.output_name()][i], axis=-1))
+                    plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(y[i], axis=-1))
+                    if input_map is not None:
+                        plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[input_map.input_name()][i, :, :, 0])
+                else:
+                    plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT, labels[tm.output_name()][i])
+                    plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, y[i])
         elif tm.is_categorical_any() and len(tm.shape) == 4:
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
