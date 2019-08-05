@@ -79,8 +79,7 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                     break
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT,
-                           np.argmax(labels[tm.output_name()][i], axis=-1))
+                plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(labels[tm.output_name()][i], axis=-1))
                 plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, np.argmax(y[i], axis=-1))
                 plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[im.input_name()][i, :, :, 0])
 
