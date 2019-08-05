@@ -84,8 +84,9 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                     if input_map is not None:
                         plt.imsave(folder + sample_id + '_mri_slice_{0:03d}'.format(i)+IMAGE_EXT, data[input_map.input_name()][i, :, :, 0])
                 else:
-                    plt.imsave(folder + sample_id + '_truth_{0:03d}'.format(i) + IMAGE_EXT, labels[tm.output_name()][i])
-                    plt.imsave(folder + sample_id + '_prediction_{0:03d}'.format(i) + IMAGE_EXT, y[i])
+                    for j in range(y.shape[3]):
+                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j])
+                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j])
         elif tm.is_categorical_any() and len(tm.shape) == 4:
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
