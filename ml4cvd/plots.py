@@ -565,7 +565,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     lw = 3
-    plt.figure(figsize=(28, 22))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -595,7 +595,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 3
-    plt.figure(figsize=(28, 22))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)

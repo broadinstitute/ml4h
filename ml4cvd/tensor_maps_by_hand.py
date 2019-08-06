@@ -70,7 +70,7 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
 
 TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythm'),
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3})
-TMAPS['ecg_coarse'] = TensorMap('ecg_coarse', group='categorical', loss=weighted_crossentropy([1.0, 120.0, 10.0], 'ecg_coarse'),
+TMAPS['ecg_coarse'] = TensorMap('ecg_coarse', group='categorical', loss=weighted_crossentropy([1.0, 20.0, 10.0], 'ecg_coarse'),
                                 channel_map={'Sinus_rhythm': 0, 'Atrial_fibrillation': 1, 'Other_rhythm': 2})
 TMAPS['ecg_normal'] = TensorMap('ecg_normal', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
                   channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3})
@@ -263,7 +263,7 @@ TMAPS['lms_ideal_optimised_low_flip_6dyn_12bit'] = TensorMap('lms_ideal_optimise
 TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_4slice', (232, 256, 4), loss='logcosh')
 
 TMAPS['t1_p2_1mm_fov256_sag_ti_880'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880', (256, 256, 416), group='root_array')
-TMAPS['t1_brain_208z'] = TensorMap('t1_brain_208z', (256, 256, 208), group='root_array')
+TMAPS['t1_brain_208z'] = TensorMap('t1_brain_208z', (256, 256, 208))
 
 TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', (288, 384, 7), group='root_array')
 TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (288, 384, 7), group='root_array')
