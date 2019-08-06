@@ -514,6 +514,10 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
+        elif self.name == 't1_brain_208z':
+            tensor = np.zeros(self.shape, dtype=np.float32)
+            tensor[:] = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[:, :, :self.shape[-1]]
+            return self.zero_mean_std1(tensor)
         elif self.is_root_array():
             tensor = np.zeros(self.shape, dtype=np.float32)
             tensor[:] = np.array(hd5[self.name], dtype=np.float32)
