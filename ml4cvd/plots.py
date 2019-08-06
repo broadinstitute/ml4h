@@ -94,8 +94,8 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
-    # if tm.name == 'median':
-    #     plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
+    if tm.name == 'median':
+        plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
     #     plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
 
     return performance_metrics
