@@ -94,8 +94,8 @@ TMAPS['fine_rhythms'] = TensorMap('fine_rhythms', group='ecg_categorical_interpr
                                                 'Sinus rhythm with fusion complexes': 3, 'Sinus rhythm with marked sinus arrhythmia': 4,
                                                 'Sinus rhythm with short PR': 5, 'Sinus rhythm with sinus arrhythmia': 6,
                                                 'Sinus rhythm with 1st degree AV block': 7, 'Sinus tachycardia': 8,
-                                                'Marked sinus bradycardia': 9, 'Sinus bradycardia': 10, 'Atrial fibrillation': 11},
-                                  loss=weighted_crossentropy([1.0, 2.0, 1.0, 10.0, 5.0, 10.0, 5.0, 10.0, 10.0, 3.0, 3.0, 10.0, 10.0], 'fine_rhythms'))
+                                                'Marked sinus bradycardia': 9, 'Sinus bradycardia': 10, 'Atrial fibrillation': 11})
+                                  #loss=weighted_crossentropy([1.0, 2.0, 1.0, 10.0, 5.0, 10.0, 5.0, 10.0, 10.0, 3.0, 3.0, 10.0], 'fine_rhythms'))
 
 TMAPS['incomplete_right_bundle_branch_block'] = TensorMap('incomplete_right_bundle_branch_block', group='ecg_categorical_interpretation',
                               channel_map={'no_incomplete_right_bundle_branch_block': 0, 'Incomplete right bundle branch block': 1},
