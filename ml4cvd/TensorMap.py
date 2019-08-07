@@ -227,7 +227,7 @@ class TensorMap(object):
         return self.group == 'categorical_flag'
 
     def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag()
+        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation()
 
     def is_continuous(self):
         return self.group == 'continuous'
@@ -249,6 +249,9 @@ class TensorMap(object):
 
     def is_ecg_rest(self):
         return self.group == 'ecg_rest'
+
+    def is_ecg_categorical_interpretation(self):
+        return self.group == 'ecg_categorical_interpretation'
 
     def is_ecg_bike(self):
         return self.group == 'ecg_bike'
@@ -546,7 +549,17 @@ class TensorMap(object):
                 return categorical_data
             categorical_data[self.channel_map['Other_rhythm']] = 1.0
             return categorical_data
-
+        elif self.is_ecg_categorical_interpretation():
+            categorical_data = np.zeros(self.shape, dtype=np.float32)
+            for channel in self.channel_map:
+                if channel in str(hd5[self.name][0]):
+                    categorical_data[self.channel_map[channel]] = 1.0
+                    return categorical_data
+            if 'no_' + self.name in self.channel_map:
+                categorical_data[self.channel_map['no_' + self.name]] = 1.0
+                return categorical_data
+            else:
+                raise ValueError(f"ECG categorical interpretation could not find any of these keys: {self.channel_map.keys()}")
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:

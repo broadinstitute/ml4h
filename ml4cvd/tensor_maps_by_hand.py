@@ -81,6 +81,53 @@ TMAPS['ecg_poor_data'] = TensorMap('ecg_poor_data', group='categorical', channel
 TMAPS['ecg_block'] = TensorMap('ecg_block', group='categorical', channel_map={'no_block': 0, 'block': 1},
                              loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'))
 
+TMAPS['fine_rhythms'] = TensorMap('fine_rhythms', group='ecg_categorical_interpretation',
+                                   channel_map={'no_fine_rhythms': 0, 'Sinus bradycardia': 1, 'Sinus rhythm with 1st degree AV block': 2,
+                                                'Sinus rhythm with fusion complexes': 3, 'Sinus rhythm with marked sinus arrhythmia': 4,
+                                                'Sinus rhythm with premature ventricular complexes': 5, 'Sinus rhythm with short PR': 6,
+                                                'Sinus rhythm with sinus arrhythmia': 7, 'Sinus tachycardia': 8, 'Marked sinus bradycardia': 9,
+                                                'Atrial fibrillation': 10, 'Normal sinus rhythm with sinus arrhythmia': 11})
+
+TMAPS['infarcts'] = TensorMap('infarcts', group='ecg_categorical_interpretation',
+                              channel_map={'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2, 'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5},
+                              loss=weighted_crossentropy([1.0, 8.0, 16.0, 8.0, 10.0, 10.0], 'infarcts'))
+
+TMAPS['incomplete_right_bundle_branch_block'] = TensorMap('incomplete_right_bundle_branch_block', group='ecg_categorical_interpretation',
+                              channel_map={'no_Incomplete right bundle branch block': 0, 'Incomplete right bundle branch block': 1},
+                              loss=weighted_crossentropy([1.0, 8.0], 'incomplete_right_bundle_branch_block'))
+
+TMAPS['anterior_blocks'] = TensorMap('anterior_blocks', group='ecg_categorical_interpretation',
+                              channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1, 'Left posterior fascicular block': 2},
+                              loss=weighted_crossentropy([1.0, 8.0, 8.0], 'anterior_blocks'))
+
+
+TMAPS['acute_mi'] = TensorMap('acute_mi', group='ecg_categorical_interpretation', channel_map={'no_ACUTE MI': 0, 'ACUTE MI': 1}, loss=weighted_crossentropy([1.0, 20.0], 'acute_mi'))
+
+TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy', group='ecg_categorical_interpretation',
+                              channel_map={'no_Left ventricular hypertrophy': 0, 'Left ventricular hypertrophy': 1},
+                              loss=weighted_crossentropy([1.0, 12.0], 'left_ventricular_hypertrophy'))
+TMAPS['left_atrial_enlargement'] = TensorMap('left_atrial_enlargement', group='ecg_categorical_interpretation',
+                              channel_map={'no_Left atrial enlargement': 0, 'Left atrial enlargement': 1},
+                              loss=weighted_crossentropy([1.0, 6.0], 'left_atrial_enlargement'))
+
+
+TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_Poor data quality': 0, 'Poor data quality': 1},
+                                       loss=weighted_crossentropy([1.0, 20.0], 'poor_data_quality'))
+TMAPS['prolonged_qt'] = TensorMap('prolonged_qt', group='ecg_categorical_interpretation', channel_map={'no_Prolonged QT': 0, 'Prolonged QT': 1},
+                                  loss=weighted_crossentropy([1.0, 20.0], 'prolonged_qt'))
+
+TMAPS['premature_atrial_complexes'] = TensorMap('premature_atrial_complexes', group='ecg_categorical_interpretation',
+                                                channel_map={'no_premature atrial complexes': 0, 'premature atrial complexes': 1},
+                                                loss=weighted_crossentropy([1.0, 20.0], 'premature_atrial_complexes'))
+TMAPS['premature_ventricular_complexes'] = TensorMap('premature_ventricular_complexes', group='ecg_categorical_interpretation',
+                                                channel_map={'no_premature ventricular complexes': 0, 'premature ventricular complexes': 1},
+                                                loss=weighted_crossentropy([1.0, 20.0], 'premature_ventricular_complexes'))
+TMAPS['premature_supraventricular_complexes'] = TensorMap('premature_supraventricular_complexes', group='ecg_categorical_interpretation',
+                                                channel_map={'no_premature supraventricular complexes': 0, 'premature supraventricular complexes': 1},
+                                                loss=weighted_crossentropy([1.0, 20.0], 'premature_supraventricular_complexes'))
+
+
+
 
 TMAPS['ecg_rhythmp'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythmp'), activation='softmax',
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3}, parents=['output_median_ecg_rest'])
