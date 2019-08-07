@@ -103,15 +103,15 @@ TMAPS['incomplete_right_bundle_branch_block'] = TensorMap('incomplete_right_bund
 
 TMAPS['infarcts'] = TensorMap('infarcts', group='ecg_categorical_interpretation',
                               channel_map={'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2, 'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5},
-                              loss=weighted_crossentropy([1.0, 18.0, 32.0, 36.0, 30.0, 20.0], 'infarcts'))
+                              loss=weighted_crossentropy([1.0, 40.0, 64.0, 76.0, 60.0, 40.0], 'infarcts'))
 
 TMAPS['left_atrial_enlargement'] = TensorMap('left_atrial_enlargement', group='ecg_categorical_interpretation',
                               channel_map={'no_left_atrial_enlargement': 0, 'Left atrial enlargement': 1},
-                              loss=weighted_crossentropy([1.0, 26.0], 'left_atrial_enlargement'))
+                              loss=weighted_crossentropy([1.0, 60.0], 'left_atrial_enlargement'))
 
 TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy', group='ecg_categorical_interpretation',
                               channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
-                              loss=weighted_crossentropy([1.0, 50.0], 'left_ventricular_hypertrophy'))
+                              loss=weighted_crossentropy([1.0, 100.0], 'left_ventricular_hypertrophy'))
 
 TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
                                        loss=weighted_crossentropy([1.0, 30.0], 'poor_data_quality'))
