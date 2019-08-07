@@ -19,8 +19,6 @@ def _get_lead_cm(length):
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
 
 TMAPS = dict()
-TMAPS['cine_segmented_sax_inlinevf_segmented'] = TensorMap('cine_segmented_sax_inlinevf_segmented', (256, 256, 48, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
-TMAPS['cine_segmented_sax_inlinevf_segmented_weighted'] = TensorMap('cine_segmented_sax_inlinevf_segmented', (256, 256, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'cine_segmented_sax_inlinevf_segmented'))
 
 TMAPS['rs3829740'] = TensorMap('rs3829740', group='categorical_index', channel_map=diploid_cm)
 TMAPS['rs2234962'] = TensorMap('rs2234962', group='categorical_index', channel_map=diploid_cm)

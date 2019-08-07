@@ -481,14 +481,14 @@ class TensorMap(object):
             dependents[self.dependent_map][:, :, :] = to_categorical(label_tensor, self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
         elif self.name == 'cine_segmented_sax_inlinevf_blackout':
-            mask_group = MRI_SEGMENTED if self.name == MRI_TO_SEGMENT else MRI_ZOOM_MASK
-            slice_idx = np.random.choice(list(hd5[self.name].keys()))
+            mask_group = MRI_SEGMENTED
+            slice_idx = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
             angle_idx = int(slice_idx) // MRI_FRAMES
             tensor = np.zeros(self.shape, dtype=np.float32)
             dependents[self.dependent_map] = np.zeros(self.dependent_map.shape, dtype=np.float32)
             for i in range(self.shape[-2]):
                 cur_slice = str((angle_idx * MRI_FRAMES) + i + 1)  # Instance Number off by 1
-                tensor[:, :, i, 0] = np.array(hd5[self.name].get(cur_slice), dtype=np.float32)
+                tensor[:, :, i, 0] = np.array(hd5[MRI_TO_SEGMENT].get(cur_slice), dtype=np.float32)
                 label_tensor = np.array(hd5[mask_group].get(cur_slice), dtype=np.float32)
                 dependents[self.dependent_map][:, :, i, :] = to_categorical(label_tensor, self.dependent_map.shape[-1])
                 tensor[:, :, i, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)

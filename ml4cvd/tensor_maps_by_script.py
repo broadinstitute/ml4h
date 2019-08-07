@@ -34,7 +34,7 @@ TMAPS['mri_systole_diastole_8_segmented_weighted'] = TensorMap('mri_systole_dias
 TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented'])
 TMAPS['mri_systole_diastole_8_weighted'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented_weighted'])
 
-TMAPS['cine_segmented_sax_inlinevf_blackout'] = TensorMap('cine_segmented_sax_inlinevf', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
+TMAPS['cine_segmented_sax_inlinevf_blackout'] = TensorMap('cine_segmented_sax_inlinevf_blackout', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
 
 
 #  Continuous tensor maps
