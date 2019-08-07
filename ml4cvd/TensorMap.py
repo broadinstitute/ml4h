@@ -149,7 +149,7 @@ class TensorMap(object):
                 self.shape = (len(channel_map) * 2,)
             else:
                 self.shape = (len(channel_map),)
-
+        print('tm:', name, 'shape', self.shape)
         if self.activation is None and self.is_categorical_any():
             self.activation = 'softmax'
 
