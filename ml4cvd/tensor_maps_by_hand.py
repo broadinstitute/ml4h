@@ -90,6 +90,7 @@ TMAPS['anterior_blocks'] = TensorMap('anterior_blocks', group='ecg_categorical_i
                               loss=weighted_crossentropy([1.0, 8.0, 8.0], 'anterior_blocks'))
 
 TMAPS['fine_rhythms'] = TensorMap('fine_rhythms', group='ecg_categorical_interpretation',
+                                  loss=weighted_crossentropy([1.0, 2.0, 1.0, 10.0, 5.0, 10.0, 5.0, 10.0, 10.0, 3.0, 3.0, 10.0], 'fine_rhythms'),
                                    channel_map={'no_fine_rhythms': 0, 'Normal sinus rhythm with sinus arrhythmia': 1, 'Normal sinus rhythm': 2,
                                                 'Sinus rhythm with fusion complexes': 3, 'Sinus rhythm with marked sinus arrhythmia': 4,
                                                 'Sinus rhythm with short PR': 5, 'Sinus rhythm with sinus arrhythmia': 6,
