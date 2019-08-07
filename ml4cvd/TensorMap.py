@@ -552,7 +552,7 @@ class TensorMap(object):
         elif self.is_ecg_categorical_interpretation():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:
-                if channel in str(hd5['ecg_rest_test'][0]):
+                if channel in str(hd5['ecg_rest_text'][0]):
                     categorical_data[self.channel_map[channel]] = 1.0
                     return categorical_data
             if 'no_' + self.name in self.channel_map:
