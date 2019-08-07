@@ -18,7 +18,7 @@ TMAPS['cine_segmented_sax_inlinevf_segmented'] = TensorMap('cine_segmented_sax_i
 TMAPS['cine_segmented_sax_inlinevf_segmented_weighted'] = TensorMap('cine_segmented_sax_inlinevf_segmented', (256, 256, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'cine_segmented_sax_inlinevf_segmented'))
 TMAPS['cine_segmented_sax_inlinevf'] = TensorMap('cine_segmented_sax_inlinevf', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
 TMAPS['cine_segmented_sax_inlinevf_weighted'] = TensorMap('cine_segmented_sax_inlinevf', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented_weighted'])
-TMAPS['sax_inlinevf_zoom_mask'] = TensorMap('sax_inlinevf_zoom_mask', (96,96,48, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_inlinevf_zoom_mask'] = TensorMap('sax_inlinevf_zoom_mask', (96, 96, 48, 3), loss='categorical_crossentropy', group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['sax_inlinevf_zoom_mask_weighted'] = TensorMap('sax_inlinevf_zoom_mask', (96, 96, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([5.0, 15.0, 15.0], 'sax_inlinevf_zoom_mask'))
 TMAPS['sax_inlinevf_zoom'] = TensorMap('sax_inlinevf_zoom',(96,96,48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask'])
 TMAPS['sax_inlinevf_zoom_weighted'] = TensorMap('sax_inlinevf_zoom',(96,96,48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask_weighted'])
@@ -34,6 +34,7 @@ TMAPS['mri_systole_diastole_8_segmented_weighted'] = TensorMap('mri_systole_dias
 TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented'])
 TMAPS['mri_systole_diastole_8_weighted'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented_weighted'])
 
+TMAPS['cine_segmented_sax_inlinevf_blackout'] = TensorMap('cine_segmented_sax_inlinevf', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
 
 
 #  Continuous tensor maps
