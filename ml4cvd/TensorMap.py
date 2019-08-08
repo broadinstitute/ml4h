@@ -531,12 +531,16 @@ class TensorMap(object):
             tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
             dependents[self.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), self.dependent_map.shape[-1])
             return self.zero_mean_std1(tensor)
-        elif self.name in {'t1_brain_208z', 't1_brain_208z_half', 't1_brain_208z_quarter'}:
+        elif self.name in {'t1_brain_208z', 't1_brain_208z_half', 't1_brain_208z_quarter', 't1_brain_208z_3d', 't1_brain_208z_half_3d', 't1_brain_208z_quarter_3d'}:
             tensor = np.zeros(self.shape, dtype=np.float32)
             full = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[..., :208]
             ratios = [new_len / orig_len for new_len, orig_len in zip(self.shape, full.shape)]
-            tensor[:] = zoom(full, ratios, order=1)
+            if '3d' in self.name:
+                tensor[:] = zoom(full, ratios, order=1)[..., np.newaxis]
+            else:
+                tensor[:] = zoom(full, ratios, order=1)
             return self.zero_mean_std1(tensor)
+
         elif self.name in {'t1_brain_208z_3d', 't1_brain_208z_half_3d', 't1_brain_208z_quarter_3d'}:
             tensor = np.zeros(self.shape, dtype=np.float32)
             full = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[..., :208]
