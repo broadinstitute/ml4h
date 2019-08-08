@@ -314,6 +314,11 @@ TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimis
 
 TMAPS['t1_p2_1mm_fov256_sag_ti_880'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880', (256, 256, 416), group='root_array')
 TMAPS['t1_brain_208z'] = TensorMap('t1_brain_208z', (256, 256, 208))
+TMAPS['t1_brain_208z_half'] = TensorMap('t1_brain_208z', (256 // 2, 256 // 2, 208 // 2))
+TMAPS['t1_brain_208z_quarter'] = TensorMap('t1_brain_208z', (256 // 4, 256 // 4, 208 // 4))
+TMAPS['t1_brain_208z_3d'] = TensorMap('t1_brain_208z', (256, 256, 208, 1))
+TMAPS['t1_brain_208z_half_3d'] = TensorMap('t1_brain_208z', (256 // 2, 256 // 2, 208 // 2, 1))
+TMAPS['t1_brain_208z_quarter_3d'] = TensorMap('t1_brain_208z', (256 // 4, 256 // 4, 208 // 4, 1))
 
 TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', (288, 384, 7), group='root_array')
 TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (288, 384, 7), group='root_array')
