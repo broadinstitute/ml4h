@@ -35,7 +35,7 @@ TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', (256, 256,
 TMAPS['mri_systole_diastole_8_weighted'] = TensorMap('mri_systole_diastole_8', (256, 256, 8, 1), dependent_map=TMAPS['mri_systole_diastole_8_segmented_weighted'])
 
 TMAPS['cine_segmented_sax_inlinevf_blackout'] = TensorMap('cine_segmented_sax_inlinevf_blackout', (256, 256, 48, 1), dependent_map=TMAPS['cine_segmented_sax_inlinevf_segmented'])
-
+TMAPS['sax_inlinevf_zoom_blackout'] = TensorMap('sax_inlinevf_zoom_blackout', (96, 96, 48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask_weighted'])
 
 #  Continuous tensor maps
 TMAPS['34_0'] = TensorMap('34_Year-of-birth', group='continuous', normalization={'mean': 1951.5428168330234, 'std': 8.116157117024175}, annotation_units=1, channel_map={'34_Year-of-birth_0_0': 0, })
