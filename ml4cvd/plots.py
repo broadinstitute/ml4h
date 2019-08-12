@@ -61,6 +61,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     if tm.is_categorical_any() and len(tm.shape) == 1:
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
+        plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 2:
@@ -564,8 +565,8 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     labels_to_areas = {}
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
-    lw = 3
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    lw = 2
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -594,8 +595,8 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
 
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
-    lw = 3
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    lw = 2
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -707,9 +708,9 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
 
 def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve
-    lw = 4.0
+    lw = 2.0
     labels_to_areas = {}
-    plt.figure(figsize=(22, 18))
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for k in labels:
         c = _hash_string_to_color(k)
