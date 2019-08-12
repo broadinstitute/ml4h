@@ -35,9 +35,9 @@ PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 SUBPLOT_SIZE = 6
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'gold',
-               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'tan',
+               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'tan', 'darkkhaki',
                'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru',
-               'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered', 'darkkhaki']
+               'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
@@ -94,9 +94,8 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
-    # if tm.name == 'median':
-    #     plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
-    #     plot_waves(None, test_data['input_strip_ecg_rest'], 'rest_waves_' + title, folder)
+    if tm.name == 'median':
+        plot_waves(y_predictions, y_truth, 'median_waves_' + title, folder)
 
     return performance_metrics
 
@@ -236,8 +235,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
     logging.info(f"Saved scatters together at: {figure_path}")
 
 
-def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]],
-                                prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
+def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
+                                alpha: float = 0.5):
     row = 0
     col = 0
     total_plots = len(scatters)
@@ -251,6 +250,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
             r_sqr = pearson * pearson
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
             axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
+            axes[row, col].legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
@@ -261,7 +261,6 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
-        plt.legend(loc="upper left")
 
         row += 1
         if row == rows:
@@ -596,7 +595,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 3
-    plt.figure(figsize=(28, 22))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
