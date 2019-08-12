@@ -531,16 +531,17 @@ class TensorMap(object):
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             if 'poor_data_quality' in hd5['categorical']:
                 raise ValueError('Poor data skipped by ecg_coarse.')
-            for rhythm in ('Normal_sinus_rhythm', 'Sinus_bradycardia', 'Marked_sinus_bradycardia'):
-                if rhythm in hd5['categorical']:
+            ecg_interpretation = str(hd5['ecg_rest_text'][0])
+            for afib in ['Atrial fibrillation', 'Atrial flutter']:
+                if afib in ecg_interpretation:
+                    categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
+                    return categorical_data
+            for rhythm in ['sinus', 'Sinus']:
+                if rhythm in ecg_interpretation:
                     categorical_data[self.channel_map['Sinus_rhythm']] = 1.0
                     return categorical_data
-            if 'Atrial_fibrillation' in hd5['categorical']:
-                categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
-                return categorical_data
             categorical_data[self.channel_map['Other_rhythm']] = 1.0
             return categorical_data
-
         elif self.is_categorical() and self.channel_map is not None:
             categorical_data = np.zeros(self.shape, dtype=np.float32)
             for channel in self.channel_map:
