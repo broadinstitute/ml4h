@@ -550,6 +550,7 @@ class TensorMap(object):
             for channel in self.channel_map:
                 if channel in hd5['categorical']:
                     categorical_data[self.channel_map[channel]] = 1.0
+                    return categorical_data
             for afib in ['Atrial fibrillation', 'Atrial flutter']:
                 if afib in ecg_interpretation:
                     categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
