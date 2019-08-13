@@ -567,7 +567,7 @@ class TensorMap(object):
             if 'poor_data_quality' in hd5['categorical']:
                 raise ValueError('Poor data skipped by ecg_coarse.')
             ecg_interpretation = str(hd5['ecg_rest_text'][0])
-            for afib in ['Atrial fibrillation', 'Atrial flutter']:
+            for afib in ['Atrial fibrillation']:
                 if afib in ecg_interpretation:
                     categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
                     return categorical_data
@@ -586,7 +586,7 @@ class TensorMap(object):
                 if channel in hd5['categorical']:
                     categorical_data[self.channel_map[channel]] = 1.0
                     return categorical_data
-            for afib in ['Atrial fibrillation', 'Atrial flutter']:
+            for afib in ['Atrial fibrillation']:
                 if afib in ecg_interpretation:
                     categorical_data[self.channel_map['Atrial_fibrillation']] = 1.0
                     return categorical_data
