@@ -92,8 +92,8 @@ TMAPS['anterior_blocks'] = TensorMap('anterior_blocks', group='ecg_categorical_i
                                      channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1, 'Left posterior fascicular block': 2},
                                      loss=weighted_crossentropy([0.1, 10.0, 10.0], 'anterior_blocks'))
 
-TMAPS['av_block_1'] = TensorMap('av_block_1', group='ecg_categorical_interpretation', channel_map={'no_av_block_1': 0, '1st degree AV block': 1},
-                                loss=weighted_crossentropy([0.1, 10.0], 'av_block_1'))
+TMAPS['av_block'] = TensorMap('av_block', group='ecg_categorical_interpretation', channel_map={'no_av_block': 0, 'st degree AV block': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'av_block'))
 
 TMAPS['fine_rhythms'] = TensorMap('fine_rhythms', group='ecg_categorical_interpretation',
                                   loss=weighted_crossentropy([0.5, 2.0, 0.1, 10.0, 10.0, 10.0, 15.0, 2.0, 10.0, 0.5, 0.2, 5.0], 'fine_rhythms'),
