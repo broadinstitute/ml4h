@@ -837,6 +837,20 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         else:
             stats['missing full disclosure bike ECG'] += 1
 
+        trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount', 'Artifac0t', 'Idx']
+        phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
+        trends = defaultdict(list)
+
+        for trend_entry in root.findall("./TrendData/TrendEntry"):
+            for field in trend_entry_fields:
+                trends[field].append(float(trend_entry.find(field).text))
+            trends['time'].append(60 * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text))
+            trends['PhaseTime'].append(60 * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text))
+            trends['PhaseName'].append(phase_to_int[trend_entry.find('PhaseName').text])
+
+        for field, trend_list in trends.items():
+            hd5.create_dataset(f'/ecg_bike_trend/{field}', data=trend_list, compression='gzip', dtype=np.float32)
+
 
 def _date_str_from_ecg(root):
     date_str = ''
