@@ -837,7 +837,8 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         else:
             stats['missing full disclosure bike ECG'] += 1
 
-        trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount', 'Artifac0t', 'Idx']
+        # Trend measurements
+        trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount', 'Idx']
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
         trends = defaultdict(list)
 
@@ -847,9 +848,37 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             trends['time'].append(60 * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text))
             trends['PhaseTime'].append(60 * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text))
             trends['PhaseName'].append(phase_to_int[trend_entry.find('PhaseName').text])
+            trends['Artifact'].append(float(trend_entry.find('Artifact').text.strip('%')) / 100)  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
             hd5.create_dataset(f'/ecg_bike_trend/{field}', data=trend_list, compression='gzip', dtype=np.float32)
+
+        # Last 60 seconds of raw given that the rest phase is 60s
+        phase_durations = {}
+        for protocol in root.findall("./Protocol/Phase"):
+            phase_name = protocol.find("PhaseName").text
+            phase_duration = 60 * int(protocol.find("PhaseDuration/Minute").text) + int(
+                protocol.find("PhaseDuration/Second").text)
+            phase_durations[phase_name] = phase_duration
+            hd5.create_dataset(f'/ecg_bike_phase_duration/{phase_name}', data=[phase_duration], dtype=np.float32, compression='gzip')
+        if phase_durations['Rest'] == 60:
+            for lead, vals in full_ekgs.items():
+                rest_array = np.array(vals[-500 * 60:])  # TODO: could get 500 from the sample_rate
+                hd5.create_dataset(f'/ecg_bike_recovery/lead_{lead}', data=rest_array, compression='gzip')
+
+        # Autonomic function metrics
+        max_hr = int(root.find('./ExerciseMeasurements/MaxHeartRate').text)
+        rest_start_idx = trends['PhaseName'].index(phase_to_int['Rest'])
+        times = np.array(trends['time'][rest_start_idx:])
+        hrs = np.array(trends['HeartRate'][rest_start_idx:])
+        target_times = np.array([10, 20, 30, 40, 50])
+        interp_hrs = np.interp(target_times, times, hrs)
+        heart_rate_recovery = max_hr - interp_hrs.mean()
+        max_over_min = max_hr / hrs.min()
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_hr', data=[max_hr], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/interp_hrs', data=interp_hrs, compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/heart_rate_recovery', data=[heart_rate_recovery], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_over_min', data=[max_over_min], compression='gzip', dtype=np.float32)
 
 
 def _date_str_from_ecg(root):
