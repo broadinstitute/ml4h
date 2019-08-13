@@ -814,12 +814,12 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [12, 25, 50]
-    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
+    perplexities = [25, 50]
+    (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
     for i, p in enumerate(perplexities):
-        tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=123, perplexity=p, method='exact', learning_rate=20, n_iter_without_progress=1000, min_grad_norm=0.0)
+        tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=123, perplexity=p, learning_rate=20, n_iter_without_progress=500)
         p2y[p] = tsne.fit_transform(x_embed)
 
     j = -1
