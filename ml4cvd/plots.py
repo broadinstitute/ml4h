@@ -716,7 +716,9 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
-        plt.plot(recall, precision, lw=lw, color=c, label=k + ' area = %0.3f' % average_precision)
+        label_text = f"{k} mean precision:{average_precision:.3f}"
+        plt.plot(recall, precision, lw=lw, color=c, label=label_text)
+        logging.info(f"prAUC Label {label_text}")
         labels_to_areas[k] = average_precision
 
     plt.ylim([-0.02, 1.03])
@@ -738,16 +740,17 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
 
 def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve for each model
-    lw = 4.0
-    plt.figure(figsize=(22, 18))
+    lw = 2.0
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
         for k in labels:
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = "{}_{} area:{:.3f}".format(p, k, average_precision)
+            label_text = f"{p}_{k} mean precision:{average_precision:.3f}"
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
+            logging.info(f"prAUC Label {label_text}")
 
     plt.ylim([-0.02, 1.03])
     plt.xlim([0.0, 1.00])
