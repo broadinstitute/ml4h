@@ -72,7 +72,7 @@ def run(args):
         elif 'append_float_csv' == args.mode:
             append_float_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_gene_csv' == args.mode:
-            append_gene_csv(args.tensors, args.app_csv, ',')
+            append_gene_csv(args.tensors, args.app_csv, '\t')
         else:
             raise ValueError('Unknown mode:', args.mode)
 
