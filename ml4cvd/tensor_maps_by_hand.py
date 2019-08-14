@@ -123,7 +123,7 @@ TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy'
 
 TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.1, 5.0, 10.0, 10.0], 'lvh_fine'),
                               channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
-                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Left ventricular hypertrophy': 3})
+                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for LVH may be normal variant': 2, 'Left ventricular hypertrophy': 3})
 
 TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
                                        loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'))
