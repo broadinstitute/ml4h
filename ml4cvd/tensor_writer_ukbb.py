@@ -838,7 +838,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             stats['missing full disclosure bike ECG'] += 1
 
         # Trend measurements
-        trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount', 'Idx']
+        trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount']
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
         trends = defaultdict(list)
 
@@ -879,7 +879,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             hd5.create_dataset(f'/ecg_bike_recovery/lead_{lead}', data=rest_array, compression='gzip')
 
         rest_start_idx = trends['PhaseName'].index(phase_to_int['Rest'])
-        times = np.array(trends['time'][rest_start_idx:])
+        times = np.array(trends['PhaseTime'][rest_start_idx:])
         hrs = np.array(trends['HeartRate'][rest_start_idx:])
         target_times = np.array([10, 20, 30, 40, 50])
         interp_hrs = np.interp(target_times, times, hrs)
