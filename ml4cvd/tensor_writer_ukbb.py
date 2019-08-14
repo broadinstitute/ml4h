@@ -866,9 +866,9 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
         resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
         max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
-        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_hr', data=[max_hr], compression='gzip', dtype=np.float32)
-        hd5.create_dataset(f'/ecg_bike_autonomic_function/resting_hr', data=[resting_hr], compression='gzip', dtype=np.float32)
-        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_pred_hr', data=[max_pred_hr], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/continuous/bike_max_hr', data=[max_hr], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/continuous/bike_resting_hr', data=[resting_hr], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/continuous/bike_max_pred_hr', data=[max_pred_hr], compression='gzip', dtype=np.float32)
 
         # Autonomic function metrics
         if not phase_durations['Rest'] == 60:
