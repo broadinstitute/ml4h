@@ -70,9 +70,9 @@ def run(args):
         elif 'sort_csv' == args.mode:
             sort_csv(args.app_csv, args.volume_csv)
         elif 'append_float_csv' == args.mode:
-            append_float_csv(args.tensors, args.app_csv, 'continuous', ',')
+            append_float_csv(args.tensors, args.app_csv, 'continuous', '\t')
         elif 'append_gene_csv' == args.mode:
-            append_gene_csv(args.tensors, args.app_csv, '\t')
+            append_gene_csv(args.tensors, args.app_csv, ',')
         else:
             raise ValueError('Unknown mode:', args.mode)
 
