@@ -197,6 +197,8 @@ TMAPS['ecg-bike-max-hr-no0'] = TensorMap('bike_max_hr', group='continuous', chan
                                          loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 110.03, 'std': 20.04})
 TMAPS['ecg-bike-resting-hr-no0'] = TensorMap('bike_resting_hr', group='continuous', channel_map={'bike_resting_hr': 0},
                                              loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 70.0, 'std': 13.0})  # TODO: I just guessed normalization for testing
+TMAPS['ecg-bike-heart-rate-recovery'] = TensorMap('heart_rate_recovery', group='ecg_bike_autonomic_function', channel_map={'bike_resting_hr': 0},
+                                             loss=ignore_zeros_logcosh, metrics=['logcosh'])  # TODO: Figure out normalization
 
 TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_1'] = TensorMap('full_1', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
