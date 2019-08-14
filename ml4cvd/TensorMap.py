@@ -621,7 +621,7 @@ class TensorMap(object):
             return self.zero_mean_std1(tensor)
         elif self.is_ecg_bike_recovery():
             tensor = np.zeros(self.shape)
-            for channel, idx in self.channel_map:
+            for channel, idx in self.channel_map.items():
                 tensor[:, idx] = hd5[self.group][channel]
                 return self.zero_mean_std1(tensor)
         elif self.is_ecg_text():
