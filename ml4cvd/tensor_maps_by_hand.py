@@ -219,7 +219,7 @@ TMAPS['qrs-nump'] = TensorMap('QRSNum', group='continuous', channel_map={'QRSNum
 TMAPS['qt-intervalp'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh',
                              normalization={'mean': 426.1, 'std': 32.24}, parents=['output_median_ecg_rest'])
 TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh',
-                              normalization={'mean': 419.1, 'std': 20.7}, parents=['output_QTInterval_continuous'])
+                              normalization={'mean': 419.1, 'std': 20.7}, parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'])
 TMAPS['r-axisp'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, loss='logcosh',
                         normalization={'mean': 25.7, 'std': 36.6}, parents=['output_median_ecg_rest'])
 TMAPS['rr-intervalp'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, loss='logcosh',
