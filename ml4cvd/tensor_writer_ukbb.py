@@ -894,20 +894,20 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 def append_float_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
-    link_file = '/mnt/ml4cvd/projects/jamesp/data/ukb_app17488_app7089_link.csv'
-    link_ids = {}
-    with open(link_file, 'r') as link:
-        lol = list(csv.reader(link, delimiter=delimiter))
-        logging.info(f"LINK CSV of floats header:{lol[0]}")
-        for row in lol[1:]:
-            #sample_id = row[0]
-            link_ids[row[0]] = row[1]
+    # link_file = '/mnt/ml4cvd/projects/jamesp/data/ukb_app17488_app7089_link.csv'
+    # link_ids = {}
+    # with open(link_file, 'r') as link:
+    #     lol = list(csv.reader(link, delimiter=delimiter))
+    #     logging.info(f"LINK CSV of floats header:{lol[0]}")
+    #     for row in lol[1:]:
+    #         #sample_id = row[0]
+    #         link_ids[row[0]] = row[1]
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
         logging.info(f"CSV of floats header:{fields}")
         for row in lol[1:]:
-            sample_id = link_ids[row[0]]
+            sample_id = row[0]
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
 
     logging.info(f"Data maps:{len(data_maps)}")
