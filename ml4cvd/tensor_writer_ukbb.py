@@ -837,6 +837,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         else:
             stats['missing full disclosure bike ECG'] += 1
 
+        # TODO: did not handle instance
         # Trend measurements
         trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount']
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
