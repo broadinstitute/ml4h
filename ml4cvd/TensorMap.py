@@ -415,11 +415,11 @@ class TensorMap(object):
             return categorical_data
         elif self.name == 'charge':
             categorical_data = np.zeros(self.shape, dtype=np.float32)
-            if self.name in hd5:
+            if self.name in hd5['continuous']:
                 index = int(hd5['continuous']['charge'][0])
                 categorical_data[index] = 1.0
             else:
-                raise ValueError(f"No categorical index found for tensor map: {self.name}.")
+                raise ValueError(f"No charge found for tensor map: {self.name}.")
             return categorical_data
         elif self.is_categorical_flag():
             categorical_data = np.zeros(self.shape, dtype=np.float32)
