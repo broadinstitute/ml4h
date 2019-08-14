@@ -861,24 +861,39 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
                 protocol.find("PhaseDuration/Second").text)
             phase_durations[phase_name] = phase_duration
             hd5.create_dataset(f'/ecg_bike_phase_duration/{phase_name}', data=[phase_duration], dtype=np.float32, compression='gzip')
-        if phase_durations['Rest'] == 60:
-            for lead, vals in full_ekgs.items():
-                rest_array = np.array(vals[-500 * 60:])  # TODO: could get 500 from the sample_rate
-                hd5.create_dataset(f'/ecg_bike_recovery/lead_{lead}', data=rest_array, compression='gzip')
+
+        # HR stats
+        max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
+        resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
+        max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_hr', data=[max_hr], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/resting_hr', data=[resting_hr], compression='gzip', dtype=np.float32)
+        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_pred_hr', data=[max_pred_hr], compression='gzip', dtype=np.float32)
 
         # Autonomic function metrics
-        max_hr = int(root.find('./ExerciseMeasurements/MaxHeartRate').text)
+        if not phase_durations['Rest'] == 60:
+            return  # This happens when someone feels chest pain - then they have no rest period
+
+        for lead, vals in full_ekgs.items():
+            rest_array = np.array(vals[-500 * 60:])  # TODO: could get 500 from the sample_rate
+            hd5.create_dataset(f'/ecg_bike_recovery/lead_{lead}', data=rest_array, compression='gzip')
+
         rest_start_idx = trends['PhaseName'].index(phase_to_int['Rest'])
         times = np.array(trends['time'][rest_start_idx:])
         hrs = np.array(trends['HeartRate'][rest_start_idx:])
         target_times = np.array([10, 20, 30, 40, 50])
         interp_hrs = np.interp(target_times, times, hrs)
         heart_rate_recovery = max_hr - interp_hrs.mean()
-        max_over_min = max_hr / hrs.min()
-        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_hr', data=[max_hr], compression='gzip', dtype=np.float32)
+
         hd5.create_dataset(f'/ecg_bike_autonomic_function/interp_hrs', data=interp_hrs, compression='gzip', dtype=np.float32)
         hd5.create_dataset(f'/ecg_bike_autonomic_function/heart_rate_recovery', data=[heart_rate_recovery], compression='gzip', dtype=np.float32)
-        hd5.create_dataset(f'/ecg_bike_autonomic_function/max_over_min', data=[max_over_min], compression='gzip', dtype=np.float32)
+        if hrs.min() > 0:  # TODO: When does this happen?
+            max_over_min = max_hr / hrs.min()
+            hd5.create_dataset(f'/ecg_bike_autonomic_function/max_over_min', data=[max_over_min], compression='gzip', dtype=np.float32)
+
+
+def _xml_path_to_float(root: et, path: str) -> float:
+    return float(root.find(path).text)
 
 
 def _date_str_from_ecg(root):
