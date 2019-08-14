@@ -231,7 +231,7 @@ TMAPS['t-offsetp'] = TensorMap('TOffset', group='continuous', channel_map={'TOff
 TMAPS['t-axisp'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, loss='logcosh',
                         normalization={'mean': 40.8, 'std': 32.6}, parents=['output_median_ecg_rest'])
 
-TMAPS['continuous_charge'] = TensorMap('continuous/charge', group='categorical_index', channel_map={'charge0': 0, 'charge1': 1, 'charge2': 2, 'charge3': 3, 'charge4': 4})
+TMAPS['continuous_charge'] = TensorMap('charge', group='categorical', channel_map={'charge0': 0, 'charge1': 1, 'charge2': 2, 'charge3': 3, 'charge4': 4})
 
 
 TMAPS['p-axis-no0'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
