@@ -19,7 +19,7 @@ CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastol
                          'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
                          'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
                          'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0', '22402_Liver-fat-percentage_2_0',
-                         'liver_fat_sentinel_prediction', 'bike_max_hr', 'bike_resting_hr']
+                         'liver_fat_sentinel_prediction', 'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0']
 
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
