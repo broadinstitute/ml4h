@@ -36,8 +36,8 @@ SUBPLOT_SIZE = 6
 
 COLOR_ARRAY = ['red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'gold',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'tan', 'darkkhaki',
-               'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime', 'teal', 'peru',
-               'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
+               'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
+               'teal', 'peru','silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
@@ -835,7 +835,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
-            ax.set_title(tm.name + ", Perplexity=%d" % p)
+            ax.set_title(tm.name)  # + ", Perplexity=%d" % p)
             if tm in categorical_labels + gene_labels:
                 color_labels = []
                 for c in tm.channel_map:
