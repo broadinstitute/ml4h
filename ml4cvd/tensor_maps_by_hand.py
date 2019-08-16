@@ -301,15 +301,15 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
 
 
 # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
-TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear',
-                                    loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
-                                    normalization={'mean': 47.0, 'std': 10.0})
 TMAPS['corrected_extracted_lvedv'] = TensorMap('corrected_extracted_lvedv', group='continuous', activation='linear',
                                      loss='logcosh', channel_map={'corrected_extracted_lvedv': 0},
                                      normalization={'mean': 142.0, 'std': 21.0})
 TMAPS['corrected_extracted_lvef'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear',
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', loss_weight=1.0, channel_map={'corrected_extracted_lvef': 0})
+TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear',
+                                    loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
+                                    normalization={'mean': 47.0, 'std': 10.0})
 
 TMAPS['corrected_extracted_lvesv_sentinel'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear', sentinel=0.0,
                                                         channel_map={'corrected_extracted_lvesv': 0}, normalization={'mean': 47.0, 'std': 10.0})
