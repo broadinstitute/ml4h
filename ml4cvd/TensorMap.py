@@ -555,12 +555,14 @@ class TensorMap(object):
             continuous_data = np.zeros(self.shape, dtype=np.float32)  # Automatic left ventricular analysis with InlineVF
             if MRI_ANNOTATION_NAME in hd5['categorical'] and hd5['categorical'][MRI_ANNOTATION_NAME][0] != MRI_ANNOTATION_CHANNEL_MAP['good']:
                 raise ValueError('MRI Critic annotation not good or unreviewed.')
-            continuous_data[:] = float(hd5['continuous'][self.name][0])
+            continuous_data[0] = float(hd5['continuous'][self.name][0])
             if continuous_data[0] == 0 and (self.sentinel == None and self.name in CONTINUOUS_NEVER_ZERO):
                 raise ValueError(self.name + ' is a continuous value that cannot be set to 0, but no value was found.')
-            elif continuous_data[0] == 0 and self.sentinel is not None:
+            if continuous_data[0] == 0 and self.sentinel is not None:
                 continuous_data[:] = self.sentinel
                 return continuous_data
+            if continuous_data[0] > 280:
+                raise ValueError('Volume crazy value.')
             return self.normalize(continuous_data)
         elif self.name == 'ecg_coarse':
             categorical_data = np.zeros(self.shape, dtype=np.float32)
