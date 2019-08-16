@@ -34,7 +34,7 @@ PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
 SUBPLOT_SIZE = 6
 
-COLOR_ARRAY = ['tan', 'red', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine',
+COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'red',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
                'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
                'teal', 'peru','silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
