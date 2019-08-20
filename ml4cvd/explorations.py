@@ -160,13 +160,6 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         if len(scatters) > 1:
             subplot_scatters(scatters, folder+f"epoch_{i:03d}_")
 
-        embeddings = embed_model_predict(model, tensor_maps_in, 'embed', test_data, batch_size)
-        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-        label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels_1d, len(test_paths))
-
-        gene_labels = []
-        #plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, folder+f"tsne_epoch_{i:03d}_", 0.7)
-
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
