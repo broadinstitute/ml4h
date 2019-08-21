@@ -72,6 +72,10 @@ TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3})
 TMAPS['ecg_coarse'] = TensorMap('ecg_coarse', group='categorical', loss=weighted_crossentropy([1.0, 15.0, 5.0], 'ecg_coarse'),
                                 channel_map={'Sinus_rhythm': 0, 'Atrial_fibrillation': 1, 'Other_rhythm': 2})
+TMAPS['ecg_semi_coarse'] = TensorMap('ecg_semi_coarse', group='categorical', loss=weighted_crossentropy([1.0, 1.0, 2.0, 4.0, 16.0, 20.0], 'ecg_semi_coarse'),
+                                     channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
+TMAPS['ecg_semi_coarse_with_poor'] = TensorMap('ecg_semi_coarse_with_poor', group='categorical', loss=weighted_crossentropy([1.0, 1.0, 2.0, 4.0, 16.0, 20.0], 'ecg_semi_coarse_with_poor'),
+                                     channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 TMAPS['ecg_normal'] = TensorMap('ecg_normal', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
                   channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3})
 TMAPS['ecg_infarct'] = TensorMap('ecg_infarct', group='categorical', channel_map={'no_infarct': 0, 'infarct': 1},
@@ -86,8 +90,11 @@ TMAPS['acute_mi'] = TensorMap('acute_mi', group='ecg_categorical_interpretation'
                               loss=weighted_crossentropy([0.1, 10.0], 'acute_mi'))
 
 TMAPS['anterior_blocks'] = TensorMap('anterior_blocks', group='ecg_categorical_interpretation',
-                              channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1, 'Left posterior fascicular block': 2},
-                              loss=weighted_crossentropy([0.1, 10.0, 10.0], 'anterior_blocks'))
+                                     channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1, 'Left posterior fascicular block': 2},
+                                     loss=weighted_crossentropy([0.1, 10.0, 10.0], 'anterior_blocks'))
+
+TMAPS['av_block'] = TensorMap('av_block', group='ecg_categorical_interpretation', channel_map={'no_av_block': 0, 'st degree AV block': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'av_block'))
 
 TMAPS['fine_rhythms'] = TensorMap('fine_rhythms', group='ecg_categorical_interpretation',
                                   loss=weighted_crossentropy([0.5, 2.0, 0.1, 10.0, 10.0, 10.0, 15.0, 2.0, 10.0, 0.5, 0.2, 5.0], 'fine_rhythms'),
@@ -112,6 +119,11 @@ TMAPS['left_atrial_enlargement'] = TensorMap('left_atrial_enlargement', group='e
 TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy', group='ecg_categorical_interpretation',
                               channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
                               loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
+
+TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 2.0, 8.0, 8.0, 8.0], 'lvh_fine'),
+                              channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
+                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for LVH may be normal variant': 3,
+                                           'Left ventricular hypertrophy': 4})
 
 TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
                                        loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'))
@@ -206,7 +218,7 @@ TMAPS['qrs-nump'] = TensorMap('QRSNum', group='continuous', channel_map={'QRSNum
 TMAPS['qt-intervalp'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh',
                              normalization={'mean': 426.1, 'std': 32.24}, parents=['output_median_ecg_rest'])
 TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh',
-                              normalization={'mean': 419.1, 'std': 20.7}, parents=['output_median_ecg_rest'])
+                              normalization={'mean': 419.1, 'std': 20.7}, parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'])
 TMAPS['r-axisp'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, loss='logcosh',
                         normalization={'mean': 25.7, 'std': 36.6}, parents=['output_median_ecg_rest'])
 TMAPS['rr-intervalp'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, loss='logcosh',
@@ -217,6 +229,10 @@ TMAPS['t-offsetp'] = TensorMap('TOffset', group='continuous', channel_map={'TOff
                           normalization={'mean': 860.7, 'std': 32.52}, parents=['output_median_ecg_rest'])
 TMAPS['t-axisp'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, loss='logcosh',
                         normalization={'mean': 40.8, 'std': 32.6}, parents=['output_median_ecg_rest'])
+
+TMAPS['charge'] = TensorMap('charge', group='continuous', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0})
+TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', group='continuous', channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
+
 
 TMAPS['p-axis-no0'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
                         normalization={'mean': 48.7, 'std': 23.1})
@@ -279,15 +295,15 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
 
 
 # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
-TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear',
-                                    loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
-                                    normalization={'mean': 47.0, 'std': 10.0})
 TMAPS['corrected_extracted_lvedv'] = TensorMap('corrected_extracted_lvedv', group='continuous', activation='linear',
                                      loss='logcosh', channel_map={'corrected_extracted_lvedv': 0},
                                      normalization={'mean': 142.0, 'std': 21.0})
 TMAPS['corrected_extracted_lvef'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear',
                                    normalization={'mean': 0.50, 'std': 0.046},
-                                   loss='logcosh', loss_weight=1.0, channel_map={'corrected_extracted_lvef': 0})
+                                   loss='logcosh', channel_map={'corrected_extracted_lvef': 0})
+TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear',
+                                    loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
+                                    normalization={'mean': 47.0, 'std': 10.0})
 
 TMAPS['corrected_extracted_lvesv_sentinel'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear', sentinel=0.0,
                                                         channel_map={'corrected_extracted_lvesv': 0}, normalization={'mean': 47.0, 'std': 10.0})

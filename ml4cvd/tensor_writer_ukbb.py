@@ -523,7 +523,6 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-
             hd5.create_dataset(v, data=mri_data, compression='gzip')
 
 
@@ -895,6 +894,14 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 def append_float_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
+    # link_file = '/mnt/ml4cvd/projects/jamesp/data/ukb_app17488_app7089_link.csv'
+    # link_ids = {}
+    # with open(link_file, 'r') as link:
+    #     lol = list(csv.reader(link, delimiter=delimiter))
+    #     logging.info(f"LINK CSV of floats header:{lol[0]}")
+    #     for row in lol[1:]:
+    #         #sample_id = row[0]
+    #         link_ids[row[0]] = row[1]
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
