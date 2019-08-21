@@ -391,7 +391,9 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
         weight1 = 1 - weight0
         for k in in_batch:
             mixed_ins[k] = (in_batch[k][i, ...] * weight0) + (in_batch[k][half+i, ...] * weight1)
+            print(k, 'in batch ', in_batch[k].shape, mixed_ins.shape, weight1)
         for k in out_batch:
             mixed_outs[k] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half+i, ...] * weight1)
+            print(k, 'ioutn batch ', out_batch[k].shape, mixed_outs.shape)
 
     return mixed_ins, mixed_outs
