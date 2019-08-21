@@ -90,6 +90,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                     stats['Tensors presented'] += 1
                     if stats['batch_index'] == batch_size:
                         if mixup:
+                            print('mixxing up...')
                             in_batch, out_batch = _mixup_batch(in_batch, out_batch, 1.0)
                         if keep_paths:
                             yield in_batch, out_batch, paths_in_batch
