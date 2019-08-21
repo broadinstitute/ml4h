@@ -438,10 +438,10 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                     }
             }
     """
+    models = {}
+    test_paths = []
     predictions = defaultdict(dict)
     test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
-    test_paths = []
-    models = {}
     for model_file in models_inputs_outputs.keys():
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
@@ -456,6 +456,8 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
 
+    layer_names = [layer.name for layer in model.layers for model in models]
+    scalar_predictions = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
     for j in range(steps):
         input_data, labels, paths = next(generator)
         test_paths.extend(paths)
@@ -467,7 +469,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
             y_prediction = models[model_name].predict(input_data)
 
             for i, tm in enumerate(args.tensor_maps_out):
-                if tm in outputs and tm.output_name() in test_labels:
+                if tm in outputs and tm.output_name() in scalar_predictions:
                     if j == 0:
                         predictions[tm][model_name] = []
                     if len(args.tensor_maps_out) == 1:
