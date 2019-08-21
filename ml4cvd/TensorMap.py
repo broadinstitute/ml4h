@@ -146,6 +146,7 @@ class TensorMap(object):
         self.required_inputs = required_inputs
         self.annotation_units = annotation_units
         self.imputation = imputation
+        self.tensor_from_file = tensor_from_file
         self.initialization = None  # Not yet implemented
 
         if self.shape is None:
