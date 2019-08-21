@@ -390,10 +390,10 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
         weight0 = np.random.beta(alpha, alpha)
         weight1 = 1 - weight0
         for k in in_batch:
-            mixed_ins[k] = (in_batch[k][i, ...] * weight0) + (in_batch[k][half+i, ...] * weight1)
-            print(k, 'in batch ', in_batch[k].shape, mixed_ins[k].shape, weight1, half,  in_batch[k].shape[1:])
+            mixed_ins[k][i] = (in_batch[k][i, ...] * weight0) + (in_batch[k][half+i, ...] * weight1)
+            print(k, 'in batch ', in_batch[k].shape, mixed_ins[k].shape, weight1, half)
         for k in out_batch:
-            mixed_outs[k] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half+i, ...] * weight1)
-            print(k, 'ioutn batch ', out_batch[k].shape, mixed_outs[k].shape, half, out_batch[k].shape[1:], 'as tupple:', (half,) + out_batch[k].shape[1:])
+            mixed_outs[k][i] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half+i, ...] * weight1)
+            print(k, 'ioutn batch ', out_batch[k].shape, mixed_outs[k].shape, half)
 
     return mixed_ins, mixed_outs
