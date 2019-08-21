@@ -70,7 +70,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     paths_in_batch = []
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-
+    print('Got mixxing up...', mixup)
     while True:
         for tp in train_paths:
             try:
