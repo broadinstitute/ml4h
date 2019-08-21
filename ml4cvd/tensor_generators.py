@@ -28,10 +28,10 @@ np.set_printoptions(threshold=np.inf)
 
 class TensorGenerator(object):
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
-    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False):
+    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=False):
         self.lock = threading.Lock()
         if weights is None:
-            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths)
+            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
         else:
             self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths)
 
@@ -43,7 +43,7 @@ class TensorGenerator(object):
             self.lock.release()
                     
 
-def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths):
+def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup):
     """Generalizaed data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -89,6 +89,8 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                     stats['batch_index'] += 1
                     stats['Tensors presented'] += 1
                     if stats['batch_index'] == batch_size:
+                        if mixup:
+                            in_batch, out_batch = _mixup_batch(in_batch, out_batch, 1.0)
                         if keep_paths:
                             yield in_batch, out_batch, paths_in_batch
                         else:
@@ -333,7 +335,8 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        test_modulo: int,
                                        balance_csvs: List[str],
                                        keep_paths: bool = False,
-                                       keep_paths_test: bool = True) -> Tuple[
+                                       keep_paths_test: bool = True,
+                                       mixup_train: bool = False) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
@@ -359,7 +362,7 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths)
+        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_train)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
     return generate_train, generate_valid, generate_test
@@ -371,3 +374,21 @@ def _log_first_error(stats: Counter, tensor_path: str):
             stats[k] += 1  # Increment so we only see these messages once
             logging.info(f"At tensor path: {tensor_path}")
             logging.info(f"Got first error: {k}")
+
+
+def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray], alpha: int = 1.0):
+    for k in in_batch:
+        half = in_batch[k].shape[0] // 2
+        break
+
+    mixed_ins = {k: np.zeros((half,) + in_batch[k].shape[1:]) for k in in_batch}
+    mixed_outs = {k: np.zeros((half,) + out_batch[k].shape[1:]) for k in out_batch}
+    for i in range(half):
+        weight0 = np.random.beta(alpha, alpha)
+        weight1 = 1 - weight0
+        for k in in_batch:
+            mixed_ins[k] = (in_batch[k][i, ...] * weight0) + (in_batch[k][half+i, ...] * weight1)
+        for k in out_batch:
+            mixed_outs[k] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half+i, ...] * weight1)
+
+    return mixed_ins, mixed_outs

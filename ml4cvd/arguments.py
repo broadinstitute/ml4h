@@ -133,7 +133,8 @@ def parse_args():
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
-    parser.add_argument('--learning_rate', default=0.001, type=float, help='Learning rate during training.')
+    parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
+    parser.add_argument('--mixup', default=False, action='store_true', help='Apply mixup to training batches.')
     parser.add_argument('--label_weights', nargs='*', type=float,
                         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.')
     parser.add_argument('--patience', default=8, type=int,
