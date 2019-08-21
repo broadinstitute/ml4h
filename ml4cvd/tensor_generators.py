@@ -91,10 +91,11 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                     stats['batch_index'] += 1
                     stats['Tensors presented'] += 1
                     if stats['batch_index'] == batch_size:
-                        if mixup:
-                            print('mixxing up...')
-                            in_batch, out_batch = _mixup_batch(in_batch, out_batch, 1.0)
-                        if keep_paths:
+                        if mixup and keep_paths:
+                            yield _mixup_batch(in_batch, out_batch, 1.0), paths_in_batch[:batch_size//2]
+                        elif mixup:
+                            yield _mixup_batch(in_batch, out_batch, 1.0)
+                        elif keep_paths:
                             yield in_batch, out_batch, paths_in_batch
                         else:
                             yield in_batch, out_batch
@@ -391,9 +392,7 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
         weight1 = 1 - weight0
         for k in in_batch:
             mixed_ins[k][i] = (in_batch[k][i, ...] * weight0) + (in_batch[k][half+i, ...] * weight1)
-            print(k, 'in batch ', in_batch[k].shape, mixed_ins[k].shape, weight1, half)
         for k in out_batch:
             mixed_outs[k][i] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half+i, ...] * weight1)
-            print(k, 'ioutn batch ', out_batch[k].shape, mixed_outs[k].shape, half)
 
     return mixed_ins, mixed_outs
