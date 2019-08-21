@@ -275,7 +275,6 @@ def segmentation_to_pngs(args):
 
 
 def plot_while_training(args):
-    print('Got mixxing up...', args.mixup)
     generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
                                                                           args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
                                                                           mixup_train=args.mixup)

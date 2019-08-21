@@ -367,8 +367,8 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_train)
-        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths, mixup_train)
-        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test, mixup_train)
+        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
+        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
     return generate_train, generate_valid, generate_test
 
 
