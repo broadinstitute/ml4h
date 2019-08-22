@@ -440,7 +440,6 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     """
     models = {}
     test_paths = []
-    predictions = defaultdict(dict)
     test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
     for model_file in models_inputs_outputs.keys():
         args.model_file = model_file
@@ -456,6 +455,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
 
+    predictions = defaultdict(dict)
     model_predictions = {m: [tm for tm in args.tensor_maps_out if tm.output_name() in models[m].layers] for m in models}
     scalar_predictions = {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
     for j in range(steps):
@@ -468,10 +468,10 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
             y_predictions = models[model_name].predict(input_data)
 
-            for y, tm in zip(y_predictions, model_predictions):
+            for y, tm in zip(y_predictions, model_predictions[model_name]):
                 if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                     y = y_predictions
-                if tm in scalar_predictions:
+                if tm in scalar_predictions[model_name]:
                     predictions[tm.output_name()][model_name].extend(np.copy(y))
 
     for tm in predictions:
