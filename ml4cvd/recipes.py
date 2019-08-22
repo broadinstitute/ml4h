@@ -441,6 +441,9 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     models = {}
     test_paths = []
     test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
+    model_predictions = {}  # {m: [tm for tm in args.tensor_maps_out if tm.output_name() in models[m].layers] for m in models}
+    scalar_predictions = {}  # {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
+
     for model_file in models_inputs_outputs.keys():
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
@@ -454,15 +457,15 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
+        model_predictions[model_name] = [tm for tm in args.tensor_maps_out if tm.output_name() in model.layers]
+        scalar_predictions[model_name] = [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in model.layers]
 
-    predictions = defaultdict(dict)
-    model_predictions = {m: [tm for tm in args.tensor_maps_out if tm.output_name() in models[m].layers] for m in models}
-    scalar_predictions = {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
     print(f'{model_predictions.keys()} ans scalar predict: {scalar_predictions.keys()}')
     for m in scalar_predictions:
         print(f'{m} and scalar predict lists: {[tm.output_name() for tm in scalar_predictions[m]]}')
     for m in model_predictions:
         print(f'{m} and model_predictions lists: {[tm.output_name() for tm in model_predictions[m]]}')
+    predictions = defaultdict(dict)
     for j in range(steps):
         input_data, labels, paths = next(generator)
         test_paths.extend(paths)
