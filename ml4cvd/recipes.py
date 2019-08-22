@@ -188,7 +188,7 @@ def infer_multimodal_multitask(args):
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
-            if len(otm.shape) == 1:
+            if len(otm.shape) == 1 and (otm.is_continuous() or otm.name == 'ecg_semi_coarse'):
                 header.extend([ot+'_prediction', ot+'_actual'])
         inference_writer.writerow(header)
 
@@ -199,12 +199,12 @@ def infer_multimodal_multitask(args):
                 break
 
             prediction = model.predict(input_data)
-            if len(args.tensor_maps_out) == 1:
+            if len(args.tensor_maps_out) == 1 and (otm.is_continuous() or otm.name == 'ecg_semi_coarse'):
                 prediction = [prediction]
 
             csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
-                if len(tm.shape) == 1:
+                if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
                         csv_row.append("NA")
@@ -212,6 +212,10 @@ def infer_multimodal_multitask(args):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+                elif len(tm.shape) == 1 and tm.is_categorical_any() and tm.name == 'ecg_semi_coarse':
+                    csv_row.append(str(y[0][tm.channel_map['Atrial_fibrillation']]))
+                    csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map['Atrial_fibrillation']]))
+
             inference_writer.writerow(csv_row)
 
             tensor_paths_inferred[tensor_path[0]] = True
@@ -440,8 +444,8 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     """
     models = {}
     test_paths = []
+    scalar_predictions = {}
     test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
-    scalar_predictions = {}  # {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
 
     for model_file in models_inputs_outputs:
         args.model_file = model_file
@@ -457,10 +461,6 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
         scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
-
-    print(f'!!!!! scalar predict: {scalar_predictions.keys()}')
-    for m in scalar_predictions:
-        print(f'{m} and scalar predict lists: {[tm.output_name() for tm in scalar_predictions[m]]}')
 
     predictions = defaultdict(dict)
     for j in range(steps):
