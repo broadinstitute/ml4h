@@ -456,8 +456,8 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
 
-    layer_names = [layer.name for layer in model.layers for model in models]
-    scalar_predictions = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
+    model_predictions = {m: [tm for tm in args.tensor_maps_out if tm.output_name() in models[m].layers] for m in models}
+    scalar_predictions = {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
     for j in range(steps):
         input_data, labels, paths = next(generator)
         test_paths.extend(paths)
@@ -466,16 +466,13 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
         for model_name in models:
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
-            y_prediction = models[model_name].predict(input_data)
+            y_predictions = models[model_name].predict(input_data)
 
-            for i, tm in enumerate(args.tensor_maps_out):
-                if tm in outputs and tm.output_name() in scalar_predictions:
-                    if j == 0:
-                        predictions[tm][model_name] = []
-                    if len(args.tensor_maps_out) == 1:
-                        predictions[tm][model_name].extend(np.copy(y_prediction))
-                    else:
-                        predictions[tm][model_name].extend(np.copy(y_prediction[i]))
+            for y, tm in zip(y_predictions, model_predictions):
+                if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+                    y = y_predictions
+                if tm in scalar_predictions:
+                    predictions[tm.output_name()][model_name].extend(np.copy(y))
 
     for tm in predictions:
         logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")
