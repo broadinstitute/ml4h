@@ -3,7 +3,7 @@ import numpy as np
 from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
-from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM
+from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
 
 
 def _get_lead_cm(length):
@@ -70,7 +70,6 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
 
 TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythm'),
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3})
-
 TMAPS['ecg_coarse'] = TensorMap('ecg_coarse', group='categorical', loss=weighted_crossentropy([1.0, 15.0, 5.0], 'ecg_coarse'),
                                 channel_map={'Sinus_rhythm': 0, 'Atrial_fibrillation': 1, 'Other_rhythm': 2})
 TMAPS['ecg_semi_coarse'] = TensorMap('ecg_semi_coarse', group='categorical', loss=weighted_crossentropy([1.0, 1.0, 2.0, 4.0, 16.0, 20.0], 'ecg_semi_coarse'),
@@ -262,9 +261,16 @@ TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', chan
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 165.9, 'std': 26.3})
 
+TMAPS['ecg-bike-max-hr-no0'] = TensorMap('bike_max_hr', group='continuous', channel_map={'bike_max_hr': 0},
+                                         loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 110.03, 'std': 20.04})
+TMAPS['ecg-bike-resting-hr-no0'] = TensorMap('bike_resting_hr', group='continuous', channel_map={'bike_resting_hr': 0},
+                                             loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 71.2, 'std': 12.57})
+TMAPS['ecg-bike-max-pred-hr-no0'] = TensorMap('bike_max_pred_hr', group='continuous', channel_map={'bike_max_pred_hr': 0},
+                                             loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 167.5, 'std': 5.78})
 
 TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_1'] = TensorMap('full_1', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
+TMAPS['ecg_bike_recovery'] = TensorMap('full', shape=ECG_BIKE_RECOVERY_SIZE, group='ecg_bike_recovery', channel_map={'lead_I': 0, 'lead_2': 1, 'lead_3': 2})
 TMAPS['ecg_bike_m0'] = TensorMap('median_0', shape=ECG_BIKE_MEDIAN_SIZE, group='ecg_bike',
                              channel_map={'I': 0, '2': 1, '3': 2})
 TMAPS['ecg_bike_m1'] = TensorMap('median_1', shape=ECG_BIKE_MEDIAN_SIZE, group='ecg_bike',
@@ -331,6 +337,11 @@ TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimis
 
 TMAPS['t1_p2_1mm_fov256_sag_ti_880'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880', (256, 256, 416), group='root_array')
 TMAPS['t1_brain_208z'] = TensorMap('t1_brain_208z', (256, 256, 208))
+TMAPS['t1_brain_208z_half'] = TensorMap('t1_brain_208z_half', (256 // 2, 256 // 2, 208 // 2))
+TMAPS['t1_brain_208z_quarter'] = TensorMap('t1_brain_208z_quarter', (256 // 4, 256 // 4, 208 // 4))
+TMAPS['t1_brain_208z_3d'] = TensorMap('t1_brain_208z_3d', (256, 256, 208, 1))
+TMAPS['t1_brain_208z_half_3d'] = TensorMap('t1_brain_208z_half_3d', (256 // 2, 256 // 2, 208 // 2, 1))
+TMAPS['t1_brain_208z_quarter_3d'] = TensorMap('t1_brain_208z_quarter_3d', (256 // 4, 256 // 4, 208 // 4, 1))
 
 TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', (288, 384, 7), group='root_array')
 TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (288, 384, 7), group='root_array')
