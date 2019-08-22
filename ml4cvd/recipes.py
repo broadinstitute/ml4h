@@ -458,6 +458,11 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     predictions = defaultdict(dict)
     model_predictions = {m: [tm for tm in args.tensor_maps_out if tm.output_name() in models[m].layers] for m in models}
     scalar_predictions = {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
+    print(f'{model_predictions.keys()} ans scalar predict: {scalar_predictions.keys()}')
+    for m in scalar_predictions:
+        print(f'{m} and scalar predict lists: {[tm.output_name() for tm in scalar_predictions[m]]}')
+    for m in model_predictions:
+        print(f'{m} and model_predictions lists: {[tm.output_name() for tm in model_predictions[m]]}')
     for j in range(steps):
         input_data, labels, paths = next(generator)
         test_paths.extend(paths)
