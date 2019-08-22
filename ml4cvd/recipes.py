@@ -441,10 +441,9 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     models = {}
     test_paths = []
     test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
-    model_predictions = {}  # {m: [tm for tm in args.tensor_maps_out if tm.output_name() in models[m].layers] for m in models}
     scalar_predictions = {}  # {m: [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in models[m].layers] for m in models}
 
-    for model_file in models_inputs_outputs.keys():
+    for model_file in models_inputs_outputs:
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
@@ -457,14 +456,12 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
-        model_predictions[model_name] = [tm for tm in args.tensor_maps_out if tm.output_name() in model.layers]
-        scalar_predictions[model_name] = [tm for tm in args.tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in model.layers]
+        scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 
-    print(f'{model_predictions.keys()} ans scalar predict: {scalar_predictions.keys()}')
+    print(f'!!!!! scalar predict: {scalar_predictions.keys()}')
     for m in scalar_predictions:
         print(f'{m} and scalar predict lists: {[tm.output_name() for tm in scalar_predictions[m]]}')
-    for m in model_predictions:
-        print(f'{m} and model_predictions lists: {[tm.output_name() for tm in model_predictions[m]]}')
+
     predictions = defaultdict(dict)
     for j in range(steps):
         input_data, labels, paths = next(generator)
@@ -472,11 +469,11 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         for tl in test_labels:
             test_labels[tl].extend(np.copy(labels[tl]))
 
-        for model_name in models:
+        for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
             y_predictions = models[model_name].predict(input_data)
 
-            for y, tm in zip(y_predictions, model_predictions[model_name]):
+            for y, tm in zip(y_predictions, models_inputs_outputs[model_file][output_prefix]):
                 if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                     y = y_predictions
                 if j == 0:
