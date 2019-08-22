@@ -471,6 +471,8 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
             for y, tm in zip(y_predictions, model_predictions[model_name]):
                 if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                     y = y_predictions
+                if j == 0:
+                    predictions[tm.output_name()][model_name] = []
                 if tm in scalar_predictions[model_name]:
                     predictions[tm.output_name()][model_name].extend(np.copy(y))
 
