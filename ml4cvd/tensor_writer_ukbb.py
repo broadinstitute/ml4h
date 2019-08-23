@@ -461,7 +461,7 @@ def _write_tensors_from_zipped_dicoms(x: int,
                                       sample_id: int,
                                       stats: Dict[str, int]) -> None:
     sample_str = str(sample_id)
-    for mri_field in mri_field_ids:
+    for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
         for zipped in mris:
             logging.info("Got zipped dicoms for sample: {} with MRI field: {}".format(sample_id, mri_field))
@@ -477,7 +477,7 @@ def _write_tensors_from_zipped_dicoms(x: int,
 
 
 def _write_tensors_from_zipped_niftiis(zip_folder: str, mri_field_ids: List[str], hd5: h5py.File, sample_id: str, stats: Dict[str, int]) -> None:
-    for mri_field in mri_field_ids:
+    for mri_field in set(mri_field_ids).intersection(NIFTII_MRI_FIELDS):
         mris = glob.glob(os.path.join(zip_folder, f'{sample_id}_{mri_field}*.zip'))
         for zipped in mris:
             logging.info(f"Got zipped niftiis for sample: {sample_id} with MRI field: {mri_field}")
