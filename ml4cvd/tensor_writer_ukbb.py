@@ -132,7 +132,7 @@ def write_tensors(a_id: str,
         try:
             with h5py.File(tensor_path, 'w') as hd5:
                 _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
-                _write_tensors_from_zipped_niftiis(tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_niftiis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
@@ -476,18 +476,15 @@ def _write_tensors_from_zipped_dicoms(x: int,
             shutil.rmtree(dicom_folder)
 
 
-def _write_tensors_from_zipped_niftiis(tensors: str, mri_field_ids: List[str],
-                                       zip_folder: str, sample_id: str, hd5: h5py.File, stats: Dict[str, int]) -> None:
-    sample_str = str(sample_id)
+def _write_tensors_from_zipped_niftiis(zip_folder: str, mri_field_ids: List[str], hd5: h5py.File, sample_id: str, stats: Dict[str, int]) -> None:
     for mri_field in mri_field_ids:
-        mris = glob.glob(f'{zip_folder}{sample_str}_{mri_field}*.zip')
+        mris = glob.glob(os.path.join(zip_folder, f'{sample_id}_{mri_field}*.zip'))
         for zipped in mris:
             logging.info(f"Got zipped niftiis for sample: {sample_id} with MRI field: {mri_field}")
             with tempfile.TemporaryDirectory() as temp_folder, zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(temp_folder)
                 _write_tensors_from_niftiis(temp_folder, hd5, mri_field, stats)
                 stats['MRI fields written'] += 1
-    pass
 
 
 def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
