@@ -260,6 +260,9 @@ TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', chan
                                           normalization={'mean': 1036.1, 'std': 185.0})
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 165.9, 'std': 26.3})
+TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, sentinel=0,
+                                          normalization={'mean': 1040.61, 'std': 175.5})
+
 TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
                                            normalization={'mean': 89.53, 'std': 12.21})
 TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, sentinel=0,
