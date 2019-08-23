@@ -260,8 +260,6 @@ TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', chan
                                           normalization={'mean': 1036.1, 'std': 185.0})
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 165.9, 'std': 26.3})
-TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, sentinel=0,
-                                          normalization={'mean': 1040.61, 'std': 175.5})
 
 TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
                                            normalization={'mean': 89.53, 'std': 12.21})
@@ -273,6 +271,9 @@ TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', group='continuous', c
                                             normalization={'mean': 419.1, 'std': 20.7},
                                             parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'])
 TMAPS['r-axis-sentinel'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
+TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, sentinel=0,
+                                          normalization={'mean': 1040.61, 'std': 175.5})
+TMAPS['t-axis-sentinel'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
 
 
 TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
