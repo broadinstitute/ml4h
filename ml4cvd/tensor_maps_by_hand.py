@@ -248,21 +248,22 @@ TMAPS['pp-interval-no0'] = TensorMap('PPInterval', group='continuous', channel_m
 TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
                              normalization={'mean': 165.9, 'std': 26.3})
 
-
 TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
-                        normalization={'mean': 48.7, 'std': 23.1})
+                                     normalization={'mean': 48.7, 'std': 23.1})
 TMAPS['p-duration-sentinel'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
-                            normalization={'mean': 96.1, 'std': 18.85})
+                                         normalization={'mean': 96.1, 'std': 18.85})
 TMAPS['p-offset-sentinel'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
-                          normalization={'mean': 369.1, 'std': 28.42})
+                                       normalization={'mean': 369.1, 'std': 28.42})
 TMAPS['p-onset-sentinel'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
-                         normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0},  sentinel=0, metrics=['logcosh'],
-                             normalization={'mean': 1036.1, 'std': 185.0})
+                                      normalization={'mean': 275.1, 'std': 26.420})
+TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
+                                          normalization={'mean': 1036.1, 'std': 185.0})
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
-                                     normalization={'mean': 165.9, 'std': 26.3})
+                                          normalization={'mean': 165.9, 'std': 26.3})
 TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
                                            normalization={'mean': 89.53, 'std': 12.21})
+TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh', sentinel=0,
+                                          normalization={'mean': 426.1, 'std': 32.24})
 TMAPS['r-axis-sentinel'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
 
 
