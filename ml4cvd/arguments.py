@@ -169,14 +169,15 @@ def _process_args(args):
 
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_'+now_string+'.txt')
+    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
-        f.write(f"python {' '.join(sys.argv)}\n\n")
+        f.write(command_line)
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
-    logging.info(f"Command Line was:\n\npython {' '.join(sys.argv)}\n\n")
+    logging.info(f"Command Line was:{command_line}")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
 
