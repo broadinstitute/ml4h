@@ -121,10 +121,14 @@ TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy'
                               channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
                               loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
 
-TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 2.0, 8.0, 8.0, 8.0], 'lvh_fine'),
+# TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 2.0, 8.0, 8.0, 8.0], 'lvh_fine'),
+#                               channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
+#                                            'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for LVH may be normal variant': 3,
+#                                            'Left ventricular hypertrophy': 4})
+TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 2.0, 8.0, 8.0], 'lvh_fine'),
                               channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
-                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for LVH may be normal variant': 3,
-                                           'Left ventricular hypertrophy': 4})
+                                           'Moderate voltage criteria for LVH may be normal variant': 2,
+                                           'Left ventricular hypertrophy': 3})
 
 TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
                                        loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'))
@@ -261,6 +265,9 @@ TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', chan
                              normalization={'mean': 1036.1, 'std': 185.0})
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 165.9, 'std': 26.3})
+TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
+                                           normalization={'mean': 89.53, 'std': 12.21})
+TMAPS['r-axis-sentinel'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
 
 
 TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
