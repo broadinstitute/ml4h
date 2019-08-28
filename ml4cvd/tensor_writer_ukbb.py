@@ -21,7 +21,6 @@ import numpy as np
 from typing import Dict, List, Tuple
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-from enum import Enum, auto
 from functools import partial
 
 import matplotlib
@@ -36,18 +35,7 @@ from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
-
-
-class DataSetType(Enum):
-    FLOAT_ARRAY = auto()
-    CONTINUOUS = auto()
-    CATEGORICAL = auto()
-    DATE = auto()
-    STRING = auto()
-
-    def __str__(self):
-        """DataSetType.FLOAT_ARRAY becomes float_array"""
-        return str.lower(super().__str__().split('.')[1])
+from ml4cvd.defines import DataSetType
 
 
 MRI_MIN_RADIUS = 2
@@ -789,7 +777,7 @@ def tensor_path(group: str, dtype: DataSetType, time: str, name: str):
     return f'/{dtype}/{group}/{time}/{name}'  # TODO: might want to use posixpath.join
 
 
-def _write_tensor(hd5: h5py.File, group: str, dtype: DataSetType, time: str, name: str, value):
+def _write_tensor(hd5: h5py.File, group: str, dtype: DataSetType, time: str, name: str, value):  # TODO: rename
     hd5_path = tensor_path(group, dtype, time, name)
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
         hd5.create_dataset(hd5_path, data=value, compression='gzip')
