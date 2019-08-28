@@ -802,7 +802,7 @@ def _write_tensor(hd5: h5py.File, group: str, dtype: DataSetType, time: str, nam
 def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         instance = ecg.split(JOIN_CHAR)[-2]
-        write_to_hd5 = partial(_write_tensor, group='ecg_bike', time=f'instance_{instance}, hd5=hd5)
+        write_to_hd5 = partial(_write_tensor, group='ecg_bike', time=f'instance_{instance}', hd5=hd5)
 
         logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
         root = et.parse(ecg).getroot()
