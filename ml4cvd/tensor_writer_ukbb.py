@@ -52,7 +52,7 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20252', '20253', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
-NIFTII_MRI_FIELDS = ['20251']
+NIFTI_MRI_FIELDS = ['20251']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -132,7 +132,7 @@ def write_tensors(a_id: str,
         try:
             with h5py.File(tensor_path, 'w') as hd5:
                 _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
-                _write_tensors_from_zipped_niftiis(zip_folder, mri_field_ids, hd5, sample_id, stats)
+                _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
@@ -205,7 +205,7 @@ def _sample_has_dicom_mris(zip_folder, sample_id) -> bool:
 
 def _sample_has_niftii_mris(zip_folder, sample_id) -> bool:
     sample_str = str(sample_id)
-    return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in NIFTII_MRI_FIELDS])
+    return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in NIFTI_MRI_FIELDS])
 
 
 def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
@@ -476,14 +476,14 @@ def _write_tensors_from_zipped_dicoms(x: int,
             shutil.rmtree(dicom_folder)
 
 
-def _write_tensors_from_zipped_niftiis(zip_folder: str, mri_field_ids: List[str], hd5: h5py.File, sample_id: str, stats: Dict[str, int]) -> None:
-    for mri_field in set(mri_field_ids).intersection(NIFTII_MRI_FIELDS):
+def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str], hd5: h5py.File, sample_id: str, stats: Dict[str, int]) -> None:
+    for mri_field in set(mri_field_ids).intersection(NIFTI_MRI_FIELDS):
         mris = glob.glob(os.path.join(zip_folder, f'{sample_id}_{mri_field}*.zip'))
         for zipped in mris:
-            logging.info(f"Got zipped niftiis for sample: {sample_id} with MRI field: {mri_field}")
+            logging.info(f"Got zipped niftis for sample: {sample_id} with MRI field: {mri_field}")
             with tempfile.TemporaryDirectory() as temp_folder, zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(temp_folder)
-                _write_tensors_from_niftiis(temp_folder, hd5, mri_field, stats)
+                _write_tensors_from_niftis(temp_folder, hd5, mri_field, stats)
                 stats['MRI fields written'] += 1
 
 
@@ -896,15 +896,16 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             hd5.create_dataset(f'{hd5_prefix}/max_over_min', data=[max_over_min], compression='gzip', dtype=np.float32)
 
 
-def _write_tensors_from_niftiis(folder: str, hd5: h5py.File, field_id: str, stats: Dict[str, int]):
+def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Dict[str, int]):
     field_id_to_root = {
         '20251': 'SWI',
     }
     root_folder = os.path.join(folder, field_id_to_root[field_id])
     niftiis = glob.glob(os.path.join(root_folder, '*nii.gz'))
     for niftii in niftiis:  # iterate through all nii.gz files and add them to the hd5
-        data = nib.load(niftii).get_fdata()
-        nii_name = os.path.basename(niftii)[:-7]  # removes .nii.gz
+        nifti_mri = nib.load(niftii)
+        data = nifti_mri.get_fdata()
+        nii_name = os.path.basename(niftii).replace('.nii.gz', '')  # removes .nii.gz
         stats[nii_name] += 1
         stats[f'{nii_name}_{data.shape}'] += 1
         hd5_prefix = f'/ndarray/{field_id}/{nii_name}'
