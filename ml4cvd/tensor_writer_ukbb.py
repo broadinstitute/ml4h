@@ -203,7 +203,7 @@ def _sample_has_dicom_mris(zip_folder, sample_id) -> bool:
     return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in DICOM_MRI_FIELDS])
 
 
-def _sample_has_niftii_mris(zip_folder, sample_id) -> bool:
+def _sample_has_nifti_mris(zip_folder, sample_id) -> bool:
     sample_str = str(sample_id)
     return any([os.path.exists(os.path.join(zip_folder, f'{sample_str}_{mri_f}_2_0.zip')) for mri_f in NIFTI_MRI_FIELDS])
 
@@ -901,11 +901,11 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         '20251': 'SWI',
     }
     root_folder = os.path.join(folder, field_id_to_root[field_id])
-    niftiis = glob.glob(os.path.join(root_folder, '*nii.gz'))
-    for niftii in niftiis:  # iterate through all nii.gz files and add them to the hd5
-        nifti_mri = nib.load(niftii)
+    niftis = glob.glob(os.path.join(root_folder, '*nii.gz'))
+    for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
+        nifti_mri = nib.load(nifti)
         data = nifti_mri.get_fdata()
-        nii_name = os.path.basename(niftii).replace('.nii.gz', '')  # removes .nii.gz
+        nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
         stats[nii_name] += 1
         stats[f'{nii_name}_{data.shape}'] += 1
         hd5_prefix = f'/ndarray/{field_id}/{nii_name}'
@@ -1252,7 +1252,7 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
         return True
     if sample_id > max_sample_id:
         return True
-    if len(mri_field_ids) > 0 and not (_sample_has_dicom_mris(zip_folder, sample_id) or _sample_has_niftii_mris(zip_folder, sample_id)):
+    if len(mri_field_ids) > 0 and not (_sample_has_dicom_mris(zip_folder, sample_id) or _sample_has_nifti_mris(zip_folder, sample_id)):
         return True
     if len(xml_field_ids) > 0 and not _sample_has_ecgs(xml_folder, xml_field_ids, sample_id):
         return True
