@@ -2,14 +2,15 @@ from keras import optimizers
 from keras_radam import RAdam
 
 
-def get_optimizer(name: str):
+def get_optimizer(name: str, lr: float):
     name = str.lower(name)
     try:
         opt = optimizers.get(name)
+        opt.lr = lr
         return opt
     except ValueError:
         print('Using optimizer not in keras')
-    return NON_KERAS_OPTIMIZERS[name]
+    return NON_KERAS_OPTIMIZERS[name](lr)
 
 
 NON_KERAS_OPTIMIZERS = {

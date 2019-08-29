@@ -430,7 +430,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
             output_predictions[tm.output_name()] = Dense(units=1, activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
-    opt = get_optimizer(optimizer)(learning_rate)
+    opt = get_optimizer(optimizer, learning_rate)
     m.summary()
 
     if model_layers is not None:
