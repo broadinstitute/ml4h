@@ -127,7 +127,7 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param imputation: Method of imputation for missing values. Options are mean or random.
-        :param tensor_from_file: Function that return numpt array from hd5 file for this TensorMap
+        :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
         """
         self.name = name
         self.loss = loss
