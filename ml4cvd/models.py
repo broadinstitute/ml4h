@@ -314,9 +314,12 @@ def make_multimodal_to_multilabel_model(model_file: str,
     :param lookahead: Whether to use Lookahead Optimizer (https://arxiv.org/abs/1907.08610)
     :return: a compiled keras model
 	"""
+    opt = get_optimizer(optimizer, learning_rate)
+    metric_dict = get_metric_dict(tensor_maps_out)
+    custom_dict = {**metric_dict, type(opt).__name__: opt}
     if model_file is not None:
         logging.info("Attempting to load model file from: {}".format(model_file))
-        m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
+        m = load_model(model_file, custom_objects=custom_dict)
         m.summary()
         logging.info("Loaded model file from: {}".format(model_file))
         return m
@@ -430,7 +433,6 @@ def make_multimodal_to_multilabel_model(model_file: str,
             output_predictions[tm.output_name()] = Dense(units=1, activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
-    opt = get_optimizer(optimizer, learning_rate)
     m.summary()
 
     if model_layers is not None:
