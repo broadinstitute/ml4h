@@ -26,6 +26,8 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+from ml4cvd.optimizers import get_optimizer
+from ml4cvd.lookahead import Lookahead
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
@@ -270,6 +272,8 @@ def make_multimodal_to_multilabel_model(model_file: str,
                                         pool_z: int,
                                         padding: str,
                                         learning_rate: float,
+                                        optimizer: str = 'adam',
+                                        lookahead: bool = False,
                                         ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -306,6 +310,8 @@ def make_multimodal_to_multilabel_model(model_file: str,
     :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
     :param padding: Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
     :param learning_rate:
+    :param optimzer: Which optimzer to use. The mapping from string to optmizer is in defines.py.
+    :param lookahead: Whether to use Lookahead Optimizer (https://arxiv.org/abs/1907.08610)
     :return: a compiled keras model
 	"""
     if model_file is not None:
@@ -424,7 +430,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
             output_predictions[tm.output_name()] = Dense(units=1, activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
+    opt = get_optimizer(optimizer)
     m.summary()
 
     if model_layers is not None:
@@ -443,6 +449,9 @@ def make_multimodal_to_multilabel_model(model_file: str,
         logging.info('Loaded and froze:{} layers from:{}'.format(frozen, model_freeze))
 
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
+    if lookahead:
+        lookahead_opt = Lookahead()
+        lookahead_opt.inject(m)
     return m
 
 
