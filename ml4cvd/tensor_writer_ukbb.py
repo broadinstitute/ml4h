@@ -782,7 +782,7 @@ def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: 
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
         hd5.create_dataset(hd5_path, data=value, compression='gzip')
     elif dtype in (DataSetType.STRING,):
-        hd5.create_dataset(hd5_path, dtype=h5py.special_dtype(vlen=str))
+        hd5.create_dataset(hd5_path, data=value, dtype=h5py.special_dtype(vlen=str))
     else:
         raise NotImplementedError(f'{dtype} cannot be automatically written yet')  # TODO: Add categorical, etc.
 
@@ -866,7 +866,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             trends['Artifact'].append(float(trend_entry.find('Artifact').text.strip('%')) / 100)  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
-            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name=f'trend_{field}', value=trend_list)
+            write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name=f'trend_{str.lower(field)}', value=trend_list)
 
         # Last 60 seconds of raw given that the rest phase is 60s
         phase_durations = {}
@@ -875,10 +875,9 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             phase_duration = SECONDS_PER_MINUTE * int(protocol.find("PhaseDuration/Minute").text) + int(
                 protocol.find("PhaseDuration/Second").text)
             phase_durations[phase_name] = phase_duration
-            write_to_hd5(dtype=DataSetType.CONTINUOUS, name=f'{phase_name}_duration', value=[phase_duration])
+            write_to_hd5(dtype=DataSetType.CONTINUOUS, name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
 
         # HR stats
-        hd5_prefix = '/continuous/instance_{instance}'
         max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
         resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
         max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
