@@ -5,7 +5,6 @@ class DataSetType(Enum):
     FLOAT_ARRAY = auto()
     CONTINUOUS = auto()
     CATEGORICAL = auto()
-    DATE = auto()
     STRING = auto()
 
     def __str__(self):

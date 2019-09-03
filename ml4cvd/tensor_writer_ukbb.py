@@ -770,31 +770,36 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                             hd5.create_dataset(rest_group + dataset_name, data=median_wave, compression='gzip')
 
 
-def tensor_path(group: str, dtype: DataSetType, time: str, name: str):
+def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: str) -> str:
     """
     In the future, TMAPs should be generated using this same function
     """
-    return f'/{dtype}/{group}/{time}/{name}'  # TODO: might want to use posixpath.join
+    return f'/{source}/{dtype}/{_datetime_to_str(date)}/{name}'
 
 
-def _write_tensor(hd5: h5py.File, group: str, dtype: DataSetType, time: str, name: str, value):  # TODO: rename
-    hd5_path = tensor_path(group, dtype, time, name)
+def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value):
+    hd5_path = tensor_path(source, dtype, date, name)
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
         hd5.create_dataset(hd5_path, data=value, compression='gzip')
-    elif dtype in (DataSetType.STRING, DataSetType.DATE):
+    elif dtype in (DataSetType.STRING,):
         hd5.create_dataset(hd5_path, dtype=h5py.special_dtype(vlen=str))
     else:
-        raise NotImplementedError(f'{dtype} cannot be automatically written yet')
+        raise NotImplementedError(f'{dtype} cannot be automatically written yet')  # TODO: Add categorical, etc.
+
+
+def _datetime_to_str(dt: datetime.datetime) -> str:
+    return dt.strftime('%Y-%m-%d_%H-%M-%S')
 
 
 def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
-        instance = ecg.split(JOIN_CHAR)[-2]
-        write_to_hd5 = partial(_write_tensor, group='ecg_bike', time=f'instance_{instance}', hd5=hd5)
-
-        logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
         root = et.parse(ecg).getroot()
-        write_to_hd5(dtype=DataSetType.DATE, name='ecg_date', value=_date_str_from_ecg(root))
+        date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
+        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5)
+        logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
+
+        instance = ecg.split(JOIN_CHAR)[-2]
+        write_to_hd5(dtype=DataSetType.STRING, name='instance', value=instance)
 
         median_ecgs = defaultdict(list)
         for median_waves in root.findall('./MedianData/Median/WaveformData'):
