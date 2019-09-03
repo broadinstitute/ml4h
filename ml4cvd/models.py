@@ -8,7 +8,7 @@ import logging
 import operator
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable, Callable
+from typing import Dict, List, Tuple, Iterable, Callable, Any
 
 # Keras imports
 from keras import layers
@@ -273,6 +273,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
                                         padding: str,
                                         learning_rate: float,
                                         optimizer: str = 'adam',
+                                        optimizer_kwargs: Dict[str, Any] = None,
                                         lookahead: bool = False,
                                         ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
@@ -310,11 +311,12 @@ def make_multimodal_to_multilabel_model(model_file: str,
     :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
     :param padding: Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
     :param learning_rate:
-    :param optimzer: Which optimzer to use. The mapping from string to optmizer is in defines.py.
+    :param optimizer: which optimizer to use. See optimizers.py.
+    :param optimizer_kwargs: kwargs to initialize optimizer. E.g. for adam: optimizer_kwargs={beta_1:0.9}
     :param lookahead: Whether to use Lookahead Optimizer (https://arxiv.org/abs/1907.08610)
     :return: a compiled keras model
-	"""
-    opt = get_optimizer(optimizer, learning_rate)
+    """
+    opt = get_optimizer(optimizer, learning_rate, optimizer_kwargs)
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
     if model_file is not None:
