@@ -401,7 +401,7 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
         for k in out_batch:
             out_batch[k] = out_batch[k][permuted, ...]
             if k == 'output_has_ttntv_categorical_flag':
-                print(f'np sum = {np.sum(out_batch[k], axis=-1)} shape is {out_batch[k].shape}')
+                print(f'np sum = {out_batch[k]} shape is {out_batch[k].shape}')
 
     mixed_ins = {k: np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
     mixed_outs = {k: np.zeros((half_batch,) + out_batch[k].shape[1:]) for k in out_batch}
@@ -413,6 +413,6 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
         for k in out_batch:
             mixed_outs[k][i] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half_batch + i, ...] * weight1)
             if i == half_batch-1 and k == 'output_has_ttntv_categorical_flag':
-                print(f'np sum = {np.sum(mixed_outs[k], axis=-1)} shape is {mixed_outs[k].shape}')
+                print(f'np sum = {mixed_outs[k]} shape is {mixed_outs[k].shape}')
 
     return mixed_ins, mixed_outs
