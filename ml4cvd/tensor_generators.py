@@ -368,7 +368,7 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     """
     if len(balance_csvs) > 0:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
-        weights = [1.0/len(balance_csvs) for _ in range(len(balance_csvs)+1)]
+        weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths, mixup_alpha)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
