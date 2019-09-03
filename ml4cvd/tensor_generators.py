@@ -397,9 +397,9 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
     if permute_first:
         permuted = np.random.permutation(full_batch)
         for k in in_batch:
-            in_batch[k] = in_batch[k][permuted]
+            in_batch[k] = in_batch[k][permuted, ...]
         for k in out_batch:
-            out_batch[k] = out_batch[k][permuted]
+            out_batch[k] = out_batch[k][permuted, ...]
 
     mixed_ins = {k: np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
     mixed_outs = {k: np.zeros((half_batch,) + out_batch[k].shape[1:]) for k in out_batch}
