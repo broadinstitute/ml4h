@@ -85,9 +85,9 @@ def run(args):
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
-                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.balance_csvs)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                                       args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                                       mixup_alpha=args.mixup_alpha)
 
     model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
                                                 args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
