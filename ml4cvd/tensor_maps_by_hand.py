@@ -4,6 +4,7 @@ from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
 from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
+from ml4cvd.tensor_from_file import continuous_from_file_first_date, float_array_from_file_first_date
 
 
 def _get_lead_cm(length):
@@ -779,3 +780,16 @@ TMAPS['categorical-phenotypes-134'] = TensorMap(
                      'Workplace-had-a-lot-of-diesel-exhaust_Rarelynever_0_0': 90,
                      'Workplace-had-a-lot-of-diesel-exhaust_Rarelynever_0_1': 91,
                      'Workplace-very-dusty_Rarelynever_0_0': 127, 'Workplace-very-dusty_Rarelynever_0_1': 128})
+
+
+TMAPS['ecg-bike-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
+                                     normalization={'mean': 110.03, 'std': 20.04},
+                                     tensor_from_file=continuous_from_file_first_date)
+TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', group='ecg_bike', loss=ignore_zeros_logcosh,
+                                         metrics=['logcosh'], normalization={'mean': 71.2, 'std': 12.57},
+                                         tensor_from_file=continuous_from_file_first_date)
+TMAPS['ecg-bike-age'] = TensorMap('age', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
+                                  normalization={'mean': 60, 'std': 7.65},
+                                  tensor_from_file=continuous_from_file_first_date)
+TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(76, 1), group='ecg_rest',
+                                 tensor_from_file=float_array_from_file_first_date)
