@@ -388,7 +388,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
             logging.info(f"Got first error: {k}")
 
 
-def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray], alpha: int = 1.0, permute_first: bool = False):
+def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray], alpha: float = 1.0, permute_first: bool = False):
     for k in in_batch:
         full_batch = in_batch[k].shape[0]
         half_batch = full_batch // 2
