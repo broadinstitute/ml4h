@@ -573,7 +573,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = f"{key} area: {roc_auc[labels[key]]:.3f} #: {true_sums[[labels[key]]]}"
+        label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]}'
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f"True sum shape {true_sums.shape} ROC Label {label_text}")
 
@@ -583,7 +583,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
-    plt.title(f'ROC {title} #{np.sum(true_sums)}\n')
+    plt.title(f'ROC {title} n={np.sum(true_sums)}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
