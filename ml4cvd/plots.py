@@ -573,7 +573,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:d}'
+        label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f'ROC Label {label_text}')
 
@@ -605,7 +605,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p+key)
-            label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:d}'
+            label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f"ROC Label {label_text}")
 
@@ -641,7 +641,7 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(key)
-            label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:d}'
+            label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f'ROC Label {label_text}')
         axes[row, col].set_xlim([0.0, 1.0])
@@ -683,7 +683,7 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
                 if 'no_' in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:d}'
+                label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 logging.info(f"ROC Label {label_text}")
 
@@ -719,7 +719,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
-        label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:d}'
+        label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
         logging.info(f'prAUC Label {label_text}')
         labels_to_areas[k] = average_precision
@@ -751,7 +751,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = f'{p}_{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:d}'
+            label_text = f'{p}_{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
             logging.info(f"prAUC Label {label_text}")
 
