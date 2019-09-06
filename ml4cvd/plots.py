@@ -575,7 +575,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         color = _hash_string_to_color(key)
         label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]}'
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-        logging.info(f"truth shape {truth.shape} True sum shape {true_sums} ROC Label {label_text}")
+        logging.info(f'ROC Label {label_text}')
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
@@ -596,6 +596,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 2
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
@@ -604,18 +605,18 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p+key)
-            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+            label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]}'
             plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
             logging.info(f"ROC Label {label_text}")
 
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
-    plt.xlabel(FALLOUT_LABEL)
     plt.ylabel(RECALL_LABEL)
-    plt.title('ROC: ' + title + '\n')
+    plt.xlabel(FALLOUT_LABEL)
+    plt.legend(loc='lower right')
+    plt.title(f'ROC {title} n={np.sum(true_sums)}\n')
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
 
-    plt.legend(loc="lower right")
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -626,7 +627,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
 
 def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
-    lw = 3
+    lw = 2
     row = 0
     col = 0
     total_plots = len(rocs)
@@ -634,22 +635,22 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predicted, truth, labels in rocs:
+        true_sums = np.sum(truth, axis=0)
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
         for key in labels:
             if 'no_' in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(key)
-            label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
+            label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]}'
             axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-            axes[row, col].set_title('ROC: ' + key + '\n')
-            logging.info(f"ROC Label {label_text}")
-
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+            logging.info(f'ROC Label {label_text}')
         axes[row, col].set_xlim([0.0, 1.0])
         axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].legend(loc="lower right")
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].legend(loc='lower right')
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_title(f'ROC {" ".join(labels.keys())[:64]} n={np.sum(true_sums)}')
 
         row += 1
         if row == rows:
@@ -675,23 +676,24 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
     for predictions, truth, labels in rocs:
+        true_sums = np.sum(truth, axis=0)
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
             for key in labels:
                 if 'no_' in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+                label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]}'
                 axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-                axes[row, col].set_title('ROC: ' + key + '\n')
                 logging.info(f"ROC Label {label_text}")
 
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_xlim([0.0, 1.0])
         axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].legend(loc="lower right")
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_title(f'ROC {" ".join(labels.keys())[:64]} n={np.sum(true_sums)}\n')
 
         row += 1
         if row == rows:
