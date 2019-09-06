@@ -564,27 +564,27 @@ def plot_counter(counts, title, prefix='./figures/'):
 def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     lw = 2
     labels_to_areas = {}
+    true_sums = np.sum(truth, axis=-1)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
-    true_sums = np.sum(truth, axis=-1)
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:
             continue
         color = _hash_string_to_color(key)
-        label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
+        label_text = f"{key} area: {roc_auc[labels[key]]:.3f} #: {true_sums[[labels[key]]]}"
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f"True sum shape {true_sums.shape} ROC Label {label_text}")
 
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
-    plt.xlabel(FALLOUT_LABEL)
     plt.ylabel(RECALL_LABEL)
-    plt.title('ROC: ' + title + '\n')
-
+    plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
+    plt.title(f'ROC {title} #{np.sum(true_sums)}\n')
+
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
