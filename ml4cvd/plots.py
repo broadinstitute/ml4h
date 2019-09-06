@@ -32,7 +32,7 @@ RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
 PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
-SUBPLOT_SIZE = 6
+SUBPLOT_SIZE = 7
 
 COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'red',
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
@@ -659,7 +659,6 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
             if col >= cols:
                 break
 
-    plt.tight_layout()
     figure_path = prefix + 'rocs_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
