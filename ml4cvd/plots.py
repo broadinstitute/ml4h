@@ -650,7 +650,7 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].legend(loc='lower right')
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC {" ".join(labels.keys())[:64]} n={np.sum(true_sums)}')
+        axes[row, col].set_title(f'ROC n={np.sum(true_sums)}')
 
         row += 1
         if row == rows:
@@ -693,7 +693,7 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].legend(loc="lower right")
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC {" ".join(labels.keys())[:64]} n={np.sum(true_sums)}\n')
+        axes[row, col].set_title(f'ROC n={np.sum(true_sums)}\n')
 
         row += 1
         if row == rows:
