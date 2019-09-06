@@ -4,7 +4,7 @@ from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
 from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
-from ml4cvd.tensor_from_file import continuous_from_file_first_date, float_array_from_file_first_date
+from ml4cvd.tensor_from_file import continuous_from_file_first_date, float_array_from_file_first_date, float_array_zero_pad_from_file_first_date, first_date_bike_recovery
 
 
 def _get_lead_cm(length):
@@ -783,13 +783,17 @@ TMAPS['categorical-phenotypes-134'] = TensorMap(
 
 
 TMAPS['ecg-bike-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                                     normalization={'mean': 110.03, 'std': 20.04},
+                                     normalization={'mean': 110.03, 'std': 20.04}, shape=(1,), channel_map={},
                                      tensor_from_file=continuous_from_file_first_date)
-TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', group='ecg_bike', loss=ignore_zeros_logcosh,
-                                         metrics=['logcosh'], normalization={'mean': 71.2, 'std': 12.57},
+TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', group='ecg_bike', loss=ignore_zeros_logcosh, shape=(1,),
+                                         metrics=['logcosh'], normalization={'mean': 71.2, 'std': 12.57}, channel_map={},
                                          tensor_from_file=continuous_from_file_first_date)
-TMAPS['ecg-bike-age'] = TensorMap('age', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                                  normalization={'mean': 60, 'std': 7.65},
+TMAPS['ecg-bike-age'] = TensorMap('age', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                  normalization={'mean': 60, 'std': 7.65}, channel_map={},
                                   tensor_from_file=continuous_from_file_first_date)
-TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(76, 1), group='ecg_rest',
-                                 tensor_from_file=float_array_from_file_first_date)
+TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
+                                       tensor_from_file=float_array_zero_pad_from_file_first_date)
+TMAPS['ecg-bike-trend-load'] = TensorMap('trend_load', shape=(106, 1), group='ecg_bike',
+                                         tensor_from_file=float_array_zero_pad_from_file_first_date)
+TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike',
+                                       tensor_from_file=first_date_bike_recovery)
