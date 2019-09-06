@@ -562,11 +562,11 @@ def plot_counter(counts, title, prefix='./figures/'):
 
 
 def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
-    labels_to_areas = {}
-    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
-
     lw = 2
+    labels_to_areas = {}
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    true_sums = np.sum(truth, axis=-1)
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -575,7 +575,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         color = _hash_string_to_color(key)
         label_text = f"{key} area: {roc_auc[labels[key]]:.3f}"
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-        logging.info(f"ROC Label {label_text}")
+        logging.info(f"True sum shape {true_sums.shape} ROC Label {label_text}")
 
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.xlim([0.0, 1.0])
