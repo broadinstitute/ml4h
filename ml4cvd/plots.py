@@ -712,25 +712,25 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     # Compute Precision-Recall and plot curve
     lw = 2.0
     labels_to_areas = {}
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for k in labels:
         c = _hash_string_to_color(k)
         precision, recall, _ = precision_recall_curve(truth[:, labels[k]], prediction[:, labels[k]])
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
-        label_text = f"{k} mean precision:{average_precision:.3f}"
+        label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
-        logging.info(f"prAUC Label {label_text}")
+        logging.info(f'prAUC Label {label_text}')
         labels_to_areas[k] = average_precision
 
-    plt.ylim([-0.02, 1.03])
     plt.xlim([0.0, 1.00])
-
+    plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
-    plt.title(title)
-
     plt.legend(loc="lower left")
+    plt.title(f'{title} n={np.sum(true_sums)}')
+
     figure_path = os.path.join(prefix, 'precision_recall_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
@@ -743,6 +743,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
 def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/'):
     # Compute Precision-Recall and plot curve for each model
     lw = 2.0
+    true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
 
     for p in predictions:
@@ -750,18 +751,17 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
             c = _hash_string_to_color(p+k)
             precision, recall, _ = precision_recall_curve(truth[:, labels[k]], predictions[p][:, labels[k]])
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
-            label_text = f"{p}_{k} mean precision:{average_precision:.3f}"
+            label_text = f'{p}_{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]}'
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
             logging.info(f"prAUC Label {label_text}")
 
-    plt.ylim([-0.02, 1.03])
     plt.xlim([0.0, 1.00])
-
+    plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
-    plt.title(title)
-
     plt.legend(loc="lower left")
+    plt.title(f'{title} n={np.sum(true_sums)}')
+
     figure_path = os.path.join(prefix, 'precision_recall_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
