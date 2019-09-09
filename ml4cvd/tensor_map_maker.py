@@ -233,13 +233,12 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         ON TRUE
         AND SAFE_CAST(p.value AS FLOAT64) = SAFE_CAST(c.coding AS FLOAT64)
         AND p.coding_file_id = c.coding_file_id
-    WHERE TRUE
-        AND (instance = 0 or instance = 2)
     )
 
     SELECT 
         t.FieldID, 
-        Field, 
+        Field,
+        instance,
         AVG(CAST(new_value AS FLOAT64)) mean, 
         STDDEV(CAST(new_value AS FLOAT64)) std,
         MAX(array_idx) AS max_array
