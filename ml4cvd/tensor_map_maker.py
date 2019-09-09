@@ -238,7 +238,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
     SELECT 
         t.FieldID, 
         Field,
-        instance,
+        t.instance,
         AVG(CAST(new_value AS FLOAT64)) mean, 
         STDDEV(CAST(new_value AS FLOAT64)) std,
         MAX(array_idx) AS max_array
