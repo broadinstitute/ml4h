@@ -55,6 +55,9 @@ def float_array_zero_pad_from_file_first_date(tm: TensorMap, hd5: h5py.File, dep
 
 
 def first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
+    recovery_len = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'rest_duration')
+    if recovery_len != 60:
+        raise ValueError(f'No recovery phase in {hd5}')
     original = get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
     flat = original.mean(axis=1)  # all leads are basically the same
     recovery = flat[-tm.shape[0]:]
