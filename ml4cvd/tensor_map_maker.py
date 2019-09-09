@@ -224,6 +224,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
     SELECT 
         sample_id, 
         FieldID, 
+        instance,
         array_idx,
         COALESCE(c.value, p.value) new_value, 
         COALESCE(c.missing, FALSE) missing
@@ -233,7 +234,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         AND SAFE_CAST(p.value AS FLOAT64) = SAFE_CAST(c.coding AS FLOAT64)
         AND p.coding_file_id = c.coding_file_id
     WHERE TRUE
-        AND instance = 0 
+        AND (instance = 0 or instance = 2)
     )
 
     SELECT 
@@ -258,11 +259,11 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
-            channel_map += f"'{name}_0_{i}': {i}, "
+            channel_map += f"'{name}_{row.instance}'_{i}': {i}, "
         if include_missing:
             channel_map += "'not-missing': " + str(row.max_array + 1)
         channel_map += "}"
-        f.write(f"TMAPS['{row.FieldID}_0'] = TensorMap('{name}', group='{group}', normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
+        f.write(f"TMAPS['{row.FieldID}_{row.instance}'] = TensorMap('{name}', group='{group}', normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
 
 
 def _segmented_map(name):
