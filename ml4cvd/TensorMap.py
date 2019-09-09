@@ -10,6 +10,7 @@ from keras.utils import to_categorical
 from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.defines import CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
 from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
+from ml4cvd.defines import DataSetType
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
 
@@ -106,7 +107,8 @@ class TensorMap(object):
                  normalization=None,
                  annotation_units=32,
                  imputation=None,
-                 tensor_from_file=None):
+                 tensor_from_file=None,
+                 dtype=None):
         """TensorMap constructor
 
 
@@ -128,6 +130,7 @@ class TensorMap(object):
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param imputation: Method of imputation for missing values. Options are mean or random.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
+        :param dtype: DataSetType of tensor map
         """
         self.name = name
         self.loss = loss
@@ -148,6 +151,7 @@ class TensorMap(object):
         self.imputation = imputation
         self.tensor_from_file = tensor_from_file
         self.initialization = None  # Not yet implemented
+        self.dtype = dtype
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
@@ -238,7 +242,7 @@ class TensorMap(object):
         return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation()
 
     def is_continuous(self):
-        return self.group == 'continuous'
+        return self.group == 'continuous' or self.dtype == DataSetType.CONTINUOUS
 
     def is_multi_field_continuous(self):
         return self.group == TENSOR_MAP_GROUP_MISSING_CONTINUOUS or self.group == TENSOR_MAP_GROUP_CONTINUOUS
@@ -400,6 +404,37 @@ class TensorMap(object):
                         data[self.channel_map[NOT_MISSING]] = 1
             return self.normalize(data)
         raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
+
+    # Operator overloads. Maybe too fancy. The normalization of the current TMAP is kept, which is a little weird
+    def _check_compatibility(self, other):
+        if type(other) == TensorMap:
+            if {self.dtype, other.dtype} == {DataSetType.CONTINUOUS, DataSetType.FLOAT_ARRAY}:
+                return
+            raise NotImplementedError(f'Operators have not been defined between {self.dtype} and {other.dtype}.')
+        raise NotImplementedError(f'Operators have not been defined between {self.dtype} TensorMap and {type(other)}.')
+
+    def _build_combined_tensor_from_file(self, other, operator):
+        def combined(tm, hd5, dependents={}):
+            return self.normalize(operator(
+                self.tensor_from_file(tm, hd5, dependents),
+                other.tensor_from_file(tm, hd5, dependents)))
+        return combined
+
+    def __iadd__(self, other):
+        self._check_compatibility(other)
+        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x + y)
+
+    def __isub__(self, other):
+        self._check_compatibility(other)
+        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x - y)
+
+    def __imul__(self, other):
+        self._check_compatibility(other)
+        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x * y)
+
+    def __itruediv__(self, other):
+        self._check_compatibility(other)
+        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x / y)
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):
