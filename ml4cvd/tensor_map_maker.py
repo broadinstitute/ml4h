@@ -258,7 +258,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
-            channel_map += f"'{name}_{row.instance}'_{i}': {i}, "
+            channel_map += f"'{name}_{row.instance}_{i}': {i}, "
         if include_missing:
             channel_map += "'not-missing': " + str(row.max_array + 1)
         channel_map += "}"
