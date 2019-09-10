@@ -4,7 +4,7 @@ from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
 from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
-from ml4cvd.tensor_from_file import first_date_bike_recovery, normalized_first_date, first_date_bike_pretest, first_date_hrr
+from ml4cvd.tensor_from_file import first_date_bike_recovery, normalized_first_date, first_date_bike_pretest, first_date_hrr, narrow_hrr, narrow_max_hr
 from ml4cvd.defines import DataSetType
 
 
@@ -798,20 +798,12 @@ TMAPS['ecg-bike-max-pred-hr'] = TensorMap('max_pred_hr', group='ecg_bike', loss=
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
                                   tensor_from_file=first_date_hrr, dtype=DataSetType.CONTINUOUS)
-
-hrr_max_pred_no_norm = TensorMap('max_pred_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
-                                 tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
-max_over_pred = TensorMap('max_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                          normalization={'mean': .684, 'std': .0909}, shape=(1,),
-                          tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
-max_over_pred /= hrr_max_pred_no_norm
-TMAPS['ecg-bike-max-over-pred'] = max_over_pred
-
-hrr_over_pred = TensorMap('hrr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
-                          normalization={'mean': .183, 'std': .071},
-                          tensor_from_file=first_date_hrr, dtype=DataSetType.CONTINUOUS)
-hrr_over_pred /= hrr_max_pred_no_norm
-TMAPS['ecg-bike-hrr-over-pred'] = hrr_over_pred
+TMAPS['ecg-bike-narrow-hrr'] = TensorMap('hrr_narrow', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                         normalization={'mean': .18196, 'std': .06324},
+                                         tensor_from_file=narrow_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-narrow-max-hr'] = TensorMap('max_hr_narrow', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                            normalization={'mean': .67356, 'std': .01067},
+                                            tensor_from_file=narrow_max_hr, dtype=DataSetType.CONTINUOUS)
 
 TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
                                        tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)

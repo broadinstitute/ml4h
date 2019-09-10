@@ -62,13 +62,13 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
     if phase == 'pretest':
         valid &= phase_len == 15
     elif phase == 'exercise':
-        valid &= phase_len == 300
+        valid &= phase_len == 360
     elif phase == 'rest':
         valid &= phase_len == 60
     else:
         raise ValueError(f'Phase {phase} is not a valid phase.')
     if not valid:
-        raise ValueError(f'{phase} phase is not full in {hd5}')
+        raise ValueError(f'{phase} phase of length {phase_len} is not full in {hd5}')
 
 
 def first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -92,3 +92,27 @@ def first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     last_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
     max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
     return tm.normalize(last_hr - max_hr)
+
+
+def narrow_check(hd5, max_hr, max_pred):
+    _check_phase_full_len(hd5, 'exercise')
+    low, hi = 0.6551724137931034, 0.6927710843373494
+    ratio = max_hr / max_pred
+    if low < ratio < hi:
+        return
+    raise ValueError(f'Max hr / max pred hr {ratio} not in {low, hi}')
+    
+
+def narrow_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
+    max_pred_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
+    hrr = first_date_hrr(tm, hd5)
+    narrow_check(hd5, max_hr, max_pred_hr)
+    return tm.normalize(hrr / max_pred_hr)
+
+
+def narrow_max_hr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
+    max_pred_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
+    narrow_check(hd5, max_hr, max_pred_hr)
+    return tm.normalize(max_hr / max_pred_hr)
