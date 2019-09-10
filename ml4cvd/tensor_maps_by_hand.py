@@ -38,7 +38,7 @@ TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_t
 def ttn_tensor_from_file(tm, hd5, dependents={}):
     index = 0
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    if 'has_exome' in hd5['categorical']:
+    if 'has_exome' not in hd5['categorical']:
         raise ValueError('Skipping people without exome sequencing.')
     if tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
         index = 1
