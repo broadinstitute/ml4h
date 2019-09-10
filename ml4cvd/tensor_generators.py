@@ -106,7 +106,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
             except RuntimeError:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            _log_first_error(stats, tp)
+            #_log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)

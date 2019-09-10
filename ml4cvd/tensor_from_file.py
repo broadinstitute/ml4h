@@ -1,8 +1,10 @@
 import h5py
 import numpy as np
 from ml4cvd.TensorMap import TensorMap
-
+from typing import List
 from ml4cvd.defines import DataSetType
+from ml4cvd.tensor_writer_ukbb import tensor_path
+import posixpath
 
 
 """
@@ -10,25 +12,15 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 """
 
 
-def all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> str:
+def all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
     """
-    Gets all of the paths in the hd5 with source, dtype, name
+    Gets all of the hd5 paths in the hd5 with source, dtype.
     """
-    visited = set()
-
-    def filter_path(path):
-        if source in path and str(dtype) in path and name in path and path not in visited:
-            return path
-        return None
-
-    # TODO: pretty inefficient, searches through every path in hd5
-    while True:
-        found = hd5.visit(filter_path)
-        if found:
-            visited.add(found)
-            yield found
-        else:
-            break
+    # TODO: This should be implemented to not depend on the order of name, date, dtype, source in the hd5s
+    # Unfortunately, that's hard to do efficiently
+    return [posixpath.join(source, str(dtype), date, name) 
+            for date in hd5[source][str(dtype)] 
+            if name in hd5[source][str(dtype)][date].keys()]
 
 
 def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str):
@@ -104,9 +96,11 @@ def narrow_check(hd5, max_hr, max_pred):
     
 
 def narrow_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    last_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
     max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
     max_pred_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
-    hrr = first_date_hrr(tm, hd5)
+    _check_phase_full_len(hd5, 'rest')
+    hrr = max_hr - last_hr
     narrow_check(hd5, max_hr, max_pred_hr)
     return tm.normalize(hrr / max_pred_hr)
 
