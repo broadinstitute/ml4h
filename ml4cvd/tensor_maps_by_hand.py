@@ -809,6 +809,8 @@ TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group=
                                        tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-trend-load'] = TensorMap('trend_load', shape=(106, 1), group='ecg_bike',
                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['ecg-bike-trend-grade'] = TensorMap('trend_grade', shape=(106, 1), group='ecg_bike',
+                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike',
                                        tensor_from_file=first_date_bike_recovery, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bike',
