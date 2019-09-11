@@ -189,6 +189,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
+                            break
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
