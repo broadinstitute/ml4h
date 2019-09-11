@@ -158,7 +158,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
     samples = [int(w*batch_size) for w in weights]
-    logging.info(f'Samples: {samples} from each balance CSV from weights: {weights}')
+    logging.info(f'Samples: {samples} from background and balance CSV(s) from weights: {weights}')
     while True:
         for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
             while stats[f'group{i}_samples'] < num_samples:
