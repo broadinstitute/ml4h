@@ -241,7 +241,6 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
             input_tensors[key].extend(np.copy(next_batch[0][key]))
         for key in output_tensors:
             output_tensors[key].extend(np.copy(next_batch[1][key]))
-            print(f'out is now: {output_tensors[key]}')
         if keep_paths:
             paths.extend(next_batch[2])
     for key in input_tensors:
