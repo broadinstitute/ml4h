@@ -237,6 +237,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
             input_tensors[key].extend(np.copy(next_batch[0][key]))
         for key in output_tensors:
             output_tensors[key].extend(np.copy(next_batch[1][key]))
+            print(f'out is now: {output_tensors[key]}')
         if keep_paths:
             paths.extend(next_batch[2])
     for key in input_tensors:
@@ -318,7 +319,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             sample_id = os.path.basename(splits[0])
             if sample_id in sample2group:
                 group = sample2group[sample_id]
-            
+
             dice = np.random.rand()
             if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))
