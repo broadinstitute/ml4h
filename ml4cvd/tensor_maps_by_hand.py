@@ -309,6 +309,14 @@ TMAPS['ecg_bike_s1'] = TensorMap('strip_1', shape=ECG_BIKE_STRIP_SIZE, group='ec
 
 TMAPS['aligned_distance'] = TensorMap('aligned_distance', group='continuous', channel_map={'zeros': 0})
 
+
+TMAPS['weight_kg'] = TensorMap('weight_kg',  group='continuous', normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh', channel_map={'weight_kg': 0})
+TMAPS['height_cm'] = TensorMap('height_cm',  group='continuous', normalization={'mean': 169.18064748408653, 'std': 9.265265197273026}, loss='logcosh', channel_map={'height_cm': 0})
+TMAPS['bmi_bsa'] = TensorMap('bmi',  group='continuous', normalization={'mean': 26.65499238706321, 'std': 4.512077188749083}, loss='logcosh', channel_map={'bmi': 0})
+TMAPS['bsa_mosteller'] = TensorMap('bsa_mosteller',  group='continuous', normalization={'mean': 1.8894831981880114, 'std': 0.22169301057810176}, loss='logcosh', channel_map={'bsa_mosteller': 0})
+TMAPS['bsa_dubois'] = TensorMap('bsa_dubois',  group='continuous', normalization={'mean': 1.8671809970639703, 'std': 0.20913930961120797}, loss='logcosh', channel_map={'bsa_dubois': 0})
+
+
 TMAPS['lv_mass'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='linear', loss=ignore_zeros_logcosh,
@@ -318,7 +326,25 @@ TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation=
                                       channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
-                                      channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
+                                        channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
+
+def make_index_tensor_from_file(index_map):
+    def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
+        assert len(tm.channel_map) == 1
+        for k in tm.channel_map:
+            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+            index = index_map.tensor_from_file(index_map, hd5)
+        return tm.normalize(tensor) / index
+    return indexed_lvmass_tensor_from_file
+
+
+TMAPS['lv_mass_dubois_index'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                          tensor_from_file=make_index_tensor_from_file(TMAPS['bsa_dubois']),
+                                          channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lv_mass_mosteller_index'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                             tensor_from_file=make_index_tensor_from_file(TMAPS['bsa_mosteller']),
+                                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},
@@ -455,6 +481,7 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', group='categorical',
                                                'cine_segmented_sax_b6': 5, 'cine_segmented_sax_b7': 6,
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
+
 
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
