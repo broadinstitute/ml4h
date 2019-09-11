@@ -158,7 +158,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
     samples = [int(w*batch_size) for w in weights]
-
+    logging.info(f'Samples: {samples} from each balance CSV from weights: {weights}')
     while True:
         for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
             for tp in np.random.choice(tensor_list, num_samples):
@@ -314,10 +314,11 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             if splits[-1].lower() != TENSOR_EXT:
                 continue
                 
-            sample_id = os.path.basename(splits[0])
             group = 0
+            sample_id = os.path.basename(splits[0])
             if sample_id in sample2group:
                 group = sample2group[sample_id]
+            
             dice = np.random.rand()
             if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))
