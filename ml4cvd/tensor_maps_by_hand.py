@@ -346,6 +346,18 @@ TMAPS['lv_mass_mosteller_index'] = TensorMap('lv_mass_mosteller_index', group='c
                                              tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
                                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
+TMAPS['lv_massp'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
+                              parents=['output_mri_systole_diastole_8_segmented_categorical'],
+                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lv_mass_dubois_indexp'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                           parents=['output_mri_systole_diastole_8_segmented_categorical'],
+                                           tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
+                                           channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lv_mass_mosteller_indexp'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                              parents=['output_mri_systole_diastole_8_segmented_categorical'],
+                                              tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
+                                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},
                                     normalization={'mean': 47.0, 'std': 10.0})
