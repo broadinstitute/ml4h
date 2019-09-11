@@ -161,7 +161,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
     logging.info(f'Samples: {samples} from each balance CSV from weights: {weights}')
     while True:
         for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
-            for tp in np.random.choice(tensor_list, num_samples):
+            while stats[f'group{i}_samples'] < num_samples:
+                tp = np.random.choice(tensor_list)
                 try:
                     with h5py.File(tp, 'r') as hd5:
                         dependents = {}
@@ -178,6 +179,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                         stats['batch_index'] += 1
                         stats['Tensors presented from list '+str(i)] += 1
                         stats['train_paths_' + str(i)] += 1
+                        stats[f'group{i}_samples'] += 1
                         if stats['batch_index'] == batch_size:
                             if mixup_alpha > 0 and keep_paths:
                                 yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True) + (paths_in_batch[:batch_size // 2],)
@@ -189,7 +191,8 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
-                            break
+                            for k in len(samples):
+                                stats[f'group{k}_samples'] = 0
 
                 except IndexError as e:
                     stats['IndexError:'+str(e)] += 1
