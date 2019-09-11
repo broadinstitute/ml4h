@@ -329,21 +329,21 @@ TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='co
                                         channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 
-def make_index_tensor_from_file(index_map):
+def make_index_tensor_from_file(index_map_name):
     def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
         assert len(tm.channel_map) == 1
         for k in tm.channel_map:
             tensor = np.array(hd5[tm.group][k], dtype=np.float32)
-            index = index_map.tensor_from_file(index_map, hd5)
+        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
         return tm.normalize(tensor) / index
     return indexed_lvmass_tensor_from_file
 
 
 TMAPS['lv_mass_dubois_index'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                          tensor_from_file=make_index_tensor_from_file(TMAPS['bsa_dubois']),
+                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
                                           channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_mosteller_index'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                             tensor_from_file=make_index_tensor_from_file(TMAPS['bsa_mosteller']),
+                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
                                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
