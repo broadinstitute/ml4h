@@ -110,8 +110,8 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
-        for k in stats:
-            logging.info("{}: {}".format(k, stats[k]))
+        #for k in stats:
+        #    logging.info("{}: {}".format(k, stats[k]))
         logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
         logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
         if stats['Tensors presented'] == 0:
