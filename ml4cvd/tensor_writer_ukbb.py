@@ -24,6 +24,7 @@ from typing import Dict, List, Tuple
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 from functools import partial
+from itertools import product
 
 import matplotlib
 
@@ -794,7 +795,7 @@ def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: 
     """
     In the future, TMAPs should be generated using this same function
     """
-    return f'/{source}/{dtype}/{_datetime_to_str(date)}/{name}'
+    return f'/{source}/{dtype}/{name}/{_datetime_to_str(date)}'
 
 
 def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value):
@@ -878,12 +879,24 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
 
         # Trend measurements
         trend_entry_fields = ['HeartRate', 'Load', 'Grade', 'Mets', 'VECount', 'PaceCount']
+        trend_lead_measurements = [
+            'JPointAmplitude',
+            'STAmplitude20ms',
+            'STAmplitude',
+            'RAmplitude',
+            'R1Amplitude',
+            'STSlope',
+            'STIntegral',
+        ]
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
         trends = defaultdict(list)
 
         for trend_entry in root.findall("./TrendData/TrendEntry"):
             for field in trend_entry_fields:
                 trends[field].append(float(trend_entry.find(field).text))
+            for lead_field, lead in product(trend_lead_measurements, trend_entry.findall('LeadMeasurements')):
+                lead_num = lead['lead']
+                trends[f'lead_{lead_num}_{lead_field}'].append(float(lead.find(lead_field).text))
             trends['time'].append(SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text))
             trends['PhaseTime'].append(SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text))
             trends['PhaseName'].append(phase_to_int[trend_entry.find('PhaseName').text])
@@ -1272,4 +1285,3 @@ def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_fi
         return True
 
     return False
-
