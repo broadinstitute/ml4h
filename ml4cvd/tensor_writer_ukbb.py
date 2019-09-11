@@ -34,7 +34,7 @@ import xml.etree.ElementTree as et
 from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
-from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR
+from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 from ml4cvd.defines import DataSetType
@@ -808,7 +808,11 @@ def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: 
 
 
 def _datetime_to_str(dt: datetime.datetime) -> str:
-    return dt.strftime('%Y-%m-%d_%H-%M-%S')
+    return dt.strftime(DATE_FORMAT)
+
+
+def path_date_to_datetime(date: str) -> datetime.datetime:
+    return datetime.datetime.strptime(date, DATE_FORMAT)
 
 
 def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
