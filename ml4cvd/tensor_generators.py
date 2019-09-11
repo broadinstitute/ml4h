@@ -191,7 +191,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                                 yield in_batch, out_batch
                             stats['batch_index'] = 0
                             paths_in_batch = []
-                            for k in len(samples):
+                            for k in range(len(samples)):
                                 stats[f'group{k}_samples'] = 0
 
                 except IndexError as e:
