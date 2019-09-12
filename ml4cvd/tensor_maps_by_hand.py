@@ -76,7 +76,7 @@ def ecg_rest_from_file(tm, hd5, dependents={}):
                     tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.group][k])) + EPS)
                 else:
                     tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
-    return tensor
+    return tensor / 2000.0
 
 
 TMAPS['ecg_rest_raw'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest', tensor_from_file=ecg_rest_from_file,
