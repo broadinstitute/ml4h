@@ -254,7 +254,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
 
     f.write(f"\n\n#  Continuous tensor maps\n")
     for row in field_data_for_tensor_maps:
-        name = dataset_name_from_meaning(None, [str(row.FieldID), row.Field, row.instance])
+        name = dataset_name_from_meaning(None, [str(row.FieldID), row.Field, str(row.instance)])
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
