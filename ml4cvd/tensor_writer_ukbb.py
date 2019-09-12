@@ -826,6 +826,9 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         instance = ecg.split(JOIN_CHAR)[-2]
         write_to_hd5(dtype=DataSetType.STRING, name='instance', value=instance)
 
+        protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName')
+        write_to_hd5(dtype=DataSetType.STRING, name='protocol', value=protocol)
+
         median_ecgs = defaultdict(list)
         for median_waves in root.findall('./MedianData/Median/WaveformData'):
             median_ecgs[median_waves.attrib['lead']].extend(list(map(float, median_waves.text.strip().split(','))))
