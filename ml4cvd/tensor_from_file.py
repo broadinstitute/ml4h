@@ -83,7 +83,7 @@ def first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     last_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
     max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    return tm.normalize(last_hr - max_hr)
+    return tm.normalize(max_hr - last_hr)
 
 
 def narrow_check(hd5, max_hr, max_pred):
@@ -110,3 +110,20 @@ def narrow_max_hr(tm: TensorMap, hd5: h5py.File, dependents=None):
     max_pred_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
     narrow_check(hd5, max_hr, max_pred_hr)
     return tm.normalize(max_hr / max_pred_hr)
+
+
+def _healthy_check(hd5):
+    for phase in ('pretest', 'exercise', 'rest'):
+        _check_phase_full_len(hd5, phase)
+    max_load = max(get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_load'))
+    if max_load < 60:
+        raise ValueError('Max load not high enough')
+
+def healthy_bike(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _healthy_check(hd5)
+    return normalized_first_date(tm, hd5)
+
+
+def healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _healthy_check(hd5)
+    return first_date_hrr(tm, hd5)

@@ -4,7 +4,7 @@ from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
 from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
-from ml4cvd.tensor_from_file import first_date_bike_recovery, normalized_first_date, first_date_bike_pretest, first_date_hrr, narrow_hrr, narrow_max_hr
+from ml4cvd.tensor_from_file import first_date_bike_recovery, normalized_first_date, first_date_bike_pretest, first_date_hrr, narrow_hrr, narrow_max_hr, healthy_bike, healthy_hrr
 from ml4cvd.defines import DataSetType
 
 
@@ -804,6 +804,15 @@ TMAPS['ecg-bike-narrow-hrr'] = TensorMap('hrr_narrow', group='ecg_bike', loss=ig
 TMAPS['ecg-bike-narrow-max-hr'] = TensorMap('max_hr_narrow', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
                                             normalization={'mean': .67356, 'std': .01067},
                                             tensor_from_file=narrow_max_hr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
+                                             normalization={'mean': 113.7, 'std': 13.3}, shape=(1,),
+                                             tensor_from_file=healthy_bike, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                          normalization={'mean': 30.47, 'std': 11.76},
+                                          tensor_from_file=healthy_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                              normalization={'mean': 70.0, 'std': 11.62},
+                                              tensor_from_file=healthy_bike, dtype=DataSetType.CONTINUOUS)
 
 TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
                                        tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
