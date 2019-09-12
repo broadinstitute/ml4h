@@ -53,6 +53,36 @@ TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                      'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
+
+def ecg_rest_from_file(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    if tm.dependent_map is not None:
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        key_choices = [k for k in hd5[tm.group] if tm.name in k]
+        lead_idx = np.random.choice(key_choices)
+        tensor = np.reshape(hd5[tm.group][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
+        dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.group][lead_idx.replace(tm.name, tm.dependent_map.name)])
+        dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
+    else:
+        for k in hd5[tm.group]:
+            if k in tm.channel_map:
+                if len(tensor.shape) == 3:  # Grab the stacked tensor maps
+                    window_size = tensor.shape[0]
+                    channels = tensor.shape[2]
+                    new_shape = (window_size, channels)
+                    new_total = window_size * channels
+                    tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.group][k][:new_total], new_shape, order='F')
+                elif tm.name == 'ecg_rest_fft':
+                    tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.group][k])) + EPS)
+                else:
+                    tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
+    return tensor
+
+
+TMAPS['ecg_rest_raw'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest', tensor_from_file=ecg_rest_from_file,
+                                  channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
+                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
+
 TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                      'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
