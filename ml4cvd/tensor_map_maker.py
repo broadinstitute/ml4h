@@ -6,12 +6,12 @@ import numpy as np
 from typing import List
 from typing.io import TextIO
 
+from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
-from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, \
-    DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
-from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
+from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, dataset_name_from_meaning
+from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, JOIN_CHAR
 
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
@@ -254,11 +254,10 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
 
     f.write(f"\n\n#  Continuous tensor maps\n")
     for row in field_data_for_tensor_maps:
-        name = str(row.FieldID) + "_" + row.Field.replace("-", "").replace(" ", "-").replace("(", "").replace(")", "")
-        name = name.replace("'", "").replace(",", "").replace("/", "").replace("+", "").replace("\"", "")
+        name = dataset_name_from_meaning(None, [str(row.FieldID), row.Field, row.instance])
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
-            channel_map += f"'{name}_{row.instance}_{i}': {i}, "
+            channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         if include_missing:
             channel_map += "'not-missing': " + str(row.max_array + 1)
         channel_map += "}"
