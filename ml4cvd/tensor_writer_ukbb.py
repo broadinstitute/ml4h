@@ -905,13 +905,16 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
 
         for i, trend_entry in enumerate(trend_entries):
             for field in trend_entry_fields:
-                trends[field][i] = float(trend_entry.find(field).text)
+                field_val = trend_entry.find(field)
+                if field_val:
+                    field_val = _to_float_or_false(field_val.text)
+                    trends[field][i] = field_val or np.nan
             for lead_field, lead in product(trend_lead_measurements, trend_entry.findall('LeadMeasurements')):
                 lead_num = lead.attrib['lead']
                 field_val = lead.find(lead_field)
                 if field_val is not None:
-                    field_val = float(lead.find(lead_field).text)
-                    trends[lead_field][i, lead_to_int[lead_num]] = field_val
+                    field_val = _to_float_or_false(field_val.text.strip('?'))
+                    trends[lead_field][i, lead_to_int[lead_num]] = field_val or np.nan
             trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
             trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
             trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
