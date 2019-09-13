@@ -826,7 +826,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         instance = ecg.split(JOIN_CHAR)[-2]
         write_to_hd5(dtype=DataSetType.STRING, name='instance', value=instance)
 
-        protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName')
+        protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName').text
         write_to_hd5(dtype=DataSetType.STRING, name='protocol', value=protocol)
 
         median_ecgs = defaultdict(list)
@@ -892,18 +892,26 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             'STIntegral',
         ]
         phase_to_int = {'Pretest': 0, 'Exercise': 1, 'Rest': 2}
-        trends = defaultdict(list)
+        lead_to_int = {'I': 0, '2': 1, '3': 2}
 
-        for trend_entry in root.findall("./TrendData/TrendEntry"):
+        trend_entries = root.findall("./TrendData/TrendEntry")
+
+        trends = {trend: np.full(len(trend_entries), np.nan) for trend in trend_entry_fields + ['time', 'PhaseTime', 'PhaseTime', 'PhaseName', 'Artifact']}
+        trends.update({trend: np.full((len(trend_entries), 3), np.nan) for trend in trend_lead_measurements})
+
+        for i, trend_entry in enumerate(trend_entries):
             for field in trend_entry_fields:
-                trends[field].append(float(trend_entry.find(field).text))
+                trends[field][i] = float(trend_entry.find(field).text)
             for lead_field, lead in product(trend_lead_measurements, trend_entry.findall('LeadMeasurements')):
-                lead_num = lead['lead']
-                trends[f'lead_{lead_num}_{lead_field}'].append(float(lead.find(lead_field).text))
-            trends['time'].append(SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text))
-            trends['PhaseTime'].append(SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text))
-            trends['PhaseName'].append(phase_to_int[trend_entry.find('PhaseName').text])
-            trends['Artifact'].append(float(trend_entry.find('Artifact').text.strip('%')) / 100)  # Artifact is reported as a percentage
+                lead_num = lead.attrib['lead']
+                field_val = lead.find(lead_field)
+                if field_val is not None:
+                    field_val = float(lead.find(lead_field).text)
+                    trends[lead_field][i, lead_to_int[lead_num]] = field_val
+            trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
+            trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
+            trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
+            trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
             write_to_hd5(dtype=DataSetType.FLOAT_ARRAY, name=f'trend_{str.lower(field)}', value=trend_list)
