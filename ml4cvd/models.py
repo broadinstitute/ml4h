@@ -550,7 +550,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
             regularizer = _regularization_layer(len(tm.shape), 'dropout', conv_dropout)
             last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, activation_layer, normalizer, regularizer, None)
             print(layers)
-            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False)
+            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
             dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
             last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, activation_layer, normalizer, regularizer)
             input_multimodal.append(Flatten()(last_conv))
@@ -871,7 +871,7 @@ def _conv_block_new(x: K.placeholder,
     return _get_last_layer(layers)
 
 
-def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate):
+def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
     if dimension == 4 and conv_layer_type == 'conv':
         conv_layer = Conv3D
         kernel = (conv_x, conv_y, conv_z)
@@ -896,9 +896,10 @@ def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers
     dilation_rate = 1
     conv_layer_functions = []
     for i, c in enumerate(conv_layers):
-        if dilate:
-            dilation_rate = 1 << i
-        conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
+        for _ in range(inner_loop):
+            if dilate:
+                dilation_rate = 1 << i
+            conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
 
     return conv_layer_functions
 
@@ -1025,19 +1026,18 @@ def _dense_block_new(x: K.placeholder,
                      activation_layer: Layer,
                      normalization_layer: Layer,
                      regularization_layer: Layer):
-    for conv_layer in conv_layers:
-        for i in range(block_size):
-            print(f'con {i}, cl --- {conv_layer}, x is {x}')
-            x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-            x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
-            x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
-            x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
-            if i == 0:
-                x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
-                dense_connections = [x]
-            else:
-                dense_connections += [x]
-                x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+    for i, conv_layer in enumerate(conv_layers):
+        print(f'con {i}, cl --- {conv_layer}, x is {x}')
+        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
+        x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
+        x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
+        if (i+1)%block_size == 0:
+            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
+            dense_connections = [x]
+        else:
+            dense_connections += [x]
+            x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
     return _get_last_layer(layers)
 
 
