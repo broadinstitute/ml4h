@@ -545,15 +545,11 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
         if len(tm.shape) > 1:
             conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            activation_layer = _activation_layer(activation)
-            regularizer = _regularization_layer(len(tm.shape), 'dropout', conv_dropout)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, activation_layer, 'bn', regularizer, None)
-            print(layers)
+            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, 'bn', 'dropout', conv_dropout, None)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
             dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
-            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, activation_layer, 'bn', regularizer)
+            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, len(tm.shape), activation, 'bn', 'dropout', conv_dropout)
             input_multimodal.append(Flatten()(last_conv))
-            print(layers)
         else:
             mlp_input = input_tensors[j]
             mlp = Dense(units=tm.annotation_units, activation=activation)(mlp_input)
@@ -581,7 +577,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
     loss_weights = []
     output_predictions = {}
     output_tensor_maps_to_process = tensor_maps_out.copy()
-    print(layers)
+
     while len(output_tensor_maps_to_process) > 0:
         tm = output_tensor_maps_to_process.pop(0)
 
@@ -594,12 +590,9 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
         my_metrics[tm.output_name()] = tm.metrics
 
         if len(tm.shape) > 1:
-            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Pooling'))
-            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Conv'))
             all_filters = conv_layers + dense_blocks
             conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
             for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
-                print("!!!!!!!!!!!!!!!!!!! for named layer", name)
                 early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
                 if u_connect:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
@@ -838,18 +831,20 @@ def _conv_block_new(x: K.placeholder,
                     layers: Dict[str, K.placeholder],
                     conv_layers: List[_Conv],
                     pool_layers: List[Layer],
-                    activation_layer: Layer,
+                    dimension: int,
+                    activation: str,
                     normalization: str,
-                    regularization_layer: Layer,
+                    regularization: str,
+                    regularization_rate: float,
                     residual_convolution_layer: Layer):
     max_pool_diff = len(conv_layers) - len(pool_layers)
 
     for i, conv_layer in enumerate(conv_layers):
         residual = x
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-        x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
+        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i >= max_pool_diff:
             x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - max_pool_diff](x)
             if residual_convolution_layer is not None:
@@ -1035,15 +1030,17 @@ def _dense_block_new(x: K.placeholder,
                      block_size: int,
                      conv_layers: List[_Conv],
                      pool_layer: Layer,
-                     activation_layer: Layer,
+                     dimension: int,
+                     activation: str,
                      normalization: str,
-                     regularization_layer: Layer):
+                     regularization: str,
+                     regularization_rate: float):
     for i, conv_layer in enumerate(conv_layers):
         print(f'con {i}, cl --- {conv_layer}, x is {x}')
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-        x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
+        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i%block_size == 0:
             x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
             dense_connections = [x]
