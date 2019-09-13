@@ -41,6 +41,9 @@ from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SE
 from ml4cvd.defines import DataSetType
 
 
+STATS_TYPE = Dict[str, List[float]]
+
+
 MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
@@ -798,8 +801,9 @@ def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: 
     return f'/{source}/{dtype}/{name}/{_datetime_to_str(date)}'
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value):
+def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: STATS_TYPE):
     hd5_path = tensor_path(source, dtype, date, name)
+    stats[hd5_path.strip(f'{_datetime_to_str(date)}/')] += 1
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
         hd5.create_dataset(hd5_path, data=value, compression='gzip')
     elif dtype in (DataSetType.STRING,):
@@ -820,7 +824,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         root = et.parse(ecg).getroot()
         date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
-        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5)
+        write_to_hd5 = partial(create_tensor_in_hd5, source='ecg_bike', date=date, hd5=hd5, stats=stats)
         logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
 
         instance = ecg.split(JOIN_CHAR)[-2]
