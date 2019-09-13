@@ -529,7 +529,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
     :param learning_rate:
     :return: a compiled keras model
 	"""
-    if 'model_file' in kwargs['model_file'] and kwargs['model_file'] is not None:
+    if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=get_metric_dict(tensor_maps_out))
         m.summary()
