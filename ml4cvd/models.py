@@ -917,22 +917,22 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
         raise ValueError(f'Unknown pooling type: {pool_type} for dimension: {dimension}')
 
 
-def _activation_layer(activation, **kwargs):
+def _activation_layer(activation):
     if activation == 'leaky':
-        return LeakyReLU(kwargs)
+        return LeakyReLU()
     elif activation == 'prelu':
-        return PReLU(kwargs)
+        return PReLU()
     elif activation == 'elu':
-        return ELU(kwargs)
+        return ELU()
     elif activation == 'thresh_relu':
-        return ThresholdedReLU(kwargs)
+        return ThresholdedReLU()
     else:
         return Activation(activation)
 
 
-def _normalization_layer(norm, **kwargs):
+def _normalization_layer(norm):
     if norm == 'bn':
-        return BatchNormalization(axis=CHANNEL_AXIS, kwargs=kwargs)
+        return BatchNormalization(axis=CHANNEL_AXIS)
     else:
         return Activation('none')
 
