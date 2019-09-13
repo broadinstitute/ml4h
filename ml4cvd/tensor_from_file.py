@@ -27,7 +27,10 @@ def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, na
     """
     Gets the value of the first date.
     """
-    first_date_path = min(all_dates(hd5, source, dtype, name))  # Only difference in paths is date and dates sort
+    dates = all_dates(hd5, source, dtype, name)
+    if not dates:
+        raise ValueError(f'No {name} values values available.')
+    first_date_path = min(dates)  # Only difference in paths is date and dates sort
     return np.array(hd5[first_date_path])
 
 
@@ -76,7 +79,7 @@ def first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     original = get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
     flat = original.mean(axis=1)  # all leads are basically the same
     recovery = flat[:tm.shape[0]]
-    return tm.zero_mean_std1(recovery).reshape(tm.shape)
+    return tm.normalize(recovery).reshape(tm.shape)
 
 
 def first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):

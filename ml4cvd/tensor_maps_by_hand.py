@@ -823,4 +823,5 @@ TMAPS['ecg-bike-trend-grade'] = TensorMap('trend_grade', shape=(106, 1), group='
 TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike',
                                        tensor_from_file=first_date_bike_recovery, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bike',
+                                      normalization={'mean': 8.3, 'std': 33.},
                                       tensor_from_file=first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
