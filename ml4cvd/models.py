@@ -1032,7 +1032,7 @@ def _dense_block_new(x: K.placeholder,
         x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
         x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
         x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
-        if (i+1)%block_size == 0:
+        if i%block_size == 0:
             x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
             dense_connections = [x]
         else:
