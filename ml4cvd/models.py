@@ -593,35 +593,23 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
         loss_weights.append(tm.loss_weight)
         my_metrics[tm.output_name()] = tm.metrics
 
-        if len(tm.shape) == 4:
-            conv_label = Conv3D(tm.shape[channel_axis], (1, 1, 1), activation="linear")(last_conv)
-            output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
-        elif len(tm.shape) == 3:
-            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Pooling2D'))
-            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Conv2D'))
+        if len(tm.shape) > 1:
+            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Pooling'))
+            print('got rev la to be layers:', _get_layer_kind_sorted(layers, 'Conv'))
             all_filters = conv_layers + dense_blocks
-            for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling2D'))):
+            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
+            for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
                 print("!!!!!!!!!!!!!!!!!!! for named layer", name)
-                print(f"Conv2D{JOIN_CHAR}{_get_layer_index_offset_str(name, -1)}")
-                early_conv = layers[f"Conv2D{JOIN_CHAR}{_get_layer_index_offset_str(name, -1)}"]
+                print(f"Conv{JOIN_CHAR}{_get_layer_index_offset_str(name, -1)}")
+                early_conv = layers[f"Conv{JOIN_CHAR}{_get_layer_index_offset_str(name, -1)}"]
                 if u_connect:
-                    last_convolution2d = UpSampling2D((pool_x, pool_y))(last_conv)
-                    last_convolution2d = Conv2D(filters=all_filters[-(1+i)], kernel_size=(conv_x, conv_y), activation=activation, padding=padding)(last_conv)
-                    last_convolution2d = concatenate([last_convolution2d, early_conv])
+                    last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
+                    last_conv = conv_layer(filters=all_filters[-(1+i)], kernel_size=kernel, activation=activation, padding=padding)(last_conv)
+                    last_conv = concatenate([last_conv, early_conv])
                 else:
-                    last_convolution2d = UpSampling2D((pool_x, pool_y))(last_convolution2d)
-            conv_label = Conv2D(tm.shape[channel_axis], (1, 1), activation="linear")(last_conv)
+                    last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
+            conv_label = conv_layer(tm.shape[channel_axis], (1, 1), activation="linear")(last_conv)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
-        elif len(tm.shape) == 2:
-            conv_label = Conv1D(tm.shape[channel_axis], 1, activation="linear")(last_conv)
-            output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
-            sx = _conv_block1d(conv_label, [],  conv_layers, max_pools, res_layers, activation, conv_bn, conv_width, conv_dropout, padding)
-            flat_activation = Flatten()(sx)
-            for hidden_units in dense_layers:
-                flat_activation = Dense(units=hidden_units, activation=activation)(flat_activation)
-                if dropout > 0:
-                    flat_activation = Dropout(dropout)(flat_activation)
-            multimodal_activation = concatenate([multimodal_activation, flat_activation])
         elif tm.parents is not None:
             if len(K.int_shape(output_predictions[tm.parents[0]])) > 1:
                 output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
@@ -877,7 +865,7 @@ def _conv_block_new(x: K.placeholder,
     return _get_last_layer(layers)
 
 
-def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
+def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z):
     if dimension == 4 and conv_layer_type == 'conv':
         conv_layer = Conv3D
         kernel = (conv_x, conv_y, conv_z)
@@ -898,7 +886,11 @@ def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers
         kernel = (conv_x, conv_y)
     else:
         raise ValueError(f'Unknown convolution type: {conv_layer_type} for dimension: {dimension}')
+    return conv_layer, kernel
 
+
+def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
+    conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
     dilation_rate = 1
     conv_layer_functions = []
     for i, c in enumerate(conv_layers):
@@ -925,6 +917,15 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
         return [AveragePooling1D(pool_size=pool_x) for _ in range(pool_number)]
     else:
         raise ValueError(f'Unknown pooling type: {pool_type} for dimension: {dimension}')
+
+
+def _upsampler(dimension, pool_x, pool_y, pool_z):
+    if dimension == 4:
+        return UpSampling3D(pool_size=(pool_x, pool_y, pool_z))
+    elif dimension == 3 :
+        return UpSampling2D(pool_size=(pool_x, pool_y))
+    elif dimension == 2:
+        return UpSampling1D(pool_size=pool_x)
 
 
 def _activation_layer(activation):
