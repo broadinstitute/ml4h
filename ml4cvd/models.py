@@ -852,7 +852,7 @@ def _conv_block_new(x: K.placeholder,
         residual = x
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
-        x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(axis=CHANNEL_AXIS)(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
         x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
         if i >= max_pool_diff:
             x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - max_pool_diff](x)
@@ -1026,7 +1026,7 @@ def _dense_block_new(x: K.placeholder,
         for i in range(block_size):
             x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
             x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
-            x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(axis=CHANNEL_AXIS)(x)
+            x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
             x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
             if i == 0:
                 x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
