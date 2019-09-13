@@ -895,7 +895,7 @@ def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers
         for _ in range(inner_loop):
             if dilate:
                 dilation_rate = 1 << i
-                print(f'dilation rate: {dilation_rate}')
+                logging.info(f'dilation rate: {dilation_rate}')
             conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
 
     return conv_layer_functions
