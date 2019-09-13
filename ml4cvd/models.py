@@ -546,13 +546,12 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
             conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
             activation_layer = _activation_layer(activation)
-            normalizer = _normalization_layer('bn')
             regularizer = _regularization_layer(len(tm.shape), 'dropout', conv_dropout)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, activation_layer, normalizer, regularizer, None)
+            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, activation_layer, 'bn', regularizer, None)
             print(layers)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
             dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
-            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, activation_layer, normalizer, regularizer)
+            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, activation_layer, 'bn', regularizer)
             input_multimodal.append(Flatten()(last_conv))
             print(layers)
         else:
@@ -560,15 +559,22 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
             mlp = Dense(units=tm.annotation_units, activation=activation)(mlp_input)
             input_multimodal.append(mlp)
 
-        for i, hidden_units in enumerate(dense_layers):
-            if i == len(dense_layers) - 1:
-                multimodal_activation = Dense(units=hidden_units, activation=activation, name='embed')(multimodal_activation)
-            else:
-                multimodal_activation = Dense(units=hidden_units, activation=activation)(multimodal_activation)
-            if dropout > 0:
-                multimodal_activation = Dropout(dropout)(multimodal_activation)
-            if mlp_concat:
-                multimodal_activation = concatenate([multimodal_activation, mlp_input], axis=channel_axis)
+    if len(input_multimodal) > 1:
+        multimodal_activation = concatenate(input_multimodal, axis=channel_axis)
+    elif len(input_multimodal) == 1:
+        multimodal_activation = input_multimodal[0]
+    else:
+        raise ValueError('No input activations.')
+
+    for i, hidden_units in enumerate(dense_layers):
+        if i == len(dense_layers) - 1:
+            multimodal_activation = Dense(units=hidden_units, activation=activation, name='embed')(multimodal_activation)
+        else:
+            multimodal_activation = Dense(units=hidden_units, activation=activation)(multimodal_activation)
+        if dropout > 0:
+            multimodal_activation = Dropout(dropout)(multimodal_activation)
+        if mlp_concat:
+            multimodal_activation = concatenate([multimodal_activation, mlp_input], axis=channel_axis)
 
     losses = []
     my_metrics = {}
@@ -846,7 +852,7 @@ def _conv_block_new(x: K.placeholder,
                     conv_layers: List[_Conv],
                     pool_layers: List[Layer],
                     activation_layer: Layer,
-                    normalization_layer: Layer,
+                    normalization: str,
                     regularization_layer: Layer,
                     residual_convolution_layer: Layer):
     max_pool_diff = len(conv_layers) - len(pool_layers)
@@ -855,7 +861,7 @@ def _conv_block_new(x: K.placeholder,
         residual = x
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
-        x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
         if i >= max_pool_diff:
             x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - max_pool_diff](x)
@@ -948,7 +954,7 @@ def _regularization_layer(dimension, regularization_type, rate):
         return SpatialDropout2D(rate)
     elif dimension == 2 and regularization_type == 'spatial_dropout':
         return SpatialDropout1D(rate)
-    elif dimension == 4 and regularization_type == 'dropout':
+    elif regularization_type == 'dropout':
         return Dropout(rate)
     else:
         return Activation('linear')
@@ -1024,13 +1030,13 @@ def _dense_block_new(x: K.placeholder,
                      conv_layers: List[_Conv],
                      pool_layer: Layer,
                      activation_layer: Layer,
-                     normalization_layer: Layer,
+                     normalization: str,
                      regularization_layer: Layer):
     for i, conv_layer in enumerate(conv_layers):
         print(f'con {i}, cl --- {conv_layer}, x is {x}')
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
-        x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = regularization_layer(x)
         if i%block_size == 0:
             x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
