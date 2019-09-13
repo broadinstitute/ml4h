@@ -600,8 +600,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
             conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
             for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
                 print("!!!!!!!!!!!!!!!!!!! for named layer", name)
-                print(f"Conv{JOIN_CHAR}{_get_layer_index_offset_str(name, -1)}")
-                early_conv = layers[f"Conv{JOIN_CHAR}{_get_layer_index_offset_str(name, -1)}"]
+                early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
                 if u_connect:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
                     last_conv = conv_layer(filters=all_filters[-(1+i)], kernel_size=kernel, activation=activation, padding=padding)(last_conv)
@@ -972,11 +971,13 @@ def _get_last_layer(named_layers):
     return named_layers[max_layer]
 
 
-def _get_last_layer_by_kind(named_layers, kind):
+def _get_last_layer_by_kind(named_layers, kind, mask_after=9e9):
     max_index = -1
     for k in named_layers:
         if kind in k:
-            max_index = max(max_index, int(k.split('_')[-1]))
+            val = int(k.split('_')[-1])
+            if val < mask_after:
+                max_index = max(max_index, val)
     return named_layers[kind + JOIN_CHAR + str(max_index)]
 
 
