@@ -550,7 +550,8 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
             regularizer = _regularization_layer(len(tm.shape), 'dropout', conv_dropout)
             last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, activation_layer, normalizer, regularizer, None)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False)
-            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, pool_layers[0], activation_layer, normalizer, regularizer)
+            dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
+            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, activation_layer, normalizer, regularizer)
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
