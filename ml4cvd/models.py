@@ -868,7 +868,7 @@ def _conv_block_new(x: K.placeholder,
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
 
-    return x
+    return _get_last_layer(layers)
 
 
 def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate):
@@ -1027,6 +1027,7 @@ def _dense_block_new(x: K.placeholder,
                      regularization_layer: Layer):
     for conv_layer in conv_layers:
         for i in range(block_size):
+            print(f'con {i}, cl --- {conv_layer}, x is {x}')
             x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
             x = layers[f"Activation_{str(len(layers))}"] = activation_layer(x)
             x = layers[f"Normalization_{str(len(layers))}"] = normalization_layer(x)
@@ -1037,7 +1038,7 @@ def _dense_block_new(x: K.placeholder,
             else:
                 dense_connections += [x]
                 x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
-    return x
+    return _get_last_layer(layers)
 
 
 def _conv_block1d(x: K.placeholder,
