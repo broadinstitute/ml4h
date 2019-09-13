@@ -920,11 +920,11 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
 
 def _upsampler(dimension, pool_x, pool_y, pool_z):
     if dimension == 4:
-        return UpSampling3D(pool_size=(pool_x, pool_y, pool_z))
+        return UpSampling3D(size=(pool_x, pool_y, pool_z))
     elif dimension == 3 :
-        return UpSampling2D(pool_size=(pool_x, pool_y))
+        return UpSampling2D(size=(pool_x, pool_y))
     elif dimension == 2:
-        return UpSampling1D(pool_size=pool_x)
+        return UpSampling1D(size=pool_x)
 
 
 def _activation_layer(activation):
