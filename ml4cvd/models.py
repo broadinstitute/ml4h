@@ -607,7 +607,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
                     last_conv = concatenate([last_conv, early_conv])
                 else:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
-            conv_label = conv_layer(tm.shape[channel_axis], (1, 1), activation="linear")(last_conv)
+            conv_label = conv_layer(tm.shape[channel_axis], one_by_one_kernel(len(tm.shape)), activation="linear")(last_conv)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
             if len(K.int_shape(output_predictions[tm.parents[0]])) > 1:
@@ -862,6 +862,10 @@ def _conv_block_new(x: K.placeholder,
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
 
     return _get_last_layer(layers)
+
+
+def one_by_one_kernel(dimension):
+    return tuple([1]* (dimension-1))
 
 
 def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z):
