@@ -158,11 +158,7 @@ def train_multimodal_multitask_new(args):
                                                                                        args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
                                                                                        mixup_alpha=args.mixup_alpha)
 
-    model = make_multimodal_multitask_new(args.tensor_maps_in, args.tensor_maps_out, args.activation, args.dense_layers, args.dropout, args.mlp_concat,
-                                          args.conv_layers, args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_type,
-                                          args.conv_normalize, args.conv_regularize,  args.conv_x, args.conv_y, args.conv_z, args.conv_dropout, args.conv_width,
-                                          args.conv_dilate, args.u_connect, args.pool_x, args.pool_y, args.pool_z, args.pool_type, args.padding,
-                                          args.learning_rate, **args.__dict__)
+    model = make_multimodal_multitask_new(**args.__dict__)
 
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
