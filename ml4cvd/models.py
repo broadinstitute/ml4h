@@ -602,7 +602,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
                     last_conv = concatenate([last_conv, early_conv])
                 else:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
-            conv_label = conv_layer(tm.shape[channel_axis], one_by_one_kernel(len(tm.shape)), activation="linear")(last_conv)
+            conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
             if len(K.int_shape(output_predictions[tm.parents[0]])) > 1:
@@ -861,7 +861,31 @@ def _conv_block_new(x: K.placeholder,
     return _get_last_layer(layers)
 
 
-def one_by_one_kernel(dimension):
+def _dense_block_new(x: K.placeholder,
+                     layers: Dict[str, K.placeholder],
+                     block_size: int,
+                     conv_layers: List[_Conv],
+                     pool_layer: Layer,
+                     dimension: int,
+                     activation: str,
+                     normalization: str,
+                     regularization: str,
+                     regularization_rate: float):
+    for i, conv_layer in enumerate(conv_layers):
+        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
+        if i % block_size == 0:
+            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
+            dense_connections = [x]
+        else:
+            dense_connections += [x]
+            x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+    return _get_last_layer(layers)
+
+
+def _one_by_n_kernel(dimension):
     return tuple([1] * (dimension-1))
 
 
@@ -1025,30 +1049,6 @@ def _dense_block2d(x: K.placeholder,
                 dense_connections += [x]
                 x = concatenate(dense_connections, axis=CHANNEL_AXIS)
     return x
-
-
-def _dense_block_new(x: K.placeholder,
-                     layers: Dict[str, K.placeholder],
-                     block_size: int,
-                     conv_layers: List[_Conv],
-                     pool_layer: Layer,
-                     dimension: int,
-                     activation: str,
-                     normalization: str,
-                     regularization: str,
-                     regularization_rate: float):
-    for i, conv_layer in enumerate(conv_layers):
-        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
-        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
-        if i%block_size == 0:
-            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
-            dense_connections = [x]
-        else:
-            dense_connections += [x]
-            x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
-    return _get_last_layer(layers)
 
 
 def _conv_block1d(x: K.placeholder,

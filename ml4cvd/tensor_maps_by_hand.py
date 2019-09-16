@@ -360,9 +360,12 @@ TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='co
 
 def make_index_tensor_from_file(index_map_name):
     def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
-        assert len(tm.channel_map) == 1
+        tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+            if k in hd5[tm.group]:
+                tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+            else:
+                return tensor
         index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
         return tm.normalize(tensor) / index
     return indexed_lvmass_tensor_from_file
