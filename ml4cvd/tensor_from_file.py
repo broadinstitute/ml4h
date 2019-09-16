@@ -14,18 +14,16 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 def all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
     """
-    Gets all of the hd5 paths in the hd5 with source, dtype.
+    Gets all of the hd5 paths in the hd5 with source, dtype, name.
     """
-    # TODO: This should be implemented to not depend on the order of name, date, dtype, source in the hd5s
+    # TODO: This ideally would be implemented to not depend on the order of name, date, dtype, source in the hd5s
     # Unfortunately, that's hard to do efficiently
-    return [posixpath.join(source, str(dtype), date, name) 
-            for date in hd5[source][str(dtype)] 
-            if name in hd5[source][str(dtype)][date].keys()]
+    return hd5[source][str(dtype)][name]
 
 
 def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str):
     """
-    Gets the value of the first date.
+    Gets the numpy array at the first date of source, dtype, name.
     """
     dates = all_dates(hd5, source, dtype, name)
     if not dates:
@@ -89,38 +87,13 @@ def first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize(max_hr - last_hr)
 
 
-def narrow_check(hd5, max_hr, max_pred):
-    _check_phase_full_len(hd5, 'exercise')
-    low, hi = 0.6551724137931034, 0.6927710843373494
-    ratio = max_hr / max_pred
-    if low < ratio < hi:
-        return
-    raise ValueError(f'Max hr / max pred hr {ratio} not in {low, hi}')
-    
-
-def narrow_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
-    last_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
-    max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    max_pred_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
-    _check_phase_full_len(hd5, 'rest')
-    hrr = max_hr - last_hr
-    narrow_check(hd5, max_hr, max_pred_hr)
-    return tm.normalize(hrr / max_pred_hr)
-
-
-def narrow_max_hr(tm: TensorMap, hd5: h5py.File, dependents=None):
-    max_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    max_pred_hr = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_pred_hr')
-    narrow_check(hd5, max_hr, max_pred_hr)
-    return tm.normalize(max_hr / max_pred_hr)
-
-
 def _healthy_check(hd5):
     for phase in ('pretest', 'exercise', 'rest'):
         _check_phase_full_len(hd5, phase)
     max_load = max(get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_load'))
     if max_load < 60:
         raise ValueError('Max load not high enough')
+
 
 def healthy_bike(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
