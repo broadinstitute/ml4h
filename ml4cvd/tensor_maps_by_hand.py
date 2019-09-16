@@ -33,54 +33,11 @@ TMAPS['akap9_lof'] = TensorMap('AKAP9', group='categorical_flag', channel_map={'
 TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no_dsc2_lof': 0, 'dsc2_lof': 1})
 TMAPS['ryr2_lof'] = TensorMap('RYR2', group='categorical_flag', channel_map={'no_ryr2_lof': 0, 'ryr2_lof': 1})
 TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
-
-
-def ttn_tensor_from_file(tm, hd5, dependents={}):
-    index = 0
-    categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    if 'has_exome' not in hd5['categorical']:
-        raise ValueError('Skipping people without exome sequencing.')
-    if tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
-        index = 1
-    categorical_data[index] = 1.0
-    return categorical_data
-
-
-TMAPS['ttntv'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1}, tensor_from_file=ttn_tensor_from_file)
-TMAPS['ttntv_10x'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1}, loss_weight=10.0, tensor_from_file=ttn_tensor_from_file)
+TMAPS['ttntv'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1})
+TMAPS['ttntv_10x'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1}, loss_weight=10.0)
 
 TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
-
-
-def ecg_rest_from_file(tm, hd5, dependents={}):
-    tensor = np.zeros(tm.shape, dtype=np.float32)
-    if tm.dependent_map is not None:
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        key_choices = [k for k in hd5[tm.group] if tm.name in k]
-        lead_idx = np.random.choice(key_choices)
-        tensor = np.reshape(hd5[tm.group][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-        dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.group][lead_idx.replace(tm.name, tm.dependent_map.name)])
-        dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
-    else:
-        for k in hd5[tm.group]:
-            if k in tm.channel_map:
-                if len(tensor.shape) == 3:  # Grab the stacked tensor maps
-                    window_size = tensor.shape[0]
-                    channels = tensor.shape[2]
-                    new_shape = (window_size, channels)
-                    new_total = window_size * channels
-                    tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.group][k][:new_total], new_shape, order='F')
-                elif tm.name == 'ecg_rest_fft':
-                    tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.group][k])) + EPS)
-                else:
-                    tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
-    return tensor / 2000.0
-
-
-TMAPS['ecg_rest_raw'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest', tensor_from_file=ecg_rest_from_file,
-                                  channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                      'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
 TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest',
@@ -164,9 +121,9 @@ TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy'
                               channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
                               loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
 
-TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 12.0, 16.0, 30.0, 36.0], 'lvh_fine'),
+TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.2, 8.0, 24.0, 30.0, 36.0], 'lvh_fine'),
                               channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
-                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for left ventricular hypertrophy': 3,
+                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for LVH may be normal variant': 3,
                                            'Left ventricular hypertrophy': 4})
 
 TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
@@ -339,13 +296,6 @@ TMAPS['ecg_bike_s1'] = TensorMap('strip_1', shape=ECG_BIKE_STRIP_SIZE, group='ec
 
 TMAPS['aligned_distance'] = TensorMap('aligned_distance', group='continuous', channel_map={'zeros': 0})
 
-
-TMAPS['weight_kg'] = TensorMap('weight_kg',  group='continuous', normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh', channel_map={'weight_kg': 0})
-TMAPS['height_cm'] = TensorMap('height_cm',  group='continuous', normalization={'mean': 169.18064748408653, 'std': 9.265265197273026}, loss='logcosh', channel_map={'height_cm': 0})
-TMAPS['bmi_bsa'] = TensorMap('bmi',  group='continuous', normalization={'mean': 26.65499238706321, 'std': 4.512077188749083}, loss='logcosh', channel_map={'bmi': 0})
-TMAPS['bsa_mosteller'] = TensorMap('bsa_mosteller',  group='continuous', normalization={'mean': 1.8894831981880114, 'std': 0.22169301057810176}, loss='logcosh', channel_map={'bsa_mosteller': 0})
-TMAPS['bsa_dubois'] = TensorMap('bsa_dubois',  group='continuous', normalization={'mean': 1.8671809970639703, 'std': 0.20913930961120797}, loss='logcosh', channel_map={'bsa_dubois': 0})
-
 TMAPS['lv_mass'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='linear', loss=ignore_zeros_logcosh,
@@ -355,47 +305,7 @@ TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation=
                                       channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
-                                        channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
-
-
-def make_index_tensor_from_file(index_map_name):
-    def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for k in tm.channel_map:
-            if k in hd5[tm.group]:
-                tensor = np.array(hd5[tm.group][k], dtype=np.float32)
-            else:
-                return tensor
-        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
-        return tm.normalize(tensor) / index
-    return indexed_lvmass_tensor_from_file
-
-
-TMAPS['lv_mass_dubois_index'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
-                                          channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_mosteller_index'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
-                                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_dubois_index_sentinel'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
-                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
-                                          channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_mosteller_index_sentinel'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
-                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
-                                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-
-
-TMAPS['lv_massp'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
-                              parents=['output_mri_systole_diastole_8_segmented_categorical'],
-                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_dubois_indexp'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                           parents=['output_mri_systole_diastole_8_segmented_categorical'],
-                                           tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
-                                           channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_mosteller_indexp'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                              parents=['output_mri_systole_diastole_8_segmented_categorical'],
-                                              tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
-                                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+                                      channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},
@@ -425,29 +335,6 @@ TMAPS['corrected_extracted_lvedv_sentinel'] = TensorMap('corrected_extracted_lve
                                                         channel_map={'corrected_extracted_lvedv': 0}, normalization={'mean': 142.0, 'std': 21.0})
 TMAPS['corrected_extracted_lvef_sentinel'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear', sentinel=0.0,
                                                        normalization={'mean': 0.50, 'std': 0.046}, channel_map={'corrected_extracted_lvef': 0})
-TMAPS['corrected_extracted_lvef_sentinel'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear', sentinel=0.0,
-                                                       normalization={'mean': 0.50, 'std': 0.046}, channel_map={'corrected_extracted_lvef': 0})
-
-TMAPS['LA_2Ch_vol_max'] = TensorMap('LA_2Ch_vol_max',  group='continuous', normalization={'mean': 63.45582391534391, 'std': 22.548034481265972 }, loss='logcosh', channel_map={'LA_2Ch_vol_max': 0})
-TMAPS['LA_2Ch_vol_min'] = TensorMap('LA_2Ch_vol_min',  group='continuous', normalization={'mean': 28.308681904761904, 'std': 15.842444310837582 }, loss='logcosh', channel_map={'LA_2Ch_vol_min': 0})
-TMAPS['LA_4Ch_vol_max'] = TensorMap('LA_4Ch_vol_max',  group='continuous', normalization={'mean': 74.53903305263158, 'std': 25.448756860639776 }, loss='logcosh', channel_map={'LA_4Ch_vol_max': 0})
-TMAPS['LA_4Ch_vol_min'] = TensorMap('LA_4Ch_vol_min',  group='continuous', normalization={'mean': 31.014961894736846, 'std': 17.146722819760804 }, loss='logcosh', channel_map={'LA_4Ch_vol_min': 0})
-TMAPS['LA_Biplan_vol_max'] = TensorMap('LA_Biplan_vol_max',  group='continuous', normalization={'mean': 67.86355108225109, 'std': 21.793845470012105 }, loss='logcosh', channel_map={'LA_Biplan_vol_max': 0})
-TMAPS['LA_Biplan_vol_min'] = TensorMap('LA_Biplan_vol_min',  group='continuous', normalization={'mean': 28.79685670995671, 'std': 15.43219634139272 }, loss='logcosh', channel_map={'LA_Biplan_vol_min': 0})
-TMAPS['LVEDV'] = TensorMap('LVEDV',  group='continuous', normalization={'mean': 144.1479505192425, 'std': 34.39409859908663 }, loss='logcosh', channel_map={'LVEDV': 0})
-TMAPS['LVESV'] = TensorMap('LVESV',  group='continuous', normalization={'mean': 59.58324862553452, 'std': 21.186976544044025 }, loss='logcosh', channel_map={'LVESV': 0})
-TMAPS['LVM'] = TensorMap('LVM',  group='continuous', normalization={'mean': 89.70372484725051, 'std': 24.803669503436304 }, loss='logcosh', channel_map={'LVM': 0})
-TMAPS['LVSV'] = TensorMap('LVSV',  group='continuous', normalization={'mean': 84.85198120147119, 'std': 19.2700091046526 }, loss='logcosh', channel_map={'LVSV': 0})
-TMAPS['RA_4Ch_vol_max'] = TensorMap('RA_4Ch_vol_max',  group='continuous', normalization={'mean': 79.22289586811351, 'std': 26.504015552539048 }, loss='logcosh', channel_map={'RA_4Ch_vol_max': 0})
-TMAPS['RA_4Ch_vol_min'] = TensorMap('RA_4Ch_vol_min',  group='continuous', normalization={'mean': 46.25831176961603, 'std': 20.002160080524803 }, loss='logcosh', channel_map={'RA_4Ch_vol_min': 0})
-TMAPS['RVEDV'] = TensorMap('RVEDV',  group='continuous', normalization={'mean': 152.41239853151131, 'std': 37.15198900632509 }, loss='logcosh', channel_map={'RVEDV': 0})
-TMAPS['RVEF'] = TensorMap('RVEF',  group='continuous', normalization={'mean': 56.404863078182565, 'std': 6.526231365539632 }, loss='logcosh', channel_map={'RVEF': 0})
-TMAPS['RVESV'] = TensorMap('RVESV',  group='continuous', normalization={'mean': 67.61379869467673, 'std': 22.853189258914284 }, loss='logcosh', channel_map={'RVESV': 0})
-TMAPS['RVSV'] = TensorMap('RVSV',  group='continuous', normalization={'mean': 85.0908258288989, 'std': 19.30893645374548 }, loss='logcosh', channel_map={'RVSV': 0})
-TMAPS['LAQC'] = TensorMap('LAQC',  group='continuous', normalization={'mean': 1.2657977883096367, 'std': 0.5561369836438385 }, loss='logcosh', channel_map={'LAQC': 0})
-TMAPS['LVQC'] = TensorMap('LVQC',  group='continuous', normalization={'mean': 1.1737756714060033, 'std': 0.4620420984104567 }, loss='logcosh', channel_map={'LVQC': 0})
-TMAPS['RAQC'] = TensorMap('RAQC',  group='continuous', normalization={'mean': 1.1860189573459716, 'std': 0.4791815490882246 }, loss='logcosh', channel_map={'RAQC': 0})
-TMAPS['RVQC'] = TensorMap('RVQC',  group='continuous', normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213 }, loss='logcosh', channel_map={'RVQC': 0})
 
 
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', group='continuous', channel_map={'22402_Liver-fat-percentage_2_0': 0},
@@ -532,7 +419,6 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', group='categorical',
                                                'cine_segmented_sax_b6': 5, 'cine_segmented_sax_b7': 6,
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
-
 
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
