@@ -407,42 +407,6 @@ class TensorMap(object):
             return self.normalize(data)
         raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
 
-    # Operator overloads. Maybe too fancy. The normalization of the current TMAP is kept, which is a little weird
-    def _check_compatibility(self, other):
-        if type(other) == TensorMap:
-            if self.dtype == other.dtype == DataSetType.CONTINUOUS:
-                return
-            raise NotImplementedError(f'Operators have not been defined between {self.dtype} and {other.dtype}.')
-        raise NotImplementedError(f'Operators have not been defined between {self.dtype} TensorMap and {type(other)}.')
-
-    def _build_combined_tensor_from_file(self, other, operator):
-        old_tensor_from_file = self.tensor_from_file
-        def combined(tm, hd5, dependents={}):
-            return self.normalize(operator(
-                old_tensor_from_file(tm, hd5, dependents),
-                other.tensor_from_file(tm, hd5, dependents)))
-        return combined
-
-    def __iadd__(self, other):
-        self._check_compatibility(other)
-        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x + y)
-        return self
-
-    def __isub__(self, other):
-        self._check_compatibility(other)
-        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x - y)
-        return self
-
-    def __imul__(self, other):
-        self._check_compatibility(other)
-        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x * y)
-        return self
-
-    def __itruediv__(self, other):
-        self._check_compatibility(other)
-        self.tensor_from_file = self._build_combined_tensor_from_file(other, lambda x, y: x / y)
-        return self
-
 
 def _translate(val, cur_min, cur_max, new_min, new_max):
     val -= cur_min
