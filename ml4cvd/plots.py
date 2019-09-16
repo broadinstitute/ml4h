@@ -583,7 +583,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
-    plt.title(f'ROC {title} n={np.sum(true_sums)}\n')
+    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -614,8 +614,8 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc='lower right')
-    plt.title(f'ROC {title} n={np.sum(true_sums)}\n')
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)                        
+    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -650,7 +650,7 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].legend(loc='lower right')
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC n={np.sum(true_sums)}')
+        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}')
 
         row += 1
         if row == rows:
@@ -692,7 +692,7 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
         axes[row, col].set_xlabel(FALLOUT_LABEL)
         axes[row, col].legend(loc="lower right")
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC n={np.sum(true_sums)}\n')
+        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}\n')
 
         row += 1
         if row == rows:
@@ -728,7 +728,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
     plt.legend(loc="lower left")
-    plt.title(f'{title} n={np.sum(true_sums)}')
+    plt.title(f'{title} n={np.sum(true_sums):.0f}')
 
     figure_path = os.path.join(prefix, 'precision_recall_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -759,7 +759,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
     plt.legend(loc="lower left")
-    plt.title(f'{title} n={np.sum(true_sums)}')
+    plt.title(f'{title} n={np.sum(true_sums):.0f}')
 
     figure_path = os.path.join(prefix, 'precision_recall_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
