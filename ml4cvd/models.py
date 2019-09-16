@@ -839,7 +839,7 @@ def _conv_block_new(x: K.placeholder,
                     regularization: str,
                     regularization_rate: float,
                     residual_convolution_layer: Layer):
-    max_pool_diff = len(conv_layers) - len(pool_layers)
+    pool_diff = len(conv_layers) - len(pool_layers)
 
     for i, conv_layer in enumerate(conv_layers):
         residual = x
@@ -847,10 +847,10 @@ def _conv_block_new(x: K.placeholder,
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
-        if i >= max_pool_diff:
-            x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - max_pool_diff](x)
+        if i >= pool_diff:
+            x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](x)
             if residual_convolution_layer is not None:
-                residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - max_pool_diff](residual)
+                residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
         if residual_convolution_layer is not None:
             if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
@@ -862,7 +862,7 @@ def _conv_block_new(x: K.placeholder,
 
 
 def one_by_one_kernel(dimension):
-    return tuple([1]* (dimension-1))
+    return tuple([1] * (dimension-1))
 
 
 def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z):
@@ -1038,7 +1038,6 @@ def _dense_block_new(x: K.placeholder,
                      regularization: str,
                      regularization_rate: float):
     for i, conv_layer in enumerate(conv_layers):
-        print(f'con {i}, cl --- {conv_layer}, x is {x}')
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
