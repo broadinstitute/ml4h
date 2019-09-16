@@ -477,7 +477,8 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
                                   dense_blocks: List[int],
                                   block_size: List[int],
                                   conv_type: str,
-                                  conv_bn: bool,
+                                  conv_normalize: str,
+                                  conv_regularize: str,
                                   conv_x: int,
                                   conv_y: int,
                                   conv_z: int,
@@ -545,10 +546,10 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap],
         if len(tm.shape) > 1:
             conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, 'bn', 'dropout', conv_dropout, None)
+            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
             dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
-            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, len(tm.shape), activation, 'bn', 'dropout', conv_dropout)
+            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -895,7 +896,6 @@ def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers
         for _ in range(inner_loop):
             if dilate:
                 dilation_rate = 1 << i
-                logging.info(f'dilation rate: {dilation_rate}')
             conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
 
     return conv_layer_functions
@@ -941,7 +941,7 @@ def _activation_layer(activation):
 
 
 def _normalization_layer(norm):
-    if norm == 'bn':
+    if norm == 'batch_norm':
         return BatchNormalization(axis=CHANNEL_AXIS)
     else:
         return Activation('linear')
