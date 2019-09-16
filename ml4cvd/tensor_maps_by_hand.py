@@ -356,6 +356,10 @@ TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation=
 
 TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
                                         channel_map={'lv_mass_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lv_mass_dubois_index_prediction'] = TensorMap('lv_mass_dubois_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
+                                                     channel_map={'lv_mass_dubois_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lv_mass_mosteller_index_prediction'] = TensorMap('lv_mass_mosteller_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
+                                                        channel_map={'lv_mass_mosteller_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 
 def make_index_tensor_from_file(index_map_name):
