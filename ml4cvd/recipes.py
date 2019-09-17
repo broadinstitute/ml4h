@@ -47,8 +47,8 @@ def run(args):
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
             compare_multimodal_scalar_task_models(args)
-        elif 'predictions_to_pngs' == args.mode:
-            predictions_to_pngs(args)
+        elif 'plot_predictions' == args.mode:
+            plot_predictions(args)
         elif 'plot_while_training' == args.mode:
             plot_while_training(args)
         elif 'plot_mri_dates' == args.mode:
@@ -281,7 +281,7 @@ def train_char_model(args):
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
 
 
-def predictions_to_pngs(args):
+def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size*args.test_steps,
                                                              args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
 
