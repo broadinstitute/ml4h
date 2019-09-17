@@ -97,7 +97,6 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 for j in range(y.shape[3]):
-                    logging.info(f"Write 3D MRI y:{y.shape} categorical:{tm.is_categorical_any()}")
                     if tm.is_categorical_any():
                         truth = np.argmax(labels[tm.output_name()][i, :, :, j, :], axis=-1)
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)

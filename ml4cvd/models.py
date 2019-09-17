@@ -424,7 +424,7 @@ def make_multimodal_to_multilabel_model(model_file: str,
                     flat_activation = Dropout(dropout)(flat_activation)
             multimodal_activation = concatenate([multimodal_activation, flat_activation])
         elif tm.parents is not None:
-            if len(K.int_shape(output_predictions[tm.parents[0]])) > 1:  # TODO: fix False
+            if len(K.int_shape(output_predictions[tm.parents[0]])) > 1:
                 sx = _dense_block3d(output_predictions[tm.parents[0]], upsamplers, dense_blocks, block_size, activation, conv_bn, (conv_x, conv_y, conv_z),
                                     (pool_x, pool_y, pool_z), conv_dropout, padding)
                 flat_activation = Flatten()(sx)
