@@ -21,7 +21,8 @@ import numpy as np
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
 from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
-from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.TensorMap import TensorMap
 
 
 def parse_args():
@@ -157,14 +158,21 @@ def parse_args():
     return args
 
 
+def _get_tmap(name: str) -> TensorMap:
+    if name in TMAPS:
+        return TMAPS[name]
+    from ml4cvd.tensor_maps_by_scripy import TMAPS as scriptTMAPS
+    return scriptTMAPS[name]
+
+
 def _process_args(args):
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
     if len(args.input_continuous_tensors) > 0:
         multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
                                                                              args.imputation_method_for_continuous_fields)]
         args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
 
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    args.tensor_maps_out = [_get_tmap(ot) for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')

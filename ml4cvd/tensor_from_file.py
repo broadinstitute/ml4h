@@ -3,8 +3,7 @@ import numpy as np
 from ml4cvd.TensorMap import TensorMap
 from typing import List
 from ml4cvd.defines import DataSetType
-from ml4cvd.tensor_writer_ukbb import tensor_path
-import posixpath
+from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
 
 
 """
@@ -14,22 +13,39 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 def all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
     """
-    Gets all of the hd5 paths in the hd5 with source, dtype, name.
+    Gets the dates in the hd5 with source, dtype, name.
     """
     # TODO: This ideally would be implemented to not depend on the order of name, date, dtype, source in the hd5s
     # Unfortunately, that's hard to do efficiently
     return hd5[source][str(dtype)][name]
 
 
-def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str):
+def fail_nan(tensor):
+    if np.isnan(tensor).any():
+        raise ValueError('Tensor contains nans.')
+    return tensor
+
+
+def nan_to_mean(tensor):
+    if np.count_nonzero(np.isnan(tensor)) / tensor.size > .2:  # TODO: pick this number better?
+        raise ValueError('Tensor contains too many nans.')
+    tensor[np.isnan(tensor)] = np.nanmean(tensor)
+    return tensor
+
+
+def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan = fail_nan):
     """
     Gets the numpy array at the first date of source, dtype, name.
     """
     dates = all_dates(hd5, source, dtype, name)
     if not dates:
         raise ValueError(f'No {name} values values available.')
-    first_date_path = min(dates)  # Only difference in paths is date and dates sort
-    return np.array(hd5[first_date_path])
+    # TODO: weird to convert date from string to datetime, because it just gets converted back.
+    first_date = path_date_to_datetime(min(dates))  # Date format is sortable. 
+    first_date_path = tensor_path(source=source, dtype=dtype, name=name, date=first_date)
+    tensor = np.array(hd5[first_date_path])
+    tensor = handle_nan(tensor)
+    return tensor
 
 
 def pad_array_to_shape(tm: TensorMap, original: np.ndarray):
@@ -61,7 +77,7 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
     else:
         raise ValueError(f'Phase {phase} is not a valid phase.')
     if not valid:
-        raise ValueError(f'{phase} phase of length {phase_len} is not full in {hd5}')
+        raise ValueError(f'{phase} phase is not full length')
 
 
 def first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -103,3 +119,10 @@ def healthy_bike(tm: TensorMap, hd5: h5py.File, dependents=None):
 def healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     return first_date_hrr(tm, hd5)
+
+
+def median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _healthy_check(hd5)
+    times = get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_time')
+    tensor = np.abs(get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name))
+    return tm.normalize(np.median(tensor[times <= 15]))

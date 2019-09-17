@@ -4,7 +4,7 @@ from ml4cvd.TensorMap import TensorMap
 
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
 from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
-from ml4cvd.tensor_from_file import first_date_bike_recovery, normalized_first_date, first_date_bike_pretest, first_date_hrr, narrow_hrr, narrow_max_hr, healthy_bike, healthy_hrr
+from ml4cvd.tensor_from_file import first_date_bike_recovery, normalized_first_date, first_date_bike_pretest, first_date_hrr, healthy_bike, healthy_hrr, median_pretest
 from ml4cvd.defines import DataSetType
 
 
@@ -415,7 +415,7 @@ TMAPS['fathers_age'] = TensorMap('fathers_age_0', group='continuous',
 
 TMAPS['genetic_sex'] = TensorMap('genetic_sex', group='categorical', annotation_units=2, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
 TMAPS['sex'] = TensorMap('sex', group='categorical', annotation_units=2, channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
-TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0':0}, normalization = {'mean': 27.432061533712652, 'std': 4.785244772462738}, annotation_units=1, loss='logcosh')
+TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', group='continuous', channel_map={'23104_Body-mass-index-BMI_0_0':0}, normalization = {'mean': 27.432061533712652, 'std': 4.785244772462738}, annotation_units=32, loss='logcosh')
 TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739}, annotation_units=1, loss='logcosh', loss_weight=1.0)
 TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', group='continuous', channel_map={'34_Year-of-birth_0_0': 0}, normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739}, annotation_units=1, loss='logcosh', loss_weight=1.0)
 TMAPS['brain_volume'] = TensorMap('25010_Volume-of-brain-greywhite-matter_2_0', group='continuous', normalization={'mean': 1165940.0, 'std': 111511.0}, channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='logcosh', loss_weight=0.1)
@@ -798,12 +798,6 @@ TMAPS['ecg-bike-max-pred-hr'] = TensorMap('max_pred_hr', group='ecg_bike', loss=
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
                                   tensor_from_file=first_date_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-narrow-hrr'] = TensorMap('hrr_narrow', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
-                                         normalization={'mean': .18196, 'std': .06324},
-                                         tensor_from_file=narrow_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-narrow-max-hr'] = TensorMap('max_hr_narrow', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
-                                            normalization={'mean': .67356, 'std': .01067},
-                                            tensor_from_file=narrow_max_hr, dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'],
                                              normalization={'mean': 113.7, 'std': 13.3}, shape=(1,),
                                              tensor_from_file=healthy_bike, dtype=DataSetType.CONTINUOUS)
@@ -813,6 +807,19 @@ TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', group='ecg_bike', loss=ignore_z
 TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
                                               normalization={'mean': 70.0, 'std': 11.62},
                                               tensor_from_file=healthy_bike, dtype=DataSetType.CONTINUOUS)
+
+TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                             normalization={'mean': 70., 'std': 11.},
+                                             tensor_from_file=median_pretest, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                                normalization={'mean': .03, 'std': .03},
+                                                tensor_from_file=median_pretest, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                                 normalization={'mean': .032, 'std': .46},
+                                                 tensor_from_file=median_pretest, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', group='ecg_bike', loss=ignore_zeros_logcosh, metrics=['logcosh'], shape=(1,),
+                                                  normalization={'mean': .03, 'std': .03},
+                                                  tensor_from_file=median_pretest, dtype=DataSetType.CONTINUOUS)
 
 TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
                                        tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
