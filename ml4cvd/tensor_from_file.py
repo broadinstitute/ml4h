@@ -33,7 +33,7 @@ def nan_to_mean(tensor):
     return tensor
 
 
-def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan = fail_nan):
+def get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan=fail_nan):
     """
     Gets the numpy array at the first date of source, dtype, name.
     """

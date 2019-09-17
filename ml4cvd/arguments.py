@@ -159,10 +159,14 @@ def parse_args():
 
 
 def _get_tmap(name: str) -> TensorMap:
+    """
+    This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
+    """
     if name in TMAPS:
         return TMAPS[name]
-    from ml4cvd.tensor_maps_by_scripy import TMAPS as scriptTMAPS
-    return scriptTMAPS[name]
+    from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
+    TMAPS.update(SCRIPT_TMAPS)
+    return TMAPS[name]
 
 
 def _process_args(args):
@@ -187,4 +191,3 @@ def _process_args(args):
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
     logging.info(f"Command Line was:\n\npython {' '.join(sys.argv)}\n\n")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
-
