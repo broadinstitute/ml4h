@@ -90,7 +90,7 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                         plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j])
                         plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j])
                         plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j])
-        elif tm.is_categorical_any() and len(tm.shape) == 4:
+        elif len(tm.shape) == 4:
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
                     break
