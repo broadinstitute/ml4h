@@ -38,6 +38,7 @@ TMAPS['cine_segmented_sax_inlinevf_blackout'] = TensorMap('cine_segmented_sax_in
 TMAPS['sax_inlinevf_zoom_mask_blackout_weighted'] = TensorMap('sax_inlinevf_zoom_mask', (96, 96, 48, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,loss=weighted_crossentropy([0.1, 20.0, 25.0], 'sax_inlinevf_zoom_mask_blackout'))
 TMAPS['sax_inlinevf_zoom_blackout'] = TensorMap('sax_inlinevf_zoom_blackout', (96, 96, 48, 1), dependent_map=TMAPS['sax_inlinevf_zoom_mask_blackout_weighted'])
 
+
 #  Continuous tensor maps
 TMAPS['34_0'] = TensorMap('34_Year-of-birth', group='continuous', normalization={'mean': 1951.5428168330234, 'std': 8.116157117024175}, annotation_units=1, channel_map={'34_Year-of-birth_0_0': 0, })
 TMAPS['46_0'] = TensorMap('46_Hand-grip-strength-left', group='continuous', normalization={'mean': 29.546084555803475, 'std': 11.327359082668966}, annotation_units=1, channel_map={'46_Hand-grip-strength-left_0_0': 0, })

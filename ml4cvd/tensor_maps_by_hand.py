@@ -1,9 +1,11 @@
 import numpy as np
+from keras.utils import to_categorical
 
 from ml4cvd.TensorMap import TensorMap
 
-from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
-from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
+from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
+from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, MRI_TO_SEGMENT, MRI_SEGMENTED_CHANNEL_MAP, EPS
+from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
 
 
 def _get_lead_cm(length):
@@ -537,6 +539,22 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', group='categorical',
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
 
+
+def mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
+    cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+    tensor[:, :, 0] = np.array(hd5[MRI_TO_SEGMENT][cur_slice], dtype=np.float32)
+    label_tensor = np.array(hd5[MRI_SEGMENTED][cur_slice], dtype=np.float32)
+    dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
+    tensor[:, :, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
+    return tm.zero_mean_std1(tensor)
+
+
+TMAPS['mri_slice_blackout_segmented_weighted'] = TensorMap('mri_slice_segmented', (256, 256, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+                                                           loss=weighted_crossentropy([0.1, 25.0, 25.0], 'mri_slice_blackout_segmented'))
+TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), tensor_from_file=mri_slice_blackout_tensor_from_file,
+                                        dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
 
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
