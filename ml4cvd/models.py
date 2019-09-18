@@ -831,7 +831,7 @@ def _conv_block2d(x: K.placeholder,
 
 def _conv_block_new(x: K.placeholder,
                     layers: Dict[str, K.placeholder],
-                    conv_layers: List[_Conv],
+                    conv_layers: List[Layer],
                     pool_layers: List[Layer],
                     dimension: int,
                     activation: str,
