@@ -632,7 +632,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
     if 'model_freeze' in kwargs and kwargs['model_freeze'] is not None:
         frozen = 0
         m.load_weights(kwargs['model_freeze'], by_name=True)
-        m_freeze = load_model(kwargs['model_freeze'], custom_objects=get_metric_dict(tensor_maps_out))
+        m_freeze = load_model(kwargs['model_freeze'], custom_objects=custom_dict)
         frozen_layers = [layer.name for layer in m_freeze.layers]
         for l in m.layers:
             if l.name in frozen_layers:
