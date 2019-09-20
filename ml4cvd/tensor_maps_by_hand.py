@@ -556,6 +556,12 @@ TMAPS['mri_slice_blackout_segmented_weighted'] = TensorMap('mri_slice_segmented'
 TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), tensor_from_file=mri_slice_blackout_tensor_from_file,
                                         dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
 
+TMAPS['genetic_pca_5'] = TensorMap('genetic_pca_5', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+                                   loss='logcosh', annotation_units=5,
+                                   channel_map={'22009_Genetic-principal-components_0_0': 0, '22009_Genetic-principal-components_0_1': 1,
+                                                '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3,
+                                                '22009_Genetic-principal-components_0_4': 4})
+
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
                                  normalization={'mean': 75.555, 'std': 11.977}, annotation_units = 4)
