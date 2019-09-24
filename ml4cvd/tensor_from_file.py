@@ -127,11 +127,17 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     return _first_date_hrr(tm, hd5)
 
 
-def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
+def _first_brain_from_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
-    times = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_time')
-    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name))
-    return tm.normalize(np.median(tensor[times <= 15]))
+    tensor = _get_tensor_at_first_date(hd5, 'ukb_brain_mri', DataSetType.FLOAT_ARRAY, 't2_flair_sag_p2_1mm_fs_ellip_pf78_1')
+    return tm.normalize(tensor)
+
+
+def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _check_phase_full_len(hd5, 'rest')
+    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
+    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
+    return tm.normalize(max_hr - last_hr)
 
 
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
@@ -164,3 +170,7 @@ TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike
 TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bike',
                                       normalization={'mean': 8.3, 'std': 33.},
                                       tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
+
+
+TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
+                                                         tensor_from_file=_first_brain_from_date, dtype=DataSetType.FLOAT_ARRAY)
