@@ -15,10 +15,10 @@ from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_float_csv, append_gene_csv
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
+from ml4cvd.models import make_character_model_plus, embed_model_predict, make_hidden_layer_model, make_multimodal_multitask_new
+from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files
 from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
-from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, \
-    make_character_model_plus, embed_model_predict, make_multimodal_multitask_new
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 
 
@@ -39,6 +39,8 @@ def run(args):
             compare_multimodal_multitask_models(args)
         elif 'infer' == args.mode:
             infer_multimodal_multitask(args)
+        elif 'infer_hidden' == args.mode:
+            infer_hidden_layer_multimodal_multitask(args)
         elif 'translate' == args.mode:
             train_translation_model(args)
         elif 'new' == args.mode:
@@ -243,6 +245,66 @@ def infer_multimodal_multitask(args):
             stats['count'] += 1
             if stats['count'] % 500 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+
+
+def infer_hidden_layer_multimodal_multitask(args):
+    stats = Counter()
+    tensor_paths_inferred = {}
+    inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    full_model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
+                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
+                                                args.pool_z, args.padding, args.learning_rate)
+    embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
+    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
+    dummy_out = embed_model.predict(dummy_input)
+    logging.info(f'Dummy output shape is: {dummy_out.shape}')
+    # with open(inference_tsv, mode='w') as inference_file:
+    #     inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    #     header = ['sample_id']
+    #     for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
+    #         if len(otm.shape) == 1 and otm.is_continuous():
+    #             header.extend([ot+'_prediction', ot+'_actual'])
+    #         elif len(otm.shape) == 1 and otm.is_categorical_any():
+    #             channel_columns = []
+    #             for k in otm.channel_map:
+    #                 channel_columns.append(ot + '_' + k + '_prediction')
+    #                 channel_columns.append(ot + '_' + k + '_actual')
+    #             header.extend(channel_columns)
+    #     inference_writer.writerow(header)
+    #
+    #     while True:
+    #         input_data, true_label, tensor_path = next(generate_test)
+    #         if tensor_path[0] in tensor_paths_inferred:
+    #             logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+    #             break
+    #
+    #         prediction = model.predict(input_data)
+    #         if len(args.tensor_maps_out) == 1:
+    #             prediction = [prediction]
+    #
+    #         csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+    #         for y, tm in zip(prediction, args.tensor_maps_out):
+    #             if len(tm.shape) == 1 and tm.is_continuous():
+    #                 csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
+    #                 if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
+    #                     csv_row.append("NA")
+    #                 else:
+    #                     csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+    #             elif len(tm.shape) == 1 and tm.is_categorical_any():
+    #                 for k in tm.channel_map:
+    #                     csv_row.append(str(y[0][tm.channel_map[k]]))
+    #                     csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
+    #
+    #         inference_writer.writerow(csv_row)
+    #         tensor_paths_inferred[tensor_path[0]] = True
+    #         stats['count'] += 1
+    #         if stats['count'] % 500 == 0:
+    #             logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
 def train_shallow_model(args):
