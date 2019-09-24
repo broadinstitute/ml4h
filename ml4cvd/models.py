@@ -615,7 +615,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
         elif tm.is_categorical_any():
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
         else:
-            output_predictions[tm.output_name()] = Dense(units=1, activation=tm.activation, name=tm.output_name())(multimodal_activation)
+            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
