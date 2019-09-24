@@ -874,7 +874,6 @@ def _dense_block_new(x: K.placeholder,
                      normalization: str,
                      regularization: str,
                      regularization_rate: float):
-    num_blocks = len(conv_layers) // block_size
     for i, conv_layer in enumerate(conv_layers):
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)

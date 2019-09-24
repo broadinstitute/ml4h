@@ -50,10 +50,10 @@ MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
-MRI_SERIES_TO_WRITE = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
+MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
-                       'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11',
-                       'cine_segmented_sax_inlinevf', 't1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
+                       'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf']
+MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
@@ -516,7 +516,7 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
         if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
             views[series + '_12bit'].append(d)
             stats[series + '_12bit'] += 1
-        elif series in MRI_LIVER_SERIES + MRI_SERIES_TO_WRITE:
+        elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
             views[series].append(d)
             stats[series] += 1
         if series in MRI_LIVER_IDEAL_PROTOCOL:
@@ -525,7 +525,7 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
     for v in views:
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         stats[v + ' mri shape:' + str(mri_shape)] += 1
-        if v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+        if v in MRI_BRAIN_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             x = views[v][0].Rows
             y = views[v][0].Columns
             z = len(views[v])
@@ -622,9 +622,9 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
-    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_SERIES_TO_WRITE + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
-    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_SERIES_TO_WRITE + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
 
