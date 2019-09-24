@@ -1270,7 +1270,7 @@ def _plot_mi_hospital_only(db, run_id, output_folder) -> None:
 
 
 def _str2date(d) -> datetime.date:
-    parts = d.split('-')
+    parts = d.split(CONCAT_CHAR)
     if len(parts) < 2:
         return datetime.datetime.now().date()
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
@@ -1280,8 +1280,8 @@ def _date_from_dicom(d) -> str:
     return d.AcquisitionDate[0:4] + CONCAT_CHAR + d.AcquisitionDate[4:6] + CONCAT_CHAR + d.AcquisitionDate[6:]
 
 
-def _datetime_from_dicom(d) -> str:
-    datetime.datetime.strptime(_date_from_dicom(d), '%Y-%m-%d')
+def _datetime_from_dicom(d) -> datetime.date:
+    _str2date(_date_from_dicom(d))
 
 
 def _log_extreme_n(stats, n) -> None:
