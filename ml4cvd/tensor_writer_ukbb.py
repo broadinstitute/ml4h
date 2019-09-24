@@ -1281,7 +1281,7 @@ def _date_from_dicom(d) -> str:
 
 
 def _datetime_from_dicom(d) -> datetime.date:
-    _str2date(_date_from_dicom(d))
+    return _str2date(_date_from_dicom(d))
 
 
 def _log_extreme_n(stats, n) -> None:
