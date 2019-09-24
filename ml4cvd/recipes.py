@@ -249,62 +249,40 @@ def infer_multimodal_multitask(args):
 
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
-    tensor_paths_inferred = {}
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
     full_model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
+                                                     args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
+                                                     args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
+                                                     args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
+                                                     args.pool_z, args.padding, args.learning_rate)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
-    logging.info(f'Dummy output shape is: {dummy_out.shape}')
-    # with open(inference_tsv, mode='w') as inference_file:
-    #     inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    #     header = ['sample_id']
-    #     for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
-    #         if len(otm.shape) == 1 and otm.is_continuous():
-    #             header.extend([ot+'_prediction', ot+'_actual'])
-    #         elif len(otm.shape) == 1 and otm.is_categorical_any():
-    #             channel_columns = []
-    #             for k in otm.channel_map:
-    #                 channel_columns.append(ot + '_' + k + '_prediction')
-    #                 channel_columns.append(ot + '_' + k + '_actual')
-    #             header.extend(channel_columns)
-    #     inference_writer.writerow(header)
-    #
-    #     while True:
-    #         input_data, true_label, tensor_path = next(generate_test)
-    #         if tensor_path[0] in tensor_paths_inferred:
-    #             logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
-    #             break
-    #
-    #         prediction = model.predict(input_data)
-    #         if len(args.tensor_maps_out) == 1:
-    #             prediction = [prediction]
-    #
-    #         csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
-    #         for y, tm in zip(prediction, args.tensor_maps_out):
-    #             if len(tm.shape) == 1 and tm.is_continuous():
-    #                 csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-    #                 if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
-    #                     csv_row.append("NA")
-    #                 else:
-    #                     csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-    #             elif len(tm.shape) == 1 and tm.is_categorical_any():
-    #                 for k in tm.channel_map:
-    #                     csv_row.append(str(y[0][tm.channel_map[k]]))
-    #                     csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
-    #
-    #         inference_writer.writerow(csv_row)
-    #         tensor_paths_inferred[tensor_path[0]] = True
-    #         stats['count'] += 1
-    #         if stats['count'] % 500 == 0:
-    #             logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+    latent_dimensions = np.prod(dummy_out.shape[1:])
+    logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
+    with open(inference_tsv, mode='w') as inference_file:
+        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        header = ['sample_id'] + [f'latent_{i}' for i in range(latent_dimensions)]
+        inference_writer.writerow(header)
+
+        while True:
+            input_data, _, tensor_path = next(generate_test)
+            if tensor_path[0] in stats:
+                logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                break
+
+            sample_id = os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')
+            prediction = embed_model.predict(input_data)
+            prediction = np.reshape(prediction, (latent_dimensions,))
+            csv_row = [sample_id] + [f'{prediction[i]}' for i in range(latent_dimensions)]
+            inference_writer.writerow(csv_row)
+            stats[tensor_path[0]] += 1
+            stats['count'] += 1
+            if stats['count'] % 500 == 0:
+                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_path[0]}")
 
 
 def train_shallow_model(args):
