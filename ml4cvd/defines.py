@@ -1,3 +1,4 @@
+from typing import List
 from enum import Enum, auto
 
 
@@ -11,6 +12,8 @@ class DataSetType(Enum):
         """DataSetType.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split('.')[1])
 
+
+DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 EPS = 1e-7
 
@@ -71,3 +74,13 @@ TENSOR_MAP_GROUP_CONTINUOUS = 'multi_field_no_missing_channel_continuous'
 TENSOR_MAP_GROUP_MISSING_CONTINUOUS = 'multi_field_continuous'
 IMPUTATION_RANDOM = 'random'
 IMPUTATION_MEAN = 'mean'
+
+
+def dataset_name_from_meaning(group: str, fields: List[str]) -> str:
+    clean_fields = []
+    for f in fields:
+        clean_fields.append(''.join(e for e in f if e.isalnum() or e == ' '))
+    joined = JOIN_CHAR.join(clean_fields).replace('  ', CONCAT_CHAR).replace(' ', CONCAT_CHAR)
+    if group is None:
+        return joined
+    return group + HD5_GROUP_CHAR + joined

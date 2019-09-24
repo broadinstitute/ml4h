@@ -20,7 +20,7 @@ from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers.convolutional import _Conv, Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from keras.layers.convolutional import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from keras.layers.convolutional import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from keras.layers.convolutional import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
@@ -492,6 +492,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
                                   pool_type: int=None,
                                   padding: str=None,
                                   learning_rate: float=None,
+                                  optimizer: str='adam',
                                   **kwargs) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -528,12 +529,16 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
     :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
     :param padding: Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
     :param learning_rate:
+    :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
-	"""
+    """
     logging.info(f'Got kwargs {kwargs}')
+    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    metric_dict = get_metric_dict(tensor_maps_out)
+    custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
-        m = load_model(kwargs['model_file'], custom_objects=get_metric_dict(tensor_maps_out))
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict)
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -549,8 +554,8 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
             last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
-            dense_pool_layer = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, 1, pool_x, pool_y, pool_z)[0]
-            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layer, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
+            dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
+            last_conv = _dense_block_new(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -618,7 +623,6 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.summary()
 
     if 'model_layers' in kwargs and kwargs['model_layers'] is not None:
@@ -628,7 +632,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
     if 'model_freeze' in kwargs and kwargs['model_freeze'] is not None:
         frozen = 0
         m.load_weights(kwargs['model_freeze'], by_name=True)
-        m_freeze = load_model(kwargs['model_freeze'], custom_objects=get_metric_dict(tensor_maps_out))
+        m_freeze = load_model(kwargs['model_freeze'], custom_objects=custom_dict)
         frozen_layers = [layer.name for layer in m_freeze.layers]
         for l in m.layers:
             if l.name in frozen_layers:
@@ -831,7 +835,7 @@ def _conv_block2d(x: K.placeholder,
 
 def _conv_block_new(x: K.placeholder,
                     layers: Dict[str, K.placeholder],
-                    conv_layers: List[_Conv],
+                    conv_layers: List[Layer],
                     pool_layers: List[Layer],
                     dimension: int,
                     activation: str,
@@ -857,27 +861,27 @@ def _conv_block_new(x: K.placeholder,
             else:
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
-
     return _get_last_layer(layers)
 
 
 def _dense_block_new(x: K.placeholder,
                      layers: Dict[str, K.placeholder],
                      block_size: int,
-                     conv_layers: List[_Conv],
-                     pool_layer: Layer,
+                     conv_layers: List[Layer],
+                     pool_layers: List[Layer],
                      dimension: int,
                      activation: str,
                      normalization: str,
                      regularization: str,
                      regularization_rate: float):
+    num_blocks = len(conv_layers) // block_size
     for i, conv_layer in enumerate(conv_layers):
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
-        if i % block_size == 0:
-            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layer(x)
+        if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
+            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i//num_blocks](x)
             dense_connections = [x]
         else:
             dense_connections += [x]
