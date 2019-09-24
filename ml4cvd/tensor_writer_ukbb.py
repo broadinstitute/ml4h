@@ -532,6 +532,8 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
 
         if v == MRI_TO_SEGMENT:
             _tensorize_short_axis_segmented_cardiac_mri(views[v], v, x, y, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, stats)
+        elif v in MRI_BRAIN_SERIES:
+            _tensorize_brain_t2(views[v], v, x, y, hd5)
         else:
             mri_data = np.zeros((x, y, max(z, len(views[v]))), dtype=np.float32)
             for slicer in views[v]:
@@ -619,6 +621,24 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         if write_pngs:
             plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
             plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
+
+
+def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: int, hd5: h5py.File) -> None:
+    mri_data1 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
+    mri_data2 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
+    for slicer in slices:
+        sx = min(slicer.Rows, x)
+        sy = min(slicer.Columns, y)
+        _save_pixel_dimensions_if_missing(slicer, series, hd5)
+        slice_index = slicer.InstanceNumber - 1
+        if slicer.SeriesNumber in [5, 11]:
+            mri_data1[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+        elif slicer.SeriesNumber in [6, 12]:
+            mri_data2[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+    tensor_path_1 = tensor_path('ukb_brain_mri', DataSetType.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_1')
+    tensor_path_2 = tensor_path('ukb_brain_mri', DataSetType.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_2')
+    hd5.create_dataset(tensor_path_1, data=mri_data1, compression='gzip')
+    hd5.create_dataset(tensor_path_2, data=mri_data2, compression='gzip')
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
@@ -1258,6 +1278,10 @@ def _str2date(d) -> datetime.date:
 
 def _date_from_dicom(d) -> str:
     return d.AcquisitionDate[0:4] + CONCAT_CHAR + d.AcquisitionDate[4:6] + CONCAT_CHAR + d.AcquisitionDate[6:]
+
+
+def _datetime_from_dicom(d) -> str:
+    datetime.datetime.strptime(_date_from_dicom(d), '%Y-%m-%d')
 
 
 def _log_extreme_n(stats, n) -> None:
