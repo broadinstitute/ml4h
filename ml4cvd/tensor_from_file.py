@@ -140,6 +140,13 @@ def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize(max_hr - last_hr)
 
 
+def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
+    _healthy_check(hd5)
+    times = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_time')
+    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name))
+    return tm.normalize(np.median(tensor[times <= 15]))
+
+
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
                                   tensor_from_file=_first_date_hrr, dtype=DataSetType.CONTINUOUS)
