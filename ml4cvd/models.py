@@ -603,7 +603,8 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
                 early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
                 if u_connect:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
-                    last_conv = conv_layer(filters=all_filters[-(1+i)], kernel_size=kernel, activation=activation, padding=padding)(last_conv)
+                    last_conv = conv_layer(filters=all_filters[-(1+i)], kernel_size=kernel, padding=padding)(last_conv)
+                    last_conv = _activation_layer(activation)(last_conv)
                     last_conv = concatenate([last_conv, early_conv])
                 else:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
