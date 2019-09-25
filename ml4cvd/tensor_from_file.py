@@ -128,9 +128,8 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 
 def _first_brain_from_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    _healthy_check(hd5)
     tensor = _get_tensor_at_first_date(hd5, 'ukb_brain_mri', DataSetType.FLOAT_ARRAY, 't2_flair_sag_p2_1mm_fs_ellip_pf78_1')
-    return tm.normalize(tensor)
+    return tm.zero_mean_std1(tensor)
 
 
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
