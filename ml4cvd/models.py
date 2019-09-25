@@ -559,7 +559,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
-            mlp = Dense(units=tm.annotation_units, activation=activation)(mlp_input)
+            mlp = _dense_layer(mlp_input, layers, tm.annotation_units, activation, conv_normalize)
             input_multimodal.append(mlp)
 
     if len(input_multimodal) > 1:
@@ -571,9 +571,9 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
 
     for i, hidden_units in enumerate(dense_layers):
         if i == len(dense_layers) - 1:
-            multimodal_activation = Dense(units=hidden_units, activation=activation, name='embed')(multimodal_activation)
+            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize, name='embed')
         else:
-            multimodal_activation = Dense(units=hidden_units, activation=activation)(multimodal_activation)
+            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize)
         if dropout > 0:
             multimodal_activation = Dropout(dropout)(multimodal_activation)
         if mlp_concat:
@@ -614,8 +614,7 @@ def make_multimodal_multitask_new(tensor_maps_in: List[TensorMap]=None,
                 output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
             else:
                 parented_activation = concatenate([multimodal_activation] + [output_predictions[p] for p in tm.parents])
-                parented_activation = Dense(units=tm.annotation_units, activation=activation)(parented_activation)
-                parented_activation = concatenate([parented_activation] + [output_predictions[p] for p in tm.parents])
+                parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
                 output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
         elif tm.is_categorical_any():
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
@@ -944,6 +943,16 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
         return [AveragePooling1D(pool_size=pool_x) for _ in range(pool_number)]
     else:
         raise ValueError(f'Unknown pooling type: {pool_type} for dimension: {dimension}')
+
+
+def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
+        if name is not None:
+            x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
+        else:
+            x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+        return _get_last_layer(layers)
 
 
 def _upsampler(dimension, pool_x, pool_y, pool_z):
