@@ -24,9 +24,10 @@ CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastol
                          'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
                          'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0', '22402_Liver-fat-percentage_2_0',
                          'liver_fat_sentinel_prediction', 'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
-                         '25006_Volume-of-grey-matter', '25021_Volume-of-amygdala-left', '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image',
-                         '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image',
-                         '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image'
+                         '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
+                         '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
+                         '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
+                         '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image_2',
                          ]
 
 CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
