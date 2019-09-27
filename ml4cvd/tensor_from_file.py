@@ -7,12 +7,36 @@ from keras.utils import to_categorical
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
-from ml4cvd.defines import DataSetType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
 
 
 """
 For now, all we will map `group` in TensorMap to `source` in tensor_path and `name` to `name`
 """
+
+
+def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
+    tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tm.name)
+    if tm.dtype == DataSetType.CONTINUOUS:
+        return tm.normalize_and_validate(tensor)
+    if tm.dtype == DataSetType.FLOAT_ARRAY:
+        tensor = tm.normalize_and_validate(tensor)
+        return _pad_array_to_shape(tm, tensor)
+    raise ValueError(f'normalize_first_date not implemented for {tm.dtype}')
+
+
+def random_slice_tensor(tensor_key, dependent_key=None):
+    def _random_slice_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+        cur_slice = np.random.choice(range(big_tensor.shape[-1]))
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[..., 0] = big_tensor[..., cur_slice]
+        if dependent_key is not None:
+            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+            label_tensor = np.array(hd5[dependent_key][cur_slice], dtype=np.float32)
+            dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
+        return tm.normalize_and_validate(tensor)
+    return _random_slice_tensor_from_file
 
 
 def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
@@ -59,19 +83,6 @@ def _pad_array_to_shape(tm: TensorMap, original: np.ndarray):
     padded = np.zeros(tm.shape)
     padded[:original.shape[0]] = original.reshape((original.shape[0],) + tm.shape[1:])
     return padded
-
-
-def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tm.name)
-    if tm.dtype == DataSetType.CONTINUOUS:
-        return tm.normalize_and_validate(tensor)
-    if tm.dtype == DataSetType.FLOAT_ARRAY:
-        tensor = tm.zero_mean_std1(tensor)
-        return _pad_array_to_shape(tm, tensor)
-    raise ValueError(f'normalize_first_date not implemented for {tm.dtype}')
-
-
-TMAPS: Dict[str, TensorMap] = {}
 
 
 # BIKE ECG
@@ -145,6 +156,9 @@ def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize_and_validate(np.median(tensor[times <= 15]))
 
 
+TMAPS: Dict[str, TensorMap] = {}
+
+
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
                                   tensor_from_file=_first_date_hrr, dtype=DataSetType.CONTINUOUS)
@@ -213,28 +227,26 @@ TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', shape=(5000, 12), group='ecg_r
                                                'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
 TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
-        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
+                              channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5, 'strip_V4': 6,
+                                           'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
 
 TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
-        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
+                                  channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,  'strip_V4': 6,
+                                               'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
 TMAPS['ecg_rest_stack'] = TensorMap('strip', shape=(600, 12, 8), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
-        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
+                                    channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5, 'strip_V4': 6,
+                                                 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 TMAPS['ecg_rest_median'] = TensorMap('median', group='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-                  metrics=['mse', 'mae', 'logcosh'],
-                  channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4,
-                               'median_V3': 5, 'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9,
-                               'median_aVL': 10, 'median_aVR': 11})
+                                     metrics=['mse', 'mae', 'logcosh'],
+                                     channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4, 'median_V3': 5,
+                                                  'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9, 'median_aVL': 10, 'median_aVR': 11})
 
 TMAPS['ecg_rest_median_stack'] = TensorMap('median', group='ecg_rest', shape=(600, 12, 1), activation='linear', tensor_from_file=_make_ecg_rest(),
                                            metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
-                  channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4,
-                               'median_V3': 5, 'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9,
-                               'median_aVL': 10, 'median_aVR': 11})
+                                           channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4, 'median_V3': 5,
+                                                        'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9, 'median_aVL': 10, 'median_aVR': 11})
 
 TMAPS['ecg_median_1lead'] = TensorMap('median', group='ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
                                       activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0})
@@ -265,6 +277,10 @@ TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['t2_flair_slice_1'] = TensorMap('t2_flair_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                      tensor_from_file=random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'))
+TMAPS['t2_flair_slice_2'] = TensorMap('t2_flair_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                      tensor_from_file=random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'))
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
