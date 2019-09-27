@@ -64,7 +64,7 @@ def _pad_array_to_shape(tm: TensorMap, original: np.ndarray):
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tm.name)
     if tm.dtype == DataSetType.CONTINUOUS:
-        return tm.normalize(tensor)
+        return tm.normalize_and_validate(tensor)
     if tm.dtype == DataSetType.FLOAT_ARRAY:
         tensor = tm.zero_mean_std1(tensor)
         return _pad_array_to_shape(tm, tensor)
@@ -103,14 +103,14 @@ def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     original = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
     flat = original.mean(axis=1)  # all leads are basically the same
     recovery = flat[:tm.shape[0]]
-    return tm.normalize(recovery).reshape(tm.shape)
+    return tm.normalize_and_validate(recovery).reshape(tm.shape)
 
 
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    return tm.normalize(max_hr - last_hr)
+    return tm.normalize_and_validate(max_hr - last_hr)
 
 
 def _healthy_check(hd5):
@@ -135,14 +135,14 @@ def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    return tm.normalize(max_hr - last_hr)
+    return tm.normalize_and_validate(max_hr - last_hr)
 
 
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_time')
     tensor = np.abs(_get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name))
-    return tm.normalize(np.median(tensor[times <= 15]))
+    return tm.normalize_and_validate(np.median(tensor[times <= 15]))
 
 
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
@@ -291,7 +291,7 @@ def make_index_tensor_from_file(index_map_name):
             else:
                 return tensor
         index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
-        return tm.normalize(tensor) / index
+        return tm.normalize_and_validate(tensor) / index
     return indexed_lvmass_tensor_from_file
 
 
