@@ -1,29 +1,25 @@
 import logging
 import datetime
-import numpy as np
 from typing import Any
-from scipy.ndimage import zoom
 from dateutil import relativedelta
 
+import numpy as np
+from scipy.ndimage import zoom
 from keras.utils import to_categorical
 
-from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.defines import CODING_VALUES_LESS_THAN_ONE, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
-from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
-from ml4cvd.defines import DataSetType
+from ml4cvd.metrics import sentinel_logcosh_loss, per_class_precision
+from ml4cvd.metrics import per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d, sentinel_logcosh_loss
+from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.defines import DataSetType, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
+from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['ejection_fraction', 'end_systole_volume', 'end_diastole_volume', 'charge', 'AF_PRS_LDscore', 'lv_mass', 'lv_mass_sentinel_prediction',
-                         'lv_mass_dubois_index_sentinel_prediction', 'lv_mass_mosteller_index_sentinel_prediction',
-                         'LA_2Ch_vol_max', 'LA_2Ch_vol_min LA_4Ch_vol_max', 'LA_4Ch_vol_min', 'LA_Biplan_vol_max', 'LA_Biplan_vol_min',
-                         'corrected_extracted_lvesv', 'corrected_extracted_lvef', 'corrected_extracted_lvedv',
+CONTINUOUS_NEVER_ZERO = ['AF_PRS_LDscore',
                          'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
-                         'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval',
-                         'VentricularRate', '23104_Body-mass-index-BMI_0_0', '22200_Year-of-birth_0_0', '22402_Liver-fat-percentage_2_0',
-                         'liver_fat_sentinel_prediction', 'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
+                         'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval', 'VentricularRate',
+                         'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
                          '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
                          '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
                          '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
@@ -114,7 +110,8 @@ class TensorMap(object):
                  annotation_units=32,
                  imputation=None,
                  tensor_from_file=None,
-                 dtype=None):
+                 dtype=None,
+                 validator=None):
         """TensorMap constructor
 
 
@@ -156,8 +153,8 @@ class TensorMap(object):
         self.annotation_units = annotation_units
         self.imputation = imputation
         self.tensor_from_file = tensor_from_file
-        self.initialization = None  # Not yet implemented
         self.dtype = dtype
+        self.validator = validator
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
@@ -199,6 +196,9 @@ class TensorMap(object):
 
         if self.tensor_from_file is None:
             self.tensor_from_file = _default_tensor_from_file
+
+        if self.validator is None:
+            self.validator = lambda x: x
 
     def __hash__(self):
         return hash((self.name, self.shape, self.group))
@@ -412,6 +412,15 @@ class TensorMap(object):
                         data[self.channel_map[NOT_MISSING]] = 1
             return self.normalize(data)
         raise ValueError('No Merged Tensor Map handling found for ' + self.name + ".")
+
+
+def make_range_validator(minimum: float, maximum: float):
+    def _range_validator(tensor: np.ndarray) -> np.ndarray:
+        if (tensor > minimum).all() and (tensor < maximum).all():
+            return tensor
+        else:
+            raise ValueError('Tensor failed range check.')
+    return _range_validator()
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):
@@ -641,8 +650,6 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if continuous_data[0] == 0 and tm.sentinel is not None:
             continuous_data[:] = tm.sentinel
             return continuous_data
-        if continuous_data[0] > 280:
-            raise ValueError('Volume crazy value.')  # TODO: tensorize with MRI critic annotations
         return tm.normalize(continuous_data)
     elif tm.name == 'ecg_coarse':
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
