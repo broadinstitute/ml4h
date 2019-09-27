@@ -420,7 +420,7 @@ def make_range_validator(minimum: float, maximum: float):
             return tensor
         else:
             raise ValueError('Tensor failed range check.')
-    return _range_validator()
+    return _range_validator
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):
