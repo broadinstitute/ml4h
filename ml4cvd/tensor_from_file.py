@@ -127,11 +127,6 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     return _first_date_hrr(tm, hd5)
 
 
-def _first_brain_from_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    tensor = _get_tensor_at_first_date(hd5, 'ukb_brain_mri', DataSetType.FLOAT_ARRAY, 't2_flair_sag_p2_1mm_fs_ellip_pf78_1')
-    return tm.zero_mean_std1(tensor)
-
-
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
@@ -179,4 +174,6 @@ TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bi
 
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
-                                                         tensor_from_file=_first_brain_from_date, dtype=DataSetType.FLOAT_ARRAY)
+                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), group='ukb_brain_mri',
+                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)

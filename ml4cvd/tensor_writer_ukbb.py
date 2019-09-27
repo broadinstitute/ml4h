@@ -154,6 +154,10 @@ def write_tensors(a_id: str,
             logging.exception('Encountered RuntimeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
             logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
             os.remove(tensor_path)
+        except IndexError:
+            logging.exception('Encountered IndexError trying to write a UKBB tensor at path:{}'.format(tensor_path))
+            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
+            os.remove(tensor_path)
         except OSError:
             logging.exception('Encountered OSError trying to write a UKBB tensor at path:{}'.format(tensor_path))
             logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
