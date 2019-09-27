@@ -1,13 +1,10 @@
 import numpy as np
-from keras.utils import to_categorical
 
 from ml4cvd.TensorMap import TensorMap
-
-from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_l2, ignore_zeros_logcosh
-from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, MRI_TO_SEGMENT, MRI_SEGMENTED_CHANNEL_MAP, EPS
-from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, IMPUTATION_RANDOM, ECG_BIKE_RECOVERY_SIZE
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
-from ml4cvd.defines import DataSetType
+from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
+from ml4cvd.defines import DataSetType, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM
+from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_BIKE_RECOVERY_SIZE
 
 
 def _get_lead_cm(length):
@@ -35,54 +32,10 @@ TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no
 TMAPS['ryr2_lof'] = TensorMap('RYR2', group='categorical_flag', channel_map={'no_ryr2_lof': 0, 'ryr2_lof': 1})
 TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
 
-
-def ttn_tensor_from_file(tm, hd5, dependents={}):
-    index = 0
-    categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    if 'has_exome' not in hd5['categorical']:
-        raise ValueError('Skipping people without exome sequencing.')
-    if tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
-        index = 1
-    categorical_data[index] = 1.0
-    return categorical_data
-
-
-TMAPS['ttntv'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1}, tensor_from_file=ttn_tensor_from_file)
-TMAPS['ttntv_10x'] = TensorMap('has_ttntv', group='categorical_flag', channel_map={'no_TTN_tv': 0, 'TTN_tv': 1}, loss_weight=10.0, tensor_from_file=ttn_tensor_from_file)
-
 TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                      'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
-
-def ecg_rest_from_file(tm, hd5, dependents={}):
-    tensor = np.zeros(tm.shape, dtype=np.float32)
-    if tm.dependent_map is not None:
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        key_choices = [k for k in hd5[tm.group] if tm.name in k]
-        lead_idx = np.random.choice(key_choices)
-        tensor = np.reshape(hd5[tm.group][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-        dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.group][lead_idx.replace(tm.name, tm.dependent_map.name)])
-        dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
-    else:
-        for k in hd5[tm.group]:
-            if k in tm.channel_map:
-                if len(tensor.shape) == 3:  # Grab the stacked tensor maps
-                    window_size = tensor.shape[0]
-                    channels = tensor.shape[2]
-                    new_shape = (window_size, channels)
-                    new_total = window_size * channels
-                    tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.group][k][:new_total], new_shape, order='F')
-                elif tm.name == 'ecg_rest_fft':
-                    tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.group][k])) + EPS)
-                else:
-                    tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
-    return tensor / 2000.0
-
-
-TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', shape=(5000, 12), group='ecg_rest', tensor_from_file=ecg_rest_from_file,
-                                  channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
 
 TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest',
         channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
@@ -363,44 +316,10 @@ TMAPS['lv_mass_mosteller_index_prediction'] = TensorMap('lv_mass_mosteller_index
                                                         channel_map={'lv_mass_mosteller_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 
-def make_index_tensor_from_file(index_map_name):
-    def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for k in tm.channel_map:
-            if k in hd5[tm.group]:
-                tensor = np.array(hd5[tm.group][k], dtype=np.float32)
-            else:
-                return tensor
-        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
-        return tm.normalize(tensor) / index
-    return indexed_lvmass_tensor_from_file
-
-
-TMAPS['lv_mass_dubois_index'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
-                                          channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_mosteller_index'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
-                                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_dubois_index_sentinel'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
-                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
-                                          channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_mosteller_index_sentinel'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
-                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
-                                             channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-
-
 TMAPS['lv_massp'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
                               parents=['output_mri_systole_diastole_8_segmented_categorical'],
                               channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_dubois_indexp'] = TensorMap('lv_mass_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                           parents=['output_mri_systole_diastole_8_segmented_categorical'],
-                                           tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
-                                           channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-TMAPS['lv_mass_mosteller_indexp'] = TensorMap('lv_mass_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
-                                              parents=['output_mri_systole_diastole_8_segmented_categorical'],
-                                              tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
-                                              channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
 
 TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
                                     loss='logcosh', channel_map={'end_systole_volume': 0},
@@ -538,22 +457,6 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', group='categorical',
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
 
-
-def mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
-    cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
-    tensor = np.zeros(tm.shape, dtype=np.float32)
-    dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-    tensor[:, :, 0] = np.array(hd5[MRI_TO_SEGMENT][cur_slice], dtype=np.float32)
-    label_tensor = np.array(hd5[MRI_SEGMENTED][cur_slice], dtype=np.float32)
-    dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-    tensor[:, :, 0] *= np.not_equal(label_tensor, 0, dtype=np.float32)
-    return tm.zero_mean_std1(tensor)
-
-
-TMAPS['mri_slice_blackout_segmented_weighted'] = TensorMap('mri_slice_segmented', (256, 256, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-                                                           loss=weighted_crossentropy([0.1, 25.0, 25.0], 'mri_slice_blackout_segmented'))
-TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), tensor_from_file=mri_slice_blackout_tensor_from_file,
-                                        dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
 
 TMAPS['genetic_pca_5'] = TensorMap('genetic_pca_5', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', annotation_units=5, shape=(5,), activation='linear',
