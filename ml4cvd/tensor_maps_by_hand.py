@@ -1,20 +1,8 @@
-import numpy as np
-
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
 from ml4cvd.defines import DataSetType, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM
 from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_BIKE_RECOVERY_SIZE
-
-
-def _get_lead_cm(length):
-    lead_cm = {}
-    lead_weights = []
-    for i in range(length):
-        wave_val = i - (length//2)
-        lead_cm['w'+str(wave_val).replace('-', '_')] = i
-        lead_weights.append((np.abs(wave_val+1)/(length/2)) + 1.0)
-    return lead_cm, lead_weights
 
 
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
@@ -32,39 +20,6 @@ TMAPS['dsc2_lof'] = TensorMap('DSC2', group='categorical_flag', channel_map={'no
 TMAPS['ryr2_lof'] = TensorMap('RYR2', group='categorical_flag', channel_map={'no_ryr2_lof': 0, 'ryr2_lof': 1})
 TMAPS['ttn_lof'] = TensorMap('TTN', group='categorical_flag', channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
 
-TMAPS['ecg_rest'] = TensorMap('strip', shape=(5000, 12), group='ecg_rest',
-        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
-
-
-TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', shape=(5000, 12), group='ecg_rest',
-        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
-
-TMAPS['ecg_rest_stack'] = TensorMap('strip', shape=(600, 12, 8), group='ecg_rest',
-        channel_map={'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
-                     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11})
-TMAPS['ecg_rest_median'] = TensorMap('median', group='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
-                  metrics=['mse', 'mae', 'logcosh'],
-                  channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4,
-                               'median_V3': 5, 'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9,
-                               'median_aVL': 10, 'median_aVR': 11})
-
-TMAPS['ecg_rest_median_stack'] = TensorMap('median', group='ecg_rest', shape=(600, 12, 1), activation='linear',
-                                           metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
-                  channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4,
-                               'median_V3': 5, 'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9,
-                               'median_aVL': 10, 'median_aVR': 11})
-
-TMAPS['ecg_median_1lead'] = TensorMap('median', group='ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0,
-                                      activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0})
-TMAPS['ecg_rest_1lead'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', channel_map={'lead': 0}, dependent_map=TMAPS['ecg_median_1lead'])
-TMAPS['ecg_median_1lead_categorical'] = TensorMap('median', group='categorical', shape=(600, 32), activation='softmax', 
-                                                  channel_map=_get_lead_cm(32)[0],
-                                                  loss=weighted_crossentropy(_get_lead_cm(32)[1], 'ecg_median_categorical'))
-TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='ecg_rest',
-                                                channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3, 'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
-                                                dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
 TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', loss=weighted_crossentropy([2.0, 3.0, 3.0, 6.0], 'ecg_rhythm'),
                   channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Atrial_fibrillation': 3})

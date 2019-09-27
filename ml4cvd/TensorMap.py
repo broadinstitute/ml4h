@@ -769,29 +769,6 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             return tm.normalize_multi_field_continuous(continuous_data)
         else:
             return tm.normalize_multi_field_continuous_no_missing_channels(continuous_data, missing_array)
-    elif tm.is_ecg_rest():
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.dependent_map is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            key_choices = [k for k in hd5[tm.group] if tm.name in k]
-            lead_idx = np.random.choice(key_choices)
-            tensor = np.reshape(hd5[tm.group][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.group][lead_idx.replace(tm.name, tm.dependent_map.name)])
-            dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
-        else:
-            for k in hd5[tm.group]:
-                if k in tm.channel_map:
-                    if len(tensor.shape) == 3:  # Grab the stacked tensor maps
-                        window_size = tensor.shape[0]
-                        channels = tensor.shape[2]
-                        new_shape = (window_size, channels)
-                        new_total = window_size * channels
-                        tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.group][k][:new_total], new_shape, order='F')
-                    elif tm.name == 'ecg_rest_fft':
-                        tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.group][k])) + EPS)
-                    else:
-                        tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
-        return tm.zero_mean_std1(tensor)
     elif tm.is_ecg_bike():
         tensor = np.array(hd5[tm.group][tm.name], dtype=np.float32)
         return tm.zero_mean_std1(tensor)
