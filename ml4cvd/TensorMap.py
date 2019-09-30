@@ -808,7 +808,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     elif tm.is_hidden_layer():
         input_dict = {}
         for tm in tm.required_inputs:
-            input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(hd5), axis=0)
+            input_dict[tm.input_name()] = np.expand_dims(tm.tensor_from_file(tm, hd5), axis=0)
         return tm.model.predict(input_dict)
     elif tm.dependent_map is not None:  # Assumes dependent maps are 1-hot categoricals
         dataset_key = np.random.choice(list(tm.dependent_map.channel_map.keys()))

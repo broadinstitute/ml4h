@@ -215,7 +215,7 @@ def _make_ecg_rest(population_normalize: float=None):
                     else:
                         tensor[:, tm.channel_map[k]] = hd5[tm.group][k]
         if population_normalize is None:
-            tm.zero_mean_std1(tensor)
+            tensor = tm.zero_mean_std1(tensor)
         else:
             tensor /= population_normalize
         return tensor
