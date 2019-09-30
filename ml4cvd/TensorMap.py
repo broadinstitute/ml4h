@@ -198,7 +198,7 @@ class TensorMap(object):
             self.tensor_from_file = _default_tensor_from_file
 
         if self.validator is None:
-            self.validator = lambda x: x
+            self.validator = lambda tm, x: x
 
         if self.normalization is None and not self.is_categorical_any():
             self.normalization = {'zero_mean_std1': 1.0}
@@ -302,7 +302,7 @@ class TensorMap(object):
         return np_tensor
 
     def normalize_and_validate(self, np_tensor):
-        self.validator(np_tensor)
+        self.validator(self, np_tensor)
         if self.normalization is None:
             return np_tensor
         if 'zero_mean_std1' in self.normalization:
@@ -420,11 +420,11 @@ class TensorMap(object):
 
 
 def make_range_validator(minimum: float, maximum: float):
-    def _range_validator(tensor: np.ndarray) -> np.ndarray:
+    def _range_validator(tm: TensorMap, tensor: np.ndarray) -> np.ndarray:
         if (tensor > minimum).all() and (tensor < maximum).all():
             return tensor
         else:
-            raise ValueError('Tensor failed range check.')
+            raise ValueError(f'TensorMap {tm.name} failed range check.')
     return _range_validator
 
 
