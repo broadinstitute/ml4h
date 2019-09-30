@@ -300,12 +300,12 @@ def train_shallow_model(args):
 
 
 def train_char_model(args):
-    base_model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                     args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
-                                                     args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
-                                                     args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
-                                                     args.pool_y, args.pool_z, args.padding, args.learning_rate)
-
+    # base_model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
+    #                                                  args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
+    #                                                  args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
+    #                                                  args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
+    #                                                  args.pool_y, args.pool_z, args.padding, args.learning_rate)
+    base_model = make_multimodal_multitask_new(**args.__dict__)
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
                                                                                        args.batch_size, args.valid_ratio, args.test_ratio,
