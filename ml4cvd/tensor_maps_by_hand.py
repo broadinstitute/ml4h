@@ -108,98 +108,46 @@ TMAPS['ecg_infarctp'] = TensorMap('ecg_infarct', group='categorical', channel_ma
 TMAPS['ecg_rest_next_char'] = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
 TMAPS['ecg_rest_text'] = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=TMAPS['ecg_rest_next_char'])
 
-
-TMAPS['p-axis'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss='logcosh',
-                        normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, loss='logcosh',
-                            normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, loss='logcosh',
-                          normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, loss='logcosh',
-                         normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, loss='logcosh',
-                             normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss='logcosh',
-                             normalization={'mean': 165.9, 'std': 26.3})
-TMAPS['q-offset'] = TensorMap('QOffset', group='continuous', channel_map={'QOffset': 0}, loss='logcosh',
-                          normalization={'mean': 525.1, 'std': 13.52})
-TMAPS['q-onset'] = TensorMap('QOnset', group='continuous', channel_map={'QOnset': 0}, loss='logcosh',
-                         normalization={'mean': 435.1, 'std': 11.420})
-TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh',
-                               normalization={'mean': 8.0, 'std': 20.0})
-TMAPS['qrs-duration'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh',
-                              normalization={'mean': 89.53, 'std': 12.21})
-TMAPS['qrs-num'] = TensorMap('QRSNum', group='continuous', channel_map={'QRSNum': 0}, loss='logcosh',
-                         normalization={'mean': 9.61, 'std': 1.64})
-TMAPS['qt-interval'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh',
-                             normalization={'mean': 426.1, 'std': 32.24})
-TMAPS['qtc-interval'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh',
-                              normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['r-axis'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, loss='logcosh',
-                        normalization={'mean': 25.7, 'std': 36.6})
-TMAPS['rr-interval'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, loss='logcosh',
-                             normalization={'mean': 1040.61, 'std': 175.5})
-TMAPS['ventricular-rate'] = TensorMap('VentricularRate', group='continuous', channel_map={'VentricularRate': 0},
-                                  loss='logcosh', normalization={'mean': 59.3, 'std': 10.6})
-TMAPS['t-offset'] = TensorMap('TOffset', group='continuous', channel_map={'TOffset': 0}, loss='logcosh',
-                          normalization={'mean': 860.7, 'std': 32.52})
-TMAPS['t-axis'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, loss='logcosh',
-                        normalization={'mean': 40.8, 'std': 32.6})
-
-TMAPS['p-axisp'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss='logcosh',
-                        normalization={'mean': 48.7, 'std': 23.1}, parents=['output_median_ecg_rest'])
-TMAPS['p-durationp'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, loss='logcosh',
-                            normalization={'mean': 96.1, 'std': 18.85}, parents=['output_median_ecg_rest'])
-TMAPS['p-offsetp'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, loss='logcosh',
-                          normalization={'mean': 369.1, 'std': 28.42}, parents=['output_median_ecg_rest'])
-TMAPS['p-onsetp'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, loss='logcosh',
-                         normalization={'mean': 275.1, 'std': 26.420}, parents=['output_median_ecg_rest'])
-TMAPS['pp-intervalp'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, loss='logcosh',
-                             normalization={'mean': 1036.1, 'std': 185.0}, parents=['output_median_ecg_rest'])
-TMAPS['pq-intervalp'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss='logcosh',
-                             normalization={'mean': 165.9, 'std': 26.3}, parents=['output_median_ecg_rest'])
-TMAPS['q-offsetp'] = TensorMap('QOffset', group='continuous', channel_map={'QOffset': 0}, loss='logcosh',
-                          normalization={'mean': 525.1, 'std': 13.52}, parents=['output_median_ecg_rest'])
-TMAPS['q-onsetp'] = TensorMap('QOnset', group='continuous', channel_map={'QOnset': 0}, loss='logcosh',
-                         normalization={'mean': 435.1, 'std': 11.420}, parents=['output_median_ecg_rest'])
-TMAPS['qrs-complexesp'] = TensorMap('QRSComplexes', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh',
-                               normalization={'mean': 8.0, 'std': 20.0}, parents=['output_median_ecg_rest'])
-TMAPS['qrs-durationp'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh',
-                              normalization={'mean': 89.53, 'std': 12.21}, parents=['output_median_ecg_rest'])
-TMAPS['qrs-nump'] = TensorMap('QRSNum', group='continuous', channel_map={'QRSNum': 0}, loss='logcosh',
-                         normalization={'mean': 9.61, 'std': 1.64}, parents=['output_median_ecg_rest'])
-TMAPS['qt-intervalp'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh',
-                             normalization={'mean': 426.1, 'std': 32.24}, parents=['output_median_ecg_rest'])
-TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh',
-                              normalization={'mean': 419.1, 'std': 20.7}, parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'])
-TMAPS['r-axisp'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, loss='logcosh',
-                        normalization={'mean': 25.7, 'std': 36.6}, parents=['output_median_ecg_rest'])
-TMAPS['rr-intervalp'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, loss='logcosh',
-                             normalization={'mean': 1040.61, 'std': 175.5}, parents=['output_median_ecg_rest'])
-TMAPS['ventricular-ratep'] = TensorMap('VentricularRate', group='continuous', channel_map={'VentricularRate': 0},
-                                  loss='logcosh', normalization={'mean': 59.3, 'std': 10.6}, parents=['output_median_ecg_rest'])
-TMAPS['t-offsetp'] = TensorMap('TOffset', group='continuous', channel_map={'TOffset': 0}, loss='logcosh',
-                          normalization={'mean': 860.7, 'std': 32.52}, parents=['output_median_ecg_rest'])
-TMAPS['t-axisp'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, loss='logcosh',
-                        normalization={'mean': 40.8, 'std': 32.6}, parents=['output_median_ecg_rest'])
+TMAPS['p-axis'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
+                            normalization={'mean': 48.7, 'std': 23.1})
+TMAPS['p-duration'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, loss='logcosh', validator=make_range_validator(30, 140),
+                                normalization={'mean': 96.1, 'std': 18.85})
+TMAPS['p-offset'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, loss='logcosh', validator=make_range_validator(200, 500),
+                              normalization={'mean': 369.1, 'std': 28.42})
+TMAPS['p-onset'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, loss='logcosh', validator=make_range_validator(120, 400),
+                             normalization={'mean': 275.1, 'std': 26.420})
+TMAPS['pp-interval'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, loss='logcosh', validator=make_range_validator(300, 1800),
+                                 normalization={'mean': 1036.1, 'std': 185.0})
+TMAPS['pq-interval'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss='logcosh', validator=make_range_validator(70, 400),
+                                 normalization={'mean': 165.9, 'std': 26.3})
+TMAPS['q-offset'] = TensorMap('QOffset', group='continuous', channel_map={'QOffset': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+                              normalization={'mean': 525.1, 'std': 13.52})
+TMAPS['q-onset'] = TensorMap('QOnset', group='continuous', channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
+                             normalization={'mean': 435.1, 'std': 11.420})
+TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(30, 160),
+                                   normalization={'mean': 8.0, 'std': 20.0})
+TMAPS['qrs-duration'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+                                  normalization={'mean': 89.53, 'std': 12.21})
+TMAPS['qrs-num'] = TensorMap('QRSNum', group='continuous', channel_map={'QRSNum': 0}, loss='logcosh', validator=make_range_validator(2, 30),
+                             normalization={'mean': 9.61, 'std': 1.64})
+TMAPS['qt-interval'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+                                 normalization={'mean': 426.1, 'std': 32.24})
+TMAPS['qtc-interval'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+                                  normalization={'mean': 419.1, 'std': 20.7})
+TMAPS['r-axis'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+                            normalization={'mean': 25.7, 'std': 36.6})
+TMAPS['rr-interval'] = TensorMap('RRInterval', group='continuous', channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
+                                 normalization={'mean': 1040.61, 'std': 175.5})
+TMAPS['ventricular-rate'] = TensorMap('VentricularRate', group='continuous', channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
+                                      loss='logcosh', normalization={'mean': 59.3, 'std': 10.6})
+TMAPS['t-offset'] = TensorMap('TOffset', group='continuous', channel_map={'TOffset': 0}, loss='logcosh', validator=make_range_validator(700, 1000),
+                              normalization={'mean': 860.7, 'std': 32.52})
+TMAPS['t-axis'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+                            normalization={'mean': 40.8, 'std': 32.6})
 
 TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', group='continuous', channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
 TMAPS['charge'] = TensorMap('charge', group='continuous', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
                             validator=make_range_validator(0, 20))
-
-
-TMAPS['p-axis-no0'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                        normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration-no0'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                            normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset-no0'] = TensorMap('POffset', group='continuous', channel_map={'POffset': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                          normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset-no0'] = TensorMap('POnset', group='continuous', channel_map={'POnset': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                         normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval-no0'] = TensorMap('PPInterval', group='continuous', channel_map={'PPInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                             normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval-no0'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, loss=ignore_zeros_logcosh, metrics=['logcosh'],
-                             normalization={'mean': 165.9, 'std': 26.3})
 
 TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 48.7, 'std': 23.1})
@@ -213,7 +161,6 @@ TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', group='continuous', chan
                                           normalization={'mean': 1036.1, 'std': 185.0})
 TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', group='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 165.9, 'std': 26.3})
-
 TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', group='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
                                            normalization={'mean': 89.53, 'std': 12.21})
 TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, sentinel=0,

@@ -78,8 +78,6 @@ def write_tensors(a_id: str,
                   output_folder: str,
                   tensors: str,
                   mri_unzip: str,
-                  volume_csv: str,
-                  lv_mass_csv: str,
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
                   x: int,
@@ -104,8 +102,6 @@ def write_tensors(a_id: str,
     :param output_folder: Folder to write outputs to (mostly for debugging)
     :param tensors: Folder to populate with HD5 tensors
     :param mri_unzip: Folder where zipped DICOM will be decompressed
-    :param volume_csv: CSV containing systole and diastole volumes and ejection fraction for samples with MRI
-    :param lv_mass_csv: CSV containing LV mass and other data from a subset of samples with MRI
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
     :param x: Maximum x dimension of MRIs
@@ -125,7 +121,7 @@ def write_tensors(a_id: str,
     """
     stats = Counter()
     continuous_stats = defaultdict(list)
-    nested_dictionary, sample_ids = _load_meta_data_for_tensor_writing(volume_csv, lv_mass_csv, min_sample_id, max_sample_id)
+    sample_ids = range(min_sample_id, max_sample_id)
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
@@ -140,7 +136,6 @@ def write_tensors(a_id: str,
                 _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
-                _write_tensors_from_dictionary_of_scalars(hd5, sample_id, nested_dictionary, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
             logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
@@ -204,8 +199,8 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
                 # Zero-based column #13 is the LV mass
                 nested_dictionary[sample_id]['lv_mass'] = float(row[13])
 
-    sample_ids = range(min_sample_id, max_sample_id)
-    return nested_dictionary, sample_ids
+
+    return nested_dictionary
 
 
 def _sample_has_dicom_mris(zip_folder, sample_id) -> bool:

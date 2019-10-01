@@ -142,7 +142,7 @@ LAUNCH_CMDLINE_MESSAGE
     let MIN_SAMPLE_ID=MIN_SAMPLE_ID+INCREMENT
     let MAX_SAMPLE_ID=MAX_SAMPLE_ID+INCREMENT
 
-    sleep 2s
+    sleep 1s
 done
 
 ################### DISPLAY TIME #########################################

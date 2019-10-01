@@ -16,10 +16,7 @@ from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_I
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['AF_PRS_LDscore',
-                         'PAxis', 'PDuration', 'POffset', 'POnset', 'PPInterval', 'PQInterval',
-                         'QOffset', 'QOnset', 'QRSComplexes', 'QRSDuration', 'QRSNum', 'QTInterval', 'QTCInterval', 'RAxis', 'RRInterval', 'VentricularRate',
-                         'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
+CONTINUOUS_NEVER_ZERO = ['bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
                          '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
                          '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
                          '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
