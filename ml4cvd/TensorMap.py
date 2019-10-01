@@ -622,22 +622,6 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
         dependents[tm.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), tm.dependent_map.shape[-1])
         return tm.normalize_and_validate(tensor)
-    elif tm.name in {'t1_brain_208z', 't1_brain_208z_half', 't1_brain_208z_quarter', 't1_brain_208z_3d', 't1_brain_208z_half_3d', 't1_brain_208z_quarter_3d'}:
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        full = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[..., :208]
-        ratios = [new_len / orig_len for new_len, orig_len in zip(tm.shape, full.shape)]
-        if '3d' in tm.name:
-            tensor[:] = zoom(full, ratios, order=1)[..., np.newaxis]
-        else:
-            tensor[:] = zoom(full, ratios, order=1)
-        return tm.normalize_and_validate(tensor)
-
-    elif tm.name in {'t1_brain_208z_3d', 't1_brain_208z_half_3d', 't1_brain_208z_quarter_3d'}:
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        full = np.array(hd5['t1_p2_1mm_fov256_sag_ti_880'], dtype=np.float32)[..., :208]
-        ratios = [new_len / orig_len for new_len, orig_len in zip(tm.shape, full.shape)]
-        tensor[:] = zoom(full, ratios, order=1)[..., np.newaxis]
-        return tm.normalize_and_validate(tensor)
     elif tm.is_root_array():
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[:] = np.array(hd5[tm.name], dtype=np.float32)
