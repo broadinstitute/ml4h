@@ -417,12 +417,15 @@ class TensorMap(object):
 
 
 def make_range_validator(minimum: float, maximum: float):
-    def _range_validator(tm: TensorMap, tensor: np.ndarray) -> np.ndarray:
-        if (tensor > minimum).all() and (tensor < maximum).all():
-            return tensor
-        else:
+    def _range_validator(tm: TensorMap, tensor: np.ndarray):
+        if not ((tensor > minimum).all() and (tensor < maximum).all()):
             raise ValueError(f'TensorMap {tm.name} failed range check.')
     return _range_validator
+
+
+def no_nans(tm: TensorMap, tensor: np.ndarray):
+    if np.isnan(tensor).any():
+        raise ValueError(f'Skipping TensorMap {tm.name} with NaNs.')
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):

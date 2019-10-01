@@ -315,7 +315,6 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
     :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
     """
-    logging.info(f'Got kwargs {kwargs}')
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}

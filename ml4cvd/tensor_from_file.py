@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 from keras.utils import to_categorical
 
-from ml4cvd.TensorMap import TensorMap
+from ml4cvd.TensorMap import TensorMap, no_nans
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
 from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
@@ -48,21 +48,7 @@ def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> Li
     return hd5[source][str(dtype)][name]
 
 
-def _fail_nan(tensor):
-    if np.isnan(tensor).any():
-        raise ValueError('Tensor contains nans.')
-    return tensor
-
-
-def _nan_to_mean(tensor, max_allowed_nan_fraction=.2):
-    tensor_isnan = np.isnan(tensor)
-    if np.count_nonzero(tensor_isnan) / tensor.size > max_allowed_nan_fraction:
-        raise ValueError('Tensor contains too many nans.')
-    tensor[tensor_isnan] = np.nanmean(tensor)
-    return tensor
-
-
-def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan=_fail_nan):
+def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str):
     """
     Gets the numpy array at the first date of source, dtype, name.
     """
@@ -73,7 +59,6 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
     first_date = path_date_to_datetime(min(dates))  # Date format is sortable. 
     first_date_path = tensor_path(source=source, dtype=dtype, name=name, date=first_date)
     tensor = np.array(hd5[first_date_path])
-    tensor = handle_nan(tensor)
     return tensor
 
 
@@ -184,14 +169,14 @@ TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', group=
 TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                                   normalization={'mean': .03, 'std': .03},
                                                   tensor_from_file=_median_pretest, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike',
+TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike', validator=no_nans,
                                        tensor_from_file=_first_date_bike_recovery, dtype=DataSetType.FLOAT_ARRAY)
-TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bike',
+TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15, 1), group='ecg_bike', validator=no_nans,
                                       normalization={'mean': 8.3, 'std': 33.},
                                       tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
 
 
-def _make_ecg_rest(population_normalize: float=None):
+def _make_ecg_rest(population_normalize: float = None):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if tm.dependent_map is not None:
@@ -274,21 +259,23 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
 
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
-                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
+                                                         normalization={'zero_mean_std1': True})
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), group='ukb_brain_mri',
-                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
+                                                         normalization={'zero_mean_std1': True})
 TMAPS['t2_flair_slice_1'] = TensorMap('t2_flair_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                                      tensor_from_file=random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'))
+                                      tensor_from_file=random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'), normalization={'zero_mean_std1': True})
 TMAPS['t2_flair_slice_2'] = TensorMap('t2_flair_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                                      tensor_from_file=random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'))
-TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_1', shape=(256, 256, 208), group='ukb_brain_mri',
-                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
-TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), group='ukb_brain_mri',
-                                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
-TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                                      tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
-TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                                      tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'))
+                                      tensor_from_file=random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'), normalization={'zero_mean_std1': True})
+TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_1', shape=(256, 256, 208), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                                   normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                                   normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
+TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'))
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
