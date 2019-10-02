@@ -48,7 +48,21 @@ def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> Li
     return hd5[source][str(dtype)][name]
 
 
-def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str):
+def _fail_nan(tensor):
+    if np.isnan(tensor).any():
+        raise ValueError('Tensor contains nans.')
+    return tensor
+
+
+def _nan_to_mean(tensor, max_allowed_nan_fraction=.2):
+    tensor_isnan = np.isnan(tensor)
+    if np.count_nonzero(tensor_isnan) / tensor.size > max_allowed_nan_fraction:
+        raise ValueError('Tensor contains too many nans.')
+    tensor[tensor_isnan] = np.nanmean(tensor)
+    return tensor
+
+
+def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan=_fail_nan):
     """
     Gets the numpy array at the first date of source, dtype, name.
     """
@@ -59,6 +73,7 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
     first_date = path_date_to_datetime(min(dates))  # Date format is sortable. 
     first_date_path = tensor_path(source=source, dtype=dtype, name=name, date=first_date)
     tensor = np.array(hd5[first_date_path])
+    tensor = handle_nan(tensor)
     return tensor
 
 
