@@ -260,6 +260,7 @@ def plot_predictions(args):
     model = make_multimodal_multitask_model(**args.__dict__)
 
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    paths = [p.replace('.hd5', f'_{i}.hd5') for i, p in enumerate(paths)]
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
