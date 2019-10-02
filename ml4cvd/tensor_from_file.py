@@ -20,9 +20,8 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     if tm.dtype == DataSetType.CONTINUOUS:
         return tm.normalize_and_validate(tensor)
     if tm.dtype == DataSetType.FLOAT_ARRAY:
-        return tm.zero_mean_std1(tensor)
-        #tensor = tm.normalize_and_validate(tensor)
-        #return _pad_array_to_shape(tm, tensor)
+        tensor = tm.normalize_and_validate(tensor)
+        return _pad_array_to_shape(tm, tensor)
     raise ValueError(f'normalize_first_date not implemented for {tm.dtype}')
 
 

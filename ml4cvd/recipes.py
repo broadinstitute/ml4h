@@ -252,8 +252,10 @@ def train_char_model(args):
 
 
 def plot_predictions(args):
-    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size*args.test_steps,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
+    tensor_paths = ['/mnt/disks/lax-sax-ecg-ttn/2017-07-30/3167720.hd5']
+    generate_test = TensorGenerator(args.batch_size*args.test_steps, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    # _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size*args.test_steps,
+    #                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
 
     model = make_multimodal_multitask_model(**args.__dict__)
 
