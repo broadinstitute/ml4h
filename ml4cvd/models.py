@@ -649,7 +649,7 @@ def _normalization_layer(norm):
     if norm == 'batch_norm':
         return BatchNormalization(axis=CHANNEL_AXIS)
     else:
-        return Activation('linear')
+        return lambda x: x
 
 
 def _regularization_layer(dimension, regularization_type, rate):
@@ -662,7 +662,7 @@ def _regularization_layer(dimension, regularization_type, rate):
     elif regularization_type == 'dropout':
         return Dropout(rate)
     else:
-        return Activation('linear')
+        return lambda x: x
 
 
 def _get_last_layer(named_layers):
