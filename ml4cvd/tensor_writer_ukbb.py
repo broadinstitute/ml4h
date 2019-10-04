@@ -1066,12 +1066,8 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-                        if group == 'continuous':
-                            value = _to_float_or_false(data_maps[sample_id][field])
-                        else:
-                            value = int(data_maps[sample_id][field])
-
-                        if value:
+                        try:
+                            value = float(data_maps[sample_id][field])
                             hd5_key = group + HD5_GROUP_CHAR + field
                             if field in hd5[group]:
                                 data = hd5[hd5_key]
@@ -1080,7 +1076,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                             else:
                                 hd5.create_dataset(hd5_key, data=[value])
                                 stats['created'] += 1
-                        else:
+                        except ValueError:
                             stats[f'could not cast field {field} to float'] += 1
                 else:
                     stats['sample id missing']
