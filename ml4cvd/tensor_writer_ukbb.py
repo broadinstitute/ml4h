@@ -1052,7 +1052,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
-        logging.info(f"CSV fields:{fields}")
+        logging.info(f"CSV has {len(fields)} fields:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
@@ -1066,7 +1066,11 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-                        value = _to_float_or_false(data_maps[sample_id][field])
+                        if group == 'continuous':
+                            value = _to_float_or_false(data_maps[sample_id][field])
+                        else:
+                            value = int(data_maps[sample_id][field])
+
                         if value:
                             hd5_key = group + HD5_GROUP_CHAR + field
                             if field in hd5[group]:
