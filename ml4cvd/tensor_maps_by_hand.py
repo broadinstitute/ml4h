@@ -175,46 +175,49 @@ TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', group='continuous', chan
                                           normalization={'mean': 1040.61, 'std': 175.5})
 TMAPS['t-axis-sentinel'] = TensorMap('TAxis', group='continuous', channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
 
-TMAPS['class1_baseline'] = TensorMap('class1_baseline', group='categorical', channel_map={'no_class1_baseline': 0, 'class1_baseline': 1},
-                                     loss=weighted_crossentropy([0.0023, 0.9977], 'class1_baseline'))
+
 TMAPS['bb_baseline'] = TensorMap('bb_baseline', group='categorical', channel_map={'no_bb_baseline': 0, 'bb_baseline': 1},
                                  loss=weighted_crossentropy([0.0453, 0.9547], 'bb_baseline'))
-TMAPS['class3_baseline'] = TensorMap('class3_baseline', group='categorical', channel_map={'no_class3_baseline': 0, 'class3_baseline': 1},
-                                     loss=weighted_crossentropy([0.0011, 0.9989], 'class3_baseline'))
 TMAPS['ccb_baseline'] = TensorMap('ccb_baseline', group='categorical', channel_map={'no_ccb_baseline': 0, 'ccb_baseline': 1},
                                   loss=weighted_crossentropy([0.0044, 0.9956], 'ccb_baseline'))
+TMAPS['class1_baseline'] = TensorMap('class1_baseline', group='categorical', channel_map={'no_class1_baseline': 0, 'class1_baseline': 1},
+                                     loss=weighted_crossentropy([0.0023, 0.9977], 'class1_baseline'))
+TMAPS['class3_baseline'] = TensorMap('class3_baseline', group='categorical', channel_map={'no_class3_baseline': 0, 'class3_baseline': 1},
+                                     loss=weighted_crossentropy([0.0011, 0.9989], 'class3_baseline'))
 TMAPS['qtc_drug_def_baseline'] = TensorMap('qtc_drug_def_baseline', group='categorical',
                                            channel_map={'no_qtc_drug_def_baseline': 0, 'qtc_drug_def_baseline': 1},
                                            loss=weighted_crossentropy([0.0210, 0.9790], 'qtc_drug_def_baseline'))
 TMAPS['qtc_drug_poss_baseline'] = TensorMap('qtc_drug_poss_baseline', group='categorical',
                                             channel_map={'no_qtc_drug_poss_baseline': 0, 'qtc_drug_poss_baseline': 1},
                                             loss=weighted_crossentropy([0.0189, 0.9811], 'qtc_drug_poss_baseline'))
+TMAPS['combined_qtc_drug_baseline'] = TensorMap('combined_qtc_drug_baseline', group='categorical',
+                                                channel_map={'no_combined_qtc_drug_baseline': 0, 'combined_qtc_drug_baseline': 1},
+                                                loss=weighted_crossentropy([0.0389, 0.9611], 'combined_qtc_drug_baseline'))
+
+TMAPS['bb_fu'] = TensorMap('bb_fu', group='categorical', channel_map={'no_bb_fu': 0, 'bb_fu': 1}, loss=weighted_crossentropy([0.0306, 0.9694], 'bb_fu'))
+TMAPS['ccb_fu'] = TensorMap('ccb_fu', group='categorical', channel_map={'no_ccb_fu': 0, 'ccb_fu': 1}, loss=weighted_crossentropy([0.0035, 0.9965], 'ccb_fu'))
 TMAPS['class1_fu'] = TensorMap('class1_fu', group='categorical', channel_map={'no_class1_fu': 0, 'class1_fu': 1},
                                loss=weighted_crossentropy([0.0018, 0.9982], 'class1_fu'))
-TMAPS['bb_fu'] = TensorMap('bb_fu', group='categorical', channel_map={'no_bb_fu': 0, 'bb_fu': 1}, loss=weighted_crossentropy([0.0306, 0.9694], 'bb_fu'))
 TMAPS['class3_fu'] = TensorMap('class3_fu', group='categorical', channel_map={'no_class3_fu': 0, 'class3_fu': 1},
                                loss=weighted_crossentropy([0.0006, 0.9994], 'class3_fu'))
-TMAPS['ccb_fu'] = TensorMap('ccb_fu', group='categorical', channel_map={'no_ccb_fu': 0, 'ccb_fu': 1}, loss=weighted_crossentropy([0.0035, 0.9965], 'ccb_fu'))
 TMAPS['qtc_drug_def_fu'] = TensorMap('qtc_drug_def_fu', group='categorical', channel_map={'no_qtc_drug_def_fu': 0, 'qtc_drug_def_fu': 1},
                                      loss=weighted_crossentropy([0.0140, 0.9860], 'qtc_drug_def_fu'))
 TMAPS['qtc_drug_poss_fu'] = TensorMap('qtc_drug_poss_fu', group='categorical', channel_map={'no_qtc_drug_poss_fu': 0, 'qtc_drug_poss_fu': 1},
                                       loss=weighted_crossentropy([0.0127, 0.9873], 'qtc_drug_poss_fu'))
+TMAPS['combined_qtc_drug_fu'] = TensorMap('combined_qtc_drug_fu', group='categorical', channel_map={'no_combined_qtc_drug_fu': 0, 'combined_qtc_drug_fu': 1},
+                                          loss=weighted_crossentropy([0.0260, 0.9740], 'combined_qtc_drug_fu'))
+
+TMAPS['any_bb'] = TensorMap('any_bb', group='categorical', channel_map={'no_any_bb': 0, 'any_bb': 1}, loss=weighted_crossentropy([0.0602, 0.9398], 'any_bb'))
+TMAPS['any_ccb'] = TensorMap('any_ccb', group='categorical', channel_map={'no_any_ccb': 0, 'any_ccb': 1},
+                             loss=weighted_crossentropy([0.0062, 0.9938], 'any_ccb'))
+TMAPS['any_class1'] = TensorMap('any_class1', group='categorical', channel_map={'no_any_class1': 0, 'any_class1': 1},
+                                loss=weighted_crossentropy([0.0031, 0.9969], 'any_class1'))
+TMAPS['any_class3'] = TensorMap('any_class3', group='categorical', channel_map={'no_any_class3': 0, 'any_class3': 1},
+                                loss=weighted_crossentropy([0.0013, 0.9987], 'any_class3'))
 TMAPS['qtc_drug_def_any'] = TensorMap('qtc_drug_def_any', group='categorical', channel_map={'no_qtc_drug_def_any': 0, 'qtc_drug_def_any': 1},
                                       loss=weighted_crossentropy([0.0302, 0.9698], 'qtc_drug_def_any'))
 TMAPS['qtc_drug_poss_any'] = TensorMap('qtc_drug_poss_any', group='categorical', channel_map={'no_qtc_drug_poss_any': 0, 'qtc_drug_poss_any': 1},
                                        loss=weighted_crossentropy([0.0267, 0.9733], 'qtc_drug_poss_any'))
-TMAPS['any_class1'] = TensorMap('any_class1', group='categorical', channel_map={'no_any_class1': 0, 'any_class1': 1},
-                                loss=weighted_crossentropy([0.0031, 0.9969], 'any_class1'))
-TMAPS['any_bb'] = TensorMap('any_bb', group='categorical', channel_map={'no_any_bb': 0, 'any_bb': 1}, loss=weighted_crossentropy([0.0602, 0.9398], 'any_bb'))
-TMAPS['any_class3'] = TensorMap('any_class3', group='categorical', channel_map={'no_any_class3': 0, 'any_class3': 1},
-                                loss=weighted_crossentropy([0.0013, 0.9987], 'any_class3'))
-TMAPS['any_ccb'] = TensorMap('any_ccb', group='categorical', channel_map={'no_any_ccb': 0, 'any_ccb': 1},
-                             loss=weighted_crossentropy([0.0062, 0.9938], 'any_ccb'))
-TMAPS['combined_qtc_drug_baseline'] = TensorMap('combined_qtc_drug_baseline', group='categorical',
-                                                channel_map={'no_combined_qtc_drug_baseline': 0, 'combined_qtc_drug_baseline': 1},
-                                                loss=weighted_crossentropy([0.0389, 0.9611], 'combined_qtc_drug_baseline'))
-TMAPS['combined_qtc_drug_fu'] = TensorMap('combined_qtc_drug_fu', group='categorical', channel_map={'no_combined_qtc_drug_fu': 0, 'combined_qtc_drug_fu': 1},
-                                          loss=weighted_crossentropy([0.0260, 0.9740], 'combined_qtc_drug_fu'))
 TMAPS['combined_qtc_drug_any'] = TensorMap('combined_qtc_drug_any', group='categorical',
                                            channel_map={'no_combined_qtc_drug_any': 0, 'combined_qtc_drug_any': 1},
                                            loss=weighted_crossentropy([0.0546, 0.9454], 'combined_qtc_drug_any'))
@@ -279,7 +282,7 @@ TMAPS['end_systole_volume'] = TensorMap('end_systole_volume', group='continuous'
 TMAPS['end_diastole_volume'] = TensorMap('end_diastole_volume', group='continuous', activation='linear', validator=make_range_validator(0, 400),
                                      loss='logcosh', channel_map={'end_diastole_volume': 0},
                                      normalization={'mean': 142.0, 'std': 21.0})
-TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', activation='linear', validator=make_range_validator(0, 100),
+TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', activation='linear', validator=make_range_validator(0.2, 0.9),
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0})
 
@@ -288,7 +291,7 @@ TMAPS['ejection_fraction'] = TensorMap('ejection_fraction', group='continuous', 
 TMAPS['corrected_extracted_lvedv'] = TensorMap('corrected_extracted_lvedv', group='continuous', activation='linear', validator=make_range_validator(0, 400),
                                      loss='logcosh', channel_map={'corrected_extracted_lvedv': 0},
                                      normalization={'mean': 142.0, 'std': 21.0})
-TMAPS['corrected_extracted_lvef'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear', validator=make_range_validator(0, 100),
+TMAPS['corrected_extracted_lvef'] = TensorMap('corrected_extracted_lvef', group='continuous', activation='linear', validator=make_range_validator(0.2, 0.9),
                                    normalization={'mean': 0.50, 'std': 0.046},
                                    loss='logcosh', channel_map={'corrected_extracted_lvef': 0})
 TMAPS['corrected_extracted_lvesv'] = TensorMap('corrected_extracted_lvesv', group='continuous', activation='linear', validator=make_range_validator(0, 300),
@@ -331,7 +334,7 @@ TMAPS['RA_4Ch_vol_min'] = TensorMap('RA_4Ch_vol_min',  group='continuous', norma
 TMAPS['RVEDV'] = TensorMap('RVEDV',  group='continuous', normalization={'mean': 152.41239853151131, 'std': 37.15198900632509}, loss='logcosh',
                            validator=make_range_validator(0, 200), channel_map={'RVEDV': 0})
 TMAPS['RVEF'] = TensorMap('RVEF',  group='continuous', normalization={'mean': 56.404863078182565, 'std': 6.526231365539632}, loss='logcosh',
-                          validator=make_range_validator(0, 100), channel_map={'RVEF': 0})
+                          validator=make_range_validator(10, 90), channel_map={'RVEF': 0})
 TMAPS['RVESV'] = TensorMap('RVESV',  group='continuous', normalization={'mean': 67.61379869467673, 'std': 22.853189258914284}, loss='logcosh',
                            validator=make_range_validator(0, 200), channel_map={'RVESV': 0})
 TMAPS['RVSV'] = TensorMap('RVSV',  group='continuous', normalization={'mean': 85.0908258288989, 'std': 19.30893645374548}, loss='logcosh',
