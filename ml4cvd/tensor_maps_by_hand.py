@@ -194,34 +194,27 @@ TMAPS['combined_qtc_drug_baseline'] = TensorMap('combined_qtc_drug_baseline', gr
                                                 channel_map={'no_combined_qtc_drug_baseline': 0, 'combined_qtc_drug_baseline': 1},
                                                 loss=weighted_crossentropy([0.0389, 0.9611], 'combined_qtc_drug_baseline'))
 
-TMAPS['bb_fu'] = TensorMap('bb_fu', group='categorical', channel_map={'no_bb_fu': 0, 'bb_fu': 1}, loss=weighted_crossentropy([0.0306, 0.9694], 'bb_fu'))
-TMAPS['ccb_fu'] = TensorMap('ccb_fu', group='categorical', channel_map={'no_ccb_fu': 0, 'ccb_fu': 1}, loss=weighted_crossentropy([0.0035, 0.9965], 'ccb_fu'))
-TMAPS['class1_fu'] = TensorMap('class1_fu', group='categorical', channel_map={'no_class1_fu': 0, 'class1_fu': 1},
-                               loss=weighted_crossentropy([0.0018, 0.9982], 'class1_fu'))
-TMAPS['class3_fu'] = TensorMap('class3_fu', group='categorical', channel_map={'no_class3_fu': 0, 'class3_fu': 1},
-                               loss=weighted_crossentropy([0.0006, 0.9994], 'class3_fu'))
-TMAPS['qtc_drug_def_fu'] = TensorMap('qtc_drug_def_fu', group='categorical', channel_map={'no_qtc_drug_def_fu': 0, 'qtc_drug_def_fu': 1},
-                                     loss=weighted_crossentropy([0.0140, 0.9860], 'qtc_drug_def_fu'))
-TMAPS['qtc_drug_poss_fu'] = TensorMap('qtc_drug_poss_fu', group='categorical', channel_map={'no_qtc_drug_poss_fu': 0, 'qtc_drug_poss_fu': 1},
-                                      loss=weighted_crossentropy([0.0127, 0.9873], 'qtc_drug_poss_fu'))
-TMAPS['combined_qtc_drug_fu'] = TensorMap('combined_qtc_drug_fu', group='categorical', channel_map={'no_combined_qtc_drug_fu': 0, 'combined_qtc_drug_fu': 1},
-                                          loss=weighted_crossentropy([0.0260, 0.9740], 'combined_qtc_drug_fu'))
-
-TMAPS['any_bb'] = TensorMap('any_bb', group='categorical', channel_map={'no_any_bb': 0, 'any_bb': 1}, loss=weighted_crossentropy([0.0602, 0.9398], 'any_bb'))
-TMAPS['any_ccb'] = TensorMap('any_ccb', group='categorical', channel_map={'no_any_ccb': 0, 'any_ccb': 1},
-                             loss=weighted_crossentropy([0.0062, 0.9938], 'any_ccb'))
-TMAPS['any_class1'] = TensorMap('any_class1', group='categorical', channel_map={'no_any_class1': 0, 'any_class1': 1},
-                                loss=weighted_crossentropy([0.0031, 0.9969], 'any_class1'))
-TMAPS['any_class3'] = TensorMap('any_class3', group='categorical', channel_map={'no_any_class3': 0, 'any_class3': 1},
-                                loss=weighted_crossentropy([0.0013, 0.9987], 'any_class3'))
-TMAPS['qtc_drug_def_any'] = TensorMap('qtc_drug_def_any', group='categorical', channel_map={'no_qtc_drug_def_any': 0, 'qtc_drug_def_any': 1},
-                                      loss=weighted_crossentropy([0.0302, 0.9698], 'qtc_drug_def_any'))
-TMAPS['qtc_drug_poss_any'] = TensorMap('qtc_drug_poss_any', group='categorical', channel_map={'no_qtc_drug_poss_any': 0, 'qtc_drug_poss_any': 1},
-                                       loss=weighted_crossentropy([0.0267, 0.9733], 'qtc_drug_poss_any'))
-TMAPS['combined_qtc_drug_any'] = TensorMap('combined_qtc_drug_any', group='categorical',
-                                           channel_map={'no_combined_qtc_drug_any': 0, 'combined_qtc_drug_any': 1},
-                                           loss=weighted_crossentropy([0.0546, 0.9454], 'combined_qtc_drug_any'))
-
+TMAPS['class1_baseline'] = TensorMap('class1_baseline', group='categorical', channel_map={'no_class1_baseline': 0, 'class1_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0023, 0.9977], 'class1_baseline'))
+TMAPS['bb_baseline'] = TensorMap('bb_baseline', group='categorical', channel_map={'no_bb_baseline': 0, 'bb_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0453, 0.9547], 'bb_baseline'))
+TMAPS['class3_baseline'] = TensorMap('class3_baseline', group='categorical', channel_map={'no_class3_baseline': 0, 'class3_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0011, 0.9989], 'class3_baseline'))
+TMAPS['ccb_baseline'] = TensorMap('ccb_baseline', group='categorical', channel_map={'no_ccb_baseline': 0, 'ccb_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0044, 0.9956], 'ccb_baseline'))
+TMAPS['qtc_drug_def_baseline'] = TensorMap('qtc_drug_def_baseline', group='categorical', channel_map={'no_qtc_drug_def_baseline': 0, 'qtc_drug_def_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0210, 0.9790], 'qtc_drug_def_baseline'))
+TMAPS['qtc_drug_poss_baseline'] = TensorMap('qtc_drug_poss_baseline', group='categorical', channel_map={'no_qtc_drug_poss_baseline': 0, 'qtc_drug_poss_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0189, 0.9811], 'qtc_drug_poss_baseline'))
+TMAPS['class1_fu'] = TensorMap('class1_fu', group='categorical', channel_map={'no_class1_fu': 0, 'class1_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0018, 0.9982], 'class1_fu'))
+TMAPS['bb_fu'] = TensorMap('bb_fu', group='categorical', channel_map={'no_bb_fu': 0, 'bb_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0306, 0.9694], 'bb_fu'))
+TMAPS['class3_fu'] = TensorMap('class3_fu', group='categorical', channel_map={'no_class3_fu': 0, 'class3_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0006, 0.9994], 'class3_fu'))
+TMAPS['ccb_fu'] = TensorMap('ccb_fu', group='categorical', channel_map={'no_ccb_fu': 0, 'ccb_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0035, 0.9965], 'ccb_fu'))
+TMAPS['qtc_drug_def_fu'] = TensorMap('qtc_drug_def_fu', group='categorical', channel_map={'no_qtc_drug_def_fu': 0, 'qtc_drug_def_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0140, 0.9860], 'qtc_drug_def_fu'))
+TMAPS['qtc_drug_poss_fu'] = TensorMap('qtc_drug_poss_fu', group='categorical', channel_map={'no_qtc_drug_poss_fu': 0, 'qtc_drug_poss_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0127, 0.9873], 'qtc_drug_poss_fu'))
+TMAPS['qtc_drug_def_any'] = TensorMap('qtc_drug_def_any', group='categorical', channel_map={'no_qtc_drug_def_any': 0, 'qtc_drug_def_any': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0302, 0.9698], 'qtc_drug_def_any'))
+TMAPS['qtc_drug_poss_any'] = TensorMap('qtc_drug_poss_any', group='categorical', channel_map={'no_qtc_drug_poss_any': 0, 'qtc_drug_poss_any': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0267, 0.9733], 'qtc_drug_poss_any'))
+TMAPS['any_class1'] = TensorMap('any_class1', group='categorical', channel_map={'no_any_class1': 0, 'any_class1': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0031, 0.9969], 'any_class1'))
+TMAPS['any_bb'] = TensorMap('any_bb', group='categorical', channel_map={'no_any_bb': 0, 'any_bb': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0602, 0.9398], 'any_bb'))
+TMAPS['any_class3'] = TensorMap('any_class3', group='categorical', channel_map={'no_any_class3': 0, 'any_class3': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0013, 0.9987], 'any_class3'))
+TMAPS['any_ccb'] = TensorMap('any_ccb', group='categorical', channel_map={'no_any_ccb': 0, 'any_ccb': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0062, 0.9938], 'any_ccb'))
+TMAPS['combined_qtc_drug_baseline'] = TensorMap('combined_qtc_drug_baseline', group='categorical', channel_map={'no_combined_qtc_drug_baseline': 0, 'combined_qtc_drug_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0389, 0.9611], 'combined_qtc_drug_baseline'))
+TMAPS['combined_qtc_drug_fu'] = TensorMap('combined_qtc_drug_fu', group='categorical', channel_map={'no_combined_qtc_drug_fu': 0, 'combined_qtc_drug_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0260, 0.9740], 'combined_qtc_drug_fu'))
+TMAPS['combined_qtc_drug_any'] = TensorMap('combined_qtc_drug_any', group='categorical', channel_map={'no_combined_qtc_drug_any': 0, 'combined_qtc_drug_any': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0546, 0.9454], 'combined_qtc_drug_any'))
 
 TMAPS['ecg-bike-max-hr-no0'] = TensorMap('bike_max_hr', group='continuous', channel_map={'bike_max_hr': 0},
                                          loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 110.03, 'std': 20.04})
