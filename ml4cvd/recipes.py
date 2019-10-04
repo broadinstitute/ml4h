@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
-from ml4cvd.tensor_writer_ukbb import write_tensors, append_float_csv, append_gene_csv
+from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_multimodal_multitask_model
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_hidden_layer_model, make_shallow_model
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -69,8 +69,10 @@ def run(args):
             find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         elif 'sort_csv' == args.mode:
             sort_csv(args.app_csv, args.volume_csv)
-        elif 'append_float_csv' == args.mode:
-            append_float_csv(args.tensors, args.app_csv, 'continuous', ',')
+        elif 'append_continuous_csv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
+        elif 'append_categorical_csv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'categorical', ',')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
         else:

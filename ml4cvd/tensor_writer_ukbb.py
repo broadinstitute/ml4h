@@ -1046,18 +1046,18 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
     return disease2tsv
 
 
-def append_float_csv(tensors, csv_file, group, delimiter):
+def append_fields_from_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
-        logging.info(f"CSV of floats header:{fields}")
+        logging.info(f"CSV fields:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
 
-    logging.info(f"Data maps:{len(data_maps)}")
+    logging.info(f"Data maps:{len(data_maps)} for group:{group}")
     for tp in os.listdir(tensors):
         if os.path.splitext(tp)[-1].lower() != TENSOR_EXT:
             continue
@@ -1081,11 +1081,11 @@ def append_float_csv(tensors, csv_file, group, delimiter):
                 else:
                     stats['sample id missing']
         except:
-            print('couldnt open', tp, traceback.format_exc())
+            print('could not open', tp, traceback.format_exc())
             stats['failed'] += 1
 
     for k in stats:
-        logging.info("{}: {}".format(k, stats[k]))
+        logging.info(f'{k} has: {stats[k]}')
 
 
 def append_gene_csv(tensors, csv_file, delimiter):
@@ -1094,7 +1094,7 @@ def append_gene_csv(tensors, csv_file, delimiter):
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
-        logging.info(f"CSV of genes header:{fields}")
+        logging.info(f"CSV of flag data header:{fields}")
         for row in lol[1:]:
             sample_id = row[0]
             data_maps[sample_id] = {fields[i]: row[i+1] for i in range(len(fields))}
