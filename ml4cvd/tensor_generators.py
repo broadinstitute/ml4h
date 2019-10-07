@@ -278,8 +278,8 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
     assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
 
     if test_csv is not None:
-        l = list(csv.reader(open(test_csv, 'r')))
-        test_dict = {l0: True for l0 in l}
+        lol = list(csv.reader(open(test_csv, 'r')))
+        test_dict = {l[0]: True for l in lol}
         logging.info(f'Using external test set with {len(test_dict)} examples from file:{test_csv}')
         test_ratio = 0.0
         test_modulo = 0
