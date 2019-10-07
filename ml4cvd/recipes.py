@@ -89,7 +89,7 @@ def run(args):
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
                                                                                        args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
-                                                                                       mixup_alpha=args.mixup_alpha)
+                                                                                       mixup_alpha=args.mixup_alpha, test_csv=args.test_csv)
     model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)

@@ -256,7 +256,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
         return input_tensors, output_tensors
 
 
-def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
+def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv):
     """Return 3 disjoint lists of tensor paths.
 
     The paths are split in training, validation and testing lists
@@ -277,26 +277,36 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
 
     assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
 
+    if test_csv is not None:
+        test_dict = dict.fromkeys(list(csv.reader(open(test_csv, 'r'), delimiter=',')), True)
+        test_ratio = 0.0
+        test_modulo = 0
+
     for root, dirs, files in os.walk(tensors):
         for name in files:
             if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
                 continue
+
+            if test_csv is not None and os.path.splitext(name)[0] in test_dict:
+                test_paths.append(os.path.join(root, name))
+                continue
+
             dice = np.random.rand()
-            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
+            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths.append(os.path.join(root, name))
             elif dice < (valid_ratio+test_ratio):
                 valid_paths.append(os.path.join(root, name))
             else:   
                 train_paths.append(os.path.join(root, name))
 
-    logging.info(f"Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
+    logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
 
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo):
+def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv):
     stats = Counter()
     sample2group = {}
     for i, b_csv in enumerate(balance_csvs):
@@ -324,7 +334,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
                 group = sample2group[sample_id]
 
             dice = np.random.rand()
-            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
+            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))
             elif dice < (valid_ratio+test_ratio):
                 valid_paths[group].append(os.path.join(root, name))
@@ -353,7 +363,8 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        balance_csvs: List[str],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
-                                       mixup_alpha: float = -1.0) -> Tuple[
+                                       mixup_alpha: float = -1.0,
+                                       test_csv: str = None) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
@@ -369,16 +380,17 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
+    :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     if len(balance_csvs) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths, mixup_alpha)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
+        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
         generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_alpha)
         generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
