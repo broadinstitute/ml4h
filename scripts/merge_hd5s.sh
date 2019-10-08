@@ -136,7 +136,7 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
 		$INTERSECT $INPLACE &
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml/scripts/tf.sh -ct $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
+    $HOME/ml/scripts/tf.sh -t $HOME/ml/ml4cvd/tensorize/merge_hd5s.py \
 		--destination $DESTINATION \
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \

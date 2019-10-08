@@ -1049,7 +1049,7 @@ def get_disease2tsv(tsv_folder) -> Dict[str, str]:
 def append_fields_from_csv(tensors, csv_file, group, delimiter):
     stats = Counter()
     data_maps = defaultdict(dict)
-    categorical_channel_maps = {MRI_ANNOTATION_NAME: MRI_ANNOTATION_CHANNEL_MAP} # str: dict
+    categorical_channel_maps = {MRI_ANNOTATION_NAME: MRI_ANNOTATION_CHANNEL_MAP}  # str: dict
     with open(csv_file, 'r') as volumes:
         lol = list(csv.reader(volumes, delimiter=delimiter))
         fields = lol[0][1:]  # Assumes sample id is the first field
