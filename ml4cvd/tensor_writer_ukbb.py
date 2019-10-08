@@ -1067,16 +1067,15 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                 sample_id = tp.replace(TENSOR_EXT, '')
                 if sample_id in data_maps:
                     for field in data_maps[sample_id]:
-
+                        value = data_maps[sample_id][field]
                         if group == 'continuous':
                             try:
-                                value = float(data_maps[sample_id][field])
+                                value = float(value)
                             except ValueError:
                                 stats[f'could not cast field: {field} with value: {value} to float'] += 1
                                 continue
                         elif group == 'categorical':
                             is_channel_mapped = False
-                            value = data_maps[sample_id][field]
                             for cm_name in categorical_channel_maps:
                                 if value in categorical_channel_maps[cm_name]:
                                     hd5_key = group + HD5_GROUP_CHAR + cm_name
