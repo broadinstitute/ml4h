@@ -1070,9 +1070,8 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                         value = data_maps[sample_id][field]
                         if group == 'continuous':
                             try:
-                                value = float(value)
+                                value = float(value.strip())
                             except ValueError:
-                                print('Cast got exception ' + traceback.format_exc())
                                 stats[f'could not cast field: {field} with value: {value} to float'] += 1
                                 continue
                         elif group == 'categorical':
