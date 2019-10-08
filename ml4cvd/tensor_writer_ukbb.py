@@ -1080,7 +1080,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                             for cm_name in categorical_channel_maps:
                                 if value in categorical_channel_maps[cm_name]:
                                     hd5_key = group + HD5_GROUP_CHAR + cm_name
-                                    if field in hd5[group]:
+                                    if cm_name in hd5[group]:
                                         data = hd5[hd5_key]
                                         data[0] = value
                                         stats['updated'] += 1
