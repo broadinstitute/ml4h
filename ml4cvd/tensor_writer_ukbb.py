@@ -1072,6 +1072,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                             try:
                                 value = float(value)
                             except ValueError:
+                                print('Cast got exception ' + traceback.format_exc())
                                 stats[f'could not cast field: {field} with value: {value} to float'] += 1
                                 continue
                         elif group == 'categorical':
