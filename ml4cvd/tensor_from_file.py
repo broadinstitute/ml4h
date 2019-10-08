@@ -341,7 +341,18 @@ TMAPS['lv_mass_mosteller_indexp'] = TensorMap('lv_mass_mosteller_index', group='
                                               parents=['output_mri_systole_diastole_8_segmented_categorical'],
                                               tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
                                               channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-
+TMAPS['lvm_dubois_index'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
+                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
+                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
+                                             channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_dubois_index_sentinel'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
+                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
+                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
+                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
+                                             channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 def mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
     cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
