@@ -1072,7 +1072,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                             try:
                                 value = float(data_maps[sample_id][field])
                             except ValueError:
-                                stats[f'could not cast field {field} to float'] += 1
+                                stats[f'could not cast field: {field} with value: {value} to float'] += 1
                                 continue
                         elif group == 'categorical':
                             is_channel_mapped = False
@@ -1082,7 +1082,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                                     hd5_key = group + HD5_GROUP_CHAR + cm_name
                                     if cm_name in hd5[group]:
                                         data = hd5[hd5_key]
-                                        data[0] = value
+                                        data[0] = categorical_channel_maps[cm_name][value]
                                         stats['updated'] += 1
                                     else:
                                         hd5.create_dataset(hd5_key, data=[categorical_channel_maps[cm_name][value]])
@@ -1096,7 +1096,7 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                             elif value.lower() in ['true', 't', '1']:
                                 value = 1
                             else:
-                                stats[f'Could not parse categorical field {field} with value: {value}'] += 1
+                                stats[f'Could not parse categorical field: {field} with value: {value}'] += 1
                                 continue
 
                         hd5_key = group + HD5_GROUP_CHAR + field
