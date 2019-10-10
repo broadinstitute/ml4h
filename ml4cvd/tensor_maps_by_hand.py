@@ -360,8 +360,8 @@ TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (288, 384, 7), gro
 TMAPS['shmolli_192i_fitparams'] = TensorMap('shmolli_192i_fitparams', (288, 384, 7), group='root_array')
 TMAPS['shmolli_192i_t1map'] = TensorMap('shmolli_192i_t1map', (288, 384, 2), group='root_array')
 
-TMAPS['mri_pixel_width'] = TensorMap('mri_pixel_width', group='continuous', annotation_units=1, channel_map={'mri_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
-TMAPS['mri_pixel_height'] = TensorMap('mri_pixel_height', group='continuous', annotation_units=1, channel_map={'mri_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
+TMAPS['sax_pixel_width'] = TensorMap('mri_pixel_width_cine_segmented_sax_inlinevf', group='continuous', annotation_units=1, channel_map={'sax_pixel_width': 0}, normalization={'mean': 1.83, 'std': 0.1})
+TMAPS['sax_pixel_height'] = TensorMap('mri_pixel_height_segmented_sax_inlinevf', group='continuous', annotation_units=1, channel_map={'sax_pixel_height': 0}, normalization={'mean': 1.83, 'std': 0.1})
 
 
 TMAPS['end_systole_volumep'] = TensorMap('end_systole_volume', group='continuous', activation='linear',
