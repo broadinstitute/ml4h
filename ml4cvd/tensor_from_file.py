@@ -33,10 +33,22 @@ def random_slice_tensor(tensor_key, dependent_key=None):
         tensor[..., 0] = big_tensor[..., cur_slice]
         if dependent_key is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            label_tensor = np.array(hd5[dependent_key][cur_slice], dtype=np.float32)
+            label_tensor = np.array(hd5[dependent_key][..., cur_slice], dtype=np.float32)
             dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
         return tm.normalize_and_validate(tensor)
     return _random_slice_tensor_from_file
+
+
+def slice_subset_tensor(tensor_key, start, stop, dependent_key=None):
+    def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+        tensor = big_tensor[..., start:stop]
+        if dependent_key is not None:
+            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+            label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
+            dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
+        return tm.normalize_and_validate(tensor)
+    return _slice_subset_tensor_from_file
 
 
 def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
@@ -291,6 +303,14 @@ TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_br
                                 tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
 TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'))
+TMAPS['t1_20_slices_1'] = TensorMap('t1_slice_1', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                tensor_from_file=slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 94, 114))
+TMAPS['t1_20_slices_2'] = TensorMap('t1_slice_2', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                tensor_from_file=slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_2', 94, 114))
+TMAPS['t2_20_slices_1'] = TensorMap('t1_slice_1', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 86, 106))
+TMAPS['t2_20_slices_2'] = TensorMap('t1_slice_2', shape=(256, 256, 20), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', 86, 106))
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
