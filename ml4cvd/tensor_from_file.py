@@ -354,6 +354,7 @@ TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='
                                              tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
                                              channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
+
 def mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
     cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
     tensor = np.zeros(tm.shape, dtype=np.float32)

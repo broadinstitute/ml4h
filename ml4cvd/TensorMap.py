@@ -263,7 +263,7 @@ class TensorMap(object):
         return self.group == 'diagnosis_time'
 
     def is_continuous_any(self):
-        return self.is_continuous or self.is_diagnosis_time()
+        return self.is_continuous() or self.is_diagnosis_time()
 
     def is_ecg_rest(self):
         return self.group == 'ecg_rest'
