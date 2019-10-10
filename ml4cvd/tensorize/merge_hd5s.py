@@ -63,11 +63,13 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, stats=None):
     for k in source_hd5[group_path]:
         if isinstance(source_hd5[group_path][k], h5py.Dataset):
-            stats[group_path + k] += 1
-            if source_hd5[group_path][k].chunks is None:
-                destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
-            else:
-                destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
+            fid = int(k.split('_')[0])
+            if fid == 25781 or (25025 < fid < 25731):
+                stats[group_path + k] += 1
+                if source_hd5[group_path][k].chunks is None:
+                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
+                else:
+                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
         else:
             logging.debug(f"copying group {group_path + k}")
             _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR, stats=stats)
