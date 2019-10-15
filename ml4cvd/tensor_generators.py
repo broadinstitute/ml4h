@@ -26,7 +26,7 @@ from ml4cvd.TensorMap import TensorMap
 np.set_printoptions(threshold=np.inf)
 
 
-class TensorGenerator(object):
+class TensorGenerator:
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
     def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0, verbosity=2):
         self.lock = threading.Lock()
@@ -118,7 +118,8 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             except RuntimeError as e:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
-            _log_first_error(stats, tp)
+            if verbosity == 2:
+                _log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
@@ -126,7 +127,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             for k in stats:
                 logging.info(f"{k}: {stats[k]}")
         if verbosity == 1:
-            for error, count in simple_stats:
+            for error, count in simple_stats.items():
                 logging.info(f'{error} occurred {count} times')
         if verbosity > 0:
             logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
@@ -353,8 +354,8 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
     return train_paths, valid_paths, test_paths
 
 
-def test_train_valid_tensor_generators(maps_in: List[TensorMap],
-                                       maps_out: List[TensorMap],
+def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
+                                       tensor_maps_out: List[TensorMap],
                                        tensors: str,
                                        batch_size: int,
                                        valid_ratio: float,
@@ -386,14 +387,14 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
     if len(balance_csvs) > 0:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, weights, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, weights, keep_paths)
-        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_alpha, verbosity)
-        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths, verbosity)
-        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test, verbosity)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha, verbosity=verbosity)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths, verbosity=verbosity)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test, verbosity=verbosity)
     return generate_train, generate_valid, generate_test
 
 
