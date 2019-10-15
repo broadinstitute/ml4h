@@ -26,12 +26,12 @@ from ml4cvd.TensorMap import TensorMap
 np.set_printoptions(threshold=np.inf)
 
 
-class TensorGenerator(object):
+class TensorGenerator:
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
-    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
+    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0, verbosity=2):
         self.lock = threading.Lock()
         if weights is None:
-            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
+            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup, verbosity)
         else:
             self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
 
@@ -43,7 +43,7 @@ class TensorGenerator(object):
             self.lock.release()
                     
 
-def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
+def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha, verbosity: int=2):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -68,6 +68,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     assert len(train_paths) > 0
 
     stats = Counter()
+    simple_stats = Counter()
     paths_in_batch = []
     if mixup_alpha > 0:
         batch_size *= 2
@@ -103,24 +104,34 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                         stats['batch_index'] = 0
                         paths_in_batch = []
 
-            except IndexError:
+            except IndexError as e:
                 stats[f"IndexError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except KeyError:
+                simple_stats[str(e)] += 1
+            except KeyError as e:
                 stats[f"KeyError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except ValueError:
+            except ValueError as e:
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except OSError:
+                simple_stats[str(e)] += 1
+            except OSError as e:
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            except RuntimeError:
+                simple_stats[str(e)] += 1
+            except RuntimeError as e:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-            _log_first_error(stats, tp)
+                simple_stats[str(e)] += 1
+            if verbosity == 2:
+                _log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
-        for k in stats:
-            logging.info("{}: {}".format(k, stats[k]))
-        logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
-        logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
+        if verbosity == 2:
+            for k in stats:
+                logging.info(f"{k}: {stats[k]}")
+        if verbosity == 1:
+            for error, count in simple_stats.items():
+                logging.info(f'{error} occurred {count} times')
+        if verbosity > 0:
+            logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
+            logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
@@ -353,7 +364,9 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
                                        balance_csvs: List[str],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
-                                       mixup_alpha: float = -1.0) -> Tuple[
+                                       mixup_alpha: float = -1.0,
+                                       verbosity: int = 2,
+                                       **kwargs) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
@@ -379,9 +392,9 @@ def test_train_valid_tensor_generators(maps_in: List[TensorMap],
         generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths)
-        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test)
+        generate_train = TensorGenerator(batch_size, maps_in, maps_out, train_paths, None, keep_paths, mixup_alpha, verbosity=verbosity)
+        generate_valid = TensorGenerator(batch_size, maps_in, maps_out, valid_paths, None, keep_paths, verbosity=verbosity)
+        generate_test = TensorGenerator(batch_size, maps_in, maps_out, test_paths, None, keep_paths or keep_paths_test, verbosity=verbosity)
     return generate_train, generate_valid, generate_test
 
 
