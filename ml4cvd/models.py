@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple, Iterable, Callable, Any
 
 # Keras imports
 from keras import layers
+from keras.callbacks import History
 import keras.backend as K
 from keras.optimizers import Adam
 from keras.models import Model, load_model
@@ -440,12 +441,13 @@ def train_model_from_generators(model: Model,
                                 output_folder: str,
                                 run_id: str,
                                 inspect_model: bool,
-                                inspect_show_labels: bool) -> Model:
+                                inspect_show_labels: bool,
+                                plot: bool = True) -> Tuple[Model, History]:
     """Train a model from tensor generators for validation and training data.
 
-	Training data lives on disk, it will be loaded by generator functions.
-	Plots the metric history after training. Creates a directory to save weights, if necessary.
-	Measures runtime and plots architecture diagram if inspect_model is True.
+    Training data lives on disk, it will be loaded by generator functions.
+    Plots the metric history after training. Creates a directory to save weights, if necessary.
+    Measures runtime and plots architecture diagram if inspect_model is True.
 
     :param model: The model to optimize
     :param generate_train: Generator function that yields mini-batches of training data.
@@ -459,8 +461,9 @@ def train_model_from_generators(model: Model,
     :param run_id: User-chosen string identifying this run
     :param inspect_model: If True, measure training and inference runtime of the model and generate architecture plot.
     :param inspect_show_labels: If True, show labels on the architecture plot.
+    :param plot: If true, plot the metric history
     :return: The optimized model.
-	"""
+    """
     model_file = os.path.join(output_folder, run_id, run_id + TENSOR_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
@@ -473,10 +476,10 @@ def train_model_from_generators(model: Model,
                                   validation_steps=validation_steps, validation_data=generate_valid,
                                   callbacks=_get_callbacks(patience, model_file))
 
-    plot_metric_history(history, run_id, os.path.dirname(model_file))
+    if plot:
+        plot_metric_history(history, run_id, os.path.dirname(model_file))
     logging.info('Model weights saved at: %s' % model_file)
-
-    return model
+    return model, history
 
 
 def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
