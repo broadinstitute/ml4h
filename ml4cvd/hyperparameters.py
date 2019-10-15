@@ -37,6 +37,8 @@ def run(args):
             optimize_lr_multimodal_multitask(args)
         elif 'inputs' == args.mode:
             optimize_input_tensor_maps(args)
+        elif 'optimizer' == args.mode:
+            optimize_optimizer(args)
         else:
             raise ValueError('Unknown hyperparameter optimization mode:', args.mode)
   
@@ -138,6 +140,17 @@ def optimize_input_tensor_maps(args):
     space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets),}
     param_lists = {'input_tensor_maps': input_tensor_map_sets}
     hyperparam_optimizer(args, space, param_lists)
+
+
+def optimize_optimizer(args):
+    optimizers = [
+        ['adam'],
+        ['radam'],
+        ['sgd'],
+    ]
+    space = {'learning_rate': hp.loguniform('learning_rate', -10, -2),
+             'optimizer': hp.choice(optimizers)}
+    hyperparam_optimizer(args, space, {'optimizer': optimizers})
 
 
 def set_args_from_x(args, x):
