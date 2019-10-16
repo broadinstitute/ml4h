@@ -732,7 +732,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 continuous_data[tm.channel_map[k]] = value
         if NOT_MISSING in tm.channel_map and not missing:
             continuous_data[tm.channel_map[NOT_MISSING]] = 1
-        if continuous_data[0] == 0 and (tm.sentinel == None and tm.name in CONTINUOUS_NEVER_ZERO):
+        if continuous_data[0] == 0 and (tm.sentinel is None and tm.name in CONTINUOUS_NEVER_ZERO):
             raise ValueError(tm.name + ' is a continuous value that cannot be set to 0, but no value was found.')
         return tm.normalize_and_validate(continuous_data)
     elif tm.is_multi_field_continuous():
