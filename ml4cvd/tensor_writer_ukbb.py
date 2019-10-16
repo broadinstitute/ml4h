@@ -69,6 +69,7 @@ ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration'
                      'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
                      'QOffset', 'TOffset']
 ECG_BIKE_SAMPLE_RATE = 500
+ECG_BIKE_NUM_LEADS = 3
 SECONDS_PER_MINUTE = 60
 
 
@@ -867,14 +868,14 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         else:
             stats['missing strip bike ECG'] += 1
 
-        full_ekgs = [[] for _ in range(3)]
+        full_ekgs = [[] for _ in range(ECG_BIKE_NUM_LEADS)]
         count = 0
         for full_d in root.findall("./FullDisclosure/FullDisclosureData"):
             for full_line in re.split('\n|\t', full_d.text):
                 for sample in re.split(',', full_line):
                     if sample == '':
                         continue
-                    lead = (count % 1500) // 500  # New lead every 500 samples
+                    lead = (count % (ECG_BIKE_NUM_LEADS * ECG_BIKE_SAMPLE_RATE)) // ECG_BIKE_SAMPLE_RATE
                     full_ekgs[lead].append(float(sample))
                     count += 1
 

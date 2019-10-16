@@ -87,7 +87,9 @@ def run(args):
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                                       args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                                       mixup_alpha=args.mixup_alpha)
     model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
@@ -98,7 +100,8 @@ def train_multimodal_multitask(args):
 
 
 def test_multimodal_multitask(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
@@ -106,14 +109,16 @@ def test_multimodal_multitask(args):
   
 
 def test_multimodal_scalar_tasks(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
     model = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + '/')
     return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
     models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
     input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
@@ -122,7 +127,8 @@ def compare_multimodal_multitask_models(args):
 
 
 def compare_multimodal_scalar_task_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
     models_io = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
     outs = _get_common_outputs(models_io, "output")
     predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generate_test, args.test_steps, outs, "input", "output")
@@ -217,7 +223,9 @@ def infer_hidden_layer_multimodal_multitask(args):
 
 
 def train_shallow_model(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                                       args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                                       mixup_alpha=args.mixup_alpha)
 
     model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
@@ -231,7 +239,9 @@ def train_shallow_model(args):
 def train_char_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                                       args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                                       mixup_alpha=args.mixup_alpha)
 
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
@@ -244,7 +254,8 @@ def train_char_model(args):
 
 
 def plot_predictions(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size*args.test_steps,
+                                                              args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
     model = make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     predictions = model.predict(data, batch_size=args.batch_size)
@@ -255,7 +266,9 @@ def plot_predictions(args):
 
 
 def plot_while_training(args):
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs,
+                                                                          mixup_alpha=args.mixup_alpha)
 
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     model = make_multimodal_multitask_model(**args.__dict__)
