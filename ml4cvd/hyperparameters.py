@@ -51,7 +51,8 @@ def run(args):
 
 def optimize_conv_layers_multimodal_multitask(args):
     stats = Counter()
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
     dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
@@ -103,7 +104,9 @@ def optimize_conv_layers_multimodal_multitask(args):
 
 def optimize_dense_layers_multimodal_multitask(args):
     stats = Counter()
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
     space = {'num_layers': hp.uniform('num_layers', 1, 6),
              'layer_width': hp.loguniform('layer_width', 2, 7)}
@@ -145,7 +148,9 @@ def optimize_dense_layers_multimodal_multitask(args):
 
 def optimize_lr_multimodal_multitask(args):
     stats = Counter()
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
     space = {'learning_rate': hp.loguniform('learning_rate', -10, -2)}
@@ -181,7 +186,9 @@ def optimize_lr_multimodal_multitask(args):
 
 def optimize_input_tensor_maps(args):
     stats = Counter()
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
+                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.icd_csv,
+                                                                          args.balance_by_icds, False, False)
     input_tensor_map_sets = [['categorical-phenotypes-72'], ['mri-slice'], ['sax_inlinevf_zoom'], ['cine_segmented_sax_inlinevf'], ['ekg-leads']]
     param_lists = {'input_tensor_maps': input_tensor_map_sets}
     space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets),}
