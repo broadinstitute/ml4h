@@ -68,7 +68,6 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     assert len(train_paths) > 0
 
     stats = Counter()
-    simple_stats = Counter()
     paths_in_batch = []
     if mixup_alpha > 0:
         batch_size *= 2
@@ -76,6 +75,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
 
     while True:
+        simple_stats = Counter()
         for tp in train_paths:
             try:
                 with h5py.File(tp, 'r') as hd5:
