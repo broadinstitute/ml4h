@@ -248,7 +248,8 @@ TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='line
 
 TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation='linear', sentinel=0,
                                       channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
-
+TMAPS['LVM_sentinel'] = TensorMap('LVM',  group='continuous', normalization={'mean': 89.70372484725051, 'std': 24.803669503436304}, sentinel=0,
+                         validator=make_range_validator(-1, 200), channel_map={'LVM': 0})
 TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
                                         validator=make_range_validator(0, 200), channel_map={'lv_mass_sentinel_prediction': 0},
                                         normalization={'mean': 89.7, 'std': 24.8})
