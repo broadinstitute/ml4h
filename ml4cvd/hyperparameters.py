@@ -14,6 +14,8 @@ import matplotlib
 matplotlib.use('Agg') # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then import plt
 
+from skimage.filters import threshold_otsu
+
 import keras.backend as K
 
 from ml4cvd.defines import IMAGE_EXT
@@ -57,10 +59,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
     generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(40, 20), sharey='all')
-    ax1.set_xlabel('Epoch')
-    ax2.set_xlabel('Epoch')
-    ax1.set_ylabel('Loss')
+    histories = []
 
     def loss_from_multimodal_multitask(x):
         try:
@@ -75,12 +74,11 @@ def hyperparam_optimizer(args, space, param_lists={}):
             model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, 
                                                          args.batch_size, args.epochs, args.patience, args.output_folder, args.id, 
                                                          args.inspect_model, args.inspect_show_labels, plot=False)
+            histories.append(history.history)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
             logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
             logging.info('Iteration {} out of maximum {}: Loss: {} Current model size: {}.'.format(stats['count'], args.max_models, loss_and_metrics[0], model.count_params()))
-            ax1.plot(history.history['loss'], label=string_from_arch_dict(x))
-            ax2.plot(history.history['val_loss'], label=string_from_arch_dict(x))
             del model
             return loss_and_metrics[0]
 
@@ -93,22 +91,16 @@ def hyperparam_optimizer(args, space, param_lists={}):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    fig_path = os.path.join(args.output_folder, args.id, 'learning_plot'+IMAGE_EXT)
-    if not os.path.exists(os.path.dirname(fig_path)):
-        os.makedirs(os.path.dirname(fig_path))
-    ax1.legend()
-    ax2.legend()
-    fig.savefig(fig_path)
-    fig_path = os.path.join(args.output_folder, args.id, 'loss_per_iteration'+IMAGE_EXT)
-    plot_trials(trials, fig_path)
+    fig_path = os.path.join(args.output_folder, args.id)
+    plot_trials(trials, histories, fig_path, param_lists)
     logging.info('Saved learning plot to:{}'.format(fig_path))
 
     # Re-train the best model so it's easy to view it at the end of the logs
     args = args_from_best_trials(args, trials, param_lists)
     model = make_multimodal_multitask_model(**args.__dict__)
-    model, _ = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, 
-                                           args.batch_size, args.epochs, args.patience, args.output_folder, args.id, 
-                                           args.inspect_model, args.inspect_show_labels)
+    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
+                                args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
+                                args.inspect_model, args.inspect_show_labels)
 
 
 def optimize_conv_layers_multimodal_multitask(args):
@@ -207,28 +199,42 @@ def string_from_trials(trials, index, param_lists={}):
     return s
 
 
-def plot_trials(trials, figure_path, param_lists={}):
-    lmax = max([x for x in trials.losses() if x != MAX_LOSS]) + 1  # add to the max to distinguish real losses from max loss
-    lplot = [x if x != MAX_LOSS else lmax for x in trials.losses()]
-    best_loss = min(lplot)
-    worst_loss = max(lplot)
-    std = np.std(lplot)
+def plot_trials(trials, histories, figure_path, param_lists={}):
+    all_losses = np.array(trials.losses())  # the losses we will put in the text
+    real_losses = all_losses[all_losses != MAX_LOSS]
+    cutoff = threshold_otsu(real_losses)
+    lplot = np.clip(all_losses, low=-np.inf, high=cutoff)  # the losses we will plot
     plt.figure(figsize=(64, 64))
     matplotlib.rcParams.update({'font.size': 9})
     plt.plot(lplot)
     for i in range(len(trials.trials)):
-        if best_loss+std > lplot[i]:
-            plt.text(i, lplot[i], string_from_trials(trials, i, param_lists))
-        elif worst_loss-std < lplot[i]:
-            plt.text(i, lplot[i], string_from_trials(trials, i, param_lists))
+        plt.text(i, all_losses[i], string_from_trials(trials, i, param_lists))
 
     plt.xlabel('Iterations')
     plt.ylabel('Losses')
-    plt.title('Hyperparameter Optimization\n')
+    plt.title(f'Hyperparameter Optimization\nLosses cutoff at {cutoff:.3f}\n')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
-    logging.info('Saved loss plot to:{}'.format(figure_path))
+    loss_path = os.path.join(figure_path, 'loss_per_iteration' + IMAGE_EXT)
+    plt.savefig(loss_path)
+    logging.info('Saved loss plot to: {}'.format(loss_path))
+
+    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(40, 20), sharey='all')
+    ax1.set_xlabel('Epoch')
+    ax2.set_xlabel('Epoch')
+    ax1.set_ylabel('Training Loss')
+    ax2.set_ylabel('Validation Loss')
+    for i, history in enumerate(histories):
+        training_loss = np.clip(history['loss'], low=-np.inf, high=cutoff)
+        val_loss = np.clip(history['val_loss'], low=-np.inf, high=cutoff)
+        ax1.plot(training_loss, label=string_from_trials(trials, i, param_lists))
+        ax2.plot(val_loss, label=string_from_trials(trials, i, param_lists))
+    ax1.legend()
+    ax2.legend()
+    plt.title(f'Hyperparameter Optimization Learning Curves\nLosses cutoff at {cutoff:.3f}\n')
+    learning_path = os.path.join(figure_path, 'learning_curves' + IMAGE_EXT)
+    plt.savefig(learning_path)
+    logging.info('Saved learning curve plot to: {}'.format(learning_path))
 
 
 def limit_mem():
