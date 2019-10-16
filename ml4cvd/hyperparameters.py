@@ -79,8 +79,8 @@ def hyperparam_optimizer(args, space, param_lists={}):
             stats['count'] += 1
             logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
             logging.info('Iteration {} out of maximum {}: Loss: {} Current model size: {}.'.format(stats['count'], args.max_models, loss_and_metrics[0], model.count_params()))
-            ax1.plot(history.history['loss'], label=string_from_arch_dict(x))
-            ax2.plot(history.history['val_loss'], label=string_from_arch_dict(x))
+            ax1.plot(np.clip(history.history['loss'], a_min=0, a_max=.5), label=string_from_arch_dict(x))  # TODO: make clip optional
+            ax2.plot(np.clip(history.history['val_loss'], a_min=0, a_max=.5), label=string_from_arch_dict(x))  # TODO: make clip optional
             del model
             return loss_and_metrics[0]
 
@@ -144,12 +144,12 @@ def optimize_input_tensor_maps(args):
 
 def optimize_optimizer(args):
     optimizers = [
-        ['adam'],
-        ['radam'],
-        ['sgd'],
+        'adam',
+        'radam',
+        'sgd',
     ]
     space = {'learning_rate': hp.loguniform('learning_rate', -10, -2),
-             'optimizer': hp.choice(optimizers)}
+             'optimizer': hp.choice('optimizer', optimizers)}
     hyperparam_optimizer(args, space, {'optimizer': optimizers})
 
 
