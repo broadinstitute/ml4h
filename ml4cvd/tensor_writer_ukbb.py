@@ -809,7 +809,7 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
             for cc in c:
                 if cc.tag not in ECG_TABLE_TAGS:
                     continue
-                vals = list(map(float, cc.text.strip().split(',')))
+                vals = list(map(_to_float_or_false, cc.text.strip().split(',')))
                 tp = tensor_path('ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, cc.tag.lower())
                 hd5.create_dataset(tp, data=vals, compression='gzip')
 
