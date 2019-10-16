@@ -249,18 +249,28 @@ TMAPS['lv_mass_no0'] = TensorMap('lv_mass', group='continuous', activation='line
 TMAPS['lv_mass_sentinel'] = TensorMap('lv_mass', group='continuous', activation='linear', sentinel=0,
                                       channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['LVM_sentinel'] = TensorMap('LVM',  group='continuous', normalization={'mean': 89.70372484725051, 'std': 24.803669503436304}, sentinel=0,
-                         validator=make_range_validator(-1, 200), channel_map={'LVM': 0})
+                                  validator=make_range_validator(-1, 300), channel_map={'LVM': 0})
 TMAPS['lv_mass_prediction'] = TensorMap('lv_mass_sentinel_prediction', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
-                                        validator=make_range_validator(0, 200), channel_map={'lv_mass_sentinel_prediction': 0},
+                                        validator=make_range_validator(0, 300), channel_map={'lv_mass_sentinel_prediction': 0},
                                         normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_dubois_index_prediction'] = TensorMap('lv_mass_dubois_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
-                                                     validator=make_range_validator(0, 200), loss_weight=10.0,
+                                                     validator=make_range_validator(0, 300), loss_weight=10.0,
                                                      channel_map={'lv_mass_dubois_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lv_mass_mosteller_index_prediction'] = TensorMap('lv_mass_mosteller_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
-                                                        validator=make_range_validator(0, 200), loss_weight=10.0,
+                                                        validator=make_range_validator(0, 300), loss_weight=10.0,
                                                         channel_map={'lv_mass_mosteller_index_sentinel_prediction': 0},
                                                         normalization={'mean': 89.7, 'std': 24.8})
 
+TMAPS['LVM_prediction'] = TensorMap('LVM_sentinel_prediction',  group='continuous', normalization={'mean': 89.70372484725051, 'std': 24.803669503436304}, sentinel=0,
+                                    validator=make_range_validator(-1, 300), channel_map={'LVM': 0})
+
+TMAPS['lvm_dubois_index_prediction'] = TensorMap('lvm_dubois_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
+                                                     validator=make_range_validator(0, 300), loss_weight=10.0,
+                                                     channel_map={'lv_mass_dubois_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index_prediction'] = TensorMap('lvm_mosteller_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
+                                                        validator=make_range_validator(0, 300), loss_weight=10.0,
+                                                        channel_map={'lv_mass_mosteller_index_sentinel_prediction': 0},
+                                                        normalization={'mean': 89.7, 'std': 24.8})
 
 TMAPS['lv_massp'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
                               parents=['output_mri_systole_diastole_8_segmented_categorical'],
@@ -299,35 +309,35 @@ TMAPS['corrected_extracted_lvef_sentinel'] = TensorMap('corrected_extracted_lvef
                                                        normalization={'mean': 0.50, 'std': 0.046}, channel_map={'corrected_extracted_lvef': 0})
 
 TMAPS['LA_2Ch_vol_max'] = TensorMap('LA_2Ch_vol_max',  group='continuous', normalization={'mean': 63.45582391534391, 'std': 22.548034481265972},
-                                    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_2Ch_vol_max': 0})
+                                    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_2Ch_vol_max': 0})
 TMAPS['LA_2Ch_vol_min'] = TensorMap('LA_2Ch_vol_min',  group='continuous', normalization={'mean': 28.308681904761904, 'std': 15.842444310837582},
                                     validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_2Ch_vol_min': 0})
 TMAPS['LA_4Ch_vol_max'] = TensorMap('LA_4Ch_vol_max',  group='continuous', normalization={'mean': 74.53903305263158, 'std': 25.448756860639776},
-                                    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_4Ch_vol_max': 0})
+                                    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_4Ch_vol_max': 0})
 TMAPS['LA_4Ch_vol_min'] = TensorMap('LA_4Ch_vol_min',  group='continuous', normalization={'mean': 31.014961894736846, 'std': 17.146722819760804},
                                     validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_4Ch_vol_min': 0})
 TMAPS['LA_Biplan_vol_max'] = TensorMap('LA_Biplan_vol_max',  group='continuous', normalization={'mean': 67.86355108225109, 'std': 21.793845470012105},
-                                       validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_Biplan_vol_max': 0})
+                                       validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_Biplan_vol_max': 0})
 TMAPS['LA_Biplan_vol_min'] = TensorMap('LA_Biplan_vol_min',  group='continuous', normalization={'mean': 28.79685670995671, 'std': 15.43219634139272},
-                                       validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_Biplan_vol_min': 0})
+                                       validator=make_range_validator(0, 300), loss='logcosh', channel_map={'LA_Biplan_vol_min': 0})
 TMAPS['LVEDV'] = TensorMap('LVEDV',  group='continuous', normalization={'mean': 144.1479505192425, 'std': 34.39409859908663}, loss='logcosh',
-                           validator=make_range_validator(0, 200), channel_map={'LVEDV': 0})
+                           validator=make_range_validator(0, 500), channel_map={'LVEDV': 0})
 TMAPS['LVESV'] = TensorMap('LVESV',  group='continuous', normalization={'mean': 59.58324862553452, 'std': 21.186976544044025}, loss='logcosh',
-                           validator=make_range_validator(0, 200), channel_map={'LVESV': 0})
+                           validator=make_range_validator(0, 400), channel_map={'LVESV': 0})
 TMAPS['LVM'] = TensorMap('LVM',  group='continuous', normalization={'mean': 89.70372484725051, 'std': 24.803669503436304}, loss='logcosh',
-                         validator=make_range_validator(0, 200), channel_map={'LVM': 0})
+                         validator=make_range_validator(0, 400), channel_map={'LVM': 0})
 TMAPS['LVSV'] = TensorMap('LVSV',  group='continuous', normalization={'mean': 84.85198120147119, 'std': 19.2700091046526}, loss='logcosh',
-                          validator=make_range_validator(0, 200), channel_map={'LVSV': 0})
+                          validator=make_range_validator(0, 400), channel_map={'LVSV': 0})
 TMAPS['RA_4Ch_vol_max'] = TensorMap('RA_4Ch_vol_max',  group='continuous', normalization={'mean': 79.22289586811351, 'std': 26.504015552539048},
-                                    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'RA_4Ch_vol_max': 0})
+                                    validator=make_range_validator(0, 500), loss='logcosh', channel_map={'RA_4Ch_vol_max': 0})
 TMAPS['RA_4Ch_vol_min'] = TensorMap('RA_4Ch_vol_min',  group='continuous', normalization={'mean': 46.25831176961603, 'std': 20.002160080524803},
-                                    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'RA_4Ch_vol_min': 0})
+                                    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'RA_4Ch_vol_min': 0})
 TMAPS['RVEDV'] = TensorMap('RVEDV',  group='continuous', normalization={'mean': 152.41239853151131, 'std': 37.15198900632509}, loss='logcosh',
-                           validator=make_range_validator(0, 200), channel_map={'RVEDV': 0})
+                           validator=make_range_validator(0, 500), channel_map={'RVEDV': 0})
 TMAPS['RVEF'] = TensorMap('RVEF',  group='continuous', normalization={'mean': 56.404863078182565, 'std': 6.526231365539632}, loss='logcosh',
-                          validator=make_range_validator(10, 90), channel_map={'RVEF': 0})
+                          validator=make_range_validator(10, 200), channel_map={'RVEF': 0})
 TMAPS['RVESV'] = TensorMap('RVESV',  group='continuous', normalization={'mean': 67.61379869467673, 'std': 22.853189258914284}, loss='logcosh',
-                           validator=make_range_validator(0, 200), channel_map={'RVESV': 0})
+                           validator=make_range_validator(0, 300), channel_map={'RVESV': 0})
 TMAPS['RVSV'] = TensorMap('RVSV',  group='continuous', normalization={'mean': 85.0908258288989, 'std': 19.30893645374548}, loss='logcosh',
                           validator=make_range_validator(0, 200), channel_map={'RVSV': 0})
 TMAPS['LAQC'] = TensorMap('LAQC',  group='continuous', normalization={'mean': 1.2657977883096367, 'std': 0.5561369836438385}, loss='logcosh',
