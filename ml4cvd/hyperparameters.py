@@ -136,12 +136,12 @@ def optimize_input_tensor_maps(args):
 
 def optimize_optimizer(args):
     optimizers = [
-        ['adam'],
-        ['radam'],
-        ['sgd'],
+        'adam',
+        'radam',
+        'sgd',
     ]
     space = {'learning_rate': hp.loguniform('learning_rate', -10, -2),
-             'optimizer': hp.choice(optimizers)}
+             'optimizer': hp.choice('optimizer', optimizers)}
     hyperparam_optimizer(args, space, {'optimizer': optimizers})
 
 
