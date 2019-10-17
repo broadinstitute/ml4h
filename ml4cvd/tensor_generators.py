@@ -28,10 +28,10 @@ np.set_printoptions(threshold=np.inf)
 
 class TensorGenerator:
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
-    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0, verbosity=2):
+    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
         self.lock = threading.Lock()
         if weights is None:
-            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup, verbosity)
+            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
         else:
             self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
 
@@ -43,7 +43,7 @@ class TensorGenerator:
             self.lock.release()
                     
 
-def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha, verbosity: int=2):
+def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -68,7 +68,6 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     assert len(train_paths) > 0
 
     stats = Counter()
-    simple_stats = Counter()
     paths_in_batch = []
     if mixup_alpha > 0:
         batch_size *= 2
@@ -76,6 +75,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
 
     while True:
+        simple_stats = Counter()
         for tp in train_paths:
             try:
                 with h5py.File(tp, 'r') as hd5:
@@ -118,20 +118,17 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             except RuntimeError as e:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
-            if verbosity == 2:
-                _log_first_error(stats, tp)
+            _log_first_error(stats, tp)
 
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
-        if verbosity == 2:
-            for k in stats:
-                logging.info(f"{k}: {stats[k]}")
-        if verbosity == 1:
-            for error, count in simple_stats.items():
-                logging.info(f'{error} occurred {count} times')
-        if verbosity > 0:
-            logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
-            logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
+        for k in stats:
+            logging.debug(f"{k}: {stats[k]}")
+        error_info = '\n    '.join([f'[{error}] - {count}'
+            for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
+        logging.info(f"In epoch {stats['epochs']} the following errors occurred:\n    {error_info}")
+        logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
+        logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
@@ -365,7 +362,6 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
                                        mixup_alpha: float = -1.0,
-                                       verbosity: int = 2,
                                        **kwargs) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
@@ -392,9 +388,9 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
         generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha, verbosity=verbosity)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths, verbosity=verbosity)
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test, verbosity=verbosity)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test)
     return generate_train, generate_valid, generate_test
 
 
@@ -402,8 +398,8 @@ def _log_first_error(stats: Counter, tensor_path: str):
     for k in stats:
         if 'Error' in k and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
-            logging.info(f"At tensor path: {tensor_path}")
-            logging.info(f"Got first error: {k}")
+            logging.debug(f"At tensor path: {tensor_path}")
+            logging.debug(f"Got first error: {k}")
 
 
 def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray], alpha: float = 1.0, permute_first: bool = False):

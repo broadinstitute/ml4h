@@ -43,10 +43,10 @@ def run(args):
             optimize_optimizer(args)
         else:
             raise ValueError('Unknown hyperparameter optimization mode:', args.mode)
-  
+
     except Exception as e:
         logging.exception(e)
-        
+
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
@@ -71,8 +71,8 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 del model
                 return MAX_LOSS
 
-            model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps, 
-                                                         args.batch_size, args.epochs, args.patience, args.output_folder, args.id, 
+            model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
+                                                         args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                          args.inspect_model, args.inspect_show_labels, plot=False)
             histories.append(history.history)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
@@ -110,7 +110,7 @@ def optimize_conv_layers_multimodal_multitask(args):
     space = {
         'pool_x': hp.choice('pool_x', list(range(1, 5))),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
-        'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),      
+        'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
     }
     param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets}
@@ -163,7 +163,7 @@ def string_from_arch_dict(x):
     s = ''
     for k in x:
         s += '\n' + k + ' = '
-        s += str(x[k])     
+        s += str(x[k])
     return s
 
 
@@ -181,7 +181,7 @@ def args_from_best_trials(args, trials, param_lists={}):
             args.__dict__[k] = v
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    return args   
+    return args
 
 
 def string_from_trials(trials, index, param_lists={}):
@@ -194,8 +194,10 @@ def string_from_trials(trials, index, param_lists={}):
             s += str(param_lists[k][int(v)])
         elif k in ['num_layers', 'layer_width']:
             s += str(int(v))
+        elif v < 1:
+            s += f'{v:.2E}'
         else:
-            s += str(v)
+            s += f'{v:.2f}'
     return s
 
 
@@ -203,36 +205,49 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
     all_losses = np.array(trials.losses())  # the losses we will put in the text
     real_losses = all_losses[all_losses != MAX_LOSS]
     cutoff = threshold_otsu(real_losses)
-    lplot = np.clip(all_losses, low=-np.inf, high=cutoff)  # the losses we will plot
+    lplot = np.clip(all_losses, a_min=-np.inf, a_max=cutoff)  # the losses we will plot
     plt.figure(figsize=(64, 64))
     matplotlib.rcParams.update({'font.size': 9})
+    colors = ['r' if x == cutoff else 'b' for x in lplot]
     plt.plot(lplot)
-    for i in range(len(trials.trials)):
-        plt.text(i, all_losses[i], string_from_trials(trials, i, param_lists))
-
+    with open(os.path.join(figure_path, 'loss_by_params.txt'), 'w') as f:
+        for i in range(len(trials.trials)):
+            text = f'Loss = {all_losses[i]:.3f}{string_from_trials(trials, i, param_lists)}'
+            plt.text(i, lplot[i], text, color=colors[i])
+            f.write(text.replace('\n', ',') + '\n')
     plt.xlabel('Iterations')
     plt.ylabel('Losses')
-    plt.title(f'Hyperparameter Optimization\nLosses cutoff at {cutoff:.3f}\n')
+    plt.ylim(min(lplot) * .95, max(lplot) * 1.05)
+    plt.title(f'Hyperparameter Optimization\n')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
+    plt.axhline(cutoff, label=f'Loss display cutoff at {cutoff:.3f}', color='r', linestyle='--')
     loss_path = os.path.join(figure_path, 'loss_per_iteration' + IMAGE_EXT)
+    plt.legend()
     plt.savefig(loss_path)
     logging.info('Saved loss plot to: {}'.format(loss_path))
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(40, 20), sharey='all')
+    fig, [ax1, ax3, ax2] = plt.subplots(nrows=1, ncols=3, figsize=(60, 20), sharey='all', gridspec_kw={'width_ratios': [2, 1, 2]})
+    cm = plt.get_cmap('gist_rainbow')
     ax1.set_xlabel('Epoch')
-    ax2.set_xlabel('Epoch')
     ax1.set_ylabel('Training Loss')
+    ax2.set_xlabel('Epoch')
     ax2.set_ylabel('Validation Loss')
+    linestyles = 'solid', 'dotted', 'dashed', 'dashdot'
     for i, history in enumerate(histories):
-        training_loss = np.clip(history['loss'], low=-np.inf, high=cutoff)
-        val_loss = np.clip(history['val_loss'], low=-np.inf, high=cutoff)
-        ax1.plot(training_loss, label=string_from_trials(trials, i, param_lists))
-        ax2.plot(val_loss, label=string_from_trials(trials, i, param_lists))
-    ax1.legend()
-    ax2.legend()
-    plt.title(f'Hyperparameter Optimization Learning Curves\nLosses cutoff at {cutoff:.3f}\n')
+        color = cm(i / len(histories))
+        training_loss = np.clip(history['loss'], a_min=-np.inf, a_max=cutoff)
+        val_loss = np.clip(history['val_loss'], a_min=-np.inf, a_max=cutoff)
+        ax1.plot(training_loss, label=string_from_trials(trials, i, param_lists), linestyle=linestyles[i % 4], color=color)
+        ax2.plot(val_loss, label=string_from_trials(trials, i, param_lists), linestyle=linestyles[i % 4], color=color)
+    ax1.axhline(cutoff, label=f'Loss display cutoff at {cutoff:.3f}', color='k', linestyle='--')
+    ax1.set_title('Training Loss')
+    ax2.axhline(cutoff, label=f'Loss display cutoff at {cutoff:.3f}', color='k', linestyle='--')
+    ax2.set_title('Validation Loss')
+    ax3.legend(*ax2.get_legend_handles_labels(), loc='upper center', fontsize='x-small', mode='expand', ncol=5)
+    ax3.axis('off')
     learning_path = os.path.join(figure_path, 'learning_curves' + IMAGE_EXT)
+    plt.tight_layout()
     plt.savefig(learning_path)
     logging.info('Saved learning curve plot to: {}'.format(learning_path))
 

@@ -158,7 +158,6 @@ def parse_args():
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
     parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
-    parser.add_argument('--verbosity', default=2, type=int, help='How much to print while generating tensors.')
 
     args = parser.parse_args()
     _process_args(args)
