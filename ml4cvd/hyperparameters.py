@@ -71,9 +71,10 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 del model
                 return MAX_LOSS
 
+            text = string_from_arch_dict(x).replace('\n', ',')
             model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
-                                                         args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
-                                                         args.inspect_model, args.inspect_show_labels, plot=False)
+                                                         args.batch_size, args.epochs, args.patience, args.output_folder, text,
+                                                         args.inspect_model, args.inspect_show_labels, True)
             histories.append(history.history)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
@@ -160,11 +161,7 @@ def set_args_from_x(args, x):
 
 
 def string_from_arch_dict(x):
-    s = ''
-    for k in x:
-        s += '\n' + k + ' = '
-        s += str(x[k])
-    return s
+    return '\n'.join([f'{k} = {x[k]}' for k in x])
 
 
 def args_from_best_trials(args, trials, param_lists={}):
