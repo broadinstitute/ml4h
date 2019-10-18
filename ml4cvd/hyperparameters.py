@@ -73,8 +73,8 @@ def hyperparam_optimizer(args, space, param_lists={}):
 
             text = string_from_arch_dict(x).replace('\n', ',')
             model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
-                                                         args.batch_size, args.epochs, args.patience, args.output_folder, text,
-                                                         args.inspect_model, args.inspect_show_labels, True)
+                                                         args.batch_size, args.epochs, args.patience, os.path.join(args.output_folder, args.id), 
+                                                         text, args.inspect_model, args.inspect_show_labels, True)
             histories.append(history.history)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
