@@ -366,10 +366,13 @@ class TensorMap(object):
     def rescale(self, np_tensor):
         if self.normalization is None:
             return np_tensor
-
-        if 'mean' in self.normalization and 'std' in self.normalization:
+        elif 'mean' in self.normalization and 'std' in self.normalization:
             np_tensor = np.array(np_tensor) * self.normalization['std']
             np_tensor = np.array(np_tensor) + self.normalization['mean']
+            return np_tensor
+        elif 'zero_mean_std1' in self.normalization:
+            return self.zero_mean_std1(np_tensor)
+        else:
             return np_tensor
 
     # Special cases for tensor maps that merge multiple continuous fields (ie combine age of mother with mother's age
