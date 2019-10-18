@@ -441,7 +441,8 @@ def train_model_from_generators(model: Model,
                                 run_id: str,
                                 inspect_model: bool,
                                 inspect_show_labels: bool,
-                                return_history: bool = False) -> Union[Model, Tuple[Model, History]]:
+                                return_history: bool = False,
+                                plot: bool = True) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
 	Training data lives on disk, it will be loaded by generator functions.
@@ -476,7 +477,8 @@ def train_model_from_generators(model: Model,
                                   callbacks=_get_callbacks(patience, model_file))
 
     logging.info('Model weights saved at: %s' % model_file)
-    plot_metric_history(history, run_id, os.path.dirname(model_file))
+    if plot:
+        plot_metric_history(history, run_id, os.path.dirname(model_file))
     if return_history:
         return model, history
     return model

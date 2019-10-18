@@ -20,6 +20,7 @@ import keras.backend as K
 
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args
+from ml4cvd.plots import plot_metric_history
 from ml4cvd.tensor_maps_by_script import TMAPS
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -61,6 +62,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
 
     histories = []
 
+    fig_path = os.path.join(args.output_folder, args.id, 'plots')
     def loss_from_multimodal_multitask(x):
         try:
             set_args_from_x(args, x)
@@ -71,15 +73,16 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 del model
                 return MAX_LOSS
 
-            text = string_from_arch_dict(x).replace('\n', ',')
             model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
-                                                         args.batch_size, args.epochs, args.patience, os.path.join(args.output_folder, args.id), 
-                                                         text, args.inspect_model, args.inspect_show_labels, True)
+                                                         args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
+                                                         args.inspect_model, args.inspect_show_labels, True, False)
             histories.append(history.history)
+            title = string_from_arch_dict(x).replace('\n', ',')
+            plot_metric_history(history, title, fig_path)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
-            logging.info('Current architecture: {}'.format(string_from_arch_dict(x)))
-            logging.info('Iteration {} out of maximum {}: Loss: {} Current model size: {}.'.format(stats['count'], args.max_models, loss_and_metrics[0], model.count_params()))
+            logging.info(f'Current architecture: {title}')
+            logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
             del model
             return loss_and_metrics[0]
 
@@ -92,7 +95,6 @@ def hyperparam_optimizer(args, space, param_lists={}):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    fig_path = os.path.join(args.output_folder, args.id)
     plot_trials(trials, histories, fig_path, param_lists)
     logging.info('Saved learning plot to:{}'.format(fig_path))
 
