@@ -42,6 +42,8 @@ def run(args):
             optimize_input_tensor_maps(args)
         elif 'optimizer' == args.mode:
             optimize_optimizer(args)
+        elif 'architecture' == args.mode:
+            optimize_architecture(args)
         else:
             raise ValueError('Unknown hyperparameter optimization mode:', args.mode)
 
@@ -63,7 +65,11 @@ def hyperparam_optimizer(args, space, param_lists={}):
     histories = []
 
     fig_path = os.path.join(args.output_folder, args.id, 'plots')
+    i = 0
+
     def loss_from_multimodal_multitask(x):
+        nonlocal i
+        i += 1
         try:
             set_args_from_x(args, x)
             model = make_multimodal_multitask_model(**args.__dict__)
@@ -77,11 +83,11 @@ def hyperparam_optimizer(args, space, param_lists={}):
                                                          args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                          args.inspect_model, args.inspect_show_labels, True, False)
             histories.append(history.history)
-            title = string_from_arch_dict(x).replace('\n', ',')
+            title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
             plot_metric_history(history, title, fig_path)
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             stats['count'] += 1
-            logging.info(f'Current architecture: {title}')
+            logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
             logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
             del model
             return loss_and_metrics[0]
@@ -98,12 +104,41 @@ def hyperparam_optimizer(args, space, param_lists={}):
     plot_trials(trials, histories, fig_path, param_lists)
     logging.info('Saved learning plot to:{}'.format(fig_path))
 
-    # Re-train the best model so it's easy to view it at the end of the logs
-    args = args_from_best_trials(args, trials, param_lists)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
-                                args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
-                                args.inspect_model, args.inspect_show_labels)
+
+def optimize_architecture(args):
+    dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
+    conv_layers_sets = [[64], [48], [32], [24]]
+    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
+    u_connect = [True, False]
+    conv_dilate = [True, False]
+    activation = ['leaky', 'prelu', 'elu', 'thresh_relu', 'relu']
+    conv_bn = [True, False]
+    pool_type = ['max', 'average']
+    space = {
+        'pool_x': hp.quniform('pool_x', 1, 4, 1),
+        'conv_layers': hp.choice('conv_layers', conv_layers_sets),
+        'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
+        'dense_layers': hp.choice('dense_layers', dense_layers_sets),
+        'u_connect': hp.choice('u_connect', u_connect),
+        'conv_dilate': hp.choice('conv_dilate', conv_dilate),
+        'activation': hp.choice('activation', activation),
+        'conv_bn': hp.choice('conv_bn', conv_bn),
+        'pool_type': hp.choice('pool_type', pool_type),
+        'dropout': hp.uniform('dropout', 0, .2),
+        'conv_dropout': hp.uniform('conv_dropout', 0, .2),
+        'conv_width': hp.quniform('conv_width', 2, 128, 1),
+        'block_size': hp.quniform('block_size', 1, 4, 1),
+    }
+    param_lists = {'conv_layers': conv_layers_sets,
+                   'dense_blocks': dense_blocks_sets,
+                   'dense_layers': dense_layers_sets,
+                   'u_connect': u_connect,
+                   'conv_dilate': conv_dilate,
+                   'activation': activation,
+                   'conv_bn': conv_bn,
+                   'pool_type': pool_type,
+                   }
+    hyperparam_optimizer(args, space, param_lists)
 
 
 def optimize_conv_layers_multimodal_multitask(args):
@@ -151,10 +186,14 @@ def optimize_optimizer(args):
 def set_args_from_x(args, x):
     for k in args.__dict__:
         if k in x:
+            print(k, x[k], args.__dict__[k])
             if isinstance(args.__dict__[k], int):
                 args.__dict__[k] = int(x[k])
             elif isinstance(args.__dict__[k], float):
-                args.__dict__[k] = float(x[k])
+                v = float(x[k])
+                if v == int(v):
+                    v = int(v)
+                args.__dict__[k] = v
             else:
                 args.__dict__[k] = x[k]
     logging.info(f"Set arguments to: {args}")
@@ -164,23 +203,6 @@ def set_args_from_x(args, x):
 
 def string_from_arch_dict(x):
     return '\n'.join([f'{k} = {x[k]}' for k in x])
-
-
-def args_from_best_trials(args, trials, param_lists={}):
-    best_trial_idx = np.argmin(trials.losses())
-    x = trials.trials[best_trial_idx]['misc']['vals']
-    logging.info(f"got best x {x} best model is:{string_from_trials(trials, best_trial_idx, param_lists)}")
-    for k in x:
-        v = x[k][0]
-        if k in param_lists:
-            args.__dict__[k] = param_lists[k][int(v)]
-        elif k in ['conv_x', 'conv_y', 'conv_z']:
-            args.__dict__[k] = int(v)
-        else:
-            args.__dict__[k] = v
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    return args
 
 
 def string_from_trials(trials, index, param_lists={}):
