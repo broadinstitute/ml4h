@@ -262,7 +262,7 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
         else:
             tensor /= population_normalize
         return tensor
-    return ukbecg_rest_from_file
+    return ukb_ecg_rest_from_file
 
 TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
                                          loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
