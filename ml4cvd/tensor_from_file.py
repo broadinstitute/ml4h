@@ -253,6 +253,23 @@ TMAPS['ecg_median_1lead'] = TensorMap('median', group='ecg_rest', shape=(600, 1)
 TMAPS['ecg_rest_1lead'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
                                     dependent_map=TMAPS['ecg_median_1lead'])
 
+# Extract RAmplitude and SAmplitude for LVH criteria
+def _make_ukb_ecg_rest(population_normalize: float = None):
+    def ukb_ecg_rest_from_file(tm, hd5):
+        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
+        if population_normalize is None:
+            tensor = tm.zero_mean_std1(tensor)
+        else:
+            tensor /= population_normalize
+        return tensor
+    return ukbecg_rest_from_file
+
+TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
+                                         loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
+TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
+                                         loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
 
 def _get_lead_cm(length):
     lead_cm = {}
