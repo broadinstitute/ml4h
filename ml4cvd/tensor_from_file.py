@@ -300,8 +300,8 @@ def _make_ukb_ecg_rest_lvh():
         # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
         lead_order = {'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
                       'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11}
-        tensor_ramp = _get_tensor_at_first_date(hdf5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude')
-        tensor_samp = _get_tensor_at_first_date(hdf5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude')
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')
         is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
         is_male   = 'Genetic-sex_Male_0_0' in hd5['categorical']
         tensor = np.zeros(tm.shape, dtype=np.float32)
