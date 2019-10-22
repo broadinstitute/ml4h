@@ -372,7 +372,7 @@ def make_index_tensor_from_file(index_map_name):
             else:
                 return tensor
         index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor) / index
+        return tm.normalize_and_validate(tensor / index)
     return indexed_lvmass_tensor_from_file
 
 
