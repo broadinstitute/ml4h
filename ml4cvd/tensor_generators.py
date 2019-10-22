@@ -28,12 +28,12 @@ np.set_printoptions(threshold=np.inf)
 
 class TensorGenerator:
     """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
-    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
+    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0, siamese=False):
         self.lock = threading.Lock()
         if weights is None:
-            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
+            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup, siamese)
         else:
-            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
+            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup, siamese)
 
     def __next__(self):
         self.lock.acquire()
@@ -43,7 +43,7 @@ class TensorGenerator:
             self.lock.release()
                     
 
-def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
+def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha, siamese):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -71,7 +71,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
     paths_in_batch = []
     if mixup_alpha > 0:
         batch_size *= 2
-    in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
+    in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
 
     while True:
@@ -93,7 +93,11 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                     stats['batch_index'] += 1
                     stats['Tensors presented'] += 1
                     if stats['batch_index'] == batch_size:
-                        if mixup_alpha > 0 and keep_paths:
+                        if siamese and keep_paths:
+                            yield _make_batch_siamese(in_batch, out_batch), paths_in_batch
+                        elif siamese:
+                            yield _make_batch_siamese(in_batch, out_batch)
+                        elif mixup_alpha > 0 and keep_paths:
                             yield _mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)
                         elif mixup_alpha > 0:
                             yield _mixup_batch(in_batch, out_batch, mixup_alpha)
@@ -133,7 +137,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
 
-def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths, mixup_alpha):
+def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths, mixup_alpha, siamese):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -189,7 +193,11 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                         stats['train_paths_' + str(i)] += 1
                         stats[f'group{i}_samples'] += 1
                         if stats['batch_index'] == batch_size:
-                            if mixup_alpha > 0 and keep_paths:
+                            if siamese and keep_paths:
+                                yield _make_batch_siamese(in_batch), out_batch, paths_in_batch
+                            elif siamese:
+                                yield _make_batch_siamese(in_batch), out_batch
+                            elif mixup_alpha > 0 and keep_paths:
                                 yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True) + (paths_in_batch[:batch_size // 2],)
                             elif mixup_alpha > 0:
                                 yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True)
@@ -362,6 +370,7 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
                                        mixup_alpha: float = -1.0,
+                                       siamese: bool = False,
                                        **kwargs) -> Tuple[
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
         Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
@@ -378,19 +387,21 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
+    :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
+    :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     if len(balance_csvs) > 0:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
-        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths)
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha, siamese=siamese)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths, siamese=siamese)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test, siamese=siamese)
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths)
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test)
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha, siamese=siamese)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths, siamese=siamese)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test, siamese=siamese)
     return generate_train, generate_valid, generate_test
 
 
@@ -426,3 +437,23 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
             mixed_outs[k][i] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half_batch + i, ...] * weight1)
 
     return mixed_ins, mixed_outs
+
+
+def _make_batch_siamese(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray]):
+    assert len(out_batch) == 1
+    for k in in_batch:
+        half_batch = in_batch[k].shape[0] // 2
+        break
+
+    siamese_in = {k+'_left': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
+    siamese_in.update({k+'_right': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch})
+    siamese_out = {'siamese_out': np.zeros((half_batch, 1))}
+
+    for i in range(half_batch):
+        for k in in_batch:
+            siamese_in[k+'_left'][i] = in_batch[k][i, ...]
+            siamese_in[k+'_right'][i] = in_batch[k][half_batch + i, ...]
+        for k in out_batch:
+            siamese_out['siamese_out'][i] = 0 if np.array_equal(out_batch[k][i], out_batch[k][i+half_batch]) else 1
+
+    return siamese_in, siamese_out

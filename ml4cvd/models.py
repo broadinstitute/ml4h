@@ -16,7 +16,7 @@ from keras.callbacks import History
 from keras.optimizers import Adam
 from keras.models import Model, load_model
 from keras.utils.vis_utils import model_to_dot
-from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU
+from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
@@ -234,12 +234,37 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[TensorMap], output_layer_name: str, tensor_maps_out: List[TensorMap]):
+def make_siamese_model(base_model: Model,
+                       tensor_maps_in: List[TensorMap],
+                       hidden_layer: str,
+                       learning_rate: float = None,
+                       optimizer: str = 'adam',
+                       **kwargs) -> Model:
+    in_left = [Input(shape=tm.shape, name=tm.input_name()+'_left') for tm in tensor_maps_in]
+    in_right = [Input(shape=tm.shape, name=tm.input_name()+'_right') for tm in tensor_maps_in]
+    encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
+    h_left = encode_model(in_left)
+    h_right = encode_model(in_right)
+
+    # Compute the L1 distance
+    l1_layer = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))
+    l1_distance = l1_layer([h_left, h_right])
+
+    # Add a dense layer with a sigmoid unit to generate the similarity score
+    prediction = Dense(1, activation='sigmoid', name='output_siamese')(l1_distance)
+
+    m = Model(inputs=[in_left, in_right], outputs=prediction)
+    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    m.compile(optimizer=opt, loss='binary_crossentropy')
+    return m
+
+
+def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[TensorMap], output_layer_name: str, tensor_maps_out: List[TensorMap]) -> Model:
     parent_model = load_model(parent_file, custom_objects=get_metric_dict(tensor_maps_out))
     return make_hidden_layer_model(parent_model, tensor_maps_in, output_layer_name)
 
 
-def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str):
+def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str) -> Model:
     parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
     dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=parent_model.get_layer(output_layer_name).output)

@@ -13,7 +13,7 @@ from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
-from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_multimodal_multitask_model
+from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_multimodal_multitask_model, make_siamese_model
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_hidden_layer_model, make_shallow_model
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
@@ -63,6 +63,8 @@ def run(args):
             train_shallow_model(args)
         elif 'train_char' == args.mode:
             train_char_model(args)
+        elif 'train_siamese' == args.mode:
+            train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'find_tensors' == args.mode:
@@ -241,6 +243,19 @@ def train_char_model(args):
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
+
+
+def train_siamese_model(args):
+    base_model = make_multimodal_multitask_model(**args.__dict__)
+    siamese_model = make_siamese_model(base_model, **args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(siamese=True, **args.__dict__)
+
+    siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+
+    output_path = os.path.join(args.output_folder, args.id + '/')
+    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    return _predict_and_evaluate(siamese_model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
 
 
 def plot_predictions(args):
