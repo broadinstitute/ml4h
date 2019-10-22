@@ -253,7 +253,7 @@ def make_siamese_model(base_model: Model,
     # Add a dense layer with a sigmoid unit to generate the similarity score
     prediction = Dense(1, activation='sigmoid', name='output_siamese')(l1_distance)
 
-    m = Model(inputs=[in_left, in_right], outputs=prediction)
+    m = Model(inputs=in_left+in_right, outputs=prediction)
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
     m.compile(optimizer=opt, loss='binary_crossentropy')
     return m
