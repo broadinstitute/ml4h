@@ -94,7 +94,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                     stats['Tensors presented'] += 1
                     if stats['batch_index'] == batch_size:
                         if siamese and keep_paths:
-                            yield _make_batch_siamese(in_batch, out_batch), (paths_in_batch)
+                            yield _make_batch_siamese(in_batch, out_batch) + (paths_in_batch)
                         elif siamese:
                             yield _make_batch_siamese(in_batch, out_batch)
                         elif mixup_alpha > 0 and keep_paths:
