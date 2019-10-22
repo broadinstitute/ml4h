@@ -289,11 +289,17 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
         return tensor
     return ukb_ecg_rest_from_file
 
-TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
+TMAPS['ecg_rest_ramplitude_raw'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
-TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
+TMAPS['ecg_rest_samplitude_raw'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(),
+                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
+TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(),
+                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
 
 def _make_ukb_ecg_rest_lvh():
     def ukb_ecg_rest_lvh_from_file(tm, hd5):
@@ -306,8 +312,7 @@ def _make_ukb_ecg_rest_lvh():
         is_male   = 'Genetic-sex_Male_0_0' in hd5['categorical']
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if not(is_female or is_male):
-            raise ValueError('Sex info required to evaluate LVH criteria')
-        
+            raise ValueError('Sex info required to evaluate LVH criteria')        
         if tm.name == 'avl_lvh':
             is_lvh = tensor_ramp[lead_order['aVL']] > 1100.0
         elif tm.name == 'sokolow_lyon_lvh':
