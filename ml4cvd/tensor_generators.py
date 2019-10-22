@@ -447,13 +447,13 @@ def _make_batch_siamese(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np
 
     siamese_in = {k+'_left': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
     siamese_in.update({k+'_right': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch})
-    siamese_out = {'siamese_out': np.zeros((half_batch, 1))}
+    siamese_out = {'output_siamese': np.zeros((half_batch, 1))}
 
     for i in range(half_batch):
         for k in in_batch:
             siamese_in[k+'_left'][i] = in_batch[k][i, ...]
             siamese_in[k+'_right'][i] = in_batch[k][half_batch + i, ...]
         for k in out_batch:
-            siamese_out['siamese_out'][i] = 0 if np.array_equal(out_batch[k][i], out_batch[k][i+half_batch]) else 1
+            siamese_out['output_siamese'][i] = 0 if np.array_equal(out_batch[k][i], out_batch[k][i+half_batch]) else 1
 
     return siamese_in, siamese_out
