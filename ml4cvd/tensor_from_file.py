@@ -316,9 +316,9 @@ def _make_ukb_ecg_rest_lvh():
         elif tm.name == 'cornell_lvh':            
             is_lvh = tensor_ramp[lead_order['aVL']] + tensor_samp[lead_order['V3']]     
             if is_female:
-                is_lvh = tensor > 2000.0
+                is_lvh = is_lvh > 2000.0
             if is_male:
-                is_lvh = tensor > 2800.0
+                is_lvh = is_lvh > 2800.0
         else:
             raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
         # Following convention from categorical TMAPS, positive has cmap index 1
