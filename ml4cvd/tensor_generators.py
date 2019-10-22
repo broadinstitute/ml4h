@@ -232,7 +232,7 @@ def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps,
                 logging.info(f"Generator looped over {len(tensor_list)} tensors from CSV group {i}.")
 
 
-def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
+def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True, siamese=False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -246,9 +246,14 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
-    """     
-    input_tensors = {tm.input_name(): [] for tm in tensor_maps_in}
-    output_tensors = {tm.output_name(): [] for tm in tensor_maps_out}
+    """
+    if siamese:
+        input_tensors = {tm.input_name() + '_left': [] for tm in tensor_maps_in}
+        input_tensors.update({tm.input_name() + '_right': [] for tm in tensor_maps_in})
+        output_tensors = {'output_siamese': []}
+    else:
+        input_tensors = {tm.input_name(): [] for tm in tensor_maps_in}
+        output_tensors = {tm.output_name(): [] for tm in tensor_maps_out}
     paths = []
 
     for _ in range(minibatches):

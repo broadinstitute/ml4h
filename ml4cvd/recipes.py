@@ -19,7 +19,8 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files
 from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, \
+    subplot_comparison_scatters, plot_tsne, plot_roc_per_class
 
 
 def run(args):
@@ -253,9 +254,9 @@ def train_siamese_model(args):
     siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                                 args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    output_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(siamese_model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
+    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
+    prediction = siamese_model.predict(data)
+    return plot_roc_per_class(prediction, labels, {'siamese_out': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
 
 
 def plot_predictions(args):
