@@ -258,22 +258,6 @@ TMAPS['ecg_median_1lead'] = TensorMap('median', group='ecg_rest', shape=(600, 1)
 TMAPS['ecg_rest_1lead'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
                                     dependent_map=TMAPS['ecg_median_1lead'])
 
-# Extract RAmplitude and SAmplitude for LVH criteria
-def _make_ukb_ecg_rest(population_normalize: float = None):
-    def ukb_ecg_rest_from_file(tm, hd5):
-        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
-        if population_normalize is None:
-            tensor = tm.zero_mean_std1(tensor)
-        else:
-            tensor /= population_normalize
-        return tensor
-    return ukb_ecg_rest_from_file
-
-TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
-                                         loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
-
-TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
-                                         loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 
 def _get_lead_cm(length):
@@ -294,6 +278,69 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
                                                              'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
+# Extract RAmplitude and SAmplitude for LVH criteria
+def _make_ukb_ecg_rest(population_normalize: float = None):
+    def ukb_ecg_rest_from_file(tm, hd5):
+        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
+        if population_normalize is None:
+            tensor = tm.zero_mean_std1(tensor)
+        else:
+            tensor /= population_normalize
+        return tensor
+    return ukb_ecg_rest_from_file
+
+TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
+                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
+TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
+                            loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
+def _make_ukb_ecg_rest_lvh():
+    def ukb_ecg_rest_lvh_from_file(tm, hd5):
+        # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
+        lead_order = {'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
+                      'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11}
+        tensor_ramp = _get_tensor_at_first_date(hdf5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude')
+        tensor_samp = _get_tensor_at_first_date(hdf5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')
+        is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
+        is_male   = 'Genetic-sex_Male_0_0' in hd5['categorical']
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        if not(is_female or is_male):
+            raise ValueError('Sex info required to evaluate LVH criteria')
+        
+        if tm.name == 'avl_lvh':
+            is_lvh = tensor_ramp[lead_order['aVL']] > 1100.0
+        elif tm.name == 'sokolow_lyon_lvh':
+            is_lvh = tensor_samp[lead_order['V1']] +\
+                     np.maximum(tensor_ramp[lead_order['V5']], tensor_ramp[lead_order['V6']]) > 3500.0
+        elif tm.name == 'cornell_lvh':            
+            is_lvh = tensor_ramp[lead_order['aVL']] + tensor_samp[lead_order['V3']]     
+            if is_female:
+                is_lvh = tensor > 2000.0
+            if is_male:
+                is_lvh = tensor > 2800.0
+        else:
+            raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
+        # Following convention from categorical TMAPS, positive has cmap index 1
+        index = 0    
+        if is_lvh:
+            index = 1
+        tensor[index] = 1.0
+        return tensor
+    return ukb_ecg_rest_lvh_from_file
+
+TMAPS['ecg_rest_lvh_avl'] = TensorMap('avl_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
+                            channel_map = {'no_avl_lvh': 0, 'aVL LVH': 1},
+                            loss=weighted_crossentropy([0.1, 10.0], 'avl_lvh'))
+
+TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
+                            channel_map = {'no_sokolow_lyon_lvh': 0, 'Sokolow Lyon LVH': 1},
+                            loss=weighted_crossentropy([0.1, 10.0], 'sokolov_lyon_lvh'))
+
+TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
+                            channel_map = {'no_cornell_lvh': 0, 'Cornell LVH': 1},
+                            loss=weighted_crossentropy([0.1, 10.0], 'cornell_lvh'))
+    
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
