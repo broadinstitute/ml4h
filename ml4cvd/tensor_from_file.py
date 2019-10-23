@@ -243,6 +243,7 @@ TMAPS['ecg_rest_median_raw'] = TensorMap('median', group='ecg_rest', shape=(600,
                                      metrics=['mse', 'mae', 'logcosh'],
                                      channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4, 'median_V3': 5,
                                                   'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9, 'median_aVL': 10, 'median_aVR': 11})
+
 TMAPS['ecg_rest_median'] = TensorMap('median', group='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
                                      metrics=['mse', 'mae', 'logcosh'],
                                      channel_map={'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4, 'median_V3': 5,
@@ -255,6 +256,7 @@ TMAPS['ecg_rest_median_stack'] = TensorMap('median', group='ecg_rest', shape=(60
 
 TMAPS['ecg_median_1lead'] = TensorMap('median', group='ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
                                       activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0})
+
 TMAPS['ecg_rest_1lead'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
                                     dependent_map=TMAPS['ecg_median_1lead'])
 
@@ -273,10 +275,12 @@ def _get_lead_cm(length):
 TMAPS['ecg_median_1lead_categorical'] = TensorMap('median', group='categorical', shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
                                                   channel_map=_get_lead_cm(32)[0],
                                                   loss=weighted_crossentropy(_get_lead_cm(32)[1], 'ecg_median_categorical'))
+
 TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                                 channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
                                                              'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
+
 
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
@@ -289,11 +293,13 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
         return tensor
     return ukb_ecg_rest_from_file
 
+
 TMAPS['ecg_rest_ramplitude_raw'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 TMAPS['ecg_rest_samplitude_raw'] = TensorMap('samplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(1.0),
                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
+
 TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', group='ukb_ecg_rest', shape=(12, 1), tensor_from_file=_make_ukb_ecg_rest(),
                             loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
@@ -306,6 +312,8 @@ def _make_ukb_ecg_rest_lvh():
         # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
         lead_order = {'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
                       'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11}
+        cornell_female_min = 2000.0
+        cornell_male_min = 2800.0
         tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude')
         tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')
         is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
@@ -333,6 +341,7 @@ def _make_ukb_ecg_rest_lvh():
         tensor[index] = 1.0
         return tensor
     return ukb_ecg_rest_lvh_from_file
+        
 
 TMAPS['ecg_rest_lvh_avl'] = TensorMap('avl_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                             channel_map = {'no_avl_lvh': 0, 'aVL LVH': 1},
