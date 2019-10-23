@@ -6,6 +6,6 @@ setup(
     description='Machine Learning for CardioVascular Disease package',
     url='https://github.com/broadinstitute/ml',
     python_requires='>=3.6',
-    install_requires=[],
+    install_requires=['tensorflow', 'keras'],
     packages=find_packages(),
 )
