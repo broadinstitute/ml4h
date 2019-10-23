@@ -474,7 +474,8 @@ def train_model_from_generators(model: Model,
 
     history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
                                   validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file))
+                                  callbacks=_get_callbacks(patience, model_file), )
+                                  #workers=8, use_multiprocessing=True)
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
