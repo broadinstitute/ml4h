@@ -345,7 +345,7 @@ TMAPS['t1_40_slices_1'] = TensorMap('t1_40_slices_1', shape=(256, 256, 40), grou
                                     tensor_from_file=slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 64, 144, 2))
 TMAPS['t2_40_slices_1'] = TensorMap('t2_40_slices_1', shape=(256, 256, 40), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                     normalization={'zero_mean_std1': True},
-                                    tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 46, 136, 2))
+                                    tensor_from_file=slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2))
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
