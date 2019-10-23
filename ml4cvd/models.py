@@ -256,6 +256,11 @@ def make_siamese_model(base_model: Model,
     m = Model(inputs=in_left+in_right, outputs=prediction)
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
     m.compile(optimizer=opt, loss='binary_crossentropy')
+
+    if kwargs['model_layers'] is not None:
+        m.load_weights(kwargs['model_layers'], by_name=True)
+        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
+
     return m
 
 
