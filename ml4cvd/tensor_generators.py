@@ -445,7 +445,6 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
 
 
 def _make_batch_siamese(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray]):
-    assert len(out_batch) == 1
     for k in in_batch:
         half_batch = in_batch[k].shape[0] // 2
         break
@@ -458,7 +457,7 @@ def _make_batch_siamese(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np
         for k in in_batch:
             siamese_in[k+'_left'][i] = in_batch[k][i, ...]
             siamese_in[k+'_right'][i] = in_batch[k][half_batch + i, ...]
-        for k in out_batch:
-            siamese_out['output_siamese'][i] = 0 if np.array_equal(out_batch[k][i], out_batch[k][i+half_batch]) else 1
+        random_task_key = np.random.choice(list(out_batch.keys()))
+        siamese_out['output_siamese'][i] = 0 if np.array_equal(out_batch[random_task_key][i], out_batch[random_task_key][i+half_batch]) else 1
 
     return siamese_in, siamese_out
