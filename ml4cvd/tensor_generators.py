@@ -12,13 +12,15 @@ from __future__ import print_function
 # Imports
 import os
 import csv
+import sys
 import h5py
+import time
 import logging
 import traceback
 import threading
 import numpy as np
-from collections import Counter
-from typing import List, Dict, Tuple, Generator, Optional
+from collections import Counter, UserDict
+from typing import List, Dict, Tuple, Generator, Optional, Set
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -41,7 +43,41 @@ class TensorGenerator:
             return next(self.generator)
         finally:
             self.lock.release()
-                    
+
+
+class TMCache(UserDict):
+
+    def __init__(self, max_size):
+        self.size = 0
+        self.max_size = max_size
+        super().__init__()
+
+    def __setitem__(self, key, value):
+        if key in self.data:
+            self.size -= sys.getsizeof(self.data[key])
+        if self.size >= self.max_size:
+            return False
+        self.size += sys.getsizeof(value)
+        super().__setitem__(key, value)
+        return True
+
+
+def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMCache, is_input: bool, tp: str, idx, batch, dependents):
+    name = tm.input_name() if is_input else tm.output_name()
+    if tm in dependents:  # for now, TMAPs with dependents are not cacheable
+        batch[name][idx] = dependents[tm]
+        return hd5
+    if (name, tp) in cache:
+        batch[name][idx] = cache[name, tp]
+        return hd5
+    if hd5 is None:  # Don't open hd5 if everything is in the cache
+        hd5 = h5py.File(tp, 'r')
+    dependents = {}
+    tensor = tm.tensor_from_file(tm, hd5, dependents)
+    if tm.cacheable:
+        cache[name, tp] = tensor
+    return hd5
+
 
 def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
     """Generalized data generator of input and output tensors for feed-forward networks.
@@ -73,37 +109,33 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
+    cache = TMCache(1e9)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
+        start = time.time()
         for tp in train_paths:
+            hd5 = None
             try:
-                with h5py.File(tp, 'r') as hd5:
-                    dependents = {}
-                    for tm in input_maps:
-                        in_batch[tm.input_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5, dependents)
-                    
-                    for tm in output_maps:
-                        if tm in dependents:
-                            out_batch[tm.output_name()][stats['batch_index']] = dependents[tm]
-                        else:
-                            out_batch[tm.output_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5)
-
-                    paths_in_batch.append(tp)
-                    stats['batch_index'] += 1
-                    stats['Tensors presented'] += 1
-                    if stats['batch_index'] == batch_size:
-                        if mixup_alpha > 0 and keep_paths:
-                            yield _mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)
-                        elif mixup_alpha > 0:
-                            yield _mixup_batch(in_batch, out_batch, mixup_alpha)
-                        elif keep_paths:
-                            yield in_batch, out_batch, paths_in_batch
-                        else:
-                            yield in_batch, out_batch
-                        stats['batch_index'] = 0
-                        paths_in_batch = []
-
+                dependents = {}
+                for tm in input_maps:
+                    hd5 = _handle_tm(tm, hd5, cache, True, tp, stats['batch_index'], in_batch, dependents)
+                for tm in output_maps:
+                    hd5 = _handle_tm(tm, hd5, cache, False, tp, stats['batch_index'], in_batch, dependents)
+                paths_in_batch.append(tp)
+                stats['batch_index'] += 1
+                stats['Tensors presented'] += 1
+                if stats['batch_index'] == batch_size:
+                    if mixup_alpha > 0 and keep_paths:
+                        yield _mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)
+                    elif mixup_alpha > 0:
+                        yield _mixup_batch(in_batch, out_batch, mixup_alpha)
+                    elif keep_paths:
+                        yield in_batch, out_batch, paths_in_batch
+                    else:
+                        yield in_batch, out_batch
+                    stats['batch_index'] = 0
+                    paths_in_batch = []
             except IndexError as e:
                 stats[f"IndexError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
@@ -118,17 +150,21 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             except RuntimeError as e:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
-            _log_first_error(stats, tp)
-
+            finally:
+                _log_first_error(stats, tp)
+                if hd5:
+                    hd5.close()
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
         for k in stats:
             logging.debug(f"{k}: {stats[k]}")
         error_info = '\n    '.join([f'[{error}] - {count}'
-            for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
+                                    for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
         logging.info(f"In epoch {stats['epochs']} the following errors occurred:\n    {error_info}")
         logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
         logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
+        logging.info(f"The cache holds {len(cache)} out of {stats['Tensors presented']} tensors and is {(cache.size / 1e9):.2f} GB.")
+        logging.info(f"Epoch {stats['epochs']} took {(time.time() - start):.2f} seconds")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
