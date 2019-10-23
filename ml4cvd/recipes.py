@@ -257,7 +257,7 @@ def train_siamese_model(args):
     data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
     prediction = siamese_model.predict(data)
     print(f"siam pred shape {prediction.shape} siam labe shape {labels['output_siamese'].shape}")
-    return plot_roc_per_class(np.expand_dims(prediction, -1), np.expand_dims(labels, -1), {'siamese_out': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
+    return plot_roc_per_class(prediction, labels, {'siamese_out': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
 
 
 def plot_predictions(args):
