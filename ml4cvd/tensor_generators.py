@@ -115,13 +115,13 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         simple_stats = Counter()
         start = time.time()
         for tp in train_paths:
-            hd5 = None
             try:
+                hd5 = None
                 dependents = {}
                 for tm in input_maps:
                     hd5 = _handle_tm(tm, hd5, cache, True, tp, stats['batch_index'], in_batch, dependents)
                 for tm in output_maps:
-                    hd5 = _handle_tm(tm, hd5, cache, False, tp, stats['batch_index'], in_batch, dependents)
+                    hd5 = _handle_tm(tm, hd5, cache, False, tp, stats['batch_index'], out_batch, dependents)
                 paths_in_batch.append(tp)
                 stats['batch_index'] += 1
                 stats['Tensors presented'] += 1
@@ -141,6 +141,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 simple_stats[str(e)] += 1
             except KeyError as e:
                 stats[f"KeyError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+                simple_stats[str(e)] += 1
             except ValueError as e:
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
@@ -151,20 +152,23 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
             finally:
-                _log_first_error(stats, tp)
-                if hd5:
+                if hd5 is not None:
                     hd5.close()
+                _log_first_error(stats, tp)
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
         for k in stats:
             logging.debug(f"{k}: {stats[k]}")
-        error_info = '\n    '.join([f'[{error}] - {count}'
+        error_info = '\n\t\t'.join([f'[{error}] - {count}'
                                     for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
-        logging.info(f"In epoch {stats['epochs']} the following errors occurred:\n    {error_info}")
-        logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
-        logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
-        logging.info(f"The cache holds {len(cache)} out of {stats['Tensors presented']} tensors and is {(cache.size / 1e9):.2f} GB.")
-        logging.info(f"Epoch {stats['epochs']} took {(time.time() - start):.2f} seconds")
+        info_string = '\n\t'.join([
+            f"The following errors occurred:\n\t\t{error_info}",
+            f"Generator looped & shuffled over {len(train_paths)} tensors.",
+            f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
+            f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {(cache.size / 1e9):.2f} GB.",
+            f"{(time.time() - start):.2f} seconds elapsed.",
+        ])
+        logging.info(f"In true epoch {stats['epochs']}:\n\t{info_string}")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
