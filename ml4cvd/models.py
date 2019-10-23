@@ -750,7 +750,7 @@ def _inspect_model(model: Model,
 		The slightly optimized keras model
 	"""
     if image_path:
-        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels), image_path, inspect_show_labels)
+        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
 
     t0 = time.time()
     _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1,
