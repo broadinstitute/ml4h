@@ -286,10 +286,13 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
 def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5):
         tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
-        if population_normalize is None:
-            tensor = tm.zero_mean_std1(tensor)
-        else:
-            tensor /= population_normalize
+        try:            
+            if population_normalize is None:
+                tensor = tm.zero_mean_std1(tensor)
+            else:
+                tensor /= population_normalize
+        except:
+            ValueError(f'Cannot normalize {tm.name}')
         return tensor
     return ukb_ecg_rest_from_file
 
