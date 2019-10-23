@@ -15,7 +15,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.utils import model_to_dot
+from tensorflow.keras.utils.vis_utils import model_to_dot
 from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
