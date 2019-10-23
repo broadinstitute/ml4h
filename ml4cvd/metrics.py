@@ -2,11 +2,11 @@
 import logging
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
-from keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_proximity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_proximity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 STRING_METRICS = ['categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
                   'mean_squared_error', 'mse', 'cosine_proximity', 'logcosh']
