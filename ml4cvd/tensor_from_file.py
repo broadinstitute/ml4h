@@ -65,8 +65,8 @@ def survival_tensor(start_date_key, day_window):
         else:
             raise ValueError(f'No date found for survival {tm.name}')
 
-        intervals = tm.shape[0] // 2
-        days_per_interval = day_window // intervals
+        intervals = tm.shape[0] / 2
+        days_per_interval = day_window / intervals
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
