@@ -7,7 +7,7 @@ import numpy as np
 from scipy.ndimage import zoom
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.metrics import sentinel_logcosh_loss, per_class_precision
+from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, per_class_precision
 from ml4cvd.metrics import per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE
@@ -171,6 +171,8 @@ class TensorMap(object):
             self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
+        elif self.loss is None and self.is_proportional_hazard():
+            self.loss = survival_likelihood_loss(self.shape[0])
         elif self.loss is None:
             self.loss = 'mse'
 
@@ -291,6 +293,10 @@ class TensorMap(object):
 
     def is_imputation_mean(self):
         return self.is_multi_field_continuous() and self.imputation == IMPUTATION_MEAN
+
+    def is_proportional_hazard(self):
+        return self.group == 'proportional_hazard'
+
 
     def zero_mean_std1(self, np_tensor):
         np_tensor -= np.mean(np_tensor)
@@ -439,7 +445,7 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
     return val
 
 
-def _str2date(d):
+def str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
         return datetime.datetime.now().date()
@@ -517,11 +523,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             index = 0  # Assume no disease if the tensor does not have the dataset
         if index != 0:
             if tm.name + '_date' in hd5:
-                disease_date = _str2date(str(hd5[tm.name + '_date'][0]))
-                assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
+                disease_date = str2date(str(hd5[tm.name + '_date'][0]))
+                assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
             elif tm.name + '_date' in hd5['dates']:
-                disease_date = _str2date(str(hd5['dates'][tm.name + '_date'][0]))
-                assess_date = _str2date(str(hd5['dates']['enroll_date'][0]))
+                disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+                assess_date = str2date(str(hd5['dates']['enroll_date'][0]))
             else:
                 raise ValueError(f"No date found for tensor map: {tm.name}.")
             index = 1 if disease_date < assess_date else 2
@@ -530,8 +536,8 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     elif tm.is_diagnosis_time():
         time_data = np.zeros((1,), dtype=np.float32)
         disease_status = int(hd5[tm.name][0])
-        assess_date = _str2date(str(hd5['assessment-date_0_0'][0]))
-        disease_date = _str2date(str(hd5[tm.name + '_date'][0]))
+        assess_date = str2date(str(hd5['assessment-date_0_0'][0]))
+        disease_date = str2date(str(hd5[tm.name + '_date'][0]))
         delta = relativedelta.relativedelta(disease_date, assess_date)
         difference = (delta.years * 12) + delta.months
         if disease_status == 0 or difference == 0:

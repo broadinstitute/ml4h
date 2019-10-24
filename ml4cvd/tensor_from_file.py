@@ -1,11 +1,12 @@
+import datetime
 from typing import List, Dict
 
 import h5py
 import numpy as np
 from keras.utils import to_categorical
 
-from ml4cvd.TensorMap import TensorMap, no_nans
 from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.TensorMap import TensorMap, no_nans, str2date
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
 from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
 
@@ -49,6 +50,30 @@ def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None):
             dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
         return tm.normalize_and_validate(tensor)
     return _slice_subset_tensor_from_file
+
+
+def survival_tensor(start_date_key, day_window):
+    def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        intervals = tm.shape[0]
+        days_per_interval = day_window / intervals
+        survival_then_censor = np.zeros(intervals*2, dtype=np.float32)
+        has_disease = 0   # Assume no disease if the tensor does not have the dataset
+        if tm.name in hd5['categorical']:
+            has_disease = int(hd5['categorical'][tm.name][0])
+
+        if tm.name + '_date' in hd5['dates']:
+            disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+            assess_date = str2date(str(hd5[start_date_key][0]))
+        else:
+            raise ValueError(f"No date found for tensor map: {tm.name}.")
+
+        for i, day_delta in np.arange(0, day_window, days_per_interval):
+            cur_date = assess_date + datetime.timedelta(days=day_delta)
+            survival_then_censor[i] = has_disease * float(cur_date > disease_date)
+            survival_then_censor[intervals+i] = float(cur_date > disease_date)
+
+        return survival_then_censor
+    return _survival_tensor_from_file
 
 
 def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
@@ -226,6 +251,9 @@ TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', m
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
+
+TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 
 
 def _make_ecg_rest(population_normalize: float = None):

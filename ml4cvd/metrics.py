@@ -73,6 +73,7 @@ def custom_loss_keras(user_id, encodings):
 def euclid_dist(v):
     return (v[0] - v[1])**2
 
+
 def angle_between_batches(tensors):
     l0 = K.sqrt(K.sum(K.square(tensors[0]), axis=-1, keepdims=True) + K.epsilon())
     l1 = K.sqrt(K.sum(K.square(tensors[1]), axis=-1, keepdims=True) + K.epsilon())
@@ -127,6 +128,33 @@ def custom_loss_keras(user_id, encodings):
 
     pos_neg = K.cast(pairwise_equal, K.floatx()) * 2 - 1
     return K.sum(pairwise_distance * pos_neg, axis=-1) / 2
+
+
+def survival_likelihood_loss(n_intervals):
+    """Create custom Keras loss function for neural network survival model.
+    Arguments
+        n_intervals: the number of survival time intervals
+    Returns
+        Custom loss function that can be used with Keras
+    """
+
+    def loss(y_true, y_pred):
+        """
+        Required to have only 2 arguments by Keras.
+        Arguments
+            y_true: Tensor.
+              First half of the values is 1 if individual survived that interval, 0 if not.
+              Second half of the values is for individuals who failed, and is 1 for time interval during which failure occured, 0 for other intervals.
+              See make_surv_array function.
+            y_pred: Tensor, predicted survival probability (1-hazard probability) for each time interval.
+        Returns
+            Vector of losses for this minibatch.
+        """
+        all_individuals = 1. + y_true[:, 0:n_intervals] * (y_pred - 1.)  # component for all individuals
+        uncensored = 1. - y_true[:, n_intervals:2 * n_intervals] * y_pred  # component for only uncensored individuals
+        return K.sum(-K.log(K.clip(K.concatenate((all_individuals, uncensored)), K.epsilon(), None)), axis=-1)  # return -log likelihood
+
+    return loss
 
 
 def euclid_dist(v):
