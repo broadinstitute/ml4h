@@ -67,7 +67,7 @@ def survival_tensor(start_date_key, day_window):
         else:
             raise ValueError(f"No date found for tensor map: {tm.name}.")
 
-        for i, day_delta in np.arange(0, day_window, days_per_interval):
+        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = has_disease * float(cur_date > disease_date)
             survival_then_censor[intervals+i] = float(cur_date > disease_date)
