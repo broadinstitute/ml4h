@@ -36,11 +36,12 @@ class TensorGenerator:
             self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup, siamese)
 
     def __next__(self):
-        self.lock.acquire()
+        #self.lock.acquire()
         try:
             return next(self.generator)
         finally:
-            self.lock.release()
+            pass
+            #self.lock.release()
                     
 
 def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha, siamese):
