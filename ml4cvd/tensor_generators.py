@@ -46,18 +46,27 @@ class TensorGenerator:
 
 
 class TMCache(UserDict):
+    """
+    Caches numpy arrays up to a maximum number of bytes
+    """
 
     def __init__(self, max_size):
         self.size = 0
         self.max_size = max_size
         super().__init__()
 
+
+    @staticmethod
+    def _value_size(value):
+        return value.nbytes
+
+
     def __setitem__(self, key, value):
         if key in self.data:
-            self.size -= sys.getsizeof(self.data[key])
+            self.size -= self._value_size(self.data[key])
         if self.size >= self.max_size:
             return False
-        self.size += sys.getsizeof(value)
+        self.size += self._value_size(value)
         super().__setitem__(key, value)
         return True
 
@@ -74,6 +83,7 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMCache, is_input: bool, tp
         hd5 = h5py.File(tp, 'r')
     dependents = {}
     tensor = tm.tensor_from_file(tm, hd5, dependents)
+    batch[name][idx] = tensor
     if tm.cacheable:
         cache[name, tp] = tensor
     return hd5
@@ -109,7 +119,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMCache(1e9)  # 1 GB, will be param later
+    cache = TMCache(3e9)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
