@@ -61,6 +61,7 @@ class TMArrayCache:
             self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
         self.files_seen = Counter()  # name -> max position filled in cache
         self.key_to_index = {}  # file_path, name -> position in self.data
+        self.hits = 0
 
     def __setitem__(self, key: Tuple[str, str], value):
         """
@@ -82,7 +83,9 @@ class TMArrayCache:
         :param item: should be a tuple file_path, name
         """
         file_path, name = item
-        return self.data[name][self.key_to_index[file_path, name]]
+        val = self.data[name][self.key_to_index[file_path, name]]
+        self.hits += 1
+        return val
 
     def __contains__(self, item: Tuple[str, str]):
         return item in self.key_to_index
@@ -143,7 +146,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMArrayCache(3e9, input_maps, output_maps)  # 1 GB, will be param later
+    cache = TMArrayCache(0, input_maps, output_maps)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
@@ -199,7 +202,8 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {len(train_paths)} tensors.",
             f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
-            f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {int(100 * cache.average_fill())}% full.",
+            f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {100 * cache.average_fill():.0f}% full.",
+            f"So far there have been {cache.hits} cache hits.",
             f"{(time.time() - start):.2f} seconds elapsed.",
         ])
         logging.info(f"In true epoch {stats['epochs']}:\n\t{info_string}")
