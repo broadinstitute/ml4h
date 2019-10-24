@@ -45,31 +45,10 @@ class TensorGenerator:
             self.lock.release()
 
 
-class TMCache(UserDict):
-    """
-    Caches numpy arrays up to a maximum number of bytes
-    """
-
-    def __init__(self, max_size):
-        self.size = 0
-        self.max_size = max_size
-        super().__init__()
-
-    @staticmethod
-    def _value_size(value):
-        return value.nbytes
-
-    def __setitem__(self, key, value):
-        if key in self.data:
-            self.size -= self._value_size(self.data[key])
-        if self.size >= self.max_size:
-            return False
-        self.size += self._value_size(value)
-        super().__setitem__(key, value)
-        return True
-
-
 class TMArrayCache:
+    """
+    Caches numpy arrays created by tensor maps up to a maximum number of bytes
+    """
 
     def __init__(self, max_size, input_tms: List[TensorMap], output_tms: List[TensorMap]):
         self.max_size = max_size
@@ -88,6 +67,9 @@ class TMArrayCache:
         :param key: should be a tuple file_path, name
         """
         file_path, name = key
+        if key in self.key_to_index:
+            self.data[name][self.key_to_index[key]] = value
+            return True
         if self.files_seen[name] >= self.nrows:
             return False
         self.key_to_index[key] = self.files_seen[name]
@@ -104,6 +86,13 @@ class TMArrayCache:
 
     def __contains__(self, item: Tuple[str, str]):
         return item in self.key_to_index
+
+    def __len__(self):
+        return sum(self.files_seen.values())
+
+
+    def average_fill(self):
+        return np.mean(list(self.files_seen.values())) / self.nrows
 
 
 def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: bool, tp: str, idx, batch, dependents):
@@ -154,7 +143,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMArrayCache(1e8, input_maps, output_maps)  # 1 GB, will be param later
+    cache = TMArrayCache(3e9, input_maps, output_maps)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
@@ -210,7 +199,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {len(train_paths)} tensors.",
             f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
-            f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {(cache.size / 1e9):.2f} GB.",
+            f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {int(100 * cache.average_fill())}% full.",
             f"{(time.time() - start):.2f} seconds elapsed.",
         ])
         logging.info(f"In true epoch {stats['epochs']}:\n\t{info_string}")
