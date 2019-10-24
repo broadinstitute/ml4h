@@ -54,25 +54,26 @@ def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None):
 
 def survival_tensor(start_date_key, day_window):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        intervals = tm.shape[0]
-        days_per_interval = day_window / intervals
-        survival_then_censor = np.zeros(intervals*2, dtype=np.float32)
+        assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
         if tm.name in hd5['categorical']:
             has_disease = int(hd5['categorical'][tm.name][0])
-
         if tm.name + '_date' in hd5['dates']:
             disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
-            assess_date = str2date(str(hd5[start_date_key][0]))
+        elif 'phenotype_censor' in hd5['dates']:
+            disease_date = str2date(str(hd5['dates/phenotype_censor']))
         else:
-            raise ValueError(f"No date found for tensor map: {tm.name}.")
+            raise ValueError(f'No date found for survival {tm.name}')
 
+        intervals = tm.shape[0]
+        days_per_interval = day_window / intervals
+        survival_then_censor = np.zeros((intervals*2,), dtype=np.float32)
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = has_disease * float(cur_date > disease_date)
             survival_then_censor[intervals+i] = float(cur_date > disease_date)
-
         return survival_then_censor
+    
     return _survival_tensor_from_file
 
 
