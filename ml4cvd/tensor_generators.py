@@ -55,11 +55,9 @@ class TMCache(UserDict):
         self.max_size = max_size
         super().__init__()
 
-
     @staticmethod
     def _value_size(value):
         return value.nbytes
-
 
     def __setitem__(self, key, value):
         if key in self.data:
@@ -71,13 +69,50 @@ class TMCache(UserDict):
         return True
 
 
-def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMCache, is_input: bool, tp: str, idx, batch, dependents):
+class TMArrayCache:
+
+    def __init__(self, max_size, input_tms: List[TensorMap], output_tms: List[TensorMap]):
+        self.max_size = max_size
+        self.data = {}
+        self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in input_tms + output_tms)
+        self.nrows = int(max_size / self.row_size)
+        for tm in input_tms:
+            self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
+        for tm in output_tms:
+            self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
+        self.files_seen = Counter()  # name -> max position filled in cache
+        self.key_to_index = {}  # file_path, name -> position in self.data
+
+    def __setitem__(self, key: Tuple[str, str], value):
+        """
+        :param key: should be a tuple file_path, name
+        """
+        file_path, name = key
+        if self.files_seen[name] >= self.nrows:
+            return False
+        self.key_to_index[key] = self.files_seen[name]
+        self.data[name][self.key_to_index[key]] = value
+        self.files_seen[name] += 1
+        return True
+
+    def __getitem__(self, item: Tuple[str, str]):
+        """
+        :param item: should be a tuple file_path, name
+        """
+        file_path, name = item
+        return self.data[name][self.key_to_index[file_path, name]]
+
+    def __contains__(self, item: Tuple[str, str]):
+        return item in self.key_to_index
+
+
+def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: bool, tp: str, idx, batch, dependents):
     name = tm.input_name() if is_input else tm.output_name()
     if tm in dependents:  # for now, TMAPs with dependents are not cacheable
         batch[name][idx] = dependents[tm]
         return hd5
-    if (name, tp) in cache:
-        batch[name][idx] = cache[name, tp]
+    if (tp, name) in cache:
+        batch[name][idx] = cache[tp, name]
         return hd5
     if hd5 is None:  # Don't open hd5 if everything is in the cache
         hd5 = h5py.File(tp, 'r')
@@ -85,7 +120,7 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMCache, is_input: bool, tp
     tensor = tm.tensor_from_file(tm, hd5, dependents)
     batch[name][idx] = tensor
     if tm.cacheable:
-        cache[name, tp] = tensor
+        cache[tp, name] = tensor
     return hd5
 
 
@@ -119,7 +154,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMCache(3e9)  # 1 GB, will be param later
+    cache = TMArrayCache(1e8, input_maps, output_maps)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
