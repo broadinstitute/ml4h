@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Iterable, Callable, Union
 # Keras imports
 import keras.backend as K
 from keras.callbacks import History
-from tensorflow.keras.optimizers import Adam
+from keras.optimizers import Adam
 from keras.models import Model, load_model
 from keras.utils.vis_utils import model_to_dot
 from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
