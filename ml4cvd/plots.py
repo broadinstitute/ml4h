@@ -3,27 +3,35 @@
 # Imports
 import os
 import math
+import h5py
 import logging
 import hashlib
 import operator
+
 from textwrap import wrap
 from functools import reduce
-from itertools import islice, product
+from ast import literal_eval
+from multiprocessing import Pool
+from itertools import islice, product, cycle
 from collections import Counter, OrderedDict, defaultdict
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
+
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+
+import seaborn as sns
+from biosppy.signals import ecg
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
@@ -38,6 +46,20 @@ COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
                'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
                'teal', 'peru', 'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
+
+LEAD_MAPPING = np.array([['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
+                         ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
+                         ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']])
+
+MEDIAN_MAPPING = np.array([['median_I','median_aVR', 'median_V1', 'median_V4'],
+              ['median_II','median_aVL', 'median_V2', 'median_V5'],
+              ['median_III','median_aVF', 'median_V3', 'median_V6']])
+
+AMP_MAPPING = np.array([[0, 3, 6, 9],
+                        [1, 4, 7, 10],
+                        [2, 5, 8, 11]])
+
+
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
@@ -571,18 +593,18 @@ def ecg_resting_yrange(twelve_leads, default_yrange=3.0, raw_scale=0.005, time_i
     for is_median, offset in zip([False, True], [3, 0]):
         for i in range(offset,offset+3):
             for j in range(0,4):
-                lead_name = lead_mapping[i-offset,j]
+                lead_name = LEAD_MAPPING[i-offset,j]
                 lead = twelve_leads[lead_name]
                 y_plot = np.array([elem_ * raw_scale for elem_ in lead['raw']])
                 if not is_median:        
                     y_plot = y_plot[np.logical_and(lead['ts_reference']>j*int(time_interval),
                                     lead['ts_reference']<(j+1)*int(time_interval))]
-                ylim_min, ylim_max = get_ylims(default_yrange, y_plot)
+                ylim_min, ylim_max = ecg_resting_ylims(default_yrange, y_plot)
                 yrange = ylim_max - ylim_min
     return yrange
 
     
-def ecg_resting_subplots(twelve_leads, lead_mapping, amp_mapping, f, ax, yrange, offset, pat_df=None, is_median=False, raw_scale = 0.005, is_blind=False):
+def subplot_ecg_resting(twelve_leads, lead_mapping, f, ax, yrange, offset, pat_df=None, is_median=False, raw_scale = 0.005, is_blind=False):
     # plot will be in seconds vs mV, boxes are
     sec_per_box = 0.04
     mv_per_box = .1
@@ -612,7 +634,7 @@ def ecg_resting_subplots(twelve_leads, lead_mapping, amp_mapping, f, ax, yrange,
                                 lead['ts_reference']<(j+1)*time_interval)]
             else:
                 yplot = yy                       
-            ylim_min, ylim_max = get_ylims(yrange, yplot)            
+            ylim_min, ylim_max = ecg_resting_ylims(yrange, yplot)            
             ax[i,j].set_ylim(ylim_min, ylim_max) # 3.0 mV range
             ax[i,j].xaxis.set_major_locator(MultipleLocator(0.2)) # major grids at every .2sec = 5 * 0.04 sec
             ax[i,j].yaxis.set_major_locator(MultipleLocator(0.5)) # major grids at every .5mV 
@@ -638,8 +660,8 @@ def ecg_resting_subplots(twelve_leads, lead_mapping, amp_mapping, f, ax, yrange,
                     dy_amp = 0.2
                 else: # Put in top right
                     dy_amp = 0.85
-                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {int(pat_df['ramp'][amp_mapping[i-offset, j]])}")
-                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][amp_mapping[i-offset, j]])}")
+                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {int(pat_df['ramp'][AMP_MAPPING[i-offset, j]])}")
+                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][AMP_MAPPING[i-offset, j]])}")
 
 
 def ecg_resting_csv_to_df(csv):
@@ -653,22 +675,24 @@ def ecg_resting_csv_to_df(csv):
     return df
 
 
-def plot_ecg_resting(ecg_csv, row_min, row_max, out_folder, ncpus=1):
-    df = ecg_csv_to_df(ecg_csv)
-    row_arr = np.arange(row_min, row_max, dtype=np.int)    
-    def plot_worker(rows):
-        for row in rows:
-            pat_df = df.iloc[row]
-            with h5py.File(pat_df['full_path'], 'r') as hd5:
-                traces = resting_ecg_traces(hd5)
-            fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
-            yrange = get_yrange(traces)
-            subplot_ecg_resting(traces, lead_mapping, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
-            subplot_ecg_resting(traces, median_mapping, amp_mapping, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
-            fig.savefig(os.path.join(args.out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")
-    row_split = np.array_split(row_arr)
+def plot_ecg_resting(df, rows, out_folder, is_blind):
+    for row in rows:
+        pat_df = df.iloc[row]
+        with h5py.File(pat_df['full_path'], 'r') as hd5:
+            traces = ecg_resting_traces(hd5)
+        fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
+        yrange = ecg_resting_yrange(traces)
+        subplot_ecg_resting(traces, LEAD_MAPPING, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
+        subplot_ecg_resting(traces, MEDIAN_MAPPING, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
+        fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")    
+
+
+def plot_ecg_resting_mp(ecg_csv, row_min, row_max, out_folder, ncpus=1, is_blind=False):
+    df = ecg_resting_csv_to_df(ecg_csv)
+    row_arr = np.arange(row_min, row_max, dtype=np.int)
+    row_split = np.array_split(row_arr, ncpus)
     pool = Pool(ncpus)
-    pool.map(plot_worker, rows)
+    pool.starmap(plot_ecg_resting, zip([df]*ncpus, row_split, [out_folder]*ncpus, [is_blind]*ncpus))
     pool.close()
     pool.join()
 
