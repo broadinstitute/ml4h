@@ -82,8 +82,8 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         y_truth = y_truth.reshape(melt_shape)[:max_melt]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-    elif tm.name == 'aligned_distance':
-        logging.info(f"a dist has y shape:{y_predictions.shape} and test labels has shape:{y_truth.shape}")
+    elif tm.is_proportional_hazard():
+        plot_survival(y_predictions, y_truth, title, prefix=folder)
     elif len(tm.shape) > 1:
         prediction_flat = tm.rescale(y_predictions).flatten()
         truth_flat = tm.rescale(y_truth).flatten()
@@ -275,6 +275,25 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
+
+
+def plot_survival(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
+    if paths is not None:
+        pass
+
+    plt.xlabel('Proportion Surviving')
+    plt.ylabel('Follow up time (days)')
+    plt.title(title + '\n')
+    plt.legend(loc="upper left")
+
+    figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save survival plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    return {}
 
 
 def plot_noise(noise):
