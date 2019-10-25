@@ -281,11 +281,10 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
-    #sick_per_step = np.sum(sick[:, :intervals], axis=0)
     sick = truth[:, :intervals] * truth[:, intervals:]
     logging.info(f"Censored not sick is: {sick.shape} ")
     logging.info(f"Sick per step is: {np.sum(sick, axis=0)} out of {truth.shape[0]}")  # {np.sum(sick[:, intervals-5:intervals], axis=0)}
-    predicted_proportion = np.sum(truth[:, :intervals]*prediction[:, :intervals], axis=0) / np.sum(sick, axis=0)
+    predicted_proportion = np.sum(prediction[:, :intervals], axis=0) / truth.shape[0]
     true_proportion = np.sum(truth[:, :intervals], axis=0) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     logging.info(f"truth is: {true_proportion}")
