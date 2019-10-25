@@ -1,6 +1,7 @@
 # Imports
 import os
 import h5py
+import argparse
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -85,7 +86,7 @@ def plot_traces(twelve_leads, lead_mapping, amp_mapping, f, ax, yrange, offset, 
         sl_yn  = 'Y' if pat_df['Sokolow_Lyon']>0.5 else 'N'
         cor_yn = 'Y' if pat_df['Cornell']>0.5 else 'N'
         sex_fm = 'F' if pat_df['sex'] == 'female' else 'M'
-        text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"
+        text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"        
         if not is_blind:
             text  += f"{pat_df['ecg_text']}\n"
             text  += f"LVH criteria - aVL: {avl_yn}, Sokolow-Lyon: {sl_yn}, Cornell: {cor_yn}"            
@@ -131,7 +132,7 @@ def plot_traces(twelve_leads, lead_mapping, amp_mapping, f, ax, yrange, offset, 
                 ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][amp_mapping[i-offset, j]])}")
 
 def ecg_csv_to_df(csv):
-    df = pd.read_csv('ecg_views_all_10_23_2019.csv')
+    df = pd.read_csv(csv)
     df['ramp'] = df['ramp'].apply(literal_eval)
     df['samp'] = df['samp'].apply(literal_eval)
     df['patient_id'] = df['patient_id'].apply(str)
@@ -147,16 +148,18 @@ if __name__ == '__main__':
     parser.add_argument('--project_url', help='URL tail to select project', default='?project=broad-ml4cvd')
     parser.add_argument('--ecg_csv', help='CSV file with dataframe of ECGs', default='ecg_views_all_10_23_2019.csv')
     parser.add_argument('--row_num', help='Patient entry number to plot', type=int)
+    parser.add_argument('--out_folder', help='Folder where to save PDFs', default='/home/pdiachil/ml/notebooks/ecg')
     args = parser.parse_args()
     
     df = ecg_csv_to_df(args.ecg_csv)
     pat_df = df.iloc[args.row_num]
-    traces = get_ecg_traces(pp['full_path'])
+    with h5py.File(pat_df['full_path'], 'r') as hd5:
+        traces = get_ecg_traces(hd5)
     fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
     yrange = get_yrange(traces)
     plot_traces(traces, lead_mapping, amp_mapping, fig, ax, yrange, offset=3, pat_df=None, is_median=False)
     plot_traces(traces, median_mapping, amp_mapping, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True)
-    fig.savefig(pp['patient_id']+'.pdf', bbox_inches = "tight")
+    fig.savefig(os.path.join(args.out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")
     
     
 
