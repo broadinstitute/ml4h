@@ -280,13 +280,17 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
 def plot_survival(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
+    predicted_proportion = np.sum(prediction, axis=0) / prediction.shape[0]
+    true_proportion = np.sum(truth, axis=0) / truth.shape[0]
+    logging.info(f"Prediction shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} {}")
     if paths is not None:
         pass
-
+    plt.plot(range(predicted_proportion.shape[0]), predicted_proportion, label='predicted')
+    plt.plot(range(true_proportion.shape[0]), true_proportion, label='true_proportion')
     plt.xlabel('Proportion Surviving')
     plt.ylabel('Follow up time (days)')
     plt.title(title + '\n')
-    plt.legend(loc="upper left")
+    plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
