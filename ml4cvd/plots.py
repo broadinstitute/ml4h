@@ -277,7 +277,8 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survival(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+    intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     predicted_proportion = np.sum(prediction, axis=0) / prediction.shape[0]
@@ -285,10 +286,10 @@ def plot_survival(prediction, truth, title, prefix='./figures/', paths=None, top
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape}")
     if paths is not None:
         pass
-    plt.plot(range(predicted_proportion.shape[0]), predicted_proportion, label='predicted')
-    plt.plot(range(true_proportion.shape[0]), true_proportion, label='true_proportion')
-    plt.xlabel('Proportion Surviving')
-    plt.ylabel('Follow up time (days)')
+    plt.plot(range(days_window, 0, days_window//intervals), predicted_proportion[:intervals], marker='o', label='predicted_proportion')
+    plt.plot(range(days_window, 0, days_window//intervals), true_proportion[:intervals], marker='o', label='true_proportion')
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Proportion Surviving')
     plt.title(title + '\n')
     plt.legend(loc="upper right")
 
