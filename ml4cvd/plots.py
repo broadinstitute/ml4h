@@ -538,6 +538,141 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
+def ecg_resting_traces(hd5):
+    leads = {}
+    for field in hd5['ecg_rest']:
+        leads[field] = list(hd5['ecg_rest'][field])
+    twelve_leads = defaultdict(dict)
+    for key, data in leads.items(): 
+        twelve_leads[key]['raw'] = leads[key]
+        if len(data) == 5000:
+            (twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'], 
+             twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'], 
+             twelve_leads[key]['heart_rate']) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)    
+    return twelve_leads
+
+
+def ecg_resting_ylims(yrange, yplot):
+    deltas   = [-1.0, 1.0]
+    extremes = np.array([np.min(yplot), np.max(yplot)])
+    delta_ext = extremes[1]-extremes[0]
+    yrange = np.max([yrange, delta_ext*1.10])
+    ylim_min = -yrange/2.0
+    ylim_max = yrange/2.0
+    if ((extremes[0] - ylim_min) < yrange*0.2) or \
+       ((ylim_max-extremes[1]) < yrange*0.2) : 
+        ylim_min = extremes[0] - (yrange-delta_ext)/2.0
+        ylim_max = extremes[1] + (yrange-delta_ext)/2.0       
+    return ylim_min, ylim_max
+
+    
+def ecg_resting_yrange(twelve_leads, default_yrange=3.0, raw_scale=0.005, time_interval=2.5):
+    yrange=default_yrange
+    for is_median, offset in zip([False, True], [3, 0]):
+        for i in range(offset,offset+3):
+            for j in range(0,4):
+                lead_name = lead_mapping[i-offset,j]
+                lead = twelve_leads[lead_name]
+                y_plot = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+                if not is_median:        
+                    y_plot = y_plot[np.logical_and(lead['ts_reference']>j*int(time_interval),
+                                    lead['ts_reference']<(j+1)*int(time_interval))]
+                ylim_min, ylim_max = get_ylims(default_yrange, y_plot)
+                yrange = ylim_max - ylim_min
+    return yrange
+
+    
+def ecg_resting_subplots(twelve_leads, lead_mapping, amp_mapping, f, ax, yrange, offset, pat_df=None, is_median=False, raw_scale = 0.005, is_blind=False):
+    # plot will be in seconds vs mV, boxes are
+    sec_per_box = 0.04
+    mv_per_box = .1
+    time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
+    median_interval = 1.2  # 600 samples at 500Hz
+    # if available, extract patient metadata and ECG interpretation 
+    if pat_df is not None:
+        avl_yn = 'Y' if pat_df['aVL']>0.5 else 'N'
+        sl_yn  = 'Y' if pat_df['Sokolow_Lyon']>0.5 else 'N'
+        cor_yn = 'Y' if pat_df['Cornell']>0.5 else 'N'
+        sex_fm = 'F' if pat_df['sex'] == 'female' else 'M'
+        text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"        
+        if not is_blind:
+            text  += f"{pat_df['ecg_text']}\n"
+            text  += f"LVH criteria - aVL: {avl_yn}, Sokolow-Lyon: {sl_yn}, Cornell: {cor_yn}"            
+        st=f.suptitle(text, x=0.0, y=1.05, ha='left', bbox=dict(facecolor='black', alpha=0.1))   
+    for i in range(offset,offset+3):
+        for j in range(0, 4):
+            lead_name = lead_mapping[i-offset,j]
+            lead = twelve_leads[lead_name]
+            # Convert units to mV
+            yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            if not is_median:
+                ax[i,j].set_xlim(j*time_interval,(j+1)*time_interval)
+                # extract portion of waveform that is included in the actual plots 
+                yplot = yy[np.logical_and(lead['ts_reference']>j*time_interval,
+                                lead['ts_reference']<(j+1)*time_interval)]
+            else:
+                yplot = yy                       
+            ylim_min, ylim_max = get_ylims(yrange, yplot)            
+            ax[i,j].set_ylim(ylim_min, ylim_max) # 3.0 mV range
+            ax[i,j].xaxis.set_major_locator(MultipleLocator(0.2)) # major grids at every .2sec = 5 * 0.04 sec
+            ax[i,j].yaxis.set_major_locator(MultipleLocator(0.5)) # major grids at every .5mV 
+            ax[i,j].xaxis.set_minor_locator(AutoMinorLocator(5))
+            ax[i,j].yaxis.set_minor_locator(AutoMinorLocator(5))
+            ax[i,j].grid(which='major', color='#CCCCCC', linestyle='--')
+            ax[i,j].grid(which='minor', color='#CCCCCC', linestyle=':')            
+            for label in ax[i,j].xaxis.get_ticklabels()[::2]:
+                label.set_visible(False)
+            if len(ax[i,j].yaxis.get_ticklabels()) > 10:
+                for label in ax[i,j].yaxis.get_ticklabels()[::2]:
+                    label.set_visible(False)        
+            #normalize data in muv
+            if 'ts_reference' in lead:
+                ax[i,j].plot(lead['ts_reference'], yy, label='raw')
+            else:
+                ax[i,j].plot(np.arange(0.0, median_interval, median_interval/len(lead['raw'])), yy, label='raw')                
+            ax[i,j].set_title(lead_name)           
+            if is_median and (pat_df is not None):
+                # Find where to put the R and S amp text based on ECG baseline position
+                dy_ecg = (yy[-1] - ylim_min) / yrange
+                if dy_ecg > 0.3: # Put in bottom right
+                    dy_amp = 0.2
+                else: # Put in top right
+                    dy_amp = 0.85
+                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {int(pat_df['ramp'][amp_mapping[i-offset, j]])}")
+                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][amp_mapping[i-offset, j]])}")
+
+
+def ecg_resting_csv_to_df(csv):
+    df = pd.read_csv(csv)
+    df['ramp'] = df['ramp'].apply(literal_eval)
+    df['samp'] = df['samp'].apply(literal_eval)
+    df['patient_id'] = df['patient_id'].apply(str)
+    df['Sokolow_Lyon'] = df['Sokolow_Lyon'].apply(float)
+    df['Cornell'] = df['Cornell'].apply(float)
+    df['aVL'] = df['aVL'].apply(float)
+    return df
+
+
+def plot_ecg_resting(ecg_csv, row_min, row_max, out_folder, ncpus=1):
+    df = ecg_csv_to_df(ecg_csv)
+    row_arr = np.arange(row_min, row_max, dtype=np.int)    
+    def plot_worker(rows):
+        for row in rows:
+            pat_df = df.iloc[row]
+            with h5py.File(pat_df['full_path'], 'r') as hd5:
+                traces = resting_ecg_traces(hd5)
+            fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
+            yrange = get_yrange(traces)
+            subplot_ecg_resting(traces, lead_mapping, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
+            subplot_ecg_resting(traces, median_mapping, amp_mapping, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
+            fig.savefig(os.path.join(args.out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")
+    row_split = np.array_split(row_arr)
+    pool = Pool(ncpus)
+    pool.map(plot_worker, rows)
+    pool.close()
+    pool.join()
+
+    
 def plot_counter(counts, title, prefix='./figures/'):
     plt.figure(figsize=(28, 32))
     matplotlib.rcParams.update({'font.size': 12})
