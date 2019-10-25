@@ -12,15 +12,15 @@ from __future__ import print_function
 # Imports
 import os
 import csv
-import sys
 import h5py
 import time
 import logging
 import traceback
 import threading
 import numpy as np
-from collections import Counter, UserDict
-from typing import List, Dict, Tuple, Generator, Optional, Set
+from collections import Counter
+from multiprocessing import Process, Queue
+from typing import List, Dict, Tuple, Generator, Optional
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -28,21 +28,44 @@ from ml4cvd.TensorMap import TensorMap
 np.set_printoptions(threshold=np.inf)
 
 
+#class TensorGenerator:
+#    """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
+#    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
+#        self.lock = threading.Lock()
+#        if weights is None:
+#            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
+#        else:
+#            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
+#
+#    def __next__(self):
+#        self.lock.acquire()
+#        try:
+#            return next(self.generator)
+#        finally:
+#            self.lock.release()
+
+
 class TensorGenerator:
-    """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
     def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
-        self.lock = threading.Lock()
+        num_workers = 4
+        max_q_size = 32
+        step = len(paths) // num_workers
+        self.workers = []
+        self.q = Queue(max_q_size)
         if weights is None:
-            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
+            for i in range(num_workers):
+                if i == num_workers - 1:
+                    worker_paths = paths[i * step:]
+                else:
+                    worker_paths = paths[i * step: (i + 1) * step]
+                process = Process(target=multimodal_multitask_worker, args=(self.q, batch_size, input_maps, output_maps, worker_paths, keep_paths, mixup))
+                process.start()
+                self.workers.append(process)
         else:
-            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
+            raise NotImplementedError('Weighted generator not implemented.')
 
     def __next__(self):
-        self.lock.acquire()
-        try:
-            return next(self.generator)
-        finally:
-            self.lock.release()
+        yield self.q.get()
 
 
 class TMArrayCache:
@@ -93,7 +116,6 @@ class TMArrayCache:
     def __len__(self):
         return sum(self.files_seen.values())
 
-
     def average_fill(self):
         return np.mean(list(self.files_seen.values())) / self.nrows
 
@@ -116,13 +138,14 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: boo
     return hd5
 
 
-def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
+def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
     Infinitely loops over all examples yielding batch_size input and output tensor mappings.
 
     Arguments:
+        q: Multiprocessing queue to push finished batches to
         batch_size: number of examples in each minibatch
         input_maps: list of TensorMaps that are input names to a model
         output_maps: list of TensorMaps that are output from a model
@@ -130,13 +153,10 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         keep_paths: If true will also yield the paths to the tensors used in this batch
         mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
 
-    Yields:
+    What gets enqueued:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
         {input_1:input_tensor1, input_2:input_tensor2, ...}, {output_name1:output_tensor1, ...}
         if include_paths_in_batch is True the 3rd element of tuple will be the list of paths
-
-    Returns:
-        Never!
     """
     assert len(train_paths) > 0
 
@@ -146,7 +166,7 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMArrayCache(0, input_maps, output_maps)  # 1 GB, will be param later
+    cache = TMArrayCache(.25e9, input_maps, output_maps)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
@@ -164,13 +184,13 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
                 stats['Tensors presented'] += 1
                 if stats['batch_index'] == batch_size:
                     if mixup_alpha > 0 and keep_paths:
-                        yield _mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)
+                        q.put((_mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)))
                     elif mixup_alpha > 0:
-                        yield _mixup_batch(in_batch, out_batch, mixup_alpha)
+                        q.put(_mixup_batch(in_batch, out_batch, mixup_alpha))
                     elif keep_paths:
-                        yield in_batch, out_batch, paths_in_batch
+                        q.put((in_batch, out_batch, paths_in_batch))
                     else:
-                        yield in_batch, out_batch
+                        q.put((in_batch, out_batch))
                     stats['batch_index'] = 0
                     paths_in_batch = []
             except IndexError as e:
