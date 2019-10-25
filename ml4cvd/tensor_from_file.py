@@ -267,6 +267,12 @@ TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazar
                                           tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
                                           tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
+TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
+TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
+TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 
 
 
