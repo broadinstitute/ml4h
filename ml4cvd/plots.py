@@ -282,7 +282,7 @@ def plot_survival(prediction, truth, title, prefix='./figures/', paths=None, top
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     predicted_proportion = np.sum(prediction, axis=0) / prediction.shape[0]
     true_proportion = np.sum(truth, axis=0) / truth.shape[0]
-    logging.info(f"Prediction shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} {}")
+    logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape}")
     if paths is not None:
         pass
     plt.plot(range(predicted_proportion.shape[0]), predicted_proportion, label='predicted')
