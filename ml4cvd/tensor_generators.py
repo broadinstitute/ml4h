@@ -16,9 +16,9 @@ import h5py
 import time
 import logging
 import traceback
-import threading
 import numpy as np
 from collections import Counter
+from random import choices, shuffle
 from contextlib import contextmanager
 from multiprocessing import Process, Queue
 from typing import List, Dict, Tuple, Generator, Optional
@@ -30,23 +30,6 @@ from ml4cvd.TensorMap import TensorMap
 np.set_printoptions(threshold=np.inf)
 
 
-#class TensorGenerator:
-#    """Yield minibatches of tensors given lists of I/O TensorMaps in a thread-safe way"""
-#    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
-#        self.lock = threading.Lock()
-#        if weights is None:
-#            self.generator = multimodal_multitask_generator(batch_size, input_maps, output_maps, paths, keep_paths, mixup)
-#        else:
-#            self.generator = multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths, weights, keep_paths, mixup)
-#
-#    def __next__(self):
-#        self.lock.acquire()
-#        try:
-#            return next(self.generator)
-#        finally:
-#            self.lock.release()
-
-
 class TensorGenerator:
     def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
         num_workers = 4
@@ -54,19 +37,17 @@ class TensorGenerator:
         step = len(paths) // num_workers
         self.workers = []
         self.q = Queue(max_q_size)
-        if weights is None:
-            for i in range(num_workers):
-                if i == num_workers - 1:
-                    worker_paths = paths[i * step:]
-                else:
-                    worker_paths = paths[i * step: (i + 1) * step]
-                process = Process(target=multimodal_multitask_worker, args=(self.q, batch_size, input_maps, output_maps, worker_paths, keep_paths, mixup))
-                process.start()
-                self.workers.append(process)
-        else:
-            raise NotImplementedError('Weighted generator not implemented.')
+        for i in range(num_workers):
+            if i == num_workers - 1:
+                worker_paths = paths[i * step:]
+            else:
+                worker_paths = paths[i * step: (i + 1) * step]
+            process = Process(target=multimodal_multitask_worker, args=(self.q, batch_size, input_maps, output_maps, worker_paths, keep_paths, mixup, weights))
+            process.start()
+            self.workers.append(process)
 
     def __next__(self):
+        logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         return self.q.get()
 
     def kill(self):
@@ -144,7 +125,8 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: boo
     return hd5
 
 
-def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths, mixup_alpha):
+def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths,
+                                mixup_alpha, weights=None):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -177,7 +159,16 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
     while True:
         simple_stats = Counter()
         start = time.time()
-        for tp in train_paths:
+        if weights is not None:
+            if len(weights) != len(train_paths):
+                raise ValueError('weights must be the same length as train_paths.')
+            epoch_len = max((len(p) for p in train_paths))
+            paths = []
+            for path_list, weight in zip(train_paths, weights):
+                paths += choices(path_list, k=int(weight * epoch_len))
+            shuffle(paths)
+        paths = train_paths
+        for tp in paths:
             try:
                 hd5 = None
                 dependents = {}
@@ -235,97 +226,6 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
         logging.info(f"In true epoch {stats['epochs']}:\n\t{info_string}")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
-
-
-def multimodal_multitask_weighted_generator(batch_size, input_maps, output_maps, paths_lists, weights, keep_paths, mixup_alpha):
-    """Generalized data generator of input and output tensors for feed-forward networks.
-
-    The `modes` are the different inputs, and the `tasks` are given by the outputs.
-    Infinitely loops over all examples yielding batch_size input and output tensor mappings.
-
-    Arguments:
-        batch_size: number of examples in each minibatch
-        input_maps: list of TensorMaps that are input names to a model
-        output_maps: list of TensorMaps that are output from a model
-        paths_lists: list of lists of hd5 tensors shuffled after every loop or epoch
-        weights: list of weights between (0, 1) and in total summing to 1 (i.e a distribution) for how much of each batch 
-            should come from each of the lists in train_paths_lists.  Must be the same size as train_paths_lists.
-        keep_paths: If true will also yield the paths to the tensors used in this batch
-        mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
-
-    Yields:
-        A tuple of dicts for the tensor mapping tensor names to numpy arrays
-        {input_1:input_tensor1, input_2:input_tensor2, ...}, {output_name1:output_tensor1, ...}
-        if include_paths_in_batch is True the 3rd element of tuple will be the list of paths
-
-    Returns:
-        Never!
-    """ 
-    assert len(paths_lists) > 0 and len(paths_lists) == len(weights)
-
-    stats = Counter()
-    paths_in_batch = []
-    if mixup_alpha > 0:
-        batch_size *= 2
-    in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
-    out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    samples = [int(w*batch_size) for w in weights]
-    logging.info(f'Samples: {samples} from background and balance CSV(s) from weights: {weights}')
-    while True:
-        for i, (tensor_list, num_samples) in enumerate(zip(paths_lists, samples)):
-            while stats[f'group{i}_samples'] < num_samples:
-                tp = np.random.choice(tensor_list)
-                try:
-                    with h5py.File(tp, 'r') as hd5:
-                        dependents = {}
-                        for tm in input_maps:
-                            in_batch[tm.input_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5, dependents)
-                        
-                        for tm in output_maps:
-                            if tm in dependents:
-                                out_batch[tm.output_name()][stats['batch_index']] = dependents[tm]
-                            else:
-                                out_batch[tm.output_name()][stats['batch_index']] = tm.tensor_from_file(tm, hd5)
-
-                        paths_in_batch.append(tp)
-                        stats['batch_index'] += 1
-                        stats['Tensors presented from list '+str(i)] += 1
-                        stats['train_paths_' + str(i)] += 1
-                        stats[f'group{i}_samples'] += 1
-                        if stats['batch_index'] == batch_size:
-                            if mixup_alpha > 0 and keep_paths:
-                                yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True) + (paths_in_batch[:batch_size // 2],)
-                            elif mixup_alpha > 0:
-                                yield _mixup_batch(in_batch, out_batch, mixup_alpha, permute_first=True)
-                            elif keep_paths:
-                                yield in_batch, out_batch, paths_in_batch
-                            else:
-                                yield in_batch, out_batch
-                            stats['batch_index'] = 0
-                            paths_in_batch = []
-                            for k in range(len(samples)):
-                                stats[f'group{k}_samples'] = 0
-
-                except IndexError as e:
-                    stats['IndexError:'+str(e)] += 1
-                except KeyError as e:
-                    stats['Key Problems from list ' + str(i)] += 1
-                    stats['KeyError:'+str(e)] += 1
-                except OSError as e:
-                    stats['OSError:'+str(e)] += 1
-                except ValueError as e:
-                    stats['ValueError:'+str(e)] += 1
-                except RuntimeError:
-                    stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
-                _log_first_error(stats, tp)
-        
-        for i, tensor_list in enumerate(paths_lists):
-            if len(tensor_list) <= stats['train_paths_'+str(i)]:
-                stats['epochs_list_number_'+str(i)] += 1
-                stats['train_paths_'+str(i)] = 0
-                for k in stats:
-                    logging.info(f"{k} has: {stats[k]}")
-                logging.info(f"Generator looped over {len(tensor_list)} tensors from CSV group {i}.")
 
 
 def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
