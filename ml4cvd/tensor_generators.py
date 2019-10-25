@@ -19,8 +19,10 @@ import traceback
 import threading
 import numpy as np
 from collections import Counter
+from contextlib import contextmanager
 from multiprocessing import Process, Queue
 from typing import List, Dict, Tuple, Generator, Optional
+
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -65,7 +67,11 @@ class TensorGenerator:
             raise NotImplementedError('Weighted generator not implemented.')
 
     def __next__(self):
-        yield self.q.get()
+        return self.q.get()
+
+    def kill(self):
+        for p in self.workers:
+            p.terminate()
 
 
 class TMArrayCache:
@@ -449,6 +455,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
     return train_paths, valid_paths, test_paths
 
 
+@contextmanager
 def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        tensor_maps_out: List[TensorMap],
                                        tensors: str,
@@ -478,18 +485,25 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
-    if len(balance_csvs) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
-        weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
-        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths)
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
-    else:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths)
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test)
-    return generate_train, generate_valid, generate_test
+    generate_train, generate_valid, generate_test = None, None, None
+    try:
+        if len(balance_csvs) > 0:
+            raise NotImplementedError('Balanced training not implemented yet')
+            train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
+            weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
+            generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha)
+            generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths)
+            generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
+        else:
+            train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
+            generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha)
+            generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths)
+            generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test)
+        yield generate_train, generate_valid, generate_test
+    finally:
+        for generator in (generate_train, generate_valid, generate_test):
+            if generator is not None:
+                generator.kill()
 
 
 def _log_first_error(stats: Counter, tensor_path: str):

@@ -87,14 +87,14 @@ def run(args):
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, generate_valid, generate_test):
+        model = make_multimodal_multitask_model(**args.__dict__)
+        model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                            args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
+        out_path = os.path.join(args.output_folder, args.id + '/')
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
 
 
 def test_multimodal_multitask(args):
