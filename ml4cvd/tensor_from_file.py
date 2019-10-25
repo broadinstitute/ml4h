@@ -259,6 +259,15 @@ TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='propo
                                           tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
                                           tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
+TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
+TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
+TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
+
 
 
 def _make_ecg_rest(population_normalize: float = None):

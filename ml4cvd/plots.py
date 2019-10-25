@@ -293,8 +293,6 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
         pass
     plt.plot(range(0, days_window, 1+days_window//intervals), 1-predicted_proportion, marker='o', label='predicted_proportion')
     plt.plot(range(0, days_window, 1+days_window//intervals), 1-true_proportion, marker='o', label='true_proportion')
-    #plt.plot(range(intervals), predicted_proportion[:intervals], marker='o', label='predicted_proportion')
-    #plt.plot(range(intervals), true_proportion[:intervals], marker='o', label='true_proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.title(title + '\n')
