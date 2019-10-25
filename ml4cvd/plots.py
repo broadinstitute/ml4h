@@ -284,8 +284,8 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     predicted_proportion = np.sum(prediction, axis=0) / prediction.shape[0]
     true_proportion = np.sum(truth, axis=0) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
-    logging.info(f"proportion shape is: {predicted_proportion[:6]} truth shape is: {true_proportion[:6]} begin")
-    logging.info(f"proportion shape is: {predicted_proportion[intervals:6+intervals]} truth shape is: {true_proportion[intervals:6+intervals]} begin")
+    logging.info(f"truth is: {true_proportion}")
+    logging.info(f"proportion pred: {predicted_proportion}")
     if paths is not None:
         pass
     #plt.plot(range(0, days_window, 1+days_window//intervals), predicted_proportion[:intervals], marker='o', label='predicted_proportion')
@@ -297,7 +297,7 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     plt.title(title + '\n')
     plt.legend(loc="upper right")
 
-    figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'hazards_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info("Try to save survival plot at: {}".format(figure_path))
