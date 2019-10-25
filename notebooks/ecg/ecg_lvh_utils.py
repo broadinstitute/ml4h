@@ -149,6 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--ecg_csv', help='CSV file with dataframe of ECGs', default='ecg_views_all_10_23_2019.csv')
     parser.add_argument('--row_num', help='Patient entry number to plot', type=int)
     parser.add_argument('--out_folder', help='Folder where to save PDFs', default='/home/pdiachil/ml/notebooks/ecg')
+    parser.add_argument('--blind', help='Removes automatic ECG interpretation for blind test', action='store_true')
     args = parser.parse_args()
     
     df = ecg_csv_to_df(args.ecg_csv)
@@ -157,8 +158,8 @@ if __name__ == '__main__':
         traces = get_ecg_traces(hd5)
     fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
     yrange = get_yrange(traces)
-    plot_traces(traces, lead_mapping, amp_mapping, fig, ax, yrange, offset=3, pat_df=None, is_median=False)
-    plot_traces(traces, median_mapping, amp_mapping, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True)
+    plot_traces(traces, lead_mapping, amp_mapping, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=args.blind)
+    plot_traces(traces, median_mapping, amp_mapping, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=args.blind)
     fig.savefig(os.path.join(args.out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")
     
     
