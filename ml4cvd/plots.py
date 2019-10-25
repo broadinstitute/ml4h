@@ -277,7 +277,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
