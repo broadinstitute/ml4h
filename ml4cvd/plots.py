@@ -281,8 +281,8 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
-    logging.info(f"Prediction  is: {prediction[:5,:5]} truth  is: {truth.shape[:5,:5]}")
-    logging.info(f"Prediction  is: {prediction[:5, intervals:intervals+5]} truth  is: {truth.shape[:5, intervals:intervals+5]}")
+    logging.info(f"Prediction  is: {prediction[:5,:5]} truth  is: {truth[:5,:5]}")
+    logging.info(f"Prediction  is: {prediction[:5, intervals:intervals+5]} truth  is: {truth[:5, intervals:intervals+5]}")
     predicted_proportion = np.sum(prediction, axis=0) / prediction.shape[0]
     true_proportion = np.sum(truth, axis=0) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
