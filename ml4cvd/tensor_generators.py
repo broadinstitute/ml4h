@@ -30,23 +30,42 @@ from ml4cvd.TensorMap import TensorMap
 np.set_printoptions(threshold=np.inf)
 
 
+def _partition_list(a: List, n: int) -> List[List]:
+    """
+    Partitions list into almost even chunks, with the last chunk getting len(a) % n extra parts
+    :param a: list to partition
+    :param n: number of partitions
+    :return: list of partitioned lists
+    """
+    partitions = []
+    step = len(a) // n
+    for i in range(n):
+        if i == n - 1:
+            partitions.append(a[i * step:])
+        else:
+            partitions.append(a[i * step: (i + 1) * step])
+    return partitions
+
+
 class TensorGenerator:
-    def __init__(self, batch_size, input_maps, output_maps, paths, weights=None, keep_paths=False, mixup=0.0):
-        num_workers = 4
-        max_q_size = 32
-        step = len(paths) // num_workers
+    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False, mixup=0.0):
+        """
+        :param paths: If weights is provided, paths should be a list of path lists the same length as weights
+        """
         self.workers = []
+        max_q_size = 32
         self.q = Queue(max_q_size)
-        for i in range(num_workers):
-            if i == num_workers - 1:
-                worker_paths = paths[i * step:]
-            else:
-                worker_paths = paths[i * step: (i + 1) * step]
-            process = Process(target=multimodal_multitask_worker, args=(self.q, batch_size, input_maps, output_maps, worker_paths, keep_paths, mixup, weights))
+        if weights is None:
+            worker_path_lists = _partition_list(paths, num_workers)
+        else:
+            worker_path_lists = [_partition_list(a, num_workers) for a in paths]
+        for worker_paths in worker_path_lists:
+            process = Process(target=multimodal_multitask_worker,
+                              args=(self.q, batch_size, input_maps, output_maps, worker_paths, keep_paths, cache_size, mixup, weights))
             process.start()
             self.workers.append(process)
 
-    def __next__(self):
+    def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         return self.q.get()
 
@@ -125,7 +144,7 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: boo
     return hd5
 
 
-def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths,
+def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths, cache_size,
                                 mixup_alpha, weights=None):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
@@ -154,7 +173,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMArrayCache(.25e9, input_maps, output_maps)  # 1 GB, will be param later
+    cache = TMArrayCache(cache_size, input_maps, output_maps)  # 1 GB, will be param later
 
     while True:
         simple_stats = Counter()
@@ -363,14 +382,13 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        valid_ratio: float,
                                        test_ratio: float,
                                        test_modulo: int,
+                                       num_workers: int,
+                                       cache_size: float,
                                        balance_csvs: List[str],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
                                        mixup_alpha: float = -1.0,
-                                       **kwargs) -> Tuple[
-        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
-        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
-        Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None]]:
+                                       **kwargs) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
     """ Get 3 tensor generator functions for training, validation and testing data.
 
     :param maps_in: list of TensorMaps that are input names to a model
@@ -388,17 +406,14 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     generate_train, generate_valid, generate_test = None, None, None
     try:
         if len(balance_csvs) > 0:
-            raise NotImplementedError('Balanced training not implemented yet')
             train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
-            weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
-            generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, weights, keep_paths, mixup_alpha)
-            generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, weights, keep_paths)
-            generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, weights, keep_paths or keep_paths_test)
+            weights = None
         else:
             train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
-            generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, None, keep_paths, mixup_alpha)
-            generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, None, keep_paths)
-            generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, None, keep_paths or keep_paths_test)
+            weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers, cache_size, None, keep_paths)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, None, keep_paths or keep_paths_test)
         yield generate_train, generate_valid, generate_test
     finally:
         for generator in (generate_train, generate_valid, generate_test):
