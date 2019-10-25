@@ -255,6 +255,10 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss=
 
 TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
                                           tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 
 
 def _make_ecg_rest(population_normalize: float = None):
