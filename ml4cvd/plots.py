@@ -568,9 +568,12 @@ def ecg_resting_traces(hd5):
     for key, data in leads.items(): 
         twelve_leads[key]['raw'] = leads[key]
         if len(data) == 5000:
-            (twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'], 
-             twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'], 
-             twelve_leads[key]['heart_rate']) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)    
+            try:
+                (twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'], 
+                 twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'], 
+                 twelve_leads[key]['heart_rate']) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)
+            except:
+                twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
     return twelve_leads
 
 
@@ -680,6 +683,7 @@ def plot_ecg_resting(df, rows, out_folder, is_blind):
         pat_df = df.iloc[row]
         with h5py.File(pat_df['full_path'], 'r') as hd5:
             traces = ecg_resting_traces(hd5)
+        matplotlib.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
         yrange = ecg_resting_yrange(traces)
         subplot_ecg_resting(traces, LEAD_MAPPING, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
