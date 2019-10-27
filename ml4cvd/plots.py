@@ -4,6 +4,7 @@
 import os
 import math
 import h5py
+import time
 import logging
 import hashlib
 import operator
@@ -574,6 +575,7 @@ def ecg_resting_traces(hd5):
                  twelve_leads[key]['heart_rate']) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)
             except:
                 twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
+        # twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
     return twelve_leads
 
 
@@ -680,16 +682,22 @@ def ecg_resting_csv_to_df(csv):
 
 def plot_ecg_resting(df, rows, out_folder, is_blind):
     for row in rows:
+        time_0 = time.time()
         pat_df = df.iloc[row]
         with h5py.File(pat_df['full_path'], 'r') as hd5:
             traces = ecg_resting_traces(hd5)
         matplotlib.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
+        time_a = time.time()
         yrange = ecg_resting_yrange(traces)
+        time_b = time.time()
         subplot_ecg_resting(traces, LEAD_MAPPING, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
+        time_c = time.time()
         subplot_ecg_resting(traces, MEDIAN_MAPPING, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
+        time_d = time.time()
         fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")    
-
+        time_e = time.time()
+        print(time_a-time_0, time_b-time_a, time_c-time_b, time_d-time_c, time_e-time_d)
 
 def plot_ecg_resting_mp(ecg_csv, row_min, row_max, out_folder, ncpus=1, is_blind=False):
     df = ecg_resting_csv_to_df(ecg_csv)
