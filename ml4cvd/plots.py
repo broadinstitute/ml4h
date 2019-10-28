@@ -318,7 +318,7 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
             plt.plot(x_days, predicted_survivals[i], label=f'sick_{i}', color='red')
             plt.text(sick_day, predicted_survivals[i, sick_period], 'Diagnosed')
         else:
-            plt.plot(x_days, predicted_survivals[i], label=f'not_sick_{i}')
+            plt.plot(x_days, predicted_survivals[i], label=f'not_sick_{i}', color='green')
     plt.title(title + '\n')
     plt.legend(loc="upper right")
     plt.xlabel('Follow up time (days)')
