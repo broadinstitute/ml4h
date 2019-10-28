@@ -321,7 +321,7 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
             plt.plot(x_days, predicted_survivals[i], label=f'sick_{i}', color='red')
             plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day}')
             cur_sick += 1
-            if cur_sick >= min_sick:
+            if cur_sick >= min_sick and i >= num_curves:
                 break
         elif cur_healthy < num_curves:
             plt.plot(x_days, predicted_survivals[i], label=f'not_sick_{i}', color='green')
