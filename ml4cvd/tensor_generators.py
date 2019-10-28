@@ -75,12 +75,12 @@ class TensorGenerator:
             else:
                 cache = self._caches[i]
             name = f'{self.name}_{i}'
+            logging.info(f"{'Res' if cache.data else 'S'}tarting worker {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
                                   self.keep_paths, cache, self.mixup, name, self.weights,
                               ))
-            logging.info(f"{'Rei' if cache.data else 'I'}nitialized worker {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
             process.start()
             self.workers.append(process)
 
@@ -92,8 +92,9 @@ class TensorGenerator:
 
     def kill_workers(self):
         if self._started:
-            for p in self.workers:
-                p.terminate()
+            for worker in self.workers:
+                logging.info(f'Stopping {worker.name}.')
+                worker.terminate()
 
 
 class TMArrayCache:
