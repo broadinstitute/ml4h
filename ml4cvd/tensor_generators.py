@@ -24,7 +24,7 @@ from multiprocessing import Process, Queue
 from typing import List, Dict, Tuple, Set, Optional
 
 
-from ml4cvd.defines import TENSOR_EXT, TENSOR_GENERATOR_TIMEOUT
+from ml4cvd.defines import TENSOR_EXT, TENSOR_GENERATOR_TIMEOUT, TENSOR_GENERATOR_MAX_Q_SIZE
 from ml4cvd.TensorMap import TensorMap
 
 np.set_printoptions(threshold=np.inf)
@@ -52,28 +52,44 @@ class TensorGenerator:
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
-        self.workers = []
-        max_q_size = 32
-        self.q = Queue(max_q_size)
-        if weights is None:
-            worker_path_lists = _partition_list(paths, num_workers)
-        else:
-            worker_path_lists = [_partition_list(a, num_workers) for a in paths]
-        for i, worker_paths in enumerate(worker_path_lists):
-            process = Process(target=multimodal_multitask_worker, name=f'{name}_{i}',
-                              args=(self.q, batch_size, input_maps, output_maps, worker_paths, keep_paths, cache_size, mixup, weights))
-            self.workers.append(process)
         self._started = False
+        self.workers = []
+        self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
+        self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name = \
+            batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name
+        self._caches = []
+        if weights is None:
+            self.worker_path_lists = _partition_list(paths, num_workers)
+        else:
+            self.worker_path_lists = [_partition_list(a, num_workers) for a in paths]
+
+    def init_workers(self):
+        self.kill_workers()  # A TensorGenerator should only have num_workers workers at one time
+        self._started = True
+        build_caches = not self._caches  # This maintains caches if they already exist
+        for i, worker_paths in enumerate(self.worker_path_lists):
+            if build_caches:
+                max_rows = len(worker_paths) if self.weights is None else sum(map(len, worker_paths))
+                cache = TMArrayCache(self.cache_size, self.input_maps, self.output_maps, max_rows)
+                self._caches.append(cache)
+            else:
+                cache = self._caches[i]
+            name = f'{self.name}_{i}'
+            process = Process(target=multimodal_multitask_worker, name=name,
+                              args=(
+                                  self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
+                                  self.keep_paths, cache, self.mixup, self.name, self.weights,
+                              ))
+            process.start()
+            self.workers.append(process)
 
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
-            self._started = True
-            for process in self.workers:
-                process.start()
+            self.init_workers()
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         return self.q.get(TENSOR_GENERATOR_TIMEOUT)  # TODO: should the generator retry on timeout?
 
-    def kill(self):
+    def kill_workers(self):
         if self._started:
             for p in self.workers:
                 p.terminate()
@@ -150,8 +166,8 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: boo
     return hd5
 
 
-def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths, cache_size,
-                                mixup_alpha, weights=None):
+def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths, cache,
+                                mixup_alpha, name, weights=None):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -165,6 +181,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
         train_paths: list of hd5 tensors shuffled after every loop or epoch
         keep_paths: If true will also yield the paths to the tensors used in this batch
         mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
+        name: Name of the worker for logs
 
     What gets enqueued:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
@@ -179,8 +196,6 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    max_rows = len(train_paths) if weights is None else sum(map(len, train_paths))
-    cache = TMArrayCache(cache_size, input_maps, output_maps, max_rows)
 
     while True:
         simple_stats = Counter()
@@ -258,7 +273,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             f"{simple_stats['skipped_paths']} paths were skipped because they previously failed.",
             f"{(time.time() - start):.2f} seconds elapsed.",
         ])
-        logging.info(f"In true epoch {stats['epochs']}:\n\t{info_string}")
+        logging.info(f"Worker {name}: In true epoch {stats['epochs']}:\n\t{info_string}")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
@@ -437,7 +452,8 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     finally:
         for generator in (generate_train, generate_valid, generate_test):
             if generator is not None:
-                generator.kill()
+                generator.kill_workers()
+                del generator  # Get rid of the generator's caches
 
 
 def _log_first_error(stats: Counter, tensor_path: str):

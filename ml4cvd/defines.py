@@ -14,6 +14,7 @@ class DataSetType(Enum):
 
 
 TENSOR_GENERATOR_TIMEOUT = 64
+TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
 DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
 

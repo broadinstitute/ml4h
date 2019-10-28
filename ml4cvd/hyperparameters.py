@@ -70,6 +70,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
         def loss_from_multimodal_multitask(x):
             nonlocal i
             i += 1
+            generate_train.init_workers(), generate_valid.init_workers(), generate_test.init_workers()  # This starts the generators over
             try:
                 set_args_from_x(args, x)
                 model = make_multimodal_multitask_model(**args.__dict__)
@@ -92,7 +93,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 del model
                 return loss_and_metrics[0]
 
-            except ValueError as e:
+            except ValueError:
                 logging.exception('ValueError trying to make a model for hyperparameter optimization. Returning max loss.')
                 return MAX_LOSS
             except:
