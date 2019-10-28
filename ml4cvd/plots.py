@@ -291,7 +291,7 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     logging.info(f"proportion predicted: \n{predicted_proportion}")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - predicted_proportion, marker='o', label='predicted_proportion')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label='predicted_proportion')
     #plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - predicted_out, marker='o', label='predicted_out')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='true_proportion')
     plt.xlabel('Follow up time (days)')
