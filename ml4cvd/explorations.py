@@ -341,7 +341,7 @@ def test_labels_to_label_dictionary(test_labels: Dict[TensorMap, np.ndarray], ex
             if tm.is_continuous():
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            else:
+            elif tm.is_categorical_any():
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 
