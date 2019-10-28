@@ -174,7 +174,7 @@ class TensorMap(object):
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
         elif self.loss is None and self.is_proportional_hazard():
-            self.loss = survival_likelihood_loss(self.shape[0])
+            self.loss = survival_likelihood_loss(self.shape[0]//2)
         elif self.loss is None:
             self.loss = 'mse'
 
