@@ -52,9 +52,9 @@ class TensorGenerator:
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
+        self.q = None
         self._started = False
         self.workers = []
-        self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name
         self._caches = []
@@ -64,6 +64,7 @@ class TensorGenerator:
             self.worker_path_lists = [_partition_list(a, num_workers) for a in paths]
 
     def init_workers(self):
+        self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
         self.kill_workers()  # A TensorGenerator should only have num_workers workers at one time
         self._started = True
         build_caches = not self._caches  # This maintains caches if they already exist
@@ -95,6 +96,7 @@ class TensorGenerator:
             for worker in self.workers:
                 logging.info(f'Stopping {worker.name}.')
                 worker.terminate()
+        self.workers = []
 
 
 class TMArrayCache:
