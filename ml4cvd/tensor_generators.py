@@ -75,7 +75,7 @@ class TensorGenerator:
             else:
                 cache = self._caches[i]
             name = f'{self.name}_{i}'
-            logging.info(f"{'Res' if cache.data else 'S'}tarting worker {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
+            logging.info(f"{'Res' if build_caches else 'S'}tarting worker {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
