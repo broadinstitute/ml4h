@@ -283,12 +283,13 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
     logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
+    logging.info(f"Last 8 survive True steps: {truth[:, intervals-8:intervals]}")
     predicted_proportion = np.sum(prediction[:, :intervals], axis=0) / truth.shape[0]
     predicted_out = np.sum(prediction[:, intervals:], axis=0) / truth.shape[0]
     true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
-    logging.info(f"truth is: {true_proportion}")
-    logging.info(f"proportion pred: {predicted_proportion}")
+    logging.info(f"true sick proportion is: \n{true_proportion}")
+    logging.info(f"proportion predicted: \n{predicted_proportion}")
     if paths is not None:
         pass
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - predicted_proportion, marker='o', label='predicted_proportion')
