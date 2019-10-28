@@ -104,7 +104,7 @@ class TMArrayCache:
         self.max_size = max_size
         self.data = {}
         self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in input_tms + output_tms)
-        self.nrows = max(int(max_size / self.row_size), max_rows)
+        self.nrows = min(int(max_size / self.row_size), max_rows)
         for tm in input_tms:
             self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
         for tm in output_tms:
@@ -237,23 +237,27 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             except IndexError as e:
                 stats[f"IndexError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
+                cache.failed_paths.add(tp)
             except KeyError as e:
                 stats[f"KeyError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
+                cache.failed_paths.add(tp)
             except ValueError as e:
                 stats[f"ValueError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
+                cache.failed_paths.add(tp)
             except OSError as e:
                 stats[f"OSError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
+                cache.failed_paths.add(tp)
             except RuntimeError as e:
                 stats[f"RuntimeError while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
                 simple_stats[str(e)] += 1
+                cache.failed_paths.add(tp)
             finally:
                 if hd5 is not None:
                     hd5.close()
                 _log_first_error(stats, tp)
-                cache.failed_paths.add(tp)
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
         for k in stats:
