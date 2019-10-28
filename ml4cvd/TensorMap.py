@@ -175,6 +175,7 @@ class TensorMap(object):
             self.loss = 'mse'
         elif self.loss is None and self.is_proportional_hazard():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
+            self.activation = 'sigmoid'
         elif self.loss is None:
             self.loss = 'mse'
 
