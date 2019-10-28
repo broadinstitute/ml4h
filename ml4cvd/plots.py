@@ -5,6 +5,7 @@ import os
 import math
 import h5py
 import time
+import glob
 import logging
 import hashlib
 import operator
@@ -609,12 +610,13 @@ def ecg_resting_yrange(twelve_leads, default_yrange=3.0, raw_scale=0.005, time_i
     return yrange
 
     
-def subplot_ecg_resting(twelve_leads, lead_mapping, f, ax, yrange, offset, pat_df=None, is_median=False, raw_scale = 0.005, is_blind=False):
+def subplot_ecg_resting(twelve_leads, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
     # plot will be in seconds vs mV, boxes are
     sec_per_box = 0.04
     mv_per_box = .1
     time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
     median_interval = 1.2  # 600 samples at 500Hz
+    raw_scale = 0.005
     # if available, extract patient metadata and ECG interpretation 
     if pat_df is not None:
         avl_yn = 'Y' if pat_df['aVL']>0.5 else 'N'
@@ -682,26 +684,33 @@ def ecg_resting_csv_to_df(csv):
 
 def plot_ecg_resting(df, rows, out_folder, is_blind):
     for row in rows:
-        time_0 = time.time()
         pat_df = df.iloc[row]
         with h5py.File(pat_df['full_path'], 'r') as hd5:
             traces = ecg_resting_traces(hd5)
         matplotlib.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
-        time_a = time.time()
         yrange = ecg_resting_yrange(traces)
-        time_b = time.time()
         subplot_ecg_resting(traces, LEAD_MAPPING, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
-        time_c = time.time()
         subplot_ecg_resting(traces, MEDIAN_MAPPING, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
-        time_d = time.time()
         fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")    
-        time_e = time.time()
-        print(time_a-time_0, time_b-time_a, time_c-time_b, time_d-time_c, time_e-time_d)
+        
 
-def plot_ecg_resting_mp(ecg_csv, row_min, row_max, out_folder, ncpus=1, is_blind=False):
+def remove_duplicate_rows(df, out_folder):
+    arr_list = []
+    pdfs = glob.glob(out_folder+'/*.pdf')
+    for i, row in df.iterrows():      
+        if os.path.join(out_folder, row['patient_id']+'.pdf') not in pdfs:
+            arr_list.append(i)
+    arr = np.array(arr_list, dtype=np.int)
+    return arr
+
+
+def plot_ecg_resting_mp(ecg_csv, row_min, row_max, out_folder, ncpus=1, is_blind=False, overwrite=False):
     df = ecg_resting_csv_to_df(ecg_csv)
-    row_arr = np.arange(row_min, row_max, dtype=np.int)
+    if overwrite:
+        row_arr = np.arange(row_min, row_max+1, dtype=np.int64)
+    else:
+        row_arr = remove_duplicate_rows(df, out_folder)    
     row_split = np.array_split(row_arr, ncpus)
     pool = Pool(ncpus)
     pool.starmap(plot_ecg_resting, zip([df]*ncpus, row_split, [out_folder]*ncpus, [is_blind]*ncpus))
