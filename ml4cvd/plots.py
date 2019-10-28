@@ -305,20 +305,27 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=54):
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
     x_days = range(0, days_window, 1 + days_window // intervals)
-    for i in range(num_curves):
+    cur_sick = 0
+    cur_healthy = 0
+    min_sick = num_curves * 0.1
+    for i in range(truth.shape[0]):
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
             plt.plot(x_days, predicted_survivals[i], label=f'sick_{i}', color='red')
-            plt.text(sick_day, predicted_survivals[i, sick_period], 'Diagnosed')
-        else:
+            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day}')
+            cur_sick += 1
+            if cur_sick >= min_sick:
+                break
+        elif cur_healthy < num_curves:
             plt.plot(x_days, predicted_survivals[i], label=f'not_sick_{i}', color='green')
+            cur_healthy += 1
     plt.title(title + '\n')
     plt.legend(loc="upper right")
     plt.xlabel('Follow up time (days)')
