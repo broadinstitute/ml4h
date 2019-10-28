@@ -77,7 +77,6 @@ def hyperparam_optimizer(args, space, param_lists={}):
                     del model
                     return MAX_LOSS
 
-                generate_train.init_workers(), generate_valid.init_workers()  # This starts the generators over
                 model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
                                                              args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                              args.inspect_model, args.inspect_show_labels, True, False)

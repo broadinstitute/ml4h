@@ -57,26 +57,19 @@ class TensorGenerator:
         self.workers = []
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name
-        self._caches = []
         if weights is None:
             self.worker_path_lists = _partition_list(paths, num_workers)
         else:
             self.worker_path_lists = [_partition_list(a, num_workers) for a in paths]
 
-    def init_workers(self):
+    def _init_workers(self):
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
-        self.kill_workers()  # A TensorGenerator should only have num_workers workers at one time
         self._started = True
-        build_caches = not self._caches  # This maintains caches if they already exist
         for i, worker_paths in enumerate(self.worker_path_lists):
-            if build_caches:
-                max_rows = len(worker_paths) if self.weights is None else sum(map(len, worker_paths))
-                cache = TMArrayCache(self.cache_size, self.input_maps, self.output_maps, max_rows)
-                self._caches.append(cache)
-            else:
-                cache = self._caches[i]
+            max_rows = len(worker_paths) if self.weights is None else sum(map(len, worker_paths))
+            cache = TMArrayCache(self.cache_size, self.input_maps, self.output_maps, max_rows)
             name = f'{self.name}_{i}'
-            logging.info(f"{'S' if build_caches else 'Res'}tarting {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
+            logging.info(f"Starting {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
@@ -87,7 +80,7 @@ class TensorGenerator:
 
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
-            self.init_workers()
+            self._init_workers()
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         return self.q.get(TENSOR_GENERATOR_TIMEOUT)  # TODO: should the generator retry on timeout?
 
@@ -149,7 +142,7 @@ class TMArrayCache:
         return sum(self.files_seen.values())
 
     def average_fill(self):
-        return np.mean(list(self.files_seen.values())) / self.nrows
+        return np.mean(list(self.files_seen.values()) or [0]) / self.nrows
 
 
 def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: bool, tp: str, idx, batch, dependents):
