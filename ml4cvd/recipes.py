@@ -539,10 +539,10 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
     if embeddings is None:
         embeddings = embed_model_predict(model, tensor_maps_in, hidden_layer_name, test_data, batch_size)
 
-    label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
-
     gene_labels = []
-    plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
+    label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
+    if len(categorical_labels) > 0 or len(continuous_labels) > 0 or len(gene_labels) > 0:
+        plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
 
 
 def _get_tensor_files(tensor_dir):
