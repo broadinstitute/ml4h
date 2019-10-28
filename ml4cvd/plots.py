@@ -84,7 +84,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.is_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
-        plot_survival_curves(y_predictions, y_truth, title, prefix=folder)
+        plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
     elif len(tm.shape) > 1:
         prediction_flat = tm.rescale(y_predictions).flatten()
         truth_flat = tm.rescale(y_truth).flatten()
@@ -305,7 +305,7 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50):
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50, paths=None):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
@@ -318,13 +318,13 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
-            plt.plot(x_days, predicted_survivals[i], label=f'sick_{i}', color='red')
-            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day}')
+            plt.plot(x_days, predicted_survivals[i], label=f'sick_{paths[i]}', color='red')
+            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} {paths[i]}')
             cur_sick += 1
             if cur_sick >= min_sick and i >= num_curves:
                 break
         elif cur_healthy < num_curves:
-            plt.plot(x_days, predicted_survivals[i], label=f'not_sick_{i}', color='green')
+            plt.plot(x_days, predicted_survivals[i], label=f'ok_{paths[i]}_p:{predicted_survivals[i, -1]}', color='green')
             cur_healthy += 1
     plt.title(title + '\n')
     plt.legend(loc="upper right")
