@@ -70,7 +70,7 @@ def survival_tensor(start_date_key, day_window):
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
-            survival_then_censor[i] = float(cur_date < disease_date)
+            survival_then_censor[i] = float(cur_date > disease_date)
             survival_then_censor[intervals+i] = has_disease * float(disease_date < cur_date < disease_date + datetime.timedelta(days=days_per_interval))
         return survival_then_censor
 
@@ -254,25 +254,25 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss=
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
 
 TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('ecg_rest_date', 365*5), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
+                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.CONTINUOUS)
 
 
 
