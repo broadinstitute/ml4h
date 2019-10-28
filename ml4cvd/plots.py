@@ -321,12 +321,12 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
             plt.plot(x_days, predicted_survivals[i], label=f'sick_{p} p:{last_prob:0.2f}', color='red')
-            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} {p}')
+            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} id:{p}')
             cur_sick += 1
             if cur_sick >= min_sick and i >= num_curves:
                 break
         elif cur_healthy < num_curves:
-            plt.plot(x_days, predicted_survivals[i], label=f'ID:{p} p:{last_prob:0.2f}', color='green')
+            plt.plot(x_days, predicted_survivals[i], label=f'id:{p} p:{last_prob:0.2f}', color='green')
 
             cur_healthy += 1
     plt.title(title + '\n')
