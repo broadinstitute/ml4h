@@ -21,10 +21,10 @@ from collections import Counter
 from random import choices, shuffle
 from contextlib import contextmanager
 from multiprocessing import Process, Queue
-from typing import List, Dict, Tuple, Generator, Optional
+from typing import List, Dict, Tuple, Set, Optional
 
 
-from ml4cvd.defines import TENSOR_EXT
+from ml4cvd.defines import TENSOR_EXT, TENSOR_GENERATOR_TIMEOUT
 from ml4cvd.TensorMap import TensorMap
 
 np.set_printoptions(threshold=np.inf)
@@ -71,7 +71,7 @@ class TensorGenerator:
             for process in self.workers:
                 process.start()
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
-        return self.q.get()
+        return self.q.get(TENSOR_GENERATOR_TIMEOUT)  # TODO: should the generator retry on timeout?
 
     def kill(self):
         if self._started:
@@ -84,11 +84,11 @@ class TMArrayCache:
     Caches numpy arrays created by tensor maps up to a maximum number of bytes
     """
 
-    def __init__(self, max_size, input_tms: List[TensorMap], output_tms: List[TensorMap]):
+    def __init__(self, max_size, input_tms: List[TensorMap], output_tms: List[TensorMap], max_rows: int):
         self.max_size = max_size
         self.data = {}
         self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in input_tms + output_tms)
-        self.nrows = int(max_size / self.row_size)
+        self.nrows = max(int(max_size / self.row_size), max_rows)
         for tm in input_tms:
             self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
         for tm in output_tms:
@@ -96,6 +96,7 @@ class TMArrayCache:
         self.files_seen = Counter()  # name -> max position filled in cache
         self.key_to_index = {}  # file_path, name -> position in self.data
         self.hits = 0
+        self.failed_paths: Set[str] = set()
 
     def __setitem__(self, key: Tuple[str, str], value):
         """
@@ -178,7 +179,8 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
         batch_size *= 2
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
-    cache = TMArrayCache(cache_size, input_maps, output_maps)  # 1 GB, will be param later
+    max_rows = len(train_paths) if weights is None else sum(map(len, train_paths))
+    cache = TMArrayCache(cache_size, input_maps, output_maps, max_rows)
 
     while True:
         simple_stats = Counter()
@@ -193,6 +195,9 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             shuffle(paths)
         paths = train_paths
         for tp in paths:
+            if tp in cache.failed_paths:  # TODO: should this be an argument? It will speed up error prone deterministic TMAP processing significantly
+                simple_stats['skipped_paths'] += 1
+                continue
             try:
                 hd5 = None
                 dependents = {}
@@ -233,6 +238,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
                 if hd5 is not None:
                     hd5.close()
                 _log_first_error(stats, tp)
+                cache.failed_paths.add(tp)
         stats['epochs'] += 1
         np.random.shuffle(train_paths)
         for k in stats:
@@ -245,6 +251,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
             f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {100 * cache.average_fill():.0f}% full.",
             f"So far there have been {cache.hits} cache hits.",
+            f"{simple_stats['skipped_paths']} paths were skipped because they previously failed.",
             f"{(time.time() - start):.2f} seconds elapsed.",
         ])
         logging.info(f"In true epoch {stats['epochs']}:\n\t{info_string}")
@@ -396,16 +403,19 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        **kwargs) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
     """ Get 3 tensor generator functions for training, validation and testing data.
 
-    :param maps_in: list of TensorMaps that are input names to a model
-    :param maps_out: list of TensorMaps that are output from a model
+    :param tensor_maps_in: list of TensorMaps that are input names to a model
+    :param tensor_maps_out: list of TensorMaps that are output from a model
     :param tensors: directory containing tensors
     :param batch_size: number of examples in each mini-batch
     :param valid_ratio: rate of tensors to use for validation
     :param test_ratio: rate of tensors to use for testing
     :param test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
+    :param num_workers: number of processes spun off for training and testing. Validation uses half as many workers
+    :param cache_size: size in bytes of maximum cache for EACH worker
     :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
+    :param mixup_alpha: parameter for distribution to sample mixup amount from
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
@@ -417,7 +427,7 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
             train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
             weights = None
         generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker')
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers, cache_size, None, keep_paths, name='validation_worker')
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, None, keep_paths, name='validation_worker')  # TODO: should validation have fewer workers?
         generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, None, keep_paths or keep_paths_test, name='test_worker')
         yield generate_train, generate_valid, generate_test
     finally:
