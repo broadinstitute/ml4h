@@ -305,9 +305,9 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=24):
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=32):
     intervals = truth.shape[-1] // 2
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
     x_days = range(0, days_window, 1 + days_window // intervals)
