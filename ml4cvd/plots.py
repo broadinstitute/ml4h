@@ -305,7 +305,7 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=48):
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=54):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
