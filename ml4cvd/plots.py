@@ -710,7 +710,7 @@ def plot_ecg_resting_mp(ecg_csv, row_min, row_max, out_folder, ncpus=1, is_blind
     if overwrite:
         row_arr = np.arange(row_min, row_max+1, dtype=np.int64)
     else:
-        row_arr = remove_duplicate_rows(df, out_folder)    
+        row_arr = remove_duplicate_rows(df.iloc[row_min:row_max+1], out_folder)    
     row_split = np.array_split(row_arr, ncpus)
     pool = Pool(ncpus)
     pool.starmap(plot_ecg_resting, zip([df]*ncpus, row_split, [out_folder]*ncpus, [is_blind]*ncpus))
