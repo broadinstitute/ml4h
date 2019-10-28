@@ -100,7 +100,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 return MAX_LOSS
 
         trials = hyperopt.Trials()
-    fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
+        fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
     plot_trials(trials, histories, fig_path, param_lists)
     logging.info('Saved learning plot to:{}'.format(fig_path))
 
