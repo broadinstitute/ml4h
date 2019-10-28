@@ -78,8 +78,9 @@ class TensorGenerator:
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
-                                  self.keep_paths, cache, self.mixup, self.name, self.weights,
+                                  self.keep_paths, cache, self.mixup, name, self.weights,
                               ))
+            logging.info(f"{'Rei' if cache.data else 'I'}nitialized worker {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
             process.start()
             self.workers.append(process)
 
