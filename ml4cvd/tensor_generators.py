@@ -75,7 +75,7 @@ class TensorGenerator:
             else:
                 cache = self._caches[i]
             name = f'{self.name}_{i}'
-            logging.info(f"{'Res' if build_caches else 'S'}tarting worker {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
+            logging.info(f"{'S' if build_caches else 'Res'}tarting {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
@@ -275,7 +275,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             f"{simple_stats['skipped_paths']} paths were skipped because they previously failed.",
             f"{(time.time() - start):.2f} seconds elapsed.",
         ])
-        logging.info(f"Worker {name}: In true epoch {stats['epochs']}:\n\t{info_string}")
+        logging.info(f"Worker {name} - In true epoch {stats['epochs']}:\n\t{info_string}")
         if stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 

@@ -60,17 +60,13 @@ def hyperparam_optimizer(args, space, param_lists={}):
     args.keep_paths = False
     args.keep_paths_test = False
     with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, generate_valid, generate_test):
-        test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
-
         histories = []
-
         fig_path = os.path.join(args.output_folder, args.id, 'plots')
         i = 0
 
         def loss_from_multimodal_multitask(x):
             nonlocal i
             i += 1
-            generate_train.init_workers(), generate_valid.init_workers(), generate_test.init_workers()  # This starts the generators over
             try:
                 set_args_from_x(args, x)
                 model = make_multimodal_multitask_model(**args.__dict__)
@@ -80,12 +76,14 @@ def hyperparam_optimizer(args, space, param_lists={}):
                     del model
                     return MAX_LOSS
 
+                generate_train.init_workers(), generate_valid.init_workers(), generate_test.init_workers()  # This starts the generators over
                 model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
                                                              args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                              args.inspect_model, args.inspect_show_labels, True, False)
                 histories.append(history.history)
                 title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
                 plot_metric_history(history, title, fig_path)
+                test_data, test_labels = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, False)
                 loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
                 stats['count'] += 1
                 logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
