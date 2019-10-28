@@ -84,6 +84,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
     elif tm.is_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
+        plot_survival_curves(y_predictions, y_truth, title, prefix=folder)
     elif len(tm.shape) > 1:
         prediction_flat = tm.rescale(y_predictions).flatten()
         truth_flat = tm.rescale(y_truth).flatten()
@@ -290,10 +291,34 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     if paths is not None:
         pass
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label='predicted_proportion')
-    #plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - predicted_out, marker='o', label='predicted_out')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='true_proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
+    plt.title(title + '\n')
+    plt.legend(loc="upper right")
+
+    figure_path = os.path.join(prefix, 'hazards_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save survival plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    return {}
+
+
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=16):
+    intervals = truth.shape[-1] // 2
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
+    sick = np.sum(truth[:, intervals:], axis=-1)
+    x_days = range(0, days_window, 1 + days_window // intervals)
+    for i in range(num_curves):
+        if sick[i] == 1:
+            sick_period = np.argmax(truth[i, intervals:])
+            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'sick_{sick_period*(days_window // intervals)}_{i}', color='red')
+        else:
+            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'predicted_{i}', color='green')
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Survival Curve Prediction')
     plt.title(title + '\n')
     plt.legend(loc="upper right")
 
