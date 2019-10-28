@@ -297,7 +297,7 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     plt.title(title + '\n')
     plt.legend(loc="upper right")
 
-    figure_path = os.path.join(prefix, 'hazards_' + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info("Try to save survival plot at: {}".format(figure_path))
@@ -314,15 +314,16 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
     for i in range(num_curves):
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
-            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'sick_{sick_period*(days_window // intervals)}_{i}', color='red')
+            sick_day = sick_period*(days_window // intervals)
+            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'sick_{i}', color='red')
+            plt.text(sick_day, predicted_survivals[i, sick_period], 'diagnosed')
         else:
-            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'predicted_{i}', color='green')
-    plt.xlabel('Follow up time (days)')
-    plt.ylabel('Survival Curve Prediction')
+            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'not_sick_{i}', color='green')
     plt.title(title + '\n')
     plt.legend(loc="upper right")
-
-    figure_path = os.path.join(prefix, 'hazards_' + title + IMAGE_EXT)
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Survival Curve Prediction')
+    figure_path = os.path.join(prefix, 'survival_curves_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info("Try to save survival plot at: {}".format(figure_path))
