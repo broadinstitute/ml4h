@@ -299,7 +299,6 @@ class TensorMap(object):
     def is_proportional_hazard(self):
         return self.group == 'proportional_hazard'
 
-
     def zero_mean_std1(self, np_tensor):
         np_tensor -= np.mean(np_tensor)
         np_tensor /= np.std(np_tensor) + EPS
