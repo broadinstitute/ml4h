@@ -315,10 +315,10 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
-            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'sick_{i}', color='red')
+            plt.plot(x_days, predicted_survivals[i], label=f'sick_{i}', color='red')
             plt.text(sick_day, predicted_survivals[i, sick_period], 'diagnosed')
         else:
-            plt.plot(x_days, predicted_survivals[i], marker='o', label=f'not_sick_{i}', color='green')
+            plt.plot(x_days, predicted_survivals[i], label=f'not_sick_{i}')
     plt.title(title + '\n')
     plt.legend(loc="upper right")
     plt.xlabel('Follow up time (days)')
