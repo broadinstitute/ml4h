@@ -275,7 +275,6 @@ TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2', group='proportio
                                           tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
 
 
-
 def _make_ecg_rest(population_normalize: float = None):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -357,6 +356,36 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
                                                              'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
+
+def _make_rhythm_tensor(skip_poor=True):
+    def rhythm_tensor_from_file(tm, hd5, dependents={}):
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        if skip_poor and 'poor_data_quality' in hd5['categorical']:
+            raise ValueError(f'Poor data quality skipped by {tm.name}.')
+        ecg_interpretation = str(hd5['ecg_rest_text'][0])
+        for channel in tm.channel_map:
+            if channel in hd5['categorical']:
+                categorical_data[tm.channel_map[channel]] = 1.0
+                return categorical_data
+        for afib in ['Atrial fibrillation']:
+            if afib in ecg_interpretation:
+                categorical_data[tm.channel_map['Atrial_fibrillation']] = 1.0
+                return categorical_data
+        for rhythm in ['sinus', 'Sinus']:
+            if rhythm in ecg_interpretation:
+                categorical_data[tm.channel_map['Other_sinus_rhythm']] = 1.0
+                return categorical_data
+        categorical_data[tm.channel_map['Other_rhythm']] = 1.0
+        return categorical_data
+    return rhythm_tensor_from_file
+
+
+TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', tensor_from_file=_make_rhythm_tensor(),
+                                loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
+                                channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
+TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', group='categorical', tensor_from_file=_make_rhythm_tensor(False),
+                                loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor'),
+                                channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
