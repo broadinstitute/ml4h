@@ -588,7 +588,7 @@ def _ecg_rest_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
     for is_median, offset in zip([False, True], [3, 0]):
         for i in range(offset,offset+3):
             for j in range(0,4):
-                lead_name = ECG_REST_PLOT_LEADS[i-offset,j]
+                lead_name = ECG_REST_PLOT_LEADS[i-offset][j]
                 lead = twelve_leads[lead_name]
                 y_plot = np.array([elem_ * raw_scale for elem_ in lead['raw']])
                 if not is_median:        
@@ -618,7 +618,7 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
         st=f.suptitle(text, x=0.0, y=1.05, ha='left', bbox=dict(facecolor='black', alpha=0.1))   
     for i in range(offset,offset+3):
         for j in range(0, 4):
-            lead_name = lead_mapping[i-offset,j]
+            lead_name = lead_mapping[i-offset][j]
             lead = twelve_leads[lead_name]
             # Convert units to mV
             yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
@@ -655,8 +655,8 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
                     dy_amp = 0.2
                 else: # Put in top right
                     dy_amp = 0.85
-                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {int(pat_df['ramp'][ECG_REST_PLOT_AMP_LEADS[i-offset, j]])}")
-                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][ECG_REST_PLOT_AMP_LEADS[i-offset, j]])}")
+                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {int(pat_df['ramp'][ECG_REST_PLOT_AMP_LEADS[i-offset][j]])}")
+                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][ECG_REST_PLOT_AMP_LEADS[i-offset][j]])}")
 
 
 def _ecg_rest_csv_to_df(csv):
