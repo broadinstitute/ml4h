@@ -213,8 +213,9 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
                 paths += choices(path_list, k=int(weight * epoch_len))
             shuffle(paths)
         paths = generator_paths
+        all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
         for tp in paths:
-            if tp in cache.failed_paths:  # TODO: should this be an argument? It will speed up error prone deterministic TMAP processing significantly
+            if tp in cache.failed_paths and all_cacheable:
                 simple_stats['skipped_paths'] += 1
                 continue
             try:
