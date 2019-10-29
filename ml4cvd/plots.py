@@ -280,7 +280,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
 
 def _unpack_truth_into_events(truth):
     intervals = truth.shape[-1] // 2
-    event_time = np.argmin(truth[:, intervals], axis=-1)
+    event_time = np.argmin(truth[:, :intervals], axis=-1)
     event_indicator = np.sum(truth[:, intervals:], axis=-1)
     print(f'Shapes event indicator:{event_indicator.shape} event time:{event_time.shape}')
     print(f'event indicator:{event_indicator}')
