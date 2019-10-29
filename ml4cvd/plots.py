@@ -62,8 +62,6 @@ AMP_MAPPING = np.array([[0, 3, 6, 9],
                         [2, 5, 8, 11]])
 
 
-
-
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
                          max_melt: int = 5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
                          scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = []) -> Dict[str, float]:
@@ -563,7 +561,10 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 
 def ecg_resting_traces(hd5):
+    """Extracts ECG resting traces from HD5"""
     leads = {}
+    if 'ecg_rest' not in hd5:
+        raise ValueError('Tensor does not contain resting ECGs')
     for field in hd5['ecg_rest']:
         leads[field] = list(hd5['ecg_rest'][field])
     twelve_leads = defaultdict(dict)
@@ -571,16 +572,17 @@ def ecg_resting_traces(hd5):
         twelve_leads[key]['raw'] = leads[key]
         if len(data) == 5000:
             try:
+                # Attempt analysis by biosppy, which may fail if not enough beats
                 (twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'], 
                  twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'], 
                  twelve_leads[key]['heart_rate']) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)
             except:
                 twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
-        # twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
     return twelve_leads
 
 
 def ecg_resting_ylims(yrange, yplot):
+    """Returns ECG plot y-axis limits based on range covered by ECG traces"""
     deltas   = [-1.0, 1.0]
     extremes = np.array([np.min(yplot), np.max(yplot)])
     delta_ext = extremes[1]-extremes[0]
@@ -594,7 +596,8 @@ def ecg_resting_ylims(yrange, yplot):
     return ylim_min, ylim_max
 
     
-def ecg_resting_yrange(twelve_leads, default_yrange=3.0, raw_scale=0.005, time_interval=2.5):
+def ecg_resting_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
+    """Returns y-range necessary to cover the plotted ECG waveform"""
     yrange=default_yrange
     for is_median, offset in zip([False, True], [3, 0]):
         for i in range(offset,offset+3):
@@ -610,13 +613,12 @@ def ecg_resting_yrange(twelve_leads, default_yrange=3.0, raw_scale=0.005, time_i
     return yrange
 
     
-def subplot_ecg_resting(twelve_leads, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
+def subplot_ecg_resting(twelve_leads, raw_scale, time_interval, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
+    """Fills subplots of ECG resting plots figure with either median or raw waveforms"""
     # plot will be in seconds vs mV, boxes are
     sec_per_box = 0.04
     mv_per_box = .1
-    time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
     median_interval = 1.2  # 600 samples at 500Hz
-    raw_scale = 0.005
     # if available, extract patient metadata and ECG interpretation 
     if pat_df is not None:
         avl_yn = 'Y' if pat_df['aVL']>0.5 else 'N'
@@ -682,19 +684,6 @@ def ecg_resting_csv_to_df(csv):
     return df
 
 
-def plot_ecg_resting(df, rows, out_folder, is_blind):
-    for row in rows:
-        pat_df = df.iloc[row]
-        with h5py.File(pat_df['full_path'], 'r') as hd5:
-            traces = ecg_resting_traces(hd5)
-        matplotlib.rcParams.update({'font.size': 20})
-        fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
-        yrange = ecg_resting_yrange(traces)
-        subplot_ecg_resting(traces, LEAD_MAPPING, fig, ax, yrange, offset=3, pat_df=None, is_median=False, is_blind=is_blind)
-        subplot_ecg_resting(traces, MEDIAN_MAPPING, fig, ax, yrange, offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
-        fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")    
-        
-
 def remove_duplicate_rows(df, out_folder):
     arr_list = []
     pdfs = glob.glob(out_folder+'/*.pdf')
@@ -705,15 +694,50 @@ def remove_duplicate_rows(df, out_folder):
     return arr
 
 
-def plot_ecg_resting_mp(ecg_csv, row_min, row_max, out_folder, ncpus=1, is_blind=False, overwrite=False):
-    df = ecg_resting_csv_to_df(ecg_csv)
+def plot_ecg_resting(df, rows, out_folder, is_blind):
+    raw_scale = 0.005 # Conversion from raw to mV
+    default_yrange = 3.0 # mV
+    time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
+    for row in rows:
+        pat_df = df.iloc[row]
+        with h5py.File(pat_df['full_path'], 'r') as hd5:
+            traces = ecg_resting_traces(hd5)
+        matplotlib.rcParams.update({'font.size': 20})
+        fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
+        yrange = ecg_resting_yrange(traces, default_yrange, raw_scale, time_interval)
+        subplot_ecg_resting(traces, raw_scale, time_interval, LEAD_MAPPING, fig, ax, yrange,
+                            offset=3, pat_df=None, is_median=False, is_blind=is_blind)
+        subplot_ecg_resting(traces, raw_scale, time_interval, MEDIAN_MAPPING, fig, ax, yrange,
+                            offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
+        fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")    
+        
+
+def plot_ecg_resting_mp(ecg_csv_file_name: str,
+                        row_min: int,
+                        row_max: int,
+                        output_folder_path: str,
+                        ncpus: int = 1,
+                        is_blind: bool = False,
+                        overwrite: bool = False) -> None:    
+    """
+    Generates in parallel plots for 12-lead ECGs given a CSV file pointing to the tensor HDF5s 
+    :param ecg_csv: name of the CSV file listing the HD5s to plot as well as patient metadata
+    :param row_min: defines range of entries to be plotted (lower end)
+    :param row_max: defines range of entries to be plotted (larger end)
+    :param output_folder_path: directory where output PDFs will be written to
+    :param ncpus: number of parallel cores to be used
+    :param is_blind: whether ECG interpretation should be included in the plot
+    :param overwrite: if False, it avoids replotting PDFs that are already found in the output folder
+    :return: None
+    """    
+    df = ecg_resting_csv_to_df(ecg_csv_file_name)
     if overwrite:
         row_arr = np.arange(row_min, row_max+1, dtype=np.int64)
     else:
-        row_arr = remove_duplicate_rows(df.iloc[row_min:row_max+1], out_folder)    
+        row_arr = remove_duplicate_rows(df.iloc[row_min:row_max+1], output_folder_path)    
     row_split = np.array_split(row_arr, ncpus)
     pool = Pool(ncpus)
-    pool.starmap(plot_ecg_resting, zip([df]*ncpus, row_split, [out_folder]*ncpus, [is_blind]*ncpus))
+    pool.starmap(plot_ecg_resting, zip([df]*ncpus, row_split, [output_folder_path]*ncpus, [is_blind]*ncpus))
     pool.close()
     pool.join()
 
