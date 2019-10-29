@@ -66,6 +66,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
         i = 0
 
         def loss_from_multimodal_multitask(x):
+            K.clear_session()
             nonlocal i
             i += 1
             try:

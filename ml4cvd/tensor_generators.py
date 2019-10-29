@@ -66,14 +66,12 @@ class TensorGenerator:
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
         self._started = True
         for i, worker_paths in enumerate(self.worker_path_lists):
-            max_rows = len(worker_paths) if self.weights is None else sum(map(len, worker_paths))
-            cache = TMArrayCache(self.cache_size, self.input_maps, self.output_maps, max_rows)
             name = f'{self.name}_{i}'
-            logging.info(f"Starting {name} with a {cache.nrows * cache.row_size / 1e9:.3f}GB cache.")
+            logging.info(f"Starting {name}.")
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
-                                  self.keep_paths, cache, self.mixup, name, self.weights,
+                                  self.keep_paths, self.cache_size, self.mixup, name, self.weights,
                               ))
             process.start()
             self.workers.append(process)
@@ -90,6 +88,9 @@ class TensorGenerator:
                 logging.info(f'Stopping {worker.name}.')
                 worker.terminate()
         self.workers = []
+
+    def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
+        return self
 
 
 class TMArrayCache:
@@ -145,7 +146,7 @@ class TMArrayCache:
         return np.mean(list(self.files_seen.values()) or [0]) / self.nrows
 
 
-def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: bool, tp: str, idx, batch, dependents):
+def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: bool, tp: str, idx: int, batch: Dict, dependents: Dict) -> h5py.File:
     name = tm.input_name() if is_input else tm.output_name()
     if tm in dependents:  # for now, TMAPs with dependents are not cacheable
         batch[name][idx] = dependents[tm]
@@ -163,7 +164,7 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: boo
     return hd5
 
 
-def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, train_paths, keep_paths, cache,
+def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, generator_paths, keep_paths, cache_size,
                                 mixup_alpha, name, weights=None):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
@@ -175,17 +176,19 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
         batch_size: number of examples in each minibatch
         input_maps: list of TensorMaps that are input names to a model
         output_maps: list of TensorMaps that are output from a model
-        train_paths: list of hd5 tensors shuffled after every loop or epoch
+        generator_paths: list of hd5 tensors shuffled after every loop or epoch
         keep_paths: If true will also yield the paths to the tensors used in this batch
         mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
         name: Name of the worker for logs
+        weights: Weight to sample each list of paths from generator paths. Must be same length as generator_paths.
 
     What gets enqueued:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
         {input_1:input_tensor1, input_2:input_tensor2, ...}, {output_name1:output_tensor1, ...}
         if include_paths_in_batch is True the 3rd element of tuple will be the list of paths
     """
-    assert len(train_paths) > 0
+    if len(generator_paths) == 0:
+        raise ValueError(f'No paths provided for worker {name}.')
 
     stats = Counter()
     paths_in_batch = []
@@ -194,18 +197,22 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
     in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
     out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
 
+    max_rows = len(generator_paths) if weights is None else sum(map(len, generator_paths))
+    cache = TMArrayCache(cache_size, input_maps, output_maps, max_rows)
+    logging.info(f'{name} initialized cache of size {cache.row_size * cache.nrows / 1e9:.3f} GB.')
+
     while True:
         simple_stats = Counter()
         start = time.time()
         if weights is not None:
-            if len(weights) != len(train_paths):
+            if len(weights) != len(generator_paths):
                 raise ValueError('weights must be the same length as train_paths.')
-            epoch_len = max((len(p) for p in train_paths))
+            epoch_len = max((len(p) for p in generator_paths))
             paths = []
-            for path_list, weight in zip(train_paths, weights):
+            for path_list, weight in zip(generator_paths, weights):
                 paths += choices(path_list, k=int(weight * epoch_len))
             shuffle(paths)
-        paths = train_paths
+        paths = generator_paths
         for tp in paths:
             if tp in cache.failed_paths:  # TODO: should this be an argument? It will speed up error prone deterministic TMAP processing significantly
                 simple_stats['skipped_paths'] += 1
@@ -256,16 +263,16 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
                     hd5.close()
                 _log_first_error(stats, tp)
         stats['epochs'] += 1
-        np.random.shuffle(train_paths)
+        np.random.shuffle(generator_paths)
         for k in stats:
             logging.debug(f"{k}: {stats[k]}")
         error_info = '\n\t\t'.join([f'[{error}] - {count}'
                                     for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
-            f"Generator looped & shuffled over {len(train_paths)} tensors.",
+            f"Generator looped & shuffled over {len(generator_paths)} tensors.",
             f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
-            f"The cache holds {len(cache)} out of a possible {len(train_paths) * (len(input_maps) + len(output_maps))} tensors and is {100 * cache.average_fill():.0f}% full.",
+            f"The cache holds {len(cache)} out of a possible {len(generator_paths) * (len(input_maps) + len(output_maps))} tensors and is {100 * cache.average_fill():.0f}% full.",
             f"So far there have been {cache.hits} cache hits.",
             f"{simple_stats['skipped_paths']} paths were skipped because they previously failed.",
             f"{(time.time() - start):.2f} seconds elapsed.",
@@ -275,7 +282,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
 
-def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator, minibatches, keep_paths=True):
+def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator: TensorGenerator, minibatches, keep_paths=True):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -290,29 +297,31 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """     
-    input_tensors = {tm.input_name(): [] for tm in tensor_maps_in}
-    output_tensors = {tm.output_name(): [] for tm in tensor_maps_out}
+    input_tensors = [tm.input_name() for tm in tensor_maps_in]
+    output_tensors = [tm.output_name() for tm in tensor_maps_out]
     paths = []
+    batch_size = generator.batch_size
 
-    for _ in range(minibatches):
+    # saved tensors is a dictionary with pre-allocated numpy arrays
+    saved_tensors = TMArrayCache(4e9, tensor_maps_in, tensor_maps_out, minibatches * batch_size).data
+
+    for i in range(minibatches):
         next_batch = next(generator)
+        s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
-            input_tensors[key].extend(np.copy(next_batch[0][key]))
+            saved_tensors[key][s:t] = next_batch[0][key]
         for key in output_tensors:
-            output_tensors[key].extend(np.copy(next_batch[1][key]))
+            saved_tensors[key][s:t] = next_batch[1][key]
         if keep_paths:
             paths.extend(next_batch[2])
-    for key in input_tensors:
-        input_tensors[key] = np.array(input_tensors[key])
-        logging.info("Input tensor '{}' has shape {}".format(key, input_tensors[key].shape))
-    for key in output_tensors:
-        output_tensors[key] = np.array(output_tensors[key])
-        logging.info("Output tensor '{}' has shape {}".format(key, output_tensors[key].shape))
-
+    for key in saved_tensors:
+        logging.info(f"Tensor '{key}' has shape {saved_tensors[key].shape}.")
+    inputs = {key: tens for key, tens in saved_tensors if key in input_tensors}
+    outputs = {key: tens for key, tens in saved_tensors if key in output_tensors}
     if keep_paths:
-        return input_tensors, output_tensors, paths
+        return inputs, outputs, paths
     else:
-        return input_tensors, output_tensors
+        return inputs, outputs
 
 
 def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
