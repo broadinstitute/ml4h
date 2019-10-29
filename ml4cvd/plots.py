@@ -9,18 +9,16 @@ import glob
 import logging
 import hashlib
 import operator
-
 from textwrap import wrap
 from functools import reduce
 from ast import literal_eval
 from multiprocessing import Pool
-from itertools import islice, product, cycle
+from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -561,7 +559,7 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 
 def ecg_resting_traces(hd5):
-    """Extracts ECG resting traces from HD5"""
+    """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
     leads = {}
     if 'ecg_rest' not in hd5:
         raise ValueError('Tensor does not contain resting ECGs')
@@ -582,7 +580,7 @@ def ecg_resting_traces(hd5):
 
 
 def ecg_resting_ylims(yrange, yplot):
-    """Returns ECG plot y-axis limits based on range covered by ECG traces"""
+    """Returns ECG plot y-axis limits based on the range covered by ECG traces"""
     deltas   = [-1.0, 1.0]
     extremes = np.array([np.min(yplot), np.max(yplot)])
     delta_ext = extremes[1]-extremes[0]
@@ -597,7 +595,7 @@ def ecg_resting_ylims(yrange, yplot):
 
     
 def ecg_resting_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
-    """Returns y-range necessary to cover the plotted ECG waveform"""
+    """Returns y-range necessary not to cut any of the plotted ECG waveforms"""
     yrange=default_yrange
     for is_median, offset in zip([False, True], [3, 0]):
         for i in range(offset,offset+3):
@@ -614,7 +612,7 @@ def ecg_resting_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
 
     
 def subplot_ecg_resting(twelve_leads, raw_scale, time_interval, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
-    """Fills subplots of ECG resting plots figure with either median or raw waveforms"""
+    """Fills subplots with either median or raw resting ECG waveforms"""
     # plot will be in seconds vs mV, boxes are
     sec_per_box = 0.04
     mv_per_box = .1
@@ -695,6 +693,7 @@ def remove_duplicate_rows(df, out_folder):
 
 
 def plot_ecg_resting(df, rows, out_folder, is_blind):
+    """Extracts and plots ECG resting waveforms"""
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = 3.0 # mV
     time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
@@ -720,10 +719,10 @@ def plot_ecg_resting_mp(ecg_csv_file_name: str,
                         is_blind: bool = False,
                         overwrite: bool = False) -> None:    
     """
-    Generates in parallel plots for 12-lead ECGs given a CSV file pointing to the tensor HDF5s 
-    :param ecg_csv: name of the CSV file listing the HD5s to plot as well as patient metadata
-    :param row_min: defines range of entries to be plotted (lower end)
-    :param row_max: defines range of entries to be plotted (larger end)
+    Generates (in parallel) plots for 12-lead resting ECGs given a CSV file pointing to the tensor HDF5s 
+    :param ecg_csv: name of the CSV file listing the HD5s to plot
+    :param row_min: low end of range of entries to be plotted 
+    :param row_max: high end of range of entries to be plotted 
     :param output_folder_path: directory where output PDFs will be written to
     :param ncpus: number of parallel cores to be used
     :param is_blind: whether ECG interpretation should be included in the plot
