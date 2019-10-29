@@ -411,8 +411,7 @@ def log_pearson_coefficients(coefs, label):
     logging.info(dashes(width))
 
 
-def _unpack_truth_into_events(truth):
-    intervals = truth.shape[-1] // 2
+def _unpack_truth_into_events(truth, intervals):
     event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
     event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event time to max time
     event_indicator = np.sum(truth[:, intervals:], axis=-1)
