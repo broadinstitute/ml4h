@@ -411,6 +411,14 @@ def log_pearson_coefficients(coefs, label):
     logging.info(dashes(width))
 
 
+def _unpack_truth_into_events(truth, intervals):
+    event_time = np.argmin(truth[:intervals], axis=-1)
+    event_indicator = np.sum(truth[:, intervals:], axis=-1)
+    print(f'event indicator:{event_indicator}')
+    print(f'event time:{event_time}')
+    return event_indicator, event_time
+
+
 def _get_comparable(event_indicator, event_time, order):
     n_samples = len(event_time)
     tied_time = 0
@@ -439,9 +447,12 @@ def _get_comparable(event_indicator, event_time, order):
     return comparable, tied_time
 
 
-def _estimate_concordance_index(event_indicator, event_time, estimate, weights, tied_tol=1e-8):
+def _estimate_concordance_index(prediction, truth, tied_tol=1e-8):
+    intervals = truth.shape[-1] // 2
+    event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
+    estimate = np.cumprod(prediction[:, :intervals], axis=-11)
     order = np.argsort(event_time)
-
+    np.cumprod(prediction[:, :intervals], axis=1)
     comparable, tied_time = _get_comparable(event_indicator, event_time, order)
 
     concordant = 0
@@ -452,7 +463,6 @@ def _estimate_concordance_index(event_indicator, event_time, estimate, weights, 
     for ind, mask in comparable.items():
         est_i = estimate[order[ind]]
         event_i = event_indicator[order[ind]]
-        w_i = weights[order[ind]]
 
         est = estimate[order[mask]]
 
@@ -464,8 +474,8 @@ def _estimate_concordance_index(event_indicator, event_time, estimate, weights, 
         con = est < est_i
         n_con = con[~ties].sum()
 
-        numerator += w_i * n_con + 0.5 * w_i * n_ties
-        denominator += w_i * mask.sum()
+        numerator += n_con + 0.5 * n_ties
+        denominator += mask.sum()
 
         tied_risk += n_ties
         concordant += n_con
