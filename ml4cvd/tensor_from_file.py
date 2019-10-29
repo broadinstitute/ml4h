@@ -58,6 +58,7 @@ def survival_tensor(start_date_key, day_window):
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
         if tm.name in hd5['categorical']:
             has_disease = int(hd5['categorical'][tm.name][0])
+
         if tm.name + '_date' in hd5['dates']:
             disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
         elif 'phenotype_censor' in hd5['dates']:
@@ -266,8 +267,6 @@ TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', group='proport
 TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
                                           tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
 TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
-                                          tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
-TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
                                           tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)
 TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia', group='proportional_hazard', shape=(100,),
                                           tensor_from_file=survival_tensor('dates/enroll_date', 365*10), dtype=DataSetType.SERIES)

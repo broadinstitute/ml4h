@@ -452,7 +452,8 @@ def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
     estimate = np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
-    logging.info(f"truth cencsor is: \n{truth[:, :intervals]} ")
+    logging.info(f"truth censor is: \n{truth[:, :intervals]} ")
+    logging.info(f"EVents  is: \n{truth[:, intervals:]} ")
     logging.info(f"estimate shape is: {estimate.shape} prediction shape is: {prediction.shape}")
     logging.info(f"estimate is: \n{estimate} ")
     logging.info(f"event_indicator is: \n{event_indicator} ")
