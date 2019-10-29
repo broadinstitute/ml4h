@@ -5,7 +5,7 @@ from dateutil import relativedelta
 
 import numpy as np
 from scipy.ndimage import zoom
-from tensorflow.keras.utils import to_categorical
+from keras.utils import to_categorical
 
 from ml4cvd.metrics import sentinel_logcosh_loss, per_class_precision
 from ml4cvd.metrics import per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
