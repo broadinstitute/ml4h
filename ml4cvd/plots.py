@@ -281,7 +281,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
 def _unpack_truth_into_events(truth):
     intervals = truth.shape[-1] // 2
     event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
-    event_time[truth[:, intervals] == 1] = intervals-1  # If the sample is never censored set event to max time
+    event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event to max time
     event_indicator = np.sum(truth[:, intervals:], axis=-1)
     print(f'event or censor:{truth[:, :intervals]}')
     print(f'Shapes event indicator:{event_indicator.shape} event time:{event_time.shape}')
