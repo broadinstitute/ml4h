@@ -128,9 +128,9 @@ def multimodal_multitask_generator(batch_size, input_maps, output_maps, train_pa
         np.random.shuffle(train_paths)
         for k in stats:
             logging.debug(f"{k}: {stats[k]}")
-        error_info = '\n    '.join([f'[{error}] - {count}'
-            for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
-        logging.info(f"In epoch {stats['epochs']} the following errors occurred:\n    {error_info}")
+        if len(simple_stats) > 0:
+            error_info = '\n    '.join([f'[{error}] - {count}' for error, count in sorted(simple_stats.items(), key=lambda x: x[1], reverse=True)])
+            logging.info(f"In epoch {stats['epochs']} the following errors occurred:\n    {error_info}")
         logging.info(f"Generator looped & shuffled over {len(train_paths)} tensors.")
         logging.info(f"True epoch number:{stats['epochs']} in which {int(stats['Tensors presented']/stats['epochs'])} tensors were presented.")
         if stats['Tensors presented'] == 0:
