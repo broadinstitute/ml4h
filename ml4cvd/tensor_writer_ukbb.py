@@ -806,12 +806,11 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
         ecg_date = _str2date(_date_str_from_ecg(root))
         for c in root.findall("./RestingECGMeasurements/MeasurementTable"):
-            for cc in c:
-                if cc.tag not in ECG_TABLE_TAGS:
+            for child in c:
+                if child.tag not in ECG_TABLE_TAGS:
                     continue
-                vals = list(map(_to_float_or_false, cc.text.strip().split(',')))
-                tp = tensor_path('ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, cc.tag.lower())
-                hd5.create_dataset(tp, data=vals, compression='gzip')
+                vals = list(map(_to_float_or_false, child.text.strip().split(',')))
+                create_tensor_in_hd5(hd5, 'ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, child.tag.lower(), vals, stats)
 
 
 def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: str) -> str:

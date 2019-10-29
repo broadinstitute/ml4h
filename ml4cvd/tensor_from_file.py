@@ -348,15 +348,15 @@ def _make_ukb_ecg_rest_lvh():
 
 TMAPS['ecg_rest_lvh_avl'] = TensorMap('avl_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                             channel_map = {'no_avl_lvh': 0, 'aVL LVH': 1},
-                            loss=weighted_crossentropy([0.1, 10.0], 'avl_lvh'))
+                            loss=weighted_crossentropy([0.006, 1.0], 'avl_lvh'))
 
 TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                             channel_map = {'no_sokolow_lyon_lvh': 0, 'Sokolow Lyon LVH': 1},
-                            loss=weighted_crossentropy([0.1, 10.0], 'sokolov_lyon_lvh'))
+                            loss=weighted_crossentropy([0.005, 1.0], 'sokolov_lyon_lvh'))
 
 TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                             channel_map = {'no_cornell_lvh': 0, 'Cornell LVH': 1},
-                            loss=weighted_crossentropy([0.1, 10.0], 'cornell_lvh'))
+                            loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
     
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
