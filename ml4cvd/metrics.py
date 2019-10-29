@@ -414,7 +414,6 @@ def log_pearson_coefficients(coefs, label):
 def _unpack_truth_into_events(truth, intervals):
     event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
     event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event time to max time
-    event_time *= -1
     event_indicator = np.sum(truth[:, intervals:], axis=-1).astype(np.bool)
     logging.info(f"Prediction shape is: {event_time.shape} truth shape is: {event_indicator.shape}")
     return event_indicator, event_time
@@ -452,7 +451,7 @@ def _get_comparable(event_indicator, event_time, order):
 def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
-    estimate = np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
+    estimate = 1-np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
     logging.info(f"truth censor is: \n{truth[:, :intervals]} ")
     logging.info(f"EVents  is: \n{truth[:, intervals:]} ")
     logging.info(f"estimate shape is: {estimate.shape} prediction shape is: {prediction.shape}")
