@@ -281,7 +281,7 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
 
 def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     cindex, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
-    logging.info(f"C-index:{cindex} C-index:{cindex} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
+    logging.info(f"C-index:{cindex} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
@@ -292,8 +292,8 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'predicted_proportion C-Index:{cindex}')
-    plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='true_proportion')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{cindex:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.title(title + '\n')
