@@ -415,7 +415,6 @@ def _unpack_truth_into_events(truth, intervals):
     event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
     event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event time to max time
     event_indicator = np.sum(truth[:, intervals:], axis=-1).astype(np.bool)
-    logging.info(f"Prediction shape is: {event_time.shape} truth shape is: {event_indicator.shape}")
     return event_indicator, event_time
 
 
@@ -424,7 +423,6 @@ def _get_comparable(event_indicator, event_time, order):
     tied_time = 0
     comparable = {}
     i = 0
-    logging.info(f"n_samples:{n_samples}")
     while i < n_samples - 1:
         time_i = event_time[order[i]]
         start = i + 1
@@ -452,12 +450,6 @@ def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
     estimate = np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
-    logging.info(f"truth censor is: \n{truth[:, :intervals]} ")
-    logging.info(f"EVents  is: \n{truth[:, intervals:]} ")
-    logging.info(f"estimate shape is: {estimate.shape} prediction shape is: {prediction.shape}")
-    logging.info(f"estimate is: \n{estimate} ")
-    logging.info(f"event_indicator is: \n{event_indicator} ")
-    logging.info(f"event_time is: \n{event_time} ")
     order = np.argsort(event_time)
     comparable, tied_time = _get_comparable(event_indicator, event_time, order)
 
