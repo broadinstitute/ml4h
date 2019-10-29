@@ -316,8 +316,8 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
             paths.extend(next_batch[2])
     for key in saved_tensors:
         logging.info(f"Tensor '{key}' has shape {saved_tensors[key].shape}.")
-    inputs = {key: tens for key, tens in saved_tensors if key in input_tensors}
-    outputs = {key: tens for key, tens in saved_tensors if key in output_tensors}
+    inputs = {key: saved_tensors[key] for key in input_tensors}
+    outputs = {key: saved_tensors[key] for key in output_tensors}
     if keep_paths:
         return inputs, outputs, paths
     else:
