@@ -58,7 +58,6 @@ ECG_REST_PLOT_AMP_LEADS = [[0, 3, 6, 9],
                            [1, 4, 7, 10],
                            [2, 5, 8, 11]]
 
-
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
 ECG_BIKE_MEDIAN_SIZE = (5500, len(ECG_BIKE_LEADS))
 ECG_BIKE_STRIP_SIZE = (5000, len(ECG_BIKE_LEADS))

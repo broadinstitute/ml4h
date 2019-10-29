@@ -252,7 +252,6 @@ TMAPS['ecg_rest_1lead'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', c
                                     dependent_map=TMAPS['ecg_median_1lead'])
 
 
-
 def _get_lead_cm(length):
     lead_cm = {}
     lead_weights = []
