@@ -424,6 +424,7 @@ def _get_comparable(event_indicator, event_time, order):
     tied_time = 0
     comparable = {}
     i = 0
+    logging.info(f"n_samples:{n_samples}")
     while i < n_samples - 1:
         time_i = event_time[order[i]]
         start = i + 1
@@ -450,9 +451,8 @@ def _get_comparable(event_indicator, event_time, order):
 def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
-    estimate = np.cumprod(prediction[:, :intervals], axis=-1)
+    estimate = np.sum(np.cumprod(prediction[:, :intervals], axis=-1), axis=-1)
     order = np.argsort(event_time)
-    np.cumprod(prediction[:, :intervals], axis=1)
     comparable, tied_time = _get_comparable(event_indicator, event_time, order)
 
     concordant = 0
