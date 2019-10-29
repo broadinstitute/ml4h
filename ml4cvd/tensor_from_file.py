@@ -72,6 +72,8 @@ def survival_tensor(start_date_key, day_window):
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = float(cur_date < disease_date)
+            if i == 0 and disease_date < cur_date:
+                survival_then_censor[intervals] = has_disease
             survival_then_censor[intervals+i] = has_disease * float(disease_date <= cur_date < disease_date + datetime.timedelta(days=days_per_interval))
         return survival_then_censor
 
