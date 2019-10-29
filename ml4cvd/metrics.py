@@ -451,7 +451,7 @@ def _get_comparable(event_indicator, event_time, order):
 def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
-    estimate = np.sum(np.cumprod(prediction[:, :intervals], axis=-1), axis=-1)
+    estimate = np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
     logging.info(f"estimate shape is: {estimate.shape} prediction shape is: {prediction.shape}")
     logging.info(f"estimate is: \n{estimate} ")
     order = np.argsort(event_time)
