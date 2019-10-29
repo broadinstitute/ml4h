@@ -26,6 +26,7 @@ from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.metrics import concordance_index
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
@@ -278,20 +279,8 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def _unpack_truth_into_events(truth):
-    intervals = truth.shape[-1] // 2
-    event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
-    event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event to max time
-    event_indicator = np.sum(truth[:, intervals:], axis=-1)
-    print(f'event or censor:{truth[:, :intervals]}')
-    print(f'Shapes event indicator:{event_indicator.shape} event time:{event_time.shape}')
-    print(f'event indicator:{event_indicator}')
-    print(f'event time:{event_time}')
-    return event_indicator, event_time
-
-
 def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
-    _unpack_truth_into_events(truth)
+    logging.info(f"Concordance index:{concordance_index(prediction, truth)}")
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")

@@ -411,11 +411,11 @@ def log_pearson_coefficients(coefs, label):
     logging.info(dashes(width))
 
 
-def _unpack_truth_into_events(truth, intervals):
-    event_time = np.argmin(truth[:, intervals], axis=-1)
+def _unpack_truth_into_events(truth):
+    intervals = truth.shape[-1] // 2
+    event_time = np.argmin(np.diff(truth[:, :intervals]), axis=-1)
+    event_time[truth[:, intervals-1] == 1] = intervals-1  # If the sample is never censored set event time to max time
     event_indicator = np.sum(truth[:, intervals:], axis=-1)
-    print(f'event indicator:{event_indicator}')
-    print(f'event time:{event_time}')
     return event_indicator, event_time
 
 
@@ -447,10 +447,10 @@ def _get_comparable(event_indicator, event_time, order):
     return comparable, tied_time
 
 
-def _estimate_concordance_index(prediction, truth, tied_tol=1e-8):
+def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
-    estimate = np.cumprod(prediction[:, :intervals], axis=-11)
+    estimate = np.cumprod(prediction[:, :intervals], axis=-1)
     order = np.argsort(event_time)
     np.cumprod(prediction[:, :intervals], axis=1)
     comparable, tied_time = _get_comparable(event_indicator, event_time, order)
