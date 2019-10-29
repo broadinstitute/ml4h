@@ -451,7 +451,7 @@ def _get_comparable(event_indicator, event_time, order):
 def concordance_index(prediction, truth, tied_tol=1e-8):
     intervals = truth.shape[-1] // 2
     event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
-    estimate = 1-np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
+    estimate = np.cumprod(prediction[:, :intervals], axis=-1)[:, -1]
     logging.info(f"truth censor is: \n{truth[:, :intervals]} ")
     logging.info(f"EVents  is: \n{truth[:, intervals:]} ")
     logging.info(f"estimate shape is: {estimate.shape} prediction shape is: {prediction.shape}")
@@ -476,8 +476,9 @@ def concordance_index(prediction, truth, tied_tol=1e-8):
 
         ties = np.absolute(est - est_i) <= tied_tol
         n_ties = ties.sum()
+
         # an event should have a higher score
-        con = est < est_i
+        con = est > est_i
         n_con = con[~ties].sum()
 
         numerator += n_con + 0.5 * n_ties
