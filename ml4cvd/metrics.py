@@ -412,7 +412,7 @@ def log_pearson_coefficients(coefs, label):
 
 
 def _unpack_truth_into_events(truth, intervals):
-    event_time = np.argmin(truth[:intervals], axis=-1)
+    event_time = np.argmin(truth[:, intervals], axis=-1)
     event_indicator = np.sum(truth[:, intervals:], axis=-1)
     print(f'event indicator:{event_indicator}')
     print(f'event time:{event_time}')
