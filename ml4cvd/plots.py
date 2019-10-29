@@ -278,14 +278,23 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
+def _unpack_truth_into_events(truth):
+    intervals = truth.shape[-1] // 2
+    event_time = np.argmin(truth[:intervals], axis=-1)
+    event_indicator = np.sum(truth[:, intervals:], axis=-1)
+    print(f'event indicator:{event_indicator}')
+    print(f'event time:{event_time}')
+    return event_indicator, event_time
+
+
 def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+    _unpack_truth_into_events(truth)
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
     logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
-    #predicted_out = np.cumprod(np.sum(prediction[:, intervals:], axis=0)) / truth.shape[0]
     true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
