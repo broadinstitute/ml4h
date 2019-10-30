@@ -1,6 +1,7 @@
 # hyperparameters.py
 
 # Imports
+import gc
 import os
 import logging
 import numpy as np
@@ -16,7 +17,7 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 
 from skimage.filters import threshold_otsu
 
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args
@@ -66,6 +67,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
         i = 0
 
         def loss_from_multimodal_multitask(x):
+            model = None
             nonlocal i
             i += 1
             try:
@@ -74,10 +76,8 @@ def hyperparam_optimizer(args, space, param_lists={}):
 
                 if model.count_params() > args.max_parameters:
                     logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
-                    del model
                     return MAX_LOSS
 
-                generate_train.init_workers(), generate_valid.init_workers()  # This starts the generators over
                 model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
                                                              args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                              args.inspect_model, args.inspect_show_labels, True, False)
@@ -88,7 +88,6 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 stats['count'] += 1
                 logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
                 logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
-                del model
                 return loss_and_metrics[0]
 
             except ValueError:
@@ -97,6 +96,9 @@ def hyperparam_optimizer(args, space, param_lists={}):
             except:
                 logging.exception('Error trying hyperparameter optimization. Returning max loss.')
                 return MAX_LOSS
+            finally:
+                del model
+                limit_mem()
 
         trials = hyperopt.Trials()
         fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
@@ -281,6 +283,7 @@ def limit_mem():
         cfg = K.tf.ConfigProto()
         cfg.gpu_options.allow_growth = True
         K.set_session(K.tf.Session(config=cfg))
+        gc.collect()
     except AttributeError as e:
         logging.exception('Could not clear session. Maybe you are using Theano backend?')
 
