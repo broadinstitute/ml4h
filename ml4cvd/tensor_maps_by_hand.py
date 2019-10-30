@@ -255,6 +255,16 @@ TMAPS['lvm_mosteller_index_prediction'] = TensorMap('lvm_mosteller_index_sentine
                                                         channel_map={'lvm_mosteller_index_sentinel_prediction': 0},
                                                         normalization={'mean': 89.7, 'std': 24.8})
 
+TMAPS['LVM_prediction_sentinel'] = TensorMap('LVM_sentinel_prediction',  group='continuous', sentinel=0,
+                                             normalization={'mean': 89.70372484725051, 'std': 24.803669503436304}, channel_map={'LVM_sentinel_prediction': 0})
+TMAPS['lvm_dubois_index_prediction_sentinel'] = TensorMap('lvm_dubois_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
+                                                          sentinel=0, loss_weight=10.0,
+                                                          channel_map={'lvm_dubois_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index_prediction_sentinel'] = TensorMap('lvm_mosteller_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
+                                                        sentinel=0, loss_weight=10.0,
+                                                        channel_map={'lvm_mosteller_index_sentinel_prediction': 0},
+                                                        normalization={'mean': 89.7, 'std': 24.8})
+
 TMAPS['lv_massp'] = TensorMap('lv_mass', group='continuous', activation='linear', loss='logcosh',
                               parents=['output_mri_systole_diastole_8_segmented_categorical'],
                               channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8})

@@ -167,7 +167,7 @@ def optimize_lr_multimodal_multitask(args):
 
 def optimize_input_tensor_maps(args):
     input_tensor_map_sets = [['categorical-phenotypes-72'], ['mri-slice'], ['sax_inlinevf_zoom'], ['cine_segmented_sax_inlinevf'], ['ekg-leads']]
-    space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets),}
+    space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets), }
     param_lists = {'input_tensor_maps': input_tensor_map_sets}
     hyperparam_optimizer(args, space, param_lists)
 
