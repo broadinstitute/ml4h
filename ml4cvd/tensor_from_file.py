@@ -303,7 +303,7 @@ TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', sha
 def _make_ukb_ecg_rest_lvh():
     def ukb_ecg_rest_lvh_from_file(tm, hd5):
         # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
-        lead_order = ECG_REST_AMP_ORDER
+        lead_order = ECG_REST_AMP_LEADS
         avl_min = 1100.0
         sl_min = 3500.0
         cornell_female_min = 2000.0
