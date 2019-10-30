@@ -48,15 +48,15 @@ def _partition_list(a: List, n: int) -> List[List]:
 
 
 class TensorGenerator:
-    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False, mixup=0.0, name='worker'):
+    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False):
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
         self.q = None
         self._started = False
         self.workers = []
-        self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name = \
-            batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name
+        self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name, self.siamese, = \
+            batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name, siamese
         if weights is None:
             self.worker_path_lists = _partition_list(paths, num_workers)
         else:
@@ -71,7 +71,7 @@ class TensorGenerator:
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
-                                  self.keep_paths, self.cache_size, self.mixup, name, self.weights,
+                                  self.keep_paths, self.cache_size, self.mixup, name, self.siamese, self.weights,
                               ))
             process.start()
             self.workers.append(process)
@@ -80,7 +80,7 @@ class TensorGenerator:
         if not self._started:
             self._init_workers()
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
-        return self.q.get(TENSOR_GENERATOR_TIMEOUT)  # TODO: should the generator retry on timeout?
+        return self.q.get(TENSOR_GENERATOR_TIMEOUT)
 
     def kill_workers(self):
         if self._started:
@@ -165,22 +165,23 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: boo
 
 
 def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, generator_paths, keep_paths, cache_size,
-                                mixup_alpha, name, weights=None):
+                                mixup_alpha, name, siamese, weights=None):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
     Infinitely loops over all examples yielding batch_size input and output tensor mappings.
 
-    Arguments:
-        q: Multiprocessing queue to push finished batches to
-        batch_size: number of examples in each minibatch
-        input_maps: list of TensorMaps that are input names to a model
-        output_maps: list of TensorMaps that are output from a model
-        generator_paths: list of hd5 tensors shuffled after every loop or epoch
-        keep_paths: If true will also yield the paths to the tensors used in this batch
-        mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
-        name: Name of the worker for logs
-        weights: Weight to sample each list of paths from generator paths. Must be same length as generator_paths.
+    :param q: Multiprocessing queue to push finished batches to
+    :param batch_size: number of examples in each minibatch
+    :param input_maps: list of TensorMaps that are input names to a model
+    :param output_maps: list of TensorMaps that are output from a model
+    :param generator_paths: list of hd5 tensors shuffled after every loop or epoch
+    :param keep_paths: If true will also yield the paths to the tensors used in this batch
+    :param cache_size: cache size for this worker's cache
+    :param siamese: whether to make siamese ready batches
+    :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
+    :param name: Name of the worker for logs
+    :param weights: Weight to sample each list of paths from generator paths. Must be same length as generator_paths.
 
     What gets enqueued:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
@@ -194,8 +195,8 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
     paths_in_batch = []
     if mixup_alpha > 0:
         batch_size *= 2
-    in_batch = {tm.input_name(): np.zeros((batch_size,)+tm.shape) for tm in input_maps}
-    out_batch = {tm.output_name(): np.zeros((batch_size,)+tm.shape) for tm in output_maps}
+    in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
+    out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
 
     max_rows = len(generator_paths) if weights is None else sum(map(len, generator_paths))
     cache = TMArrayCache(cache_size, input_maps, output_maps, max_rows)
@@ -229,10 +230,14 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
                 stats['batch_index'] += 1
                 stats['Tensors presented'] += 1
                 if stats['batch_index'] == batch_size:
-                    if mixup_alpha > 0 and keep_paths:
+                    if siamese and keep_paths:
+                        q.put((_make_batch_siamese(in_batch, out_batch) + (paths_in_batch,)))
+                    elif siamese:
+                        q.put((_make_batch_siamese(in_batch, out_batch)))
+                    elif mixup_alpha > 0 and keep_paths:
                         q.put((_mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)))
                     elif mixup_alpha > 0:
-                        q.put(_mixup_batch(in_batch, out_batch, mixup_alpha))
+                        q.put((_mixup_batch(in_batch, out_batch, mixup_alpha)))
                     elif keep_paths:
                         q.put((in_batch, out_batch, paths_in_batch))
                     else:
@@ -283,7 +288,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
 
 
-def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator: TensorGenerator, minibatches, keep_paths=True):
+def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator: TensorGenerator, minibatches, keep_paths=True, siamese=False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -297,14 +302,21 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
-    """     
-    input_tensors = [tm.input_name() for tm in tensor_maps_in]
-    output_tensors = [tm.output_name() for tm in tensor_maps_out]
-    paths = []
-    batch_size = generator.batch_size
-
+    """
     # saved tensors is a dictionary with pre-allocated numpy arrays
-    saved_tensors = TMArrayCache(4e9, tensor_maps_in, tensor_maps_out, minibatches * batch_size).data
+    batch_size = generator.batch_size
+    nrows = batch_size * minibatches
+
+    if siamese:
+        input_tensors = [tm.input_name() + '_left' for tm in tensor_maps_in] + [tm.input_name() + '_right' for tm in tensor_maps_in]
+        output_tensors = ['output_siamese']
+        saved_tensors = TMArrayCache(4e9, tensor_maps_in, [], nrows).data
+        saved_tensors['output_siamese'] = np.zeros(nrows, dtype=np.float32)
+    else:
+        input_tensors = [tm.input_name() for tm in tensor_maps_in]
+        output_tensors = [tm.output_name() for tm in tensor_maps_out]
+        saved_tensors = TMArrayCache(4e9, tensor_maps_in, tensor_maps_out, nrows).data
+    paths = []
 
     for i in range(minibatches):
         next_batch = next(generator)
@@ -317,7 +329,10 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
             paths.extend(next_batch[2])
     for key in saved_tensors:
         logging.info(f"Tensor '{key}' has shape {saved_tensors[key].shape}.")
-    inputs = {key: saved_tensors[key] for key in input_tensors}
+    if siamese:
+        inputs = {key: saved_tensors[key.strip('_left').strip('_right')] for key in input_tensors}
+    else:
+        inputs = {key: saved_tensors[key] for key in input_tensors}
     outputs = {key: saved_tensors[key] for key in output_tensors}
     if keep_paths:
         return inputs, outputs, paths
@@ -325,7 +340,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
         return inputs, outputs
 
 
-def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
+def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv):
     """Return 3 disjoint lists of tensor paths.
 
     The paths are split in training, validation and testing lists
@@ -339,33 +354,45 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo):
 
     Returns:
         A tuple of 3 lists of hd5 tensor file paths
-    """     
+    """
     test_paths = []
     train_paths = []
     valid_paths = []
 
     assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
 
+    if test_csv is not None:
+        lol = list(csv.reader(open(test_csv, 'r')))
+        test_dict = {l[0]: True for l in lol}
+        logging.info(f'Using external test set with {len(test_dict)} examples from file:{test_csv}')
+        test_ratio = 0.0
+        test_modulo = 0
+
     for root, dirs, files in os.walk(tensors):
         for name in files:
             if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
                 continue
+
+            if test_csv is not None and os.path.splitext(name)[0] in test_dict:
+                test_paths.append(os.path.join(root, name))
+                continue
+
             dice = np.random.rand()
-            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
+            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths.append(os.path.join(root, name))
             elif dice < (valid_ratio+test_ratio):
                 valid_paths.append(os.path.join(root, name))
-            else:   
+            else:
                 train_paths.append(os.path.join(root, name))
 
-    logging.info(f"Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
+    logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
 
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo):
+def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv):
     stats = Counter()
     sample2group = {}
     for i, b_csv in enumerate(balance_csvs):
@@ -386,14 +413,14 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             splits = os.path.splitext(name)
             if splits[-1].lower() != TENSOR_EXT:
                 continue
-                
+
             group = 0
             sample_id = os.path.basename(splits[0])
             if sample_id in sample2group:
                 group = sample2group[sample_id]
 
             dice = np.random.rand()
-            if dice < valid_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
+            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
                 test_paths[group].append(os.path.join(root, name))
             elif dice < (valid_ratio+test_ratio):
                 valid_paths[group].append(os.path.join(root, name))
@@ -408,8 +435,6 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             logging.info(f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.")
         else:
             logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
-    
-    return train_paths, valid_paths, test_paths
 
 
 @contextmanager
@@ -426,6 +451,8 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        keep_paths: bool = False,
                                        keep_paths_test: bool = True,
                                        mixup_alpha: float = -1.0,
+                                       test_csv: str = None,
+                                       siamese: bool = False,
                                        **kwargs) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
     """ Get 3 tensor generator functions for training, validation and testing data.
 
@@ -441,20 +468,22 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
     :param keep_paths_test:  also return the list of tensor files loaded for testing tensors
-    :param mixup_alpha: parameter for distribution to sample mixup amount from
+    :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
+    :param test_csv: CSV file of sample ids to use for testing if set will ignore test_ration and test_modulo
+    :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
     try:
         if len(balance_csvs) > 0:
-            train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo)
+            train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv)
             weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
         else:
-            train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo)
+            train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
             weights = None
-        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker')
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, None, keep_paths, name='validation_worker')  # TODO: should validation have fewer workers?
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, None, keep_paths or keep_paths_test, name='test_worker')
+        generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, None, keep_paths, name='validation_worker', siamese=siamese)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, None, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
         yield generate_train, generate_valid, generate_test
     finally:
         for generator in (generate_train, generate_valid, generate_test):
@@ -495,3 +524,22 @@ def _mixup_batch(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarra
             mixed_outs[k][i] = (out_batch[k][i, ...] * weight0) + (out_batch[k][half_batch + i, ...] * weight1)
 
     return mixed_ins, mixed_outs
+
+
+def _make_batch_siamese(in_batch: Dict[str, np.ndarray], out_batch: Dict[str, np.ndarray]):
+    for k in in_batch:
+        half_batch = in_batch[k].shape[0] // 2
+        break
+
+    siamese_in = {k+'_left': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
+    siamese_in.update({k+'_right': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch})
+    siamese_out = {'output_siamese': np.zeros((half_batch, 1))}
+
+    for i in range(half_batch):
+        for k in in_batch:
+            siamese_in[k+'_left'][i] = in_batch[k][i, ...]
+            siamese_in[k+'_right'][i] = in_batch[k][half_batch + i, ...]
+        random_task_key = np.random.choice(list(out_batch.keys()))
+        siamese_out['output_siamese'][i] = 0 if np.array_equal(out_batch[random_task_key][i], out_batch[random_task_key][i+half_batch]) else 1
+
+    return siamese_in, siamese_out
