@@ -259,7 +259,7 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
         color = cm(i / len(histories))
         training_loss = np.clip(history['loss'], a_min=-np.inf, a_max=cutoff)
         val_loss = np.clip(history['val_loss'], a_min=-np.inf, a_max=cutoff)
-        label = f'Trial {i}:\n{string_from_trials(trials, i, param_lists)}'
+        label = f'\n\nTrial {i}:{string_from_trials(trials, i, param_lists)}'
         ax1.plot(training_loss, label=label, linestyle=linestyles[i % 4], color=color)
         ax1.text(len(training_loss) - 1, training_loss[-1], str(i))
         ax2.plot(val_loss, label=label, linestyle=linestyles[i % 4], color=color)
