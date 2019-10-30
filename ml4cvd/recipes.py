@@ -253,14 +253,13 @@ def train_char_model(args):
 def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(siamese=True, **args.__dict__)
+    with test_train_valid_tensor_generators(siamese=True, **args.__dict__) as (generate_train, generate_valid, generate_test):
+        siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                                    args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
-
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
-    prediction = siamese_model.predict(data)
-    return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
+        data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
+        prediction = siamese_model.predict(data)
+        return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
 
 
 def plot_predictions(args):
