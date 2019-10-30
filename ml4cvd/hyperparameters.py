@@ -278,14 +278,8 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
 
 
 def limit_mem():
-    try:
-        K.clear_session()
-        cfg = K.tf.ConfigProto()
-        cfg.gpu_options.allow_growth = True
-        K.set_session(K.tf.Session(config=cfg))
-        gc.collect()
-    except AttributeError as e:
-        logging.exception('Could not clear session. Maybe you are using Theano backend?')
+    K.clear_session()
+    gc.collect()
 
 
 if __name__ == '__main__':
