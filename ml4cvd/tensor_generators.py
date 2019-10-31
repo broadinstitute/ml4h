@@ -308,9 +308,13 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
     nrows = batch_size * minibatches
 
     if siamese:
-        input_tensors = [tm.input_name() + '_left' for tm in tensor_maps_in] + [tm.input_name() + '_right' for tm in tensor_maps_in]
         output_tensors = ['output_siamese']
-        saved_tensors = TMArrayCache(4e9, tensor_maps_in, [], nrows).data
+        saved_tensors = TMArrayCache(2e9, tensor_maps_in, [], nrows).data
+        for name in (tmap.input_name() for tmap in tensor_maps_in):
+            allocated = saved_tensors.pop(name)
+            saved_tensors[name + '_left'] = allocated
+            saved_tensors[name + '_right'] = allocated.copy()
+        input_tensors = list(saved_tensors.keys())
         saved_tensors['output_siamese'] = np.zeros(nrows, dtype=np.float32)
     else:
         input_tensors = [tm.input_name() for tm in tensor_maps_in]
@@ -327,12 +331,10 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
             saved_tensors[key][s:t] = next_batch[1][key]
         if keep_paths:
             paths.extend(next_batch[2])
+
     for key in saved_tensors:
         logging.info(f"Tensor '{key}' has shape {saved_tensors[key].shape}.")
-    if siamese:
-        inputs = {key: saved_tensors[key.strip('_left').strip('_right')] for key in input_tensors}
-    else:
-        inputs = {key: saved_tensors[key] for key in input_tensors}
+    inputs = {key: saved_tensors[key] for key in input_tensors}
     outputs = {key: saved_tensors[key] for key in output_tensors}
     if keep_paths:
         return inputs, outputs, paths
