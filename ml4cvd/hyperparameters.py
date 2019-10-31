@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 
 from skimage.filters import threshold_otsu
 
-import tensorflow.keras.backend as K
 
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args
@@ -98,7 +97,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 return MAX_LOSS
             finally:
                 del model
-                limit_mem()
+                gc.collect()
 
         trials = hyperopt.Trials()
         fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
@@ -226,7 +225,11 @@ def string_from_trials(trials, index, param_lists={}):
 def plot_trials(trials, histories, figure_path, param_lists={}):
     all_losses = np.array(trials.losses())  # the losses we will put in the text
     real_losses = all_losses[all_losses != MAX_LOSS]
-    cutoff = threshold_otsu(real_losses)
+    cutoff = MAX_LOSS
+    try:
+        cutoff = threshold_otsu(real_losses)
+    except ValueError:
+        logging.info('Otsu thresholding failed. Using MAX_LOSS for threshold.')
     lplot = np.clip(all_losses, a_min=-np.inf, a_max=cutoff)  # the losses we will plot
     plt.figure(figsize=(64, 64))
     matplotlib.rcParams.update({'font.size': 9})
@@ -275,11 +278,6 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
     plt.tight_layout()
     plt.savefig(learning_path)
     logging.info('Saved learning curve plot to: {}'.format(learning_path))
-
-
-def limit_mem():
-    K.clear_session()
-    gc.collect()
 
 
 if __name__ == '__main__':
