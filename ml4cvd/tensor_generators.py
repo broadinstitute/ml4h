@@ -304,7 +304,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
     # saved tensors is a dictionary with pre-allocated numpy arrays
-    batch_size = generator.batch_size
+    batch_size = generator.batch_size // 2 if siamese else generator.batch_size
     nrows = batch_size * minibatches
 
     if siamese:
@@ -315,7 +315,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
             saved_tensors[name + '_left'] = allocated
             saved_tensors[name + '_right'] = allocated.copy()
         input_tensors = list(saved_tensors.keys())
-        saved_tensors['output_siamese'] = np.zeros(nrows, dtype=np.float32)
+        saved_tensors['output_siamese'] = np.zeros((nrows, 1), dtype=np.float32)
     else:
         input_tensors = [tm.input_name() for tm in tensor_maps_in]
         output_tensors = [tm.output_name() for tm in tensor_maps_out]
