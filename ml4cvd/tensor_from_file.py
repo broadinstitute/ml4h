@@ -397,7 +397,7 @@ TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', group='categorical', tensor_f
                                 channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 
 TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', group='continuous', tensor_from_file=age_in_years_tensor('ecg_rest_date'),loss='logcosh',
-                                  channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization = {'mean': 55, 'std': 7.7})
+                                  channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization = {'mean': 65, 'std': 7.7})
 
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',

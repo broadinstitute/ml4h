@@ -1,7 +1,7 @@
 from ml4cvd.TensorMap import TensorMap, make_range_validator
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
-from ml4cvd.defines import DataSetType, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM
+from ml4cvd.defines import DataSetType, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM, MRI_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_BIKE_RECOVERY_SIZE
 
 
@@ -396,6 +396,9 @@ TMAPS['cine_segmented_sax_b1'] = TensorMap('cine_segmented_sax_b1', (256, 256, 5
 TMAPS['cine_segmented_sax_b2'] = TensorMap('cine_segmented_sax_b2', (256, 256, 50), group='root_array', loss='mse')
 TMAPS['cine_segmented_sax_b4'] = TensorMap('cine_segmented_sax_b4', (256, 256, 50), group='root_array', loss='mse')
 TMAPS['cine_segmented_sax_b6'] = TensorMap('cine_segmented_sax_b6', (256, 256, 50), group='root_array', loss='mse')
+
+
+
 
 TMAPS['cine_segmented_lax_2ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 50), group='root_array', loss='logcosh')
 TMAPS['cine_segmented_lax_3ch'] = TensorMap('cine_segmented_lax_3ch', (256, 256, 50), group='root_array', loss='logcosh')
