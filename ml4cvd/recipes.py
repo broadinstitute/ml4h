@@ -158,6 +158,7 @@ def infer_multimodal_multitask(args):
                     channel_columns.append(ot + '_' + k + '_actual')
                 header.extend(channel_columns)
             elif otm.name == 'mri_systole_diastole_8_segmented':
+                pix_tm = args.tensor_maps_in['mri_pixel_width_cine_segmented_sax_inlinevf']
                 header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual'])
         inference_writer.writerow(header)
 
@@ -184,7 +185,7 @@ def infer_multimodal_multitask(args):
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name == 'mri_systole_diastole_8_segmented':
-                    csv_row.append(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0])
+                    csv_row.append(pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]))
                     csv_row.append(np.count_nonzero(np.argmax(y, axis=-1) == 0))
                     csv_row.append(np.count_nonzero(np.argmax(true_label[tm.output_name()], axis=-1) == 0))
                     csv_row.append(np.count_nonzero(np.argmax(y, axis=-1) == 1))
