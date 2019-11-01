@@ -185,6 +185,8 @@ def infer_multimodal_multitask(args):
                         csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name == 'mri_systole_diastole_8_segmented':
                     csv_row.append(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0])
+                    csv_row.append(np.count_nonzero(np.argmax(y, axis=-1) == 0))
+                    csv_row.append(np.count_nonzero(np.argmax(true_label[tm.output_name()], axis=-1) == 0))
                     csv_row.append(np.count_nonzero(np.argmax(y, axis=-1) == 1))
                     csv_row.append(np.count_nonzero(np.argmax(true_label[tm.output_name()], axis=-1) == 1))
                     csv_row.append(np.count_nonzero(np.argmax(y, axis=-1) == 2))
