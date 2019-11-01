@@ -753,7 +753,7 @@ def _inspect_model(model: Model,
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
 
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, workers=8, use_multiprocessing=True,
+    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps,
                             validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     train_speed = (t1 - t0) / (batch_size * training_steps)
