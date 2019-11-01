@@ -313,7 +313,7 @@ def _make_ukb_ecg_rest_lvh():
         tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')        
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
-        if ECG_REST_SENTINEL in np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]):
+        if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
             raise ValueError('Missing some of the R and S amplitude readings needed to evaluate LVH criteria')        
         is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
         is_male   = 'Genetic-sex_Male_0_0' in hd5['categorical']

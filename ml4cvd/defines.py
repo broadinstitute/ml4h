@@ -49,15 +49,6 @@ ECG_REST_MEDIAN_LEADS = {'median_I': 0, 'median_II': 1, 'median_III': 2, 'median
                          'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9, 'median_aVL': 10, 'median_aVR': 11}
 ECG_REST_AMP_LEADS = {'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
                       'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11}
-ECG_REST_PLOT_LEADS = [['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
-                       ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
-                       ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']]
-ECG_REST_PLOT_MEDIAN_LEADS = [['median_I','median_aVR', 'median_V1', 'median_V4'],
-                              ['median_II','median_aVL', 'median_V2', 'median_V5'],
-                              ['median_III','median_aVF', 'median_V3', 'median_V6']]
-ECG_REST_PLOT_AMP_LEADS = [[0, 3, 6, 9],
-                           [1, 4, 7, 10],
-                           [2, 5, 8, 11]]
 
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
 ECG_BIKE_MEDIAN_SIZE = (5500, len(ECG_BIKE_LEADS))

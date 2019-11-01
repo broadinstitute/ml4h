@@ -34,7 +34,7 @@ import seaborn as sns
 from biosppy.signals import ecg
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, ECG_REST_PLOT_LEADS, ECG_REST_PLOT_MEDIAN_LEADS, ECG_REST_PLOT_AMP_LEADS
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -46,6 +46,18 @@ COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 
                'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
                'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
                'teal', 'peru', 'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
+
+ECG_REST_PLOT_DEFAULT_YRANGE = 3.0
+ECG_REST_PLOT_MAX_YRANGE = 10.0
+ECG_REST_PLOT_LEADS = [['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
+                       ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
+                       ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']]
+ECG_REST_PLOT_MEDIAN_LEADS = [['median_I','median_aVR', 'median_V1', 'median_V4'],
+                              ['median_II','median_aVL', 'median_V2', 'median_V5'],
+                              ['median_III','median_aVF', 'median_V3', 'median_V6']]
+ECG_REST_PLOT_AMP_LEADS = [[0, 3, 6, 9],
+                           [1, 4, 7, 10],
+                           [2, 5, 8, 11]]
 
 
 def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
@@ -586,17 +598,17 @@ def _ecg_rest_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
     """Returns y-range necessary not to cut any of the plotted ECG waveforms"""
     yrange = default_yrange
     for is_median, offset in zip([False, True], [3, 0]):
-        for i in range(offset,offset+3):
-            for j in range(0,4):
+        for i in range(offset, offset+3):
+            for j in range(0, 4):
                 lead_name = ECG_REST_PLOT_LEADS[i-offset][j]
                 lead = twelve_leads[lead_name]
                 y_plot = np.array([elem_ * raw_scale for elem_ in lead['raw']])
                 if not is_median:        
-                    y_plot = y_plot[np.logical_and(lead['ts_reference']>j*int(time_interval),
-                                    lead['ts_reference']<(j+1)*int(time_interval))]
-                ylim_min, ylim_max = _ecg_rest_ylims(default_yrange, y_plot)
+                    y_plot = y_plot[np.logical_and(lead['ts_reference']>j*time_interval,
+                                    lead['ts_reference']<(j+1)*time_interval)]
+                ylim_min, ylim_max = _ecg_rest_ylims(yrange, y_plot)
                 yrange = ylim_max - ylim_min
-    return yrange
+    return min(yrange, ECG_REST_PLOT_MAX_YRANGE)
 
     
 def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
@@ -616,7 +628,7 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
             text  += f"{pat_df['ecg_text']}\n"
             text  += f"LVH criteria - aVL: {avl_yn}, Sokolow-Lyon: {sl_yn}, Cornell: {cor_yn}"            
         st=f.suptitle(text, x=0.0, y=1.05, ha='left', bbox=dict(facecolor='black', alpha=0.1))   
-    for i in range(offset,offset+3):
+    for i in range(offset, offset+3):
         for j in range(0, 4):
             lead_name = lead_mapping[i-offset][j]
             lead = twelve_leads[lead_name]
@@ -683,7 +695,7 @@ def _remove_duplicate_rows(df, out_folder):
 def plot_ecg_rest(df, rows, out_folder, is_blind):
     """Extracts and plots ECG resting waveforms"""
     raw_scale = 0.005 # Conversion from raw to mV
-    default_yrange = 3.0 # mV
+    default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
     time_interval = 2.5 # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
     for row in rows:
         pat_df = df.iloc[row]

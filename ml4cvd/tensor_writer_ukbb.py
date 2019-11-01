@@ -443,11 +443,11 @@ def _to_float_or_false(s):
         return False
 
         
-def _to_float_or_sentinel(s, sentinel):
+def _to_float_or_nan(s):
     try:
         return float(s)
     except ValueError:
-        return sentinel
+        return np.nan
 
         
 def _write_tensors_from_zipped_dicoms(x: int,
@@ -817,7 +817,7 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
             for child in c:
                 if child.tag not in ECG_TABLE_TAGS:
                     continue
-                vals = list(map(_to_float_or_sentinel, child.text.strip().split(','), ECG_REST_SENTINEL))
+                vals = list(map(_to_float_or_nan, child.text.strip().split(',')))
                 create_tensor_in_hd5(hd5, 'ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, child.tag.lower(), vals, stats)
 
 
