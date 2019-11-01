@@ -158,7 +158,7 @@ def infer_multimodal_multitask(args):
                     channel_columns.append(ot + '_' + k + '_actual')
                 header.extend(channel_columns)
             elif otm.name == 'mri_systole_diastole_8_segmented':
-                pix_tm = args.tensor_maps_in['mri_pixel_width_cine_segmented_sax_inlinevf']
+                pix_tm = args.tensor_maps_in[1] # TOTAL HACK
                 header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual'])
         inference_writer.writerow(header)
 
