@@ -153,7 +153,8 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth)
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_true_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut)
                                 plt.imsave(f"{folder}batch_index_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", test_data[im.input_name()][yi, :, :, j, 0])
-
+                else:
+                    logging.warning(f'Not writing PNGs')
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
