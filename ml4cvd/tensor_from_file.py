@@ -7,7 +7,8 @@ from keras.utils import to_categorical
 from ml4cvd.TensorMap import TensorMap, no_nans
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
-from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_SENTINEL
+from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_REST_SENTINEL
 
 
 """
@@ -303,7 +304,7 @@ TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', sha
 def _make_ukb_ecg_rest_lvh():
     def ukb_ecg_rest_lvh_from_file(tm, hd5):
         # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
-        lead_order = ECG_REST_AMP_ORDER
+        lead_order = ECG_REST_AMP_LEADS
         avl_min = 1100.0
         sl_min = 3500.0
         cornell_female_min = 2000.0
