@@ -6,8 +6,8 @@ import numpy as np
 from keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
-from ml4cvd.TensorMap import TensorMap, no_nans, str2date
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
+from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator
 from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
 
 
@@ -78,6 +78,14 @@ def survival_tensor(start_date_key, day_window):
         return survival_then_censor
 
     return _survival_tensor_from_file
+
+
+def age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
+    def age_at_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        assess_date = str2date(str(hd5[date_key][0]))
+        birth_year = hd5[birth_key][0]
+        return tm.normalize_and_validate(np.array([assess_date.year()-birth_year])
+    return age_at_tensor_from_file
 
 
 def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
@@ -387,6 +395,10 @@ TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', group='categorical', tensor_from_f
 TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', group='categorical', tensor_from_file=_make_rhythm_tensor(False),
                                 loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
                                 channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
+
+TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', group='continuous', tensor_from_file=age_in_years_tensor('ecg_rest_date'),loss='logcosh',
+                                  channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization = {'mean': 55, 'std': 7.7})
+
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
