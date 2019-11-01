@@ -36,6 +36,7 @@ from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morpholog
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import DataSetType, dataset_name_from_meaning
+from ml4cvd.defines import ECG_REST_SENTINEL
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
@@ -441,7 +442,14 @@ def _to_float_or_false(s):
     except ValueError:
         return False
 
+        
+def _to_float_or_sentinel(s, sentinel):
+    try:
+        return float(s)
+    except ValueError:
+        return sentinel
 
+        
 def _write_tensors_from_zipped_dicoms(x: int,
                                       y: int,
                                       z: int,
@@ -809,7 +817,7 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
             for child in c:
                 if child.tag not in ECG_TABLE_TAGS:
                     continue
-                vals = list(map(_to_float_or_false, child.text.strip().split(',')))
+                vals = list(map(_to_float_or_sentinel, child.text.strip().split(','), ECG_REST_SENTINEL))
                 create_tensor_in_hd5(hd5, 'ukb_ecg_rest', DataSetType.FLOAT_ARRAY, ecg_date, child.tag.lower(), vals, stats)
 
 

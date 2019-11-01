@@ -7,7 +7,7 @@ from keras.utils import to_categorical
 from ml4cvd.TensorMap import TensorMap, no_nans
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
-from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS
+from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_SENTINEL
 
 
 """
@@ -309,10 +309,18 @@ def _make_ukb_ecg_rest_lvh():
         cornell_female_min = 2000.0
         cornell_male_min = 2800.0
         tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude')
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')        
+        criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
+        criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
+        if ECG_REST_SENTINEL in np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]):
+            raise ValueError('Missing some of the R and S amplitude readings needed to evaluate LVH criteria')        
         is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
         is_male   = 'Genetic-sex_Male_0_0' in hd5['categorical']
-        tensor = np.zeros(tm.shape, dtype=np.float32)
+        # If genetic sex not available, try phenotypic
+        if not(is_female or is_male):
+            is_female = 'Sex_Female_0_0' in hd5['categorical']
+            is_male   = 'Sex_Male_0_0' in hd5['categorical']
+        # If neither available, raise error
         if not(is_female or is_male):
             raise ValueError('Sex info required to evaluate LVH criteria')        
         if tm.name == 'avl_lvh':
@@ -329,6 +337,7 @@ def _make_ukb_ecg_rest_lvh():
         else:
             raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
         # Following convention from categorical TMAPS, positive has cmap index 1
+        tensor = np.zeros(tm.shape, dtype=np.float32)
         index = 0    
         if is_lvh:
             index = 1
