@@ -13,9 +13,6 @@ class DataSetType(Enum):
         return str.lower(super().__str__().split('.')[1])
 
 
-TENSOR_GENERATOR_TIMEOUT = 64
-TENSOR_GENERATOR_MAX_Q_SIZE = 32
-
 DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 EPS = 1e-7
