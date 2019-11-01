@@ -84,7 +84,7 @@ def age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
     def age_at_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[date_key][0]))
         birth_year = hd5[birth_key][0]
-        return tm.normalize_and_validate(np.array([assess_date.year()-birth_year])
+        return tm.normalize_and_validate(np.array([assess_date.year()-birth_year]))
     return age_at_tensor_from_file
 
 
