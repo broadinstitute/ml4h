@@ -24,27 +24,14 @@ from multiprocessing import Process, Queue
 from typing import List, Dict, Tuple, Set, Optional
 
 
-from ml4cvd.defines import TENSOR_EXT, TENSOR_GENERATOR_TIMEOUT, TENSOR_GENERATOR_MAX_Q_SIZE
+from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
 
 np.set_printoptions(threshold=np.inf)
 
 
-def _partition_list(a: List, n: int) -> List[List]:
-    """
-    Partitions list into almost even chunks, with the last chunk getting len(a) % n extra parts
-    :param a: list to partition
-    :param n: number of partitions
-    :return: list of partitioned lists
-    """
-    partitions = []
-    step = len(a) // n
-    for i in range(n):
-        if i == n - 1:
-            partitions.append(a[i * step:])
-        else:
-            partitions.append(a[i * step: (i + 1) * step])
-    return partitions
+TENSOR_GENERATOR_TIMEOUT = 64
+TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
 
 class TensorGenerator:
@@ -58,9 +45,9 @@ class TensorGenerator:
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name, self.siamese, = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name, siamese
         if weights is None:
-            self.worker_path_lists = _partition_list(paths, num_workers)
+            self.worker_path_lists = np.array_split(paths, num_workers)
         else:
-            self.worker_path_lists = [_partition_list(a, num_workers) for a in paths]
+            self.worker_path_lists = np.array([np.array_split(a, num_workers) for a in paths]).T
 
     def _init_workers(self):
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
@@ -93,7 +80,7 @@ class TensorGenerator:
         return self
 
 
-class TMArrayCache:
+class TensorMapArrayCache:
     """
     Caches numpy arrays created by tensor maps up to a maximum number of bytes
     """
@@ -127,17 +114,17 @@ class TMArrayCache:
         self.files_seen[name] += 1
         return True
 
-    def __getitem__(self, item: Tuple[str, str]):
+    def __getitem__(self, key: Tuple[str, str]):
         """
-        :param item: should be a tuple file_path, name
+        :param key: should be a tuple file_path, name
         """
-        file_path, name = item
+        file_path, name = key
         val = self.data[name][self.key_to_index[file_path, name]]
         self.hits += 1
         return val
 
-    def __contains__(self, item: Tuple[str, str]):
-        return item in self.key_to_index
+    def __contains__(self, key: Tuple[str, str]):
+        return key in self.key_to_index
 
     def __len__(self):
         return sum(self.files_seen.values())
@@ -146,7 +133,7 @@ class TMArrayCache:
         return np.mean(list(self.files_seen.values()) or [0]) / self.nrows
 
 
-def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TMArrayCache, is_input: bool, tp: str, idx: int, batch: Dict, dependents: Dict) -> h5py.File:
+def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TensorMapArrayCache, is_input: bool, tp: str, idx: int, batch: Dict, dependents: Dict) -> h5py.File:
     name = tm.input_name() if is_input else tm.output_name()
     if tm in dependents:  # for now, TMAPs with dependents are not cacheable
         batch[name][idx] = dependents[tm]
@@ -199,7 +186,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
     out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
 
     max_rows = len(generator_paths) if weights is None else sum(map(len, generator_paths))
-    cache = TMArrayCache(cache_size, input_maps, output_maps, max_rows)
+    cache = TensorMapArrayCache(cache_size, input_maps, output_maps, max_rows)
     logging.info(f'{name} initialized cache of size {cache.row_size * cache.nrows / 1e9:.3f} GB.')
 
     while True:
@@ -309,7 +296,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
 
     if siamese:
         output_tensors = ['output_siamese']
-        saved_tensors = TMArrayCache(2e9, tensor_maps_in, [], nrows).data
+        saved_tensors = TensorMapArrayCache(2e9, tensor_maps_in, [], nrows).data
         for name in (tmap.input_name() for tmap in tensor_maps_in):
             allocated = saved_tensors.pop(name)
             saved_tensors[name + '_left'] = allocated
@@ -319,7 +306,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
     else:
         input_tensors = [tm.input_name() for tm in tensor_maps_in]
         output_tensors = [tm.output_name() for tm in tensor_maps_out]
-        saved_tensors = TMArrayCache(4e9, tensor_maps_in, tensor_maps_out, nrows).data
+        saved_tensors = TensorMapArrayCache(4e9, tensor_maps_in, tensor_maps_out, nrows).data
     paths = []
 
     for i in range(minibatches):
@@ -484,7 +471,7 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
             train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
             weights = None
         generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, None, keep_paths, name='validation_worker', siamese=siamese)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, max(num_workers // 2, 1), cache_size, None, keep_paths, name='validation_worker', siamese=siamese)
         generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, None, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
         yield generate_train, generate_valid, generate_test
     finally:
