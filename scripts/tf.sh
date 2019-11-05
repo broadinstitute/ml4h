@@ -112,4 +112,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; pip install memory_profiler; mprof run --multiprocess python ${PYTHON_ARGS}; mprof plot -o /home/${USER}/ml/memory.png"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; python ${PYTHON_ARGS}"
