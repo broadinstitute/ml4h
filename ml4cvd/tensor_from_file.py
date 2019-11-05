@@ -48,6 +48,8 @@ def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> Li
     # Unfortunately, that's hard to do efficiently
     return hd5[source][str(dtype)][name]
 
+def _pass_nan(tensor):
+    return (tensor)
 
 def _fail_nan(tensor):
     if np.isnan(tensor).any():
@@ -276,7 +278,9 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5):
-        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
+        if 'ukb_ecg_rest' not in hd5:
+            raise ValueError('Group with R and S amplitudes not present in hd5')
+        tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name, _pass_nan)        
         try:            
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -309,8 +313,10 @@ def _make_ukb_ecg_rest_lvh():
         sl_min = 3500.0
         cornell_female_min = 2000.0
         cornell_male_min = 2800.0
-        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude')
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude')        
+        if 'ukb_ecg_rest' not in hd5:
+            raise ValueError('Group with R and S amplitudes not present in hd5')        
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'ramplitude', _pass_nan)
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):

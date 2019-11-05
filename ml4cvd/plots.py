@@ -11,7 +11,6 @@ import hashlib
 import operator
 from textwrap import wrap
 from functools import reduce
-from ast import literal_eval
 from multiprocessing import Pool
 from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
@@ -667,14 +666,20 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
                     dy_amp = 0.2
                 else: # Put in top right
                     dy_amp = 0.85
-                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {int(pat_df['ramp'][ECG_REST_PLOT_AMP_LEADS[i-offset][j]])}")
-                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {int(pat_df['samp'][ECG_REST_PLOT_AMP_LEADS[i-offset][j]])}")
+                ax[i,j].text(0.9, dy_amp*yrange+ylim_min, f"R: {pat_df['ramp'][ECG_REST_PLOT_AMP_LEADS[i-offset][j]]:.0f}")
+                ax[i,j].text(0.9, (dy_amp-0.15)*yrange+ylim_min, f"S: {pat_df['samp'][ECG_REST_PLOT_AMP_LEADS[i-offset][j]]:.0f}")
 
+
+def _str_to_list_float(str_list: str) -> List[int]:
+    """'[ 3. 4. nan 3 ]' --> [ 3.0, 4.0, nan, 3.0 ]"""
+    tmp_str = str_list[1:-1].split()
+    return list(map(float, tmp_str))
+                
 
 def _ecg_rest_csv_to_df(csv):
     df = pd.read_csv(csv)
-    df['ramp'] = df['ramp'].apply(literal_eval)
-    df['samp'] = df['samp'].apply(literal_eval)
+    df['ramp'] = df['ramp'].apply(_str_to_list_float)
+    df['samp'] = df['samp'].apply(_str_to_list_float)    
     df['patient_id'] = df['patient_id'].apply(str)
     df['Sokolow_Lyon'] = df['Sokolow_Lyon'].apply(float)
     df['Cornell'] = df['Cornell'].apply(float)
