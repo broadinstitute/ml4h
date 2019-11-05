@@ -42,7 +42,6 @@ CAD_ICDS = ['K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K45
 CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
 CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
 
-ECG_REST_SENTINEL = 999999999
 ECG_REST_LEADS = {'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
                   'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11}
 ECG_REST_MEDIAN_LEADS = {'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4, 'median_V3': 5,
