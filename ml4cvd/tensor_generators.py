@@ -90,9 +90,11 @@ class TensorMapArrayCache:
         self.data = {}
         self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in input_tms + output_tms)
         self.nrows = min(int(max_size / self.row_size), max_rows)
-        for tm in input_tms:
+        for tm in filter(lambda tm: tm.cacheable, input_tms):
             self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
-        for tm in output_tms:
+        for tm in filter(lambda tm: tm.cacheable, output_tms):
+            if tm in input_tms:  # Useful for autoencoders
+                self.data[tm.output_name()] = self.data[tm.input_name()]
             self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
         self.files_seen = Counter()  # name -> max position filled in cache
         self.key_to_index = {}  # file_path, name -> position in self.data
@@ -135,15 +137,16 @@ class TensorMapArrayCache:
 
 def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TensorMapArrayCache, is_input: bool, tp: str, idx: int, batch: Dict, dependents: Dict) -> h5py.File:
     name = tm.input_name() if is_input else tm.output_name()
-    if tm in dependents:  # for now, TMAPs with dependents are not cacheable
+    if tm in dependents:
         batch[name][idx] = dependents[tm]
+        if tm.cacheable:
+            cache[tp, name] = dependents[tm]
         return hd5
     if (tp, name) in cache:
         batch[name][idx] = cache[tp, name]
         return hd5
     if hd5 is None:  # Don't open hd5 if everything is in the cache
         hd5 = h5py.File(tp, 'r')
-    dependents = {}
     tensor = tm.tensor_from_file(tm, hd5, dependents)
     batch[name][idx] = tensor
     if tm.cacheable:
