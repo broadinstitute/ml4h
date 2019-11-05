@@ -14,5 +14,6 @@ while [[ $COUNTER -lt $(( $MAX_TRIES )) ]]; do
       let COUNTER=COUNTER+1
       echo "Could not start vm: ${VM}, unsuccessful attempt: ${COUNTER}."
     fi
-
 done
+
+gcloud compute ssh $VM --zone $ZONE
