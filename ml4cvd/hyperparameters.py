@@ -188,7 +188,7 @@ def optimize_mri_sax_architecture(args):
     space = {
         'pool_x': hp.quniform('pool_x', 2, 8, 2),
         'pool_y': hp.quniform('pool_y', 2, 8, 2),
-        'pool_z': hp.quniform('pool_z', 2, 8, 2),
+        'pool_z': hp.quniform('pool_z', 1, 2, 1),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
