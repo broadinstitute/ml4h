@@ -621,7 +621,7 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
         avl_yn = 'Y' if pat_df['aVL']>0.5 else 'N'
         sl_yn  = 'Y' if pat_df['Sokolow_Lyon']>0.5 else 'N'
         cor_yn = 'Y' if pat_df['Cornell']>0.5 else 'N'
-        sex_fm = 'F' if pat_df['sex'] == 'F' else 'M'
+        sex_fm = 'F' if ((pat_df['sex'] == 'F') or (pat_df['sex'] == 'female')) else 'M'
         text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"        
         if not is_blind:
             text  += f"{pat_df['ecg_text']}\n"
