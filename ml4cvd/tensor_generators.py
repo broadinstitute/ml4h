@@ -207,7 +207,8 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
             for path_list, weight in zip(generator_paths, weights):
                 paths += choices(path_list, k=int(weight * epoch_len))
             shuffle(paths)
-        paths = generator_paths
+        else:
+            paths = generator_paths
         all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
         for tp in paths:
             if tp in cache.failed_paths and all_cacheable:
@@ -384,7 +385,6 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
     logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
-
     return train_paths, valid_paths, test_paths
 
 
@@ -431,6 +431,7 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             logging.info(f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.")
         else:
             logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
+    return train_paths, valid_paths, test_paths
 
 
 @contextmanager
@@ -478,8 +479,8 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
             train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
             weights = None
         generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, max(num_workers // 2, 1), cache_size, None, keep_paths, name='validation_worker', siamese=siamese)
-        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, None, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, max(num_workers // 2, 1), cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
+        generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
         yield generate_train, generate_valid, generate_test
     finally:
         for generator in (generate_train, generate_valid, generate_test):
