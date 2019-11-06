@@ -236,7 +236,7 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
     plt.plot(lplot)
     with open(os.path.join(figure_path, 'loss_by_params.txt'), 'w') as f:
         for i in range(len(trials.trials)):
-            text = f'Trial {i}: \nTest Loss:{all_losses[i]:.3f} Train Loss:{histories[i]["loss"]} Validation Loss:{histories[i]["val_loss"]}'
+            text = f'Trial {i}: \nTest Loss:{all_losses[i]:.3f} Train Loss:{histories[i]["loss"][-1]} Validation Loss:{histories[i]["val_loss"][-1]}'
             text += f'{string_from_trials(trials, i, param_lists)}'
             plt.text(i, lplot[i], text, color=colors[i])
             f.write(text.replace('\n', ',') + '\n')
@@ -263,7 +263,7 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
         color = cm(i / len(histories))
         training_loss = np.clip(history['loss'], a_min=-np.inf, a_max=cutoff)
         val_loss = np.clip(history['val_loss'], a_min=-np.inf, a_max=cutoff)
-        label = f'\nTrial {i}:\nTest Loss:{all_losses[i]:.3f} Train Loss:{histories[i]["loss"]} Validation Loss:{histories[i]["val_loss"]}'
+        label = f'\nTrial {i}:\nTest Loss:{all_losses[i]:.3f} Train Loss:{histories[i]["loss"][-1]} Validation Loss:{histories[i]["val_loss"][-1]}'
         label += string_from_trials(trials, i, param_lists)
         ax1.plot(training_loss, label=label, linestyle=linestyles[i % 4], color=color)
         ax1.text(len(training_loss) - 1, training_loss[-1], str(i))
