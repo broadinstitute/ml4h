@@ -368,7 +368,6 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
 
-<<<<<<< HEAD
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
@@ -403,7 +402,6 @@ TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', group='continuous', tensor_fro
                                   channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization = {'mean': 65, 'std': 7.7})
 
 
-=======
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5):
