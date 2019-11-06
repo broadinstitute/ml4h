@@ -67,6 +67,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
 
         def loss_from_multimodal_multitask(x):
             model = None
+            history = None
             nonlocal i
             i += 1
             try:
@@ -88,7 +89,6 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 logging.info(f'Current architecture:\n{string_from_arch_dict(x)}')
                 logging.info(f"Iteration {stats['count']} out of maximum {args.max_models}\nLoss: {loss_and_metrics[0]}\nCurrent model size: {model.count_params()}.")
                 return loss_and_metrics[0]
-
             except ValueError:
                 logging.exception('ValueError trying to make a model for hyperparameter optimization. Returning max loss.')
                 return MAX_LOSS
@@ -98,6 +98,8 @@ def hyperparam_optimizer(args, space, param_lists={}):
             finally:
                 del model
                 gc.collect()
+                if history is None:
+                    histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
 
         trials = hyperopt.Trials()
         fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
@@ -237,7 +239,8 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
     plt.plot(lplot)
     with open(os.path.join(figure_path, 'loss_by_params.txt'), 'w') as f:
         for i in range(len(trials.trials)):
-            text = f'Loss = {all_losses[i]:.3f}{string_from_trials(trials, i, param_lists)}'
+            text = f'Trial {i}: \nTest Loss:{all_losses[i]:.2f}\nTrain Loss:{histories[i]["loss"][-1]:.2f}\nValidation Loss:{histories[i]["val_loss"][-1]:.2f}'
+            text += f'{string_from_trials(trials, i, param_lists)}'
             plt.text(i, lplot[i], text, color=colors[i])
             f.write(text.replace('\n', ',') + '\n')
     plt.xlabel('Iterations')
@@ -263,7 +266,8 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
         color = cm(i / len(histories))
         training_loss = np.clip(history['loss'], a_min=-np.inf, a_max=cutoff)
         val_loss = np.clip(history['val_loss'], a_min=-np.inf, a_max=cutoff)
-        label = f'Trial {i}:\n{string_from_trials(trials, i, param_lists)}'
+        label = f'\nTrial {i}:\nTest Loss:{all_losses[i]:.3f}\nTrain Loss:{histories[i]["loss"][-1]:.2f}\nValidation Loss:{histories[i]["val_loss"][-1]:.2f}'
+        label += string_from_trials(trials, i, param_lists)
         ax1.plot(training_loss, label=label, linestyle=linestyles[i % 4], color=color)
         ax1.text(len(training_loss) - 1, training_loss[-1], str(i))
         ax2.plot(val_loss, label=label, linestyle=linestyles[i % 4], color=color)
