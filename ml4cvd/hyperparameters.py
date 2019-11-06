@@ -77,7 +77,7 @@ def hyperparam_optimizer(args, space, param_lists={}):
             if model.count_params() > args.max_parameters:
                 logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 del model
-                histories.append({'loss': MAX_LOSS, 'val_loss': MAX_LOSS})
+                histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
                 return MAX_LOSS
 
             model, history = train_model_from_generators(model, generate_train, generate_test, args.training_steps, args.validation_steps,
@@ -94,12 +94,12 @@ def hyperparam_optimizer(args, space, param_lists={}):
             return loss_and_metrics[0]
 
         except ValueError as e:
-            histories.append({'loss': MAX_LOSS, 'val_loss': MAX_LOSS})
+            histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
             logging.exception('ValueError trying to make a model for hyperparameter optimization. Returning max loss.')
             return MAX_LOSS
         except:
             logging.exception('Error trying hyperparameter optimization. Returning max loss.')
-            histories.append({'loss': MAX_LOSS, 'val_loss': MAX_LOSS})
+            histories.append({'loss': [MAX_LOSS], 'val_loss': [MAX_LOSS]})
             return MAX_LOSS
 
     trials = hyperopt.Trials()
