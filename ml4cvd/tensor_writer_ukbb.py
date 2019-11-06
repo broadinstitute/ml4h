@@ -971,6 +971,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
+    num_slices_for_shift = 48
     field_id_to_root = {'20251': 'SWI'}
     root_folder = os.path.join(folder, field_id_to_root[field_id])
     niftis = glob.glob(os.path.join(root_folder, '*nii.gz'))
@@ -979,7 +980,10 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         nifti_array = nifti_mri.get_fdata()
         nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
         stats[nii_name] += 1
-        stats[f'{nii_name}_{nifti_array.shape}'] += 1
+        stats[f'{nii_name} shape:{nifti_array.shape}'] += 1
+        if nifti_array.shape[-1] == num_slices_for_shift and nifti_array.shape[0] > nifti_array.shape[1]:
+            nifti_array = np.moveaxis(nifti_array, 0, 1)
+            stats[f'{nii_name} shape post shift:{nifti_array.shape}'] += 1
         create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype=DataSetType.FLOAT_ARRAY, source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
 
 
