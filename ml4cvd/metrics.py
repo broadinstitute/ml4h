@@ -2,7 +2,7 @@
 import logging
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as K
+import keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
