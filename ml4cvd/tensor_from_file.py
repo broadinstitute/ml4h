@@ -7,11 +7,8 @@ from keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
-<<<<<<< HEAD
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator
-=======
 from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS
->>>>>>> sf_hyperopt_bug
 from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
 
 
@@ -498,7 +495,6 @@ TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', t
                             loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
     
 
->>>>>>> sf_hyperopt_bug
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
                                                          normalization={'zero_mean_std1': True})
