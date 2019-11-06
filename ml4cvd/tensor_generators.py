@@ -47,7 +47,11 @@ class TensorGenerator:
         if weights is None:
             self.worker_path_lists = np.array_split(paths, num_workers)
         else:
-            self.worker_path_lists = np.array([np.array_split(a, num_workers) for a in paths]).T
+            # split each path list into paths for each worker.
+            # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
+            split_paths = [np.array_split(a, num_workers) for a in paths]
+            # Next, each list of paths gets given to each worker. E.g. [[[p1], [p3, p4]], [[p2], [p5]]]
+            self.worker_path_lists = np.swapaxes(split_paths, 0, 1)
 
     def _init_workers(self):
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
