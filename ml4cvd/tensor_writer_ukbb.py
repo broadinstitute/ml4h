@@ -41,8 +41,7 @@ from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 
 
-STATS_TYPE = Dict[str, List[float]]
-
+MISSING_DATE = datetime.date(year=1900, month=1, day=1)
 
 MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
@@ -200,7 +199,6 @@ def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sa
             if min_sample_id <= sample_id <= max_sample_id and len(row[13]) > 0 and row[13] != 'NA':
                 # Zero-based column #13 is the LV mass
                 nested_dictionary[sample_id]['lv_mass'] = float(row[13])
-
 
     return nested_dictionary
 
@@ -828,7 +826,7 @@ def tensor_path(source: str, dtype: DataSetType, date: datetime.datetime, name: 
     return f'/{source}/{dtype}/{name}/{_datetime_to_str(date)}'
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: STATS_TYPE):
+def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: DataSetType, date: datetime.datetime, name: str, value, stats: Counter):
     hd5_path = tensor_path(source, dtype, date, name)
     stats[hd5_path.strip(f'{_datetime_to_str(date)}/')] += 1
     if dtype in {DataSetType.FLOAT_ARRAY, DataSetType.CONTINUOUS}:
@@ -972,20 +970,17 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         write_to_hd5(dtype=DataSetType.CONTINUOUS, name='max_pred_hr', value=[max_pred_hr])
 
 
-def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Dict[str, int]):
-    field_id_to_root = {
-        '20251': 'SWI',
-    }
+def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
+    field_id_to_root = {'20251': 'SWI'}
     root_folder = os.path.join(folder, field_id_to_root[field_id])
     niftis = glob.glob(os.path.join(root_folder, '*nii.gz'))
     for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
         nifti_mri = nib.load(nifti)
-        data = nifti_mri.get_fdata()
+        nifti_array = nifti_mri.get_fdata()
         nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
         stats[nii_name] += 1
-        stats[f'{nii_name}_{data.shape}'] += 1
-        hd5_prefix = f'/ndarray/{field_id}/{nii_name}'
-        hd5.create_dataset(hd5_prefix, data=data, compression='gzip', dtype=np.float32)
+        stats[f'{nii_name}_{nifti_array.shape}'] += 1
+        create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype=DataSetType.FLOAT_ARRAY, source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:

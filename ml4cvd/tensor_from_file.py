@@ -371,7 +371,6 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
 
-<<<<<<< HEAD
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
@@ -406,7 +405,6 @@ TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', group='continuous', tensor_fro
                                   channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization = {'mean': 65, 'std': 7.7})
 
 
-=======
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5):
@@ -498,7 +496,6 @@ TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', t
                             loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
     
 
->>>>>>> sf_hyperopt_bug
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
                                                          normalization={'zero_mean_std1': True})
