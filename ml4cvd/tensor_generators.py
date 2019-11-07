@@ -39,6 +39,7 @@ class TensorGenerator:
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
+        self.run_on_main_thread = num_workers == 0
         self.q = None
         self._started = False
         self.workers = []
@@ -58,7 +59,7 @@ class TensorGenerator:
     def _init_workers(self):
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
         self._started = True
-        if self.num_workers == 0:
+        if self.run_on_main_thread:
             logging.info(f"Starting {self.name} on main thread.")
             self.workers.append(multimodal_multitask_worker(
                 self.q, self.batch_size, self.input_maps, self.output_maps, self.worker_path_lists[0], self.keep_paths,
@@ -79,10 +80,13 @@ class TensorGenerator:
         if not self._started:
             self._init_workers()
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
-        return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+        if self.run_on_main_thread:
+            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+        else:
+            return next(self.workers[0])
 
     def kill_workers(self):
-        if self._started:
+        if self._started and self.run_on_main_thread:
             for worker in self.workers:
                 logging.info(f'Stopping {worker.name}.')
                 worker.terminate()
