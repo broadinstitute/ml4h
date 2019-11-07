@@ -560,6 +560,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     diastoles = {}
     systoles_pix = {}
     diastoles_pix = {}
+    systoles_idx = {}
+    diastoles_idx = {}
     full_mask = np.zeros((x, y), dtype=np.float32)
     full_slice = np.zeros((x, y), dtype=np.float32)
 
@@ -608,6 +610,9 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
                     systoles_pix[cur_angle] = ventricle_pixels
 
     for angle in diastoles:
+        logging.info(f'\n\n\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!\n\n\n\n\n')
+        logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}')
+        logging.info(f'Found diastole at instance {diastoles[angle].InstanceNumber}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
