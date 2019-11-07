@@ -727,7 +727,7 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         if ventricle_pixels and myocardium_pixels > MRI_MAX_MYOCARDIUM:
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
-            ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
+            ventricle_pixels = np.count_nonzero(anatomical_mask == 1)
         logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius} ventricle_pixels {ventricle_pixels} myo pixels: {myocardium_pixels} ")
         return overlay, anatomical_mask, ventricle_pixels
 
