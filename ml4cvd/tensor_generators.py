@@ -59,20 +59,18 @@ class TensorGenerator:
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
         self._started = True
         if self.num_workers == 0:
-            name = f'{self.name}'
-            logging.info(f"Starting {name} on main thread.")
-            multimodal_multitask_worker(
-                                  self.q, self.batch_size, self.input_maps, self.output_maps, self.worker_path_lists[0],
-                                  self.keep_paths, self.cache_size, self.mixup, name, self.siamese, self.weights,
-            )
-            return
+            logging.info(f"Starting {self.name} on main thread.")
+            self.workers.append(multimodal_multitask_worker(
+                self.q, self.batch_size, self.input_maps, self.output_maps, self.worker_path_lists[0], self.keep_paths,
+                self.cache_size, self.mixup, self.name, self.siamese, self.weights, main_thread=True,
+            ))
         for i, worker_paths in enumerate(self.worker_path_lists):
             name = f'{self.name}_{i}'
             logging.info(f"Starting {name}.")
             process = Process(target=multimodal_multitask_worker, name=name,
                               args=(
                                   self.q, self.batch_size, self.input_maps, self.output_maps, worker_paths,
-                                  self.keep_paths, self.cache_size, self.mixup, name, self.siamese, self.weights,
+                                  self.keep_paths, self.cache_size, self.mixup, name, self.siamese, self.weights, False,
                               ))
             process.start()
             self.workers.append(process)
@@ -92,6 +90,9 @@ class TensorGenerator:
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
         return self
+
+    def __del__(self):
+        self.kill_workers()
 
 
 class TensorMapArrayCache:
@@ -169,7 +170,7 @@ def _handle_tm(tm: TensorMap, hd5: h5py.File, cache: TensorMapArrayCache, is_inp
 
 
 def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_maps, generator_paths, keep_paths, cache_size,
-                                mixup_alpha, name, siamese, weights=None):
+                                mixup_alpha, name, siamese, weights=None, main_thread=False):
     """Generalized data generator of input and output tensors for feed-forward networks.
 
     The `modes` are the different inputs, and the `tasks` are given by the outputs.
@@ -186,6 +187,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
     :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
     :param name: Name of the worker for logs
     :param weights: Weight to sample each list of paths from generator paths. Must be same length as generator_paths.
+    :param main_thread: If true, the worker yields like a generator instead of pushing to a multiprocessing queue
 
     What gets enqueued:
         A tuple of dicts for the tensor mapping tensor names to numpy arrays
@@ -236,17 +238,21 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
                 stats['Tensors presented'] += 1
                 if stats['batch_index'] == batch_size:
                     if siamese and keep_paths:
-                        q.put((_make_batch_siamese(in_batch, out_batch) + (paths_in_batch,)))
+                        output = _make_batch_siamese(in_batch, out_batch) + (paths_in_batch,)
                     elif siamese:
-                        q.put((_make_batch_siamese(in_batch, out_batch)))
+                        output = _make_batch_siamese(in_batch, out_batch)
                     elif mixup_alpha > 0 and keep_paths:
-                        q.put((_mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)))
+                        output = _mixup_batch(in_batch, out_batch, mixup_alpha) + (paths_in_batch[:batch_size//2],)
                     elif mixup_alpha > 0:
-                        q.put((_mixup_batch(in_batch, out_batch, mixup_alpha)))
+                        output = _mixup_batch(in_batch, out_batch, mixup_alpha)
                     elif keep_paths:
-                        q.put((in_batch, out_batch, paths_in_batch))
+                        output = in_batch, out_batch, paths_in_batch
                     else:
-                        q.put((in_batch, out_batch))
+                        output = in_batch, out_batch
+                    if main_thread:
+                        yield output
+                    else:
+                        q.put(output)
                     stats['batch_index'] = 0
                     paths_in_batch = []
             except IndexError as e:
