@@ -609,8 +609,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
 
     for angle in diastoles:
         logging.info(f'\n\n\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!\n\n\n\n\n')
-        logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}')
-        logging.info(f'Found diastole at instance {diastoles[angle].InstanceNumber}')
+        logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}  pix: {systoles_pix[angle].InstanceNumber}')
+        logging.info(f'Found diastole at instance {diastoles[angle].InstanceNumber}   pix: {diastoles_pix[angle].InstanceNumber}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
