@@ -65,6 +65,7 @@ class TensorGenerator:
                 self.q, self.batch_size, self.input_maps, self.output_maps, self.worker_path_lists[0], self.keep_paths,
                 self.cache_size, self.mixup, self.name, self.siamese, self.weights, main_thread=True,
             ))
+            return
         for i, worker_paths in enumerate(self.worker_path_lists):
             name = f'{self.name}_{i}'
             logging.info(f"Starting {name}.")
@@ -81,12 +82,12 @@ class TensorGenerator:
             self._init_workers()
         logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         if self.run_on_main_thread:
-            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
-        else:
             return next(self.workers[0])
+        else:
+            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
 
     def kill_workers(self):
-        if self._started and self.run_on_main_thread:
+        if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 logging.info(f'Stopping {worker.name}.')
                 worker.terminate()
@@ -338,6 +339,7 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
     paths = []
 
     for i in range(minibatches):
+        logging.info(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
@@ -499,7 +501,7 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
             train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
             weights = None
         generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
-        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, max(num_workers // 2, 1), cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
+        generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
         generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
         yield generate_train, generate_valid, generate_test
     finally:
