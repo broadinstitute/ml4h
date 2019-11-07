@@ -609,8 +609,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
 
     for angle in diastoles:
         logging.info(f'\n\n\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!\n\n\n\n\n')
-        logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}  pix: {systoles_pix[angle].InstanceNumber}')
-        logging.info(f'Found diastole at instance {diastoles[angle].InstanceNumber}   pix: {diastoles_pix[angle].InstanceNumber}')
+        logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}  pix: {systoles_pix[angle]}')
+        logging.info(f'Found diastole at instance {diastoles[angle].InstanceNumber}   pix: {diastoles_pix[angle]}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
@@ -728,8 +728,7 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
             ventricle_pixels = np.count_nonzero(anatomical_mask == 1) == 0
-        if debug:
-            logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius} ventricle_pixels {ventricle_pixels} myo pixels: {myocardium_pixels} ")
+        logging.info(f"got min pos:{min_pos} max pos: {max_pos}, short side {short_side}, small rad: {small_radius}, big radius: {big_radius} ventricle_pixels {ventricle_pixels} myo pixels: {myocardium_pixels} ")
         return overlay, anatomical_mask, ventricle_pixels
 
 
