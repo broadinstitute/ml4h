@@ -56,6 +56,14 @@ class TensorGenerator:
     def _init_workers(self):
         self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
         self._started = True
+        if self.num_workers == 0:
+            name = f'{self.name}'
+            logging.info(f"Starting {name} on main thread.")
+            multimodal_multitask_worker(
+                                  self.q, self.batch_size, self.input_maps, self.output_maps, self.worker_path_lists[0],
+                                  self.keep_paths, self.cache_size, self.mixup, name, self.siamese, self.weights,
+            )
+            return
         for i, worker_paths in enumerate(self.worker_path_lists):
             name = f'{self.name}_{i}'
             logging.info(f"Starting {name}.")
