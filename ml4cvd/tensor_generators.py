@@ -44,6 +44,8 @@ class TensorGenerator:
         self.workers = []
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name, self.siamese, = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name, siamese
+        if num_workers == 0:
+            num_workers = 1  # The one worker is the main thread
         if weights is None:
             self.worker_path_lists = np.array_split(paths, num_workers)
         else:
