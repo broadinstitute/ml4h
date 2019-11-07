@@ -560,8 +560,6 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     diastoles = {}
     systoles_pix = {}
     diastoles_pix = {}
-    systoles_idx = {}
-    diastoles_idx = {}
     full_mask = np.zeros((x, y), dtype=np.float32)
     full_slice = np.zeros((x, y), dtype=np.float32)
 
