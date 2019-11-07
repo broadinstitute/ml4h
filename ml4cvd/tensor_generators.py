@@ -46,6 +46,7 @@ class TensorGenerator:
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.keep_paths, self.mixup, self.name, self.siamese, = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, keep_paths, mixup, name, siamese
         if num_workers == 0:
+            raise NotImplementedError('Running on main thread does not work yet.')
             num_workers = 1  # The one worker is the main thread
         if weights is None:
             self.worker_path_lists = np.array_split(paths, num_workers)
@@ -255,7 +256,7 @@ def multimodal_multitask_worker(q: Queue, batch_size: int, input_maps, output_ma
                     else:
                         output = in_batch, out_batch
                     if main_thread:
-                        yield output
+                        raise NotImplementedError('Running on main thread does not work yet.')
                     else:
                         q.put(output)
                     stats['batch_index'] = 0
