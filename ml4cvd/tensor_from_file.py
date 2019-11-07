@@ -543,6 +543,10 @@ TMAPS['swi_total_mag_orig'] = TensorMap('SWI_TOTAL_MAG_orig', shape=(256, 288, 4
                              normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t2star'] = TensorMap('T2star', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                              normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['brain_mask'] = TensorMap('brain_mask', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['filtered_phase'] = TensorMap('filtered_phase', shape=(256, 288, 48), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['swi_to_t1_40_slices'] = TensorMap('swi_to_t1_40_slices', shape=(173, 231, 40), group='ukb_brain_mri',
                                          dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                          tensor_from_file=slice_subset_tensor('SWI_TOTAL_MAG_to_T1', 60, 140, 2))
