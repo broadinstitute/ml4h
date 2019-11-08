@@ -559,6 +559,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     systoles = {}
     diastoles = {}
     systoles_pix = {}
+    systoles_masks = {}
+    diastoles_masks = {}
     full_mask = np.zeros((x, y), dtype=np.float32)
     full_slice = np.zeros((x, y), dtype=np.float32)
 
@@ -570,10 +572,13 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             if _is_mitral_valve_segmentation(slicer):
                 stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
                 continue
+            try:
+                overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
+            except KeyError:
+                logging.exception(f'Got key error trying to make anatomical mask, skipping.')
+                continue
 
-            overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-
             full_slice[:sx, :sy] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
             full_mask[:sx, :sy] = mask
             hd5.create_dataset(MRI_TO_SEGMENT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=full_slice, compression='gzip')
@@ -586,21 +591,23 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
 
             if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
                 diastoles[cur_angle] = slicer
+                diastoles_masks[cur_angle] = mask
             if cur_angle not in systoles:
                 systoles[cur_angle] = slicer
                 systoles_pix[cur_angle] = ventricle_pixels
+                systoles_masks[cur_angle] = mask
             else:
                 if ventricle_pixels < systoles_pix[cur_angle]:
                     systoles[cur_angle] = slicer
                     systoles_pix[cur_angle] = ventricle_pixels
+                    systoles_masks[cur_angle] = mask
 
     for angle in diastoles:
-        logging.info(f'\n\n\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!\n\n\n\n\n')
         logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}  pix: {systoles_pix[angle]}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(diastoles[angle])
+        full_mask[:sx, :sy], = diastoles_masks[angle][:sx, :sy]
         hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
         hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
         if write_pngs:
@@ -610,7 +617,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sx = min(systoles[angle].Rows, x)
         sy = min(systoles[angle].Columns, y)
         full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        overlay, full_mask[:sx, :sy], _ = _get_overlay_from_dicom(systoles[angle])
+        full_mask[:sx, :sy], = systoles_masks[angle][:sx, :sy]
         hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
         hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
         if write_pngs:
