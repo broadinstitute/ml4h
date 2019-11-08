@@ -12,13 +12,15 @@ from collections import Counter, defaultdict
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
-from ml4cvd.tensor_writer_ukbb import write_tensors, append_float_csv, append_gene_csv
+from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
+from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
+from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files
-from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator, get_test_train_valid_paths
-from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, plot_while_learning, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
-from ml4cvd.models import make_multimodal_to_multilabel_model, train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_character_model_plus, embed_model_predict
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files, plot_while_learning
+from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
 
 
 def run(args):
@@ -27,9 +29,9 @@ def run(args):
         start_time = timer()
 
         if 'tensorize' == args.mode:
-            write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.volume_csv, args.lv_mass_csv,
-                          args.mri_field_ids, args.xml_field_ids, args.x, args.y, args.z, args.include_heart_zoom, args.zoom_x, args.zoom_y, args.zoom_width,
-                          args.zoom_height, args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values)
+            write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
+                          args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
+                          args.max_sample_id, args.min_values)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
@@ -38,12 +40,14 @@ def run(args):
             compare_multimodal_multitask_models(args)
         elif 'infer' == args.mode:
             infer_multimodal_multitask(args)
+        elif 'infer_hidden' == args.mode:
+            infer_hidden_layer_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
             compare_multimodal_scalar_task_models(args)
-        elif 'segmentation_to_pngs' == args.mode:
-            segmentation_to_pngs(args)
+        elif 'plot_predictions' == args.mode:
+            plot_predictions(args)
         elif 'plot_while_training' == args.mode:
             plot_while_training(args)
         elif 'plot_mri_dates' == args.mode:
@@ -60,14 +64,22 @@ def run(args):
             train_shallow_model(args)
         elif 'train_char' == args.mode:
             train_char_model(args)
+        elif 'train_siamese' == args.mode:
+            train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'find_tensors' == args.mode:
             find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         elif 'sort_csv' == args.mode:
             sort_csv(args.app_csv, args.volume_csv)
-        elif 'append_float_csv' == args.mode:
-            append_float_csv(args.tensors, args.app_csv, 'continuous', '\t')
+        elif 'append_continuous_csv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
+        elif 'append_categorical_csv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'categorical', ',')
+        elif 'append_continuous_tsv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'continuous', '\t')
+        elif 'append_categorical_tsv' == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
         else:
@@ -82,70 +94,46 @@ def run(args):
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
-                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.balance_csvs)
+    with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, generate_valid, generate_test):
+        model = make_multimodal_multitask_model(**args.__dict__)
+        model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                            args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
-
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
-
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
+        out_path = os.path.join(args.output_folder, args.id + '/')
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
 
 
 def test_multimodal_multitask(args):
-    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
-
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
-
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
+    with test_train_valid_tensor_generators(**args.__dict__) as (_, _, generate_test):
+        model = make_multimodal_multitask_model(**args.__dict__)
+        out_path = os.path.join(args.output_folder, args.id + '/')
+        data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
   
 
 def test_multimodal_scalar_tasks(args):
-    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
-
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
-
-    p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
+    with test_train_valid_tensor_generators(**args.__dict__) as (_, _, generate_test):
+        model = make_multimodal_multitask_model(**args.__dict__)
+        p = os.path.join(args.output_folder, args.id + '/')
+        return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
-    models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
-    input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
-    predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
-    _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
+    with test_train_valid_tensor_generators(**args.__dict__) as (_, _, generate_test):
+        models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+        input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
+        predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
+        _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
 
 
 def compare_multimodal_scalar_task_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
-    models_io = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
-    outs = _get_common_outputs(models_io, "output")
-    predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generate_test, args.test_steps, outs, "input", "output")
-    _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
+    with test_train_valid_tensor_generators(**args.__dict__) as (_, _, generate_test):
+        models_io = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+        outs = _get_common_outputs(models_io, "output")
+        predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generate_test, args.test_steps, outs, "input", "output")
+        _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
 
 
 def infer_multimodal_multitask(args):
@@ -154,19 +142,22 @@ def infer_multimodal_multitask(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
-    
-    with open(inference_tsv, mode='w') as inference_file:
+    args.keep_paths = True
+    args.tensor_paths = tensor_paths
+    args.batch_size = 1
+    model = make_multimodal_multitask_model(**args.__dict__)
+    with test_train_valid_tensor_generators(**args.__dict__) as (_, _, generate_test), open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
-            if len(otm.shape) == 1:
+            if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
+            elif len(otm.shape) == 1 and otm.is_categorical_any():
+                channel_columns = []
+                for k in otm.channel_map:
+                    channel_columns.append(ot + '_' + k + '_prediction')
+                    channel_columns.append(ot + '_' + k + '_actual')
+                header.extend(channel_columns)
         inference_writer.writerow(header)
 
         while True:
@@ -181,90 +172,115 @@ def infer_multimodal_multitask(args):
 
             csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
-                if len(tm.shape) == 1:
+                if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
                         csv_row.append("NA")
-                    elif abs(tm.rescale(true_label[tm.output_name()][0][0])) < 0.01:  # LV MASSS HACK
-                        csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-            inference_writer.writerow(csv_row)
+                elif len(tm.shape) == 1 and tm.is_categorical_any():
+                    for k in tm.channel_map:
+                        csv_row.append(str(y[0][tm.channel_map[k]]))
+                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
 
+            inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
             if stats['count'] % 500 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
+def infer_hidden_layer_multimodal_multitask(args):
+    stats = Counter()
+    inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers, cache_size=args.cache_size, keep_paths=True)
+    full_model = make_multimodal_multitask_model(**args.__dict__)
+    embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
+    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
+    dummy_out = embed_model.predict(dummy_input)
+    latent_dimensions = np.prod(dummy_out.shape[1:])
+    logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
+    with open(inference_tsv, mode='w') as inference_file:
+        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        header = ['sample_id'] + [f'latent_{i}' for i in range(latent_dimensions)]
+        inference_writer.writerow(header)
+
+        while True:
+            input_data, _, tensor_path = next(generate_test)
+            if tensor_path[0] in stats:
+                logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                break
+
+            sample_id = os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')
+            prediction = embed_model.predict(input_data)
+            prediction = np.reshape(prediction, (latent_dimensions,))
+            csv_row = [sample_id] + [f'{prediction[i]}' for i in range(latent_dimensions)]
+            inference_writer.writerow(csv_row)
+            stats[tensor_path[0]] += 1
+            stats['count'] += 1
+            if stats['count'] % 500 == 0:
+                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_path[0]}")
+
+
 def train_shallow_model(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
-                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.balance_csvs)
+    with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, generate_valid, generate_test):
+        model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
+        model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                            args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
-
-    p = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.alpha)
+        p = os.path.join(args.output_folder, args.id + '/')
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.alpha)
 
 
 def train_char_model(args):
-    base_model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                     args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
-                                                     args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
-                                                     args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
-                                                     args.pool_y, args.pool_z, args.padding, args.learning_rate)
-
+    base_model = make_multimodal_multitask_model(**args.__dict__)
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors,
-                                                                                       args.batch_size, args.valid_ratio, args.test_ratio,
-                                                                                       args.test_modulo, args.balance_csvs)
 
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
-    test_batch, _, test_paths = next(generate_test)
-    sample_from_char_model(char_model, test_batch, test_paths)
+    with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, generate_valid, generate_test):
+        model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                            args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+        test_batch, _, test_paths = next(generate_test)
+        sample_from_char_model(char_model, test_batch, test_paths)
 
-    output_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
+        output_path = os.path.join(args.output_folder, args.id + '/')
+        data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
 
 
-def segmentation_to_pngs(args):
-    _, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size*args.test_steps,
-                                                             args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
+def train_siamese_model(args):
+    base_model = make_multimodal_multitask_model(**args.__dict__)
+    siamese_model = make_siamese_model(base_model, **args.__dict__)
+    with test_train_valid_tensor_generators(siamese=True, **args.__dict__) as (generate_train, generate_valid, generate_test):
+        siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                                                    args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
+        data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
+        prediction = siamese_model.predict(data)
+        return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
 
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    predictions = model.predict(data, batch_size=args.batch_size)
-    if len(args.tensor_maps_out) == 1:
-        predictions = [predictions]
-    folder = os.path.join(args.output_folder, args.id) + '/'
-    predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, data, labels, paths, folder)
+
+def plot_predictions(args):
+    with test_train_valid_tensor_generators(**args.__dict__) as (_, _, generate_test):
+        model = make_multimodal_multitask_model(**args.__dict__)
+        data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        predictions = model.predict(data, batch_size=args.batch_size)
+        if len(args.tensor_maps_out) == 1:
+            predictions = [predictions]
+        folder = os.path.join(args.output_folder, args.id) + '/'
+        predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, data, labels, paths, folder)
 
 
 def plot_while_training(args):
-    generate_train, _, generate_test = test_train_valid_tensor_generators(args.tensor_maps_in, args.tensor_maps_out, args.tensors, args.batch_size,
-                                                                          args.valid_ratio, args.test_ratio, args.test_modulo, args.balance_csvs)
+    with test_train_valid_tensor_generators(**args.__dict__) as (generate_train, _, generate_test):
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+        model = make_multimodal_multitask_model(**args.__dict__)
 
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
-    model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers, args.max_pools,
-                                                args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x, args.conv_y,
-                                                args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x, args.pool_y,
-                                                args.pool_z, args.padding, args.learning_rate)
-
-    plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
-    plot_while_learning(model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
-                        args.batch_size, args.training_steps, plot_folder, args.write_pngs)
+        plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
+        plot_while_learning(model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
+                            args.batch_size, args.training_steps, plot_folder, args.write_pngs)
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
@@ -370,16 +386,10 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
     """
     predictions = defaultdict(dict)
     for model_file in models_inputs_outputs.keys():
-        args.model_file = model_file
-        args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
-
-        model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                    args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
-                                                    args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
-                                                    args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
-                                                    args.pool_y, args.pool_z, args.padding, args.learning_rate)
-
+        args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
+        args.model_file = model_file
+        model = make_multimodal_multitask_model(**args.__dict__)
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
 
         # We can feed 'model.predict()' the entire input data because it knows what subset to use
@@ -414,42 +424,38 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                     }
             }
     """
-    predictions = defaultdict(dict)
-    test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
-    test_paths = []
     models = {}
-    for model_file in models_inputs_outputs.keys():
+    test_paths = []
+    scalar_predictions = {}
+    test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
+
+    for model_file in models_inputs_outputs:
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
-
-        model = make_multimodal_to_multilabel_model(args.model_file, args.model_layers, args.model_freeze, args.tensor_maps_in, args.tensor_maps_out,
-                                                    args.activation, args.dense_layers, args.dropout, args.mlp_concat, args.conv_layers,
-                                                    args.max_pools, args.res_layers, args.dense_blocks, args.block_size, args.conv_bn, args.conv_x,
-                                                    args.conv_y, args.conv_z, args.conv_dropout, args.conv_width, args.u_connect, args.pool_x,
-                                                    args.pool_y, args.pool_z, args.padding, args.learning_rate)
-
+        model = make_multimodal_multitask_model(**args.__dict__)
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
+        scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 
+    predictions = defaultdict(dict)
     for j in range(steps):
         input_data, labels, paths = next(generator)
         test_paths.extend(paths)
         for tl in test_labels:
             test_labels[tl].extend(np.copy(labels[tl]))
 
-        for model_name in models:
+        for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
-            y_prediction = models[model_name].predict(input_data)
+            y_predictions = models[model_name].predict(input_data)
 
-            for i, tm in enumerate(args.tensor_maps_out):
-                if tm in outputs and tm.output_name() in test_labels:
-                    if j == 0:
-                        predictions[tm][model_name] = []
-                    if len(args.tensor_maps_out) == 1:
-                        predictions[tm][model_name].extend(np.copy(y_prediction))
-                    else:
-                        predictions[tm][model_name].extend(np.copy(y_prediction[i]))
+            for y, tm in zip(y_predictions, models_inputs_outputs[model_file][output_prefix]):
+                if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+                    y = y_predictions
+                if j == 0 and tm in scalar_predictions[model_name]:
+                    predictions[tm][model_name] = []
+                if tm in scalar_predictions[model_name]:
+                    predictions[tm][model_name].extend(np.copy(y))
 
     for tm in predictions:
         logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")

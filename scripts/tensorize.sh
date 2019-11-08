@@ -123,9 +123,8 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
                 --mode tensorize \
                 --tensors $TENSOR_PATH \
                 --output_folder $TENSOR_PATH \
-                --include_heart_zoom \
                 $PYTHON_ARGS \
-                --dicoms ./dicoms_$MIN_SAMPLE_ID/ \
+                --dicoms $TENSOR_PATH/dicoms_$MIN_SAMPLE_ID/ \
                 --min_sample_id $MIN_SAMPLE_ID \
                 --max_sample_id $MAX_SAMPLE_ID &
 LAUNCH_CMDLINE_MESSAGE
@@ -134,9 +133,8 @@ LAUNCH_CMDLINE_MESSAGE
 		--mode tensorize \
 		--tensors $TENSOR_PATH \
 		--output_folder $TENSOR_PATH \
-		--include_heart_zoom \
 		$PYTHON_ARGS \
-		--dicoms ./dicoms_$MIN_SAMPLE_ID/ \
+		--dicoms $TENSOR_PATH/dicoms_$MIN_SAMPLE_ID/ \
 		--min_sample_id $MIN_SAMPLE_ID \
 		--max_sample_id $MAX_SAMPLE_ID &
 
@@ -144,7 +142,7 @@ LAUNCH_CMDLINE_MESSAGE
     let MIN_SAMPLE_ID=MIN_SAMPLE_ID+INCREMENT
     let MAX_SAMPLE_ID=MAX_SAMPLE_ID+INCREMENT
 
-    sleep 2s
+    sleep 1s
 done
 
 ################### DISPLAY TIME #########################################

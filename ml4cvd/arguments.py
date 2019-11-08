@@ -17,11 +17,13 @@ import argparse
 import operator
 import datetime
 import numpy as np
+import multiprocessing
 
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
 from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
-from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.TensorMap import TensorMap
 
 
 def parse_args():
@@ -50,8 +52,7 @@ def parse_args():
     parser.add_argument('--phenos_folder', default='/mnt/disks/data/raw/phenotypes/', help='Path to folder of phenotype defining CSVs.')
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
-    parser.add_argument('--icd_csv', default='/mnt/ml4cvd/projects/jamesp/data/modified.zmerge.prs.full.csv.20190222',
-                        help='Path to CSV with ICD status for UKBB Sample IDs')
+    parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
     parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/cMRI_20190618_manual_qc.all.tsv',
                         help='Path to left ventricle volumes')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
@@ -84,7 +85,6 @@ def parse_args():
     parser.add_argument('--max_slices', default=999999, type=int, help='Maximum number of dicom slices to read')
     parser.add_argument('--b_slice_force', default=None,
                         help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
-    parser.add_argument('--include_heart_zoom', default=False, action='store_true', help='Include the heart zoom')
     parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
                         help='Include missing channels in continuous tensors')
     parser.add_argument('--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
@@ -109,8 +109,13 @@ def parse_args():
     parser.add_argument('--conv_z', default=2, type=int, help='Z dimension of convolutional kernel.')
     parser.add_argument('--conv_width', default=71, type=int, help='Width of convolutional kernel for 1D CNNs.')
     parser.add_argument('--conv_bn', default=False, action='store_true', help='Batch normalize convolutional layers.')
+    parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
+    parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
+    parser.add_argument('--conv_normalize', default=None, choices=['batch_norm'], help='Type of normalization layer for convolutions')
+    parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
+    parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')
     parser.add_argument('--pool_y', default=2, type=int, help='Pooling size in the y-axis, if 1 no pooling will be performed.')
     parser.add_argument('--pool_z', default=1, type=int, help='Pooling size in the z-axis, if 1 no pooling will be performed.')
@@ -134,7 +139,8 @@ def parse_args():
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
-    parser.add_argument('--learning_rate', default=0.001, type=float, help='Learning rate during training.')
+    parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
+    parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument('--label_weights', nargs='*', type=float,
                         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.')
     parser.add_argument('--patience', default=8, type=int,
@@ -151,32 +157,48 @@ def parse_args():
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
+
+    # Training optimization options
+    parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
+    parser.add_argument('--cache_size', default=4e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
     args = parser.parse_args()
     _process_args(args)
     return args
 
 
+def _get_tmap(name: str) -> TensorMap:
+    """
+    This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
+    """
+    if name in TMAPS:
+        return TMAPS[name]
+    from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
+    TMAPS.update(SCRIPT_TMAPS)
+    return TMAPS[name]
+
+
 def _process_args(args):
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
     if len(args.input_continuous_tensors) > 0:
         multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
                                                                              args.imputation_method_for_continuous_fields)]
         args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
 
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    args.tensor_maps_out = [_get_tmap(ot) for ot in args.output_tensors]
     np.random.seed(args.random_seed)
 
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_'+now_string+'.txt')
+    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
-        f.write(f"python {' '.join(sys.argv)}\n\n")
+        f.write(command_line)
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
 
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_'+now_string, args.min_sample_id)
-    logging.info(f"Command Line was:\n\npython {' '.join(sys.argv)}\n\n")
+    logging.info(f"Command Line was:{command_line}")
     logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
-
