@@ -607,7 +607,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        full_mask[:sx, :sy], = diastoles_masks[angle][:sx, :sy]
+        full_mask[:sx, :sy] = diastoles_masks[angle][:sx, :sy]
         hd5.create_dataset('diastole_frame_b' + str(angle), data=full_slice, compression='gzip')
         hd5.create_dataset('diastole_mask_b' + str(angle), data=full_mask, compression='gzip')
         if write_pngs:
@@ -617,7 +617,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sx = min(systoles[angle].Rows, x)
         sy = min(systoles[angle].Columns, y)
         full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        full_mask[:sx, :sy], = systoles_masks[angle][:sx, :sy]
+        full_mask[:sx, :sy] = systoles_masks[angle][:sx, :sy]
         hd5.create_dataset('systole_frame_b' + str(angle), data=full_slice, compression='gzip')
         hd5.create_dataset('systole_mask_b' + str(angle), data=full_mask, compression='gzip')
         if write_pngs:
