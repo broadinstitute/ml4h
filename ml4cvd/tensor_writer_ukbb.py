@@ -559,7 +559,6 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     systoles = {}
     diastoles = {}
     systoles_pix = {}
-    diastoles_pix = {}
     full_mask = np.zeros((x, y), dtype=np.float32)
     full_slice = np.zeros((x, y), dtype=np.float32)
 
@@ -585,24 +584,12 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             hd5.create_dataset(MRI_ZOOM_INPUT + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_slice, compression='gzip')
             hd5.create_dataset(MRI_ZOOM_MASK + HD5_GROUP_CHAR + str(slicer.InstanceNumber), data=zoom_mask, compression='gzip')
 
-            # if write_pngs:
-            #     overlayed = np.ma.masked_where(overlay != 0, slicer.pixel_array)
-            #     # Note that plt.imsave renders the first dimension (our x) as vertical and our y as horizontal
-            #     plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + IMAGE_EXT, slicer.pixel_array)
-            #     plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + '_mask' + IMAGE_EXT, mask)
-            #     plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{0:3d}'.format(slicer.InstanceNumber) + '_overlay' + IMAGE_EXT, overlayed)
-            #     plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{}'.format(slicer.InstanceNumber) + '_zslice' + IMAGE_EXT, zoom_slice)
-            #     plt.imsave(tensors + sample_str + '_' + slicer.SeriesDescription + '_{}'.format(slicer.InstanceNumber) + '_zmask' + IMAGE_EXT, zoom_mask)
-
-            if cur_angle not in diastoles:
+            if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
                 diastoles[cur_angle] = slicer
-                diastoles_pix[cur_angle] = ventricle_pixels
+            if cur_angle not in systoles:
                 systoles[cur_angle] = slicer
                 systoles_pix[cur_angle] = ventricle_pixels
             else:
-                if ventricle_pixels > diastoles_pix[cur_angle]:
-                    diastoles[cur_angle] = slicer
-                    diastoles_pix[cur_angle] = ventricle_pixels
                 if ventricle_pixels < systoles_pix[cur_angle]:
                     systoles[cur_angle] = slicer
                     systoles_pix[cur_angle] = ventricle_pixels
@@ -610,7 +597,6 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     for angle in diastoles:
         logging.info(f'\n\n\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!\n\n\n\n\n')
         logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}  pix: {systoles_pix[angle]}')
-        logging.info(f'Found diastole at instance {diastoles[angle].InstanceNumber}   pix: {diastoles_pix[angle]}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
@@ -724,10 +710,10 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         anatomical_mask = m1 + m2
         ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
-        if ventricle_pixels > 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:
+        if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:  # try to rescue small ventricles
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
-        logging.info(f"ventricle_pixels {ventricle_pixels} myo pixels: {myocardium_pixels} ")
+            ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         return overlay, anatomical_mask, ventricle_pixels
 
 
