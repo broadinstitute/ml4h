@@ -18,7 +18,7 @@ import logging
 import traceback
 import numpy as np
 from collections import Counter
-from random import choices, shuffle
+from random import choices, shuffle, choice
 from multiprocessing import Process, Queue
 from itertools import cycle
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any
@@ -43,6 +43,19 @@ def _path_cycle(paths: List[Path]) -> PathIterator:
     return cycle(paths)  # TODO: maybe this should shuffle after every true epoch
 
 
+class ShufflePaths(Iterator):
+
+    def __init__(self, paths: List[Path]):
+        self.paths = paths
+        self.idx = 0
+
+    def __next__(self):
+        if self.idx >= len(self.paths):
+            self.idx = 0
+            shuffle(self.paths)
+        return self.paths[self.idx]
+
+
 class WeightedPaths(Iterator):
 
     def __init__(self, paths: List[PathIterator], weights: List[float]):
@@ -52,7 +65,7 @@ class WeightedPaths(Iterator):
             raise ValueError('Weights must be the same length as paths.')
 
     def __next__(self) -> str:
-        return choices(self.paths, self.weights)
+        return choice(choices(self.paths, self.weights)[0])
 
 
 class TensorGenerator:
@@ -72,7 +85,7 @@ class TensorGenerator:
         if weights is None:
             worker_paths = np.array_split(paths, num_workers)
             self.true_epoch_lens = list(map(len, worker_paths))
-            self.path_iters = [_path_cycle(p) for p in worker_paths]
+            self.path_iters = [ShufflePaths(p) for p in worker_paths]
         else:
             # split each path list into paths for each worker.
             # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
