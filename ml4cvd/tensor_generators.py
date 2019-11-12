@@ -261,6 +261,8 @@ class _MultiModalMultiTaskWorker:
             for tm in self.output_maps:
                 hd5 = self._handle_tm(tm, False, path)
             self.paths_in_batch.append(path)
+            self.stats['Tensors presented'] += 1
+            self.stats['batch_index'] += 1
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
             error_name = type(e).__name__
             self.stats[f"{error_name} while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
@@ -525,7 +527,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
 
 
 def _identity_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
-    return in_batch, out_batch, paths if return_paths else in_batch, out_batch
+    return (in_batch, out_batch, paths) if return_paths else (in_batch, out_batch)
 
 
 def _mixup_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], alpha: float = 1.0, permute_first: bool = False):
