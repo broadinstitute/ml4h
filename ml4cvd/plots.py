@@ -173,7 +173,9 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
         # The path of the best prediction, ie the inlier
-        plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
+        # Add background rectangle here
+        t = plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
+        t.set_bbox(dict(facecolor='white', alpha=0.5))
         # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
             plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
