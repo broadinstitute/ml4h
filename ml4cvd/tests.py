@@ -235,7 +235,7 @@ class TestTrainingModels(unittest.TestCase):
 
 class TestPretrainedModels(unittest.TestCase):
     def test_ecg_regress(self):
-        delta = 9e-2
+        delta = 9e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'ecg_rest_regress/ecg_rest_regress.hd5'
@@ -243,6 +243,7 @@ class TestPretrainedModels(unittest.TestCase):
         args.output_tensors = ['p-axis', 'p-duration', 'p-offset', 'p-onset', 'pp-interval', 'pq-interval', 'q-offset', 'q-onset', 'qrs-complexes',
                                'qrs-duration', 'qt-interval', 'qtc-interval', 'r-axis', 'rr-interval', 't-offset', 't-axis']
         args.test_steps = 12
+        args.batch_size = 12
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
@@ -258,13 +259,14 @@ class TestPretrainedModels(unittest.TestCase):
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
     def test_ecg_rhythm(self):
-        delta = 9e-2
+        delta = 2e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted/ecg_rest_rhythm_hyperopted.hd5'
         args.input_tensors = ['ecg_rest']
         args.output_tensors = ['ecg_rhythm_poor']
         args.test_steps = 12
+        args.batch_size = 24
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
@@ -287,6 +289,7 @@ class TestPretrainedModels(unittest.TestCase):
         args.model_file = MODELS + 'mri_sd_unet_volumes/mri_sd_unet_volumes.hd5'
         args.input_tensors = ['mri_systole_diastole']
         args.output_tensors = ['mri_systole_diastole_segmented', 'corrected_extracted_lvedv', 'corrected_extracted_lvef', 'corrected_extracted_lvesv']
+        args.optimizer = 'radam'
         args.test_steps = 12
         args.batch_size = 4
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
@@ -309,6 +312,7 @@ class TestPretrainedModels(unittest.TestCase):
         args.model_file = MODELS + 'mri_sd8_unet/mri_sd8_unet.hd5'
         args.input_tensors = ['mri_systole_diastole_8_weighted']
         args.output_tensors = ['mri_systole_diastole_8_segmented_weighted']
+        args.optimizer = 'radam'
         args.test_steps = 12
         args.batch_size = 4
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
