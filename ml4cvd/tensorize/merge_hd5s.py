@@ -63,8 +63,6 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, stats=None):
     for k in source_hd5[group_path]:
         if isinstance(source_hd5[group_path][k], h5py.Dataset):
-            if 'ukb_brain_mri' not in group_path:
-                continue
             stats[group_path + k] += 1
             if source_hd5[group_path][k].chunks is None:
                 destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
