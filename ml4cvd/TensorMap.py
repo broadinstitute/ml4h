@@ -110,7 +110,8 @@ class TensorMap(object):
                  imputation=None,
                  tensor_from_file=None,
                  dtype=None,
-                 validator=None):
+                 validator=None,
+                 cacheable=True,):
         """TensorMap constructor
 
 
@@ -154,6 +155,7 @@ class TensorMap(object):
         self.tensor_from_file = tensor_from_file
         self.dtype = dtype
         self.validator = validator
+        self.cacheable = cacheable
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():

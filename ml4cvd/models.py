@@ -504,7 +504,7 @@ def train_model_from_generators(model: Model,
 
     history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
                                   validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file))
+                                  callbacks=_get_callbacks(patience, model_file),)
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
@@ -756,14 +756,12 @@ def _inspect_model(model: Model,
     _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     train_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info('Spent:{} seconds training, batch_size:{} steps:{} Per example training speed:{}'.format(
-        (t1 - t0), batch_size, training_steps, train_speed))
+    logging.info(f'Spent:{(t1 - t0)} seconds training, batch_size:{batch_size} steps:{training_steps} Per example training speed:{train_speed}')
 
     t0 = time.time()
     _ = model.predict_generator(generate_valid, steps=training_steps, verbose=1)
     t1 = time.time()
-    inference_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info('Spent:{} seconds predicting. Per tensor inference speed:{}'.format((t1 - t0), inference_speed))
+    logging.info(f'Spent:{(t1 - t0)} seconds predicting. Per tensor inference speed:{(t1 - t0)/(batch_size * training_steps)}')
 
     return model
 
