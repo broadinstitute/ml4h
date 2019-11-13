@@ -45,10 +45,10 @@ def find_tensors(text_file, tensor_folder, tensor_maps_out):
                                 f.write(f"{tensor_file}\tIncident {tm.name}\n")
 
 
-def sort_csv(input_csv_file, volume_csv):
+def sort_csv(input_csv_file, value_csv):
     lvef = {}
-    with open(volume_csv, 'r') as volumes:
-        lol = list(csv.reader(volumes, delimiter='\t'))
+    with open(value_csv, 'r') as value_file:
+        lol = list(csv.reader(value_file, delimiter='\t'))
         logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
         for row in lol[1:]:
             sample_id = row[0]
