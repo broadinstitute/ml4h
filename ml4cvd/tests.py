@@ -234,8 +234,7 @@ class TestTrainingModels(unittest.TestCase):
 
 
 class TestPretrainedModels(unittest.TestCase):
-
-    def test_ecg(self):
+    def test_ecg_regress(self):
         delta = 9e-2
         args = parse_args()
         args.tensors = ALL_TENSORS
@@ -248,17 +247,81 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        # expected = {'Normal-ECG': 0.8752554358212905, 'Borderline-ECG': 0.5837728637728636,
-        #             'Abnormal-ECG': 0.723338215389989, 'Normal-sinus-rhythm': 0.9741548715787861,
-        #             'Otherwise-normal-ECG': 0.827044714759781, 'Sinus-bradycardia': 0.979314510040767,
-        #             'Marked-sinus-bradycardia': 0.9928738897936085, 'Atrial-Fibrillation': nan,
-        #             'PAxis_pearson': 0.3176830509728512, 'PDuration_pearson': 0.5991046519033024,
-        #             'POffset_pearson': 0.7529158679935809, 'POnset_pearson': 0.7180879470117637,
-        #             'PPInterval_pearson': 0.9042360806052834, 'PQInterval_pearson': 0.6737001705381603,
-        #             'QOffset_pearson': 0.2785414608613505, 'QOnset_pearson': -0.005761179589827403,
-        #             'QRSDuration_pearson': 0.47948940700236614, 'QRSNum_pearson': 0.9050081284476049,
-        #             'QTInterval_pearson': 0.8430877545949877, 'QTCInterval_pearson': 0.6979122540251536,
-        #             'VentricularRate_pearson': 0.9454089108881661}
+        expected = {'PAxis_pearson': 0.6115293530134417, 'PDuration_pearson': 0.5083110710202408, 'POffset_pearson': 0.8993388536229351,
+                    'POnset_pearson': 0.9456181625171349, 'PPInterval_pearson': 0.9876054363135571, 'PQInterval_pearson': 0.9012167913361175,
+                    'QOffset_pearson': 0.7678613436733094, 'QOnset_pearson': 0.5391954510894248, 'QRSComplexes_pearson': 0.9139094177062914,
+                    'QRSDuration_pearson': 0.7808130492073735, 'QTInterval_pearson': 0.9611575017458567, 'QTCInterval_pearson': 0.9602835173702873,
+                    'RAxis_pearson': 0.7068845948538833, 'RRInterval_pearson': 0.9873076763693096, 'TOffset_pearson': 0.938712542605686,
+                    'TAxis_pearson': 0.47777416060424527}
+
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
+    def test_ecg_rhythm(self):
+        delta = 9e-2
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted/ecg_rest_rhythm_hyperopted.hd5'
+        args.input_tensors = ['ecg_rest']
+        args.output_tensors = ['ecg_rhythm_poor']
+        args.test_steps = 12
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = test_multimodal_multitask(args)
+        print('expected = ', performances)
+        # expected = {'PAxis_pearson': 0.6115293530134417, 'PDuration_pearson': 0.5083110710202408, 'POffset_pearson': 0.8993388536229351,
+        #             'POnset_pearson': 0.9456181625171349, 'PPInterval_pearson': 0.9876054363135571, 'PQInterval_pearson': 0.9012167913361175,
+        #             'QOffset_pearson': 0.7678613436733094, 'QOnset_pearson': 0.5391954510894248, 'QRSComplexes_pearson': 0.9139094177062914,
+        #             'QRSDuration_pearson': 0.7808130492073735, 'QTInterval_pearson': 0.9611575017458567, 'QTCInterval_pearson': 0.9602835173702873,
+        #             'RAxis_pearson': 0.7068845948538833, 'RRInterval_pearson': 0.9873076763693096, 'TOffset_pearson': 0.938712542605686,
+        #             'TAxis_pearson': 0.47777416060424527}
+        #
+        # for k in expected:
+        #     self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
+
+    def test_mri_systole_diastole_volumes(self):
+        delta = 9e-2
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.model_file = MODELS + 'mri_sd_unet_volumes/mri_sd_unet_volumes.hd5'
+        args.input_tensors = ['mri_systole_diastole']
+        args.output_tensors = ['mri_systole_diastole_segmented', 'corrected_extracted_lvedv', 'corrected_extracted_lvef', 'corrected_extracted_lvesv']
+        args.test_steps = 12
+        args.batch_size = 4
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = test_multimodal_multitask(args)
+        print('expected = ', performances)
+        # expected = {'PAxis_pearson': 0.6115293530134417, 'PDuration_pearson': 0.5083110710202408, 'POffset_pearson': 0.8993388536229351,
+        #             'POnset_pearson': 0.9456181625171349, 'PPInterval_pearson': 0.9876054363135571, 'PQInterval_pearson': 0.9012167913361175,
+        #             'QOffset_pearson': 0.7678613436733094, 'QOnset_pearson': 0.5391954510894248, 'QRSComplexes_pearson': 0.9139094177062914,
+        #             'QRSDuration_pearson': 0.7808130492073735, 'QTInterval_pearson': 0.9611575017458567, 'QTCInterval_pearson': 0.9602835173702873,
+        #             'RAxis_pearson': 0.7068845948538833, 'RRInterval_pearson': 0.9873076763693096, 'TOffset_pearson': 0.938712542605686,
+        #             'TAxis_pearson': 0.47777416060424527}
+        #
+        # for k in expected:
+        #     self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+    def test_mri_systole_diastole_8_segment(self):
+        delta = 9e-2
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.model_file = MODELS + 'mri_sd8_unet/mri_sd8_unet.hd5'
+        args.input_tensors = ['mri_systole_diastole_8_weighted']
+        args.output_tensors = ['mri_systole_diastole_8_segmented_weighted']
+        args.test_steps = 12
+        args.batch_size = 4
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = test_multimodal_multitask(args)
+        print('expected = ', performances)
+        # expected = {'PAxis_pearson': 0.6115293530134417, 'PDuration_pearson': 0.5083110710202408, 'POffset_pearson': 0.8993388536229351,
+        #             'POnset_pearson': 0.9456181625171349, 'PPInterval_pearson': 0.9876054363135571, 'PQInterval_pearson': 0.9012167913361175,
+        #             'QOffset_pearson': 0.7678613436733094, 'QOnset_pearson': 0.5391954510894248, 'QRSComplexes_pearson': 0.9139094177062914,
+        #             'QRSDuration_pearson': 0.7808130492073735, 'QTInterval_pearson': 0.9611575017458567, 'QTCInterval_pearson': 0.9602835173702873,
+        #             'RAxis_pearson': 0.7068845948538833, 'RRInterval_pearson': 0.9873076763693096, 'TOffset_pearson': 0.938712542605686,
+        #             'TAxis_pearson': 0.47777416060424527}
+        #
         # for k in expected:
         #     self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
