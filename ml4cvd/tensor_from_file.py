@@ -644,4 +644,5 @@ def make_fallback_tensor_from_file(tensor_keys):
     return fallback_tensor_from_file
 
 
-TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', (288, 384, 7), tensor_from_file=make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
+TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', (288, 384, 7), group='root_array',
+                                       tensor_from_file=make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
