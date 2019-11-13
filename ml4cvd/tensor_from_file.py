@@ -632,3 +632,16 @@ TMAPS['mri_slice_blackout_segmented_weighted'] = TensorMap('mri_slice_segmented'
                                                            loss=weighted_crossentropy([0.1, 25.0, 25.0], 'mri_slice_blackout_segmented'))
 TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), tensor_from_file=mri_slice_blackout_tensor_from_file,
                                         dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
+
+
+def make_fallback_tensor_from_file(tensor_keys):
+    def fallback_tensor_from_file(tm, hd5, dependents={}):
+        for k in tensor_keys:
+            if k in hd5:
+                tensor = np.array(hd5[k], dtype=np.float32)
+                return tm.normalize_and_validate(tensor)
+        raise ValueError(f'No fallback tensor found from keys: {tensor_keys}')
+    return fallback_tensor_from_file
+
+
+TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', (288, 384, 7), tensor_from_file=make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
