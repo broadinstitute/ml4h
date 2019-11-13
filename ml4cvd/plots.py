@@ -167,7 +167,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-    logging.info("Pearson coefficient is: {}".format(pearson))
+    logging.info(f'Pearson coefficient is: {pearson}')
     plt.scatter(prediction, truth, label=f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
@@ -1093,7 +1093,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [8, 50]
+    perplexities = [10, 25, 60]
     (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
@@ -1114,7 +1114,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
-            ax.set_title(tm.name)  # + ", Perplexity=%d" % p)
+            ax.set_title(f'{tm.name} | t-SNE perplexity:{p}')
             if tm in categorical_labels + gene_labels:
                 color_labels = []
                 for c in tm.channel_map:
