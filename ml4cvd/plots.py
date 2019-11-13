@@ -173,13 +173,11 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
         # The path of the best prediction, ie the inlier
-        # Add background rectangle here
-        t = plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
-        t.set_bbox({'facecolor': 'white', 'alpha': 0.5, 'edgecolor': 'white'})
+        _text_on_plot(plt, prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
         # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
-            t = plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
-            t.set_bbox({'facecolor': 'white', 'alpha': 0.5, 'edgecolor': 'white'})
+            _text_on_plot(plt, prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
+
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -206,9 +204,9 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
-            plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(plt, predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             for idx in arg_sorted[-top_k:]:
-                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                _text_on_plot(plt, predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -237,10 +235,10 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
             # The path of the best prediction, ie the inlier
-            axes[row, col].text(prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(axes[row, col], prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             # Plot the paths of the worst predictions ie the outliers
             for idx in arg_sorted[-top_k:]:
-                axes[row, col].text(prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                _text_on_plot(axes[row, col], prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
@@ -281,9 +279,9 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
-                axes[row, col].text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                _text_on_plot(axes[row, col], predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
                 for idx in arg_sorted[-top_k:]:
-                    axes[row, col].text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                    _text_on_plot(axes[row, col], predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
@@ -1143,6 +1141,11 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
     return COLOR_ARRAY[int(hashlib.sha1(string.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+
+
+def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
+    t = axes.text(x, y, text)
+    t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
 if __name__ == '__main__':
