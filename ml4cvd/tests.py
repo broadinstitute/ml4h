@@ -9,6 +9,7 @@ from ml4cvd.DatabaseClient import BigQueryDatabaseClient, SqLiteDatabaseClient
 from ml4cvd.recipes import test_multimodal_multitask, train_multimodal_multitask
 
 ALL_TENSORS = '/mnt/ml4cvd/projects/tensors/sax-lax-ecg-rest-brain-1k/2019-11-06/'
+ALL_TENSORS = '/mnt/disks/sax-lax-40k/2019-11-08/'
 MODELS = '/mnt/ml4cvd/projects/models/'
 
 
@@ -235,7 +236,7 @@ class TestTrainingModels(unittest.TestCase):
 
 class TestPretrainedModels(unittest.TestCase):
     def test_ecg_regress(self):
-        delta = 9e-1
+        delta = 2e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'ecg_rest_regress/ecg_rest_regress.hd5'
@@ -248,12 +249,12 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'PAxis_pearson': 0.6115293530134417, 'PDuration_pearson': 0.5083110710202408, 'POffset_pearson': 0.8993388536229351,
-                    'POnset_pearson': 0.9456181625171349, 'PPInterval_pearson': 0.9876054363135571, 'PQInterval_pearson': 0.9012167913361175,
-                    'QOffset_pearson': 0.7678613436733094, 'QOnset_pearson': 0.5391954510894248, 'QRSComplexes_pearson': 0.9139094177062914,
-                    'QRSDuration_pearson': 0.7808130492073735, 'QTInterval_pearson': 0.9611575017458567, 'QTCInterval_pearson': 0.9602835173702873,
-                    'RAxis_pearson': 0.7068845948538833, 'RRInterval_pearson': 0.9873076763693096, 'TOffset_pearson': 0.938712542605686,
-                    'TAxis_pearson': 0.47777416060424527}
+        expected = {'PAxis_pearson': 0.6648422448522701, 'PDuration_pearson': 0.5429120073727205, 'POffset_pearson': 0.8726706362528265,
+                    'POnset_pearson': 0.9474670304319851, 'PPInterval_pearson': 0.9879710398401635, 'PQInterval_pearson': 0.9162581407852558,
+                    'QOffset_pearson': 0.8305474417868453, 'QOnset_pearson': 0.536008866053106, 'QRSComplexes_pearson': 0.9352139319800331,
+                    'QRSDuration_pearson': 0.844288092135336, 'QTInterval_pearson': 0.9574703389750817, 'QTCInterval_pearson': 0.927194416062913,
+                    'RAxis_pearson': 0.7060725291816269, 'RRInterval_pearson': 0.9889069101166158, 'TOffset_pearson': 0.9544085336583265,
+                    'TAxis_pearson': 0.39811015130722155}
 
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
@@ -271,15 +272,11 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        # expected = {'PAxis_pearson': 0.6115293530134417, 'PDuration_pearson': 0.5083110710202408, 'POffset_pearson': 0.8993388536229351,
-        #             'POnset_pearson': 0.9456181625171349, 'PPInterval_pearson': 0.9876054363135571, 'PQInterval_pearson': 0.9012167913361175,
-        #             'QOffset_pearson': 0.7678613436733094, 'QOnset_pearson': 0.5391954510894248, 'QRSComplexes_pearson': 0.9139094177062914,
-        #             'QRSDuration_pearson': 0.7808130492073735, 'QTInterval_pearson': 0.9611575017458567, 'QTCInterval_pearson': 0.9602835173702873,
-        #             'RAxis_pearson': 0.7068845948538833, 'RRInterval_pearson': 0.9873076763693096, 'TOffset_pearson': 0.938712542605686,
-        #             'TAxis_pearson': 0.47777416060424527}
-        #
-        # for k in expected:
-        #     self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+        expected = {'Normal_sinus_rhythm': 0.9851489938080495, 'Sinus_bradycardia': 0.9972340425531914, 'Marked_sinus_bradycardia': 1.0,
+                    'Other_sinus_rhythm': 0.9653552554315914, 'Other_rhythm': 0.954225352112676}
+
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
 
     def test_mri_systole_diastole_volumes(self):
