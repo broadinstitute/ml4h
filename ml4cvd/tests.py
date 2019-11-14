@@ -249,12 +249,12 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'PAxis_pearson': 0.6096757853247863, 'PDuration_pearson': 0.5033754637888465, 'POffset_pearson': 0.8991941381015535,
-                    'POnset_pearson': 0.943068274973917, 'PPInterval_pearson': 0.9741982064846891, 'PQInterval_pearson': 0.9183941991560995,
-                    'QOffset_pearson': 0.6914958367104611, 'QOnset_pearson': 0.4973036541178359, 'QRSComplexes_pearson': 0.8454838977323635,
-                    'QRSDuration_pearson': 0.6909425663163459, 'QTInterval_pearson': 0.9256624839421144, 'QTCInterval_pearson': 0.9156416484270498,
-                    'RAxis_pearson': 0.7784796569323758, 'RRInterval_pearson': 0.9783352088344341, 'TOffset_pearson': 0.9245605316261704,
-                    'TAxis_pearson': 0.47724645273243477}
+        expected = {'PAxis_pearson': 0.6412350731914113, 'PDuration_pearson': 0.44687692331923495, 'POffset_pearson': 0.8895342855600766,
+                    'POnset_pearson': 0.9497252876315257, 'PPInterval_pearson': 0.9832692070388677, 'PQInterval_pearson': 0.9301142630158935,
+                    'QOffset_pearson': 0.7336190434160246, 'QOnset_pearson': 0.47727841194039183, 'QRSComplexes_pearson': 0.8786003993101409,
+                    'QRSDuration_pearson': 0.7602037325063877, 'QTInterval_pearson': 0.947431443320984, 'QTCInterval_pearson': 0.9257252519356458,
+                    'RAxis_pearson': 0.7788158778452872, 'RRInterval_pearson': 0.9852876188767442, 'TOffset_pearson': 0.9349277072650304,
+                    'TAxis_pearson': 0.48564795968301755}
 
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
@@ -272,8 +272,8 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'Normal_sinus_rhythm': 0.995458984375, 'Sinus_bradycardia': 0.9980378995198017, 'Marked_sinus_bradycardia': 1.0,
-                    'Other_sinus_rhythm': 0.9764925373134328, 'Atrial_fibrillation': 1.0, 'Other_rhythm': 0.9637426900584795}
+        expected = {'Normal_sinus_rhythm': 0.9944891562668626, 'Sinus_bradycardia': 0.9986203969011992, 'Marked_sinus_bradycardia': 0.9998421717171717,
+                    'Other_sinus_rhythm': 0.9789624183006536, 'Atrial_fibrillation': 0.9996513944223108, 'Other_rhythm': 0.9476284584980238}
 
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
@@ -292,12 +292,11 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'corrected_extracted_lvedv_pearson': 0.6500756491729536, 'corrected_extracted_lvef_pearson': 0.4773548108871419,
-                    'corrected_extracted_lvesv_pearson': 0.556143488570414}
+        expected = {'corrected_extracted_lvedv_pearson': 0.6844248954350666, 'corrected_extracted_lvef_pearson': 0.4995376682046898,
+                    'corrected_extracted_lvesv_pearson': 0.6096212678064499}
 
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-
 
     def test_mri_systole_diastole_8_segment(self):
         delta = 1e-1

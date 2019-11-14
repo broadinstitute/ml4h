@@ -85,15 +85,15 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical_any():
-                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1))
-                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1))
+                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1, cmap='gray'))
+                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='gray')
                     if input_map is not None:
-                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0])
+                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0], cmap='gray')
                 else:
                     for j in range(y.shape[3]):
-                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j])
-                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j])
-                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j])
+                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j], cmap='gray')
+                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j], cmap='gray')
+                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j], cmap='gray')
         elif len(tm.shape) == 4:
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
@@ -106,14 +106,14 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)
                         true_donut = np.ma.masked_where(truth == 2, data[im.input_name()][i, :, :, j, 0])
                         predict_donut = np.ma.masked_where(prediction == 2, data[im.input_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, truth)
-                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, prediction)
-                        plt.imsave(folder+sample_id+'_mri_slice_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, data[im.input_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id + '_true_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, true_donut)
-                        plt.imsave(folder + sample_id + '_predict_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, predict_donut)
+                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, truth, cmap='gray')
+                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, prediction, cmap='gray')
+                        plt.imsave(folder+sample_id+'_mri_slice_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, data[im.input_name()][i, :, :, j, 0], cmap='gray')
+                        plt.imsave(folder+sample_id + '_true_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, true_donut, cmap='gray')
+                        plt.imsave(folder + sample_id + '_predict_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, predict_donut, cmap='gray')
                     else:
-                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, labels[tm.output_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, y[i, :, :, j, 0])
+                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
+                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, y[i, :, :, j, 0], cmap='gray')
 
 
 def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
