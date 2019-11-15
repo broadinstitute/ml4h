@@ -102,13 +102,15 @@ class TestTrainingModels(unittest.TestCase):
         args.input_tensors = ['mri_systole_diastole']
         args.output_tensors = ['corrected_extracted_lvedv', 'corrected_extracted_lvef', 'corrected_extracted_lvesv']
         args.epochs = 1
-        args.batch_size = 2
-        args.training_steps = 6
+        args.batch_size = 6
+        args.training_steps = 96
         args.validation_steps = 1
-        args.test_steps = 6
+        args.test_steps = 16
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = train_multimodal_multitask(args)
+        expected = {'corrected_extracted_lvedv_pearson': 0.40413344346837576, 'corrected_extracted_lvef_pearson': -0.2798913746042311,
+                    'corrected_extracted_lvesv_pearson': 0.32952319858255447}
         print('expected = ', performances)
         # expected = {'background': 0.9997983811584907, 'ventricle': 0.3717467509311169, 'myocardium': 0.1753433358365212,
         #             'end_systole_volume_pearson': 0.1376, 'end_diastole_volume_pearson': 0.13085844389045515,
