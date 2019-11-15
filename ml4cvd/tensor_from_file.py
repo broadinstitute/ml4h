@@ -609,6 +609,12 @@ TMAPS['lvm_dubois_index'] = TensorMap('lvm_dubois_index', group='continuous', ac
 TMAPS['lvm_mosteller_index'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=1.0,
                                              tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
                                              channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_dubois_index_w10'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
+                                          tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
+                                          channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+TMAPS['lvm_mosteller_index_w10'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', loss='logcosh', loss_weight=10.0,
+                                             tensor_from_file=make_index_tensor_from_file('bsa_mosteller'),
+                                             channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 TMAPS['lvm_dubois_index_sentinel'] = TensorMap('lvm_dubois_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
                                           tensor_from_file=make_index_tensor_from_file('bsa_dubois'),
                                           channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
