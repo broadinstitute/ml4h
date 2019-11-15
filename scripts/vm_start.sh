@@ -17,3 +17,5 @@ while [[ $COUNTER -lt $(( $MAX_TRIES )) ]]; do
 done
 
 gcloud compute ssh $VM --zone $ZONE
+
+
