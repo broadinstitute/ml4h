@@ -91,21 +91,9 @@ class TestTrainingModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = train_multimodal_multitask(args)
         print('expected = ', performances)
-        # expected = {'end_systole_volume_pearson': 0.010191148347492063,
-        #             'end_diastole_volume_pearson': 0.07746212713601273,
-        #             'ejection_fraction_pearson': 0.039482962469710864, 'no_allergic_rhinitis': 0.6583710407239819,
-        #             'allergic_rhinitis': 0.655697243932538, 'no_asthma': 0.4921536796536796,
-        #             'asthma': 0.49607683982683987, 'no_atrial_fibrillation_or_flutter': 0.3950320512820513,
-        #             'atrial_fibrillation_or_flutter': 0.3950320512820512, 'no_back_pain': 0.5713760117733627,
-        #             'back_pain': 0.5673289183222958, 'no_breast_cancer': 0.32195723684210525,
-        #             'breast_cancer': 0.3223684210526316, 'no_coronary_artery_disease_soft': 0.37866666666666665,
-        #             'coronary_artery_disease_soft': 0.37733333333333335, 'no_diabetes_type_2': 0.5410830999066294,
-        #             'diabetes_type_2': 0.5401493930905695, 'no_hypertension': 0.5034782608695653,
-        #             'hypertension': 0.5039613526570048, 'no_myocardial_infarction': 0.5632911392405063,
-        #             'myocardial_infarction': 0.564873417721519}
-        #
-        # for k in expected:
-        #     self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+        expected = {'background': 1.0, 'Sex_Female_0_0': 0.763668430335097, 'Sex_Male_0_0': 0.763668430335097}
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
     def test_train_mri_systole_diastole(self):
         delta = 6e-1
