@@ -344,7 +344,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     saved_tensors = {}
     batch_size = None
     for key, batch_array in chain(first_batch[0].items(), first_batch[1].items()):
-        shape = batch_array.shape[0:1] * minibatches + batch_array.shape[1:]
+        shape = (batch_array.shape[0] * minibatches,) + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
         batch_size = batch_array.shape[0]
         saved_tensors[key][:batch_size] = batch_array
@@ -353,6 +353,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     if keep_paths:
         paths = first_batch[2]
 
+    input_tensors, output_tensors = list(first_batch[0]), list(first_batch[1])
     for i in range(1, minibatches):
         logging.info(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
@@ -366,8 +367,8 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
 
     for key, array in saved_tensors.items():
         logging.info(f"Tensor '{key}' has shape {array.shape}.")
-    inputs = {key: saved_tensors[key] for key in first_batch[0]}
-    outputs = {key: saved_tensors[key] for key in first_batch[1]}
+    inputs = {key: saved_tensors[key] for key in input_tensors}
+    outputs = {key: saved_tensors[key] for key in output_tensors}
     if keep_paths:
         return inputs, outputs, paths
     else:
