@@ -197,8 +197,9 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        # for k in expected:
-        #     self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+        expected = {'background': 0.9999999999999999}
+        for k in expected:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
 
 # Back to the top!
