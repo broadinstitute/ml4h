@@ -39,7 +39,7 @@ Batch = Dict[Path, np.ndarray]
 BatchFunction = Callable[[Batch, Batch, bool, List[Path], 'kwargs'], Any]
 
 
-class ShufflePaths(Iterator):
+class _ShufflePaths(Iterator):
 
     def __init__(self, paths: List[Path]):
         self.paths = paths
@@ -53,7 +53,7 @@ class ShufflePaths(Iterator):
         return self.paths[self.idx - 1]
 
 
-class WeightedPaths(Iterator):
+class _WeightedPaths(Iterator):
 
     def __init__(self, paths: List[PathIterator], weights: List[float]):
         self.paths = paths
@@ -82,7 +82,7 @@ class TensorGenerator:
         if weights is None:
             worker_paths = np.array_split(paths, num_workers)
             self.true_epoch_lens = list(map(len, worker_paths))
-            self.path_iters = [ShufflePaths(p) for p in worker_paths]
+            self.path_iters = [_ShufflePaths(p) for p in worker_paths]
         else:
             # split each path list into paths for each worker.
             # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
@@ -90,7 +90,7 @@ class TensorGenerator:
             # Next, each list of paths gets given to each worker. E.g. [[[p1], [p3, p4]], [[p2], [p5]]]
             worker_paths = np.swapaxes(split_paths, 0, 1)
             self.true_epoch_lens = [max(map(len, p)) for p in worker_paths]
-            self.path_iters = [WeightedPaths(p, weights) for p in worker_paths]
+            self.path_iters = [_WeightedPaths(p, weights) for p in worker_paths]
 
         self.batch_function_kwargs = {}
         if mixup > 0:
@@ -328,27 +328,26 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generator: TensorGenerator, minibatches, keep_paths=True, siamese=False):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
 
     Arguments:
-        tensor_maps_in: list of TensorMaps that are input names to a model
-        tensor_maps_out: list of TensorMaps that are output from a model
         generator: TensorGenerator of minibatches
         minibatches: number of times to call generator and collect a minibatch
-        keep_paths: also return the list of tensor files loaded
 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
     first_batch = next(generator)
     saved_tensors = {}
+    batch_size = None
     for key, batch_array in chain(first_batch[0].items(), first_batch[1].items()):
         shape = batch_array.shape[0:1] * minibatches + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
-        saved_tensors[key][:batch_array.shape[0]] = batch_array
+        batch_size = batch_array.shape[0]
+        saved_tensors[key][:batch_size] = batch_array
 
     keep_paths = generator.keep_paths
     if keep_paths:
