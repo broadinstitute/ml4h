@@ -53,7 +53,8 @@ class ShufflePaths(Iterator):
         if self.idx >= len(self.paths):
             self.idx = 0
             shuffle(self.paths)
-        return self.paths[self.idx]
+        self.idx += 1
+        return self.paths[self.idx - 1]
 
 
 class WeightedPaths(Iterator):
