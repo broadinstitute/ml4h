@@ -254,7 +254,7 @@ def train_char_model(args):
 def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, siamese=True)
     siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                                 args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
