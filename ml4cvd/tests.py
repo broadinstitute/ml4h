@@ -49,51 +49,51 @@ class TestTensorMaps(unittest.TestCase):
 
 class TestTrainingModels(unittest.TestCase):
 
-    def test_train_categorical_mlp(self):
-        delta = 1e-1
-        args = parse_args()
-        args.tensors = ALL_TENSORS
-        args.input_tensors = ['categorical-phenotypes-134']
-        args.output_tensors = ['coronary_artery_disease_soft', 'diabetes_type_2',
-                               'hypertension', 'myocardial_infarction']
-        args.epochs = 1
-        args.batch_size = 32
-        args.training_steps = 20
-        args.validation_steps = 1
-        args.test_steps = 32
-        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-        performances = train_multimodal_multitask(args)
-        print('cat mlp expected = ', performances)
-        expected = {'no_coronary_artery_disease_soft': 0.5280473195567535, 'coronary_artery_disease_soft': 0.5280473195567534,
-                    'no_diabetes_type_2': 0.5175564681724847, 'diabetes_type_2': 0.5175564681724846, 'no_hypertension': 0.49742043019287246,
-                    'hypertension': 0.49742043019287246, 'no_myocardial_infarction': 0.4442053930005737, 'myocardial_infarction': 0.44420539300057377}
-
-        for k in performances:
-            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-
-    def test_train_mri_sax_zoom(self):
-        delta = 7e-1
-        args = parse_args()
-        args.tensors = ALL_TENSORS
-        args.input_tensors = ['sax_inlinevf_zoom_weighted']
-        args.output_tensors = ['sax_inlinevf_zoom_mask_weighted', 'sex']
-        args.epochs = 1
-        args.batch_size = 4
-        args.training_steps = 24
-        args.validation_steps = 1
-        args.test_steps = 36
-        args.t = 48
-        args.pool_z = 2
-        args.u_connect = True
-        args.learning_rate = 0.0001
-        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-        performances = train_multimodal_multitask(args)
-        print('expected = ', performances)
-        expected = {'background': 1.0, 'Sex_Female_0_0': 0.763668430335097, 'Sex_Male_0_0': 0.763668430335097}
-        for k in expected:
-            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+    # def test_train_categorical_mlp(self):
+    #     delta = 1e-1
+    #     args = parse_args()
+    #     args.tensors = ALL_TENSORS
+    #     args.input_tensors = ['categorical-phenotypes-134']
+    #     args.output_tensors = ['coronary_artery_disease_soft', 'diabetes_type_2',
+    #                            'hypertension', 'myocardial_infarction']
+    #     args.epochs = 1
+    #     args.batch_size = 32
+    #     args.training_steps = 20
+    #     args.validation_steps = 1
+    #     args.test_steps = 32
+    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    #     performances = train_multimodal_multitask(args)
+    #     print('cat mlp expected = ', performances)
+    #     expected = {'no_coronary_artery_disease_soft': 0.5280473195567535, 'coronary_artery_disease_soft': 0.5280473195567534,
+    #                 'no_diabetes_type_2': 0.5175564681724847, 'diabetes_type_2': 0.5175564681724846, 'no_hypertension': 0.49742043019287246,
+    #                 'hypertension': 0.49742043019287246, 'no_myocardial_infarction': 0.4442053930005737, 'myocardial_infarction': 0.44420539300057377}
+    #
+    #     for k in performances:
+    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+    #
+    # def test_train_mri_sax_zoom(self):
+    #     delta = 7e-1
+    #     args = parse_args()
+    #     args.tensors = ALL_TENSORS
+    #     args.input_tensors = ['sax_inlinevf_zoom_weighted']
+    #     args.output_tensors = ['sax_inlinevf_zoom_mask_weighted', 'sex']
+    #     args.epochs = 1
+    #     args.batch_size = 4
+    #     args.training_steps = 24
+    #     args.validation_steps = 1
+    #     args.test_steps = 36
+    #     args.t = 48
+    #     args.pool_z = 2
+    #     args.u_connect = True
+    #     args.learning_rate = 0.0001
+    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    #     performances = train_multimodal_multitask(args)
+    #     print('expected = ', performances)
+    #     expected = {'background': 1.0, 'Sex_Female_0_0': 0.763668430335097, 'Sex_Male_0_0': 0.763668430335097}
+    #     for k in expected:
+    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
     def test_train_mri_systole_diastole(self):
         delta = 6e-1
@@ -102,12 +102,10 @@ class TestTrainingModels(unittest.TestCase):
         args.input_tensors = ['mri_systole_diastole']
         args.output_tensors = ['corrected_extracted_lvedv', 'corrected_extracted_lvef', 'corrected_extracted_lvesv']
         args.epochs = 1
-        args.batch_size = 12
-        args.training_steps = 96
+        args.batch_size = 2
+        args.training_steps = 6
         args.validation_steps = 1
-        args.test_steps = 36
-        args.u_connect = True
-        args.learning_rate = 0.0005
+        args.test_steps = 6
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = train_multimodal_multitask(args)
