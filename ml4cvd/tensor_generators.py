@@ -20,7 +20,7 @@ import numpy as np
 from collections import Counter
 from random import choices, shuffle, choice
 from multiprocessing import Process, Queue
-from itertools import cycle
+from itertools import cycle, chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any
 
 
@@ -37,10 +37,6 @@ Path = str
 PathIterator = Iterator[Path]
 Batch = Dict[Path, np.ndarray]
 BatchFunction = Callable[[Batch, Batch, bool, List[Path], 'kwargs'], Any]
-
-
-def _path_cycle(paths: List[Path]) -> PathIterator:
-    return cycle(paths)  # TODO: maybe this should shuffle after every true epoch
 
 
 class ShufflePaths(Iterator):
@@ -347,26 +343,18 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    # saved tensors is a dictionary with pre-allocated numpy arrays
-    batch_size = generator.batch_size // 2 if siamese else generator.batch_size
-    nrows = batch_size * minibatches
+    first_batch = next(generator)
+    saved_tensors = {}
+    for key, batch_array in chain(first_batch[0].items(), first_batch[1].items()):
+        shape = batch_array.shape[0:1] * minibatches + batch_array.shape[1:]
+        saved_tensors[key] = np.zeros(shape)
+        saved_tensors[key][:batch_array.shape[0]] = batch_array
 
-    if siamese:
-        output_tensors = ['output_siamese']
-        saved_tensors = TensorMapArrayCache(2e9, tensor_maps_in, [], nrows).data
-        for name in (tmap.input_name() for tmap in tensor_maps_in):
-            allocated = saved_tensors.pop(name)
-            saved_tensors[name + '_left'] = allocated
-            saved_tensors[name + '_right'] = allocated.copy()
-        input_tensors = list(saved_tensors.keys())
-        saved_tensors['output_siamese'] = np.zeros((nrows, 1), dtype=np.float32)
-    else:
-        input_tensors = [tm.input_name() for tm in tensor_maps_in]
-        output_tensors = [tm.output_name() for tm in tensor_maps_out]
-        saved_tensors = TensorMapArrayCache(4e9, tensor_maps_in, tensor_maps_out, nrows).data
-    paths = []
+    keep_paths = generator.keep_paths
+    if keep_paths:
+        paths = first_batch[2]
 
-    for i in range(minibatches):
+    for i in range(1, minibatches):
         logging.info(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
@@ -377,10 +365,10 @@ def big_batch_from_minibatch_generator(tensor_maps_in, tensor_maps_out, generato
         if keep_paths:
             paths.extend(next_batch[2])
 
-    for key in saved_tensors:
-        logging.info(f"Tensor '{key}' has shape {saved_tensors[key].shape}.")
-    inputs = {key: saved_tensors[key] for key in input_tensors}
-    outputs = {key: saved_tensors[key] for key in output_tensors}
+    for key, array in saved_tensors.items():
+        logging.info(f"Tensor '{key}' has shape {array.shape}.")
+    inputs = {key: saved_tensors[key] for key in first_batch[0]}
+    outputs = {key: saved_tensors[key] for key in first_batch[1]}
     if keep_paths:
         return inputs, outputs, paths
     else:
