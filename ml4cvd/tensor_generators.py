@@ -18,9 +18,8 @@ import logging
 import traceback
 import numpy as np
 from collections import Counter
-from random import choices, shuffle, choice
 from multiprocessing import Process, Queue
-from itertools import cycle, chain
+from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any
 
 
@@ -48,7 +47,7 @@ class _ShufflePaths(Iterator):
     def __next__(self):
         if self.idx >= len(self.paths):
             self.idx = 0
-            shuffle(self.paths)
+            np.random.shuffle(self.paths)
         self.idx += 1
         return self.paths[self.idx - 1]
 
@@ -62,7 +61,7 @@ class _WeightedPaths(Iterator):
             raise ValueError('Weights must be the same length as paths.')
 
     def __next__(self) -> str:
-        return choice(choices(self.paths, self.weights)[0])
+        return np.random.choice(np.random.choice(self.paths, self.weights))
 
 
 class TensorGenerator:
