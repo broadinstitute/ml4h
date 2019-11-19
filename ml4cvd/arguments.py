@@ -141,6 +141,7 @@ def parse_args():
     parser.add_argument('--max_models', default=16, type=int,
                         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
+    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -150,7 +151,6 @@ def parse_args():
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
-    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
 
     args = parser.parse_args()
     _process_args(args)
