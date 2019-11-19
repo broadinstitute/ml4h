@@ -636,6 +636,16 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         tensor[:, :, 7, 0] = np.array(hd5['systole_frame_b8'], dtype=np.float32)
         dependents[tm.dependent_map][:, :, 7, :] = to_categorical(np.array(hd5['systole_mask_b8']), tm.dependent_map.shape[-1])
         return tm.normalize_and_validate(tensor)
+    elif tm.name == 'sax_all_diastole':
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        for b in range(12):
+            try:
+                tensor[:, :, b, 0] = np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32)
+                dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'diastole_mask_b{b}']), tm.dependent_map.shape[-1])
+            except KeyError:
+                pass
+        return tm.normalize_and_validate(tensor)
     elif tm.is_root_array():
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[:] = np.array(hd5[tm.name], dtype=np.float32)
