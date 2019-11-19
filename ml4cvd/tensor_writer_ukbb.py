@@ -972,6 +972,9 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         nifti_mri = nib.load(nifti)
         nifti_array = nifti_mri.get_fdata()
         nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
+        parent = nifti.split('/')[-2]
+        if parent not in nii_name:
+            nii_name = f'{parent}_{nii_name}'
         stats[nii_name] += 1
         stats[f'{nii_name} shape:{nifti_array.shape}'] += 1
         if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
