@@ -966,7 +966,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
-    niftis = glob.glob(os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id], '*nii.gz'), recursive=True)
+    niftis = glob.glob(os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id], '**/*nii.gz'), recursive=True)
     logging.info(f'Found {len(niftis)} NIFTI files at {os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id])} ')
     for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
         nifti_mri = nib.load(nifti)
