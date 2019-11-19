@@ -397,9 +397,6 @@ TMAPS['cine_segmented_sax_b2'] = TensorMap('cine_segmented_sax_b2', (256, 256, 5
 TMAPS['cine_segmented_sax_b4'] = TensorMap('cine_segmented_sax_b4', (256, 256, 50), group='root_array', loss='mse')
 TMAPS['cine_segmented_sax_b6'] = TensorMap('cine_segmented_sax_b6', (256, 256, 50), group='root_array', loss='mse')
 
-
-
-
 TMAPS['cine_segmented_lax_2ch'] = TensorMap('cine_segmented_lax_2ch', (256, 256, 50), group='root_array', loss='logcosh')
 TMAPS['cine_segmented_lax_3ch'] = TensorMap('cine_segmented_lax_3ch', (256, 256, 50), group='root_array', loss='logcosh')
 TMAPS['cine_segmented_lax_4ch'] = TensorMap('cine_segmented_lax_4ch', (256, 256, 50), group='root_array', loss='logcosh')
@@ -447,6 +444,13 @@ TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', group='continuous', c
                                 validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739})
 TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', group='continuous', channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
                                    validator=make_range_validator(1901, 2025), normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739})
+TMAPS['age_0'] = TensorMap('21003_Age-when-attended-assessment-centre_0', group='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+                           normalization={'mean': 56.52847159208494, 'std': 8.095287610193827}, channel_map={'21003_Age-when-attended-assessment-centre_0_0': 0, })
+TMAPS['age_1'] = TensorMap('21003_Age-when-attended-assessment-centre_1', group='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+                           normalization={'mean': 61.4476555588322, 'std': 7.3992113757847005}, channel_map={'21003_Age-when-attended-assessment-centre_1_0': 0, })
+TMAPS['age_2'] = TensorMap('21003_Age-when-attended-assessment-centre_2', group='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+                           normalization={'mean': 63.35798891483556, 'std': 7.554638350423902}, channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0, })
+
 TMAPS['brain_volume'] = TensorMap('25010_Volume-of-brain-greywhite-matter_2_0', group='continuous', normalization={'mean': 1165940.0, 'std': 111511.0},
                                   channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='logcosh', loss_weight=0.1)
 
