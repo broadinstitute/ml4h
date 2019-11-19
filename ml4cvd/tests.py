@@ -164,7 +164,7 @@ class TestPretrainedModels(unittest.TestCase):
     #
 
     def test_mri_systole_diastole_volumes(self):
-        delta = 1e-1
+        delta = 2e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'mri_sd_unet_volumes/mri_sd_unet_volumes.hd5'
