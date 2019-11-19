@@ -47,12 +47,14 @@ MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
+MRI_SWI_SLICES_TO_AXIS_SHIFT = 48
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf']
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
+MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'}
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
@@ -965,19 +967,17 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
-    num_slices_for_shift = 48
-    field_id_to_root = {'20251': 'SWI'}
-    root_folder = os.path.join(folder, field_id_to_root[field_id])
-    niftis = glob.glob(os.path.join(root_folder, '*nii.gz'))
+    root_folder = os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id])
+    niftis = glob.glob(os.path.join(root_folder, '*nii.gz'), recursive=True)
     for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
         nifti_mri = nib.load(nifti)
         nifti_array = nifti_mri.get_fdata()
         nii_name = os.path.basename(nifti).replace('.nii.gz', '')  # removes .nii.gz
         stats[nii_name] += 1
         stats[f'{nii_name} shape:{nifti_array.shape}'] += 1
-        if nifti_array.shape[-1] == num_slices_for_shift and nifti_array.shape[0] > nifti_array.shape[1]:
+        if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
             nifti_array = np.moveaxis(nifti_array, 0, 1)
-            stats[f'{nii_name} shape post shift:{nifti_array.shape}'] += 1
+            stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
         create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype=DataSetType.FLOAT_ARRAY, source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
 
 
