@@ -196,13 +196,12 @@ def infer_multimodal_multitask(args):
                     csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
                     if tm.name == 'sax_all_diastole_segmented':
                         background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
-                        logging.info(f'bg count: {background_counts} num non zero: {np.count_nonzero(background_counts)}')
                         csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
             stats['count'] += 1
-            if stats['count'] % 500 == 0:
+            if stats['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
 
 
