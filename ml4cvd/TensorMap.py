@@ -639,7 +639,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     elif tm.name == 'sax_all_diastole':
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for b in range(12):
+        for b in range(tm.shape[-2]):
             try:
                 tensor[:, :, b, 0] = np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32)
                 dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'diastole_mask_b{b}']), tm.dependent_map.shape[-1])
