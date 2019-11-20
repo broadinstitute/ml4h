@@ -135,19 +135,14 @@ def _pad_or_crop_array_to_shape(tm: TensorMap, original: np.ndarray):
     if tm.shape == original.shape:
         return original
     result = np.zeros(tm.shape)
-    min_idx = [min(original.shape[i], tm.shape[i]) for i in range(len(original.shape))]
+    slices = tuple([slice(min(original.shape[i], tm.shape[i])) for i in range(len(original.shape))])
+
     if len(tm.shape) - len(original.shape) == 1:
         padded = result[..., 0]
     else:
         padded = result
-    if len(min_idx) == 1:
-        padded[:min_idx[0]] = original[:min_idx[0]]
-    elif len(min_idx) == 2:
-        padded[:min_idx[0], :min_idx[1]] = original[:min_idx[0], :min_idx[1]]
-    elif len(min_idx) == 3:
-        padded[:min_idx[0], :min_idx[1], :min_idx[2]] = original[:min_idx[0], :min_idx[1], :min_idx[2]]
-    elif len(min_idx) == 4:
-        padded[:min_idx[0], :min_idx[1], :min_idx[2], :min_idx[3]] = original[:min_idx[0], :min_idx[1], :min_idx[2], :min_idx[3]]
+
+    padded[slices] = original[slices]
     return result
 
 
