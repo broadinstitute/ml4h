@@ -160,6 +160,8 @@ def infer_multimodal_multitask(args):
             elif otm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
                 pix_tm = args.tensor_maps_in[1]  # TOTAL HACK
                 header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual'])
+                if otm.name == 'sax_all_diastole_segmented':
+                    header.append('total_b_slices')
         inference_writer.writerow(header)
 
         while True:
@@ -192,8 +194,10 @@ def infer_multimodal_multitask(args):
                     csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
                     csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.2f}')
                     csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
-                    background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
-                    logging.info(f'bg count: {background_counts} \n num non zero: {np.count_nonzero(background_counts == 0)}')
+                    if tm.name == 'sax_all_diastole_segmented':
+                        background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
+                        logging.info(f'bg count: {background_counts} num non zero: {np.count_nonzero(background_counts)}')
+                        csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
