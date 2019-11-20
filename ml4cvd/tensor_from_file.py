@@ -134,9 +134,9 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
 def _pad_or_crop_array_to_shape(tm: TensorMap, original: np.ndarray):
     if tm.shape == original.shape:
         return original
+    
     result = np.zeros(tm.shape)
-    slices = tuple([slice(min(original.shape[i], tm.shape[i])) for i in range(len(original.shape))])
-
+    slices = tuple(slice(min(original.shape[i], tm.shape[i])) for i in range(len(original.shape)))
     if len(tm.shape) - len(original.shape) == 1:
         padded = result[..., 0]
     else:
