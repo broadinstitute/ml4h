@@ -640,12 +640,12 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         for b in range(12):
-            try:
-                tensor[:, :, b, 0] = np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32)
-                dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'diastole_mask_b{b}']), tm.dependent_map.shape[-1])
-            except KeyError:
-                tensor[:, :, b, 0] = np.zeros((tm.shape[0], tm.shape[1]), dtype=np.float32)
-                dependents[tm.dependent_map][:, :, b, :] = np.zeros((tm.shape[0], tm.shape[1], tm.dependent_map.shape[-1]), dtype=np.float32)
+            #try:
+            tensor[:, :, b, 0] = np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32)
+            dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'diastole_mask_b{b}']), tm.dependent_map.shape[-1])
+            # except KeyError:
+            #     tensor[:, :, b, 0] = np.zeros((tm.shape[0], tm.shape[1]), dtype=np.float32)
+            #     dependents[tm.dependent_map][:, :, b, :] = np.zeros((tm.shape[0], tm.shape[1], tm.dependent_map.shape[-1]), dtype=np.float32)
         return tm.normalize_and_validate(tensor)
     elif tm.is_root_array():
         tensor = np.zeros(tm.shape, dtype=np.float32)
