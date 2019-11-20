@@ -135,7 +135,7 @@ def _pad_or_crop_array_to_shape(tm: TensorMap, original: np.ndarray):
     if tm.shape == original.shape:
         return original
     padded = np.zeros(tm.shape)
-    min_indexes = [range(min(original.shape[i], tm.shape[i])) for i in range(min(len(original.shape), len(tm.shape)))]
+    min_indexes = [np.arange(min(original.shape[i], tm.shape[i])) for i in range(min(len(original.shape), len(tm.shape)))]
     padded[min_indexes] = original[min_indexes]
     return padded
 
