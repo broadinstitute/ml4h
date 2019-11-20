@@ -148,7 +148,7 @@ def _pad_or_crop_array_to_shape(tm: TensorMap, original: np.ndarray):
         padded[:min_idx[0], :min_idx[1], :min_idx[2]] = original[:min_idx[0], :min_idx[1], :min_idx[2]]
     elif len(min_idx) == 4:
         padded[:min_idx[0], :min_idx[1], :min_idx[2], :min_idx[3]] = original[:min_idx[0], :min_idx[1], :min_idx[2], :min_idx[3]]
-    return padded
+    return result
 
 
 # BIKE ECG
