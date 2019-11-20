@@ -22,8 +22,3 @@ repos:
   rev: master
   hooks:
     - id: add-trailing-comma
-- repo: https://github.com/FalconSocial/pre-commit-python-sorter
-  rev: master
-  hooks:
-    - id: python-import-sorter
-      args: ['--silent-overwrite']
