@@ -9,9 +9,9 @@ from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
-from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
+from ml4cvd.defines import TENSOR_EXT, MRI_SEGMENTED_CHANNEL_MAP
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
@@ -159,7 +159,7 @@ def infer_multimodal_multitask(args):
                 header.extend(channel_columns)
             elif otm.name == 'mri_systole_diastole_8_segmented':
                 pix_tm = args.tensor_maps_in[1] # TOTAL HACK
-                header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual'])
+                header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual'])
         inference_writer.writerow(header)
 
         while True:
@@ -186,12 +186,12 @@ def infer_multimodal_multitask(args):
                         csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name == 'mri_systole_diastole_8_segmented':
                     csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
-                    csv_row.append(f'{np.sum(y[..., 0]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 0]):0.2f}')
-                    csv_row.append(f'{np.sum(y[..., 1]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 1]):0.2f}')
-                    csv_row.append(f'{np.sum(y[..., 2]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 2]):0.2f}')
+                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
+                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
+                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
