@@ -577,7 +577,8 @@ TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 
 
 def mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     original = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
-    tensor = to_categorical(original, tm.shape[-1])
+    reshaped = _pad_or_crop_array_to_shape(tm, original)
+    tensor = to_categorical(reshaped, tm.shape[-1])
     return tm.normalize_and_validate(tensor)
 
 
