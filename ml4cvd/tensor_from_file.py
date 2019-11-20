@@ -23,10 +23,10 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
         return tm.normalize_and_validate(tensor)
     if tm.dtype == DataSetType.FLOAT_ARRAY:
         tensor = tm.normalize_and_validate(tensor)
-        return _pad_array_to_shape(tm, tensor)
+        return _pad_or_crop_array_to_shape(tm, tensor)
     if tm.dtype == DataSetType.CATEGORICAL:
         tensor = tm.normalize_and_validate(tensor)
-        return _pad_array_to_shape(tm, tensor)
+        return _pad_or_crop_array_to_shape(tm, tensor)
     raise ValueError(f'normalize_first_date not implemented for {tm.dtype}')
 
 
@@ -131,11 +131,12 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
     return tensor
 
 
-def _pad_array_to_shape(tm: TensorMap, original: np.ndarray):
+def _pad_or_crop_array_to_shape(tm: TensorMap, original: np.ndarray):
     if tm.shape == original.shape:
         return original
     padded = np.zeros(tm.shape)
-    padded[:original.shape[0]] = original.reshape((original.shape[0],) + tm.shape[1:])
+    min_indexes = [range(min(original.shape[i], tm.shape[i])) for i in range(min(len(original.shape), len(tm.shape)))]
+    padded[min_indexes] = original[min_indexes]
     return padded
 
 
