@@ -250,7 +250,7 @@ class TensorMap(object):
         return self.group == 'categorical_flag'
 
     def is_categorical_any(self):
-        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation()
+        return self.is_categorical_index() or self.is_categorical() or self.is_categorical_date() or self.is_categorical_flag() or self.is_ecg_categorical_interpretation() or self.dtype == DataSetType.CATEGORICAL
 
     def is_continuous(self):
         return self.group == 'continuous' or self.dtype == DataSetType.CONTINUOUS

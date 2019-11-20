@@ -24,6 +24,9 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     if tm.dtype == DataSetType.FLOAT_ARRAY:
         tensor = tm.normalize_and_validate(tensor)
         return _pad_array_to_shape(tm, tensor)
+    if tm.dtype == DataSetType.CATEGORICAL:
+        tensor = tm.normalize_and_validate(tensor)
+        return _pad_array_to_shape(tm, tensor)
     raise ValueError(f'normalize_first_date not implemented for {tm.dtype}')
 
 
@@ -568,9 +571,9 @@ def mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize_and_validate(tensor)
 
 
-TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
-TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
-TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
+TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL, tensor_from_file=mask_from_file)
+TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL, tensor_from_file=mask_from_file)
+TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL, tensor_from_file=mask_from_file)
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
