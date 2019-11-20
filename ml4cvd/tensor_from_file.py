@@ -571,9 +571,12 @@ def mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize_and_validate(tensor)
 
 
-TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL, tensor_from_file=mask_from_file)
-TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL, tensor_from_file=mask_from_file)
-TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL, tensor_from_file=mask_from_file)
+TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL,
+                                    tensor_from_file=mask_from_file, channel_map={'not_brain': 0, 'brain': 1})
+TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL,
+                                   tensor_from_file=mask_from_file, channel_map={'not_brain': 0, 'brain': 1})
+TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL,
+                            tensor_from_file=mask_from_file, channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
