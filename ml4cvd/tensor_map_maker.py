@@ -44,8 +44,10 @@ def _get_tensor_map_file_imports() -> str:
            f"from defines import MRI_SEGMENTED_CHANNEL_MAP\n\n\n"
 
 
-def _write_dynamic_mri_tensor_maps(x: int, y: int, z: int, zoom_width: int, zoom_height: int, label_weights: List[int],
-                                   t: int, f: TextIO) -> None:
+def _write_dynamic_mri_tensor_maps(
+    x: int, y: int, z: int, zoom_width: int, zoom_height: int, label_weights: List[int],
+    t: int, f: TextIO,
+) -> None:
     """Write TensorMappings that are adjustable from the command line to the filepath (f) provided.
 
     Arguments:
@@ -60,65 +62,109 @@ def _write_dynamic_mri_tensor_maps(x: int, y: int, z: int, zoom_width: int, zoom
     """
     if label_weights is None:
         label_weights = [20.0, 250.0, 250.0]
-    f.write(f"TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-lax', ({x}, {y}, {z}), "
-            f"dependent_map=TMAPS['lax-view-detect'])\n")
-    f.write(f"TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-sax', ({x}, {y}, {z}), "
-            f"dependent_map=TMAPS['sax-view-detect'])\n")
-    f.write(f"TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-slax', ({x}, {y}, {z}), "
-            f"dependent_map=TMAPS['slax-view-detect'])\n")
-    f.write(f"TMAPS['{_segmented_map('mri_slice')}'] = TensorMap('{_segmented_map('mri_slice')}', "
-            f"({x}, {y}, {len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', "
-            f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n")
-    f.write(f"TMAPS['{_segmented_map('mri_slice')}_weighted'] = TensorMap('{_segmented_map('mri_slice')}', ({x}, "
-            f"{y}, {len(MRI_SEGMENTED_CHANNEL_MAP)}), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
-            f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('mri_slice')}'))\n")
-    f.write(f"TMAPS['mri_slice'] = TensorMap('mri_slice', ({x}, {y}, 1), "
-            f"dependent_map=TMAPS['{_segmented_map('mri_slice')}'])\n")
-    f.write(f"TMAPS['mri_slice_weighted'] = TensorMap('mri_slice', ({x}, {y}, 1), "
-            f"dependent_map=TMAPS['{_segmented_map('mri_slice')}_weighted'])\n")
-    f.write(f"TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}'] = "
-            f"TensorMap('{_segmented_map('cine_segmented_sax_inlinevf')}', ({x}, {y}, {t}, "
-            f"{len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', group='categorical', "
-            f"channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n")
-    f.write(f"TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}_weighted'] = "
-            f"TensorMap('{_segmented_map('cine_segmented_sax_inlinevf')}', ({x}, {y}, {t}, "
-            f"{len(MRI_SEGMENTED_CHANNEL_MAP)}), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, "
-            f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('cine_segmented_sax_inlinevf')}'))\n")
-    f.write(f"TMAPS['cine_segmented_sax_inlinevf'] = TensorMap('cine_segmented_sax_inlinevf', ({x}, {y}, "
-            f"{t}, 1), dependent_map=TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}'])\n")
-    f.write(f"TMAPS['cine_segmented_sax_inlinevf_weighted'] = TensorMap('cine_segmented_sax_inlinevf', "
-            f"({x}, {y}, {t}, 1), "
-            f"dependent_map=TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}_weighted'])\n")
-    f.write(f"TMAPS['{MRI_ZOOM_MASK}'] = TensorMap('{MRI_ZOOM_MASK}', ({zoom_width},{zoom_height},{t}, "
-            f"{len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', group='categorical', "
-            f"channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n")
-    f.write(f"TMAPS['{MRI_ZOOM_MASK}_weighted'] = TensorMap('{MRI_ZOOM_MASK}', ({zoom_width}, {zoom_height}, "
-            f"{t}, {len(MRI_SEGMENTED_CHANNEL_MAP)}), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
-            f"loss=weighted_crossentropy({label_weights}, '{MRI_ZOOM_MASK}'))\n")
-    f.write(f"TMAPS['{MRI_ZOOM_INPUT}'] = TensorMap('{MRI_ZOOM_INPUT}',({zoom_width},{zoom_height},{t}, "
-            f"1), dependent_map=TMAPS['{MRI_ZOOM_MASK}'])\n")
-    f.write(f"TMAPS['{MRI_ZOOM_INPUT}_weighted'] = TensorMap('{MRI_ZOOM_INPUT}',({zoom_width},{zoom_height},{t}, "
-            f"1), dependent_map=TMAPS['{MRI_ZOOM_MASK}_weighted'])\n")
-    f.write(f"TMAPS['{_segmented_map('mri_systole_diastole')}']=TensorMap('{_segmented_map('mri_systole_diastole')}', "
-            f"({x}, {y}, 2, {len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', "
-            f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n")
-    f.write(f"TMAPS['{_segmented_map('mri_systole_diastole')}_weighted'] = TensorMap("
-            f"'{_segmented_map('mri_systole_diastole')}', ({x}, {y}, 2, {len(MRI_SEGMENTED_CHANNEL_MAP)}), "
-            f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
-            f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('mri_systole_diastole')}'))\n")
-    f.write(f"TMAPS['mri_systole_diastole'] = TensorMap('mri_systole_diastole', ({x}, {y}, 2, 1), "
-            f"dependent_map=TMAPS['{_segmented_map('mri_systole_diastole')}'])\n")
-    f.write(f"TMAPS['mri_systole_diastole_weighted'] = TensorMap('mri_systole_diastole', ({x}, {y}, 2, 1), "
-            f"dependent_map=TMAPS['{_segmented_map('mri_systole_diastole')}_weighted'])\n")
-    f.write(f"TMAPS['{_segmented_map('mri_systole_diastole_8')}'] = TensorMap('"
-            f"{_segmented_map('mri_systole_diastole_8')}', ({x}, {y}, 8, {len(MRI_SEGMENTED_CHANNEL_MAP)}), "
-            f"loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n")
-    f.write(f"TMAPS['{_segmented_map('mri_systole_diastole_8')}_weighted'] = TensorMap("
-            f"'{_segmented_map('mri_systole_diastole_8')}', ({x}, {y}, 8, {len(MRI_SEGMENTED_CHANNEL_MAP)}), "
-            f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
-            f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('mri_systole_diastole_8')}'))\n")
-    f.write(f"TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', ({x}, {y}, 8, 1), "
-            f"dependent_map=TMAPS['{_segmented_map('mri_systole_diastole_8')}'])\n\n")
+    f.write(
+        f"TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-lax', ({x}, {y}, {z}), "
+        f"dependent_map=TMAPS['lax-view-detect'])\n",
+    )
+    f.write(
+        f"TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-sax', ({x}, {y}, {z}), "
+        f"dependent_map=TMAPS['sax-view-detect'])\n",
+    )
+    f.write(
+        f"TMAPS['mri-xyt-lax'] = TensorMap('mri-xyt-slax', ({x}, {y}, {z}), "
+        f"dependent_map=TMAPS['slax-view-detect'])\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('mri_slice')}'] = TensorMap('{_segmented_map('mri_slice')}', "
+        f"({x}, {y}, {len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', "
+        f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('mri_slice')}_weighted'] = TensorMap('{_segmented_map('mri_slice')}', ({x}, "
+        f"{y}, {len(MRI_SEGMENTED_CHANNEL_MAP)}), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
+        f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('mri_slice')}'))\n",
+    )
+    f.write(
+        f"TMAPS['mri_slice'] = TensorMap('mri_slice', ({x}, {y}, 1), "
+        f"dependent_map=TMAPS['{_segmented_map('mri_slice')}'])\n",
+    )
+    f.write(
+        f"TMAPS['mri_slice_weighted'] = TensorMap('mri_slice', ({x}, {y}, 1), "
+        f"dependent_map=TMAPS['{_segmented_map('mri_slice')}_weighted'])\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}'] = "
+        f"TensorMap('{_segmented_map('cine_segmented_sax_inlinevf')}', ({x}, {y}, {t}, "
+        f"{len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', group='categorical', "
+        f"channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}_weighted'] = "
+        f"TensorMap('{_segmented_map('cine_segmented_sax_inlinevf')}', ({x}, {y}, {t}, "
+        f"{len(MRI_SEGMENTED_CHANNEL_MAP)}), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, "
+        f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('cine_segmented_sax_inlinevf')}'))\n",
+    )
+    f.write(
+        f"TMAPS['cine_segmented_sax_inlinevf'] = TensorMap('cine_segmented_sax_inlinevf', ({x}, {y}, "
+        f"{t}, 1), dependent_map=TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}'])\n",
+    )
+    f.write(
+        f"TMAPS['cine_segmented_sax_inlinevf_weighted'] = TensorMap('cine_segmented_sax_inlinevf', "
+        f"({x}, {y}, {t}, 1), "
+        f"dependent_map=TMAPS['{_segmented_map('cine_segmented_sax_inlinevf')}_weighted'])\n",
+    )
+    f.write(
+        f"TMAPS['{MRI_ZOOM_MASK}'] = TensorMap('{MRI_ZOOM_MASK}', ({zoom_width},{zoom_height},{t}, "
+        f"{len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', group='categorical', "
+        f"channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n",
+    )
+    f.write(
+        f"TMAPS['{MRI_ZOOM_MASK}_weighted'] = TensorMap('{MRI_ZOOM_MASK}', ({zoom_width}, {zoom_height}, "
+        f"{t}, {len(MRI_SEGMENTED_CHANNEL_MAP)}), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
+        f"loss=weighted_crossentropy({label_weights}, '{MRI_ZOOM_MASK}'))\n",
+    )
+    f.write(
+        f"TMAPS['{MRI_ZOOM_INPUT}'] = TensorMap('{MRI_ZOOM_INPUT}',({zoom_width},{zoom_height},{t}, "
+        f"1), dependent_map=TMAPS['{MRI_ZOOM_MASK}'])\n",
+    )
+    f.write(
+        f"TMAPS['{MRI_ZOOM_INPUT}_weighted'] = TensorMap('{MRI_ZOOM_INPUT}',({zoom_width},{zoom_height},{t}, "
+        f"1), dependent_map=TMAPS['{MRI_ZOOM_MASK}_weighted'])\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('mri_systole_diastole')}']=TensorMap('{_segmented_map('mri_systole_diastole')}', "
+        f"({x}, {y}, 2, {len(MRI_SEGMENTED_CHANNEL_MAP)}), loss='categorical_crossentropy', "
+        f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('mri_systole_diastole')}_weighted'] = TensorMap("
+        f"'{_segmented_map('mri_systole_diastole')}', ({x}, {y}, 2, {len(MRI_SEGMENTED_CHANNEL_MAP)}), "
+        f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
+        f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('mri_systole_diastole')}'))\n",
+    )
+    f.write(
+        f"TMAPS['mri_systole_diastole'] = TensorMap('mri_systole_diastole', ({x}, {y}, 2, 1), "
+        f"dependent_map=TMAPS['{_segmented_map('mri_systole_diastole')}'])\n",
+    )
+    f.write(
+        f"TMAPS['mri_systole_diastole_weighted'] = TensorMap('mri_systole_diastole', ({x}, {y}, 2, 1), "
+        f"dependent_map=TMAPS['{_segmented_map('mri_systole_diastole')}_weighted'])\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('mri_systole_diastole_8')}'] = TensorMap('"
+        f"{_segmented_map('mri_systole_diastole_8')}', ({x}, {y}, 8, {len(MRI_SEGMENTED_CHANNEL_MAP)}), "
+        f"loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)\n",
+    )
+    f.write(
+        f"TMAPS['{_segmented_map('mri_systole_diastole_8')}_weighted'] = TensorMap("
+        f"'{_segmented_map('mri_systole_diastole_8')}', ({x}, {y}, 8, {len(MRI_SEGMENTED_CHANNEL_MAP)}), "
+        f"group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP,"
+        f"loss=weighted_crossentropy({label_weights}, '{_segmented_map('mri_systole_diastole_8')}'))\n",
+    )
+    f.write(
+        f"TMAPS['mri_systole_diastole_8'] = TensorMap('mri_systole_diastole_8', ({x}, {y}, 8, 1), "
+        f"dependent_map=TMAPS['{_segmented_map('mri_systole_diastole_8')}'])\n\n",
+    )
 
 
 def _write_disease_tensor_maps(phenos_folder: str, f: TextIO)-> None:
@@ -129,8 +175,10 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO)-> None:
         total = len(status[d])
         diseased = np.sum(list(status[d].values()))
         factor = int(total / (diseased * 2))
-        f.write(f"TMAPS['{d}'] = TensorMap('{d}', group='categorical_flag', channel_map={{'no_{d}':0, '{d}':1}}, "
-                f"loss=weighted_crossentropy([1.0, {factor}], '{d}'))\n")
+        f.write(
+            f"TMAPS['{d}'] = TensorMap('{d}', group='categorical_flag', channel_map={{'no_{d}':0, '{d}':1}}, "
+            f"loss=weighted_crossentropy([1.0, {factor}], '{d}'))\n",
+        )
 
 
 def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO) -> None:
@@ -144,9 +192,11 @@ def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO)
         factor_p = int(total / (1 + (diseased_p * 3)))
         diseased_i = np.sum(list(status_i[disease].values()))
         factor_i = int(total / (1 + (diseased_i * 3)))
-        f.write(f"TMAPS['{disease}_prevalent_incident'] = TensorMap('{disease}', group='categorical_date', "
-                f"channel_map={{'no_{disease}':0, 'prevalent_{disease}':1, 'incident_{disease}':2}}, "
-                f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{disease}_prevalent_incident'))\n")
+        f.write(
+            f"TMAPS['{disease}_prevalent_incident'] = TensorMap('{disease}', group='categorical_date', "
+            f"channel_map={{'no_{disease}':0, 'prevalent_{disease}':1, 'incident_{disease}':2}}, "
+            f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{disease}_prevalent_incident'))\n",
+        )
 
 
 def _write_disease_tensor_maps_time(phenos_folder: str, f: TextIO) -> None:
@@ -179,8 +229,10 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
     for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
         if k in phecode2counts:
             factor = int(total_samples / (1+phecode2counts[k]))
-            f.write(f"TMAPS['{p}_phe'] = TensorMap('{k}', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
-                    f"loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n")
+            f.write(
+                f"TMAPS['{p}_phe'] = TensorMap('{k}', group='categorical_flag', channel_map={{'no_{p}':0, '{p}':1}}, "
+                f"loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n",
+            )
 
     query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE prevalent_disease=1 GROUP BY disease"
     count_result = db_client.execute(query)
@@ -199,8 +251,10 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
         if k in phecode2incident and k in phecode2prevalent:
             factor_i = int(total_samples / (1 + phecode2incident[k]))
             factor_p = int(total_samples / (1 + phecode2prevalent[k]))
-            f.write(f"TMAPS['{p}_phe_pi'] = TensorMap('{k}', group='categorical_date', channel_map={{'no_{p}':0, '{p}_prevalent':1, '{p}_incident':2}}, "
-                    f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{p}_pi'))\n")
+            f.write(
+                f"TMAPS['{p}_phe_pi'] = TensorMap('{k}', group='categorical_date', channel_map={{'no_{p}':0, '{p}_prevalent':1, '{p}_incident':2}}, "
+                f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{p}_pi'))\n",
+            )
 
 
 def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_missing: bool):
@@ -210,7 +264,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
     # each field across all samples. This will remove missing samples from the calculation and change the value of 'Less than one'
     query = f"""
     WITH coding_tmp AS (
-        SELECT 
+        SELECT
             *,
             CASE
                 WHEN meaning IN ('Do not know',  'Prefer not to answer', 'Ongoing when data entered') OR meaning LIKE "Still taking%" THEN TRUE
@@ -221,31 +275,31 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient, include_
         FROM
             {CODING_TABLE}
     ), pheno_tmp AS (
-    SELECT 
-        sample_id, 
-        FieldID, 
+    SELECT
+        sample_id,
+        FieldID,
         instance,
         array_idx,
-        COALESCE(c.value, p.value) new_value, 
+        COALESCE(c.value, p.value) new_value,
         COALESCE(c.missing, FALSE) missing
     FROM {PHENOTYPE_TABLE} AS p
-    LEFT JOIN coding_tmp AS c 
+    LEFT JOIN coding_tmp AS c
         ON TRUE
         AND SAFE_CAST(p.value AS FLOAT64) = SAFE_CAST(c.coding AS FLOAT64)
         AND p.coding_file_id = c.coding_file_id
     )
 
-    SELECT 
-        t.FieldID, 
+    SELECT
+        t.FieldID,
         Field,
         t.instance,
-        AVG(CAST(new_value AS FLOAT64)) mean, 
+        AVG(CAST(new_value AS FLOAT64)) mean,
         STDDEV(CAST(new_value AS FLOAT64)) std,
         MAX(array_idx) AS max_array
     FROM pheno_tmp AS t
     LEFT JOIN {DICTIONARY_TABLE} AS d ON d.FieldID = t.FieldID
     WHERE TRUE
-        AND ValueType IN ('Integer', 'Continuous') 
+        AND ValueType IN ('Integer', 'Continuous')
         AND NOT missing
     GROUP BY t.FieldID, t.instance, Field ORDER BY t.FieldID
     """
@@ -307,10 +361,12 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], includ
             counter += 1
             normalization_map[k] = [TMAPS[tm].normalization['mean'], TMAPS[tm].normalization['std']]
 
-    multi_field_continuous_tensor_map = TensorMap('generated-from-input-continuous-tensors', group=group,
-                                                  channel_map=channel_map,
-                                                  annotation_units=len(channel_map) * multiplier,
-                                                  normalization=normalization_map,
-                                                  imputation=imputation_method)
+    multi_field_continuous_tensor_map = TensorMap(
+        'generated-from-input-continuous-tensors', group=group,
+        channel_map=channel_map,
+        annotation_units=len(channel_map) * multiplier,
+        normalization=normalization_map,
+        imputation=imputation_method,
+    )
 
     return multi_field_continuous_tensor_map

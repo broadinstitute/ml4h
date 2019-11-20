@@ -78,9 +78,11 @@ def hyperparam_optimizer(args, space, param_lists={}):
                 logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 return MAX_LOSS
 
-            model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
-                                                         args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
-                                                         args.inspect_model, args.inspect_show_labels, True, False)
+            model, history = train_model_from_generators(
+                model, generate_train, generate_valid, args.training_steps, args.validation_steps,
+                args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
+                args.inspect_model, args.inspect_show_labels, True, False,
+            )
             histories.append(history.history)
             title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
             plot_metric_history(history, title, fig_path)
@@ -131,15 +133,16 @@ def optimize_architecture(args):
         'conv_width': hp.quniform('conv_width', 2, 128, 1),
         'block_size': hp.quniform('block_size', 1, 4, 1),
     }
-    param_lists = {'conv_layers': conv_layers_sets,
-                   'dense_blocks': dense_blocks_sets,
-                   'dense_layers': dense_layers_sets,
-                   'u_connect': u_connect,
-                   'conv_dilate': conv_dilate,
-                   'activation': activation,
-                   'conv_bn': conv_bn,
-                   'pool_type': pool_type,
-                   }
+    param_lists = {
+        'conv_layers': conv_layers_sets,
+        'dense_blocks': dense_blocks_sets,
+        'dense_layers': dense_layers_sets,
+        'u_connect': u_connect,
+        'conv_dilate': conv_dilate,
+        'activation': activation,
+        'conv_bn': conv_bn,
+        'pool_type': pool_type,
+    }
     hyperparam_optimizer(args, space, param_lists)
 
 
@@ -169,7 +172,7 @@ def optimize_lr_multimodal_multitask(args):
 
 def optimize_input_tensor_maps(args):
     input_tensor_map_sets = [['categorical-phenotypes-72'], ['mri-slice'], ['sax_inlinevf_zoom'], ['cine_segmented_sax_inlinevf'], ['ekg-leads']]
-    space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets),}
+    space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets)}
     param_lists = {'input_tensor_maps': input_tensor_map_sets}
     hyperparam_optimizer(args, space, param_lists)
 
@@ -180,8 +183,10 @@ def optimize_optimizer(args):
         'radam',
         'sgd',
     ]
-    space = {'learning_rate': hp.loguniform('learning_rate', -10, -2),
-             'optimizer': hp.choice('optimizer', optimizers)}
+    space = {
+        'learning_rate': hp.loguniform('learning_rate', -10, -2),
+        'optimizer': hp.choice('optimizer', optimizers),
+    }
     hyperparam_optimizer(args, space, {'optimizer': optimizers})
 
 

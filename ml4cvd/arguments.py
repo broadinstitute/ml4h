@@ -6,7 +6,7 @@
 # Sometimes code overwrites user-provided arguments to enforce assumptions or sanity.
 #
 # October 2018
-# Sam Friedman 
+# Sam Friedman
 # sam@broadinstitute.org
 
 # Imports
@@ -32,8 +32,10 @@ def parse_args():
     parser.add_argument('--mode', default='mlp', help='What would you like to do?')
 
     # Config arguments
-    parser.add_argument("--logging_level", default='INFO', choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                        help="Logging level. Overrides any configuration given in the logging configuration file.")
+    parser.add_argument(
+        "--logging_level", default='INFO', choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level. Overrides any configuration given in the logging configuration file.",
+    )
 
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
@@ -44,8 +46,10 @@ def parse_args():
 
     # Input and Output files and directories
     parser.add_argument('--db', default='/mnt/disks/data/raw/sql/ukbb7089.r10data.db', help='Path to sqlite3 data base file.')
-    parser.add_argument('--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
-                        help='Path to service account credentials for looking up BigQuery tables.')
+    parser.add_argument(
+        '--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
+        help='Path to service account credentials for looking up BigQuery tables.',
+    )
     parser.add_argument('--bigquery_dataset', default='broad-ml4cvd.ukbb7089_r10data', help='BigQuery dataset containing tables we want to query.')
     parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/', help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
@@ -53,42 +57,60 @@ def parse_args():
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
-    parser.add_argument('--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/cMRI_20190618_manual_qc.all.tsv',
-                        help='Path to left ventricle volumes')
+    parser.add_argument(
+        '--volume_csv', default='/mnt/ml4cvd/projects/jamesp/data/cMRI_20190618_manual_qc.all.tsv',
+        help='Path to left ventricle volumes',
+    )
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
-    parser.add_argument('--tensors', default='/mnt/disks/data/generated/tensors/test/2019-03-21/',
-                        help='Path to folder containing tensors, or where tensors will be written.')
+    parser.add_argument(
+        '--tensors', default='/mnt/disks/data/generated/tensors/test/2019-03-21/',
+        help='Path to folder containing tensors, or where tensors will be written.',
+    )
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--model_freeze', help='Like the model_layers argument, except all loaded layers will also be frozen.')
-    parser.add_argument('--lv_mass_csv', default='/mnt/ml4cvd/projects/jamesp/data/returned_lv_mass.tsv',
-                        help='Path to left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964')
+    parser.add_argument(
+        '--lv_mass_csv', default='/mnt/ml4cvd/projects/jamesp/data/returned_lv_mass.tsv',
+        help='Path to left ventricular mass and other cardiac MRI readouts on ~5000 people returned from app 2964',
+    )
 
     # Data selection parameters
-    parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
-        help='List of field ids from which input features will be collected.')
-    parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
-        help='List of field ids from which continuous real-valued input features will be collected.')
+    parser.add_argument(
+        '--categorical_field_ids', nargs='*', default=[], type=int,
+        help='List of field ids from which input features will be collected.',
+    )
+    parser.add_argument(
+        '--continuous_field_ids', nargs='*', default=[], type=int,
+        help='List of field ids from which continuous real-valued input features will be collected.',
+    )
     parser.add_argument('--include_array', default=False, action='store_true', help='Include array idx for UKBB phenotypes.')
     parser.add_argument('--include_instance', default=False, action='store_true', help='Include instances for UKBB phenotypes.')
     parser.add_argument('--min_values', default=10, type=int, help='Per feature size minimum.')
     parser.add_argument('--min_samples', default=3, type=int, help='Min number of samples to require for calculating correlations.')
-    parser.add_argument('--max_samples', type=int, default=None,
-                        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.')
+    parser.add_argument(
+        '--max_samples', type=int, default=None,
+        help='Max number of samples to use for tensor reporting -- all samples are used if not specified.',
+    )
     parser.add_argument('--mri_field_ids', default=['20208', '20209'], nargs='*', help='Field id for MR images.')
     parser.add_argument('--xml_field_ids', default=['20205', '6025'], nargs='*', help='Field id for XMLs of resting and exercise ECG data.')
     parser.add_argument('--max_patients', default=999999, type=int,  help='Maximum number of patient data to read')
     parser.add_argument('--min_sample_id', default=0, type=int, help='Minimum sample id to write to tensor.')
     parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument('--max_slices', default=999999, type=int, help='Maximum number of dicom slices to read')
-    parser.add_argument('--b_slice_force', default=None,
-                        help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
-    parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
-                        help='Include missing channels in continuous tensors')
-    parser.add_argument('--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
-                        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN])
+    parser.add_argument(
+        '--b_slice_force', default=None,
+        help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).',
+    )
+    parser.add_argument(
+        '--include_missing_continuous_channel', default=False, action='store_true',
+        help='Include missing channels in continuous tensors',
+    )
+    parser.add_argument(
+        '--imputation_method_for_continuous_fields', default=IMPUTATION_RANDOM, help='can be random or mean',
+        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN],
+    )
 
     # Model Architecture Parameters
     parser.add_argument('--x', default=256, type=int, help='x tensor resolution')
@@ -125,8 +147,10 @@ def parse_args():
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
     parser.add_argument('--u_connect', default=False, action='store_true', help='Connect early convolutional layers to later ones of the same size, as in U-Net.')
     parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
-    parser.add_argument('--max_parameters', default=9000000, type=int,
-                        help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
+    parser.add_argument(
+        '--max_parameters', default=9000000, type=int,
+        help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
+    )
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
 
     # Training and Hyper-Parameter Optimization Parameters
@@ -134,19 +158,27 @@ def parse_args():
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
     parser.add_argument('--valid_ratio', default=0.2, type=float, help='Rate of training tensors to save for validation must be in [0.0, 1.0].')
     parser.add_argument('--test_ratio', default=0.1, type=float, help='Rate of training tensors to save for testing [0.0, 1.0].')
-    parser.add_argument('--test_modulo', default=10, type=int,
-                        help='Sample IDs modulo this number will be reserved for testing. Set to 1 to only reserve test_ratio for testing.')
+    parser.add_argument(
+        '--test_modulo', default=10, type=int,
+        help='Sample IDs modulo this number will be reserved for testing. Set to 1 to only reserve test_ratio for testing.',
+    )
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
-    parser.add_argument('--label_weights', nargs='*', type=float,
-                        help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.')
-    parser.add_argument('--patience', default=8, type=int,
-                        help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.')
-    parser.add_argument('--max_models', default=16, type=int,
-                        help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
+    parser.add_argument(
+        '--label_weights', nargs='*', type=float,
+        help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
+    )
+    parser.add_argument(
+        '--patience', default=8, type=int,
+        help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.',
+    )
+    parser.add_argument(
+        '--max_models', default=16, type=int,
+        help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
+    )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
 
     # Run specific and debugging arguments
@@ -182,8 +214,12 @@ def _get_tmap(name: str) -> TensorMap:
 def _process_args(args):
     args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
     if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
-                                                                             args.imputation_method_for_continuous_fields)]
+        multi_field_tensor_map = [
+            generate_multi_field_continuous_tensor_map(
+                args.input_continuous_tensors, args.include_missing_continuous_channel,
+                args.imputation_method_for_continuous_fields,
+            ),
+        ]
         args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
 
     args.tensor_maps_out = [_get_tmap(ot) for ot in args.output_tensors]

@@ -16,62 +16,64 @@ from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_I
 
 np.set_printoptions(threshold=np.inf)
 
-CONTINUOUS_NEVER_ZERO = ['bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
-                         '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
-                         '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
-                         '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
-                         '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image_2',
-                         ]
+CONTINUOUS_NEVER_ZERO = [
+    'bike_max_hr', 'bike_resting_hr', 'ecg-bike-max-pred-hr-no0',
+    '25006_Volume-of-grey-matter_2', '25021_Volume-of-amygdala-left_2',
+    '25737_Discrepancy-between-dMRI-brain-image-and-T1-brain-image_2', '25738_Discrepancy-between-SWI-brain-image-and-T1-brain-image_2',
+    '25739_Discrepancy-between-rfMRI-brain-image-and-T1-brain-image_2', '25740_Discrepancy-between-tfMRI-brain-image-and-T1-brain-image_2',
+    '25736_Discrepancy-between-T2-FLAIR-brain-image-and-T1-brain-image_2',
+]
 
-CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
-                                       '130_Place-of-birth-in-UK--east-coordinate_0_0',
-                                       '87_Noncancer-illness-yearage-first-occurred_0_0',
-                                       '1883_Number-of-full-sisters_0_0', '2966_Age-high-blood-pressure-diagnosed_0_0',
-                                       '129_Place-of-birth-in-UK--north-coordinate_0_0',
-                                       '1070_Time-spent-watching-television-TV_0_0', '1438_Bread-intake_0_0',
-                                       '3526_Mothers-age-at-death_0_0',
-                                       '2217_Age-started-wearing-glasses-or-contact-lenses_0_0', '1488_Tea-intake_0_0',
-                                       '1060_Time-spent-outdoors-in-winter_0_0', '1528_Water-intake_0_0',
-                                       '874_Duration-of-walks_0_0', '894_Duration-of-moderate-activity_0_0',
-                                       '1458_Cereal-intake_0_0',
-                                       '884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0',
-                                       '1873_Number-of-full-brothers_0_0', '1845_Mothers-age_0_0',
-                                       '1090_Time-spent-driving_0_0', '1289_Cooked-vegetable-intake_0_0',
-                                       '3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0',
-                                       '1568_Average-weekly-red-wine-intake_0_0', '2897_Age-stopped-smoking_0_0',
-                                       '864_Number-of-daysweek-walked-10-minutes_0_0',
-                                       '1588_Average-weekly-beer-plus-cider-intake_0_0',
-                                       '2355_Most-recent-bowel-cancer-screening_0_0', '2976_Age-diabetes-diagnosed_0_0',
-                                       '3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0',
-                                       '3786_Age-asthma-diagnosed_0_0',
-                                       '1578_Average-weekly-champagne-plus-white-wine-intake_0_0',
-                                       '1598_Average-weekly-spirits-intake_0_0',
-                                       '1608_Average-weekly-fortified-wine-intake_0_0',
-                                       '1299_Salad--raw-vegetable-intake_0_0', '1309_Fresh-fruit-intake_0_0',
-                                       '1319_Dried-fruit-intake_0_0', '3680_Age-when-last-ate-meat_0_0',
-                                       '914_Duration-of-vigorous-activity_0_0',
-                                       '1050_Time-spend-outdoors-in-summer_0_0', '1737_Childhood-sunburn-occasions_0_0',
-                                       '1269_Exposure-to-tobacco-smoke-at-home_0_0',
-                                       '2867_Age-started-smoking-in-former-smokers_0_0',
-                                       '2887_Number-of-cigarettes-previously-smoked-daily_0_0',
-                                       '2926_Number-of-unsuccessful-stopsmoking-attempts_0_0',
-                                       '2684_Years-since-last-breast-cancer-screening--mammogram_0_0',
-                                       '2734_Number-of-live-births_0_0',
-                                       '2804_Age-when-last-used-oral-contraceptive-pill_0_0',
-                                       '2824_Age-at-hysterectomy_0_0',
-                                       '3536_Age-started-hormonereplacement-therapy-HRT_0_0',
-                                       '3546_Age-last-used-hormonereplacement-therapy-HRT_0_0',
-                                       '3581_Age-at-menopause-last-menstrual-period_0_0',
-                                       '3839_Number-of-spontaneous-miscarriages_0_0',
-                                       '2405_Number-of-children-fathered_0_0',
-                                       '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0',
-                                       '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
-                                       '4429_Average-monthly-beer-plus-cider-intake_0_0'
-                                       ]
+CONTINUOUS_WITH_CATEGORICAL_ANSWERS = [
+    '92_Operation-yearage-first-occurred_0_0', '1807_Fathers-age-at-death_0_0',
+    '130_Place-of-birth-in-UK--east-coordinate_0_0',
+    '87_Noncancer-illness-yearage-first-occurred_0_0',
+    '1883_Number-of-full-sisters_0_0', '2966_Age-high-blood-pressure-diagnosed_0_0',
+    '129_Place-of-birth-in-UK--north-coordinate_0_0',
+    '1070_Time-spent-watching-television-TV_0_0', '1438_Bread-intake_0_0',
+    '3526_Mothers-age-at-death_0_0',
+    '2217_Age-started-wearing-glasses-or-contact-lenses_0_0', '1488_Tea-intake_0_0',
+    '1060_Time-spent-outdoors-in-winter_0_0', '1528_Water-intake_0_0',
+    '874_Duration-of-walks_0_0', '894_Duration-of-moderate-activity_0_0',
+    '1458_Cereal-intake_0_0',
+    '884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0',
+    '1873_Number-of-full-brothers_0_0', '1845_Mothers-age_0_0',
+    '1090_Time-spent-driving_0_0', '1289_Cooked-vegetable-intake_0_0',
+    '3809_Time-since-last-prostate-specific-antigen-PSA-test_0_0',
+    '1568_Average-weekly-red-wine-intake_0_0', '2897_Age-stopped-smoking_0_0',
+    '864_Number-of-daysweek-walked-10-minutes_0_0',
+    '1588_Average-weekly-beer-plus-cider-intake_0_0',
+    '2355_Most-recent-bowel-cancer-screening_0_0', '2976_Age-diabetes-diagnosed_0_0',
+    '3761_Age-hay-fever-rhinitis-or-eczema-diagnosed_0_0',
+    '3786_Age-asthma-diagnosed_0_0',
+    '1578_Average-weekly-champagne-plus-white-wine-intake_0_0',
+    '1598_Average-weekly-spirits-intake_0_0',
+    '1608_Average-weekly-fortified-wine-intake_0_0',
+    '1299_Salad--raw-vegetable-intake_0_0', '1309_Fresh-fruit-intake_0_0',
+    '1319_Dried-fruit-intake_0_0', '3680_Age-when-last-ate-meat_0_0',
+    '914_Duration-of-vigorous-activity_0_0',
+    '1050_Time-spend-outdoors-in-summer_0_0', '1737_Childhood-sunburn-occasions_0_0',
+    '1269_Exposure-to-tobacco-smoke-at-home_0_0',
+    '2867_Age-started-smoking-in-former-smokers_0_0',
+    '2887_Number-of-cigarettes-previously-smoked-daily_0_0',
+    '2926_Number-of-unsuccessful-stopsmoking-attempts_0_0',
+    '2684_Years-since-last-breast-cancer-screening--mammogram_0_0',
+    '2734_Number-of-live-births_0_0',
+    '2804_Age-when-last-used-oral-contraceptive-pill_0_0',
+    '2824_Age-at-hysterectomy_0_0',
+    '3536_Age-started-hormonereplacement-therapy-HRT_0_0',
+    '3546_Age-last-used-hormonereplacement-therapy-HRT_0_0',
+    '3581_Age-at-menopause-last-menstrual-period_0_0',
+    '3839_Number-of-spontaneous-miscarriages_0_0',
+    '2405_Number-of-children-fathered_0_0',
+    '3992_Age-emphysemachronic-bronchitis-diagnosed_0_0',
+    '4022_Age-pulmonary-embolism-blood-clot-in-lung-diagnosed_0_0',
+    '4429_Average-monthly-beer-plus-cider-intake_0_0',
+]
 
 MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef']
 
-MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
+MERGED_MAPS = ['mothers_age_0', 'fathers_age_0']
 NOT_MISSING = 'not-missing'
 
 MEAN_IDX = 0
@@ -88,28 +90,30 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example autoencoders
     """
-    def __init__(self,
-                 name,
-                 shape=None,
-                 group=None,
-                 loss=None,
-                 model=None,
-                 metrics=None,
-                 parents=None,
-                 sentinel=None,
-                 activation=None,
-                 loss_weight=1.0,
-                 channel_map=None,
-                 hd5_override=None,
-                 dependent_map=None,
-                 required_inputs=None,
-                 normalization=None,
-                 annotation_units=32,
-                 imputation=None,
-                 tensor_from_file=None,
-                 dtype=None,
-                 validator=None,
-                 cacheable=True,):
+    def __init__(
+        self,
+        name,
+        shape=None,
+        group=None,
+        loss=None,
+        model=None,
+        metrics=None,
+        parents=None,
+        sentinel=None,
+        activation=None,
+        loss_weight=1.0,
+        channel_map=None,
+        hd5_override=None,
+        dependent_map=None,
+        required_inputs=None,
+        normalization=None,
+        annotation_units=32,
+        imputation=None,
+        tensor_from_file=None,
+        dtype=None,
+        validator=None,
+        cacheable=True,
+    ):
         """TensorMap constructor
 
 
@@ -216,8 +220,10 @@ class TensorMap(object):
                 if self_field != other_field:
                     return False
                 if not _is_equal_field(self_value, other_value):
-                    logging.debug(f"Comparing two '{self.name}' tensor maps: "
-                                  f"'{self_field}' values '{self_value}' and '{other_value}' are not equal.")
+                    logging.debug(
+                        f"Comparing two '{self.name}' tensor maps: "
+                        f"'{self_field}' values '{self_value}' and '{other_value}' are not equal.",
+                    )
                     return False
 
             return True

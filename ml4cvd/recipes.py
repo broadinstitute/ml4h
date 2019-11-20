@@ -29,9 +29,11 @@ def run(args):
         start_time = timer()
 
         if 'tensorize' == args.mode:
-            write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                          args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
-                          args.max_sample_id, args.min_values)
+            write_tensors(
+                args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
+                args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
+                args.max_sample_id, args.min_values,
+            )
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
@@ -96,8 +98,10 @@ def run(args):
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -110,7 +114,7 @@ def test_multimodal_multitask(args):
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
-  
+
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
@@ -228,8 +232,10 @@ def infer_hidden_layer_multimodal_multitask(args):
 def train_shallow_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
 
     p = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -241,8 +247,10 @@ def train_char_model(args):
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
     test_batch, _, test_paths = next(generate_test)
     sample_from_char_model(char_model, test_batch, test_paths)
 
@@ -255,8 +263,10 @@ def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, siamese=True)
-    siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    siamese_model = train_model_from_generators(
+        siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
 
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     prediction = siamese_model.predict(data)
@@ -280,8 +290,10 @@ def plot_while_training(args):
     model = make_multimodal_multitask_model(**args.__dict__)
 
     plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
-    plot_while_learning(model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
-                        args.batch_size, args.training_steps, plot_folder, args.write_pngs)
+    plot_while_learning(
+        model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
+        args.batch_size, args.training_steps, plot_folder, args.write_pngs,
+    )
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):

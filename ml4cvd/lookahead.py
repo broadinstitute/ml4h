@@ -26,9 +26,11 @@ class Lookahead(object):
         model._check_trainable_weights_consistency()
 
         if model.train_function is None:
-            inputs = (model._feed_inputs +
-                      model._feed_targets +
-                      model._feed_sample_weights)
+            inputs = (
+                model._feed_inputs +
+                model._feed_targets +
+                model._feed_sample_weights
+            )
             if model._uses_dynamic_learning_phase():
                 inputs += [K.learning_phase()]
             fast_params = model._collected_trainable_weights
@@ -37,11 +39,14 @@ class Lookahead(object):
                 with K.name_scope(model.optimizer.__class__.__name__):
                     training_updates = model.optimizer.get_updates(
                         params=fast_params,
-                        loss=model.total_loss)
+                        loss=model.total_loss,
+                    )
                     slow_params = [K.variable(p) for p in fast_params]
-                fast_updates = (model.updates +
-                                training_updates +
-                                model.metrics_updates)
+                fast_updates = (
+                    model.updates +
+                    training_updates +
+                    model.metrics_updates
+                )
 
                 slow_updates, copy_updates = [], []
                 for p, q in zip(fast_params, slow_params):
@@ -54,7 +59,8 @@ class Lookahead(object):
                     [model.total_loss] + model.metrics_tensors,
                     updates=fast_updates,
                     name='fast_train_function',
-                    **model._function_kwargs)
+                    **model._function_kwargs
+                )
 
                 def F(inputs):
                     self.count += 1

@@ -65,8 +65,10 @@ def sort_csv(input_csv_file, volume_csv):
             [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
 
 
-def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
-                        labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
+def predictions_to_pngs(
+    predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
+    labels: Dict[str, np.ndarray], paths: List[str], folder: str,
+) -> None:
     for y, tm in zip(predictions, tensor_maps_out):
         if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = predictions
@@ -112,10 +114,12 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                         plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, y[i, :, :, j, 0])
 
 
-def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
-                        generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
-                        test_data: Dict[str, np.ndarray], test_labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
-                        training_steps: int, folder: str, write_pngs: bool):
+def plot_while_learning(
+    model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
+    generate_train: Generator[Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]], None, None],
+    test_data: Dict[str, np.ndarray], test_labels: Dict[str, np.ndarray], test_paths: List[str], epochs: int, batch_size: int,
+    training_steps: int, folder: str, write_pngs: bool,
+):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
@@ -166,10 +170,12 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
-def plot_histograms_from_tensor_files_in_pdf(run_id: str,
-                                             tensor_folder: str,
-                                             output_folder: str,
-                                             max_samples: int = None) -> None:
+def plot_histograms_from_tensor_files_in_pdf(
+    run_id: str,
+    tensor_folder: str,
+    output_folder: str,
+    max_samples: int = None,
+) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -181,11 +187,13 @@ def plot_histograms_from_tensor_files_in_pdf(run_id: str,
     plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
 
-def plot_heatmap_from_tensor_files(id: str,
-                                   tensor_folder: str,
-                                   output_folder: str,
-                                   min_samples: int,
-                                   max_samples: int = None) -> None:
+def plot_heatmap_from_tensor_files(
+    id: str,
+    tensor_folder: str,
+    output_folder: str,
+    min_samples: int,
+    max_samples: int = None,
+) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -198,11 +206,13 @@ def plot_heatmap_from_tensor_files(id: str,
     plot_heatmap(stats, id, min_samples, output_folder)
 
 
-def tabulate_correlations_from_tensor_files(run_id: str,
-                                            tensor_folder: str,
-                                            output_folder: str,
-                                            min_samples: int,
-                                            max_samples: int = None) -> None:
+def tabulate_correlations_from_tensor_files(
+    run_id: str,
+    tensor_folder: str,
+    output_folder: str,
+    min_samples: int,
+    max_samples: int = None,
+) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -307,11 +317,13 @@ def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray],
         logging.info(f"Model text:{sentence}")
 
 
-def tensors_to_label_dictionary(categorical_labels: List,
-                                continuous_labels: List,
-                                gene_labels: List,
-                                samples2genes: Dict[str, str],
-                                test_paths: List) -> Dict[str, np.ndarray]:
+def tensors_to_label_dictionary(
+    categorical_labels: List,
+    continuous_labels: List,
+    gene_labels: List,
+    samples2genes: Dict[str, str],
+    test_paths: List,
+) -> Dict[str, np.ndarray]:
     label_dict = {k: np.zeros((len(test_paths))) for k in categorical_labels + continuous_labels + gene_labels}
     for i, tp in enumerate(test_paths):
         hd5 = h5py.File(tp, 'r')
@@ -358,10 +370,12 @@ def _sample_with_heat(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
-                           output_file_name: str,
-                           min_samples: int,
-                           output_folder_path: str) -> None:
+def _tabulate_correlations(
+    stats: Dict[str, Dict[str, List[float]]],
+    output_file_name: str,
+    min_samples: int,
+    output_folder_path: str,
+) -> None:
 
     """
     Tabulate in pdf correlations of field values given in 'stats'
@@ -404,8 +418,10 @@ def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
 
                 if len(field1_values) == len(field2_values):
                     if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
-                        logging.debug(f"Not calculating correlation for fields {field1} and {field2} because at least one of "
-                                      f"the fields has all the same values for the {num_common_samples} common samples.")
+                        logging.debug(
+                            f"Not calculating correlation for fields {field1} and {field2} because at least one of "
+                            f"the fields has all the same values for the {num_common_samples} common samples.",
+                        )
                         continue
                     corr = np.corrcoef(field1_values, field2_values)[1, 0]
                     if not math.isnan(corr):
@@ -413,8 +429,10 @@ def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
                     else:
                         logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
                 else:
-                    logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
-                                  f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
+                    logging.debug(
+                        f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                        f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).",
+                    )
         else:
             continue
 
@@ -434,17 +452,21 @@ def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
     logging.info(f"Saved correlations table at: {table_path}")
 
 
-def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
-                                                max_samples: int = None,
-                                                instances: List[str] = ['0', '1', '2'],
-                                                max_arr_idx: int = None) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
+def _collect_continuous_stats_from_tensor_files(
+    tensor_folder: str,
+    max_samples: int = None,
+    instances: List[str] = ['0', '1', '2'],
+    max_arr_idx: int = None,
+) -> Tuple[DefaultDict[str, DefaultDict[str, List[float]]], int]:
     if not os.path.exists(tensor_folder):
         raise ValueError('Source directory does not exist: ', tensor_folder)
     all_tensor_files = list(filter(lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)))
     if max_samples is not None:
         if len(all_tensor_files) < max_samples:
-            logging.warning(f"{max_samples} was specified as number of samples to use but there are only "
-                            f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...")
+            logging.warning(
+                f"{max_samples} was specified as number of samples to use but there are only "
+                f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...",
+            )
             max_samples = len(all_tensor_files)
         tensor_files = np.random.choice(all_tensor_files, max_samples, replace=False)
     else:
@@ -465,11 +487,13 @@ def _collect_continuous_stats_from_tensor_files(tensor_folder: str,
     return stats, num_tensor_files
 
 
-def _collect_continuous_stats_from_tensor_file(tensor_folder: str,
-                                               tensor_file: str,
-                                               stats: DefaultDict[str, DefaultDict[str, List[float]]],
-                                               instances: List[str],
-                                               max_arr_idx) -> None:
+def _collect_continuous_stats_from_tensor_file(
+    tensor_folder: str,
+    tensor_file: str,
+    stats: DefaultDict[str, DefaultDict[str, List[float]]],
+    instances: List[str],
+    max_arr_idx,
+) -> None:
     # Inlining the method below to be able to reference more from the scope than the arguments of the function
     # 'h5py.visititems()' expects. It expects a func(<name>, <object>) => <None or return value>).
     def _field_meaning_to_values_dict(_, obj):

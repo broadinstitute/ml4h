@@ -34,12 +34,14 @@ from ml4cvd.lookahead import Lookahead
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
 
-def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
-                       learning_rate: float, model_file: str = None, model_layers: str = None) -> Model:
+def make_shallow_model(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
+    learning_rate: float, model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -81,12 +83,14 @@ def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[Te
     return m
 
 
-def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                             model_file: str = None, model_layers: str = None) -> Model:
+def make_waveform_model_unet(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a waveform predicting model
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -134,8 +138,10 @@ def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: L
     return m
 
 
-def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                              base_model: Model, model_layers: str=None) -> Tuple[Model, Model]:
+def make_character_model_plus(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    base_model: Model, model_layers: str=None,
+) -> Tuple[Model, Model]:
     """Make a ECG captioning model from an ECG embedding model
 
     The base_model must have an embedding layer, but besides that can have any number of other predicition TensorMaps.
@@ -179,12 +185,14 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     return m, char_model
 
 
-def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                         model_file: str = None, model_layers: str = None) -> Model:
+def make_character_model(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a ECG captioning model
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -234,12 +242,14 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_siamese_model(base_model: Model,
-                       tensor_maps_in: List[TensorMap],
-                       hidden_layer: str,
-                       learning_rate: float = None,
-                       optimizer: str = 'adam',
-                       **kwargs) -> Model:
+def make_siamese_model(
+    base_model: Model,
+    tensor_maps_in: List[TensorMap],
+    hidden_layer: str,
+    learning_rate: float = None,
+    optimizer: str = 'adam',
+    **kwargs
+) -> Model:
     in_left = [Input(shape=tm.shape, name=tm.input_name()+'_left') for tm in tensor_maps_in]
     in_right = [Input(shape=tm.shape, name=tm.input_name()+'_right') for tm in tensor_maps_in]
     encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
@@ -278,43 +288,45 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     return intermediate_layer_model
 
 
-def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
-                                    tensor_maps_out: List[TensorMap]=None,
-                                    activation: str=None,
-                                    dense_layers: List[int]=None,
-                                    dropout: float=None,
-                                    mlp_concat: bool=None,
-                                    conv_layers: List[int]=None,
-                                    max_pools: List[int]=None,
-                                    res_layers: List[int]=None,
-                                    dense_blocks: List[int]=None,
-                                    block_size: List[int]=None,
-                                    conv_type: str=None,
-                                    conv_normalize: str=None,
-                                    conv_regularize: str=None,
-                                    conv_x: int=None,
-                                    conv_y: int=None,
-                                    conv_z: int=None,
-                                    conv_dropout: float=None,
-                                    conv_width: int=None,
-                                    conv_dilate: bool=None,
-                                    u_connect: bool=None,
-                                    pool_x: int=None,
-                                    pool_y: int=None,
-                                    pool_z: int=None,
-                                    pool_type: int=None,
-                                    padding: str=None,
-                                    learning_rate: float=None,
-                                    optimizer: str='adam',
-                                    **kwargs) -> Model:
+def make_multimodal_multitask_model(
+    tensor_maps_in: List[TensorMap]=None,
+    tensor_maps_out: List[TensorMap]=None,
+    activation: str=None,
+    dense_layers: List[int]=None,
+    dropout: float=None,
+    mlp_concat: bool=None,
+    conv_layers: List[int]=None,
+    max_pools: List[int]=None,
+    res_layers: List[int]=None,
+    dense_blocks: List[int]=None,
+    block_size: List[int]=None,
+    conv_type: str=None,
+    conv_normalize: str=None,
+    conv_regularize: str=None,
+    conv_x: int=None,
+    conv_y: int=None,
+    conv_z: int=None,
+    conv_dropout: float=None,
+    conv_width: int=None,
+    conv_dilate: bool=None,
+    u_connect: bool=None,
+    pool_x: int=None,
+    pool_y: int=None,
+    pool_z: int=None,
+    pool_type: int=None,
+    padding: str=None,
+    learning_rate: float=None,
+    optimizer: str='adam',
+    **kwargs
+) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
-	This model factory can be used to make networks for classification, regression, and segmentation
-	The tasks attempted are given by the output TensorMaps.
-	The modalities and the first layers in the architecture are determined by the input TensorMaps.
+    This model factory can be used to make networks for classification, regression, and segmentation
+    The tasks attempted are given by the output TensorMaps.
+    The modalities and the first layers in the architecture are determined by the input TensorMaps.
 
-	Hyperparameters are exposed to the command line.
-	Model summary printed to output
+    Hyperparameters are exposed to the command line.
+    Model summary printed to output
 
     :param model_file: HD5 model file to load and return.
     :param model_layers: HD5 model file whose weights will be loaded into this model when layer names match.
@@ -459,25 +471,27 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Training ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def train_model_from_generators(model: Model,
-                                generate_train: Iterable,
-                                generate_valid: Iterable,
-                                training_steps: int,
-                                validation_steps: int,
-                                batch_size: int,
-                                epochs: int,
-                                patience: int,
-                                output_folder: str,
-                                run_id: str,
-                                inspect_model: bool,
-                                inspect_show_labels: bool,
-                                return_history: bool = False,
-                                plot: bool = True) -> Union[Model, Tuple[Model, History]]:
+def train_model_from_generators(
+    model: Model,
+    generate_train: Iterable,
+    generate_valid: Iterable,
+    training_steps: int,
+    validation_steps: int,
+    batch_size: int,
+    epochs: int,
+    patience: int,
+    output_folder: str,
+    run_id: str,
+    inspect_model: bool,
+    inspect_show_labels: bool,
+    return_history: bool = False,
+    plot: bool = True,
+) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
-	Training data lives on disk, it will be loaded by generator functions.
-	Plots the metric history after training. Creates a directory to save weights, if necessary.
-	Measures runtime and plots architecture diagram if inspect_model is True.
+    Training data lives on disk, it will be loaded by generator functions.
+    Plots the metric history after training. Creates a directory to save weights, if necessary.
+    Measures runtime and plots architecture diagram if inspect_model is True.
 
     :param model: The model to optimize
     :param generate_train: Generator function that yields mini-batches of training data.
@@ -502,9 +516,11 @@ def train_model_from_generators(model: Model,
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
-                                  validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file),)
+    history = model.fit_generator(
+        generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
+        validation_steps=validation_steps, validation_data=generate_valid,
+        callbacks=_get_callbacks(patience, model_file),
+    )
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
@@ -518,7 +534,7 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
 
     return callbacks
@@ -535,16 +551,18 @@ def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_siz
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Model Builders ~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _conv_block_new(x: K.placeholder,
-                    layers: Dict[str, K.placeholder],
-                    conv_layers: List[Layer],
-                    pool_layers: List[Layer],
-                    dimension: int,
-                    activation: str,
-                    normalization: str,
-                    regularization: str,
-                    regularization_rate: float,
-                    residual_convolution_layer: Layer):
+def _conv_block_new(
+    x: K.placeholder,
+    layers: Dict[str, K.placeholder],
+    conv_layers: List[Layer],
+    pool_layers: List[Layer],
+    dimension: int,
+    activation: str,
+    normalization: str,
+    regularization: str,
+    regularization_rate: float,
+    residual_convolution_layer: Layer,
+):
     pool_diff = len(conv_layers) - len(pool_layers)
 
     for i, conv_layer in enumerate(conv_layers):
@@ -566,16 +584,18 @@ def _conv_block_new(x: K.placeholder,
     return _get_last_layer(layers)
 
 
-def _dense_block(x: K.placeholder,
-                 layers: Dict[str, K.placeholder],
-                 block_size: int,
-                 conv_layers: List[Layer],
-                 pool_layers: List[Layer],
-                 dimension: int,
-                 activation: str,
-                 normalization: str,
-                 regularization: str,
-                 regularization_rate: float):
+def _dense_block(
+    x: K.placeholder,
+    layers: Dict[str, K.placeholder],
+    block_size: int,
+    conv_layers: List[Layer],
+    pool_layers: List[Layer],
+    dimension: int,
+    activation: str,
+    normalization: str,
+    regularization: str,
+    regularization_rate: float,
+):
     for i, conv_layer in enumerate(conv_layers):
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
@@ -728,37 +748,44 @@ def _get_layer_kind_sorted(named_layers, kind):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Inspections ~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _inspect_model(model: Model,
-                  generate_train: Iterable,
-                  generate_valid: Iterable,
-                  batch_size: int,
-                  training_steps: int,
-                  inspect_show_labels: bool,
-                  image_path: str) -> Model:
+def _inspect_model(
+    model: Model,
+    generate_train: Iterable,
+    generate_valid: Iterable,
+    batch_size: int,
+    training_steps: int,
+    inspect_show_labels: bool,
+    image_path: str,
+) -> Model:
     """Collect statistics on model inference and training times.
 
-	Arguments
-	    model: the model to inspect
-		generate_train: training data generator function
-		generate_valid: Validation data generator function
-		batch_size: size of the mini-batches
-		training_steps: number of optimization steps to take
-		inspect_show_labels: if True, show layer labels on the architecture diagram
-		image_path: file path of the architecture diagram
+    Arguments
+        model: the model to inspect
+        generate_train: training data generator function
+        generate_valid: Validation data generator function
+        batch_size: size of the mini-batches
+        training_steps: number of optimization steps to take
+        inspect_show_labels: if True, show layer labels on the architecture diagram
+        image_path: file path of the architecture diagram
 
-	Returns
-		The slightly optimized keras model
-	"""
+    Returns
+        The slightly optimized keras model
+    """
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
 
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps,
-                            validation_steps=1, validation_data=generate_valid)
+    _ = model.fit_generator(
+        generate_train, steps_per_epoch=training_steps,
+        validation_steps=1, validation_data=generate_valid,
+    )
     t1 = time.time()
     train_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info('Spent:{} seconds training, batch_size:{} steps:{} Per example training speed:{}'.format(
-        (t1 - t0), batch_size, training_steps, train_speed))
+    logging.info(
+        'Spent:{} seconds training, batch_size:{} steps:{} Per example training speed:{}'.format(
+        (t1 - t0), batch_size, training_steps, train_speed,
+        ),
+    )
 
     t0 = time.time()
     _ = model.predict_generator(generate_valid, steps=training_steps, verbose=1)
@@ -833,9 +860,11 @@ def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model:
     return [tm_embed, tm_burn_in], [tm_char]
 
 
-def get_model_inputs_outputs(model_files: List[str],
-                             tensor_maps_in: List[TensorMap],
-                             tensor_maps_out: List[TensorMap]) -> Dict[str, Dict[str, TensorMap]]:
+def get_model_inputs_outputs(
+    model_files: List[str],
+    tensor_maps_in: List[TensorMap],
+    tensor_maps_out: List[TensorMap],
+) -> Dict[str, Dict[str, TensorMap]]:
     """Organizes given input and output tensors as nested dictionary.
 
     Returns:
@@ -855,7 +884,7 @@ def get_model_inputs_outputs(model_files: List[str],
                         'output': [tensor4, tensor6]
                     }
             }
-                        
+
     """
 
     input_prefix = "input"
@@ -886,5 +915,3 @@ def get_model_inputs_outputs(model_files: List[str],
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
-
-

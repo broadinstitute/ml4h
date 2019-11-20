@@ -50,9 +50,11 @@ MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
-MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
-                       'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
-                       'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf']
+MRI_CARDIAC_SERIES = [
+    'cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
+    'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
+    'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf',
+]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
@@ -66,33 +68,37 @@ ECG_SINUS = ['Normal_sinus_rhythm', 'Sinus_bradycardia', 'Marked_sinus_bradycard
 ECG_NORMALITY = ['Normal_ECG', 'Abnormal_ECG', 'Borderline_ECG', 'Otherwise_normal_ECG']
 ECG_BINARY_FLAGS = ['Poor data quality', 'infarct', 'block']
 ECG_TABLE_TAGS = ['RAmplitude', 'SAmplitude']
-ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration', 'QTInterval', 'QTCInterval', 'RRInterval', 'PPInterval',
-                     'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
-                     'QOffset', 'TOffset']
+ECG_TAGS_TO_WRITE = [
+    'VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration', 'QTInterval', 'QTCInterval', 'RRInterval', 'PPInterval',
+    'SokolovLVHIndex', 'PAxis', 'RAxis', 'TAxis', 'QTDispersion', 'QTDispersionBazett', 'QRSNum', 'POnset', 'POffset', 'QOnset',
+    'QOffset', 'TOffset',
+]
 ECG_BIKE_SAMPLE_RATE = 500
 ECG_BIKE_NUM_LEADS = 3
 SECONDS_PER_MINUTE = 60
 
 
-def write_tensors(a_id: str,
-                  xml_folder: str,
-                  zip_folder: str,
-                  output_folder: str,
-                  tensors: str,
-                  mri_unzip: str,
-                  mri_field_ids: List[int],
-                  xml_field_ids: List[int],
-                  x: int,
-                  y: int,
-                  z: int,
-                  zoom_x: int,
-                  zoom_y: int,
-                  zoom_width: int,
-                  zoom_height: int,
-                  write_pngs: bool,
-                  min_sample_id: int,
-                  max_sample_id: int,
-                  min_values_to_print: int) -> None:
+def write_tensors(
+    a_id: str,
+    xml_folder: str,
+    zip_folder: str,
+    output_folder: str,
+    tensors: str,
+    mri_unzip: str,
+    mri_field_ids: List[int],
+    xml_field_ids: List[int],
+    x: int,
+    y: int,
+    z: int,
+    zoom_x: int,
+    zoom_y: int,
+    zoom_width: int,
+    zoom_height: int,
+    write_pngs: bool,
+    min_sample_id: int,
+    max_sample_id: int,
+    min_values_to_print: int,
+) -> None:
     """Write tensors as HD5 files containing any kind of data from UK BioBank
 
     One HD5 file is generated per sample.  Each file may contain many tensor encodings of data including:
@@ -227,12 +233,14 @@ def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
     return False
 
 
-def _dicts_and_plots_from_tensorization(a_id: str,
-                                        output_folder: str,
-                                        min_values_to_print: int,
-                                        write_pngs: bool,
-                                        continuous_stats: Dict[str, List[float]],
-                                        stats: Dict[str, int]) -> None:
+def _dicts_and_plots_from_tensorization(
+    a_id: str,
+    output_folder: str,
+    min_values_to_print: int,
+    write_pngs: bool,
+    continuous_stats: Dict[str, List[float]],
+    stats: Dict[str, int],
+) -> None:
     """Print out dictionaries of data encountered during tensorization. Optionally make plots of this data.
 
     :param a_id: User chosen string to identify this run
@@ -272,15 +280,17 @@ def _dicts_and_plots_from_tensorization(a_id: str,
     logging.info("Categories Columns: {}".format(len(categories)))
 
 
-def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
-                            hd5: h5py.File,
-                            sample_id: int,
-                            categorical_field_ids: List[int],
-                            continuous_field_ids: List[int],
-                            field_meanings: Dict[str, str],
-                            write_pngs: bool,
-                            continuous_stats: Dict[str, List[float]],
-                            stats: Dict[str, int]) -> None:
+def _write_tensors_from_sql(
+    sql_cursor: sqlite3.Cursor,
+    hd5: h5py.File,
+    sample_id: int,
+    categorical_field_ids: List[int],
+    continuous_field_ids: List[int],
+    field_meanings: Dict[str, str],
+    write_pngs: bool,
+    continuous_stats: Dict[str, List[float]],
+    stats: Dict[str, int],
+) -> None:
     """Tensorize and write UK biobank survey data from continuous and categorical fields
     into the HD5 file of a given sample
 
@@ -301,20 +311,29 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
     for fid in categorical_field_ids:
         try:
             for data_row in sql_cursor.execute(data_query % (fid, sample_id)):
-                dataset_name = dataset_name_from_meaning('categorical',
-                                                          [field_meanings[fid], str(data_row[0]),
-                                                           str(data_row[1]), str(data_row[2])])
+                dataset_name = dataset_name_from_meaning(
+                    'categorical',
+                    [
+                        field_meanings[fid], str(data_row[0]),
+                        str(data_row[1]), str(data_row[2]),
+                    ],
+                )
                 float_category = _to_float_or_false(data_row[3])
                 if float_category is not False:
                     hd5.create_dataset(dataset_name, data=[float_category])
                     stats[dataset_name] += 1
                 else:
-                    logging.warning('Cannot cast float from:{} categorical field:{} means:{} sample id:{}'.format(
-                        data_row[3], fid, data_row[0], sample_id))
+                    logging.warning(
+                        'Cannot cast float from:{} categorical field:{} means:{} sample id:{}'.format(
+                        data_row[3], fid, data_row[0], sample_id,
+                        ),
+                    )
         except:
             logging.exception(
                 'problem with data query field id:{} data_query is:{} for sample id:{}'.format(
-                    fid, data_query, sample_id))
+                    fid, data_query, sample_id,
+                ),
+            )
 
     continuous_query = "SELECT p.instance, p.array_idx, p.value FROM phenotype p "
     continuous_query += "WHERE p.fieldid=%d and p.sample_id=%d;"
@@ -338,10 +357,12 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
     _icd10_from_sql_to_tensor(sql_cursor, hd5, sample_id, stats)
 
 
-def _job_title_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
-                                  hd5: h5py.File,
-                                  sample_id: int,
-                                  stats: Dict[str, int]) -> None:
+def _job_title_from_sql_to_tensor(
+    sql_cursor: sqlite3.Cursor,
+    hd5: h5py.File,
+    sample_id: int,
+    stats: Dict[str, int],
+) -> None:
     """If found, tensorize the free text job titles as entered by user, removing duplicates
 
     :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
@@ -360,10 +381,12 @@ def _job_title_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
         hd5.create_dataset('jobs', (1,), data=JOIN_CHAR.join(jobs), dtype=h5py.special_dtype(vlen=str))
 
 
-def _icd10_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
-                              hd5: h5py.File,
-                              sample_id: int,
-                              stats: Dict[str, int]) -> None:
+def _icd10_from_sql_to_tensor(
+    sql_cursor: sqlite3.Cursor,
+    hd5: h5py.File,
+    sample_id: int,
+    stats: Dict[str, int],
+) -> None:
     """If found, tensorize the ICD10 codes
 
     :param sql_cursor: SQL Cursor object used to query meanings of the field IDs
@@ -384,10 +407,12 @@ def _icd10_from_sql_to_tensor(sql_cursor: sqlite3.Cursor,
         hd5.create_dataset('icd10', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
 
 
-def _write_tensors_from_dictionary_of_scalars(hd5: h5py.File,
-                                              sample_id: int,
-                                              nested_dictionary: Dict[int, Dict[str, float]],
-                                              continuous_stats: Dict[str, List[float]]) -> None:
+def _write_tensors_from_dictionary_of_scalars(
+    hd5: h5py.File,
+    sample_id: int,
+    nested_dictionary: Dict[int, Dict[str, float]],
+    continuous_stats: Dict[str, List[float]],
+) -> None:
     """Write volumes of the left ventricle into tensor file of a particular sample if we have them
 
     :param hd5: HD5 File where all tensors for this sample ID are saved
@@ -410,11 +435,13 @@ def _write_tensors_from_dictionary_of_scalars(hd5: h5py.File,
                 continuous_stats[value_name].append(value)
 
 
-def _write_tensors_from_icds(hd5: h5py.File,
-                             sample_id: int,
-                             icds: Dict[str, Dict[int, List[int]]],
-                             dates: Dict[str, Dict[int, List[datetime.date]]],
-                             stats: Dict[str, int]) -> None:
+def _write_tensors_from_icds(
+    hd5: h5py.File,
+    sample_id: int,
+    icds: Dict[str, Dict[int, List[int]]],
+    dates: Dict[str, Dict[int, List[datetime.date]]],
+    stats: Dict[str, int],
+) -> None:
     """Write disease status and dates into the HD5 file of a given sample
 
     :param hd5: HD5 File where all tensors for this sample ID are saved
@@ -442,29 +469,31 @@ def _to_float_or_false(s):
     except ValueError:
         return False
 
-        
+
 def _to_float_or_nan(s):
     try:
         return float(s)
     except ValueError:
         return np.nan
 
-        
-def _write_tensors_from_zipped_dicoms(x: int,
-                                      y: int,
-                                      z: int,
-                                      zoom_x: int,
-                                      zoom_y: int,
-                                      zoom_width: int,
-                                      zoom_height: int,
-                                      write_pngs: bool,
-                                      tensors: str,
-                                      dicoms: str,
-                                      mri_field_ids: List[str],
-                                      zip_folder: str,
-                                      hd5: h5py.File,
-                                      sample_id: int,
-                                      stats: Dict[str, int]) -> None:
+
+def _write_tensors_from_zipped_dicoms(
+    x: int,
+    y: int,
+    z: int,
+    zoom_x: int,
+    zoom_y: int,
+    zoom_width: int,
+    zoom_height: int,
+    write_pngs: bool,
+    tensors: str,
+    dicoms: str,
+    mri_field_ids: List[str],
+    zip_folder: str,
+    hd5: h5py.File,
+    sample_id: int,
+    stats: Dict[str, int],
+) -> None:
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
@@ -475,8 +504,10 @@ def _write_tensors_from_zipped_dicoms(x: int,
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height,
-                                           write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
+                _write_tensors_from_dicoms(
+                    x, y, z, zoom_x, zoom_y, zoom_width, zoom_height,
+                    write_pngs, tensors, dicom_folder, hd5, sample_str, stats,
+                )
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -492,8 +523,10 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
                 stats['MRI fields written'] += 1
 
 
-def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
-                               dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int]) -> None:
+def _write_tensors_from_dicoms(
+    x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+    dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int],
+) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
     Segmented dicoms require special processing and are written to tensor per-slice
@@ -555,9 +588,11 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
             hd5.create_dataset(v, data=mri_data, compression='gzip')
 
 
-def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, x: int, y: int,
-                                                zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str, hd5: h5py.File,
-                                                sample_str: str, stats: Dict[str, int]) -> None:
+def _tensorize_short_axis_segmented_cardiac_mri(
+    slices: List[pydicom.Dataset], series: str, x: int, y: int,
+    zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str, hd5: h5py.File,
+    sample_str: str, stats: Dict[str, int],
+) -> None:
     systoles = {}
     diastoles = {}
     systoles_pix = {}
@@ -959,7 +994,8 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
         for protocol in root.findall("./Protocol/Phase"):
             phase_name = protocol.find("PhaseName").text
             phase_duration = SECONDS_PER_MINUTE * int(protocol.find("PhaseDuration/Minute").text) + int(
-                protocol.find("PhaseDuration/Second").text)
+                protocol.find("PhaseDuration/Second").text,
+            )
             phase_durations[phase_name] = phase_duration
             write_to_hd5(dtype=DataSetType.CONTINUOUS, name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
 
@@ -1221,8 +1257,11 @@ def _ukbb_stats(run_id, output_folder, phenos_folder, volume_csv, icd_csv, app_c
             icds[disease][sample_id] = row[icd_indexes[disease]]
             if icds[disease][sample_id] != 'NA' and sample_id in status[disease]:
                 if status[disease][sample_id] != int(icds[disease][sample_id]):
-                    stats[disease + '_icd_disparity_' + icds[disease][sample_id] + '_censor_' + str(
-                        status[disease][sample_id])] += 1
+                    stats[
+                        disease + '_icd_disparity_' + icds[disease][sample_id] + '_censor_' + str(
+                        status[disease][sample_id],
+                        )
+                    ] += 1
                 else:
                     stats[disease + '_icd_agree'] += 1
 
@@ -1274,8 +1313,11 @@ def _print_disease_tensor_maps(phenos_folder) -> None:
         total = len(status[d])
         diseased = np.sum(list(status[d].values()))
         factor = int(total / (diseased * 2))
-        print("'{}': TensorMap('{}', group='categorical_index', channel_map={{'no_{}':0, '{}':1}}, loss=weighted_crossentropy([1.0, {}], '{}')),".format(
-            d, d, d, d, factor, d))
+        print(
+            "'{}': TensorMap('{}', group='categorical_index', channel_map={{'no_{}':0, '{}':1}}, loss=weighted_crossentropy([1.0, {}], '{}')),".format(
+            d, d, d, d, factor, d,
+            ),
+        )
 
 
 def _print_disease_tensor_maps_incident_prevalent(phenos_folder) -> None:
@@ -1290,7 +1332,9 @@ def _print_disease_tensor_maps_incident_prevalent(phenos_folder) -> None:
         factor_i = int(total / (1 + (diseased_i * 3)))
         print(
             "'{}_prevalent_incident': TensorMap('{}', group='categorical_date', channel_map={{'no_{}':0, 'prevalent_{}':1, 'incident_{}':2}}, loss=weighted_crossentropy([1.0, {}, {}], '{}_prevalent_incident')),".format(
-                d, d, d, d, d, factor_p, factor_i, d))
+                d, d, d, d, d, factor_p, factor_i, d,
+            ),
+        )
 
 
 def _print_disease_tensor_maps_time(phenos_folder) -> None:
@@ -1347,8 +1391,10 @@ def _log_extreme_n(stats, n) -> None:
     logging.info('\n\n')
 
 
-def _prune_sample(sample_id: int, min_sample_id: int, max_sample_id: int, mri_field_ids: List[int],
-                  xml_field_ids: List[int], zip_folder: str, xml_folder: str):
+def _prune_sample(
+    sample_id: int, min_sample_id: int, max_sample_id: int, mri_field_ids: List[int],
+    xml_field_ids: List[int], zip_folder: str, xml_folder: str,
+):
     """Return True if the sample ID is missing associated MRI, EKG, or GT data.  Or if the sample_id is below the given minimum."""
 
     if sample_id < min_sample_id:
