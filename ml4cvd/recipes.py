@@ -185,13 +185,13 @@ def infer_multimodal_multitask(args):
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name == 'mri_systole_diastole_8_segmented':
-                    csv_row.append(pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]))
-                    csv_row.append(f'{np.sum(y[..., 0]):0.1f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 0]):0.1f}')
+                    csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
+                    csv_row.append(f'{np.sum(y[..., 0]):0.2f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 0]):0.2f}')
                     csv_row.append(f'{np.sum(y[..., 1]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 1]):0.1f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 1]):0.2f}')
                     csv_row.append(f'{np.sum(y[..., 2]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 2]):0.1f}')
+                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., 2]):0.2f}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
