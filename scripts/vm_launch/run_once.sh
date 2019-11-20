@@ -10,5 +10,6 @@ sudo usermod -aG docker $(whoami)
 docker-credential-gcr configure-docker
 
 # Install pre-commit
-curl https://pre-commit.com/install-local.py | python -
+sudo apt install python3-pip
+pip3 install pre-commit
 pre-commit install
