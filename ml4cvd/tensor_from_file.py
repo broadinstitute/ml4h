@@ -46,9 +46,8 @@ def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None):
         big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
         tensor = big_tensor[..., np.arange(start, stop, step)]
         if dependent_key is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
-            dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
+            dependents[tm.dependent_map] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
         return tm.normalize_and_validate(tensor)
     return _slice_subset_tensor_from_file
 
@@ -555,6 +554,13 @@ TMAPS['t2star_to_t1_40_slices'] = TensorMap('t2star_to_t1_40_slices', shape=(173
                                             dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                             tensor_from_file=slice_subset_tensor('T2star_to_T1', 60, 140, 2))
 
+TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain'] = TensorMap('T1_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+
+TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+
 
 def mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     original = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
@@ -562,7 +568,9 @@ def mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tm.normalize_and_validate(tensor)
 
 
-TMAPS['brain_mask'] = TensorMap('brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
+TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
+TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
+TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, tensor_from_file=mask_from_file)
 
 
 def ttn_tensor_from_file(tm, hd5, dependents={}):
