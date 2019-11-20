@@ -192,7 +192,7 @@ def infer_multimodal_multitask(args):
                     csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
                     csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.2f}')
                     csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
-                    logging.info(f'{np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=-2).shape}')
+                    logging.info(f'{np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0,1,2)).shape}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
