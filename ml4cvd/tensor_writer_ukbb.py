@@ -570,9 +570,6 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sy = min(slicer.Columns, y)
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         if _has_overlay(slicer):
-            if _is_mitral_valve_segmentation(slicer):
-                stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
-                continue
             try:
                 overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
             except KeyError:
