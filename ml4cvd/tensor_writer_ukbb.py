@@ -47,6 +47,7 @@ MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
+MRI_MITRAL_VALVE_THICKNESS = 6
 MRI_SWI_SLICES_TO_AXIS_SHIFT = 48
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
@@ -570,12 +571,11 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sy = min(slicer.Columns, y)
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         if _has_overlay(slicer):
+            if slicer.SliceThickness == MRI_MITRAL_VALVE_THICKNESS:
+                stats['skipped likely mitral valve segmentation'] += 1
+                continue
             try:
-                overlay, mask, ventricle_pixels, myocardium_pixels = _get_overlay_from_dicom(slicer)
-                logging.info(f'At instance {slicer.InstanceNumber} ventricle pix: {ventricle_pixels} and myocardium pix: {myocardium_pixels}')
-                if ventricle_pixels == 0 and myocardium_pixels < 40:
-                    stats['skipped likely mitral valve segmentation'] += 1
-                    continue
+                overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
                 logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
