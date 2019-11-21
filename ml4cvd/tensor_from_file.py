@@ -1,5 +1,6 @@
 from typing import List, Dict
 
+import csv
 import h5py
 import numpy as np
 from keras.utils import to_categorical
@@ -52,6 +53,18 @@ def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None):
     return _slice_subset_tensor_from_file
 
 
+def _build_inference_tensor_from_file(inference_file: str, tmaps_key: str):
+    """
+    only works for continuous values
+    """
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        with open(inference_file, 'r') as f:
+            reader = csv.reader(f)
+            row = next(filter(lambda x: x[0] == hd5.filename.remove('.hd5'), reader))
+            return tm.normalize_and_validate(np.array([float(row[1])]))
+    return tensor_from_file
+
+
 def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> List[str]:
     """
     Gets the dates in the hd5 with source, dtype, name.
@@ -60,8 +73,10 @@ def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> Li
     # Unfortunately, that's hard to do efficiently
     return hd5[source][str(dtype)][name]
 
+
 def _pass_nan(tensor):
-    return (tensor)
+    return tensor
+
 
 def _fail_nan(tensor):
     if np.isnan(tensor).any():
@@ -155,13 +170,6 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     return _first_date_hrr(tm, hd5)
 
 
-def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
-    _check_phase_full_len(hd5, 'rest')
-    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_heartrate')[-1]
-    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.CONTINUOUS, 'max_hr')
-    return tm.normalize_and_validate(max_hr - last_hr)
-
-
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'trend_time')
@@ -182,6 +190,16 @@ def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     if hrr > 80:
         raise ValueError('HRR too high.')
     return tm.normalize_and_validate(hrr)
+
+
+_HRR_SENTINEL = -1000
+
+
+def _sentinel_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
+    try:
+        return _new_hrr(tm, hd5)
+    except ValueError:
+        return _HRR_SENTINEL
 
 
 def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -226,6 +244,12 @@ TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), group='ec
 TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                       normalization={'mean': 31, 'std': 12},
                                       tensor_from_file=_new_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                           normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
+                                           tensor_from_file=_sentinel_hrr, dtype=DataSetType.CONTINUOUS)
+TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                          normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
+                                          tensor_from_file=_build_inference_tensor_from_file('inference.csv', 'ecg-bike-hrr-sentinel'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
