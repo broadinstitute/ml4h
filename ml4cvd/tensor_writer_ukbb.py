@@ -573,7 +573,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             try:
                 overlay, mask, ventricle_pixels, myocardium_pixels = _get_overlay_from_dicom(slicer)
                 logging.info(f'At instance {slicer.InstanceNumber} ventricle pix: {ventricle_pixels} and myocardium pix: {myocardium_pixels}')
-                if ventricle_pixels == 0 and myocardium_pixels < MRI_MAX_MYOCARDIUM:
+                if ventricle_pixels == 0 and myocardium_pixels < 40:
                     stats['skipped likely mitral valve segmentation'] += 1
                     continue
             except KeyError:
