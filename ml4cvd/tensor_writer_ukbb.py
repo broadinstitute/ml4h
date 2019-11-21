@@ -572,7 +572,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         if _has_overlay(slicer):
             if slicer.SliceThickness == MRI_MITRAL_VALVE_THICKNESS:
-                stats['skipped likely mitral valve segmentation'] += 1
+                stats['Skipped likely mitral valve segmentation'] += 1
                 continue
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
@@ -605,7 +605,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
                     systoles_masks[cur_angle] = mask
 
     for angle in diastoles:
-        logging.info(f'Found systole at instance {systoles[angle].InstanceNumber}  pix: {systoles_pix[angle]}')
+        logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
         sx = min(diastoles[angle].Rows, x)
         sy = min(diastoles[angle].Columns, y)
         full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
