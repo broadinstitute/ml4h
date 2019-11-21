@@ -571,7 +571,10 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         if _has_overlay(slicer):
             try:
-                overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
+                overlay, mask, ventricle_pixels, myocardium_pixels = _get_overlay_from_dicom(slicer)
+                if ventricle_pixels == 0 and myocardium_pixels < MRI_MAX_MYOCARDIUM:
+                    stats['skipped likely mitral valve segmentation'] += 1
+                    continue
             except KeyError:
                 logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
@@ -719,7 +722,8 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
             ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
-        return overlay, anatomical_mask, ventricle_pixels
+            myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
+        return overlay, anatomical_mask, ventricle_pixels, myocardium_pixels
 
 
 def _unit_disk(r) -> np.ndarray:
