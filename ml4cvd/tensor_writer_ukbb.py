@@ -50,6 +50,7 @@ MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_PIXEL_WIDTH = 'mri_pixel_width'
 MRI_PIXEL_HEIGHT = 'mri_pixel_height'
+MRI_SLICE_THICKNESS = 'mri_slice_thickness'
 MRI_PATIENT_POSITION = 'mri_patient_position'
 MRI_PATIENT_ORIENTATION = 'mri_patient_orientation'
 MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
@@ -550,6 +551,7 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
                 sx = min(slicer.Rows, x)
                 sy = min(slicer.Columns, y)
                 _save_pixel_dimensions_if_missing(slicer, v, hd5)
+                _save_slice_thickness_if_missing(slicer, v, hd5)
                 _save_series_orientation_and_position_if_missing(slicer, v, hd5)
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
@@ -572,7 +574,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         sx = min(slicer.Rows, x)
         sy = min(slicer.Columns, y)
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
-        _save_series_orientation_and_position_if_missing(slicer, v, hd5)
+        _save_slice_thickness_if_missing(slicer, series, hd5)
+        _save_series_orientation_and_position_if_missing(slicer, series, hd5)
         if _has_overlay(slicer):
             if _is_mitral_valve_segmentation(slicer):
                 stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
@@ -642,7 +645,8 @@ def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: i
         sx = min(slicer.Rows, x)
         sy = min(slicer.Columns, y)
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
-        _save_series_orientation_and_position_if_missing(slicer, v, hd5)
+        _save_slice_thickness_if_missing(slicer, series, hd5)
+        _save_series_orientation_and_position_if_missing(slicer, series, hd5)
         slice_index = slicer.InstanceNumber - 1
         if slicer.SeriesNumber in [5, 11]:
             mri_data1[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
@@ -661,11 +665,16 @@ def _save_pixel_dimensions_if_missing(slicer, series, hd5):
         hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
 
+def _save_slice_thickness_if_missing(slicer, series, hd5):
+    if MRI_SLICE_THICKNESS + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+        hd5.create_dataset(MRI_SLICE_THICKNESS + '_' + series, data=float(slicer.SliceThickness))
+                           
+
 def _save_series_orientation_and_position_if_missing(slicer, series, hd5):
     if MRI_PATIENT_ORIENTATION + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PATIENT_ORIENTATION + '_' + series, data=[float(x) for x in slicer.ImageOrientationPatient])
-    if MRI_PATIENT_POSITION + '_' + series not in hd5 and series in MRI_BRAIN_SERIS + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-        hd5.create_dataset(MRI_PATIENT_POSITION + '_' + series, data=[float(x) for x in slicer.ImagePositionPatient]
+    if MRI_PATIENT_POSITION + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+        hd5.create_dataset(MRI_PATIENT_POSITION + '_' + series, data=[float(x) for x in slicer.ImagePositionPatient])
 
 
 def _has_overlay(d) -> bool:

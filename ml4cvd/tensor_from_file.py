@@ -518,3 +518,42 @@ TMAPS['mri_slice_blackout_segmented_weighted'] = TensorMap('mri_slice_segmented'
                                                            loss=weighted_crossentropy([0.1, 25.0, 25.0], 'mri_slice_blackout_segmented'))
 TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), tensor_from_file=mri_slice_blackout_tensor_from_file,
                                         dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
+
+
+def _make_mri_series_orientation_and_position_from_file(population_normalize=None):
+    def _mri_series_orientation_and_position(tm, hd5):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        if ''.join(tm.name.split('_')[:3]) == 'mri_patient_orientation':
+            if tm.shape[0] != 6:
+                raise ValueError('Orientation must be defined by 6 cosine values')            
+        if ''.join(tm.name.split('_')[:3]) == 'mri_patient_position':                   
+            if tm.shape[0] != 3:
+                raise ValueError('Position must be defined as coordinates in R3')                   
+        if tm.name not in hd5:
+            raise ValueError('Orientation and position are not present in the tensors for this MRI series')
+        tensor[:] = hd5[tm.name]
+        if population_normalize is not None:
+            tensor /= population_normalize
+        return tensor
+    return _mri_series_orientation_and_position
+
+TMAPS['mri_patient_orientation_cine_segmented_lax_2ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_2ch', (6,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_lax_3ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_3ch', (6,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_lax_4ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_4ch', (6,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_slax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', (6,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_orientation_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_orientation_cine_segmented_sax_inlinevf', (6,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_lax_2ch'] = TensorMap('mri_patient_position_cine_segmented_lax_2ch', (3,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_lax_3ch'] = TensorMap('mri_patient_position_cine_segmented_lax_3ch', (3,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_lax_4ch'] = TensorMap('mri_patient_position_cine_segmented_lax_4ch', (3,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_slax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', (3,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_position_cine_segmented_sax_inlinevf', (3,), group='',
+                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())        
