@@ -7,12 +7,12 @@ import numpy as np
 from scipy.ndimage import zoom
 from keras.utils import to_categorical
 
-from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, per_class_precision
-from ml4cvd.metrics import per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
+from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
-from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 from ml4cvd.defines import DataSetType, CODING_VALUES_MISSING, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS
-from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import EPS, JOIN_CHAR, IMPUTATION_RANDOM, IMPUTATION_MEAN, CODING_VALUES_LESS_THAN_ONE, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import MRI_FRAMES, MRI_SEGMENTED, MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_ANNOTATION_NAME, MRI_ANNOTATION_CHANNEL_MAP
 
 np.set_printoptions(threshold=np.inf)
 
@@ -193,7 +193,9 @@ class TensorMap(object):
             elif len(self.shape) == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
-        if self.metrics is None:
+        elif self.metrics is None and self.is_continuous_any():
+            self.metrics = [pearson]
+        elif self.metrics is None:
             self.metrics = []
 
         if self.tensor_from_file is None:

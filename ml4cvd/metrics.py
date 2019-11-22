@@ -130,6 +130,18 @@ def custom_loss_keras(user_id, encodings):
     return K.sum(pairwise_distance * pos_neg, axis=-1) / 2
 
 
+def pearson(y_true, y_pred):
+    # normalizing stage - setting a 0 mean.
+    y_true -= y_true.mean(axis=-1)
+    y_pred -= y_pred.mean(axis=-1)
+    # normalizing stage - setting a 1 variance
+    y_true = K.l2_normalize(y_true, axis=-1)
+    y_pred = K.l2_normalize(y_pred, axis=-1)
+    # final result
+    pearson_correlation = K.sum(y_true * y_pred, axis=-1)
+    return pearson_correlation
+
+
 def survival_likelihood_loss(n_intervals):
     """Create custom Keras loss function for neural network survival model.
     Arguments
