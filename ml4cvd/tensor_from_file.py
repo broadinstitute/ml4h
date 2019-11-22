@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import h5py
 import numpy as np
@@ -23,10 +23,10 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
         return tm.normalize_and_validate(tensor)
     if tm.dtype == DataSetType.FLOAT_ARRAY:
         tensor = tm.normalize_and_validate(tensor)
-        return _pad_or_crop_array_to_shape(tm, tensor)
+        return _pad_or_crop_array_to_shape(tm.shape, tensor)
     if tm.dtype == DataSetType.CATEGORICAL:
         tensor = tm.normalize_and_validate(tensor)
-        return _pad_or_crop_array_to_shape(tm, tensor)
+        return _pad_or_crop_array_to_shape(tm.shape, tensor)
     raise ValueError(f'normalize_first_date not implemented for {tm.dtype}')
 
 
@@ -44,9 +44,11 @@ def random_slice_tensor(tensor_key, dependent_key=None):
     return _random_slice_tensor_from_file
 
 
-def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None):
+def slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+        if not pad_shape is None:
+            big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
         tensor = big_tensor[..., np.arange(start, stop, step)]
         if dependent_key is not None:
             label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
@@ -99,8 +101,10 @@ def _all_dates(hd5: h5py.File, source: str, dtype: DataSetType, name: str) -> Li
     # Unfortunately, that's hard to do efficiently
     return hd5[source][str(dtype)][name]
 
+
 def _pass_nan(tensor):
     return (tensor)
+
 
 def _fail_nan(tensor):
     if np.isnan(tensor).any():
@@ -131,13 +135,13 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
     return tensor
 
 
-def _pad_or_crop_array_to_shape(tm: TensorMap, original: np.ndarray):
-    if tm.shape == original.shape:
+def _pad_or_crop_array_to_shape(new_shape: Tuple, original: np.ndarray):
+    if new_shape == original.shape:
         return original
     
-    result = np.zeros(tm.shape)
-    slices = tuple(slice(min(original.shape[i], tm.shape[i])) for i in range(len(original.shape)))
-    if len(tm.shape) - len(original.shape) == 1:
+    result = np.zeros(new_shape)
+    slices = tuple(slice(min(original.shape[i], new_shape[i])) for i in range(len(original.shape)))
+    if len(new_shape) - len(original.shape) == 1:
         padded = result[..., 0]
     else:
         padded = result
@@ -572,13 +576,14 @@ TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 
 TMAPS['t2_flair'] = TensorMap('T2_FLAIR', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t2_flair_brain'] = TensorMap('T2_FLAIR_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t2_flair_brain_30_slices'] = TensorMap('t2_flair_brain_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
-                                              normalization={'zero_mean_std1': True}, tensor_from_file=slice_subset_tensor('T2_FLAIR_brain', 66, 126, 2))
+                                              normalization={'zero_mean_std1': True},
+                                              tensor_from_file=slice_subset_tensor('T2_FLAIR_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
 TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
 
 def mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     original = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name)
-    reshaped = _pad_or_crop_array_to_shape(tm, original)
+    reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
     return tm.normalize_and_validate(tensor)
 
