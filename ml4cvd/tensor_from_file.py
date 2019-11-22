@@ -141,6 +141,8 @@ def _pad_or_crop_array_to_shape(new_shape: Tuple, original: np.ndarray):
     
     result = np.zeros(new_shape)
     slices = tuple(slice(min(original.shape[i], new_shape[i])) for i in range(len(original.shape)))
+
+    # Allow expanding one dimension eg (256, 256) can become (256, 256, 1)
     if len(new_shape) - len(original.shape) == 1:
         padded = result[..., 0]
     else:
