@@ -570,6 +570,8 @@ TMAPS['t2star_to_t1_40_slices'] = TensorMap('t2star_to_t1_40_slices', shape=(173
 
 TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t1_brain'] = TensorMap('T1_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain_30_slices'] = TensorMap('t1_brain_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                        normalization={'zero_mean_std1': True}, tensor_from_file=slice_subset_tensor('T1_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
 TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
