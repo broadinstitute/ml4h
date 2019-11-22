@@ -100,7 +100,7 @@ def train_multimodal_multitask(args):
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
     out_path = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
 
 
@@ -108,7 +108,7 @@ def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
   
 
@@ -122,7 +122,7 @@ def test_multimodal_scalar_tasks(args):
 def compare_multimodal_multitask_models(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
-    input_data, output_data, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    input_data, output_data, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
     _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
@@ -142,9 +142,11 @@ def infer_multimodal_multitask(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    args.keep_paths = True
+    args.tensor_paths = tensor_paths
+    args.batch_size = 1
     model = make_multimodal_multitask_model(**args.__dict__)
-    
+    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
@@ -210,7 +212,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, keep_paths=True)
+    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers, cache_size=args.cache_size, keep_paths=True)
     full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
@@ -241,13 +243,12 @@ def infer_hidden_layer_multimodal_multitask(args):
 
 def train_shallow_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-
     model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
     p = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.alpha)
 
 
@@ -262,19 +263,18 @@ def train_char_model(args):
     sample_from_char_model(char_model, test_batch, test_paths)
 
     output_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
 
 
 def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(siamese=True, **args.__dict__)
-
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, siamese=True)
     siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                                 args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps, siamese=True)
+    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     prediction = siamese_model.predict(data)
     return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
 
@@ -282,7 +282,7 @@ def train_siamese_model(args):
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
-    data, labels, paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
@@ -292,8 +292,7 @@ def plot_predictions(args):
 
 def plot_while_training(args):
     generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(args.tensor_maps_in, args.tensor_maps_out, generate_test, args.test_steps)
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     model = make_multimodal_multitask_model(**args.__dict__)
 
     plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
