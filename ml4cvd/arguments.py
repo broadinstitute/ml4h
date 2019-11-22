@@ -18,11 +18,11 @@ import operator
 import datetime
 import numpy as np
 
-from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.logger import load_config
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
-from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
 
 
 def parse_args():

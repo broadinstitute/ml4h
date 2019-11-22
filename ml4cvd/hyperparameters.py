@@ -49,7 +49,7 @@ def run(args):
         elif 'mri_sax' == args.mode:
             optimize_mri_sax_architecture(args)
         else:
-            raise ValueError('Unknown hyperparameter optimization mode:', args.mode)
+            raise ValueError('Unknown hyper-parameter optimization mode:', args.mode)
 
     except Exception as e:
         logging.exception(e)
@@ -59,7 +59,7 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
-def hyperparam_optimizer(args, space, param_lists={}):
+def hyperparameter_optimizer(args, space, param_lists={}):
     stats = Counter()
     args.keep_paths = False
     args.keep_paths_test = False
@@ -145,7 +145,7 @@ def optimize_architecture(args):
                    'conv_bn': conv_bn,
                    'pool_type': pool_type,
                    }
-    hyperparam_optimizer(args, space, param_lists)
+    hyperparameter_optimizer(args, space, param_lists)
 
 
 def optimize_ecg_rest_architecture(args):
@@ -177,7 +177,7 @@ def optimize_ecg_rest_architecture(args):
         'conv_bn': conv_bn,
         'pool_type': pool_type,
     }
-    hyperparam_optimizer(args, space, param_lists)
+    hyperparameter_optimizer(args, space, param_lists)
 
 
 def optimize_mri_sax_architecture(args):
@@ -210,7 +210,7 @@ def optimize_mri_sax_architecture(args):
         'conv_bn': conv_bn,
         'pool_type': pool_type,
     }
-    hyperparam_optimizer(args, space, param_lists)
+    hyperparameter_optimizer(args, space, param_lists)
 
 
 def optimize_conv_layers_multimodal_multitask(args):
@@ -224,24 +224,24 @@ def optimize_conv_layers_multimodal_multitask(args):
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
     }
     param_lists = {'conv_layers': conv_layers_sets, 'dense_blocks': dense_blocks_sets, 'dense_layers': dense_layers_sets}
-    hyperparam_optimizer(args, space, param_lists)
+    hyperparameter_optimizer(args, space, param_lists)
 
 
 def optimize_dense_layers_multimodal_multitask(args):
     space = {'num_layers': hp.choice(list(range(2, 42)))}
-    hyperparam_optimizer(args, space)
+    hyperparameter_optimizer(args, space)
 
 
 def optimize_lr_multimodal_multitask(args):
     space = {'learning_rate': hp.loguniform('learning_rate', -10, -2)}
-    hyperparam_optimizer(args, space)
+    hyperparameter_optimizer(args, space)
 
 
 def optimize_input_tensor_maps(args):
     input_tensor_map_sets = [['categorical-phenotypes-72'], ['mri-slice'], ['sax_inlinevf_zoom'], ['cine_segmented_sax_inlinevf'], ['ekg-leads']]
     space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets), }
     param_lists = {'input_tensor_maps': input_tensor_map_sets}
-    hyperparam_optimizer(args, space, param_lists)
+    hyperparameter_optimizer(args, space, param_lists)
 
 
 def optimize_optimizer(args):
@@ -252,7 +252,7 @@ def optimize_optimizer(args):
     ]
     space = {'learning_rate': hp.loguniform('learning_rate', -10, -2),
              'optimizer': hp.choice('optimizer', optimizers)}
-    hyperparam_optimizer(args, space, {'optimizer': optimizers})
+    hyperparameter_optimizer(args, space, {'optimizer': optimizers})
 
 
 def set_args_from_x(args, x):
