@@ -144,6 +144,9 @@ def pearson(y_true, y_pred):
 
 def survival_likelihood_loss(n_intervals):
     """Create custom Keras loss function for neural network survival model.
+
+    This function is tightly coupled with the function _survival_tensor defined in tensor_from_file.py which builds the y_true tensor.
+
     Arguments
         n_intervals: the number of survival time intervals
     Returns
@@ -152,18 +155,21 @@ def survival_likelihood_loss(n_intervals):
 
     def loss(y_true, y_pred):
         """
-        Required to have only 2 arguments by Keras.
+        To play nicely with the Keras framework y_pred is the same shape as y_true.
+        However we only consider the first half (n_intervals) of y_pred.
         Arguments
             y_true: Tensor.
-              First half of the values is 1 if individual survived that interval, 0 if not.
-              Second half of the values is for individuals who failed, and is 1 for time interval during which failure occured, 0 for other intervals.
-              See make_surv_array function.
+              First half of the values are 1 if individual survived that interval, 0 if not.
+              Second half of the values are for individuals who failed, and are 1 for time interval during which failure occurred, 0 for other intervals.
+              For example given n_intervals = 3 a sample with prevalent disease will have y_true [0, 0, 0, 1, 0, 0]
+              a sample with incident disease occurring int the last time bin will have y_true [1, 1, 0, 0, 0, 1]
+              a sample who is lost to follow up (censored) in middle time bin will have y_true [1, 0, 0, 0, 0, 0]
             y_pred: Tensor, predicted survival probability (1-hazard probability) for each time interval.
         Returns
             Vector of losses for this minibatch.
         """
         all_individuals = 1. + y_true[:, 0:n_intervals] * (y_pred[:, 0:n_intervals] - 1.)  # component for all individuals
-        uncensored = 1. - y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals]  # component for only uncensored individuals
+        uncensored = 1. - y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals]  # component for only individuals who failed
         return K.sum(-K.log(K.clip(K.concatenate((all_individuals, uncensored)), K.epsilon(), None)), axis=-1)  # return -log likelihood
 
     return loss

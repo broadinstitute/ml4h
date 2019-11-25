@@ -65,9 +65,9 @@ def _survival_tensor(start_date_key, day_window):
             has_disease = int(hd5['categorical'][tm.name][0])
 
         if tm.name + '_date' in hd5['dates']:
-            disease_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+            censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
         elif 'phenotype_censor' in hd5['dates']:
-            disease_date = str2date(str(hd5['dates/phenotype_censor']))
+            censor_date = str2date(str(hd5['dates/phenotype_censor']))
         else:
             raise ValueError(f'No date found for survival {tm.name}')
 
@@ -76,9 +76,9 @@ def _survival_tensor(start_date_key, day_window):
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
-            survival_then_censor[i] = float(cur_date < disease_date)
-            survival_then_censor[intervals+i] = has_disease * float(disease_date <= cur_date < disease_date + datetime.timedelta(days=days_per_interval))
-            if i == 0 and disease_date <= cur_date:
+            survival_then_censor[i] = float(cur_date < censor_date)
+            survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+            if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
                 survival_then_censor[intervals] = has_disease
         return survival_then_censor
 
