@@ -65,7 +65,7 @@ def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, s
         if isinstance(source_hd5[group_path][k], h5py.Dataset):
             if not(any(name in k for name in ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'T1_fast_T1_brain_seg', 'T1_brain_mask']) or k == 'T2_FLAIR' or k == 'T1'):
                 continue
-                
+
             stats[group_path + k] += 1
             if source_hd5[group_path][k].chunks is None:
                 destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
