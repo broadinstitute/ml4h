@@ -424,7 +424,7 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', group='categorical',
 TMAPS['sax_all_diastole_segmented'] = TensorMap('sax_all_diastole_segmented', (256, 256, 12, 3), loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['sax_all_diastole_segmented_13'] = TensorMap('sax_all_diastole_segmented', (256, 256, 13, 3), loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap('sax_all_diastole_segmented', (256, 256, 12, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
-TMAPS['sax_all_diastole_segmented_weighted_13'] = TensorMap('sax_all_diastole_segmented', (256, 256, 13, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
+TMAPS['sax_all_diastole_segmented_weighted_13'] = TensorMap('sax_all_diastole_segmented', (256, 256, 13, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented_13'))
 
 TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', (256, 256, 12, 1), dependent_map=TMAPS['sax_all_diastole_segmented'])
 TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', (256, 256, 12, 1), dependent_map=TMAPS['sax_all_diastole_segmented_weighted'])
