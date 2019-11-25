@@ -4,7 +4,6 @@
 import os
 import math
 import h5py
-import time
 import glob
 import logging
 import hashlib
@@ -34,7 +33,7 @@ from biosppy.signals import ecg
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import concordance_index
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -341,7 +340,7 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
     cur_healthy = 0
     min_sick = num_curves * 0.1
     for i in range(truth.shape[0]):
-        p = os.path.basename(paths[i]).replace(".hd5", "")
+        p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
         last_prob = predicted_survivals[i, -1]
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
@@ -353,7 +352,6 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
                 break
         elif cur_healthy < num_curves:
             plt.plot(x_days, predicted_survivals[i], label=f'id:{p} p:{last_prob:0.2f}', color='green')
-
             cur_healthy += 1
     plt.title(title + '\n')
     plt.legend(loc="upper right")

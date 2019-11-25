@@ -9,18 +9,19 @@ from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
+from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
-from ml4cvd.defines import TENSOR_EXT, MRI_SEGMENTED_CHANNEL_MAP
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
+from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
+from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_tsne
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, plot_heatmap_from_tensor_files, plot_while_learning
-from ml4cvd.explorations import plot_histograms_from_tensor_files_in_pdf, find_tensors, tabulate_correlations_from_tensor_files, test_labels_to_label_dictionary
 
 
 def run(args):
@@ -42,6 +43,8 @@ def run(args):
             infer_multimodal_multitask(args)
         elif 'infer_hidden' == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
+        elif 'infer_pixels' == args.mode:
+            infer_with_pixels(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
@@ -55,11 +58,11 @@ def run(args):
         elif 'plot_ecg_dates' == args.mode:
             ecg_dates(args.tensors, args.output_folder, args.id)
         elif 'plot_histograms' == args.mode:
-            plot_histograms_from_tensor_files_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
+            plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'plot_heatmap' == args.mode:
-            plot_heatmap_from_tensor_files(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+            plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'tabulate_correlations' == args.mode:
-            tabulate_correlations_from_tensor_files(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+            tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
         elif 'train_char' == args.mode:
@@ -68,8 +71,6 @@ def run(args):
             train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
-        elif 'find_tensors' == args.mode:
-            find_tensors(os.path.join(args.output_folder, args.id, 'found_'+args.id+'.txt'), args.tensors, args.tensor_maps_out)
         elif 'sort_csv' == args.mode:
             sort_csv(args.app_csv, args.app_csv)
         elif 'append_continuous_csv' == args.mode:
@@ -157,11 +158,6 @@ def infer_multimodal_multitask(args):
                     channel_columns.append(ot + '_' + k + '_prediction')
                     channel_columns.append(ot + '_' + k + '_actual')
                 header.extend(channel_columns)
-            elif otm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
-                pix_tm = args.tensor_maps_in[1]  # TOTAL HACK
-                header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual'])
-                if otm.name == 'sax_all_diastole_segmented':
-                    header.append('total_b_slices')
         inference_writer.writerow(header)
 
         while True:
@@ -186,17 +182,6 @@ def infer_multimodal_multitask(args):
                     for k in tm.channel_map:
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
-                elif tm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
-                    csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
-                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
-                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
-                    csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
-                    if tm.name == 'sax_all_diastole_segmented':
-                        background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
-                        csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
@@ -554,7 +539,7 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
         embeddings = embed_model_predict(model, tensor_maps_in, hidden_layer_name, test_data, batch_size)
 
     gene_labels = []
-    label_dict, categorical_labels, continuous_labels = test_labels_to_label_dictionary(test_labels, len(test_paths))
+    label_dict, categorical_labels, continuous_labels = test_labels_to_label_map(test_labels, len(test_paths))
     if len(categorical_labels) > 0 or len(continuous_labels) > 0 or len(gene_labels) > 0:
         plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
 
