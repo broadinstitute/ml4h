@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
-    parser.add_argument('--model_freeze', help='Like the model_layers argument, except all loaded layers will also be frozen.')
+    parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
 
     # Data selection parameters
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
