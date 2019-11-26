@@ -693,6 +693,20 @@ TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), ten
                                         dependent_map=TMAPS['mri_slice_blackout_segmented_weighted'])
 
 
+def _slice_tensor(tensor_key, slice_index):
+    def _slice_tensor_from_file(tm, hd5, dependents={}):
+        cur_slice = np.random.choice(list(hd5[MRI_TO_SEGMENT].keys()))
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[..., 0] = np.array(hd5[MRI_TO_SEGMENT][slice_index], dtype=np.float32)
+        return tm.normalize_and_validate(tensor)
+    return _slice_tensor_from_file
+
+
+TMAPS['lax_4ch_diastole_slice'] = TensorMap('lax_4ch_diastole_slice', (256, 256, 1), group='root_array', loss='logcosh',
+                                            tensor_from_file=_slice_tensor('cine_segmented_lax_4ch', 0),
+                                            normalization={'zero_mean_std1': True})
+
+
 def _make_fallback_tensor_from_file(tensor_keys):
     def fallback_tensor_from_file(tm, hd5, dependents={}):
         for k in tensor_keys:
