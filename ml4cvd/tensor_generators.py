@@ -42,14 +42,14 @@ class _ShufflePaths(Iterator):
 
     def __init__(self, paths: List[Path]):
         self.paths = paths
-        self.idx = 0
         self.paths.sort()
+        self.idx = 0
 
     def __next__(self):
+        self.idx += 1
         if self.idx >= len(self.paths):
             self.idx = 0
             np.random.shuffle(self.paths)
-        self.idx += 1
         return self.paths[self.idx - 1]
 
 
