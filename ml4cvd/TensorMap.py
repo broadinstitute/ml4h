@@ -71,7 +71,7 @@ CONTINUOUS_WITH_CATEGORICAL_ANSWERS = ['92_Operation-yearage-first-occurred_0_0'
 
 MRI_ANNOTATION_GOOD_NEEDED = ['corrected_extracted_lvesv', 'corrected_extracted_lvedv', 'corrected_extracted_lvef', 'sax_inlinevf_zoom_mask',
                               'cine_segmented_sax_inlinevf_segmented', 'mri_systole_diastole_8_segmented', 'mri_systole_diastole_segmented',
-                              'mri_slice_segmented', 'sax_all_diastole_segmented']
+                              'mri_slice_segmented', 'sax_all_diastole_segmented', 'sax_all_diastole_13_segmented']
 
 MERGED_MAPS = ['mothers_age_0', 'fathers_age_0',]
 NOT_MISSING = 'not-missing'
