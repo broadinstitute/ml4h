@@ -7,7 +7,7 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:720b851"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="nvidia-docker"
@@ -74,7 +74,7 @@ shift $((OPTIND - 1))
 
 if ! docker pull ${DOCKER_IMAGE}; then
     echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-    exit 1;
+#    exit 1;
 fi
 
 # Get your external IP directly from a DNS provider
@@ -100,7 +100,7 @@ ${DOCKER_COMMAND} run -it \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
 -p 0.0.0.0:${PORT}:${PORT} \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
+${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
 
 
 # Automatically back up any local notebooks and artifacts non-recursively (no subfolders)

@@ -37,6 +37,7 @@ from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morpholog
 from ml4cvd.plots import plot_value_counter, plot_histograms
 from ml4cvd.defines import DataSetType, dataset_name_from_meaning
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
+from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 
@@ -48,14 +49,10 @@ MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
-MRI_PIXEL_WIDTH = 'mri_pixel_width'
-MRI_PIXEL_HEIGHT = 'mri_pixel_height'
-MRI_SLICE_THICKNESS = 'mri_slice_thickness'
-MRI_PATIENT_POSITION = 'mri_patient_position'
-MRI_PATIENT_ORIENTATION = 'mri_patient_orientation'
 MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                        'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                        'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf']
+MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
@@ -576,6 +573,9 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         _save_slice_thickness_if_missing(slicer, series, hd5)
         _save_series_orientation_and_position_if_missing(slicer, series, hd5)
+        _save_pixel_dimensions_if_missing(slicer, MRI_SEGMENTED, hd5)
+        _save_slice_thickness_if_missing(slicer, MRI_SEGMENTED, hd5)
+        _save_series_orientation_and_position_if_missing(slicer, MRI_SEGMENTED, hd5)
         if _has_overlay(slicer):
             if _is_mitral_valve_segmentation(slicer):
                 stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
@@ -659,21 +659,21 @@ def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: i
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
-    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
-    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
 
 def _save_slice_thickness_if_missing(slicer, series, hd5):
-    if MRI_SLICE_THICKNESS + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_SLICE_THICKNESS + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_SLICE_THICKNESS + '_' + series, data=float(slicer.SliceThickness))
                            
 
 def _save_series_orientation_and_position_if_missing(slicer, series, hd5):
-    if MRI_PATIENT_ORIENTATION + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PATIENT_ORIENTATION + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PATIENT_ORIENTATION + '_' + series, data=[float(x) for x in slicer.ImageOrientationPatient])
-    if MRI_PATIENT_POSITION + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PATIENT_POSITION + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_PATIENT_POSITION + '_' + series, data=[float(x) for x in slicer.ImagePositionPatient])
 
 
