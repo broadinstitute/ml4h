@@ -43,6 +43,7 @@ class _ShufflePaths(Iterator):
     def __init__(self, paths: List[Path]):
         self.paths = paths
         self.idx = 0
+        self.paths.sort()
 
     def __next__(self):
         if self.idx >= len(self.paths):

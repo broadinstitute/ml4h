@@ -162,7 +162,7 @@ def survival_likelihood_loss(n_intervals):
               First half of the values are 1 if individual survived that interval, 0 if not.
               Second half of the values are for individuals who failed, and are 1 for time interval during which failure occurred, 0 for other intervals.
               For example given n_intervals = 3 a sample with prevalent disease will have y_true [0, 0, 0, 1, 0, 0]
-              a sample with incident disease occurring int the last time bin will have y_true [1, 1, 0, 0, 0, 1]
+              a sample with incident disease occurring in the last time bin will have y_true [1, 1, 0, 0, 0, 1]
               a sample who is lost to follow up (censored) in middle time bin will have y_true [1, 0, 0, 0, 0, 0]
             y_pred: Tensor, predicted survival probability (1-hazard probability) for each time interval.
         Returns

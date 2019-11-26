@@ -420,6 +420,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
                     last_conv = concatenate([last_conv, early_conv])
                 else:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
+
             conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
