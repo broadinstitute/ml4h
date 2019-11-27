@@ -593,11 +593,11 @@ def _mri_hd5_to_4d_np_array(hd5, name):
 
 def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     arr = _mri_hd5_to_4d_np_array(hd5, name)
-    position = hd5['_'.join([MRI_PATIENT_POSITION, name])][()]
-    orientation = hd5['_'.join([MRI_PATIENT_ORIENTATION, name])][()]
     width = hd5['_'.join([MRI_PIXEL_WIDTH, name])][()]
     height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])][()]
-    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])][()]
+    position = hd5['_'.join([MRI_PATIENT_POSITION, name])][()]    
+    orientation = hd5['_'.join([MRI_PATIENT_ORIENTATION, name])][()]
+    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])][()]        
     nslices = arr.shape[3]
     x_coors = np.arange(arr.shape[0])
     y_coors = np.arange(arr.shape[1])
@@ -613,7 +613,7 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     transform.SetMatrix([orientation[3]*height, orientation[0]*width, n_orientation[0]*thickness, position[0],
                          orientation[4]*height, orientation[1]*width, n_orientation[1]*thickness, position[1],
                          orientation[5]*height, orientation[2]*width, n_orientation[2]*thickness, position[2],
-                         0, 0, 0, 1])    
+                         0, 0, 0, 1])
     grids = []
     for t in range(MRI_FRAMES):
         arr_vtk = ns.numpy_to_vtk(arr[:, :, t, :].ravel(order='F'), deep=True)
