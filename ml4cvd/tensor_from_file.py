@@ -653,10 +653,12 @@ def _make_mri_projected_segmentation_from_file(population_normalize=None):
             raise ValueError('Number of segmented grids should be same as number of grids to segment')
         tensor = np.zeros(tm.shape, dtype=np.int)
         for t, (cine_sax, cine_lax) in enumerate(zip(cine_sax_segmented_grids, cine_lax_to_segment_grids)):
+            # Threshold to remove background from segmentation
             thresh = vtk.vtkThreshold()
             thresh.SetInputData(cine_sax)
             thresh.ThresholdByUpper(EPS)
             thresh.Update()
+            # Project segmentation on cine_lax by sampling from VTK implicit function
             implicit_fun = vtk.vtkImplicitDataSet()
             implicit_fun.SetDataSet(thresh.GetOutput())
             implicit_fun.SetOutValue(0.0)
