@@ -570,16 +570,18 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     for slicer in slices:
         sx = min(slicer.Rows, x)
         sy = min(slicer.Columns, y)
-        _save_pixel_dimensions_if_missing(slicer, series, hd5)
-        _save_slice_thickness_if_missing(slicer, series, hd5)
-        _save_series_orientation_and_position_if_missing(slicer, series, hd5)
-        _save_pixel_dimensions_if_missing(slicer, MRI_SEGMENTED, hd5)
-        _save_slice_thickness_if_missing(slicer, MRI_SEGMENTED, hd5)
-        _save_series_orientation_and_position_if_missing(slicer, MRI_SEGMENTED, hd5)
+        
         if _has_overlay(slicer):
             if _is_mitral_valve_segmentation(slicer):
                 stats[sample_str + '_skipped_mitral_valve_segmentations'] += 1
                 continue
+
+            _save_pixel_dimensions_if_missing(slicer, series, hd5)
+            _save_slice_thickness_if_missing(slicer, series, hd5)
+            _save_series_orientation_and_position_if_missing(slicer, series, hd5)
+            _save_pixel_dimensions_if_missing(slicer, MRI_SEGMENTED, hd5)
+            _save_slice_thickness_if_missing(slicer, MRI_SEGMENTED, hd5)
+            _save_series_orientation_and_position_if_missing(slicer, MRI_SEGMENTED, hd5)
 
             overlay, mask, ventricle_pixels = _get_overlay_from_dicom(slicer)
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
@@ -686,7 +688,7 @@ def _has_overlay(d) -> bool:
 
 
 def _is_mitral_valve_segmentation(d) -> bool:
-    return d.ImagePositionPatient[0] < 0
+    return d.SliceThickness == 6
 
 
 def _slice_index_from_ideal_protocol(d, min_ideal_series):

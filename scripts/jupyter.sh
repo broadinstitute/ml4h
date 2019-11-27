@@ -74,7 +74,7 @@ shift $((OPTIND - 1))
 
 if ! docker pull ${DOCKER_IMAGE}; then
     echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-#    exit 1;
+    exit 1;
 fi
 
 # Get your external IP directly from a DNS provider
