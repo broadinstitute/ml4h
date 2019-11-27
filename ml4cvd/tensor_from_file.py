@@ -593,7 +593,6 @@ def _mri_hd5_to_4d_np_array(hd5, name):
 
 def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     arr = _mri_hd5_to_4d_np_array(hd5, name)
-    grids = []
     position = hd5['_'.join([MRI_PATIENT_POSITION, name])][()]
     orientation = hd5['_'.join([MRI_PATIENT_ORIENTATION, name])][()]
     width = hd5['_'.join([MRI_PIXEL_WIDTH, name])][()]
@@ -614,10 +613,11 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     transform.SetMatrix([orientation[3]*height, orientation[0]*width, n_orientation[0]*thickness, position[0],
                          orientation[4]*height, orientation[1]*width, n_orientation[1]*thickness, position[1],
                          orientation[5]*height, orientation[2]*width, n_orientation[2]*thickness, position[2],
-                         0, 0, 0, 1])
+                         0, 0, 0, 1])    
+    grids = []
     for t in range(MRI_FRAMES):
         arr_vtk = ns.numpy_to_vtk(arr[:, :, t, :].ravel(order='F'), deep=True)
-        arr_vtk.SetName('mri_scalar')
+        arr_vtk.SetName(name)
         grids.append(vtk.vtkStructuredGrid())        
         grids[-1].SetPoints(vtk_pts)
         grids[-1].SetDimensions(arr.shape[0], arr.shape[1], nslices)
@@ -633,8 +633,7 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
             writer = vtk.vtkXMLStructuredGridWriter()
             writer.SetFileName(os.path.join(save_path, f'grid_{name}_{t}.vts'))
             writer.SetInputData(grids[-1])
-            writer.Update()
-        
+            writer.Update()        
     return grids                            
         
 
@@ -642,34 +641,34 @@ def _make_mri_projected_segmentation_from_file(population_normalize=None):
     def mri_projected_segmentation(tm, hd5):
         if len(tm.shape) < 3:
             raise ValueError('Segmentation can be projected only on full heartbeat cycles')
-        cine_sax_segmented_grids = _mri_hd5_to_structured_grids(hd5, 'cine_sax_segmented_inlinevf_segmented')
-        cine_lax_to_segment_grids = _mri_hd5_to_structured_grids(hd5, ''.join(tm_name.split('_')[:-1]))
-        if len(cine_sax_segmented_grids) != len(lax_to_segment_grids):
-            raise ValueError('Number of segmented grids should be same as number of grids to segment')
-        for cine_sax, cine_lax in zip(cine_sax_segmented_grids, cine_lax_to_segment_grids):
-            implicit_fun = vtk.vtkImplicitDataSet()
-            implicit_fun.SetData(cine_lax)
-            cutter = vtk.vtkCutter()
-            cutter.SetCutFunction(implicit_fun)
-            cutter.SetInputConnection(cine_sax)
-            cutter.Update()
-            print(cutter.GetOutput())
-            
-        
-def mri_projected_segmentation(tm_name, hd5):
-        #if len(tm.shape) < 3:
-        #    raise ValueError('Segmentation can be projected only on full heartbeat cycles')
-        cine_sax_segmented_grids = _mri_hd5_to_structured_grids(hd5, MRI_SEGMENTED)
-        cine_lax_to_segment_grids = _mri_hd5_to_structured_grids(hd5, '_'.join(tm_name.split('_')[:-1]))
+        cine_sax_segmented_grids = _mri_hd5_to_structured_grids(hd5, 'cine_segmented_sax_inlinevf_segmented')
+        cine_lax_to_segment_grids = _mri_hd5_to_structured_grids(hd5, '_'.join(tm.name.split('_')[:-1]))
         if len(cine_sax_segmented_grids) != len(cine_lax_to_segment_grids):
             raise ValueError('Number of segmented grids should be same as number of grids to segment')
-        for cine_sax, cine_lax in zip(cine_sax_segmented_grids, cine_lax_to_segment_grids):
+        tensor = np.zeros(tm.shape, dtype=np.int)
+        for t, (cine_sax, cine_lax) in enumerate(zip(cine_sax_segmented_grids, cine_lax_to_segment_grids)):
+            thresh = vtk.vtkThreshold()
+            thresh.SetInputData(cine_sax)
+            thresh.ThresholdByUpper(EPS)
+            thresh.Update()
             implicit_fun = vtk.vtkImplicitDataSet()
-            implicit_fun.SetDataSet(cine_lax)
-            cutter = vtk.vtkCutter()
-            cutter.SetCutFunction(implicit_fun)
-            cutter.SetInputData(cine_sax)
-            cutter.Update()
-            return implicit_fun
-            print(cutter.GetOutput())
+            implicit_fun.SetDataSet(thresh.GetOutput())
+            implicit_fun.SetOutValue(0.0)
+            implicit_sampler = vtk.vtkSampleImplicitFunctionFilter()
+            implicit_sampler.SetInputData(cine_lax)
+            implicit_sampler.SetImplicitFunction(implicit_fun)
+            implicit_sampler.ComputeGradientsOff()
+            implicit_sampler.SetScalarArrayName(tm.name)
+            implicit_sampler.Update()
+            proj_segmentation = implicit_sampler.GetOutput().GetPointData().GetArray(tm.name)
+            tensor[:, :, t] = ns.vtk_to_numpy(proj_segmentation).reshape(tm.shape[0], tm.shape[1])
+        return tensor
+    return mri_projected_segmentation
 
+
+TMAPS['cine_segmented_lax_2ch_segmented'] = TensorMap('cine_segmented_lax_2ch_segmented', (256, 256, 50), 
+                                                      loss='logcosh', tensor_from_file=_make_mri_projected_segmentation_from_file())
+TMAPS['cine_segmented_lax_3ch_segmented'] = TensorMap('cine_segmented_lax_3ch_segmented', (256, 256, 50), 
+                                                      loss='logcosh', tensor_from_file=_make_mri_projected_segmentation_from_file())
+TMAPS['cine_segmented_lax_4ch_segmented'] = TensorMap('cine_segmented_lax_4ch_segmented', (256, 256, 50), 
+                                                      loss='logcosh', tensor_from_file=_make_mri_projected_segmentation_from_file())
