@@ -548,7 +548,7 @@ TMAPS['mri_patient_orientation_cine_segmented_lax_3ch'] = TensorMap('mri_patient
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_orientation_cine_segmented_lax_4ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_4ch', (6,), group='',
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_orientation_cine_segmented_slax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', (6,), group='',
+TMAPS['mri_patient_orientation_cine_segmented_sax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', (6,), group='',
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_orientation_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_orientation_cine_segmented_sax_inlinevf', (6,), group='',
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
@@ -558,13 +558,16 @@ TMAPS['mri_patient_position_cine_segmented_lax_3ch'] = TensorMap('mri_patient_po
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_lax_4ch'] = TensorMap('mri_patient_position_cine_segmented_lax_4ch', (3,), group='',
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_position_cine_segmented_slax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', (3,), group='',
+TMAPS['mri_patient_position_cine_segmented_sax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', (3,), group='',
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_position_cine_segmented_sax_inlinevf', (3,), group='',
                                                                     loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 
 
 def _mri_hd5_to_4d_np_array(hd5, name):
+    """
+    Returns MRI tensors from HD5 as 4-D numpy arrays
+    """
     if isinstance(hd5[name], h5py.Group):
         nslices = len(hd5[name]) // MRI_FRAMES
         for img in hd5[name]:
@@ -592,6 +595,9 @@ def _mri_hd5_to_4d_np_array(hd5, name):
 
 
 def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
+    """
+    Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
+    """
     arr = _mri_hd5_to_4d_np_array(hd5, name)
     width = hd5['_'.join([MRI_PIXEL_WIDTH, name])][()]
     height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])][()]
