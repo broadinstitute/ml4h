@@ -611,29 +611,30 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     vtk_pts.SetData(ns.numpy_to_vtk(xyz_pts))
     n_orientation = np.cross(orientation[[3, 4, 5]], orientation[[0, 1, 2]])
     transform = vtk.vtkTransform()
-    print(orientation)
     transform.SetMatrix([orientation[3]*height, orientation[0]*width, n_orientation[0]*thickness, position[0],
                          orientation[4]*height, orientation[1]*width, n_orientation[1]*thickness, position[1],
                          orientation[5]*height, orientation[2]*width, n_orientation[2]*thickness, position[2],
                          0, 0, 0, 1])
-    transform_filter = vtk.vtkTransformFilter()
-    transform_filter.SetTransform(transform)
     for t in range(MRI_FRAMES):
         arr_vtk = ns.numpy_to_vtk(arr[:, :, t, :].ravel(order='F'), deep=True)
+        arr_vtk.SetName('mri_scalar')
         grids.append(vtk.vtkStructuredGrid())        
         grids[-1].SetPoints(vtk_pts)
         grids[-1].SetDimensions(arr.shape[0], arr.shape[1], nslices)
         grids[-1].SetExtent(0, arr.shape[0]-1, 0, arr.shape[1]-1, 0, nslices-1)
+        grids[-1].GetPointData().AddArray(arr_vtk)
         grids[-1].GetPointData().SetScalars(arr_vtk)
+        transform_filter = vtk.vtkTransformFilter()
         transform_filter.SetInputData(grids[-1])
-        transform_filter.SetTransform(transfor)
+        transform_filter.SetTransform(transform)
         transform_filter.Update()
         grids[-1].DeepCopy(transform_filter.GetOutput())
         if save_path:
             writer = vtk.vtkXMLStructuredGridWriter()
             writer.SetFileName(os.path.join(save_path, f'grid_{name}_{t}.vts'))
-            writer.SetInputConnection(transform_filter.GetOutputPort())
+            writer.SetInputData(grids[-1])
             writer.Update()
+        
     return grids                            
         
 
@@ -669,5 +670,6 @@ def mri_projected_segmentation(tm_name, hd5):
             cutter.SetCutFunction(implicit_fun)
             cutter.SetInputData(cine_sax)
             cutter.Update()
+            return implicit_fun
             print(cutter.GetOutput())
 
