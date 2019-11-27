@@ -90,6 +90,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and len(tm.shape) == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
         idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
@@ -97,6 +98,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical_any() and len(tm.shape) == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
         idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
@@ -104,6 +106,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
