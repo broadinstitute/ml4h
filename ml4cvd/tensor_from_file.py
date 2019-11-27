@@ -616,6 +616,7 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     vtk_pts.SetData(ns.numpy_to_vtk(xyz_pts))
     n_orientation = np.cross(orientation[[3, 4, 5]], orientation[[0, 1, 2]])
     transform = vtk.vtkTransform()
+    # 4x4 transform matrix to align to the patient reference system
     transform.SetMatrix([orientation[3]*height, orientation[0]*width, n_orientation[0]*thickness, position[0],
                          orientation[4]*height, orientation[1]*width, n_orientation[1]*thickness, position[1],
                          orientation[5]*height, orientation[2]*width, n_orientation[2]*thickness, position[2],
