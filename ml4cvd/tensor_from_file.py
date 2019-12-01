@@ -525,7 +525,7 @@ TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), ten
 
 
 def _make_mri_series_orientation_and_position_from_file(population_normalize=None):
-    def _mri_series_orientation_and_position(tm, hd5):
+    def mri_series_orientation_and_position(tm, hd5):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if ''.join(tm.name.split('_')[:3]) == 'mri_patient_orientation':
             if tm.shape[0] != 6:
@@ -539,7 +539,7 @@ def _make_mri_series_orientation_and_position_from_file(population_normalize=Non
         if population_normalize is not None:
             tensor /= population_normalize
         return tensor
-    return _mri_series_orientation_and_position
+    return mri_series_orientation_and_position
 
 
 TMAPS['mri_patient_orientation_cine_segmented_lax_2ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_2ch', (6,), group='',
