@@ -535,7 +535,7 @@ def _make_mri_series_orientation_and_position_from_file(population_normalize=Non
                 raise ValueError('Position must be defined as coordinates in R3')                   
         if tm.name not in hd5:
             raise ValueError('Orientation and position are not present in the tensors for this MRI series')
-        tensor[:] = hd5[tm.name]
+        tensor[:] = hd5[tm.name][()]
         if population_normalize is not None:
             tensor /= population_normalize
         return tensor
