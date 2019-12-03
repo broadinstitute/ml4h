@@ -130,7 +130,7 @@ class TensorGenerator:
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
-            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+            return self.q.get(block=True)
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -309,7 +309,7 @@ class _MultiModalMultiTaskWorker:
             self._handle_tensor_path(path)
             if self.stats['batch_index'] == self.batch_size:
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
-                self.q.put(out)
+                self.q.put(out, block=True)
                 self.stats['batch_index'] = 0
                 self.paths_in_batch = []
             if i > 0 and i % self.true_epoch_len == 0:
