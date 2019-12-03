@@ -621,7 +621,7 @@ TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), gr
 TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL,
                             tensor_from_file=_mask_from_file, channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
 TMAPS['t1_seg_30_slices'] = TensorMap('T1_fast_T1_brain_seg_30_slices', shape=(192, 256, 30, 4), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL,
-                                      tensor_from_file=_mask_subset_tensor('T1_fast_T1_brain_seg', 66, 126, 2, pad_shape=(192, 256, 256)),
+                                      tensor_from_file=_mask_subset_tensor('T1_fast_T1_brain_seg', 66, 126, 2, pad_shape=(192, 256, 256, 1)),
                                       channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
 TMAPS['lesions'] = TensorMap('lesions_final_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=DataSetType.CATEGORICAL,
                              tensor_from_file=_mask_from_file, channel_map={'not_lesion': 0, 'lesion': 1}, loss=weighted_crossentropy([0.01, 10.0], 'lesion'))
