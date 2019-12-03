@@ -255,7 +255,7 @@ class _MultiModalMultiTaskWorker:
         tensor = tm.tensor_from_file(tm, self.hd5, self.dependents)
         batch[name][idx] = tensor.copy()
         if tm.cacheable:
-            self.cache[path, name] = tensor
+            self.cache[path, name] = batch[name][idx]
         return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
