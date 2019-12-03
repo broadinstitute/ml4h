@@ -253,9 +253,9 @@ class _MultiModalMultiTaskWorker:
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.tensor_from_file(tm, self.hd5, self.dependents)
-        batch[name][idx] = tensor.copy()
+        batch[name][idx] = tensor
         if tm.cacheable:
-            self.cache[path, name] = batch[name][idx]
+            self.cache[path, name] = tensor
         return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
@@ -282,6 +282,7 @@ class _MultiModalMultiTaskWorker:
         finally:
             if hd5 is not None:
                 hd5.close()
+            logging.debug(f'Worker {self.name} Paths in batch {len(self.paths_in_batch)} and batch index: {self.stats["batch_index"]}')
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
@@ -308,7 +309,9 @@ class _MultiModalMultiTaskWorker:
         for i, path in enumerate(self.path_iter):
             self._handle_tensor_path(path)
             if self.stats['batch_index'] == self.batch_size:
+
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
+                logging.debug(f'Worker {self.name} out shape {out[1]["output_ecg_rest_age_continuous"].shape} out unique: {np.unique(out[1]["output_ecg_rest_age_continuous"]).shape}')
                 self.q.put(out, block=True)
                 self.stats['batch_index'] = 0
                 self.paths_in_batch = []
