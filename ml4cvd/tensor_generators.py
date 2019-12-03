@@ -270,7 +270,7 @@ class _MultiModalMultiTaskWorker:
                 hd5 = self._handle_tm(tm, True, path)
             for tm in self.output_maps:
                 hd5 = self._handle_tm(tm, False, path)
-            self.paths_in_batch.append(path)
+            self.paths_in_batch.append(path + '_' + self.name)
             self.stats['Tensors presented'] += 1
             self.stats['batch_index'] += 1
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
