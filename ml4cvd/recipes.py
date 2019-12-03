@@ -140,7 +140,6 @@ def compare_multimodal_scalar_task_models(args):
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
-    args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
