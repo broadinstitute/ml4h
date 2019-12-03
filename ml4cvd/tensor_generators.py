@@ -315,6 +315,8 @@ class _MultiModalMultiTaskWorker:
                 self.q.put(out, block=True)
                 self.stats['batch_index'] = 0
                 self.paths_in_batch = []
+                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
+                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.output_maps}
             if i > 0 and i % self.true_epoch_len == 0:
                 self._on_epoch_end()
 
