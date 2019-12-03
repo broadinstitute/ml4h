@@ -4,8 +4,8 @@ import os
 import vtk
 import h5py
 import numpy as np
+import vtk.util.numpy_support
 from keras.utils import to_categorical
-from vtk.util import numpy_support as ns
 
 from ml4cvd.TensorMap import TensorMap, no_nans
 from ml4cvd.metrics import weighted_crossentropy
@@ -526,16 +526,7 @@ TMAPS['mri_slice_blackout'] = TensorMap('mri_slice_blackout', (256, 256, 1), ten
 
 def _make_mri_series_orientation_and_position_from_file(population_normalize=None):
     def mri_series_orientation_and_position(tm, hd5):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        if ''.join(tm.name.split('_')[:3]) == 'mri_patient_orientation':
-            if tm.shape[0] != 6:
-                raise ValueError('Orientation must be defined by 6 cosine values')            
-        if ''.join(tm.name.split('_')[:3]) == 'mri_patient_position':                   
-            if tm.shape[0] != 3:
-                raise ValueError('Position must be defined as coordinates in R3')                   
-        if tm.name not in hd5:
-            raise ValueError('Orientation and position are not present in the tensors for this MRI series')
-        tensor[:] = hd5[tm.name][()]
+        tensor = np.array(hd5[tm.name], dtype=np.float32)
         if population_normalize is not None:
             tensor /= population_normalize
         return tensor
@@ -543,28 +534,28 @@ def _make_mri_series_orientation_and_position_from_file(population_normalize=Non
 
 
 TMAPS['mri_patient_orientation_cine_segmented_lax_2ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_2ch', (6,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_orientation_cine_segmented_lax_3ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_3ch', (6,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_orientation_cine_segmented_lax_4ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_4ch', (6,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_orientation_cine_segmented_sax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', (6,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_orientation_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_orientation_cine_segmented_sax_inlinevf', (6,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_lax_2ch'] = TensorMap('mri_patient_position_cine_segmented_lax_2ch', (3,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_lax_3ch'] = TensorMap('mri_patient_position_cine_segmented_lax_3ch', (3,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_lax_4ch'] = TensorMap('mri_patient_position_cine_segmented_lax_4ch', (3,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_sax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', (3,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_position_cine_segmented_sax_inlinevf', (3,), group='',
-                                                                    loss='logcosh', tensor_from_file=_make_mri_series_orientation_and_position_from_file())
+                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 
 
-def _mri_hd5_to_4d_np_array(hd5, name):
+def _mri_tensor_4d(hd5, name):
     """
     Returns MRI tensors from HD5 as 4-D numpy arrays
     """
@@ -578,7 +569,7 @@ def _mri_hd5_to_4d_np_array(hd5, name):
         t = 0
         s = 0
         for k in sorted(hd5[name], key=int):
-            arr[:, :, t, s] = hd5[name][k][()].T
+            arr[:, :, t, s] = np.array(hd5[name][k]).T
             t += 1
             if t == MRI_FRAMES:
                 s += 1
@@ -588,22 +579,22 @@ def _mri_hd5_to_4d_np_array(hd5, name):
         shape = (hd5[name].shape[0], hd5[name].shape[1], MRI_FRAMES, nslices)
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
-            arr[:, :, t, 0] = hd5[name][()][:, :, t].T
+            arr[:, :, t, 0] = np.array(hd5[name][:, :, t]).T
     else:
-        raise ValueError(f'{name} is neither a HDF5 Group nor a HD5 dataset')
+        raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
 
 
-def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
+def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
     """
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
-    arr = _mri_hd5_to_4d_np_array(hd5, name)
-    width = hd5['_'.join([MRI_PIXEL_WIDTH, name])][()]
-    height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])][()]
-    position = hd5['_'.join([MRI_PATIENT_POSITION, name])][()]    
-    orientation = hd5['_'.join([MRI_PATIENT_ORIENTATION, name])][()]
-    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])][()]        
+    arr = _mri_tensor_4d(hd5, name)
+    width = hd5['_'.join([MRI_PIXEL_WIDTH, name])]
+    height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])]
+    position = hd5['_'.join([MRI_PATIENT_POSITION, name])]
+    orientation = hd5['_'.join([MRI_PATIENT_ORIENTATION, name])]
+    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])]      
     nslices = arr.shape[3]
     x_coors = np.arange(arr.shape[0])
     y_coors = np.arange(arr.shape[1])
@@ -611,9 +602,9 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
     xyz_meshgrid = np.meshgrid(x_coors, y_coors, z_coors)
     xyz_pts = np.zeros((arr.shape[0]*arr.shape[1]*nslices, 3))
     for dim in range(3):
-        xyz_pts[:, dim] = xyz_meshgrid[dim].ravel(order='F')
+        xyz_pts[:, dim] = xyz_meshgrid[dim].ravel(order=order)
     vtk_pts = vtk.vtkPoints()
-    vtk_pts.SetData(ns.numpy_to_vtk(xyz_pts))
+    vtk_pts.SetData(vtk.util.numpy_support.numpy_to_vtk(xyz_pts))
     n_orientation = np.cross(orientation[[3, 4, 5]], orientation[[0, 1, 2]])
     transform = vtk.vtkTransform()
     # 4x4 transform matrix to align to the patient reference system
@@ -623,7 +614,7 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None):
                          0, 0, 0, 1])
     grids = []
     for t in range(MRI_FRAMES):
-        arr_vtk = ns.numpy_to_vtk(arr[:, :, t, :].ravel(order='F'), deep=True)
+        arr_vtk = vtk.util.numpy_support.numpy_to_vtk(arr[:, :, t, :].ravel(order=order), deep=True)
         arr_vtk.SetName(name)
         grids.append(vtk.vtkStructuredGrid())        
         grids[-1].SetPoints(vtk_pts)
@@ -648,7 +639,7 @@ def _make_mri_projected_segmentation_from_file(population_normalize=None):
     def mri_projected_segmentation(tm, hd5):
         if len(tm.shape) < 3:
             raise ValueError('Segmentation can be projected only on full heartbeat cycles')
-        cine_sax_segmented_grids = _mri_hd5_to_structured_grids(hd5, 'cine_segmented_sax_inlinevf_segmented')
+        cine_sax_segmented_grids = _mri_hd5_to_structured_grids(hd5, MRI_SEGMENTED)
         cine_lax_to_segment_grids = _mri_hd5_to_structured_grids(hd5, '_'.join(tm.name.split('_')[:-1]))
         if len(cine_sax_segmented_grids) != len(cine_lax_to_segment_grids):
             raise ValueError('Number of segmented grids should be same as number of grids to segment')
@@ -670,7 +661,7 @@ def _make_mri_projected_segmentation_from_file(population_normalize=None):
             implicit_sampler.SetScalarArrayName(tm.name)
             implicit_sampler.Update()
             proj_segmentation = implicit_sampler.GetOutput().GetPointData().GetArray(tm.name)
-            tensor[:, :, t] = ns.vtk_to_numpy(proj_segmentation).reshape(tm.shape[0], tm.shape[1])
+            tensor[:, :, t] = vtk.util.numpy_support.vtk_to_numpy(proj_segmentation).reshape(tm.shape[0], tm.shape[1])
         return tensor
     return mri_projected_segmentation
 
