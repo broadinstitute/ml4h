@@ -249,10 +249,10 @@ TMAPS['LVM_prediction'] = TensorMap('LVM_sentinel_prediction',  group='continuou
 
 TMAPS['lvm_dubois_index_prediction'] = TensorMap('lvm_dubois_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
                                                  validator=make_range_validator(0, 300), channel_map={'lvm_dubois_index_sentinel_prediction': 0},
-                                                 normalization={'mean': 89.7, 'std': 24.8})
+                                                 normalization={'mean': 42.0, 'std': 8.0})
 TMAPS['lvm_mosteller_index_prediction'] = TensorMap('lvm_mosteller_index_sentinel_prediction', group='continuous', activation='linear', loss='logcosh',
                                                     validator=make_range_validator(0, 300), channel_map={'lvm_mosteller_index_sentinel_prediction': 0},
-                                                    normalization={'mean': 89.7, 'std': 24.8})
+                                                    normalization={'mean': 42.0, 'std': 8.0})
 
 TMAPS['LVM_prediction_sentinel'] = TensorMap('LVM_sentinel_prediction',  group='continuous', sentinel=0, channel_map={'LVM_sentinel_prediction': 0},
                                              normalization={'mean': 89.70372484725051, 'std': 24.803669503436304})
