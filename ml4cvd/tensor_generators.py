@@ -30,7 +30,7 @@ np.set_printoptions(threshold=np.inf)
 
 
 TENSOR_GENERATOR_TIMEOUT = 64
-TENSOR_GENERATOR_MAX_Q_SIZE = 2048
+TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
 Path = str
 PathIterator = Iterator[Path]
@@ -130,7 +130,7 @@ class TensorGenerator:
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
-            return self.q.get(block=True)
+            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -270,7 +270,7 @@ class _MultiModalMultiTaskWorker:
                 hd5 = self._handle_tm(tm, True, path)
             for tm in self.output_maps:
                 hd5 = self._handle_tm(tm, False, path)
-            self.paths_in_batch.append(path + '_' + self.name)
+            self.paths_in_batch.append(path)
             self.stats['Tensors presented'] += 1
             self.stats['batch_index'] += 1
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
@@ -282,7 +282,6 @@ class _MultiModalMultiTaskWorker:
         finally:
             if hd5 is not None:
                 hd5.close()
-            logging.debug(f'Worker {self.name} Paths in batch {len(self.paths_in_batch)} and batch index: {self.stats["batch_index"]}')
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
@@ -311,10 +310,9 @@ class _MultiModalMultiTaskWorker:
             if self.stats['batch_index'] == self.batch_size:
 
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
-                logging.debug(f'Worker {self.name} out shape {out[1]["output_ecg_rest_age_continuous"].shape} out unique: {np.unique(out[1]["output_ecg_rest_age_continuous"]).shape}')
-                self.q.put(out, block=True)
-                self.stats['batch_index'] = 0
+                self.q.put(out, TENSOR_GENERATOR_TIMEOUT)
                 self.paths_in_batch = []
+                self.stats['batch_index'] = 0
                 self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
                 self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.output_maps}
             if i > 0 and i % self.true_epoch_len == 0:
