@@ -49,7 +49,10 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
         big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
         if not pad_shape is None:
             big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
-        tensor = big_tensor[..., np.arange(start, stop, step)]
+        if tm.shape[-1] == 1:
+            tensor = big_tensor[..., np.arange(start, stop, step), 0]
+        else:
+            tensor = big_tensor[..., np.arange(start, stop, step)]
         if dependent_key is not None:
             label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
             dependents[tm.dependent_map] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
@@ -588,6 +591,9 @@ TMAPS['t2_flair_brain_30_slices'] = TensorMap('t2_flair_brain_30_slices', shape=
 TMAPS['t2_flair_30_slices'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                         normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('T2_FLAIR', 66, 126, 2, pad_shape=(192, 256, 256)))
+TMAPS['t2_flair_30_slices_4d'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                           tensor_from_file=_slice_subset_tensor('T2_FLAIR', 66, 126, 2, pad_shape=(192, 256, 256, 1)),
+                                           normalization={'zero_mean_std1': True})
 TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
 
