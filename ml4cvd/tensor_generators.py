@@ -310,7 +310,7 @@ class _MultiModalMultiTaskWorker:
             if self.stats['batch_index'] == self.batch_size:
 
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
-                self.q.put(out, TENSOR_GENERATOR_TIMEOUT)
+                self.q.put(out)
                 self.paths_in_batch = []
                 self.stats['batch_index'] = 0
                 self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
