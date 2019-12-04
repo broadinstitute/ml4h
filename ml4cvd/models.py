@@ -442,17 +442,21 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
     model_layers = kwargs.get('model_layers', False)
     if model_layers:
         loaded = 0
-        freeze =  kwargs.get('freeze_model_layers', False)
-        m_other = load_model(model_layers, custom_objects=custom_dict)
-        for l in m_other.layers:
-            try:
-                target_layer = m.get_layer(l.name)
-                target_layer.set_weights(l.get_weights())
-                loaded += 1
-                if freeze:
-                    target_layer.trainable = False
-            except (ValueError, KeyError):
-                continue
+        freeze = kwargs.get('freeze_model_layers', False)
+        m.load_weights(model_layers, by_name=True)
+        try:
+            m_other = load_model(model_layers, custom_objects=custom_dict)
+            for l in m_other.layers:
+                try:
+                    target_layer = m.get_layer(l.name)
+                    target_layer.set_weights(l.get_weights())
+                    loaded += 1
+                    if freeze:
+                        target_layer.trainable = False
+                except (ValueError, KeyError):
+                    continue
+        except ValueError as e:
+            logging.info(f'Loaded model weights, but got ValueError in model loading: {str(e)}')
         logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
 
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
