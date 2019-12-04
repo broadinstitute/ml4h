@@ -79,7 +79,7 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str):
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
-            raise e
+            raise error
         try:
             return tm.normalize_and_validate(table[os.path.basename(hd5.filename).strip('.hd5')])
         except KeyError:
