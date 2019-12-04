@@ -62,16 +62,18 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
     return _slice_subset_tensor_from_file
 
 
-def _build_inference_tensor_from_file(inference_file: str, tmaps_key: str):
+def _build_inference_tensor_from_file(inference_file: str, target_column: str):
     """
-    only works for continuous values
+    Build a tensor_from_file function from a column of an inference tsv.
+    Only works for continuous values.
     """
     error = None
     try:
         with open(inference_file, 'r') as f:
             reader = csv.reader(f, delimiter='\t')
-            next(reader)  # skip the header
-            table = {row[0]: np.array([float(row[1])]) for row in reader}
+            header = next(reader)
+            index = header.index(target_column)
+            table = {row[0]: np.array([float(row[index])]) for row in reader}
     except FileNotFoundError as e:
         error = e
 
@@ -318,7 +320,7 @@ TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', metrics=['ma
                                            tensor_from_file=_sentinel_hrr, dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
-                                          tensor_from_file=_build_inference_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel'))
+                                          tensor_from_file=_build_inference_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
