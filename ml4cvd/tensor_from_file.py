@@ -58,11 +58,18 @@ def _build_inference_tensor_from_file(inference_file: str, tmaps_key: str):
     """
     only works for continuous values
     """
-    with open(inference_file, 'r') as f:
-        reader = csv.reader(f, delimiter='\t')
-        next(reader)  # skip the header
-        table = {row[0]: np.array([float(row[1])]) for row in reader}
+    error = None
+    try:
+        with open(inference_file, 'r') as f:
+            reader = csv.reader(f, delimiter='\t')
+            next(reader)  # skip the header
+            table = {row[0]: np.array([float(row[1])]) for row in reader}
+    except FileNotFoundError as e:
+        error = e
+
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise e
         try:
             return tm.normalize_and_validate(table[os.path.basename(hd5.filename).strip('.hd5')])
         except KeyError:
