@@ -1,5 +1,6 @@
 from typing import List, Dict
 
+import os
 import csv
 import h5py
 import numpy as np
@@ -57,11 +58,15 @@ def _build_inference_tensor_from_file(inference_file: str, tmaps_key: str):
     """
     only works for continuous values
     """
+    with open(inference_file, 'r') as f:
+        reader = csv.reader(f, delimiter='\t')
+        next(reader)  # skip the header
+        table = {row[0]: np.array([float(row[1])]) for row in reader}
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        with open(inference_file, 'r') as f:
-            reader = csv.reader(f)
-            row = next(filter(lambda x: x[0] == hd5.filename.remove('.hd5'), reader))
-            return tm.normalize_and_validate(np.array([float(row[1])]))
+        try:
+            return tm.normalize_and_validate(table[os.path.basename(hd5.filename).strip('.hd5')])
+        except KeyError:
+            raise ValueError('User id not in inference tsv.')
     return tensor_from_file
 
 
@@ -241,15 +246,18 @@ TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike
 TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), group='ecg_bike', validator=no_nans,
                                       normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
                                       tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
+TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), group='ecg_bike', validator=no_nans,
+                                      normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
+                                      tensor_from_file=_first_date_bike_pretest, dtype=DataSetType.FLOAT_ARRAY)
 TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                       normalization={'mean': 31, 'std': 12},
                                       tensor_from_file=_new_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
                                            normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
                                            tensor_from_file=_sentinel_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
-                                          tensor_from_file=_build_inference_tensor_from_file('inference.csv', 'ecg-bike-hrr-sentinel'))
+                                          tensor_from_file=_build_inference_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
