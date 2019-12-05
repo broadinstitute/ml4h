@@ -28,7 +28,9 @@ HD5_GROUP_CHAR = '/'
 
 MRI_FRAMES = 50
 MRI_TO_SEGMENT = 'cine_segmented_sax_inlinevf'
+MRI_LAX_TO_SEGMENT = 'cine_segmented_lax_inlinevf'
 MRI_SEGMENTED = 'cine_segmented_sax_inlinevf_segmented'
+MRI_LAX_SEGMENTED = 'cine_segmented_lax_inlinevf_segmented'
 MRI_ZOOM_INPUT = 'sax_inlinevf_zoom'
 MRI_ZOOM_MASK = 'sax_inlinevf_zoom_mask'
 MRI_DATE = 'mridate'
