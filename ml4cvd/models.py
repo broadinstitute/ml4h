@@ -135,7 +135,7 @@ def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: L
 
 
 def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                              base_model: Model, model_layers: str=None) -> Tuple[Model, Model]:
+                              base_model: Model, model_layers: str = None) -> Tuple[Model, Model]:
     """Make a ECG captioning model from an ECG embedding model
 
     The base_model must have an embedding layer, but besides that can have any number of other predicition TensorMaps.
@@ -167,7 +167,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
         else:
             output_layers.append(base_model.get_layer(tm.output_name()))
 
-    m = Model(inputs=base_model.inputs+char_model.inputs, outputs=base_model.outputs+char_model.outputs)
+    m = Model(inputs=base_model.inputs + char_model.inputs, outputs=base_model.outputs + char_model.outputs)
     m.summary()
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
@@ -240,8 +240,8 @@ def make_siamese_model(base_model: Model,
                        learning_rate: float = None,
                        optimizer: str = 'adam',
                        **kwargs) -> Model:
-    in_left = [Input(shape=tm.shape, name=tm.input_name()+'_left') for tm in tensor_maps_in]
-    in_right = [Input(shape=tm.shape, name=tm.input_name()+'_right') for tm in tensor_maps_in]
+    in_left = [Input(shape=tm.shape, name=tm.input_name() + '_left') for tm in tensor_maps_in]
+    in_right = [Input(shape=tm.shape, name=tm.input_name() + '_right') for tm in tensor_maps_in]
     encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
     h_left = encode_model(in_left)
     h_right = encode_model(in_right)
@@ -253,7 +253,7 @@ def make_siamese_model(base_model: Model,
     # Add a dense layer with a sigmoid unit to generate the similarity score
     prediction = Dense(1, activation='sigmoid', name='output_siamese')(l1_distance)
 
-    m = Model(inputs=in_left+in_right, outputs=prediction)
+    m = Model(inputs=in_left + in_right, outputs=prediction)
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
     m.compile(optimizer=opt, loss='binary_crossentropy')
 
@@ -278,34 +278,34 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     return intermediate_layer_model
 
 
-def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
-                                    tensor_maps_out: List[TensorMap]=None,
-                                    activation: str=None,
-                                    dense_layers: List[int]=None,
-                                    dropout: float=None,
-                                    mlp_concat: bool=None,
-                                    conv_layers: List[int]=None,
-                                    max_pools: List[int]=None,
-                                    res_layers: List[int]=None,
-                                    dense_blocks: List[int]=None,
-                                    block_size: List[int]=None,
-                                    conv_type: str=None,
-                                    conv_normalize: str=None,
-                                    conv_regularize: str=None,
-                                    conv_x: int=None,
-                                    conv_y: int=None,
-                                    conv_z: int=None,
-                                    conv_dropout: float=None,
-                                    conv_width: int=None,
-                                    conv_dilate: bool=None,
-                                    u_connect: bool=None,
-                                    pool_x: int=None,
-                                    pool_y: int=None,
-                                    pool_z: int=None,
-                                    pool_type: int=None,
-                                    padding: str=None,
-                                    learning_rate: float=None,
-                                    optimizer: str='adam',
+def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
+                                    tensor_maps_out: List[TensorMap] = None,
+                                    activation: str = None,
+                                    dense_layers: List[int] = None,
+                                    dropout: float = None,
+                                    mlp_concat: bool = None,
+                                    conv_layers: List[int] = None,
+                                    max_pools: List[int] = None,
+                                    res_layers: List[int] = None,
+                                    dense_blocks: List[int] = None,
+                                    block_size: List[int] = None,
+                                    conv_type: str = None,
+                                    conv_normalize: str = None,
+                                    conv_regularize: str = None,
+                                    conv_x: int = None,
+                                    conv_y: int = None,
+                                    conv_z: int = None,
+                                    conv_dropout: float = None,
+                                    conv_width: int = None,
+                                    conv_dilate: bool = None,
+                                    u_connect: bool = None,
+                                    pool_x: int = None,
+                                    pool_y: int = None,
+                                    pool_z: int = None,
+                                    pool_type: int = None,
+                                    padding: str = None,
+                                    learning_rate: float = None,
+                                    optimizer: str = 'adam',
                                     **kwargs) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
 
@@ -364,10 +364,13 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
         if len(tm.shape) > 1:
             conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
-            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
+            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
+                                        conv_dropout, None)
+            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
+                                                                   block_size)
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
+            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
+                                     conv_regularize, conv_dropout)
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -415,7 +418,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
                 early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
                 if u_connect:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
-                    last_conv = conv_layer(filters=all_filters[-(1+i)], kernel_size=kernel, padding=padding)(last_conv)
+                    last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
                     last_conv = _activation_layer(activation)(last_conv)
                     last_conv = concatenate([last_conv, early_conv])
                 else:
@@ -511,7 +514,7 @@ def train_model_from_generators(model: Model,
 
     history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
                                   validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file),)
+                                  callbacks=_get_callbacks(patience, model_file), )
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
@@ -589,7 +592,7 @@ def _dense_block(x: K.placeholder,
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
-            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i//block_size](x)
+            x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](x)
             dense_connections = [x]
         else:
             dense_connections += [x]
@@ -598,7 +601,7 @@ def _dense_block(x: K.placeholder,
 
 
 def _one_by_n_kernel(dimension):
-    return tuple([1] * (dimension-1))
+    return tuple([1] * (dimension - 1))
 
 
 def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z):
@@ -656,19 +659,19 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
 
 
 def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
-        if name is not None:
-            x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
-        else:
-            x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
-        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
-        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-        return _get_last_layer(layers)
+    if name is not None:
+        x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
+    else:
+        x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
+    x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+    x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+    return _get_last_layer(layers)
 
 
 def _upsampler(dimension, pool_x, pool_y, pool_z):
     if dimension == 4:
         return UpSampling3D(size=(pool_x, pool_y, pool_z))
-    elif dimension == 3 :
+    elif dimension == 3:
         return UpSampling2D(size=(pool_x, pool_y))
     elif dimension == 2:
         return UpSampling1D(size=pool_x)
@@ -736,42 +739,38 @@ def _get_layer_kind_sorted(named_layers, kind):
 # ~~~~~~~ Inspections ~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def _inspect_model(model: Model,
-                  generate_train: Iterable,
-                  generate_valid: Iterable,
-                  batch_size: int,
-                  training_steps: int,
-                  inspect_show_labels: bool,
-                  image_path: str) -> Model:
+                   generate_train: Iterable,
+                   generate_valid: Iterable,
+                   batch_size: int,
+                   training_steps: int,
+                   inspect_show_labels: bool,
+                   image_path: str) -> Model:
     """Collect statistics on model inference and training times.
 
-	Arguments
-	    model: the model to inspect
-		generate_train: training data generator function
-		generate_valid: Validation data generator function
-		batch_size: size of the mini-batches
-		training_steps: number of optimization steps to take
-		inspect_show_labels: if True, show layer labels on the architecture diagram
-		image_path: file path of the architecture diagram
+    Arguments:
+        model: the model to inspect
+        generate_train: training data generator function
+        generate_valid: Validation data generator function
+        batch_size: size of the mini-batches
+        training_steps: number of optimization steps to take
+        inspect_show_labels: if True, show layer labels on the architecture diagram
+        image_path: file path of the architecture diagram
 
-	Returns
-		The slightly optimized keras model
-	"""
+    Returns:
+        The slightly optimized keras model
+    """
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
-
     t0 = time.time()
     _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     train_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info('Spent:{} seconds training, batch_size:{} steps:{} Per example training speed:{}'.format(
-        (t1 - t0), batch_size, training_steps, train_speed))
-
+    logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, batch_size:{batch_size} steps:{training_steps} Per sample training speed:{train_speed:0.2f}')
     t0 = time.time()
     _ = model.predict_generator(generate_valid, steps=training_steps, verbose=1)
     t1 = time.time()
     inference_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info('Spent:{} seconds predicting. Per tensor inference speed:{}'.format((t1 - t0), inference_speed))
-
+    logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Per sample inference speed:{inference_speed:0.2f}')
     return model
 
 
@@ -824,7 +823,7 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
             n.set_label('\n')
 
     for l in legend:
-        legend_node = pydot.Node('legend'+l, label=l, shape="box", fillcolor=legend[l])
+        legend_node = pydot.Node('legend' + l, label=l, shape="box", fillcolor=legend[l])
         dot.add_node(legend_node)
 
     logging.info('Saving architecture diagram to:{}'.format(image_path))
@@ -834,8 +833,10 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
 def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
     embed_model = make_hidden_layer_model(base_model, tensor_maps_in, 'embed')
     tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', required_inputs=tensor_maps_in.copy(), model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=1.0, cacheable=False)
-    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
+    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy',
+                        loss_weight=1.0, cacheable=False)
+    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1},
+                           dependent_map=tm_char, cacheable=False)
     return [tm_embed, tm_burn_in], [tm_char]
 
 
@@ -892,5 +893,3 @@ def get_model_inputs_outputs(model_files: List[str],
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
-
-
