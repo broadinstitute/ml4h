@@ -70,11 +70,12 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 if len(data[input_map.input_name()].shape) == 3:
                     plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(data[input_map.input_name()].shape) == 4:
-                    image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                     for j in range(data[input_map.input_name()].shape[-1]):
+                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                         plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(data[input_map.input_name()].shape) == 5:
                     for j in range(data[input_map.input_name()].shape[-1]):
+                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                         plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
