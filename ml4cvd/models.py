@@ -770,7 +770,7 @@ def _inspect_model(model: Model,
     _ = model.predict_generator(generate_valid, steps=training_steps//4, verbose=1)
     t1 = time.time()
     inference_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Per sample inference speed:{inference_speed:0.2f}')
+    logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Per sample inference speed:{inference_speed:0.2f} seconds.')
     return model
 
 

@@ -63,16 +63,19 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 input_map = im
         logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
         if len(tm.shape) in [1, 2]:
+            vmin = np.min(data[input_map.input_name()])
+            vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if len(data[input_map.input_name()].shape) == 3:
-                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :])
+                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(data[input_map.input_name()].shape) == 4:
+                    image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                     for j in range(data[input_map.input_name()].shape[-1]):
-                        plt.imsave(f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j])
+                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(data[input_map.input_name()].shape) == 5:
                     for j in range(data[input_map.input_name()].shape[-1]):
-                        plt.imsave(f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j, 0])
+                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
