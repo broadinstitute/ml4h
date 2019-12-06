@@ -195,7 +195,7 @@ class TensorMap(object):
             elif len(self.shape) == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
-        elif self.metrics is None and self.is_continuous_any():
+        elif self.metrics is None and self.is_continuous_any() and len(self.shape) == 1:
             self.metrics = [pearson]
         elif self.metrics is None:
             self.metrics = []
