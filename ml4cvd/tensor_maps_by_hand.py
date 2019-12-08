@@ -430,9 +430,9 @@ TMAPS['sax_all_diastole_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1), 
 TMAPS['sax_all_diastole_weighted_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1), dependent_map=TMAPS['sax_all_diastole_segmented_weighted_13'])
 
 TMAPS['genetic_pca_0'] = TensorMap('22009_Genetic-principal-components_0_0', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-                                   loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_0': 0})
+                                   loss='logcosh', channel_map={'22009_Genetic-principal-components_0_0': 0})
 TMAPS['genetic_pca_1'] = TensorMap('22009_Genetic-principal-components_0_1', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-                                   loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0})
+                                   loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0})
 TMAPS['genetic_pca_2'] = TensorMap('22009_Genetic-principal-components_0_2', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_2': 0})
 TMAPS['genetic_pca_3'] = TensorMap('22009_Genetic-principal-components_0_3', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
