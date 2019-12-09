@@ -138,7 +138,7 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                     for yi in range(y.shape[0]):
                         plt.imsave(f"{folder}batch_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}", np.argmax(test_labels[tm.output_name()][yi], axis=-1), cmap='gray')
                         plt.imsave(f"{folder}batch_{yi}_prediction_epoch_{i:03d}{IMAGE_EXT}", np.argmax(y[yi], axis=-1), cmap='gray')
-                        plt.imsave(f"{folder}batch_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}",mri_in[yi, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                        plt.imsave(f"{folder}batch_{yi}_mri_epoch_{i:03d}{IMAGE_EXT}", mri_in[yi, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
                 elif tm.is_categorical_any() and len(tm.shape) == 4:
                     for yi in range(y.shape[0]):
                         for j in range(y.shape[3]):
@@ -151,7 +151,7 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
                             if i == 0:
                                 plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_truth_epoch_{i:03d}{IMAGE_EXT}", truth, cmap='gray')
                                 plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_t_donut_epoch_{i:03d}{IMAGE_EXT}", true_donut, cmap='gray', vmin=vmin, vmax=vmax)
-                                plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", mri_in, cmap='gray', vmin=vmin, vmax=vmax)
+                                plt.imsave(f"{folder}batch_{yi}_slice_{j:03d}_mri_epoch_{i:03d}{IMAGE_EXT}", mri_in[yi, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
                 else:
                     logging.warning(f'Not writing PNGs')
             elif write_pngs:
