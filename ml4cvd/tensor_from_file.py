@@ -611,7 +611,7 @@ def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
-    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step, pad_shape, dtype_override=DataSetType.FLOAT_ARRAY)
+    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override=DataSetType.FLOAT_ARRAY)
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         original = slice_subset_tensor_from_file(tm, hd5, dependents)
