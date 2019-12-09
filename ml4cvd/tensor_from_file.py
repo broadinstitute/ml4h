@@ -46,13 +46,19 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
 
 def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key, dtype_override=dtype_override)
-        if not pad_shape is None:
+        if dtype_override is not None:
+            big_tensor = _get_tensor_at_first_date(hd5, tm.group, dtype_override, tensor_key)
+        else:
+            big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+
+        if pad_shape is not None:
             big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
+
         if tm.shape[-1] == 1:
             tensor = big_tensor[..., np.arange(start, stop, step), :]
         else:
             tensor = big_tensor[..., np.arange(start, stop, step)]
+
         if dependent_key is not None:
             label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
             dependents[tm.dependent_map] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
@@ -123,7 +129,7 @@ def _nan_to_mean(tensor, max_allowed_nan_fraction=.2):
     return tensor
 
 
-def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan=_fail_nan, dtype_override=None):
+def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, name: str, handle_nan=_fail_nan):
     """
     Gets the numpy array at the first date of source, dtype, name.
     """
@@ -132,10 +138,7 @@ def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: DataSetType, n
         raise ValueError(f'No {name} values values available.')
     # TODO: weird to convert date from string to datetime, because it just gets converted back.
     first_date = path_date_to_datetime(min(dates))  # Date format is sortable.
-    if dtype_override is not None:
-        first_date_path = tensor_path(source=source, dtype=dtype_override, name=name, date=first_date)
-    else:
-        first_date_path = tensor_path(source=source, dtype=dtype, name=name, date=first_date)
+    first_date_path = tensor_path(source=source, dtype=dtype, name=name, date=first_date)
     tensor = np.array(hd5[first_date_path], dtype=np.float32)
     tensor = handle_nan(tensor)
     return tensor
