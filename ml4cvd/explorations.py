@@ -123,9 +123,9 @@ def plot_while_learning(model, tensor_maps_in: List[TensorMap], tensor_maps_out:
         rocs = []
         scatters = []
         predictions = model.predict(test_data, batch_size=batch_size)
+        if len(tensor_maps_out) == 1:
+            predictions = [predictions]
         for y, tm in zip(predictions, tensor_maps_out):
-            if len(tensor_maps_out) == 1:
-                predictions = [predictions]
             if not write_pngs:
                 if tm.is_categorical_any() and len(tm.shape) == 3:
                     for im in tensor_maps_in:
