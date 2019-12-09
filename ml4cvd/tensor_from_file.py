@@ -54,7 +54,7 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
         if pad_shape is not None:
             big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
 
-        if tm.shape[-1] < stop:
+        if tm.shape[-1] < (stop-start) // step:
             tensor = big_tensor[..., np.arange(start, stop, step), :]
         else:
             tensor = big_tensor[..., np.arange(start, stop, step)]
