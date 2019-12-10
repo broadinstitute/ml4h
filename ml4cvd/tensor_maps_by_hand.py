@@ -447,6 +447,8 @@ TMAPS['genetic_pca_all5'] = TensorMap('genetic_pca_all5', group='continuous', no
                                                    '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3,
                                                    '22009_Genetic-principal-components_0_4': 4})
 
+TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', group='categorical_flag', channel_map={'no_caucasian': 0, 'caucasian': 1})
+
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
                                  normalization={'mean': 75.555, 'std': 11.977}, annotation_units = 4)
