@@ -447,8 +447,9 @@ TMAPS['genetic_pca_all5'] = TensorMap('genetic_pca_all5', group='continuous', no
                                                    '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3,
                                                    '22009_Genetic-principal-components_0_4': 4})
 
-TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', group='categorical_flag', channel_map={'no_caucasian': 0, 'caucasian': 1},
-                                       loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'))
+TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', group='categorical_flag', channel_map={'no_caucasian': 0, 'caucasian': 1})
+TMAPS['genetic_caucasian_weighted'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', group='categorical_flag',
+                                                channel_map={'no_caucasian': 0, 'caucasian': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'))
 
 TMAPS['mothers_age'] = TensorMap('mothers_age_0', group='continuous',
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
