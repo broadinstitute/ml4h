@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Callable
 
 import h5py
 import numpy as np
@@ -655,10 +655,7 @@ def _make_index_tensor_from_file(index_map_name):
     def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            if k in hd5[tm.group]:
-                tensor = np.array(hd5[tm.group][k], dtype=np.float32)
-            else:
-                return tensor
+            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
         index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
         return tm.normalize_and_validate(tensor / index)
     return indexed_lvmass_tensor_from_file
@@ -702,6 +699,33 @@ TMAPS['lvm_dubois_index_sentinel'] = TensorMap('lvm_dubois_index', group='contin
 TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
                                                   tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
                                                   channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
+
+def _select_tensor_from_file(selection_predicate: Callable):
+    def excluded_tensor_from_file(tm, hd5, dependents={}):
+        if not selection_predicate(hd5):
+            raise ValueError(f'Tensor did not meet selection criteria:{selection_predicate.__name__} with Tensor Map:{tm.name}')
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for k in tm.channel_map:
+            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+        return tm.normalize_and_validate(tensor)
+    return excluded_tensor_from_file
+
+
+def _is_genetic_man(hd5):
+    return 'Genetic-sex_Male_0_0' in hd5['categorical']
+
+
+def _is_genetic_woman(hd5):
+    return 'Genetic-sex_Female_0_0' in hd5['categorical']
+
+
+TMAPS['myocardial_mass_noheritable_men_only'] = TensorMap('inferred_myocardial_mass_noheritable', group='continuous', activation='linear', loss='logcosh',
+                                                          tensor_from_file=_select_tensor_from_file(_is_genetic_man),
+                                                          channel_map={'inferred_myocardial_mass_noheritable': 0}, normalization={'mean': 100.0, 'std': 18.0})
+TMAPS['myocardial_mass_noheritable_women_only'] = TensorMap('inferred_myocardial_mass_noheritable', group='continuous', activation='linear', loss='logcosh',
+                                                            tensor_from_file=_select_tensor_from_file(_is_genetic_woman),
+                                                            channel_map={'inferred_myocardial_mass_noheritable': 0}, normalization={'mean': 78.0, 'std': 16.0})
 
 
 def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
