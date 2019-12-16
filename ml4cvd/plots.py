@@ -172,7 +172,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
     big_r_squared = coefficient_of_determination(truth, prediction)
-    logging.info(f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2{big_r_squared:0.3f}')
+    logging.info(f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}')
     plt.scatter(prediction, truth, label=f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}', marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
@@ -205,9 +205,9 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         r2 = pearson*pearson
-        R2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
+        big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color)
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{R2:0.3f}", marker='.', alpha=alpha)
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
@@ -251,8 +251,8 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
         r2 = pearson*pearson
-        R2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
-        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{R2:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
+        big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
+        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
 
         row += 1
         if row == rows:
@@ -281,9 +281,9 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
             c = _hash_string_to_color(title+k)
             pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
             r2 = pearson * pearson
-            R2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
+            big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
-            axes[row, col].scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{R2:0.3f}', marker='.', alpha=alpha)
+            axes[row, col].scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}', marker='.', alpha=alpha)
             axes[row, col].legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
@@ -311,8 +311,8 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
 
 
 def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
-    cindex, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
-    logging.info(f"C-index:{cindex} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
+    c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
+    logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
@@ -323,7 +323,7 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{cindex:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.2f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')

@@ -764,13 +764,14 @@ def _inspect_model(model: Model,
     t0 = time.time()
     _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
-    train_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, Samples seen:{batch_size*training_steps} Per sample training speed:{train_speed:0.2f} seconds.')
+    n = batch_size*training_steps
+    train_speed = (t1 - t0) / n
+    logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample training speed:{train_speed:0.3f} seconds.')
     t0 = time.time()
-    _ = model.predict_generator(generate_valid, steps=training_steps//4, verbose=1)
+    _ = model.predict_generator(generate_valid, steps=training_steps, verbose=1)
     t1 = time.time()
-    inference_speed = (t1 - t0) / (batch_size * training_steps)
-    logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Per sample inference speed:{inference_speed:0.2f} seconds.')
+    inference_speed = (t1 - t0) / n
+    logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample inference speed:{inference_speed:0.4f} seconds.')
     return model
 
 
