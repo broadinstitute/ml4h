@@ -32,8 +32,8 @@ import seaborn as sns
 from biosppy.signals import ecg
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.metrics import concordance_index
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT
+from ml4cvd.metrics import concordance_index, coefficient_of_determination
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -171,8 +171,9 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-    logging.info(f'Pearson coefficient is: {pearson}')
-    plt.scatter(prediction, truth, label=f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
+    big_r_squared = coefficient_of_determination(truth, prediction)
+    logging.info(f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2{big_r_squared:0.3f}')
+    plt.scatter(prediction, truth, label=f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2{big_r_squared:0.3f}', marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
@@ -203,8 +204,10 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     for k in predictions:
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+        r2 = pearson*pearson
+        R2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color)
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2{R2:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
@@ -247,7 +250,9 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
+        r2 = pearson*pearson
+        R2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
+        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2{R2:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
 
         row += 1
         if row == rows:
@@ -275,9 +280,10 @@ def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.n
         for k in predictions:
             c = _hash_string_to_color(title+k)
             pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-            r_sqr = pearson * pearson
+            r2 = pearson * pearson
+            R2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
-            axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
+            axes[row, col].scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{R2:0.3f}', marker='.', alpha=alpha)
             axes[row, col].legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
