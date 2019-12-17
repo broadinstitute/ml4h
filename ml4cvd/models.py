@@ -330,7 +330,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     :param res_layers: List of convolutional layers with residual connections
     :param dense_blocks: List of number of filters in densenet modules for densenet convolutional models
     :param block_size: Number of layers within each Densenet module for densenet convolutional models
-    :param conv_bn: if True, Batch normalize convolutional layers
+    :param conv_normalize: Type of normalization layer for convolutions
     :param conv_x: Size of X dimension for 2D and 3D convolutional kernels
     :param conv_y: Size of Y dimension for 2D and 3D convolutional kernels
     :param conv_z: Size of Z dimension for 3D convolutional kernels
