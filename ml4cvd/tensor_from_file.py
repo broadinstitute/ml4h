@@ -333,6 +333,9 @@ TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', group='proportional_haz
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=DataSetType.SERIES)
 TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=DataSetType.SERIES)
+TMAPS['ecg-rest-prs-qrs-r0.5-p-6'] = TensorMap('qrs_prs', group='cardiac_prs', metrics=['mae'], shape=(1,),
+                                          sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
+                                          tensor_from_file=_build_inference_tensor_from_file('QRS_PandT_results_remapped.txt', 'raw_score_r2=0.5.p=.5E-6'))
 TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=DataSetType.SERIES)
 TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
