@@ -1151,7 +1151,10 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 def _transparent_saliency_map_3d(image, gradients, blur_radius=7):
     blurred = gaussian_filter(gradients, sigma=blur_radius)
     rgba_map = np.zeros((image.shape[0], image.shape[1], image.shape[2], 4))
+    logging.info(f'IMAGEEE max{image.max()} min {image.min()}')
+    image -= image.min()
     image *= (1.0 / image.max())
+    logging.info(f'max{image.max()} min {image.min()}')
     rgba_map[..., 0] = image
     rgba_map[..., 1] = image
     rgba_map[..., 2] = image
