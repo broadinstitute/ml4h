@@ -149,12 +149,12 @@ def optimize_architecture(args):
 
 
 def optimize_ecg_rest_architecture(args):
-    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
+    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48], 48]
     conv_layers_sets = [[16], [32], [48], [32, 32], [48, 32], [48, 32, 24]]
     dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
     conv_dilate = [True, False]
     activation = ['leaky', 'prelu', 'relu']
-    conv_bn = [True, False]
+    conv_normalize = ['', 'batch_norm']
     pool_type = ['max', 'average']
     space = {
         'pool_x': hp.quniform('pool_x', 1, 8, 1),
@@ -163,7 +163,7 @@ def optimize_ecg_rest_architecture(args):
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
         'conv_dilate': hp.choice('conv_dilate', conv_dilate),
         'activation': hp.choice('activation', activation),
-        'conv_bn': hp.choice('conv_bn', conv_bn),
+        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
         'pool_type': hp.choice('pool_type', pool_type),
         'conv_width': hp.loguniform('conv_width', 1, 8),
         'block_size': hp.quniform('block_size', 1, 6, 1),
@@ -174,7 +174,7 @@ def optimize_ecg_rest_architecture(args):
         'dense_layers': dense_layers_sets,
         'conv_dilate': conv_dilate,
         'activation': activation,
-        'conv_bn': conv_bn,
+        'conv_normalize': conv_normalize,
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)

@@ -105,7 +105,7 @@ def parse_args():
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
-    parser.add_argument('--conv_normalize', default=None, choices=['batch_norm'], help='Type of normalization layer for convolutions')
+    parser.add_argument('--conv_normalize', default=None, choices=['', 'batch_norm'], help='Type of normalization layer for convolutions')
     parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')

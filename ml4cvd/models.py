@@ -894,3 +894,19 @@ def get_model_inputs_outputs(model_files: List[str],
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
+
+
+def _gradients_from_output(model, output_layer, output_index):
+    K.set_learning_phase(1)
+    input_tensor = model.input
+    x = model.get_layer(output_layer).output[:, output_index]
+    grads = K.gradients(x, input_tensor)[0]
+    grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-6)  # normalization trick: we normalize the gradient
+    iterate = K.function([input_tensor], [x, grads])
+    return iterate
+
+
+def saliency_map(input_tensor: np.ndarray, model: Model, output_layer_name: str, output_index: int):
+    get_gradients = _gradients_from_output(model, output_layer_name, output_index)
+    activation, gradients = get_gradients([input_tensor])
+    return gradients
