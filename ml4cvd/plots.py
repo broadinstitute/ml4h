@@ -1167,9 +1167,22 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             plot_3d_tensor(data[batch_index], f'{prefix}_input_{batch_index}{IMAGE_EXT}', cols, rows)
             plot_3d_tensor(gradients[batch_index], f'{prefix}_gradients_{batch_index}{IMAGE_EXT}', cols, rows)
-            plot_3d_tensor(_transparent_saliency_map_3d(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+            plot_3d_rgba_tensor(_transparent_saliency_map_3d(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
 
     logging.info(f"Saved saliency maps at:{prefix}")
+
+
+def plot_3d_rgba_tensor(tensor, figure_path, cols=3, rows=10):
+    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    for i in range(tensor.shape[-1]):
+        axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
+        axes[i // cols, i % cols].set_yticklabels([])
+        axes[i // cols, i % cols].set_xticklabels([])
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
 
 
 def plot_3d_tensor(tensor, figure_path, cols=3, rows=10):
