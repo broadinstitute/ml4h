@@ -30,6 +30,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_prec
 
 import seaborn as sns
 from biosppy.signals import ecg
+from scipy.ndimage.filters import gaussian_filter
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT
@@ -1147,6 +1148,16 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
+def _transparent_saliency_map_3d(image, gradients, blur_radius=7):
+    g_mean = np.mean(gradients)
+    g_std = np.std(gradients)
+    blurred = gaussian_filter(gradients, sigma=blur_radius)
+    rgba_map = np.zeros((image.shape[0], image.shape[1], 4))
+    rgba_map[:, :, :3] = image
+    rgba_map[:, :, :4] = np.abs(blurred - g_mean) > g_std
+    return rgba_map
+
+
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
 
     for batch_index in range(data.shape[0]):
@@ -1155,7 +1166,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             plot_3d_tensor(data[batch_index], f'{prefix}_input_{batch_index}{IMAGE_EXT}', cols, rows)
             plot_3d_tensor(gradients[batch_index], f'{prefix}_gradients_{batch_index}{IMAGE_EXT}', cols, rows)
-            plot_3d_tensor(np.ma.masked_where(np.abs(gradients[batch_index]) > 2, data[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+            plot_3d_tensor(_transparent_saliency_map_3d(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
 
     logging.info(f"Saved saliency maps at:{prefix}")
 
