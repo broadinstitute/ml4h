@@ -1,7 +1,6 @@
 from typing import List
 from enum import Enum, auto
 
-
 class DataSetType(Enum):
     FLOAT_ARRAY = auto()
     CONTINUOUS = auto()
