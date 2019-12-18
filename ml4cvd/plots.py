@@ -1153,7 +1153,9 @@ def _transparent_saliency_map_3d(image, gradients, blur_radius=7):
     g_std = np.std(gradients)
     blurred = gaussian_filter(gradients, sigma=blur_radius)
     rgba_map = np.zeros((image.shape[0], image.shape[1], image.shape[2], 4))
-    rgba_map[..., :3] = image
+    rgba_map[..., 0] = image
+    rgba_map[..., 1] = image
+    rgba_map[..., 2] = image
     rgba_map[..., :4] = np.abs(blurred - g_mean) > g_std
     return rgba_map
 
