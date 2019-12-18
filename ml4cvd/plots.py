@@ -1158,7 +1158,7 @@ def _transparent_saliency_map_3d(image, gradients, blur_radius=7):
     rgba_map[..., 0] = image
     rgba_map[..., 1] = image
     rgba_map[..., 2] = image
-    rgba_map[..., 3] = 1 #np.abs(blurred - gradients.mean()) > gradients.std()
+    rgba_map[..., 3] = np.abs(blurred - gradients.mean()) > gradients.std()
     return rgba_map
 
 
@@ -1177,7 +1177,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
 
 def plot_3d_rgba_tensor(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
-    for i in range(tensor.shape[-1]):
+    for i in range(tensor.shape[-2]):
         axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
         axes[i // cols, i % cols].set_yticklabels([])
         axes[i // cols, i % cols].set_xticklabels([])
