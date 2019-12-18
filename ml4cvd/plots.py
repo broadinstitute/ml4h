@@ -1155,7 +1155,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             plot_3d_tensor(data[batch_index], f'{prefix}_input_{batch_index}{IMAGE_EXT}', cols, rows)
             plot_3d_tensor(gradients[batch_index], f'{prefix}_gradients_{batch_index}{IMAGE_EXT}', cols, rows)
-            plot_3d_tensor(np.ma.masked_where(np.abs(gradients[batch_index]) > 2), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+            plot_3d_tensor(np.ma.masked_where(data[batch_index], np.abs(gradients[batch_index]) > 2), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
 
     logging.info(f"Saved saliency maps at:{prefix}")
 
