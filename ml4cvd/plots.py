@@ -1165,7 +1165,7 @@ def _saliency_map_rgb(image, gradients, blur_radius=2):
     return rgba_map
 
 
-def plot_ecgs(ecgs, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500):
+def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500):
     _, axes = plt.subplots(rows, cols, figsize=(18, 16))
     for i in range(rows):
         for j in range(cols):
@@ -1176,6 +1176,10 @@ def plot_ecgs(ecgs, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=50
                 axes[i, j].plot(range(start, stop), ecgs[label][start:stop, j + i*cols] * raw_scale, label=label)
             axes[i, j].legend(loc='lower right')
             axes[i, j].set_xlabel('milliseconds')
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
 
 
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
@@ -1186,7 +1190,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
     for batch_index in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_index], 'gradients': gradients[batch_index]}
-            plot_ecgs(ecgs)
+            plot_ecgs(ecgs, f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}')
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
