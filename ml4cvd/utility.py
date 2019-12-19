@@ -58,3 +58,14 @@ def str2date(d):
     if len(parts) < 2:
         return datetime.datetime.now().date()
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+
+def make_range_validator(minimum: float, maximum: float):
+    def _range_validator(tm, tensor: np.ndarray):
+        if not ((tensor > minimum).all() and (tensor < maximum).all()):
+            raise ValueError(f'TensorMap {tm.name} failed range check.')
+    return _range_validator
+
+
+def no_nans(tm, tensor: np.ndarray):
+    if np.isnan(tensor).any():
+        raise ValueError(f'Skipping TensorMap {tm.name} with NaNs.')

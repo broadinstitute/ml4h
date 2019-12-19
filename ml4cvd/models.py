@@ -345,9 +345,14 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
     :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
     """
+    # Retrieve Keras optimizer using the utility function get_optimizer.
+    # get_optimizer is defined in optimizers.py
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    # Retrieve metrics
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
+    
+    # Checks.
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict)
@@ -355,19 +360,35 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
 
+    # Init.
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     input_multimodal = []
     channel_axis = -1
     layers = {}
 
+    # Iterate over the input TensorMaps and construct a feed-forward graph as follows:
+    #    1) Conv layers
+    #    2) Pooling layers
+    #    3) Conv block layers
+    #    4) Conv layers
+    #    5) Pooling layers
+    #    6) Dense block layers
+    #    7) Flatten
     for j, tm in enumerate(tensor_maps_in):
         if len(tm.shape) > 1:
-            conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
+            # Add Keras convolution layers to the graph.
+            conv_fxns   = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
+            # Add Keras pooling layers to the graph.
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
-            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
+            # Convolution block layer
+            last_conv   = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
+            # Densenet convolution layer
+            dense_conv_fxns   = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
+            # Add Keras pooling layers to the graph.
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
+            # Dense block layer
+            last_conv   = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
+            # Flatten
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -462,7 +483,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Training ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def train_model_from_generators(model: Model,
+def train_model_from_generators(model: Model, # Keras model
                                 generate_train: Iterable,
                                 generate_valid: Iterable,
                                 training_steps: int,
@@ -538,39 +559,54 @@ def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_siz
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Model Builders ~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _conv_block_new(x: K.placeholder,
+def _conv_block_new(x: K.placeholder, # Keras placeholder
                     layers: Dict[str, K.placeholder],
-                    conv_layers: List[Layer],
-                    pool_layers: List[Layer],
+                    conv_layers: List[Layer], # Convolutional layers
+                    pool_layers: List[Layer], # Pooling layers
                     dimension: int,
                     activation: str,
                     normalization: str,
                     regularization: str,
                     regularization_rate: float,
                     residual_convolution_layer: Layer):
+    """Construct a new blocked convolutional layer.
+    
+    Arguments:
+        x {K.placeholder} -- [description]
+        activation {str} -- A string mapping to a valid Keras activation function
+        normalization {str} -- A string mapping to a valid normalization function
+        regularization {str} -- A string mapping to a valid regularization function
+        regularization_rate {float} -- [description]
+        residual_convolution_layer {Layer} -- [description]
+    """                    
+    # Difference in number of convolution layers to pooling layers.
     pool_diff = len(conv_layers) - len(pool_layers)
 
+    # Iterate over the desired number of conv layers.
     for i, conv_layer in enumerate(conv_layers):
-        residual = x
+        residual = x # Track original
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
+        
         if i >= pool_diff:
             x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](x)
             if residual_convolution_layer is not None:
                 residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
+        
         if residual_convolution_layer is not None:
             if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
             else:
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
+    
     return _get_last_layer(layers)
 
 
-def _dense_block(x: K.placeholder,
-                 layers: Dict[str, K.placeholder],
+def _dense_block(x: K.placeholder, # Keras placeholder
+                 layers: Dict[str, K.placeholder], # Keras placeholder
                  block_size: int,
                  conv_layers: List[Layer],
                  pool_layers: List[Layer],
@@ -597,7 +633,24 @@ def _one_by_n_kernel(dimension):
     return tuple([1] * (dimension-1))
 
 
-def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z):
+def _conv_layer_from_kind_and_dimension(dimension: int, conv_layer_type: str, conv_width, conv_x, conv_y, conv_z):
+    """Returns a function pointer to a Keras convolution layer and its kernel given the input dimensions and 
+    layer type or raise a ValueError.
+    
+    Arguments:
+        dimension {int} -- Target data dimensions
+        conv_layer_type {str} -- A string matching a valid Keras convolutional layer type. Currently supported is 'conv', 'separable', and 'depth'
+        conv_width -- Width for 1D input data
+        conv_x -- Kernel size (x)
+        conv_y -- Kernel size (y)
+        conv_z -- Kernel size (z)
+    
+    Raises:
+        ValueError: Unknown type of convolution layer.
+    
+    Returns:
+        [Function pointer, (kernel, ...)]-tuple
+    """    
     if dimension == 4 and conv_layer_type == 'conv':
         conv_layer = Conv3D
         kernel = (conv_x, conv_y, conv_z)
@@ -618,23 +671,57 @@ def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, 
         kernel = (conv_x, conv_y)
     else:
         raise ValueError(f'Unknown convolution type: {conv_layer_type} for dimension: {dimension}')
+    
     return conv_layer, kernel
 
 
-def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
+def _conv_layers_from_kind_and_dimension(dimension:int , conv_layer_type: str, conv_layers: List[int], conv_width: int, conv_x, conv_y, conv_z, padding: str, dilate: bool, inner_loop: int = 1):
+    """Construct Keras convolutional layers given the input parameters. 
+    
+    Arguments:
+        dimension {int} -- Target data dimensions
+        conv_layer_type {str} -- A string matching a valid Keras convolutional layer type. Currently supported is 'conv', 'separable', and 'depth'
+        conv_layers {List[int]} -- List of number of filters in each convolutional layer
+        conv_width {int} -- Size of convolutional kernel for 1D models.
+        conv_x {[type]} -- Size of X dimension for 2D and 3D convolutional kernels
+        conv_y {[type]} -- Size of Y dimension for 2D and 3D convolutional kernels
+        conv_z {[type]} -- Size of Z dimension for 3D convolutional kernels
+        padding {str} -- Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
+        dilate {bool} -- Dilate layer
+    
+    Keyword Arguments:
+        inner_loop {int} -- List of number of filters in densenet modules for densenet models (default: {1})
+    
+    Returns:
+        [Keras conv layers] -- List of Keras convolutional layers given the input parameters
+    """    
+    # Retrieve the target function pointer to a Keras conv layer ('conv_layer') 
+    # and its kernel ('kernel').
     conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
+    
+    # Dilation rate constant used for base-2 expansion (2^i)
     dilation_rate = 1
     conv_layer_functions = []
+    
+    # Iterate over the number of features in each conv layer.
     for i, c in enumerate(conv_layers):
         for _ in range(inner_loop):
+            # If dilation is desired then expand set dilation rate such that each 
+            # layer have 2^i layers.
             if dilate:
-                dilation_rate = 1 << i
+                dilation_rate = 1 << i # 2^i
+            
+            # Invoke the Keras function pointer given the kernel parameters and 
+            # append this to the list of convolution layers.
             conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
 
+    # Return the list of convolution layers.
     return conv_layer_functions
 
 
 def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool_x, pool_y, pool_z):
+    # Return the appropriate Keras pooling layer given the input dimensions 
+    # and pooling type or raise a ValueError exception.
     if dimension == 4 and pool_type == 'max':
         return [MaxPooling3D(pool_size=(pool_x, pool_y, pool_z)) for _ in range(pool_number)]
     elif dimension == 3 and pool_type == 'max':

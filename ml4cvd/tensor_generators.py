@@ -66,19 +66,33 @@ class _WeightedPaths(Iterator):
 
 
 class TensorGenerator:
-    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False):
+    def __init__(self, 
+                 batch_size, 
+                 input_maps, 
+                 output_maps, 
+                 paths, 
+                 num_workers: int, 
+                 cache_size, 
+                 weights = None, 
+                 keep_paths: bool = False, 
+                 mixup: float = 0.0, 
+                 name: str = 'worker', 
+                 siamese: bool = False):
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
         self.run_on_main_thread = num_workers == 0
-        self.q = None
+        self.q = None # Todo: q should be renamed to queue
         self._started = False
         self.workers = []
         self.worker_instances = []
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.name, self.keep_paths = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, name, keep_paths
+        
         if num_workers == 0:
             num_workers = 1  # The one worker is the main thread
+        
+        # Split the path list across the workers.
         if weights is None:
             worker_paths = np.array_split(paths, num_workers)
             self.true_epoch_lens = list(map(len, worker_paths))
@@ -94,7 +108,7 @@ class TensorGenerator:
 
         self.batch_function_kwargs = {}
         if mixup > 0:
-            self.batch_function = _mixup_batch
+            self.batch_function = _mixup_batch # Function pointer
             self.batch_size *= 2
             self.batch_function_kwargs = {'alpha': mixup}
         elif siamese:
@@ -132,18 +146,18 @@ class TensorGenerator:
         else:
             return self.q.get(TENSOR_GENERATOR_TIMEOUT)
 
+    def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
+        return self
+
+    def __del__(self):
+        self.kill_workers()
+
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 logging.info(f'Stopping {worker.name}.')
                 worker.terminate()
         self.workers = []
-
-    def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
-        return self
-
-    def __del__(self):
-        self.kill_workers()
 
 
 class TensorMapArrayCache:
@@ -341,11 +355,15 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         minibatches: number of times to call generator and collect a minibatch
 
     Returns:
-        A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
+        A tuple of dicts mapping tensor names to big batches of numpy arrays mapping. This is
+        a 2-tuple (input, output) or a 3-tuple (input, output, paths) depending on the state of the
+        input TensorGenerator.
     """
-    first_batch = next(generator)
+    
+    first_batch = next(generator) # Increment generator iterator
     saved_tensors = {}
     batch_size = None
+    # Foreach key and batch in chain of batches
     for key, batch_array in chain(first_batch[0].items(), first_batch[1].items()):
         shape = (batch_array.shape[0] * minibatches,) + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
@@ -357,9 +375,10 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         paths = first_batch[2]
 
     input_tensors, output_tensors = list(first_batch[0]), list(first_batch[1])
+    # Iterate over mini-batches
     for i in range(1, minibatches):
         logging.info(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
-        next_batch = next(generator)
+        next_batch = next(generator) # Increment iterator
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
             saved_tensors[key][s:t] = next_batch[0][key]
@@ -368,10 +387,13 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         if keep_paths:
             paths.extend(next_batch[2])
 
+    # Iterate over [key, array]-tuples and log its key and shape.
     for key, array in saved_tensors.items():
         logging.info(f"Tensor '{key}' has shape {array.shape}.")
-    inputs = {key: saved_tensors[key] for key in input_tensors}
+    
+    inputs  = {key: saved_tensors[key] for key in input_tensors}
     outputs = {key: saved_tensors[key] for key in output_tensors}
+    
     if keep_paths:
         return inputs, outputs, paths
     else:
@@ -510,16 +532,22 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
+    # Init.
     generate_train, generate_valid, generate_test = None, None, None
+
+    # Split data in either a balanced or unbalanced fashion. 
     if len(balance_csvs) > 0:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = None
-    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
+    
+    # Generate target TensorMaps using the TensorGenerator class.
+    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers,      cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
     generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
-    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
+    generate_test  = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths,  num_workers,      cache_size, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
+    
     return generate_train, generate_valid, generate_test
 
 

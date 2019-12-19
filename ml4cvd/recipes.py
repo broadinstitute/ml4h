@@ -95,13 +95,35 @@ def run(args):
 
 
 def train_multimodal_multitask(args):
+    """Primary entry point for training a model.
+    
+    Arguments:
+        args -- Input arguments to pass to the model
+    
+    Returns:
+        Returns the response from the internal predict and evaluate function.
+    """
+    # Returns three tensor iterators for training, validation and testing data.
+    # test_train_valid_tensor_generators is defined in tensor_generators.py
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     model = make_multimodal_multitask_model(**args.__dict__)
+    
+    # Train data given the created Keras input model and the partitioned input data.
+    # train_model_from_generators is defined in models.py
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
+    # Construct an output path as "output_folder/id"
     out_path = os.path.join(args.output_folder, args.id + '/')
+
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    
+    # Execute the actual prediction and evaluation.
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
 
 
@@ -285,27 +307,78 @@ def plot_while_training(args):
                         args.batch_size, args.training_steps, plot_folder, args.write_pngs)
 
 
-def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
+# MDRK: I find this model misleading as most of the parameters are used exclusively in
+# plotting t-SNE figures and/or emitting them to disk.
+def _predict_and_evaluate(model, 
+                          test_data, 
+                          test_labels, 
+                          tensor_maps_in, 
+                          tensor_maps_out, 
+                          batch_size, 
+                          hidden_layer, 
+                          plot_path, 
+                          test_paths, 
+                          alpha: float = 1.0):
+    """Predict and evaluate a trained model.
+    
+    Arguments:
+        model {[type]} -- Input trained model
+        test_data {[type]} -- Test data
+        test_labels {[type]} -- Test labels
+        tensor_maps_in {[type]} -- Input TensorMaps
+        tensor_maps_out {[type]} -- Output TensorMaps
+        batch_size {[type]} -- Batch size
+        hidden_layer {[type]} -- Hidden layer
+        plot_path {[type]} -- Destination path for output plots
+        test_paths {[type]} -- Destination path for test data
+        alpha {[float]} -- Alpha (opacity) level for points in the t-SNE plot. The valid range is [0, 1]R
+    
+    Returns:
+        [type] -- [description]
+    """    
+    # Store layer names stored in the input model.
     layer_names = [layer.name for layer in model.layers]
+    # Init.
     performance_metrics = {}
     scatters = []
     rocs = []
 
+    # Compute the prediction given the test data and batch size. This will return
+    # either a single numpy ndarray or a list of ndarrays if the model have a single
+    # output or several, respectively.
     y_predictions = model.predict(test_data, batch_size=batch_size)
+
+    # Iterate over the predicted values and the output TensorMaps.
     for y, tm in zip(y_predictions, tensor_maps_out):
+        # If the TensorMap output name is not available in the
+        # input model layer names then continue.
+        # MDRK: Todo: This should throw an error or at least be logged?
         if tm.output_name() not in layer_names:
             continue
-        if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+        
+        # Check if the returned predicted values are a single ndarray or a list 
+        # of ndarrays.
+        if not isinstance(y_predictions, list):
             y = y_predictions
+
+        # Truth labels from the test set.
         y_truth = np.array(test_labels[tm.output_name()])
+        
+        # Store the performance metrics evaluated by evaluate_predictions. 
+        # Returns a (string, integer)-tuple dictionary.
+        # evaluate_predictions is defined in plots.py
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
+    
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
 
+    # Labels for use in t-SNE plot.
     test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+    
+    # Wrapper for computing t-SNE.
     _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data, tensor_maps_in=tensor_maps_in, batch_size=batch_size)
 
     return performance_metrics
