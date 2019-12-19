@@ -1185,7 +1185,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
 
     for batch_index in range(data.shape[0]):
         if len(data.shape) == 3:
-            ecgs = {'raw': data, 'gradients': gradients}
+            ecgs = {'raw': data[batch_index], 'gradients': gradients[batch_index]}
             plot_ecgs(ecgs)
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
