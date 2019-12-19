@@ -293,6 +293,8 @@ def saliency_maps(args):
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     in_tensor = data[args.tensor_maps_in[0].input_name()]
     for out_index, tm in enumerate(args.tensor_maps_out):
+        if len(tm.shape) > 1:
+            continue
         gradients = saliency_map(in_tensor, model, tm.output_name(), out_index)
         plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/out_{out_index}'))
 
