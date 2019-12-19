@@ -1155,8 +1155,8 @@ def _transparent_saliency_map_3d(image, gradients, blur_radius=7):
     image *= (1.0 / image.max())
     np.ma.masked_where((blurred - gradients.mean()) > (0.5*gradients.std()), image)
     rgba_map[..., 0] = image
-    rgba_map[..., 1] = np.ma.masked_where((blurred - gradients.mean()) > (0.5*gradients.std()), image)
-    rgba_map[..., 2] = np.ma.masked_where((blurred - gradients.mean()) < -(0.5*gradients.std()), image)
+    rgba_map[..., 1] = blurred - gradients.mean()
+    rgba_map[..., 2] = image
     return rgba_map
 
 
