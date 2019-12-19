@@ -39,7 +39,6 @@ BatchFunction = Callable[[Batch, Batch, bool, List[Path], 'kwargs'], Any]
 
 
 class _ShufflePaths(Iterator):
-
     def __init__(self, paths: List[Path]):
         self.paths = paths
         self.paths.sort()
@@ -54,7 +53,6 @@ class _ShufflePaths(Iterator):
 
 
 class _WeightedPaths(Iterator):
-
     def __init__(self, paths: List[PathIterator], weights: List[float]):
         self.paths = paths
         self.weights = weights
@@ -67,7 +65,7 @@ class _WeightedPaths(Iterator):
 
 class TensorGenerator:
     def __init__(self, 
-                 batch_size, 
+                 batch_size: int, 
                  input_maps, 
                  output_maps, 
                  paths, 
@@ -78,19 +76,35 @@ class TensorGenerator:
                  mixup: float = 0.0, 
                  name: str = 'worker', 
                  siamese: bool = False):
-        """
-        :param paths: If weights is provided, paths should be a list of path lists the same length as weights
-        """
-        self.run_on_main_thread = num_workers == 0
-        self.q = None # Todo: q should be renamed to queue
+        """TensorGenerator
+        
+        Arguments:
+            batch_size {int} -- Number of examples in each mini-batch
+            input_maps {[type]} -- [description]
+            output_maps {[type]} -- [description]
+            paths {[type]} -- If weights is provided, paths should be a list of path lists the same length as weights
+            num_workers {int} -- [description]
+            cache_size {[type]} -- [description]
+        
+        Keyword Arguments:
+            weights {[type]} -- [description] (default: {None})
+            keep_paths {bool} -- [description] (default: {False})
+            mixup {float} -- [description] (default: {0.0})
+            name {str} -- Generator name (default: {'worker'})
+            siamese {bool} -- Generate input for a Siamese model i.e. a left and right input tensors for every input TensorMap (default: {False})
+        """        
+        self.run_on_main_thread = (num_workers == 0)
+        self.queue = None
         self._started = False
         self.workers = []
         self.worker_instances = []
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.name, self.keep_paths = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, name, keep_paths
         
+        # If the number of workers are 0 then run using the main thread
+        # only.
         if num_workers == 0:
-            num_workers = 1  # The one worker is the main thread
+            num_workers = 1
         
         # Split the path list across the workers.
         if weights is None:
@@ -98,7 +112,7 @@ class TensorGenerator:
             self.true_epoch_lens = list(map(len, worker_paths))
             self.path_iters = [_ShufflePaths(p) for p in worker_paths]
         else:
-            # split each path list into paths for each worker.
+            # Split each path list into paths for each worker.
             # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
             split_paths = [np.array_split(a, num_workers) for a in paths]
             # Next, each list of paths gets given to each worker. E.g. [[[p1], [p3, p4]], [[p2], [p5]]]
@@ -109,7 +123,7 @@ class TensorGenerator:
         self.batch_function_kwargs = {}
         if mixup > 0:
             self.batch_function = _mixup_batch # Function pointer
-            self.batch_size *= 2
+            self.batch_size *= 2 # Double the batch size
             self.batch_function_kwargs = {'alpha': mixup}
         elif siamese:
             self.batch_function = _make_batch_siamese
@@ -117,46 +131,80 @@ class TensorGenerator:
             self.batch_function = _identity_batch
 
     def _init_workers(self):
-        self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
-        self._started = True
+        """Initiate the desired workers for this generator. The internal flag 
+        '_started' will be set to True.
+        """        
+        self.queue = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
+        
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
+            # Log
             name = f'{self.name}_{i}'
             logging.info(f"Starting {name}.")
+            
+            # Initiate a new worker
             worker_instance = _MultiModalMultiTaskWorker(
-                self.q,
+                self.queue,
                 self.input_maps, self.output_maps,
                 path_iter, iter_len,
-                self.batch_function, self.batch_size, self.keep_paths, self.batch_function_kwargs,
+                self.batch_function, self.batch_size, 
+                self.keep_paths, 
+                self.batch_function_kwargs,
                 self.cache_size,
                 name,
             )
+            # Append this instance to the list of workers
             self.worker_instances.append(worker_instance)
+            
+            # Initiate workers (if any)
             if not self.run_on_main_thread:
-                process = Process(target=worker_instance.multiprocessing_worker, name=name,
-                                  args=())
+                # Start a new process given the list of 
+                process = Process(target=worker_instance.multiprocessing_worker, name=name, args=())
+                # Start the target process.
                 process.start()
+                # Append this worker to the list of workers.
                 self.workers.append(process)
 
+        # Trigger the started flag.
+        self._started = True
+
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
+        """Incrementing this class results in a [Dict, Dict]-tuple of 
+        
+        Returns:
+            Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]
+        """        
+        # Start the desired workers if this has not already happened.
         if not self._started:
             self._init_workers()
-        logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
+        
+        # Log
+        logging.debug(f'Currently there are {self.queue.qsize()} queued batches.')
+        
+        # Return the next worker instance.
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
-            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+            return self.queue.get(TENSOR_GENERATOR_TIMEOUT)
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
         return self
 
     def __del__(self):
+        # Make sure that workers spawned by this class gets stopped and removed
+        # in the dtor.        
         self.kill_workers()
 
     def kill_workers(self):
+        """Stop/kill any spawned workers.
+        """        
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
+                # Log
                 logging.info(f'Stopping {worker.name}.')
+                # Terminate
                 worker.terminate()
+        
+        # Unset the list of active workers.
         self.workers = []
 
 
@@ -216,16 +264,34 @@ class TensorMapArrayCache:
 
 
 class _MultiModalMultiTaskWorker:
-
     def __init__(self,
-                 q: Queue,
-                 input_maps: List[TensorMap], output_maps: List[TensorMap],
-                 path_iter: PathIterator, true_epoch_len: int,
-                 batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
+                 queue: Queue,
+                 input_maps: List[TensorMap], 
+                 output_maps: List[TensorMap],
+                 path_iter: PathIterator, 
+                 true_epoch_len: int,
+                 batch_function: BatchFunction, 
+                 batch_size: int, 
+                 return_paths: bool, 
+                 batch_func_kwargs: Dict,
                  cache_size: float,
-                 name: str,
-                 ):
-        self.q = q
+                 name: str):
+        """Worker instance used by TensorGenerator.
+        
+        Arguments:
+            queue {Queue} -- Input queue
+            input_maps {List[TensorMap]} -- Input TensorMaps
+            output_maps {List[TensorMap]} -- Output TensorMaps
+            path_iter {PathIterator} -- [description]
+            true_epoch_len {int} -- [description]
+            batch_function {BatchFunction} -- A batch function (Callable[[Batch, Batch, bool, List[Path], 'kwargs'], Any])
+            batch_size {int} -- Number of examples in each mini-batch
+            return_paths {bool} -- [description]
+            batch_func_kwargs {Dict} -- [description]
+            cache_size {float} -- Cache size
+            name {str} -- Worker name
+        """        
+        self.queue = queue
         self.input_maps = input_maps
         self.output_maps = output_maps
         self.path_iter = path_iter
@@ -236,40 +302,46 @@ class _MultiModalMultiTaskWorker:
         self.batch_func_kwargs = batch_func_kwargs
         self.cache_size = cache_size
         self.name = name
-
+        # Init
         self.stats = Counter()
         self.epoch_stats = Counter()
         self.start = time.time()
         self.paths_in_batch = []
-        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
-        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
-
-        self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
-        logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
-
-        self.all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
-
         self.dependents = {}
         self.idx = 0
+        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
+        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
+        # Cache data
+        self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
+        # Log
+        logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
+        # Flag if all data is cacheable.
+        self.all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
 
     def _handle_tm(self, tm: TensorMap, is_input: bool, path: Path) -> h5py.File:
-        name = tm.input_name() if is_input else tm.output_name()
+        name  = tm.input_name() if is_input else tm.output_name()
         batch = self.in_batch if is_input else self.out_batch
-        idx = self.stats['batch_index']
+        idx   = self.stats['batch_index']
+        
         if tm in self.dependents:
             batch[name][idx] = self.dependents[tm]
             if tm.cacheable:
                 self.cache[path, name] = self.dependents[tm]
             return self.hd5
+        
         if (path, name) in self.cache:
             batch[name][idx] = self.cache[path, name]
             return self.hd5
+        
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
+        
         tensor = tm.tensor_from_file(tm, self.hd5, self.dependents)
         batch[name][idx] = tensor
+        
         if tm.cacheable:
             self.cache[path, name] = tensor
+        
         return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
@@ -324,7 +396,7 @@ class _MultiModalMultiTaskWorker:
             if self.stats['batch_index'] == self.batch_size:
 
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
-                self.q.put(out)
+                self.queue.put(out)
                 self.paths_in_batch = []
                 self.stats['batch_index'] = 0
                 self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
@@ -339,6 +411,7 @@ class _MultiModalMultiTaskWorker:
             if self.idx > 0 and self.idx % self.true_epoch_len == 0:
                 self._on_epoch_end()
             self.idx += 1
+        
         self.stats['batch_index'] = 0
         out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
         self.paths_in_batch = []

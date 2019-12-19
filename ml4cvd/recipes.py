@@ -128,23 +128,48 @@ def train_multimodal_multitask(args):
 
 
 def test_multimodal_multitask(args):
+    # Returns three tensor iterators for training, validation and testing data.
+    # Ignore the train and valid data (first two tensors).
+    # test_train_valid_tensor_generators is defined in tensor_generators.py
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     model = make_multimodal_multitask_model(**args.__dict__)
+    
+    # Construct an output path as "output_folder/id"
     out_path = os.path.join(args.output_folder, args.id + '/')
+
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    
+    # Execute the actual prediction and evaluation.
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
   
 
 def test_multimodal_scalar_tasks(args):
+    # Returns three tensor iterators for training, validation and testing data.
+    # Ignore the train and valid data (first two tensors).
+    # test_train_valid_tensor_generators is defined in tensor_generators.py
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     model = make_multimodal_multitask_model(**args.__dict__)
-    p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
+    
+    # Construct an output path as "output_folder/id"
+    out_path = os.path.join(args.output_folder, args.id + '/')
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, out_path, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
+    # Returns three tensor iterators for training, validation and testing data.
+    # Ignore the train and valid data (first two tensors).
+    # test_train_valid_tensor_generators is defined in tensor_generators.py
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+    
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     input_data, output_data, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
@@ -152,6 +177,9 @@ def compare_multimodal_multitask_models(args):
 
 
 def compare_multimodal_scalar_task_models(args):
+    # Returns three tensor iterators for training, validation and testing data.
+    # Ignore the train and valid data (first two tensors).
+    # test_train_valid_tensor_generators is defined in tensor_generators.py
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     models_io = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
     outs = _get_common_outputs(models_io, "output")
@@ -165,9 +193,14 @@ def infer_multimodal_multitask(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+    
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     model = make_multimodal_multitask_model(**args.__dict__)
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
                                     cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+
+    # 
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
@@ -220,6 +253,9 @@ def infer_hidden_layer_multimodal_multitask(args):
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
                                     cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
@@ -254,12 +290,20 @@ def train_shallow_model(args):
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
-    p = os.path.join(args.output_folder, args.id + '/')
+    # Construct an output path as "output_folder/id"
+    output_path = os.path.join(args.output_folder, args.id + '/')
+    
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.alpha)
+    
+    # Execute the actual prediction and evaluation.
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, test_paths, args.alpha)
 
 
 def train_char_model(args):
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     base_model = make_multimodal_multitask_model(**args.__dict__)
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
@@ -269,18 +313,28 @@ def train_char_model(args):
     test_batch, _, test_paths = next(generate_test)
     sample_from_char_model(char_model, test_batch, test_paths)
 
+    # Construct an output path as "output_folder/id"
     output_path = os.path.join(args.output_folder, args.id + '/')
+
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    
+    # Execute the actual prediction and evaluation.
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
 
 
 def train_siamese_model(args):
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, siamese=True)
     siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                                 args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
 
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     prediction = siamese_model.predict(data)
     return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
@@ -288,7 +342,12 @@ def train_siamese_model(args):
 
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     model = make_multimodal_multitask_model(**args.__dict__)
+    
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
@@ -299,7 +358,13 @@ def plot_predictions(args):
 
 def plot_while_training(args):
     generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    
+    # Collect mini matches into bigger batches where args.test_steps is the number of mini batches.
+    # big_batch_from_minibatch_generator is defined in tensor_generators.py
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    
+    # Use model factory to create the appropriate model given the input parameters.
+    # make_multimodal_multitask_model is defined in models.py
     model = make_multimodal_multitask_model(**args.__dict__)
 
     plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
@@ -464,6 +529,8 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.model_file = model_file
+        # Use model factory to create the appropriate model given the input parameters.
+        # make_multimodal_multitask_model is defined in models.py
         model = make_multimodal_multitask_model(**args.__dict__)
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
 
@@ -508,6 +575,8 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
+        # Use model factory to create the appropriate model given the input parameters.
+        # make_multimodal_multitask_model is defined in models.py
         model = make_multimodal_multitask_model(**args.__dict__)
         model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
         models[model_name] = model
