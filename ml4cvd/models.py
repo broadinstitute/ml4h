@@ -401,8 +401,10 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
         multimodal_activation = input_multimodal[0]
     else:
         raise ValueError('No input activations.')
-
+    
+    # Iterate over dense layers
     for i, hidden_units in enumerate(dense_layers):
+        
         if i == len(dense_layers) - 1:
             multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize, name='embed')
         else:
@@ -416,11 +418,15 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
     my_metrics = {}
     loss_weights = []
     output_predictions = {}
+    # Copy the list of output TensorMaps
     output_tensor_maps_to_process = tensor_maps_out.copy()
 
+    # Iterate over the output TensorMaps.
     while len(output_tensor_maps_to_process) > 0:
+        # Pop it like its hot.
         tm = output_tensor_maps_to_process.pop(0)
 
+        # 
         if not tm.parents is None and any(not p in output_predictions for p in tm.parents):
             output_tensor_maps_to_process.append(tm)
             continue
@@ -560,7 +566,7 @@ def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
         model_file {str} -- File path for the model
     
     Returns:
-        List[Callable] -- [description]
+        List[Callable] -- A list of callbacks used in Keras
     """    
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True), # Save the model after every epoch.
@@ -762,16 +768,47 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
 
 
 def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
+        """Add dense layers
+        
+        Arguments:
+            x {K.placeholder} -- Keras placeholder
+            layers {Dict[str, K.placeholder]} -- Dictionary of layers as [string, Keras placeholder]-tuples
+            units {int} -- Positive integer, dimensionality of the output space.
+            activation {str} -- Keras activation function name
+            normalization {str} -- Keras normalization function
+        
+        Keyword Arguments:
+            name {[type]} -- [description] (default: {None})
+        
+        Returns:
+            [type] -- [description]
+        """        
         if name is not None:
             x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
         else:
             x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
+        
+        # Activation
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+        
+        # Normalization
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+        
         return _get_last_layer(layers)
 
 
-def _upsampler(dimension, pool_x, pool_y, pool_z):
+def _upsampler(dimension: int, pool_x: int, pool_y: int, pool_z: int) -> Layer:
+    """Upsample layer is a simple layer with no weights that will double the dimensions of input.  
+    
+    Arguments:
+        dimension {int} -- Dimensions of the input data
+        pool_x {int} -- The upsampling factor for dim1
+        pool_y {int} -- The upsampling factor for dim2
+        pool_z {int} -- The upsampling factor for dim3
+    
+    Returns:
+        Layer -- A Keras Layer
+    """    
     if dimension == 4:
         return UpSampling3D(size=(pool_x, pool_y, pool_z))
     elif dimension == 3 :
@@ -780,7 +817,15 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-def _activation_layer(activation):
+def _activation_layer(activation: str) -> Layer:
+    """Return a Keras activation layer (Layer)
+    
+    Arguments:
+        activation {str} -- Keras activation function name
+    
+    Returns:
+        Layer -- Keras activation layer
+    """    
     if activation == 'leaky':
         return LeakyReLU()
     elif activation == 'prelu':
@@ -793,14 +838,35 @@ def _activation_layer(activation):
         return Activation(activation)
 
 
-def _normalization_layer(norm):
+def _normalization_layer(norm: str) -> Layer:
+    """Return a Keras Normalization layer. Currently limited to batch normalization
+    or nothing (Lambda)
+    
+    Arguments:
+        norm {str} -- Currently only 'batch_norm' is supported.
+    
+    Returns:
+        Layer -- A Keras layer
+    """    
     if norm == 'batch_norm':
         return BatchNormalization(axis=CHANNEL_AXIS)
     else:
-        return lambda x: x
+        # Todo: we should log when input strings not matching 'batch_norm' is set.
+        # At the moment they are simply ignored and set to Lambda.
+        return Lambda(lambda x: x)
 
 
-def _regularization_layer(dimension, regularization_type, rate):
+def _regularization_layer(dimension: int, regularization_type: str, rate: float) -> Layer:
+    """Return a Keras regularization Layer or a Lamba function
+    
+    Arguments:
+        dimension {int} -- Target data dimensions
+        regularization_type {str} -- A valid Keras regularization type
+        rate {float} -- Fraction of the input units to drop. Bounded by [0, 1]R
+    
+    Returns:
+        Layer -- Keras layer
+    """    
     if dimension == 4 and regularization_type == 'spatial_dropout':
         return SpatialDropout3D(rate)
     elif dimension == 3 and regularization_type == 'spatial_dropout':
@@ -810,7 +876,7 @@ def _regularization_layer(dimension, regularization_type, rate):
     elif regularization_type == 'dropout':
         return Dropout(rate)
     else:
-        return lambda x: x
+        return Lambda(lambda x: x)
 
 
 def _get_last_layer(named_layers):
