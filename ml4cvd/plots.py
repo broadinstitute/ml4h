@@ -1148,7 +1148,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
-def _transparent_saliency_map_3d(image, gradients, blur_radius=2):
+def _saliency_map_rgb(image, gradients, blur_radius=2):
     blurred = gaussian_filter(gradients, sigma=blur_radius)
     logging.info(f'gradients max {gradients.max()} gradients max {gradients.min()}')
     logging.info(f'blurred max {blurred.max()} blurred max {blurred.min()}')
@@ -1156,7 +1156,7 @@ def _transparent_saliency_map_3d(image, gradients, blur_radius=2):
     blurred *= (0.8 / blurred.max())
     blurred -= blurred.mean()
     logging.info(f'blurred max {blurred.max()} blurred max {blurred.min()}')
-    rgba_map = np.zeros((image.shape[0], image.shape[1], image.shape[2], 3))
+    rgba_map = np.zeros(image.shape + (3,))
     image -= image.min()
     image *= (0.8 / image.max())
     rgba_map[..., 0] = image - blurred
@@ -1165,15 +1165,37 @@ def _transparent_saliency_map_3d(image, gradients, blur_radius=2):
     return rgba_map
 
 
-def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
+def plot_ecgs(ecgs, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500):
+    _, axes = plt.subplots(rows, cols, figsize=(18, 16))
+    for i in range(rows):
+        for j in range(cols):
+            start = int(i*time_interval*hertz)
+            stop = int((i+1)*time_interval*hertz)
+            axes[i, j].set_xlim(start, stop)
+            for label in ecgs:
+                axes[i, j].plot(range(start, stop), ecgs[label][start:stop, j + i*cols] * raw_scale, label=label)
+            axes[i, j].legend(loc='lower right')
+            axes[i, j].set_xlabel('milliseconds')
 
+
+def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
+    if data.shape[-1] == 1:
+        data = data[..., 0]
+        gradients = gradients[..., 0]
+        
     for batch_index in range(data.shape[0]):
-        if len(data.shape) == 4:
+        if len(data.shape) == 3:
+            ecgs = {'raw': data, 'gradients': gradients}
+            plot_ecgs(ecgs)
+        elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
-            plot_3d_tensor(data[batch_index], f'{prefix}_input_{batch_index}{IMAGE_EXT}', cols, rows)
-            plot_3d_tensor(gradients[batch_index], f'{prefix}_gradients_{batch_index}{IMAGE_EXT}', cols, rows)
-            plot_3d_rgba_tensor(_transparent_saliency_map_3d(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+            plot_3d_rgba_tensor(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+        elif len(data.shape) == 5 and data.shape[-1] == 1:
+            data = data
+            cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
+            rows = max(2, int(math.ceil(data.shape[-1] / cols)))
+            plot_3d_rgba_tensor(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
 
     logging.info(f"Saved saliency maps at:{prefix}")
 
