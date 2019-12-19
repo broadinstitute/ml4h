@@ -483,7 +483,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Training ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def train_model_from_generators(model: Model, # Keras model
+def train_model_from_generators(model: Model,
                                 generate_train: Iterable,
                                 generate_valid: Iterable,
                                 training_steps: int,
@@ -499,31 +499,42 @@ def train_model_from_generators(model: Model, # Keras model
                                 plot: bool = True) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
-	Training data lives on disk, it will be loaded by generator functions.
+    Training data lives on disk, it will be loaded by generator functions.
 	Plots the metric history after training. Creates a directory to save weights, if necessary.
 	Measures runtime and plots architecture diagram if inspect_model is True.
-
-    :param model: The model to optimize
-    :param generate_train: Generator function that yields mini-batches of training data.
-    :param generate_valid: Generator function that yields mini-batches of validation data.
-    :param training_steps: Number of mini-batches in each so-called epoch
-    :param validation_steps: Number of validation mini-batches to examine after each epoch.
-    :param batch_size: Number of training examples in each mini-batch
-    :param epochs: Maximum number of epochs to run regardless of Early Stopping
-    :param patience: Number of epochs to wait before reducing learning rate.
-    :param output_folder: Directory where output file will be stored
-    :param run_id: User-chosen string identifying this run
-    :param inspect_model: If True, measure training and inference runtime of the model and generate architecture plot.
-    :param inspect_show_labels: If True, show labels on the architecture plot.
-    :param return_history: If true return history from training and don't plot the training history
-    :return: The optimized model.
+    
+    Arguments:
+        model {Model} -- The Keras model to optimize
+        generate_train {Iterable} -- Generator function that yields mini-batches of training data.
+        generate_valid {Iterable} -- Generator function that yields mini-batches of validation data.
+        training_steps {int} -- Number of mini-batches in each so-called epoch
+        validation_steps {int} -- Number of validation mini-batches to examine after each epoch.
+        batch_size {int} -- Number of training examples in each mini-batch
+        epochs {int} -- Maximum number of epochs to run regardless of Early Stopping
+        patience {int} -- Number of epochs to wait before reducing learning rate.
+        output_folder {str} -- Directory where output file will be stored
+        run_id {str} -- User-chosen string identifying this run
+        inspect_model {bool} -- If True, measure training and inference runtime of the model and generate architecture plot.
+        inspect_show_labels {bool} -- If True, show labels on the architecture plot.
+    
+    Keyword Arguments:
+        return_history {bool} -- If true return history from training and don't plot the training history (default: {False})
+        plot {bool} -- Plot output (default: {True})
+    
+    Returns:
+        Union[Model, Tuple[Model, History]] -- The optimized Keras model
     """
     model_file = os.path.join(output_folder, run_id, run_id + TENSOR_EXT)
+    
+    # Create the directory if it does not exist
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
+    # If we want to inspect the model
     if inspect_model:
+        # Construct a file name for the output image.
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
+        # Convert the Keras model into a Dot figure describing its architecture.
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
     history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
@@ -531,18 +542,30 @@ def train_model_from_generators(model: Model, # Keras model
                                   callbacks=_get_callbacks(patience, model_file),)
 
     logging.info('Model weights saved at: %s' % model_file)
+    
     if plot:
         plot_metric_history(history, run_id, os.path.dirname(model_file))
+    
     if return_history:
         return model, history
+    
     return model
 
 
 def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
+    """Callback indirection
+    
+    Arguments:
+        patience {int} -- Patience for early stopping criteria
+        model_file {str} -- File path for the model
+    
+    Returns:
+        List[Callable] -- [description]
+    """    
     callbacks = [
-        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
-        EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
+        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True), # Save the model after every epoch.
+        EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1), # Stop training when a monitored quantity has stopped improving.
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1) # Reduce learning rate when a metric has stopped improving.
     ]
 
     return callbacks
