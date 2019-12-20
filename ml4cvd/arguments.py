@@ -37,7 +37,7 @@ def parse_args():
 
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
-    parser.add_argument('--output_tensors', default=[], nargs='*')
+    parser.add_argument('--output_tensors', default=[], nargs='+')
     parser.add_argument('--input_continuous_tensors', default=[], nargs='+', help='Continuous tensor maps to be combined.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
@@ -182,9 +182,10 @@ def _process_args(args):
                                                                              args.imputation_method_for_continuous_fields)]
         args.tensor_maps_in.extend(multi_field_tensor_map)
 
-    args.tensor_maps_out = [_get_tmap(ot) for ot in args.output_tensors]
+    args.tensor_maps_out = []
     if args.continuous_tsv is not None:
-        args.tensor_maps_out.append(generate_continuous_tsv_tensor_map(args.continuous_tsv, args.continuous_tsv_column))
+        args.tensor_maps_out.append(generate_continuous_tsv_tensor_map(args.continuous_tsv, args.continuous_tsv_column, args.output_tensors.pop(0)))
+    args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
 
     np.random.seed(args.random_seed)
 

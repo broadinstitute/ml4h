@@ -318,6 +318,6 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], includ
     return multi_field_continuous_tensor_map
 
 
-def generate_continuous_tsv_tensor_map(tsv_file: str, tsv_column) -> TensorMap:
-    return TensorMap(f'tsv_{tsv_column}', channel_map={tsv_column: 0}, dtype=DataSetType.CONTINUOUS,
+def generate_continuous_tsv_tensor_map(tsv_file: str, tsv_column, tensor_map_name: str) -> TensorMap:
+    return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0}, dtype=DataSetType.CONTINUOUS,
                      tensor_from_file=_build_inference_tensor_from_file(tsv_file, tsv_column))
