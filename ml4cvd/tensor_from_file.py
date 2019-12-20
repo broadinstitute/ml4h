@@ -74,14 +74,25 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str):
             header = next(reader)
             index = header.index(target_column)
             table = {row[0]: np.array([float(row[index])]) for row in reader}
+            missing = []
+            for p in os.listdir('/mnt/disks/ecg-rest-37k-tensors/2019-11-04/'):
+                if p.replace('.hd5', '') not in table:
+                    missing.append(p.replace('.hd5', ''))
+            print(f'{len(missing)} missing from table')
+            print(missing[:100])
     except FileNotFoundError as e:
-        error = e
+        raise e
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
             raise error
         try:
-            return tm.normalize_and_validate(table[os.path.basename(hd5.filename).strip('.hd5')])
+            t = table[os.path.basename(hd5.filename).replace('.hd5', '')]
+            # print(t)
+            tn = tm.normalize_and_validate(t)
+            # print(tn)
+            return tn
+            #return tm.normalize_and_validate(table[os.path.basename(hd5.filename).strip('.hd5')])
         except KeyError:
             raise ValueError('User id not in inference tsv.')
     return tensor_from_file
@@ -318,9 +329,9 @@ TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', m
 TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
                                            normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
                                            tensor_from_file=_sentinel_hrr, dtype=DataSetType.CONTINUOUS)
-TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
-                                          normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
-                                          tensor_from_file=_build_inference_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
+#TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
+#                                          normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
+#                                          tensor_from_file=_build_inference_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)
@@ -333,9 +344,15 @@ TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', group='proportional_haz
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=DataSetType.SERIES)
 TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=DataSetType.SERIES)
-TMAPS['ecg-rest-prs-qrs-r0.5-p-6'] = TensorMap('qrs_prs', group='cardiac_prs', metrics=['mae'], shape=(1,),
-                                          sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
-                                          tensor_from_file=_build_inference_tensor_from_file('QRS_PandT_results_remapped.txt', 'raw_score_r2=0.5.p=.5E-6'))
+TMAPS['ecg-rest-prs-qrs-tmp'] = TensorMap('qrs_prs', group='cardiac_prs', metrics=['mae'], shape=(1,),
+                                          dtype=DataSetType.CONTINUOUS,
+                                          tensor_from_file=_build_inference_tensor_from_file('/home/creeder/prs_cardiac/QRS/QRS_PandT_results.txt', 'raw_score_r2=0.5.p=.5E-6'))
+TMAPS['ecg-rest-prs-af'] = TensorMap('af_prs', group='cardiac_prs', metrics=['mae'], shape=(1,),
+                                     dtype=DataSetType.CONTINUOUS,
+                                     tensor_from_file=_build_inference_tensor_from_file('/home/creeder/prs_cardiac/AF/AF_LDPred_results.txt', 'Value'))
+TMAPS['ecg-rest-prs-ces'] = TensorMap('ces_prs', group='cardiac_prs', metrics=['mae'], shape=(1,),
+                                     dtype=DataSetType.CONTINUOUS,
+                                     tensor_from_file=_build_inference_tensor_from_file('/home/creeder/prs_cardiac/CES/CES_PandT_results.txt', 'raw_score_r2=0.5.p=.5E-6'))
 TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=DataSetType.SERIES)
 TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
