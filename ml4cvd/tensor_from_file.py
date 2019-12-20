@@ -704,14 +704,14 @@ TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='
 
 
 def _select_tensor_from_file(selection_predicate: Callable):
-    def excluded_tensor_from_file(tm, hd5, dependents={}):
+    def selected_tensor_from_file(tm, hd5, dependents={}):
         if not selection_predicate(hd5):
             raise ValueError(f'Tensor did not meet selection criteria:{selection_predicate.__name__} with Tensor Map:{tm.name}')
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
             tensor = np.array(hd5[tm.group][k], dtype=np.float32)
         return tm.normalize_and_validate(tensor)
-    return excluded_tensor_from_file
+    return selected_tensor_from_file
 
 
 def _is_genetic_man(hd5):
