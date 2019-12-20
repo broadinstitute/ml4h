@@ -1150,19 +1150,17 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
 def _saliency_map_rgb(image, gradients, blur_radius=2):
     blurred = gaussian_filter(gradients, sigma=blur_radius)
-    logging.info(f'gradients max {gradients.max()} gradients max {gradients.min()}')
-    logging.info(f'blurred max {blurred.max()} blurred max {blurred.min()}')
     blurred -= blurred.min()
     blurred *= (0.8 / blurred.max())
     blurred -= blurred.mean()
-    logging.info(f'blurred max {blurred.max()} blurred max {blurred.min()}')
-    rgba_map = np.zeros(image.shape + (3,))
+    rgb_map = np.zeros(image.shape + (3,))
     image -= image.min()
     image *= (0.8 / image.max())
-    rgba_map[..., 0] = image - blurred
-    rgba_map[..., 1] = image + blurred
-    rgba_map[..., 2] = image
-    return rgba_map
+    rgb_map[..., 0] = image - blurred
+    rgb_map[..., 1] = image + blurred
+    rgb_map[..., 2] = image
+    np.clip(rgb_map, 0, 1)
+    return rgb_map
 
 
 def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500, lead_dictionary=ECG_REST_LEADS):
@@ -1197,17 +1195,14 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
-            plot_3d_rgba_tensor(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
-        elif len(data.shape) == 5 and data.shape[-1] == 1:
-            data = data
-            cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
-            rows = max(2, int(math.ceil(data.shape[-1] / cols)))
-            plot_3d_rgba_tensor(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+        else:
+            logging.warning(f'No method to plot saliency for data shape: {data.shape}')
 
     logging.info(f"Saved saliency maps at:{prefix}")
 
 
-def plot_3d_rgba_tensor(tensor, figure_path, cols=3, rows=10):
+def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     for i in range(tensor.shape[-2]):
         axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
@@ -1220,7 +1215,7 @@ def plot_3d_rgba_tensor(tensor, figure_path, cols=3, rows=10):
     plt.clf()
 
 
-def plot_3d_tensor(tensor, figure_path, cols=3, rows=10):
+def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     vmin = np.min(tensor)
     vmax = np.max(tensor)
