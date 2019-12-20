@@ -295,10 +295,9 @@ def saliency_maps(args):
     for tm in args.tensor_maps_out:
         if len(tm.shape) > 1:
             continue
-        for out_index in range(tm.shape[0]):
-            gradients = saliency_map(in_tensor, model, tm.output_name(), out_index)
-            prefix = f'{args.id}/saliency_maps/{tm.channel_map[out_index] if tm.channel_map is not None else tm.name}'
-            plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, prefix))
+        for channel in tm.channel_map:
+            gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
+            plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{channel}'))
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
