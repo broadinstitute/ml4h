@@ -297,7 +297,7 @@ def saliency_maps(args):
             continue
         for channel in tm.channel_map:
             gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
-            plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{channel}'))
+            plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
