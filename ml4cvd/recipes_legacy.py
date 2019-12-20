@@ -502,11 +502,11 @@ def hdf5_load_tensor(tm, hdf5, dependents={}):
         return _hdf5_load_continuous(tm, hdf5, dependents)
     elif tm.is_multi_field_continuous():
         return _hdf5_load_multi_field_continuous(tm, hdf5, dependents)
-    elif tm.is_ecg_bike():
+    elif tm.group == "ecg_bike":
         return _hdf5_load_ecg_bike(tm, hdf5, dependents)
-    elif tm.is_ecg_bike_recovery():
+    elif tm.group == "ecg_bike_recovery":
         return _hdf5_load_ecg_bike_recovery(tm, hdf5, dependents)
-    elif tm.is_ecg_text():
+    elif tm.group == 'ecg_text':
         return _hdf5_load_ecg_text(tm, hdf5, dependents)
     elif tm.is_hidden_layer():
         return _hdf5_load_hidden_layer(tm, hdf5, dependents)

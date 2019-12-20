@@ -11,7 +11,7 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Iterable, Callable, Union
 
 # Keras imports
-import keras.backend as K
+import keras.backend as keras
 from keras.callbacks import History
 from keras.optimizers import Adam
 from keras.models import Model, load_model
@@ -34,8 +34,11 @@ from ml4cvd.lookahead import Lookahead
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
 
-def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
-                       learning_rate: float, model_file: str = None, model_layers: str = None) -> Model:
+def make_shallow_model(tensor_maps_in: List[TensorMap], 
+                       tensor_maps_out: List[TensorMap],
+                       learning_rate: float, 
+                       model_file: str = None, 
+                       model_layers: str = None) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
 
 	Input and output tensor maps are set from the command line.
@@ -81,21 +84,28 @@ def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[Te
     return m
 
 
-def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                             model_file: str = None, model_layers: str = None) -> Model:
+def make_waveform_model_unet(tensor_maps_in: List[TensorMap], 
+                             tensor_maps_out: List[TensorMap], 
+                             learning_rate: float,
+                             model_file: str = None, 
+                             model_layers: str = None) -> Model:
     """Make a waveform predicting model
 
-	Input and output tensor maps are set from the command line.
+    Input and output tensor maps are set from the command line.
 	Model summary printed to output
-
-    :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
-                            otherwise there are layer name collisions.
-    :param tensor_maps_out: List of output TensorMaps
-    :param learning_rate: Size of learning steps in SGD optimization
-    :param model_file: Optional HD5 model file to load and return.
-    :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
-    :return: a compiled keras model
-    """
+    
+    Arguments:
+        tensor_maps_in {List[TensorMap]} -- List of input TensorMaps, only 1 input TensorMap is currently supported, otherwise there are layer name collisions.
+        tensor_maps_out {List[TensorMap]} -- List of output TensorMaps
+        learning_rate {float} -- Size of learning steps in SGD optimization
+    
+    Keyword Arguments:
+        model_file {str} -- Optional HDF5 model file to load and return. (default: {None})
+        model_layers {str} -- Optional HDF5 model file whose weights will be loaded into this model when layer names match. (default: {None})
+    
+    Returns:
+        Model -- A compiled Keras Model
+    """    
     if model_file is not None:
         m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
         m.summary()
@@ -134,22 +144,29 @@ def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: L
     return m
 
 
-def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                              base_model: Model, model_layers: str=None) -> Tuple[Model, Model]:
+def make_character_model_plus(tensor_maps_in: List[TensorMap], 
+                              tensor_maps_out: List[TensorMap], 
+                              learning_rate: float,
+                              base_model: Model, 
+                              model_layers: str=None) -> Tuple[Model, Model]:
     """Make a ECG captioning model from an ECG embedding model
 
     The base_model must have an embedding layer, but besides that can have any number of other predicition TensorMaps.
     Input and output tensor maps are set from the command line.
     Model summary printed to output
-
-    :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
-                            otherwise there are layer name collisions.
-    :param tensor_maps_out: List of output TensorMaps
-    :param learning_rate: Size of learning steps in SGD optimization
-    :param base_model: The model the computes the ECG embedding
-    :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
-    :return: a tuple of the compiled keras model and the character emitting sub-model
-    """
+    
+    Arguments:
+        tensor_maps_in {List[TensorMap]} -- List of input TensorMaps, only 1 input TensorMap is currently supported, otherwise there are layer name collisions.
+        tensor_maps_out {List[TensorMap]} -- List of output TensorMaps
+        learning_rate {float} -- Size of learning steps in SGD optimization
+        base_model {Model} -- The model the computes the ECG embedding
+    
+    Keyword Arguments:
+        model_layers {str} -- Optional HD5 model file whose weights will be loaded into this model when layer names match. (default: {None})
+    
+    Returns:
+        Tuple[Model, Model] -- A tuple of the compiled Keras model and the character emitting sub-model
+    """    
     char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, base_model)
     tensor_maps_in.extend(char_maps_in)
     tensor_maps_out.extend(char_maps_out)
@@ -179,21 +196,28 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     return m, char_model
 
 
-def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                         model_file: str = None, model_layers: str = None) -> Model:
+def make_character_model(tensor_maps_in: List[TensorMap], 
+                         tensor_maps_out: List[TensorMap], 
+                         learning_rate: float,
+                         model_file: str = None, 
+                         model_layers: str = None) -> Model:
     """Make a ECG captioning model
 
 	Input and output tensor maps are set from the command line.
 	Model summary printed to output
-
-    :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
-                            otherwise there are layer name collisions.
-    :param tensor_maps_out: List of output TensorMaps
-    :param learning_rate: Size of learning steps in SGD optimization
-    :param model_file: Optional HD5 model file to load and return.
-    :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
-    :return: a compiled keras model
-    """
+    
+    Arguments:
+        tensor_maps_in {List[TensorMap]} -- List of input TensorMaps, only 1 input TensorMap is currently supported, otherwise there are layer name collisions.
+        tensor_maps_out {List[TensorMap]} -- List of output TensorMaps
+        learning_rate {float} -- Size of learning steps in SGD optimization
+    
+    Keyword Arguments:
+        model_file {str} -- Optional HD5 model file to load and return. (default: {None})
+        model_layers {str} -- Optional HD5 model file whose weights will be loaded into this model when layer names match. (default: {None})
+    
+    Returns:
+        Model -- A compiled Keras Model
+    """    
     if model_file is not None:
         m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
         m.summary()
@@ -240,27 +264,46 @@ def make_siamese_model(base_model: Model,
                        learning_rate: float = None,
                        optimizer: str = 'adam',
                        **kwargs) -> Model:
-    in_left = [Input(shape=tm.shape, name=tm.input_name()+'_left') for tm in tensor_maps_in]
+    """Create a Siamese model
+    
+    Arguments:
+        base_model {Model} -- [description]
+        tensor_maps_in {List[TensorMap]} -- List of input TensorMaps
+        hidden_layer {str} -- Hidden layer name
+    
+    Keyword Arguments:
+        learning_rate {float} -- Learning rate for the optimization function (default: {None})
+        optimizer {str} -- Optimization function to use (default: {'adam'})
+    
+    Returns:
+        Model -- [description]
+    """    
+    in_left  = [Input(shape=tm.shape, name=tm.input_name()+'_left') for tm in tensor_maps_in]
     in_right = [Input(shape=tm.shape, name=tm.input_name()+'_right') for tm in tensor_maps_in]
     encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
     h_left = encode_model(in_left)
     h_right = encode_model(in_right)
 
-    # Compute the L1 distance
-    l1_layer = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))
+    # Compute the L1 distance (|x - y|) using a Keras Lambda class.
+    l1_layer = Lambda(lambda tensors: keras.abs(tensors[0] - tensors[1]))
     l1_distance = l1_layer([h_left, h_right])
 
     # Add a dense layer with a sigmoid unit to generate the similarity score
     prediction = Dense(1, activation='sigmoid', name='output_siamese')(l1_distance)
 
-    m = Model(inputs=in_left+in_right, outputs=prediction)
+    # Create a Keras Model given the two Siamese inputs
+    m = Model(inputs=in_left + in_right, outputs=prediction)
+    # Retrieve an optimizer
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    # Compile the model
     m.compile(optimizer=opt, loss='binary_crossentropy')
 
+    # Load custom model weights if the argument 'model_layers' is used
     if kwargs['model_layers'] is not None:
         m.load_weights(kwargs['model_layers'], by_name=True)
         logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
 
+    # Return the model
     return m
 
 
@@ -270,10 +313,23 @@ def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[Ten
 
 
 def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str) -> Model:
+    """Factory for creating a hidden layer Keras model (Model).
+    
+    Arguments:
+        parent_model {Model} -- Parent Keras model (Model)
+        tensor_maps_in {List[TensorMap]} -- List of input TensorMaps
+        output_layer_name {str} -- Name of the output layer
+    
+    Returns:
+        Model -- Returns a Keras Model
+    """    
     parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[1:]) for tm in tensor_maps_in}
+    dummy_input   = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[1:]) for tm in tensor_maps_in}
+    
+    # Construct a Keras Model
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=parent_model.get_layer(output_layer_name).output)
-    # If we do not predict here then the graph is disconnected, I do not know why?!
+    
+    # Todo: If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input)
     return intermediate_layer_model
 
@@ -315,36 +371,40 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
 
 	Hyperparameters are exposed to the command line.
 	Model summary printed to output
-
-    :param model_file: HD5 model file to load and return.
-    :param model_layers: HD5 model file whose weights will be loaded into this model when layer names match.
-    :param freeze_model_layers: Whether to freeze layers from loaded from model_layers
-    :param tensor_maps_in: List of input TensorMaps
-    :param tensor_maps_out: List of output TensorMaps
-    :param activation: Activation function as a string (e.g. 'relu', 'linear, or 'softmax)
-    :param dense_layers: List of number of filters in each dense layer.
-    :param dropout: Dropout rate in dense layers
-    :param mlp_concat: If True, conncatenate unstructured inputs to each deeper dense layer
-    :param conv_layers: List of number of filters in each convolutional layer
-    :param max_pools: List of maxpool sizes in X and Y dimensions after convolutional layers
-    :param res_layers: List of convolutional layers with residual connections
-    :param dense_blocks: List of number of filters in densenet modules for densenet convolutional models
-    :param block_size: Number of layers within each Densenet module for densenet convolutional models
-    :param conv_bn: if True, Batch normalize convolutional layers
-    :param conv_x: Size of X dimension for 2D and 3D convolutional kernels
-    :param conv_y: Size of Y dimension for 2D and 3D convolutional kernels
-    :param conv_z: Size of Z dimension for 3D convolutional kernels
-    :param conv_dropout: Dropout rate in convolutional layers
-    :param conv_width: Size of convolutional kernel for 1D models.
-    :param u_connect: Include U connections between early and late convolutional layers.
-    :param pool_x: Pooling in the X dimension for Convolutional models.
-    :param pool_y: Pooling in the Y dimension for Convolutional models.
-    :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
-    :param padding: Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'.
-    :param learning_rate:
-    :param optimizer: which optimizer to use. See optimizers.py.
-    :return: a compiled keras model
-    """
+    
+    Keyword Arguments:
+        tensor_maps_in {List[TensorMap]} -- List of input TensorMaps (default: {None})
+        tensor_maps_out {List[TensorMap]} -- List of output TensorMaps (default: {None})
+        activation {str} -- Activation function as a string (e.g. 'relu', 'linear, or 'softmax) (default: {None})
+        dense_layers {List[int]} -- List of number of filters in each dense layer. (default: {None})
+        dropout {float} -- Dropout rate in dense layers (default: {None})
+        mlp_concat {bool} -- If True, conncatenate unstructured inputs to each deeper dense layer (default: {None})
+        conv_layers {List[int]} -- List of number of filters in each convolutional layer (default: {None})
+        max_pools {List[int]} -- List of maxpool sizes in X and Y dimensions after convolutional layers (default: {None})
+        res_layers {List[int]} -- List of convolutional layers with residual connections (default: {None})
+        dense_blocks {List[int]} -- List of number of filters in densenet modules for densenet convolutional models (default: {None})
+        block_size {List[int]} -- Number of layers within each Densenet module for densenet convolutional models (default: {None})
+        conv_type {str} -- [description] (default: {None})
+        conv_normalize {str} -- [description] (default: {None})
+        conv_regularize {str} -- [description] (default: {None})
+        conv_x {int} -- Size of X dimension for 2D and 3D convolutional kernels (default: {None})
+        conv_y {int} -- Size of Y dimension for 2D and 3D convolutional kernels (default: {None})
+        conv_z {int} -- Size of Z dimension for 3D convolutional kernels (default: {None})
+        conv_dropout {float} -- Dropout rate in convolutional layers (default: {None})
+        conv_width {int} -- Size of convolutional kernel for 1D models (default: {None})
+        conv_dilate {bool} -- [description] (default: {None})
+        u_connect {bool} -- Include U connections between early and late convolutional layers. (default: {None})
+        pool_x {int} -- Pooling in the X dimension for Convolutional models. (default: {None})
+        pool_y {int} -- Pooling in the Y dimension for Convolutional models. (default: {None})
+        pool_z {int} -- Pooling in the Z dimension for Convolutional models. (default: {None})
+        pool_type {int} -- [description] (default: {None})
+        padding {str} -- Padding string can be 'valid' or 'same'. UNets and residual nets require 'same'. (default: {None})
+        learning_rate {float} -- [description] (default: {None})
+        optimizer {str} -- String describing which optimizer to use. See optimizers.py. (default: {'adam'})
+    
+    Returns:
+        Model -- A compiled Keras Model
+    """    
     # Retrieve Keras optimizer using the utility function get_optimizer.
     # get_optimizer is defined in optimizers.py
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
@@ -361,6 +421,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
         return m
 
     # Init.
+    # Keras Input layers constructed using TensorMap shape and name.
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     input_multimodal = []
     channel_axis = -1
@@ -382,11 +443,11 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
             # Convolution block layer
             last_conv   = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout, None)
-            # Densenet convolution layer
+            # Add Keras convolution layers to the graph.
             dense_conv_fxns   = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False, block_size)
             # Add Keras pooling layers to the graph.
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-            # Dense block layer
+            # Densely connected convolutional layer (https://arxiv.org/abs/1608.06993)
             last_conv   = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize, conv_dropout)
             # Flatten
             input_multimodal.append(Flatten()(last_conv))
@@ -396,6 +457,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
             input_multimodal.append(mlp)
 
     if len(input_multimodal) > 1:
+        # Keras concatenate
         multimodal_activation = concatenate(input_multimodal, axis=channel_axis)
     elif len(input_multimodal) == 1:
         multimodal_activation = input_multimodal[0]
@@ -404,7 +466,6 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
     
     # Iterate over dense layers
     for i, hidden_units in enumerate(dense_layers):
-        
         if i == len(dense_layers) - 1:
             multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize, name='embed')
         else:
@@ -452,7 +513,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap]=None,
             conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
-            if len(K.int_shape(output_predictions[tm.parents[0]])) > 1:
+            if len(keras.int_shape(output_predictions[tm.parents[0]])) > 1:
                 output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
             else:
                 parented_activation = concatenate([multimodal_activation] + [output_predictions[p] for p in tm.parents])
@@ -543,9 +604,11 @@ def train_model_from_generators(model: Model,
         # Convert the Keras model into a Dot figure describing its architecture.
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
+    # Trains the model on data generated batch-by-batch by a Python generator.
+    # Our custom callbacks are defined in '_get_callbacks'.
     history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
                                   validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file),)
+                                  callbacks=_get_callbacks(patience, patience * 3, model_file),)
 
     logging.info('Model weights saved at: %s' % model_file)
     
@@ -558,20 +621,21 @@ def train_model_from_generators(model: Model,
     return model
 
 
-def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
-    """Callback indirection
+def _get_callbacks(patience_learning_rate: int, patience_early: int, model_file: str) -> List[Callable]:
+    """Callback indirection. The parameter 'patience_early' must be <= 'patience_learning_rate'
     
     Arguments:
-        patience {int} -- Patience for early stopping criteria
+        patience_learning_rate {int} -- Patience for when to reduce the learning rate when a metric is no longer improving ('val_loss')
+        patience_early {int} -- Patience for early stopping criteria for a metric ('val_loss')
         model_file {str} -- File path for the model
     
     Returns:
-        List[Callable] -- A list of callbacks used in Keras
+        List[Callable] -- A list of Keras callbacks
     """    
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True), # Save the model after every epoch.
-        EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1), # Stop training when a monitored quantity has stopped improving.
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1) # Reduce learning rate when a metric has stopped improving.
+        EarlyStopping(monitor='val_loss', patience=patience_early, verbose=1), # Stop training when a monitored quantity has stopped improving.
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience_learning_rate, verbose=1) # Reduce learning rate when a metric has stopped improving.
     ]
 
     return callbacks
@@ -588,8 +652,8 @@ def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_siz
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Model Builders ~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _conv_block_new(x: K.placeholder, # Keras placeholder
-                    layers: Dict[str, K.placeholder],
+def _conv_block_new(x: keras.placeholder, # Keras placeholder
+                    layers: Dict[str, keras.placeholder],
                     conv_layers: List[Layer], # Convolutional layers
                     pool_layers: List[Layer], # Pooling layers
                     dimension: int,
@@ -601,41 +665,49 @@ def _conv_block_new(x: K.placeholder, # Keras placeholder
     """Construct a new blocked convolutional layer.
     
     Arguments:
-        x {K.placeholder} -- [description]
+        x {keras.placeholder} -- [description]
         activation {str} -- A string mapping to a valid Keras activation function
         normalization {str} -- A string mapping to a valid normalization function
         regularization {str} -- A string mapping to a valid regularization function
         regularization_rate {float} -- [description]
-        residual_convolution_layer {Layer} -- [description]
+        residual_convolution_layer {Layer} -- Keras Layer for residual conv layers (skip connections)
     """                    
     # Difference in number of convolution layers to pooling layers.
     pool_diff = len(conv_layers) - len(pool_layers)
 
     # Iterate over the desired number of conv layers.
+    # Add a skip connection if the current layer 
     for i, conv_layer in enumerate(conv_layers):
         residual = x # Track original
+        # Conv layer
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
+        # Activation layer
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+        # Normalization layer
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+        # Regularization layer
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         
+        # If the current position
         if i >= pool_diff:
             x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](x)
+            # If we have a residual connection on a convolution layer
             if residual_convolution_layer is not None:
                 residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
         
+        # If we have a residual connection on a convolution layer
         if residual_convolution_layer is not None:
-            if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
+            if keras.int_shape(x)[CHANNEL_AXIS] == keras.int_shape(residual)[CHANNEL_AXIS]:
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
             else:
-                residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
+                residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=keras.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
     
     return _get_last_layer(layers)
 
 
-def _dense_block(x: K.placeholder, # Keras placeholder
-                 layers: Dict[str, K.placeholder], # Keras placeholder
+def _dense_block(x: keras.placeholder, # Keras placeholder
+                 layers: Dict[str, keras.placeholder], # Dictionary of Keras placeholders
                  block_size: int,
                  conv_layers: List[Layer],
                  pool_layers: List[Layer],
@@ -644,17 +716,22 @@ def _dense_block(x: K.placeholder, # Keras placeholder
                  normalization: str,
                  regularization: str,
                  regularization_rate: float):
+
+    # Iterate over the list of Keras Layers
     for i, conv_layer in enumerate(conv_layers):
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
+        
+        # If this is the first 
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
             x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i//block_size](x)
             dense_connections = [x]
         else:
             dense_connections += [x]
             x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+    
     return _get_last_layer(layers)
 
 
@@ -680,22 +757,22 @@ def _conv_layer_from_kind_and_dimension(dimension: int, conv_layer_type: str, co
     Returns:
         [Function pointer, (kernel, ...)]-tuple
     """    
-    if dimension == 4 and conv_layer_type == 'conv':
+    if dimension == 4 and conv_layer_type == 'conv': # 3D
         conv_layer = Conv3D
         kernel = (conv_x, conv_y, conv_z)
-    elif dimension == 3 and conv_layer_type == 'conv':
+    elif dimension == 3 and conv_layer_type == 'conv': # 2D
         conv_layer = Conv2D
         kernel = (conv_x, conv_y)
-    elif dimension == 2 and conv_layer_type == 'conv':
+    elif dimension == 2 and conv_layer_type == 'conv': # 1D
         conv_layer = Conv1D
         kernel = conv_width
-    elif dimension == 3 and conv_layer_type == 'separable':
+    elif dimension == 3 and conv_layer_type == 'separable': # Sep2D
         conv_layer = SeparableConv2D
         kernel = (conv_x, conv_y)
-    elif dimension == 2 and conv_layer_type == 'separable':
+    elif dimension == 2 and conv_layer_type == 'separable': # Sep1D
         conv_layer = SeparableConv1D
         kernel = conv_width
-    elif dimension == 3 and conv_layer_type == 'depth':
+    elif dimension == 3 and conv_layer_type == 'depth': # Dw2D
         conv_layer = DepthwiseConv2D
         kernel = (conv_x, conv_y)
     else:
@@ -767,18 +844,18 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
         raise ValueError(f'Unknown pooling type: {pool_type} for dimension: {dimension}')
 
 
-def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
+def _dense_layer(x: keras.placeholder, layers: Dict[str, keras.placeholder], units: int, activation: str, normalization: str, name=None):
         """Add dense layers
         
         Arguments:
-            x {K.placeholder} -- Keras placeholder
-            layers {Dict[str, K.placeholder]} -- Dictionary of layers as [string, Keras placeholder]-tuples
+            x {keras.placeholder} -- Keras placeholder
+            layers {Dict[str, keras.placeholder]} -- Dictionary of layers as [string, Keras placeholder]-tuples
             units {int} -- Positive integer, dimensionality of the output space.
             activation {str} -- Keras activation function name
             normalization {str} -- Keras normalization function
         
         Keyword Arguments:
-            name {[type]} -- [description] (default: {None})
+            name {[type]} -- Override the default name "Dense_" (default: {None})
         
         Returns:
             [type] -- [description]
@@ -883,10 +960,11 @@ def _get_last_layer(named_layers):
     max_index = -1
     max_layer = ''
     for k in named_layers:
-        cur_index = int(k.split('_')[-1])
+        cur_index = int(keras.split('_')[-1])
         if max_index < cur_index:
             max_index = cur_index
             max_layer = k
+    
     return named_layers[max_layer]
 
 
@@ -894,7 +972,7 @@ def _get_last_layer_by_kind(named_layers, kind, mask_after=9e9):
     max_index = -1
     for k in named_layers:
         if kind in k:
-            val = int(k.split('_')[-1])
+            val = int(keras.split('_')[-1])
             if val < mask_after:
                 max_index = max(max_index, val)
     return named_layers[kind + JOIN_CHAR + str(max_index)]
@@ -1015,9 +1093,14 @@ def get_model_inputs_outputs(model_files: List[str],
                              tensor_maps_in: List[TensorMap],
                              tensor_maps_out: List[TensorMap]) -> Dict[str, Dict[str, TensorMap]]:
     """Organizes given input and output tensors as nested dictionary.
-
+    
+    Arguments:
+        model_files {List[str]} -- List of model files
+        tensor_maps_in {List[TensorMap]} -- Input list of TensorMaps
+        tensor_maps_out {List[TensorMap]} -- Output list of TensorMaps
+    
     Returns:
-        dict: The nested dictionary of tensors.
+        Dict[str, Dict[str, TensorMap]] -- The nested dictionary of tensors.
             The inner dictionary is keyed by tensor type ('input' or 'output').
             The outer dictionary is keyed by 'model_file'.
 
@@ -1033,31 +1116,42 @@ def get_model_inputs_outputs(model_files: List[str],
                         'output': [tensor4, tensor6]
                     }
             }
-                        
-    """
-
+    """    
     input_prefix = "input"
     output_prefix = "output"
     got_tensor_maps_for_characters = False
     models_inputs_outputs = dict()
 
+    # Iterate over the input model files
     for model_file in model_files:
+        # Open the HDF5-file in read-only mode
         with h5py.File(model_file, 'r') as hd5:
             model_inputs_outputs = defaultdict(list)
+            
+            # Iterate over input TensorMaps
             for input_tensor_map in tensor_maps_in:
                 if input_tensor_map.input_name() in hd5["model_weights"]:
                     model_inputs_outputs[input_prefix].append(input_tensor_map)
+            
+            # Iterate over output TensorMaps
             for output_tensor_map in tensor_maps_out:
                 if output_tensor_map.output_name() in hd5["model_weights"]:
                     model_inputs_outputs[output_prefix].append(output_tensor_map)
+            
+            # Special case
             if not got_tensor_maps_for_characters and 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
+                # Loads a saved (serialized) model.
                 m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
                 char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, m)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)
                 model_inputs_outputs[output_prefix].extend(char_maps_out)
                 tensor_maps_out.extend(char_maps_out)
+                
+                # Trigger flag
                 got_tensor_maps_for_characters = True
+                
+                # Logging disco.
                 logging.info(f"Doing char model dance:{[tm.input_name() for tm in tensor_maps_in]}")
                 logging.info(f"Doing char model dance out:{[tm.output_name() for tm in tensor_maps_out]}")
 

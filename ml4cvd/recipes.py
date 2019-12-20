@@ -449,45 +449,67 @@ def _predict_and_evaluate(model,
     return performance_metrics
 
 
-def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
+def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps: int, hidden_layer, plot_path: str, alpha: float):
+    # List of layer names
     layer_names = [layer.name for layer in model.layers]
+    # List of model prediction names
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
+    # List of scalar prediction names
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
+    # Test labels
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
 
+    # Log
     logging.info(f" in scalar predict {model_predictions} scalar predict names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
+    
+    # Init
     embeddings = []
     test_paths = []
+    
+    # Iterate over the number batches used for testing
     for i in range(steps):
         batch_data, batch_labels, batch_paths = next(test_generator)
+        # Predict target batch data given the model
         y_predictions = model.predict(batch_data)
         test_paths.extend(batch_paths)
+
+        #
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer, batch_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
+        #
         for tm_output_name in test_labels:
             test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
 
+        #
         for y, tm_output_name in zip(y_predictions, model_predictions):
             if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                 y = y_predictions
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
 
+    # Init for metrics and plots
     performance_metrics = {}
     scatters = []
     rocs = []
+
+    # Iterate over the output TensorMaps
     for tm in tensor_maps_out:
         if tm.output_name() in scalar_predictions:
             y_predict = np.array(scalar_predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
             performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
+    # Compute ROC plots
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
+    
+    # Compute scatter plots
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
+    
+    # Compute t-SNE plot if the number of embeddings are non-zero
     if len(embeddings) > 0:
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
         _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, embeddings=embeddings)

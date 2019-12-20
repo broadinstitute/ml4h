@@ -420,17 +420,5 @@ class TensorMap(object):
     def is_diagnosis_time(self) -> bool:
         return self.group == 'diagnosis_time'
 
-    def is_ecg_rest(self) -> bool:
-        return self.group == 'ecg_rest'
-
     def is_ecg_categorical_interpretation(self) -> bool:
         return self.group == 'ecg_categorical_interpretation'
-
-    def is_ecg_bike(self) -> bool:
-        return self.group == 'ecg_bike'
-
-    def is_ecg_bike_recovery(self) -> bool:
-        return self.group == 'ecg_bike_recovery'
-
-    def is_ecg_text(self) -> bool:
-        return self.group == 'ecg_text'
