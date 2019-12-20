@@ -46,6 +46,8 @@ def run(args):
             optimize_architecture(args)
         elif 'ecg_rest' == args.mode:
             optimize_ecg_rest_architecture(args)
+        elif 'ecg_rest_unet' == args.mode:
+            optimize_ecg_rest_unet_architecture(args)
         elif 'mri_sax' == args.mode:
             optimize_mri_sax_architecture(args)
         else:
@@ -158,6 +160,39 @@ def optimize_ecg_rest_architecture(args):
     pool_type = ['max', 'average']
     space = {
         'pool_x': hp.quniform('pool_x', 1, 16, 1),
+        'conv_layers': hp.choice('conv_layers', conv_layers_sets),
+        'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
+        'dense_layers': hp.choice('dense_layers', dense_layers_sets),
+        'conv_dilate': hp.choice('conv_dilate', conv_dilate),
+        'activation': hp.choice('activation', activation),
+        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
+        'pool_type': hp.choice('pool_type', pool_type),
+        'conv_width': hp.loguniform('conv_width', 1, 5),
+        'block_size': hp.quniform('block_size', 1, 6, 1),
+    }
+    param_lists = {
+        'conv_layers': conv_layers_sets,
+        'dense_blocks': dense_blocks_sets,
+        'dense_layers': dense_layers_sets,
+        'conv_dilate': conv_dilate,
+        'activation': activation,
+        'conv_normalize': conv_normalize,
+        'pool_type': pool_type,
+    }
+    hyperparameter_optimizer(args, space, param_lists)
+
+
+def optimize_ecg_rest_unet_architecture(args):
+    dense_blocks_sets = [[32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    conv_layers_sets = [[16], [32], [48], [32, 32], [48, 32], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
+    dense_layers_sets = [[32, 32], [16, 64], [8, 128], [16, 16], [8, 8], [48], [32], [24], [16], [8]]
+    conv_dilate = [True, False]
+    activation = ['leaky', 'prelu', 'relu']
+    conv_normalize = ['', 'batch_norm']
+    pool_type = ['max', 'average']
+    pool_xs = [1, 5, 10, 25]
+    space = {
+        'pool_x': hp.choice('pool_x', pool_xs),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
