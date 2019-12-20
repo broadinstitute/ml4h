@@ -960,7 +960,7 @@ def _get_last_layer(named_layers):
     max_index = -1
     max_layer = ''
     for k in named_layers:
-        cur_index = int(keras.split('_')[-1])
+        cur_index = int(k.split('_')[-1])
         if max_index < cur_index:
             max_index = cur_index
             max_layer = k
@@ -972,7 +972,7 @@ def _get_last_layer_by_kind(named_layers, kind, mask_after=9e9):
     max_index = -1
     for k in named_layers:
         if kind in k:
-            val = int(keras.split('_')[-1])
+            val = int(k.split('_')[-1])
             if val < mask_after:
                 max_index = max(max_index, val)
     return named_layers[kind + JOIN_CHAR + str(max_index)]
