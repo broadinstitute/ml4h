@@ -33,8 +33,8 @@ from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -1165,7 +1165,8 @@ def _saliency_map_rgb(image, gradients, blur_radius=2):
     return rgba_map
 
 
-def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500):
+def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500, lead_dictionary=ECG_REST_LEADS):
+    index2leads = {v: k for k, v in lead_dictionary.items()}
     _, axes = plt.subplots(rows, cols, figsize=(18, 16))
     for i in range(rows):
         for j in range(cols):
@@ -1176,6 +1177,8 @@ def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.
                 axes[i, j].plot(range(start, stop), ecgs[label][start:stop, j + i*cols] * raw_scale, label=label)
             axes[i, j].legend(loc='lower right')
             axes[i, j].set_xlabel('milliseconds')
+            axes[i, j].set_ylabel('mV')
+            axes[i, j].set_title(index2leads[j + i*cols])
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
