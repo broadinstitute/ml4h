@@ -590,7 +590,7 @@ TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patie
 
 def _mri_tensor_4d(hd5, name):
     """
-    Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations
+    Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
     if isinstance(hd5[name], h5py.Group):
         nslices = len(hd5[name]) // MRI_FRAMES
@@ -670,95 +670,76 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
             writer.SetFileName(os.path.join(save_path, f'grid_{name}_{d_idx}.vts'))
             writer.SetInputData(grids[-1])
             writer.Update()        
-    return grids                            
-        
+    return grids
 
-def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, population_normalize=None):
+
+def _cut_through_plane(dataset, plane_center, plane_orientation):
+    plane = vtk.vtkPlane()
+    plane.SetOrigin(plane_center)
+    plane.SetNormal(plane_orientation)
+    cutter = vtk.vtkCutter()
+    cutter.SetInputData(dataset)
+    cutter.SetCutFunction(plane)
+    poly = vtk.vtkDataSetSurfaceFilter()
+    poly.SetInputConnection(cutter.GetOutputPort())
+    poly.Update()
+    return poly.GetOutput()
+    
+
+def _map_points_to_cells(pts, dataset, tol=1e-3):    
+    locator = vtk.vtkCellLocator()
+    locator.SetDataSet(dataset)
+    locator.BuildLocator()    
+    closest_pt = np.zeros(3)
+    generic_cell = vtk.vtkGenericCell()
+    cell_id, sub_id, dist2, inside = vtk.mutable(0), vtk.mutable(0), vtk.mutable(0.0), vtk.mutable(0)
+    map_to_cells = np.zeros(len(pts), dtype=np.int64)
+    for pt_id, pt in enumerate(pts):
+        if locator.FindClosestPointWithinRadius(pt, tol, closest_pt, generic_cell, cell_id, sub_id, dist2, inside):
+            map_to_cells[pt_id] = cell_id.get()        
+    return map_to_cells
+
+
+def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, save_path=None, population_normalize=None):
     def mri_projected_segmentation(tm, hd5):
         if segmented_name not in [MRI_SEGMENTED, MRI_LAX_SEGMENTED]:
-            raise ValueError('Name of the TensorMap name should indicate whether to project from SAX or from LAX segmentations')
+            raise ValueError(f'{segmented_name} is recognized neither as SAX nor LAX segmentation')
         cine_segmented_grids = _mri_hd5_to_structured_grids(hd5, segmented_name)
         cine_to_segment_grids = _mri_hd5_to_structured_grids(hd5, to_segment_name)
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        cnt = 0
-        for ds_segmented in cine_segmented_grids:            
-            for ds_to_segment in cine_to_segment_grids:
-                cnt += 1
+        # Loop through segmentations and datasets
+        for ds_i, ds_segmented in enumerate(cine_segmented_grids):
+            for ds_j, ds_to_segment in enumerate(cine_to_segment_grids):
                 dims = ds_to_segment.GetDimensions()
                 pts = vtk.util.numpy_support.vtk_to_numpy(ds_to_segment.GetPoints().GetData())
-                npts_per_slice = dims[0]*dims[1]
+                npts_per_slice = dims[0] * dims[1]
+                ncells_per_slice = (dims[0]-1) * (dims[1]-1)
                 n_orientation = (pts[npts_per_slice] - pts[0])
                 n_orientation /= np.linalg.norm(n_orientation)
+                cell_centers = vtk.vtkCellCenters()
+                cell_centers.SetInputData(ds_to_segment)
+                cell_centers.Update()
+                cell_pts = vtk.util.numpy_support.vtk_to_numpy(cell_centers.GetOutput().GetPoints().GetData())                
+                # Loop through dataset slices 
                 for s in range(dims[2]-1):
-                    center = np.mean(pts[s*npts_per_slice:(s+2)*npts_per_slice], axis=0)
-                    plane = vtk.vtkPlane()
-                    plane.SetOrigin(center)
-                    plane.SetNormal(n_orientation)
-                    plane_cutter_segmented = vtk.vtkCutter()
-                    plane_cutter_segmented.SetCutFunction(plane)
-                    plane_cutter_segmented.SetInputData(ds_segmented)
-                    plane_cutter_segmented.Update() 
-                    poly_cut_segmented = vtk.vtkDataSetSurfaceFilter()
-                    poly_cut_segmented.SetInputConnection(plane_cutter_segmented.GetOutputPort())
-                    poly_cut_segmented.Update()
-                    centers_to_segment = vtk.vtkCellCenters()
-                    centers_to_segment.SetInputData(ds_to_segment)
-                    centers_to_segment.Update()
-                    centers_pts = vtk.util.numpy_support.vtk_to_numpy(centers_to_segment.GetOutput().GetPoints().GetData())
-                    segmented_locator = vtk.vtkCellLocator()
-                    segmented_locator.SetDataSet(poly_cut_segmented.GetOutput())
-                    segmented_locator.BuildLocator()
-                    map_to_segment_to_segmented = np.zeros(len(centers_pts), dtype=np.int64)
-                    generic_cell = vtk.vtkGenericCell()
-                    cell_id, sub_id, dist2, inside = vtk.mutable(0), vtk.mutable(0), vtk.mutable(0.0), vtk.mutable(0)
-                    closest_pt = np.zeros(3)
-                    for cp, centers_pt in enumerate(centers_pts):
-                        if segmented_locator.FindClosestPointWithinRadius(centers_pt, 1e-3, closest_pt, generic_cell, cell_id, sub_id, dist2, inside):
-                            map_to_segment_to_segmented[cp] = cell_id.get()
+                    slice_center = np.mean(pts[s*npts_per_slice:(s+2)*npts_per_slice], axis=0)                    
+                    slice_cell_pts = cell_pts[s*ncells_per_slice:(s+1)*ncells_per_slice]
+                    slice_segmented = _cut_through_plane(ds_segmented, slice_center, n_orientation)
+                    map_to_segmented = _map_points_to_cells(slice_cell_pts, slice_segmented)
+                    # Loop through time
                     for t in range(MRI_FRAMES):
-                        # # probe_centers = vtk.vtkProbeFilter()
-                        # # probe_centers.SetSourceConnection(poly_cut_segmented.GetOutputPort())
-                        # # probe_centers.SetInputConnection(centers_to_segment.GetOutputPort())
-                        # # probe_centers.Update()                        
-                        # # Threshold to remove background from segmentation                    
-                        # thresh = vtk.vtkThreshold()
-                        # thresh.SetInputData(poly_cut_segmented_segmented)
-                        # thresh.AllScalarsOff()
-                        # thresh.ThresholdByUpper(MRI_SEGMENTED_CHANNEL_MAP['background']+EPS)
-                        # thresh.Update()
-                        # thresh_points = vtk.vtkCellDataToPointData()
-                        # thresh_points.SetInputConnection(thresh.GetOutputPort())
-                        # thresh_points.Update()
-                        # implicit = vtk.vtkImplicitDataSet()
-                        # implicit.SetDataSet(thresh_points.GetOutput())
-                        # implicit.SetOutValue(EPS)
-                        # sampler = vtk.vtkSampleImplicitFunctionFilter()
-                        # sampler.SetImplicitFunction(implicit)
-                        # sampler.SetInputData(centers_to_segment.GetOutput())
-                        # sampler.ComputeGradientsOff()
-                        # sampler.SetScalarArrayName(tm.name)
-                        # sampler.Update()
-                        segmentation_arr = vtk.util.numpy_support.vtk_to_numpy(poly_cut_segmented.GetOutput().GetCellData().GetArray(f'{segmented_name}_{t}'))
-                        proj_segmentation_arr = segmentation_arr[map_to_segment_to_segmented]
-                        proj_segmentation_arr_vtk = vtk.util.numpy_support.numpy_to_vtk(proj_segmentation_arr, deep=True)
-                        proj_segmentation_arr_vtk.SetName(f'{segmented_name}_{t}')
-                        ds_to_segment.GetCellData().AddArray(proj_segmentation_arr_vtk)
+                        arr_name = f'{segmented_name}_{t}'
+                        segmented_arr = vtk.util.numpy_support.vtk_to_numpy(slice_segmented.GetCellData().GetArray(arr_name))
+                        projected_arr = segmented_arr[map_to_segmented]
                         if len(tm.shape) == 3:
-                            tensor[:, :, t] = np.maximum(tensor[:, :, t], proj_segmentation_arr.reshape(tm.shape[0], tm.shape[1]))
+                            tensor[:, :, t] = np.maximum(tensor[:, :, t], projected_arr.reshape(tm.shape[0], tm.shape[1]))
                         elif len(tm.shape) == 4:
-                            proj_shape = (tm.shape[0], tm.shape[1], len(proj_segmentation_arr)//(tm.shape[0]*tm.shape[1]))
-                            tensor[:, :, :proj_shape[2], t] = np.maximum(tensor[:, :, :proj_shape[2], t], proj_segmentation_arr.reshape(*proj_shape, order='F'))
-                        else:
-                            raise ValueError('Projections can be performed only on full heartbeat cycles')
-                        
-                    writer_segmented = vtk.vtkXMLPolyDataWriter()
-                    writer_segmented.SetInputConnection(poly_cut_segmented.GetOutputPort())
-                    writer_segmented.SetFileName(f'/home/pdiachil/mri_tensors/{tm.name}_segmented_{cnt}_{s}.vtp')
-                    writer_segmented.Update()
-                    writer_to_segment = vtk.vtkXMLStructuredGridWriter()
-                    writer_to_segment.SetInputData(ds_to_segment)
-                    writer_to_segment.SetFileName(f'/home/pdiachil/mri_tensors/{tm.name}_to_segment_{cnt}_{s}.vts')
-                    writer_to_segment.Update()
+                            tensor[:, :, s, t] = np.maximum(tensor[:, :, s, t], projected_arr.reshape(tm.shape[0], tm.shape[1]))
+                    if save_path:
+                        writer_segmented = vtk.vtkXMLPolyDataWriter()
+                        writer_segmented.SetInputData(slice_segmented)
+                        writer_segmented.SetFileName(os.path.join(save_path, f'{tm.name}_segmented_{ds_i}_{ds_j}_{s}.vtp'))
+                        writer_segmented.Update()
         return tensor
     return mri_projected_segmentation
 
@@ -775,9 +756,3 @@ TMAPS['cine_segmented_lax_3ch_proj_from_lax'] = TensorMap('cine_segmented_lax_3c
                                                           tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_3ch', MRI_LAX_SEGMENTED))
 TMAPS['cine_segmented_lax_4ch_proj_from_lax'] = TensorMap('cine_segmented_lax_4ch_proj_from_lax', (256, 256, 50), loss='logcosh',
                                                           tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_4ch', MRI_LAX_SEGMENTED))
-TMAPS['cine_segmented_sax_inlinevf_proj_from_lax'] = TensorMap('cine_segmented_sax_inlinevf_proj_from_lax', (256, 256, 12, 50), loss='logcosh',
-                                                               tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_sax_inlinevf', MRI_LAX_SEGMENTED))
-TMAPS['cine_segmented_sax_inlinevf_proj_from_lax'] = TensorMap('cine_segmented_sax_inlinevf_proj_from_lax', (256, 256, 12, 50), loss='logcosh',
-                                                               tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_sax_inlinevf', MRI_LAX_SEGMENTED))
-TMAPS['cine_segmented_sax_inlinevf_proj_from_lax'] = TensorMap('cine_segmented_sax_inlinevf_proj_from_lax', (256, 256, 12, 50), loss='logcosh',
-                                                               tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_sax_inlinevf', MRI_LAX_SEGMENTED))
