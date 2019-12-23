@@ -812,7 +812,7 @@ def _mri_tensor_4d(hd5, name):
 
 def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
     """
-    Returns MRI tensors as lists of VTK structured grids aligned to the reference system of the patient
+    Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
     arr = _mri_tensor_4d(hd5, name)
     width = hd5['_'.join([MRI_PIXEL_WIDTH, name])]
@@ -948,6 +948,8 @@ TMAPS['cine_segmented_lax_3ch_proj_from_lax'] = TensorMap('cine_segmented_lax_3c
                                                           tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_3ch', MRI_LAX_SEGMENTED))
 TMAPS['cine_segmented_lax_4ch_proj_from_lax'] = TensorMap('cine_segmented_lax_4ch_proj_from_lax', (256, 256, 50), loss='logcosh',
                                                           tensor_from_file=_make_mri_projected_segmentation_from_file('cine_segmented_lax_4ch', MRI_LAX_SEGMENTED))
+
+
 def _slice_tensor(tensor_key, slice_index):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
