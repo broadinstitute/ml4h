@@ -74,6 +74,12 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str):
             header = next(reader)
             index = header.index(target_column)
             table = {row[0]: np.array([float(row[index])]) for row in reader}
+            missing = []
+            for p in os.listdir('/mnt/disks/ecg-rest-37k-tensors/2019-11-04/'):
+                if p.strip('.hd5') not in table:
+                    missing.append(p.strip('.hd5'))
+            print('{} missing from table'.format(len(missing)))
+            print(missing[:100])
     except FileNotFoundError as e:
         error = e
 
