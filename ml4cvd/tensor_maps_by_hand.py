@@ -345,6 +345,11 @@ TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  group='continuous', val
 TMAPS['myocardial_mass_noheritable'] = TensorMap('inferred_myocardial_mass_noheritable',  group='continuous',
                                                  loss='logcosh', validator=make_range_validator(0, 400), normalization={'mean': 89.70, 'std': 24.80},
                                                  channel_map={'inferred_myocardial_mass_noheritable': 0})
+TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_mass_noheritable',  group='continuous', sentinel=0, loss='logcosh',
+                                                          normalization={'mean': 89.70, 'std': 24.80},
+                                                          channel_map={'inferred_myocardial_mass_noheritable': 0})
+
+
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', group='continuous', channel_map={'22402_Liver-fat-percentage_2_0': 0},
                                activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
