@@ -892,7 +892,7 @@ def _map_points_to_cells(pts, dataset, tol=1e-3):
     return map_to_cells
 
 
-def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, save_path=None, population_normalize=None):
+def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, save_path=None):
     def mri_projected_segmentation(tm, hd5):
         if segmented_name not in [MRI_SEGMENTED, MRI_LAX_SEGMENTED]:
             raise ValueError(f'{segmented_name} is recognized neither as SAX nor LAX segmentation')
