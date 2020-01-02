@@ -23,7 +23,7 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map
+from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map, generate_continuous_tsv_tensor_map
 
 
 def parse_args():
@@ -59,8 +59,10 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
+    parser.add_argument('--continuous_tsv', default=None, help='Path to a TSV of continuous values from which a output TensorMap will be made.')
 
     # Data selection parameters
+    parser.add_argument('--continuous_tsv_column', default=None, help='Column header in TSV from which a continuous TensorMap will be made.')
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.')
     parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
@@ -178,9 +180,13 @@ def _process_args(args):
     if len(args.input_continuous_tensors) > 0:
         multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
                                                                              args.imputation_method_for_continuous_fields)]
-        args.tensor_maps_in = args.tensor_maps_in.extend(multi_field_tensor_map)
+        args.tensor_maps_in.extend(multi_field_tensor_map)
 
-    args.tensor_maps_out = [_get_tmap(ot) for ot in args.output_tensors]
+    args.tensor_maps_out = []
+    if args.continuous_tsv is not None:
+        args.tensor_maps_out.append(generate_continuous_tsv_tensor_map(args.continuous_tsv, args.continuous_tsv_column, args.output_tensors.pop(0)))
+    args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+
     np.random.seed(args.random_seed)
 
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
