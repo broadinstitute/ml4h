@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple
 import os
 import csv
 import h5py
+import logging
 import numpy as np
 from keras.utils import to_categorical
 
@@ -62,7 +63,7 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
     return _slice_subset_tensor_from_file
 
 
-def _build_inference_tensor_from_file(inference_file: str, target_column: str):
+def _build_inference_tensor_from_file(inference_file: str, target_column: str, normalization: bool):
     """
     Build a tensor_from_file function from a column of an inference tsv.
     Only works for continuous values.
@@ -74,6 +75,12 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str):
             header = next(reader)
             index = header.index(target_column)
             table = {row[0]: np.array([float(row[index])]) for row in reader}
+            if normalization:
+                value_array = np.array([sub_array[0] for sub_array in table.values()])
+                mean = value_array.mean()
+                std = value_array.std()
+                logging.info(f'Normalizing TensorMap from file {inference_file}, column {target_column} with mean: '
+                             f'{mean:.2f}, std: {std:.2f}')
     except FileNotFoundError as e:
         error = e
 
@@ -82,6 +89,8 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str):
             raise error
         try:
             t = table[os.path.basename(hd5.filename).replace('.hd5', '')]
+            if normalization:
+                tm.normalization = {'mean': mean, 'std': std}
             tn = tm.normalize_and_validate(t)
             return tn
         except KeyError:
