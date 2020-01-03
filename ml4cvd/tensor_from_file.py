@@ -719,16 +719,6 @@ TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='
                                                   channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
 
 
-def _make_index_tensor_from_file(index_map_name):
-    def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for k in tm.channel_map:
-            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
-        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor / index)
-    return indexed_lvmass_tensor_from_file
-
-
 def _select_tensor_from_file(selection_predicate: Callable):
     def selected_tensor_from_file(tm, hd5, dependents={}):
         if not selection_predicate(hd5):
@@ -754,6 +744,28 @@ TMAPS['myocardial_mass_noheritable_men_only'] = TensorMap('inferred_myocardial_m
 TMAPS['myocardial_mass_noheritable_women_only'] = TensorMap('inferred_myocardial_mass_noheritable', group='continuous', activation='linear', loss='logcosh',
                                                             tensor_from_file=_select_tensor_from_file(_is_genetic_woman),
                                                             channel_map={'inferred_myocardial_mass_noheritable': 0}, normalization={'mean': 78.0, 'std': 16.0})
+
+
+def _make_lvh_from_lvm_tensor_from_file(bsa_key, lvm_key, group='continuous', male_lvh_threshold=72, female_lvh_threshold=55):
+    def lvh_from_lvm_tensor_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        lvm = float(hd5[group][lvm_key])
+        bsa = float(hd5[group][bsa_key])
+        lvm_indexed = lvm / bsa
+        index = 0
+        if _is_genetic_man(hd5) and lvm_indexed > male_lvh_threshold:
+            index = 1
+        elif _is_genetic_woman(hd5) and lvm_indexed > female_lvh_threshold:
+            index = 1
+        tensor[index] = 1
+        return tensor
+    return lvh_from_lvm_tensor_from_file
+
+
+TMAPS['lvh_from_lvm_actual'] = TensorMap('lvh_from_lvm_actual', group='categorical', channel_map={'no_lvh': 0, 'lvh': 1},
+                                         tensor_from_file=_make_lvh_from_lvm_tensor_from_file('bsa_dubois', 'myocardial_mass_noheritable_sentinel_actual'))
+TMAPS['lvh_from_lvm_predict'] = TensorMap('lvh_from_lvm_predict', group='categorical', channel_map={'no_lvh': 0, 'lvh': 1},
+                                          tensor_from_file=_make_lvh_from_lvm_tensor_from_file('bsa_dubois', 'myocardial_mass_noheritable_sentinel_prediction'))
 
 
 def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
