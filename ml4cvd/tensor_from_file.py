@@ -44,7 +44,7 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
     return _random_slice_tensor_from_file
 
 
-def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None):
+def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if dtype_override is not None:
             big_tensor = _get_tensor_at_first_date(hd5, tm.group, dtype_override, tensor_key)
@@ -54,7 +54,7 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
         if pad_shape is not None:
             big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
 
-        if tm.shape[-1] < (stop-start) // step:
+        if allow_channels and tm.shape[-1] < (stop-start) // step:
             tensor = big_tensor[..., np.arange(start, stop, step), :]
         else:
             tensor = big_tensor[..., np.arange(start, stop, step)]
@@ -639,7 +639,7 @@ TMAPS['lesions'] = TensorMap('lesions_final_mask', shape=(192, 256, 256, 2), gro
 
 
 def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
-    slice_subsets = [_slice_subset_tensor(k, start, stop, step=step, pad_shape=pad_shape) for k in tensor_keys]
+    slice_subsets = [_slice_subset_tensor(k, start, stop, step=step, pad_shape=pad_shape, allow_channels=False) for k in tensor_keys]
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         tensor = np.zeros(tm.shape, dtype=np.float32)
