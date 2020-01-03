@@ -638,6 +638,22 @@ TMAPS['lesions'] = TensorMap('lesions_final_mask', shape=(192, 256, 256, 2), gro
                              tensor_from_file=_mask_from_file, channel_map={'not_lesion': 0, 'lesion': 1}, loss=weighted_crossentropy([0.01, 10.0], 'lesion'))
 
 
+def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
+    slice_subsets = [_slice_subset_tensor(k, start, stop, step=step, pad_shape=pad_shape) for k in tensor_keys]
+
+    def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for i, slice_subset_tensor_from_file in enumerate(slice_subsets):
+            tensor[..., i] = slice_subset_tensor_from_file(tm, hd5, dependents)
+        return tm.normalize_and_validate(tensor)
+    return mask_subset_from_file
+
+
+TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', shape=(192, 256, 30, 2), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
+                                               tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
+                                               normalization={'zero_mean_std1': True})
+
+
 def _ttn_tensor_from_file(tm, hd5, dependents={}):
     index = 0
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
@@ -701,6 +717,16 @@ TMAPS['lvm_dubois_index_sentinel'] = TensorMap('lvm_dubois_index', group='contin
 TMAPS['lvm_mosteller_index_sentinel'] = TensorMap('lvm_mosteller_index', group='continuous', activation='linear', sentinel=0, loss_weight=1.0,
                                                   tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
                                                   channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8})
+
+
+def _make_index_tensor_from_file(index_map_name):
+    def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for k in tm.channel_map:
+            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
+        return tm.normalize_and_validate(tensor / index)
+    return indexed_lvmass_tensor_from_file
 
 
 def _select_tensor_from_file(selection_predicate: Callable):
