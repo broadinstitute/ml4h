@@ -63,10 +63,11 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
     return _slice_subset_tensor_from_file
 
 
-def _build_inference_tensor_from_file(inference_file: str, target_column: str, normalization: bool):
+def _build_inference_tensor_from_file(inference_file: str, target_column: str, normalization: bool = False):
     """
     Build a tensor_from_file function from a column of an inference tsv.
     Only works for continuous values.
+    when normalization is True values will be normalized according to the mean and std of all of the values in the tsv
     """
     error = None
     try:
