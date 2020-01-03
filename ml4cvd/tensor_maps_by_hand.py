@@ -349,7 +349,9 @@ TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_m
                                                           normalization={'mean': 89.70, 'std': 24.80},
                                                           channel_map={'inferred_myocardial_mass_noheritable': 0})
 
-
+TMAPS['proton_fat'] = TensorMap('22402_Proton-density-fat-fraction-PDFF_2_0', group='continuous', channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
+                               activation='linear', loss='logcosh',  annotation_units=1,
+                               validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', group='continuous', channel_map={'22402_Liver-fat-percentage_2_0': 0},
                                activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
