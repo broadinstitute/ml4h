@@ -16,7 +16,8 @@ DEFAULT_RAW_EXERCISE_DATA_PATH = 'gs://uk-biobank-sek-data-ttl-one-week/fc-bccc5
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-SIGNAL_LENGTH = 30000
+RESTING_SIGNAL_LENGTH = 5000
+EXERCISE_SIGNAL_LENGTH = 30000
 
 
 def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
@@ -64,32 +65,31 @@ def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
       for field in list(hd5['ecg_rest'].keys()):
         signal = hd5['ecg_rest'][field][:]
         signal_length = len(signal)
-        sampling_rate = 500.
-        if signal_length == 5000:  # If 5000 steps long, this is raw.
+        if signal_length == RESTING_SIGNAL_LENGTH:  # If 5000 steps long, this is raw.
           data['raw'].extend(signal)
           data['lead'].extend([field] * signal_length)
           data['ts_reference'].extend(np.array(
-              [i*1./(sampling_rate+1.) for i in range(0, signal_length)]))
+              [i*1./(SAMPLING_RATE+1.) for i in range(0, signal_length)]))
           filtered, _, _ = filter_signal(signal=signal,
                                          ftype='FIR',
                                          band='bandpass',
-                                         order=int(0.3 * sampling_rate),
+                                         order=int(0.3 * SAMPLING_RATE),
                                          frequency=[.9, 50],
-                                         sampling_rate=sampling_rate)
+                                         sampling_rate=SAMPLING_RATE)
           data['filtered'].extend(filtered)
           filtered_1, _, _ = filter_signal(signal=signal,
                                            ftype='FIR',
                                            band='bandpass',
-                                           order=int(0.3 * sampling_rate),
+                                           order=int(0.3 * SAMPLING_RATE),
                                            frequency=[.9, 20],
-                                           sampling_rate=sampling_rate)
+                                           sampling_rate=SAMPLING_RATE)
           data['filtered_1'].extend(filtered_1)
           filtered_2, _, _ = filter_signal(signal=signal,
                                            ftype='FIR',
                                            band='bandpass',
-                                           order=int(0.3 * sampling_rate),
+                                           order=int(0.3 * SAMPLING_RATE),
                                            frequency=[.9, 30],
-                                           sampling_rate=sampling_rate)
+                                           sampling_rate=SAMPLING_RATE)
           data['filtered_2'].extend(filtered_2)
 
   signal_df = pd.DataFrame(data)
@@ -173,7 +173,7 @@ def reshape_exercise_ecg_to_tidy(sample_id,
 
       # shape (30000,)
       signal_data['ts_reference'] = np.array(
-          [i * 1. / (SAMPLING_RATE + 1.) for i in range(0, SIGNAL_LENGTH)])
+          [i * 1. / (SAMPLING_RATE + 1.) for i in range(0, EXERCISE_SIGNAL_LENGTH)])
       for lead in list(hd5['ecg_bike_recovery'].keys()):
         raw = np.array(hd5['ecg_bike_recovery'][lead])
         filtered, _, _ = filter_signal(signal=np.array(raw),
