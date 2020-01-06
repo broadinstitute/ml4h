@@ -63,16 +63,16 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
     return _slice_subset_tensor_from_file
 
 
-def _build_inference_tensor_from_file(inference_file: str, target_column: str, normalization: bool = False):
+def _build_tensor_from_file(file_name: str, target_column: str, normalization: bool = False, delimiter: str = '\t'):
     """
-    Build a tensor_from_file function from a column of an inference tsv.
+    Build a tensor_from_file function from a column in a file.
     Only works for continuous values.
-    when normalization is True values will be normalized according to the mean and std of all of the values in the tsv
+    When normalization is True values will be normalized according to the mean and std of all of the values in the column.
     """
     error = None
     try:
-        with open(inference_file, 'r') as f:
-            reader = csv.reader(f, delimiter='\t')
+        with open(file_name, 'r') as f:
+            reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             index = header.index(target_column)
             table = {row[0]: np.array([float(row[index])]) for row in reader}
@@ -80,7 +80,7 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str, n
                 value_array = np.array([sub_array[0] for sub_array in table.values()])
                 mean = value_array.mean()
                 std = value_array.std()
-                logging.info(f'Normalizing TensorMap from file {inference_file}, column {target_column} with mean: '
+                logging.info(f'Normalizing TensorMap from file {file_name}, column {target_column} with mean: '
                              f'{mean:.2f}, std: {std:.2f}')
     except FileNotFoundError as e:
         error = e
@@ -95,7 +95,7 @@ def _build_inference_tensor_from_file(inference_file: str, target_column: str, n
             tn = tm.normalize_and_validate(t)
             return tn
         except KeyError:
-            raise ValueError('User id not in inference tsv.')
+            raise KeyError(f'User id not in file {file_name}.')
     return tensor_from_file
 
 
@@ -332,7 +332,7 @@ TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', metrics=['ma
                                            tensor_from_file=_sentinel_hrr, dtype=DataSetType.CONTINUOUS)
 TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=DataSetType.CONTINUOUS,
-                                          tensor_from_file=_build_inference_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
+                                          tensor_from_file=_build_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved, dtype=DataSetType.CONTINUOUS)

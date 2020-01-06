@@ -6,7 +6,7 @@ import numpy as np
 from typing import List
 from typing.io import TextIO
 
-from ml4cvd.tensor_from_file import _build_inference_tensor_from_file
+from ml4cvd.tensor_from_file import _build_tensor_from_file
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.TensorMap import TensorMap, NOT_MISSING
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
@@ -318,6 +318,6 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], includ
     return multi_field_continuous_tensor_map
 
 
-def generate_continuous_tsv_tensor_map(tsv_file: str, tsv_column, tensor_map_name: str, normalization: bool) -> TensorMap:
+def generate_continuous_tensor_map_from_file(file_name: str, column_name, tensor_map_name: str, normalization: bool) -> TensorMap:
     return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0}, dtype=DataSetType.CONTINUOUS,
-                     tensor_from_file=_build_inference_tensor_from_file(tsv_file, tsv_column, normalization))
+                     tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))
