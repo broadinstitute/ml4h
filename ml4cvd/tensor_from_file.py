@@ -430,7 +430,7 @@ TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', group='continuous', tensor_fro
 
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
-    def ukb_ecg_rest_from_file(tm, hd5):
+    def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
         tensor = _get_tensor_at_first_date(hd5, tm.group, DataSetType.FLOAT_ARRAY, tm.name, _pass_nan)        
@@ -459,7 +459,7 @@ TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', group='ukb_ecg_rest', sha
 
 
 def _make_ukb_ecg_rest_lvh():
-    def ukb_ecg_rest_lvh_from_file(tm, hd5):
+    def ukb_ecg_rest_lvh_from_file(tm, hd5, dependents={}):
         # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
         lead_order = ECG_REST_AMP_LEADS
         avl_min = 1100.0
