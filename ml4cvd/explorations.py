@@ -341,7 +341,7 @@ def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples:
             if tm.is_continuous():
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            elif tm.is_categorical_any():
+            elif tm.is_categorical_any() or tm.group == 'ukb_ecg_rest':
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 
