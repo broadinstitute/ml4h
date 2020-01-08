@@ -1189,11 +1189,17 @@ def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.
 
 
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
+    """Plot saliency maps of a batch of input tensors.
+
+    :param data: A batch of input tensors
+    :param gradients: A corresponding batch of gradients for those inputs, must be the same shape as data
+    :param prefix: file path prefix where saliency maps will be saved
+    """
     if data.shape[-1] == 1:
         data = data[..., 0]
         gradients = gradients[..., 0]
 
-    mean_saliency = np.zeros(data.shape + (3,))
+    mean_saliency = np.zeros(data.shape[1:] + (3,))
     for batch_index in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_index], 'gradients': gradients[batch_index]}
