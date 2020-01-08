@@ -170,10 +170,12 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sample_header='sample_id', dicom_header='dicom_file', png_postfix='.png.mask.png'):
+def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sample_header='sample_id', dicom_header='dicom_file',
+                                  instance_header='instance_number', png_postfix='.png.mask.png'):
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
     logging.info(f"Header is:{header}")
+    instance_index = header.index(instance_header)
     sample_index = header.index(sample_header)
     dicom_index = header.index(dicom_header)
     for row in reader:
@@ -181,16 +183,18 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sampl
         dicom_file = row[dicom_index]
         png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
         categorical_array = _png_to_categorical_index(png, MRI_SERIES_TO_ANNOTATION_MAPS[series][0], MRI_SERIES_TO_ANNOTATION_MAPS[series][1])
-        logging.info(f'Got png with shape: {png.shape} and categorical_array with shape: {categorical_array.shape}')
+        logging.info(f'Got png with shape: {png.shape} max: {png.max()} and categorical_array with shape: {categorical_array.shape}')
         tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
         if not os.path.exists(os.path.dirname(tensor_path)):
             os.makedirs(os.path.dirname(tensor_path))
         with h5py.File(tensor_path, 'a') as hd5:
-            hd5.create_dataset(series+'_png_annotated', data=categorical_array, compression='gzip')
+            hd5.create_dataset(series+'_annotated_'+row[instance_index], data=categorical_array, compression='gzip')
 
 
 def _png_to_categorical_index(png, color_map, channel_map):
-    categorical_array = np.zeros(png.shape[:-1])
+    categorical_array = np.zeros(png.shape)
+    for k in color_map:
+        categorical_array[png == color_map[k]] = channel_map[k]
     return categorical_array
 
 
