@@ -1156,7 +1156,7 @@ def _saliency_blurred_and_scaled(gradients, blur_radius, max_value):
     return blurred
 
 
-def _saliency_map_rgb(image, gradients, blur_radius=2, max_value=0.8):
+def _saliency_map_rgb(image, gradients, blur_radius=0, max_value=0.8):
     image -= image.min()
     image *= (max_value / image.max())
     rgb_map = np.zeros(image.shape + (3,))
@@ -1191,6 +1191,11 @@ def plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
     """Plot saliency maps of a batch of input tensors.
 
+    Saliency maps for each input tensor in the batch will be saved at the file path indicated by prefix.
+    Also creates a mean saliency map across the batch
+    2D tensors are assumed to be ECGs and 3D tensors are plotted with each slice as an RGB image.
+    The red channel indicates negative gradients, and the green channel positive ones.
+
     :param data: A batch of input tensors
     :param gradients: A corresponding batch of gradients for those inputs, must be the same shape as data
     :param prefix: file path prefix where saliency maps will be saved
@@ -1200,15 +1205,15 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         gradients = gradients[..., 0]
 
     mean_saliency = np.zeros(data.shape[1:] + (3,))
-    for batch_index in range(data.shape[0]):
+    for batch_i in range(data.shape[0]):
         if len(data.shape) == 3:
-            ecgs = {'raw': data[batch_index], 'gradients': gradients[batch_index]}
-            plot_ecgs(ecgs, f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}')
+            ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
+            plot_ecgs(ecgs, f'{prefix}_saliency_map_{batch_i}{IMAGE_EXT}')
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
-            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
-            saliency = _saliency_blurred_and_scaled(gradients[batch_index], blur_radius=1.0, max_value=1.0/data.shape[0])
+            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), f'{prefix}_saliency_{batch_i}{IMAGE_EXT}', cols, rows)
+            saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=0.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
         else:
