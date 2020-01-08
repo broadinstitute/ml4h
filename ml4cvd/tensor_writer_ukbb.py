@@ -39,7 +39,7 @@ from ml4cvd.defines import DataSetType, dataset_name_from_meaning
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_SEGMENTED, MRI_DATE, MRI_FRAMES
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_ZOOM_INPUT, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
-from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_COLOR_MAP
+from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_COLOR_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_COLOR_MAP
 
 MISSING_DATE = datetime.date(year=1900, month=1, day=1)
 
@@ -59,7 +59,8 @@ MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'
 MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip_6dyn', 'shmolli_192i', 'shmolli_192i_liver', 'shmolli_192i_fitparams', 'shmolli_192i_t1map']
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
-MRI_SERIES_TO_ANNOTATION_MAPS = {'cine_segmented_lax_3ch': [MRI_LAX_3CH_SEGMENTED_COLOR_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP]}
+MRI_SERIES_TO_ANNOTATION_MAPS = {'cine_segmented_lax_3ch': [MRI_LAX_3CH_SEGMENTED_COLOR_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP],
+                                 'cine_segmented_sax_b6': [MRI_SAX_SEGMENTED_COLOR_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP]}
 DICOM_MRI_FIELDS = ['20209', '20208', '20204', '20203', '20254', '20216', '20220', '20250', '20218', '20227', '20225', '20249', '20217']
 
 ECG_BIKE_FIELD = '6025'
