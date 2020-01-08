@@ -1148,14 +1148,19 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
-def _saliency_map_rgb(image, gradients, blur_radius=2):
+def _saliency_blurred_and_scaled(gradients, blur_radius, max_value):
     blurred = gaussian_filter(gradients, sigma=blur_radius)
     blurred -= blurred.min()
-    blurred *= (0.8 / blurred.max())
+    blurred *= (max_value / blurred.max())
     blurred -= blurred.mean()
-    rgb_map = np.zeros(image.shape + (3,))
+    return blurred
+
+
+def _saliency_map_rgb(image, gradients, blur_radius=2, max_value=0.8):
     image -= image.min()
-    image *= (0.8 / image.max())
+    image *= (max_value / image.max())
+    rgb_map = np.zeros(image.shape + (3,))
+    blurred = _saliency_blurred_and_scaled(gradients, blur_radius, max_value)
     rgb_map[..., 0] = image - blurred
     rgb_map[..., 1] = image + blurred
     rgb_map[..., 2] = image
@@ -1188,6 +1193,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         data = data[..., 0]
         gradients = gradients[..., 0]
 
+    mean_saliency = np.zeros(data.shape + (3,))
     for batch_index in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_index], 'gradients': gradients[batch_index]}
@@ -1196,9 +1202,16 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
+            saliency = _saliency_blurred_and_scaled(gradients, blur_radius=1.0, max_value=1.0/data.shape[0])
+            mean_saliency[..., 0] -= saliency
+            mean_saliency[..., 1] += saliency
         else:
             logging.warning(f'No method to plot saliency for data shape: {data.shape}')
 
+    if len(data.shape) == 4:
+        mean_saliency -= mean_saliency.min()
+        mean_saliency *= (1.0 / mean_saliency.max())
+        _plot_3d_tensor_slices_as_rgb(mean_saliency, f'{prefix}_batch_mean_saliency{IMAGE_EXT}', cols, rows)
     logging.info(f"Saved saliency maps at:{prefix}")
 
 
