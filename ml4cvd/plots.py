@@ -1188,6 +1188,7 @@ def _scale_tensor_inplace(tensor, min_value=0.0, max_value=1.0):
     tensor -= tensor.min()
     tensor *= (max_value - min_value) / tensor.max()
     tensor += min_value
+    return tensor
 
 
 def _saliency_blurred_and_scaled(gradients, blur_radius, max_value=1.0):
