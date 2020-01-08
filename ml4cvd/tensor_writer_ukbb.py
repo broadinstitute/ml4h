@@ -181,6 +181,8 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sampl
         categorical_array = _png_to_categorical_index(png, MRI_SERIES_TO_ANNOTATION_MAPS[series][0], MRI_SERIES_TO_ANNOTATION_MAPS[series][1])
         logging.info(f'Got png with shape: {png.shape} and categorical_array with shape: {categorical_array.shape}')
         tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+        if not os.path.exists(os.path.dirname(tensor_path)):
+            os.makedirs(os.path.dirname(tensor_path))
         with h5py.File(tensor_path, 'a') as hd5:
             hd5.create_dataset(series+'_png_annotated', data=categorical_array, compression='gzip')
 
