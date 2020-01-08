@@ -182,20 +182,12 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sampl
         sample_id = row[sample_index]
         dicom_file = row[dicom_index]
         png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
-        categorical_array = _png_to_categorical_index(png, MRI_SERIES_TO_ANNOTATION_MAPS[series][0], MRI_SERIES_TO_ANNOTATION_MAPS[series][1])
-        logging.info(f'Got png with shape: {png.shape} max: {np.unique(png)} and categorical_array with shape: {categorical_array.shape}')
+        logging.info(f'Got png with shape: {png.shape} max: {np.unique(png, return_counts=True)}')
         tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
         if not os.path.exists(os.path.dirname(tensor_path)):
             os.makedirs(os.path.dirname(tensor_path))
         with h5py.File(tensor_path, 'a') as hd5:
-            hd5.create_dataset(series+'_annotated_'+row[instance_index], data=categorical_array, compression='gzip')
-
-
-def _png_to_categorical_index(png, color_map, channel_map):
-    categorical_array = np.zeros(png.shape)
-    for k in color_map:
-        categorical_array[png == color_map[k]] = channel_map[k]
-    return categorical_array
+            hd5.create_dataset(series+'_annotated_'+row[instance_index], data=png, compression='gzip')
 
 
 def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sample_id: int, max_sample_id: int) -> Tuple[Dict[int, Dict[str, float]], List[int]]:
