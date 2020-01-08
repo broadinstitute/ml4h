@@ -1205,7 +1205,8 @@ def _saliency_map_rgb(image, gradients, blur_radius=0):
     rgb_map[..., 0] = image - blurred
     rgb_map[..., 1] = image + blurred
     rgb_map[..., 2] = image
-    _scale_tensor_inplace(rgb_map)
+    rgb_map = np.clip(rgb_map, 0, 1)
+    #_scale_tensor_inplace(rgb_map)
     return rgb_map
 
 
