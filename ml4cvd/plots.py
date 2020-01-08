@@ -1208,7 +1208,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_index], gradients[batch_index]), f'{prefix}_saliency_map_{batch_index}{IMAGE_EXT}', cols, rows)
-            saliency = _saliency_blurred_and_scaled(gradients, blur_radius=1.0, max_value=1.0/data.shape[0])
+            saliency = _saliency_blurred_and_scaled(gradients[batch_index], blur_radius=1.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
         else:
