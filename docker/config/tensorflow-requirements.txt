@@ -10,3 +10,4 @@ seaborn==0.9.0
 biosppy
 apache-beam[gcp]==2.12.0
 google-cloud-storage==1.13.0
+imageio==2.6.1
