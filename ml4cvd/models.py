@@ -823,12 +823,40 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
         if not inspect_show_labels:
             n.set_label('\n')
 
-    for l in legend:
-        legend_node = pydot.Node('legend' + l, label=l, shape="box", fillcolor=legend[l])
+    for label in legend:
+        legend_node = pydot.Node('legend' + label, label=label, shape="box", fillcolor=legend[label])
         dot.add_node(legend_node)
 
     logging.info('Saving architecture diagram to:{}'.format(image_path))
     dot.write_png(image_path)
+
+
+def saliency_map(input_tensor: np.ndarray, model: Model, output_layer_name: str, output_index: int) -> np.ndarray:
+    """Compute saliency maps of the given model (presumably already trained) on a batch of inputs with respect to the desired output layer and index.
+
+    For example, with a trinary classification layer called quality and classes good, medium, and bad output layer name would be "quality_output"
+    and output_index would be 0 to get gradients w.r.t. good, 1 to get gradients w.r.t. medium, and 2 for gradients w.r.t. bad.
+
+    :param input_tensor: A batch of input tensors
+    :param model: A trained model expecting those inputs
+    :param output_layer_name: The name of the output layer that the derivative will be taken with respect to
+    :param output_index: The index within the output layer that the derivative will be taken with respect to
+
+    :return: Array of the gradients same shape as input_tensor
+    """
+    get_gradients = _gradients_from_output(model, output_layer_name, output_index)
+    activation, gradients = get_gradients([input_tensor])
+    return gradients
+
+
+def _gradients_from_output(model, output_layer, output_index):
+    K.set_learning_phase(1)
+    input_tensor = model.input
+    x = model.get_layer(output_layer).output[:, output_index]
+    grads = K.gradients(x, input_tensor)[0]
+    grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-6)  # normalization trick: we normalize the gradient
+    iterate = K.function([input_tensor], [x, grads])
+    return iterate
 
 
 def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
@@ -894,19 +922,3 @@ def get_model_inputs_outputs(model_files: List[str],
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
-
-
-def _gradients_from_output(model, output_layer, output_index):
-    K.set_learning_phase(1)
-    input_tensor = model.input
-    x = model.get_layer(output_layer).output[:, output_index]
-    grads = K.gradients(x, input_tensor)[0]
-    grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-6)  # normalization trick: we normalize the gradient
-    iterate = K.function([input_tensor], [x, grads])
-    return iterate
-
-
-def saliency_map(input_tensor: np.ndarray, model: Model, output_layer_name: str, output_index: int):
-    get_gradients = _gradients_from_output(model, output_layer_name, output_index)
-    activation, gradients = get_gradients([input_tensor])
-    return gradients

@@ -1190,9 +1190,9 @@ def _scale_tensor_inplace(tensor, min_value=0.0, max_value=1.0):
     tensor += min_value
 
 
-def _saliency_blurred_and_scaled(gradients, blur_radius):
+def _saliency_blurred_and_scaled(gradients, blur_radius, max_value=1.0):
     blurred = gaussian_filter(gradients, sigma=blur_radius)
-    _scale_tensor_inplace(blurred)
+    _scale_tensor_inplace(blurred, max_value=max_value)
     blurred -= blurred.mean()
     return blurred
 
@@ -1226,7 +1226,7 @@ def _plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-    
+
 
 def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
