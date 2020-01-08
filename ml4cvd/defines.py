@@ -37,13 +37,9 @@ MRI_ANNOTATION_NAME = 'mri_critic_annotation'
 MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
 MRI_ANNOTATION_CHANNEL_MAP = {'good': 0, 'included-lvot': 1, 'mistrace': 2, 'phantom-apex': 3, 'hardclip': 4}
 MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'left_atrium': 1, 'LV_A_S': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5}
-MRI_LAX_3CH_SEGMENTED_COLOR_MAP = {'background': (0, 0, 0), 'left_atrium': (255, 0, 0), 'LV_A_S': (0, 191, 255), 'LV_I_P': (0, 0, 255), 'LV_Pap': (48, 95, 255),
-                                   'LV_Cavity': (160, 0, 0)}
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
                                  'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10}
-MRI_SAX_SEGMENTED_COLOR_MAP = {'background': 0, 'RV_free_wall': int(0x4169e1), 'interventricular_septum': int(0xbfdad4), 'LV_free_wall': int(0xf9424b),
-                               'LV_pap': int(0x3eeaef), 'LV_cavity': int(0x256676), 'RV_cavity': int(0x0ba47e), 'thoracic_cavity': int(0x984800),
-                               'liver': int(0xffff00), 'stomach': int(0xfca283), 'spleen': int(0x304f9b)}
+
 
 CAD_ICDS = ['K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
             'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759']
