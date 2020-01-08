@@ -170,7 +170,7 @@ def write_tensors(a_id: str,
 
 
 def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sample_header='sample_id', dicom_header='dicom_file', png_postfix='.png.mask.png'):
-    reader = csv.reader(manifest_tsv, delimiter='\t')
+    reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
     logging.info(f"Header is:{header}")
     sample_index = header.index(sample_header)
