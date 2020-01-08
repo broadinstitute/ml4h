@@ -169,8 +169,10 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sample_header='sample_id', dicom_header='dicom_file',
-                                  instance_header='instance_number', png_postfix='.png.mask.png'):
+def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, x=256, y=256, sample_header='sample_id',
+                                  dicom_header='dicom_file', instance_header='instance_number',
+                                  png_postfix='.png.mask.png'):
+    stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
     logging.info(f"Header is:{header}")
@@ -181,17 +183,21 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, sampl
         sample_id = row[sample_index]
         dicom_file = row[dicom_index]
         png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
+        full_tensor = np.zeros((x, y), dtype=np.float32)
+        full_tensor[:png.shape[0], :png.shape[1]] = png
         logging.info(f'Got png with shape: {png.shape} max: {np.unique(png, return_counts=True)}')
         tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
         if not os.path.exists(os.path.dirname(tensor_path)):
             os.makedirs(os.path.dirname(tensor_path))
         with h5py.File(tensor_path, 'a') as hd5:
-            tensor_name = series+'_annotated_'+row[instance_index]
+            tensor_name = series + '_annotated_' + row[instance_index]
             if tensor_name in hd5:
                 tensor = hd5[tensor_name]
-                tensor[:] = png
+                tensor[:] = full_tensor
+                stats['updated'] += 1
             else:
-                hd5.create_dataset(tensor_name, data=png, compression='gzip')
+                hd5.create_dataset(tensor_name, data=full_tensor, compression='gzip')
+                stats['created']
 
 
 def _load_meta_data_for_tensor_writing(volume_csv: str, lv_mass_csv: str, min_sample_id: int, max_sample_id: int) -> Tuple[Dict[int, Dict[str, float]], List[int]]:
