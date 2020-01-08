@@ -154,7 +154,7 @@ def parse_args():
 
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
-    parser.add_argument('--cache_size', default=2e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
+    parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
     args = parser.parse_args()
     _process_args(args)
