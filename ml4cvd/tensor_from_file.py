@@ -802,7 +802,7 @@ def _segmented_dicom_slices(dicom_key_prefix):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):
-            categorical_index = np.array(hd5[dicom_key_prefix + str(i)], dtype=np.float32)
+            categorical_index = np.array(hd5[dicom_key_prefix + str(i+1)], dtype=np.float32)
             tensor[..., i, :] = to_categorical(categorical_index, len(tm.channel_map))
         return tm.normalize_and_validate(tensor)
     return _segmented_dicom_tensor_from_file
