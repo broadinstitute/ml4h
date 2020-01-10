@@ -802,22 +802,22 @@ def _segmented_dicom_slices(dicom_key_prefix):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):
-            categorical_index = np.array(hd5[dicom_key_prefix + '_' + str(i)], dtype=np.float32)
+            categorical_index = np.array(hd5[dicom_key_prefix + str(i)], dtype=np.float32)
             tensor[..., i, :] = to_categorical(categorical_index, len(tm.channel_map))
         return tm.normalize_and_validate(tensor)
     return _segmented_dicom_tensor_from_file
 
 
 TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented', (256, 256, 50, 6), group='categorical',
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch'),
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
 TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), group='categorical',
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch'),
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
                                        channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
                                                     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
                                                     'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
 TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', (256, 256, 50, 11), group='categorical',
-                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6'),
+                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                       channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
                                                    'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
 
