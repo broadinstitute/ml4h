@@ -13,7 +13,7 @@ set -e
 
 REPO="gcr.io/broad-ml4cvd/deeplearning"
 TAG=$( git rev-parse --short HEAD )
-CONTEXT="docker/"
+CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
 
