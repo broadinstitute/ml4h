@@ -10,7 +10,7 @@
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
-DOCKER_COMMAND="nvidia-docker"
+DOCKER_COMMAND="docker"
 INTERACTIVE=""
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -77,10 +77,10 @@ fi
 
 ################### SCRIPT BODY ##########################################
 
-if ! docker pull ${DOCKER_IMAGE}; then
-    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-    exit 1;
-fi
+# if ! docker pull ${DOCKER_IMAGE}; then
+#     echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
+#     exit 1;
+# fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
@@ -105,11 +105,13 @@ Attempting to run Docker with
         ${DOCKER_IMAGE} python ${PYTHON_ARGS}
 LAUNCH_MESSAGE
 
+# echo ${DOCKER_COMMAND} run ${INTERACTIVE} -v /home/${USER}/jupyter/root/:/root/ -v /home/${USER}/:/home/${USER}/ ${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"
+
+
+
 
 ${DOCKER_COMMAND} run ${INTERACTIVE} \
 --rm \
---ipc=host \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
--v /mnt/:/mnt/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; python ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"
