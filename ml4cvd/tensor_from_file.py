@@ -806,7 +806,10 @@ def _name_tensor_from_file(tm, hd5, dependents={}):
 
 TMAPS['cine_lax_3ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_3ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
-
+TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_4ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_sax_b6_192'] = TensorMap('cine_segmented_sax_b6', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_sax_b6_192_1'] = TensorMap('cine_segmented_sax_b6', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 
 
 def _segmented_dicom_slices(dicom_key_prefix):
@@ -831,7 +834,16 @@ TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), 
                                        channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
                                                     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
                                                     'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
+TMAPS['lax_4ch_segmented_192'] = TensorMap('lax_4ch_segmented', (192, 192, 50, 14), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+                                       channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                                                    'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
+                                                    'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
 TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', (256, 256, 50, 11), group='categorical',
+                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
+                                      channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
+                                                   'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
+TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', (192, 192, 50, 11), group='categorical',
                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                       channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
                                                    'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
