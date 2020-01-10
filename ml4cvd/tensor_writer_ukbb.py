@@ -180,7 +180,7 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
     dicom_index = header.index(dicom_header)
     for row in reader:
         sample_id = row[sample_index]
-        if not min_sample_id <= sample_id < max_sample_id:
+        if not min_sample_id <= int(sample_id) < max_sample_id:
             continue
         dicom_file = row[dicom_index]
         try:
