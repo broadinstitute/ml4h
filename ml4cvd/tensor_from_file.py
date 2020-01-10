@@ -798,17 +798,32 @@ TMAPS['lax_4ch_diastole_slice'] = TensorMap('lax_4ch_diastole_slice', (256, 256,
                                             normalization={'zero_mean_std1': True})
 
 
+def _name_tensor_from_file(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    tensor = _pad_or_crop_array_to_shape(tensor.shape, np.array(hd5[tm.name], dtype=np.float32))
+    return tm.normalize_and_validate(tensor)
+
+
+TMAPS['cine_lax_3ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_3ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+
+
+
 def _segmented_dicom_slices(dicom_key_prefix):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):
             categorical_index = np.array(hd5[dicom_key_prefix + str(i+1)], dtype=np.float32)
-            tensor[..., i, :] = to_categorical(categorical_index, len(tm.channel_map))
+            categorical_one_hot = to_categorical(categorical_index, len(tm.channel_map))
+            tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
         return tm.normalize_and_validate(tensor)
     return _segmented_dicom_tensor_from_file
 
 
 TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented', (256, 256, 50, 6), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                       channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
+TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', (192, 192, 50, 6), group='categorical',
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
 TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), group='categorical',
