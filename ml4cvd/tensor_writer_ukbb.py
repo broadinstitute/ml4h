@@ -182,6 +182,7 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
         sample_id = row[sample_index]
         if not min_sample_id <= int(sample_id) < max_sample_id:
             continue
+        stats['sample_id_' + sample_id] += 1
         dicom_file = row[dicom_index]
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
@@ -204,6 +205,8 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
             logging.warning(f'Could not find file: {os.path.join(png_path, dicom_file + png_postfix)}')
             stats['File not found error'] += 1
     for k in stats:
+        if 'sample_id' in k and stats[k] == 50:
+            continue
         logging.info(f'{k} has {stats[k]}')
 
 
