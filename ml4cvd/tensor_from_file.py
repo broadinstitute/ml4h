@@ -808,13 +808,16 @@ def _segmented_dicom_slices(dicom_key_prefix):
     return _segmented_dicom_tensor_from_file
 
 
-TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented', (256, 256, 50, 6), tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch'),
+TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented', (256, 256, 50, 6), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
-TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch'),
+TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), group='categorical',
+                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch'),
                                        channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
                                                     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
                                                     'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
-TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', (256, 256, 50, 11), tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6'),
+TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', (256, 256, 50, 11), group='categorical',
+                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6'),
                                       channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
                                                    'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
 
