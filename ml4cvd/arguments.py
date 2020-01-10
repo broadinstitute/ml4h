@@ -77,6 +77,7 @@ def parse_args():
     parser.add_argument('--min_sample_id', default=0, type=int, help='Minimum sample id to write to tensor.')
     parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument('--max_slices', default=999999, type=int, help='Maximum number of dicom slices to read')
+    parser.add_argument('--dicom_series', default='cine_segmented_sax_b6', help='Maximum number of dicom slices to read')
     parser.add_argument('--b_slice_force', default=None,
                         help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
     parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
