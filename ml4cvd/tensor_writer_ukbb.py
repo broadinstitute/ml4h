@@ -169,28 +169,29 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, x=256, y=256, sample_header='sample_id',
-                                  dicom_header='dicom_file', instance_header='instance_number',
-                                  png_postfix='.png.mask.png'):
+def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256, sample_header='sample_id',
+                                  dicom_header='dicom_file', instance_header='instance_number', png_postfix='.png.mask.png'):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
-    logging.info(f"Header is:{header}")
+    logging.info(f"DICOM Manifest Header is:{header}")
     instance_index = header.index(instance_header)
     sample_index = header.index(sample_header)
     dicom_index = header.index(dicom_header)
     for row in reader:
         sample_id = row[sample_index]
+        if not min_sample_id <= sample_id < max_sample_id:
+            continue
         dicom_file = row[dicom_index]
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
             full_tensor = np.zeros((x, y), dtype=np.float32)
             full_tensor[:png.shape[0], :png.shape[1]] = png
             logging.info(f'Got png with shape: {png.shape} max: {np.unique(png, return_counts=True)}')
-            tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
-            if not os.path.exists(os.path.dirname(tensor_path)):
-                os.makedirs(os.path.dirname(tensor_path))
-            with h5py.File(tensor_path, 'a') as hd5:
+            tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+            if not os.path.exists(os.path.dirname(tensor_file)):
+                os.makedirs(os.path.dirname(tensor_file))
+            with h5py.File(tensor_file, 'a') as hd5:
                 tensor_name = series + '_annotated_' + row[instance_index]
                 if tensor_name in hd5:
                     tensor = hd5[tensor_name]
@@ -198,10 +199,10 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, x=256
                     stats['updated'] += 1
                 else:
                     hd5.create_dataset(tensor_name, data=full_tensor, compression='gzip')
-                    stats['created']
+                    stats['created'] += 1
         except FileNotFoundError:
             logging.warning(f'Could not find file: {os.path.join(png_path, dicom_file + png_postfix)}')
-            stats['failed']
+            stats['File not found error'] += 1
     for k in stats:
         logging.info(f'{k} has {stats[k]}')
 

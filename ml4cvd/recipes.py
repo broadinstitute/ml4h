@@ -34,7 +34,7 @@ def run(args):
                           args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
-            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, 'cine_segmented_sax_b6')
+            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, 'cine_segmented_sax_b6', args.min_sample_id, args.max_sample_id)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
