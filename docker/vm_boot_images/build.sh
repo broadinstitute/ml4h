@@ -13,11 +13,11 @@ set -e
 
 REPO="gcr.io/broad-ml4cvd/deeplearning"
 TAG=$( git rev-parse --short HEAD )
-CONTEXT="docker/vm_boot_images/"
+CONTEXT="docker/vm_boot_images"
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
 
-BASE_IMAGE_GPU="ufoym/deepo:all-jupyter-py36-cu90"
+BASE_IMAGE_GPU="ufoym/deepo:all-jupyter-py36-cu101"
 BASE_IMAGE_CPU="ufoym/deepo:all-py36-jupyter-cpu"
 
 LATEST_TAG_GPU="latest-gpu"

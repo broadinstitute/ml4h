@@ -10,7 +10,7 @@
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
-DOCKER_COMMAND="nvidia-docker"
+DOCKER_COMMAND="docker"
 PORT="8888"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -72,10 +72,10 @@ shift $((OPTIND - 1))
 
 ################### SCRIPT BODY ##########################################
 
-if ! docker pull ${DOCKER_IMAGE}; then
-    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-    exit 1;
-fi
+# if ! docker pull ${DOCKER_IMAGE}; then
+#     echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
+#     exit 1;
+# fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
@@ -92,7 +92,7 @@ echo $(tput setaf 1)$(tput setab 7)"ssh -nNT -L ${PORT}:localhost:${PORT} ${WANI
 mkdir -p /home/${USER}/jupyter/
 chmod o+w /home/${USER}/jupyter/
 
-mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
+#mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
 ${DOCKER_COMMAND} run -it \
 --rm \
@@ -100,7 +100,7 @@ ${DOCKER_COMMAND} run -it \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
 -p 0.0.0.0:${PORT}:${PORT} \
-${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
+${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/repos/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
 
 
 # Automatically back up any local notebooks and artifacts non-recursively (no subfolders)

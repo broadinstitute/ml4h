@@ -561,7 +561,56 @@ TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', group='ukb_ec
 TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                             channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
                             loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
-    
+
+
+def _make_ecg_partners(population_normalize: float = None):
+    def ecg_partners_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[:] = hd5[tm.group][:]
+        if population_normalize is None:
+            tensor = tm.zero_mean_std1(tensor)
+        else:
+            tensor /= population_normalize
+        return tensor
+    return ecg_partners_from_file
+
+TMAPS['ecg_partners'] = TensorMap('ecg_partners', shape=(12, 2500), group='voltage', tensor_from_file=_make_ecg_partners())
+
+
+def _make_ecg_partners_read():
+    def rhythm_tensor_from_file(tm, hd5):
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        ecg_interpretation = hd5[tm.group][()].lower()
+        print(ecg_interpretation)
+        for rhythm in ['normal sinus rhythm', 'sinus rhythm', 'normal ecg', 'normal when compared with ecg of',
+                       'rhythm has reverted to normal', 'tracing within normal limits']:
+            if rhythm in ecg_interpretation:
+                categorical_data[tm.channel_map['Sinus_rhythm']] = 1.0
+                return categorical_data
+        categorical_data[tm.channel_map['Not_sinus_rhythm']] = 1.0
+        return categorical_data
+    return rhythm_tensor_from_file
+
+TMAPS['ecg_partners_read'] = TensorMap('ecg_partners_read', shape=(2,), group='diagnosis_md', tensor_from_file=_make_ecg_partners_read(),
+                                       channel_map={'Not_sinus_rhythm': 0, 'Sinus_rhythm': 1})
+
+
+def _make_ecg_partners_intervals(population_normalize=None):
+    def ecg_partners_intervals(tm, hd5):
+        continuous_data = np.zeros(tm.shape, dtype=np.float32)
+        for interval in tm.channel_map:
+            if interval in hd5:
+                print(int(hd5[interval][()]))
+                continuous_data[tm.channel_map[interval]] = hd5[interval][()]
+        if population_normalize is not None:
+            continuous_data /= population_normalize
+        return continuous_data
+    return ecg_partners_intervals
+
+TMAPS['ecg_partners_intervals'] = TensorMap('ecg_partners_interval', shape=(4,), group='ecg_partners', tensor_from_file=_make_ecg_partners_intervals(),
+                                            channel_map={'printerval': 0, 'qrsduration': 1, 'qtcorrected': 2, 'qtinterval': 3})
+TMAPS['ecg_partners_qt_interval' ] = TensorMap('ecg_partners_qt_interval', shape=(1,), group='ecg_partners',
+                                               tensor_from_file=_make_ecg_partners_intervals(), channel_map={'qtinterval': 0})
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
