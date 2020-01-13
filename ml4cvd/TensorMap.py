@@ -111,7 +111,9 @@ class TensorMap(object):
                  tensor_from_file=None,
                  dtype=None,
                  validator=None,
-                 cacheable=True,):
+                 cacheable=True,
+                 discretization=None,
+                 ):
         """TensorMap constructor
 
 
@@ -156,6 +158,7 @@ class TensorMap(object):
         self.dtype = dtype
         self.validator = validator
         self.cacheable = cacheable
+        self.discretization = discretization
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
@@ -205,6 +208,9 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x: x
+
+        if self.discretization is None:
+            self.discretization = lambda tm, x: x
 
     def __hash__(self):
         return hash((self.name, self.shape, self.group))
