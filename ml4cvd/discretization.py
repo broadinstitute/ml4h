@@ -11,7 +11,7 @@ def discretization_from_boundaries(boundaries: [float]):
     if boundaries:
         logging.info(f'Discretization will be applied with bin boundaries: {boundaries}')
 
-        def discretization(tm: TensorMap, tensor: np.ndarray):
+        def discretization(tensor: np.ndarray):
             return np.digitize(tensor, bins=boundaries)
         return discretization
     else:
