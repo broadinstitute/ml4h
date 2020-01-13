@@ -210,7 +210,7 @@ class TensorMap(object):
             self.validator = lambda tm, x: x
 
         if self.discretization is None:
-            self.discretization = lambda tm, x: x
+            self.discretization = lambda x: x
 
     def __hash__(self):
         return hash((self.name, self.shape, self.group))
