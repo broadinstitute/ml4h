@@ -66,6 +66,8 @@ def parse_args():
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
+    parser.add_argument('--continuous_file_discretize', nargs='*', default=[], type=float, help='List of boundaries between which values will be binned'
+                                                                                                'into discrete categories.')
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.')
     parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
@@ -199,7 +201,8 @@ def _process_args(args):
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
         args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file, args.continuous_file_column,
-                                                                             args.output_tensors.pop(0), args.continuous_file_normalize))
+                                                                             args.output_tensors.pop(0), args.continuous_file_normalize,
+                                                                             args.continuous_file_discretize))
     args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
 
     np.random.seed(args.random_seed)

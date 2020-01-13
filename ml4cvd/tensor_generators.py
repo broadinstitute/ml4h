@@ -253,6 +253,7 @@ class _MultiModalMultiTaskWorker:
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.tensor_from_file(tm, self.hd5, self.dependents)
+        tensor = tm.discretization(tensor)
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
