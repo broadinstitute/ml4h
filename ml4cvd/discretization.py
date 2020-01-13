@@ -4,8 +4,6 @@
 import logging
 import numpy as np
 
-from ml4cvd.TensorMap import TensorMap
-
 
 def discretization_from_boundaries(boundaries: [float]):
     if boundaries:
@@ -16,4 +14,4 @@ def discretization_from_boundaries(boundaries: [float]):
         return discretization
     else:
         logging.info('No discretization boundaries specified so no discretization will be applied.')
-        return lambda tm, t: t
+        return lambda t: t
