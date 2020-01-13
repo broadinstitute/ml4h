@@ -1,6 +1,7 @@
 """Functions for discretizing continuous data
 """
 
+from keras.utils import to_categorical
 import logging
 import numpy as np
 
@@ -10,7 +11,7 @@ def discretization_from_boundaries(boundaries: [float]):
         logging.info(f'Discretization will be applied with bin boundaries: {boundaries}')
 
         def discretization(tensor: np.ndarray):
-            return np.digitize(tensor, bins=boundaries)
+            return to_categorical(np.digitize(tensor, bins=boundaries))
         return discretization
     else:
         logging.info('No discretization boundaries specified so no discretization will be applied.')
