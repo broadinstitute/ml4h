@@ -420,7 +420,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                 if u_connect:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
                     last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
-                    last_conv = _activation_layer(activation, f'conv_activation_{i}')(last_conv)
+                    last_conv = _activation_layer(activation)(last_conv)
                     last_conv = concatenate([last_conv, early_conv])
                 else:
                     last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
@@ -561,7 +561,7 @@ def _conv_block_new(x: K.placeholder,
     for i, conv_layer in enumerate(conv_layers):
         residual = x
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation, f"Activation_{str(len(layers))}")(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i >= pool_diff:
@@ -589,7 +589,7 @@ def _dense_block(x: K.placeholder,
                  regularization_rate: float):
     for i, conv_layer in enumerate(conv_layers):
         x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation, f"Activation_{str(len(layers))}")(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
@@ -664,7 +664,7 @@ def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int,
         x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
     else:
         x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
-    x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation, f"Activation_{str(len(layers))}")(x)
+    x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
     x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
     return _get_last_layer(layers)
 
@@ -678,17 +678,17 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-def _activation_layer(activation, name):
+def _activation_layer(activation):
     if activation == 'leaky':
-        return LeakyReLU(name=name)
+        return LeakyReLU()
     elif activation == 'prelu':
-        return PReLU(name=name)
+        return PReLU()
     elif activation == 'elu':
-        return ELU(name=name)
+        return ELU()
     elif activation == 'thresh_relu':
-        return ThresholdedReLU(name=name)
+        return ThresholdedReLU()
     else:
-        return Activation(activation, name=name)
+        return Activation(activation)
 
 
 def _normalization_layer(norm):
