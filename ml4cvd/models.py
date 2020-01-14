@@ -597,7 +597,7 @@ def _dense_block(x: K.placeholder,
             dense_connections = [_get_last_layer(layers)]
         else:
             dense_connections += [_get_last_layer(layers)]
-            layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = add(dense_connections, axis=CHANNEL_AXIS)
+            layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = tf.keras.layers.Concatenate(axis=CHANNEL_AXIS)(dense_connections)
     return _get_last_layer(layers)
 
 
