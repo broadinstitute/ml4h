@@ -136,6 +136,8 @@ class TensorMap(object):
         :param imputation: Method of imputation for missing values. Options are mean or random.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
         :param dtype: DataSetType of tensor map
+        :param discretization: A function that maps tensors to integer tensors in order to convert continuous data to
+                                categorical data
         """
         self.name = name
         self.loss = loss
