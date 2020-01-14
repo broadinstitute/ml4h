@@ -372,6 +372,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
             last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
                                      conv_regularize, conv_dropout)
+            import pdb; pdb.set_trace()
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
