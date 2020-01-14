@@ -598,6 +598,7 @@ def _dense_block(x: K.placeholder,
         else:
             dense_connections += [x]
             x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+            import pdb; pdb.set_trace()
     return _get_last_layer(layers)
 
 
