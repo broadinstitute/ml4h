@@ -12,18 +12,18 @@ from typing import Dict, List, Tuple, Iterable, Callable, Union
 
 # Keras imports
 import tensorflow as tf
-import tf.keras.backend as K
-from tf.keras.callbacks import History
-from tf.keras.optimizers import Adam
-from tf.keras.models import Model, load_model
-from tf.keras.utils.vis_utils import model_to_dot
-from tf.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
-from tf.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from tf.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
-from tf.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from tf.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
-from tf.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from tf.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
+import tensorflow.keras.backend as K
+from tensorflow.keras.callbacks import History
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.utils.vis_utils import model_to_dot
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
+from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
+from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict

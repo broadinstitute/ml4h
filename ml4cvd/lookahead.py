@@ -3,7 +3,7 @@ Copy pasted from https://github.com/bojone/keras_lookahead
 """
 
 import tensorflow as tf
-from tf.keras import backend as K
+from tensorflow.keras import backend as K
 
 
 class Lookahead(object):

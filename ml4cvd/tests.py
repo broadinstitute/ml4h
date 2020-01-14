@@ -1,6 +1,6 @@
 import unittest
 
-from tf.keras.losses import logcosh
+from tensorflow.keras.losses import logcosh
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.arguments import parse_args

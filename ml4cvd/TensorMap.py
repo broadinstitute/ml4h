@@ -6,7 +6,7 @@ from dateutil import relativedelta
 import numpy as np
 from scipy.ndimage import zoom
 import tensorflow as tf
-from tf.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
