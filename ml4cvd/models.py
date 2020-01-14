@@ -575,7 +575,7 @@ def _conv_block_new(x: K.placeholder,
             else:
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
-    return x #_get_last_layer(layers)
+    return x
 
 
 def _dense_block(x: K.placeholder,
