@@ -589,7 +589,7 @@ def _dense_block(x: K.placeholder,
                  regularization_rate: float):
     for i, conv_layer in enumerate(conv_layers):
         layers[f"Conv_{str(len(layers))}"] = conv_layer(_get_last_layer(layers))
-        layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
+        #layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
         layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(_get_last_layer(layers))
         layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(_get_last_layer(layers))
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
