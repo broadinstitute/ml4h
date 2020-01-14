@@ -11,7 +11,7 @@ def discretization_from_boundaries(boundaries: [float]):
         logging.info(f'Discretization will be applied with bin boundaries: {boundaries}')
 
         def discretization(tensor: np.ndarray):
-            return to_categorical(np.digitize(tensor, bins=boundaries))
+            return to_categorical(np.digitize(tensor, bins=boundaries), num_classes=len(boundaries)+1)
         return discretization
     else:
         logging.info('No discretization boundaries specified so no discretization will be applied.')
