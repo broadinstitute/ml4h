@@ -438,7 +438,7 @@ def _get_lead_cm(length):
 
 TMAPS['ecg_median_1lead_categorical'] = TensorMap('median', group='categorical', shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
                                                   channel_map=_get_lead_cm(32)[0],
-                                                  loss=weighted_crossentropy(_get_lead_cm(32)[1], 'ecg_median_categorical'))
+                                                  loss=weighted_crossentropy(np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical'))
 
 TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                                 channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
