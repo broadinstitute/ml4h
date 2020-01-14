@@ -372,7 +372,6 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
             last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
                                      conv_regularize, conv_dropout)
-            import pdb; pdb.set_trace()
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -571,10 +570,10 @@ def _conv_block_new(x: K.placeholder,
                 residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
         if residual_convolution_layer is not None:
             if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
-                x = layers[f"add_{str(len(layers))}"] = add([x, residual])
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
             else:
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
-                x = layers[f"add_{str(len(layers))}"] = add([x, residual])
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
     return x
 
 
