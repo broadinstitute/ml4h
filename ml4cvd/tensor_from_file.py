@@ -839,6 +839,12 @@ TMAPS['lax_4ch_segmented_192'] = TensorMap('lax_4ch_segmented', (192, 192, 50, 1
                                        channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
                                                     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
                                                     'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13})
+TMAPS['lax_4ch_segmented_192_w'] = TensorMap('lax_4ch_segmented', (192, 192, 50, 14), group='categorical',
+                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+                                             channel_map={'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                                                          'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8,
+                                                          'RV_cavity': 9, 'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13},
+                                             loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 5.0, 0.5]))
 TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', (256, 256, 50, 11), group='categorical',
                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                       channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
