@@ -321,7 +321,12 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], includ
 
 def generate_continuous_tensor_map_from_file(file_name: str, column_name, tensor_map_name: str, normalization: bool,
                                              discretization_boundaries: [float]) -> TensorMap:
-    return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0},
-                     dtype=DataSetType.CATEGORICAL if discretization_boundaries else DataSetType.CONTINUOUS,
-                     tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
-                     discretization=discretization_from_boundaries(discretization_boundaries))
+    if discretization_boundaries:
+        channel_map = {str(i): i for i in range(len(discretization_boundaries)+1)}
+        return TensorMap(f'{tensor_map_name}', channel_map=channel_map, shape=(len(discretization_boundaries)+1,),
+                         dtype=DataSetType.CATEGORICAL,
+                         tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
+                         discretization=discretization_from_boundaries(discretization_boundaries))
+
+    return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0}, dtype=DataSetType.CONTINUOUS,
+                     tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))
