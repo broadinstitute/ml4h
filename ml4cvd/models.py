@@ -588,7 +588,7 @@ def _dense_block(x: K.placeholder,
                  regularization: str,
                  regularization_rate: float):
     for i, conv_layer in enumerate(conv_layers):
-        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(start_x)
+        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
         x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
         x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
