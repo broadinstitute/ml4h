@@ -1,5 +1,6 @@
-from keras import optimizers
-from keras_radam import RAdam
+import tensorflow as tf
+from tf.keras import optimizers
+from tf.keras_radam import RAdam
 
 
 def get_optimizer(name: str, lr: float, optimizer_kwargs=None):

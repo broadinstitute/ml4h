@@ -11,18 +11,19 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Iterable, Callable, Union
 
 # Keras imports
-import keras.backend as K
-from keras.callbacks import History
-from keras.optimizers import Adam
-from keras.models import Model, load_model
-from keras.utils.vis_utils import model_to_dot
-from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
-from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
-from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
+import tensorflow as tf
+import tf.keras.backend as K
+from tf.keras.callbacks import History
+from tf.keras.optimizers import Adam
+from tf.keras.models import Model, load_model
+from tf.keras.utils.vis_utils import model_to_dot
+from tf.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
+from tf.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tf.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
+from tf.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
+from tf.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from tf.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from tf.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict

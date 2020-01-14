@@ -2,8 +2,8 @@
 Copy pasted from https://github.com/bojone/keras_lookahead
 """
 
-
-from keras import backend as K
+import tensorflow as tf
+from tf.keras import backend as K
 
 
 class Lookahead(object):

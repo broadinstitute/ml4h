@@ -6,7 +6,8 @@ import csv
 import h5py
 import logging
 import numpy as np
-from keras.utils import to_categorical
+import tensorflow as tf
+from tf.keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
