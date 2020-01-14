@@ -6,10 +6,10 @@ import tensorflow.keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
-from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_proximity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 STRING_METRICS = ['categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
-                  'mean_squared_error', 'mse', 'cosine_proximity', 'logcosh']
+                  'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh']
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -341,8 +341,8 @@ def get_metric_dict(output_tensor_maps):
             losses.append(mean_absolute_error)
         elif tm.loss == 'mean_squared_error' or tm.loss == 'mse':
             losses.append(mean_squared_error)
-        elif tm.loss == 'cosine_proximity':
-            losses.append(cosine_proximity)
+        elif tm.loss == 'cosine_similarity':
+            losses.append(cosine_similarity)
         elif tm.loss == 'logcosh':
             losses.append(logcosh)
         elif tm.loss == 'mape':
