@@ -597,7 +597,7 @@ def _dense_block(x: K.placeholder,
             dense_connections = [layers[f"Pooling{JOIN_CHAR}{str(len(layers)-1)}"]]
         else:
             dense_connections += [layers[f"Regularization_{str(len(layers)-1)}"]]
-            x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+            layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
     return _get_last_layer(layers)
 
 
