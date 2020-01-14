@@ -594,10 +594,10 @@ def _dense_block(x: K.placeholder,
         x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
             x = layers[f"Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](x)
-            dense_connections = [x]
+            dense_connections = [layers[f"Pooling{JOIN_CHAR}{str(len(layers)-1)}"]]
         else:
-            dense_connections += [x]
-            x = layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+            dense_connections += [layers[f"Regularization_{str(len(layers)-1)}"]]
+            layers[f"concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
     return _get_last_layer(layers)
 
 
