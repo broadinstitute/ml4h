@@ -129,6 +129,9 @@ TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', group='continuous', channel_map={'
 TMAPS['charge'] = TensorMap('charge', group='continuous', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
                             validator=make_range_validator(0, 20))
 
+TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
+                                  parents=['output_QTInterval_continuous', 'output_RRInterval_continuous'], normalization={'mean': 419.1, 'std': 20.7})
+
 TMAPS['p-axis-sentinel'] = TensorMap('PAxis', group='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 48.7, 'std': 23.1})
 TMAPS['p-duration-sentinel'] = TensorMap('PDuration', group='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
