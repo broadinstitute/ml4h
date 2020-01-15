@@ -901,16 +901,23 @@ def get_model_inputs_outputs(model_files: List[str],
     models_inputs_outputs = dict()
 
     for model_file in model_files:
-        with h5py.File(model_file, 'r') as hd5:
-            model_inputs_outputs = defaultdict(list)
-            for input_tensor_map in tensor_maps_in:
-                if input_tensor_map.input_name() in hd5["model_weights"]:
-                    model_inputs_outputs[input_prefix].append(input_tensor_map)
-            for output_tensor_map in tensor_maps_out:
-                if output_tensor_map.output_name() in hd5["model_weights"]:
-                    model_inputs_outputs[output_prefix].append(output_tensor_map)
-            if not got_tensor_maps_for_characters and 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
-                m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
+        m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
+        model_inputs_outputs = defaultdict(list)
+        for input_tensor_map in tensor_maps_in:
+            try:
+                m.get_layer(input_tensor_map.input_name())
+                model_inputs_outputs[input_prefix].append(input_tensor_map)
+            except ValueError:
+                pass
+        for output_tensor_map in tensor_maps_out:
+            try:
+                m.get_layer(output_tensor_map.output_name())
+                model_inputs_outputs[output_prefix].append(output_tensor_map)
+            except ValueError:
+                pass
+        if not got_tensor_maps_for_characters:
+            try:
+                m.get_layer('input_ecg_rest_text_ecg_text')
                 char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, m)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)
@@ -919,7 +926,8 @@ def get_model_inputs_outputs(model_files: List[str],
                 got_tensor_maps_for_characters = True
                 logging.info(f"Doing char model dance:{[tm.input_name() for tm in tensor_maps_in]}")
                 logging.info(f"Doing char model dance out:{[tm.output_name() for tm in tensor_maps_out]}")
-
+            except ValueError:
+                pass
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs
