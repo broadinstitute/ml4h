@@ -9,3 +9,4 @@ apache-beam[gcp]==2.12.0
 google-cloud-storage==1.13.0
 Pillow==7.0.0
 keras-rectified-adam==0.10.0
+notebook
