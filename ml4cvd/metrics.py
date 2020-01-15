@@ -334,9 +334,6 @@ def get_metric_dict(output_tensor_maps):
             else:
                 metrics[m.__name__] = m
 
-        if tm.is_continuous_any():
-            metrics['pearson'] = pearson
-
         if tm.loss == 'categorical_crossentropy':
             losses.append(categorical_crossentropy)
         elif tm.loss == 'binary_crossentropy':
