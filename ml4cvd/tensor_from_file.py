@@ -445,6 +445,27 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
 
+def _make_partners_ecg_label_tensor(list_of_strings_to_match):
+    def rhythm_tensor_from_file(tm, hd5, dependents={}):
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        ecg_interpretation = str(hd5['ecg_rest_text'][0])
+        for channel in tm.channel_map:
+            if channel in hd5['categorical']:
+                categorical_data[tm.channel_map[channel]] = 1.0
+                return categorical_data
+        for afib in ['Atrial fibrillation']:
+            if afib in ecg_interpretation:
+                categorical_data[tm.channel_map['Atrial_fibrillation']] = 1.0
+                return categorical_data
+        for rhythm in ['sinus', 'Sinus']:
+            if rhythm in ecg_interpretation:
+                categorical_data[tm.channel_map['Other_sinus_rhythm']] = 1.0
+                return categorical_data
+        categorical_data[tm.channel_map['Other_rhythm']] = 1.0
+        return categorical_data
+    return rhythm_tensor_from_file
+
+
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
