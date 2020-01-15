@@ -901,7 +901,9 @@ def get_model_inputs_outputs(model_files: List[str],
     models_inputs_outputs = dict()
 
     for model_file in model_files:
-        m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
+        custom = get_metric_dict(tensor_maps_out)
+        logging.info(f'custom keysssss: {list(custom.keys())}')
+        m = load_model(model_file, custom_objects=custom)
         model_inputs_outputs = defaultdict(list)
         for input_tensor_map in tensor_maps_in:
             try:
