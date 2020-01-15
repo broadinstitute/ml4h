@@ -7,10 +7,10 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
-DOCKER_COMMAND="nvidia-docker"
+DOCKER_COMMAND="docker" #"nvidia-docker"
 PORT="8888"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
