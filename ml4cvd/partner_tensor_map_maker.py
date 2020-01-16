@@ -18,8 +18,8 @@ def _write_partners_csv(f, partners_csv_folder):
             for column in l[1:]:
                 if column == '':
                     continue
+                column = column.replace(' ', JOIN_CHAR).replace('/', JOIN_CHAR).replace('(', '').replace(')', '')
                 if len(prefix) == 0:
-                    column = column.replace(' ', JOIN_CHAR).replace('/', JOIN_CHAR).replace('(', '').replace(')', '')
                     channel_maps[root_key].add(column)
                     if column in d[root_key]:
                         d[root_key][column].append(l[0])
