@@ -162,8 +162,9 @@ class TensorMap(object):
         self.cacheable = cacheable
         self.discretization = discretization
 
-        logging.info(f'discretization with {len(discretization)} classes')
-        logging.info(f'channel map: {channel_map}')
+        if self.name == 'QTIntervalQuantile':
+            logging.info(f'discretization with {len(discretization)} classes')
+            logging.info(f'channel map: {channel_map}')
 
         if self.channel_map is None and self.discretization:
             logging.info(f'generating channel_map for discretization with {len(self.discretization)} classes')
