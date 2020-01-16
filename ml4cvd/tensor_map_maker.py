@@ -32,7 +32,7 @@ def write_tensor_maps(args) -> None:
         _write_disease_tensor_maps_time(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
-
+        _write_partners_csv(f, partners_csv_folder)
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
