@@ -47,12 +47,15 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
     return _random_slice_tensor_from_file
 
 
-def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True):
+def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if dtype_override is not None:
             big_tensor = _get_tensor_at_first_date(hd5, tm.group, dtype_override, tensor_key)
         else:
             big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tensor_key)
+
+        if flip_swap:
+            big_tensor = np.flip(np.swapaxes(big_tensor, 0, -1))
 
         if pad_shape is not None:
             big_tensor = _pad_or_crop_array_to_shape(pad_shape, big_tensor)
@@ -568,7 +571,7 @@ TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', group='ukb_ec
 TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                             channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
                             loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
-    
+
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
@@ -584,6 +587,11 @@ TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                        tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 90, 150, 2, pad_shape=(256, 256, 208), flip_swap=True))
+TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                        tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 90, 150, 2, pad_shape=(256, 256, 192), flip_swap=True))
+
 TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
 TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
