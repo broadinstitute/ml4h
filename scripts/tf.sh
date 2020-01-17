@@ -114,4 +114,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} \
 --rm \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; pip install tensorflow==1.15; python ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; pip install Pillow tensorflow==1.15; python ${PYTHON_ARGS}"
