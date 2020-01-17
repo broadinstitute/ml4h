@@ -513,9 +513,8 @@ def train_model_from_generators(model: Model,
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
-                                  validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file), )
+    history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1, validation_steps=validation_steps,
+                        validation_data=generate_valid, callbacks=_get_callbacks(patience, model_file))
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
@@ -763,13 +762,13 @@ def _inspect_model(model: Model,
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
+    _ = model.fit(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     n = batch_size*training_steps
     train_speed = (t1 - t0) / n
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample training speed:{train_speed:0.3f} seconds.')
     t0 = time.time()
-    _ = model.predict_generator(generate_valid, steps=training_steps, verbose=1)
+    _ = model.predict(generate_valid, steps=training_steps, verbose=1)
     t1 = time.time()
     inference_speed = (t1 - t0) / n
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample inference speed:{inference_speed:0.4f} seconds.')
