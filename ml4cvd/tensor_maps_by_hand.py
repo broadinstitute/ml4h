@@ -349,6 +349,16 @@ TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_m
                                                           normalization={'mean': 89.70, 'std': 24.80},
                                                           channel_map={'inferred_myocardial_mass_noheritable': 0})
 
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  group='continuous', validator=make_range_validator(0, 400), loss='logcosh',
+                                     channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+
+TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', group='continuous', validator=make_range_validator(0, 400),
+                                              loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', group='continuous', validator=make_range_validator(0, 400),
+                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0},
+                                                      normalization={'mean': 89.70, 'std': 24.80})
+
+
 TMAPS['proton_fat'] = TensorMap('22402_Proton-density-fat-fraction-PDFF_2_0', group='continuous', channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
                                activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})

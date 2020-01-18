@@ -562,10 +562,6 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
         plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels, label_dict, plot_path, alpha)
 
 
-def _get_tensor_files(tensor_dir):
-    return [tensor_dir + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-
-
 if __name__ == '__main__':
     args = parse_args()
     run(args)  # back to the top
