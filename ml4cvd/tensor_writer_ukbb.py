@@ -50,8 +50,6 @@ MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_MITRAL_VALVE_THICKNESS = 6
 MRI_SWI_SLICES_TO_AXIS_SHIFT = 48
-MRI_PIXEL_WIDTH = 'mri_pixel_width'
-MRI_PIXEL_HEIGHT = 'mri_pixel_height'
 MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
                       'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
                       'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_inlinevf',
@@ -305,8 +303,8 @@ def _write_tensors_from_sql(sql_cursor: sqlite3.Cursor,
         try:
             for data_row in sql_cursor.execute(data_query % (fid, sample_id)):
                 dataset_name = dataset_name_from_meaning('categorical',
-                                                          [field_meanings[fid], str(data_row[0]),
-                                                           str(data_row[1]), str(data_row[2])])
+                                                         [field_meanings[fid], str(data_row[0]),
+                                                          str(data_row[1]), str(data_row[2])])
                 float_category = _to_float_or_false(data_row[3])
                 if float_category is not False:
                     hd5.create_dataset(dataset_name, data=[float_category])
@@ -445,14 +443,14 @@ def _to_float_or_false(s):
     except ValueError:
         return False
 
-        
+
 def _to_float_or_nan(s):
     try:
         return float(s)
     except ValueError:
         return np.nan
 
-        
+
 def _write_tensors_from_zipped_dicoms(x: int,
                                       y: int,
                                       z: int,
@@ -674,7 +672,7 @@ def _save_pixel_dimensions_if_missing(slicer, series, hd5):
 def _save_slice_thickness_if_missing(slicer, series, hd5):
     if MRI_SLICE_THICKNESS + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
         hd5.create_dataset(MRI_SLICE_THICKNESS + '_' + series, data=float(slicer.SliceThickness))
-                           
+
 
 def _save_series_orientation_and_position_if_missing(slicer, series, hd5, instance=None):
     orientation_ds_name = MRI_PATIENT_ORIENTATION + '_' + series
