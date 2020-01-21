@@ -1,9 +1,18 @@
 """Methods for integration of dicom plots within notebooks.
 
-TODO: Refactor this to reduce duplicate code from elsewhere in this repository
+TODO:
+* incorporate gs://ml4cvd/projects/fake_mris/. Per Sam "These HD5s have
+  information from the DICOMs and have applied processing to them already.  So
+  keys like `systole_frame_b9` or `diastole_frame_b2` have the same array data
+  that is in dcm.pixel_array for short axis slices. For long axis the 2D slices
+  have been merged into 3D tensors so the keys `cine_segmented_lax_2ch`
+  `cine_segmented_lax_3ch` and `cine_segmented_lax_4ch` map to arrays of
+  dimension (256, 256, 50) where each of the 50 z slices correspond to a
+  dcm.pixel_array."
+* Refactor this to reduce duplicate code from elsewhere in this repository
 such as
-https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_long_axis_sketch.ipynb
-https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_short_axis_sketch.ipynb
+  https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_long_axis_sketch.ipynb
+  https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_short_axis_sketch.ipynb
 """
 
 import collections
@@ -22,10 +31,12 @@ from scipy.ndimage.morphology import binary_erosion
 import tensorflow as tf
 
 DEFAULT_MRI_FOLDERS = {
-    'fake': 'gs://ml4cvd/mris_fake/',
+    'fake': 'gs://ml4cvd/projects/fake_mris/',
     'ukb': 'gs://ml4cvd/data/mris/cardiac/'
 }
 # Constants for use with 'CINE_segmented_SAX_InlineVF'
+# TODO(deflaux) move these constants into ml4cvd/defines.py and then import the
+# ml4cvd package.
 MRI_FRAMES = 50
 MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
@@ -195,9 +206,15 @@ def plot_cardiac_short_axis(series, transpose=False, fig_width=18,
     col = (dcm.InstanceNumber-1)%cols
     row = (dcm.InstanceNumber-1)//cols
     if transpose:
-      axes[row, col].imshow(dcm.pixel_array.T)
+      axes[row, col].imshow(dcm.pixel_array.T,
+                            cmap='gray',
+                            vmin=np.min(dcm.pixel_array),
+                            vmax=np.max(dcm.pixel_array))
     else:
-      axes[row, col].imshow(dcm.pixel_array)
+      axes[row, col].imshow(dcm.pixel_array,
+                            cmap='gray',
+                            vmin=np.min(dcm.pixel_array),
+                            vmax=np.max(dcm.pixel_array))
     axes[row, col].set_yticklabels([])
     axes[row, col].set_xticklabels([])
   fig.suptitle(title_prefix + ', Transpose: ' + str(transpose)
