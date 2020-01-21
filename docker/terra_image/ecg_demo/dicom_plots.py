@@ -161,9 +161,15 @@ def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
       try:
         _, anatomical_mask, _ = _get_overlay_from_dicom(dcm)
         axes[idx%sides, idx//sides].imshow(
-            np.ma.masked_where(anatomical_mask == 2, dcm.pixel_array))
+            np.ma.masked_where(anatomical_mask == 2, dcm.pixel_array),
+            cmap='gray',
+            vmin=np.min(dcm.pixel_array),
+            vmax=np.max(dcm.pixel_array))
       except KeyError:
-        axes[idx%sides, idx//sides].imshow(dcm.pixel_array)
+        axes[idx%sides, idx//sides].imshow(dcm.pixel_array,
+                                           cmap='gray',
+                                           vmin=np.min(dcm.pixel_array),
+                                           vmax=np.max(dcm.pixel_array))
     axes[idx%sides, idx//sides].set_yticklabels([])
     axes[idx%sides, idx//sides].set_xticklabels([])
 
