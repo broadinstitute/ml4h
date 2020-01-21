@@ -330,7 +330,7 @@ def _string_from_trials(trials, index, param_lists={}):
 
 def _model_label_from_losses_and_histories(i, all_losses, histories, trials, param_lists):
     label = f'Trial {i}: \nTest Loss:{all_losses[i]:.3f}\nTrain Loss:{histories[i]["loss"][-1]:.3f}\nValidation Loss:{histories[i]["val_loss"][-1]:.3f}'
-    label += f'Model parameter count: {histories[i]["parameter_count"][-1]}'
+    label += f'\nModel parameter count: {histories[i]["parameter_count"][-1]}'
     label += f'{_string_from_trials(trials, i, param_lists)}'
     return label
 
