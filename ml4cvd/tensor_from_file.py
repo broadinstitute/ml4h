@@ -866,7 +866,7 @@ def _name_tensor_from_file(tm, hd5, dependents={}):
 
 
 TMAPS['cine_lax_3ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
-TMAPS['cine_lax_3ch_92_1'] = TensorMap('cine_segmented_lax_3ch', (92, 92, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
+TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', (160, 160, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_3ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192_1'] = TensorMap('cine_segmented_lax_3ch', (192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
@@ -891,7 +891,7 @@ TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented', (256, 256, 50, 6), g
 TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', (192, 192, 50, 6), group='categorical',
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
-TMAPS['lax_3ch_segmented_92'] = TensorMap('lax_3ch_segmented', (92, 92, 50, 6), group='categorical',
+TMAPS['lax_3ch_segmented_160'] = TensorMap('lax_3ch_segmented', (160, 160, 50, 6), group='categorical',
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
 TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', (256, 256, 50, 14), group='categorical',
