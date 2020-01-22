@@ -5,7 +5,9 @@ import os
 import csv
 import h5py
 import logging
+import numcodecs
 import numpy as np
+import struct
 from keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
@@ -18,6 +20,41 @@ from ml4cvd.defines import DataSetType, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_
 """
 For now, all we will map `group` in TensorMap to `source` in tensor_path and `name` to `name`
 """
+
+
+def _compress_data(hf, name, data, dtype, method='zstd',
+                  compression_opts=19):
+    # Define codec
+    codec = numcodecs.zstd.Zstd(level=compression_opts)
+
+    # If data is string, encode to bytes
+    if dtype == 'str':
+        data_compressed = codec.encode(data.encode())
+        dsize = len(data.encode())
+    else:
+        data_compressed = codec.encode(data)
+        dsize = len(data) * data.itemsize
+
+    # Save data to hdf5
+    dat = hf.create_dataset(name=name, data=np.void(data_compressed))
+
+    # Set attributes
+    dat.attrs['method']              = method
+    dat.attrs['compression_level']   = compression_opts
+    dat.attrs['len']                 = len(data)
+    dat.attrs['uncompressed_length'] = dsize
+    dat.attrs['compressed_length']   = len(data_compressed)
+    dat.attrs['dtype'] = dtype
+   
+
+def _decompress_data(data_compressed, dtype):
+    codec = numcodecs.zstd.Zstd() 
+    data_decompressed = codec.decode(data_compressed)
+    if dtype == 'str':
+        data = data_decompressed.decode()
+    else:
+        data = np.frombuffer(data_decompressed, dtype)
+    return data
 
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -438,30 +475,6 @@ TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), group='
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
 
 
-def _make_partners_csv_tensors(dict_of_list: Dict, not_found_key: str = 'unspecified'):
-    def partners_tensor_from_file(tm, hd5, dependents={}):
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        for channel in tm.channel_map:
-            for string in dict_of_list[channel]:
-                if string in str(hd5['read_md_clean'][()]):
-                    categorical_data[tm.channel_map[channel]] = 1
-                    return categorical_data
-        categorical_data[tm.channel_map[not_found_key]] = 1
-        return categorical_data
-    return partners_tensor_from_file
-
-
-TMAPS['supranodal_rhythms'] = TensorMap('supranodal_rhythms', group='categorical', channel_map={'sinus_pauses_or_arrest': 0, 'ectopic_atrial_tachycardia': 1, 'avnrt': 2, 'narrow_qrs_tachycardia': 3, 'unknown_unspecified_supraventricular_rhythm': 4, 'atrial_fibrillation': 5, 'atrial_flutter': 6, 'avrt': 7, 'sinoatrial_block': 8, 'ectopic_atrial_rhythm': 9, 'svt': 10, 'sinus_rhythm': 11, 'retrograde_atrial_activation': 12, 'unspecified': 13}, tensor_from_file=_make_partners_csv_tensors({'sinus_rhythm': ['marked sinus arrhythmia', 'sinus arrhythmia', 'normal ecg', 'atrial bigeminal rhythm', 'atrial bigeminy and ventricular bigeminy', 'atrial trigeminy', 'atrialbigeminy', 'normal sinus rhythm', 'normal when compared with ecg of', 'rhythm has reverted to normal', 'rhythm is now clearly sinus', 'sinus bradycardia', 'sinus rhythm', 'sinus rhythm at a rate', 'sinus tachycardia', 'tracing within normal limits', 'tracing is within normal limits', 'tracing within normal limits', 'sinus slowing', 'with occasional native sinus beats', 'frequent native sinus beats', 'conducted sinus impulses', 'sinus mechanism has replaced', 'rhythm is normal sinus', 'rhythm remains normal sinus'], 'sinoatrial_block': ['sinoatrial block', 'sa block', 'sinoatrial block, type ii', 'sa block, type i', 'type i sinoatrial block', 'type i sa block', 'sinoatrial block, type ii', 'sa block, type i', 'type ii sinoatrial block', 'type ii sa block'], 'sinus_pauses_or_arrest': ['sinus pause', 'sinus arrest'], 'retrograde_atrial_activation': ['retrograde atrial activation'], 'ectopic_atrial_rhythm': ['unifocal atrial tachycardia', 'unifocal ectopic atrial rhythm', 'unifocal ear', 'multifocal atrial tachycardia', 'multifocal ectopic atrial rhythm', 'multifocal ear', 'wandering atrial tachycardia', 'wandering ectopic atrial rhythm', 'wandering ear', 'wandering atrial pacemaker', 'atrial rhythm', 'ectopic atrial rhythm', 'ear', 'dual atrial foci ', 'ectopic atrial bradycardia', 'multiple atrial foci', 'abnormal p vector', 'nonsinus atrial mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'low atrial bradycardia', 'multifocal atrial rhythm', 'multifocal atrialrhythm', 'unusual p wave axis', 'low atrial pacer'], 'atrial_fibrillation': ['af', 'afib', 'atrial fibrillation', 'atrial fibrillation with controlled ventricular response', 'atrial fibrillation with moderate ventricular response', 'atrial fibrillation with rapid ventricular response', 'atrial fibrillation with rvr', 'afib with rvr'], 'atrial_flutter': ['fibrillation/flutter', 'aflutter', 'atrial flutter', 'probable flutter', 'tachycardia possibly flutter'], 'ectopic_atrial_tachycardia': ['ectopic atrial tachycardia', 'ectopic atrial tachycardia, unspecified', 'unspecified ectopic atrial tachycardia', 'ectopic atrial tachycardia, unifocal', 'unifocal ectopic atrial tachycardia', 'ectopic atrial tachycardia, multifocal', 'multifocal ectopic atrial tachycardia'], 'svt': ['sinus arrhythmia accelerated atrioventricular junctional rhythm', 'supraventricular tachycardia', 'accelerated atrioventricular nodal rhythm', 'accelerated nodal rhythm', 'atrial tachycardia'], 'avnrt': ['av nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'avnrt'], 'avrt': ['atrioventricular reentrant tachycardia ', 'av reentrant tachycardia ', 'avrt'], 'narrow_qrs_tachycardia': ['narrow qrs tachycardia', 'narrow qrs tachycardia', 'tachycardia narrow qrs', 'narrow complex tachycardia'], 'unknown_unspecified_supraventricular_rhythm': ['junctional tachycardia', 'atrial arrhythmia', 'technically poor tracing ', 'accelerated idioventricular rhythm', 'atrial activity is indistinct', 'rhythm uncertain', 'rhythm unclear', 'uncertain rhythm', 'undetermined rhythm', 'supraventricular rhythm']}))
-
-TMAPS['sinus_rhythm'] = TensorMap('sinus_rhythm', group='categorical', channel_map={'sinus_arrhythmia': 0, 'unspecified': 1}, tensor_from_file=_make_partners_csv_tensors({'sinus_arrhythmia': ['marked sinus arrhythmia', 'marked sinus arrhythmia', 'sinus arrhythmia', 'sinus arrhythmia']}))
-
-TMAPS['sinoatrial_block'] = TensorMap('sinoatrial_block', group='categorical', channel_map={'type_ii': 0, 'type_i': 1, 'unspecified': 2, }, tensor_from_file=_make_partners_csv_tensors({'unspecified': ['sinoatrial block', 'sinoatrial block', 'sa block', 'sa block'], 'type_i': ['sinoatrial block, type ii', 'sinoatrial block, type ii', 'sa block, type i', 'sa block, type i', 'type i sinoatrial block', 'type i sinoatrial block', 'type i sa block', 'type i sa block'], 'type_ii': ['sinoatrial block, type ii', 'sinoatrial block, type ii', 'sa block, type i', 'sa block, type i', 'type ii sinoatrial block', 'type ii sinoatrial block', 'type ii sa block', 'type ii sa block']}))
-
-TMAPS['ectopic_atrial_rhythm'] = TensorMap('ectopic_atrial_rhythm', group='categorical', channel_map={'wandering': 0, 'unifocal': 1, 'multifocal': 2, 'unspecified': 3, }, tensor_from_file=_make_partners_csv_tensors({'unifocal': ['unifocal atrial tachycardia', 'unifocal atrial tachycardia', 'unifocal ectopic atrial rhythm', 'unifocal ectopic atrial rhythm', 'unifocal ear', 'unifocal ear', 'unusual p wave axis', 'unusual p wave axis', 'low atrial pacer', 'low atrial pacer'], 'multifocal': ['multifocal atrial tachycardia', 'multifocal atrial tachycardia', 'multifocal ectopic atrial rhythm', 'multifocal ectopic atrial rhythm', 'multifocal ear', 'multifocal ear', 'dual atrial foci ', 'dual atrial foci ', 'multiple atrial foci', 'multiple atrial foci', 'multifocal atrial rhythm', 'multifocal atrial rhythm', 'multifocal atrialrhythm', 'multifocal atrialrhythm'], 'wandering': ['wandering atrial tachycardia', 'wandering atrial tachycardia', 'wandering ectopic atrial rhythm', 'wandering ectopic atrial rhythm', 'wandering ear', 'wandering ear', 'wandering atrial pacemaker', 'wandering atrial pacemaker'], 'unspecified': ['atrial rhythm', 'atrial rhythm', 'ectopic atrial rhythm', 'ectopic atrial rhythm', 'ear', 'ear', 'ectopic atrial bradycardia', 'ectopic atrial bradycardia', 'abnormal p vector', 'abnormal p vector', 'nonsinus atrial mechanism', 'nonsinus atrial mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'low atrial bradycardia', 'low atrial bradycardia']}))
-
-TMAPS['ectopic_atrial_tachycardia'] = TensorMap('ectopic_atrial_tachycardia', group='categorical', channel_map={'unifocal': 0, 'multifocal': 1, 'unspecified': 2, }, tensor_from_file=_make_partners_csv_tensors({'unspecified': ['ectopic atrial tachycardia', 'ectopic atrial tachycardia', 'ectopic atrial tachycardia, unspecified', 'ectopic atrial tachycardia, unspecified', 'unspecified ectopic atrial tachycardia', 'unspecified ectopic atrial tachycardia'], 'unifocal': ['ectopic atrial tachycardia, unifocal', 'ectopic atrial tachycardia, unifocal', 'unifocal ectopic atrial tachycardia', 'unifocal ectopic atrial tachycardia'], 'multifocal': ['ectopic atrial tachycardia, multifocal', 'ectopic atrial tachycardia, multifocal', 'multifocal ectopic atrial tachycardia', 'multifocal ectopic atrial tachycardia']}))
-
-
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
@@ -587,40 +600,61 @@ TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', group='ukb_ecg_rest', t
                             loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
 
 
-def _make_ecg_partners(population_normalize: float = None):
-    def ecg_partners_from_file(tm, hd5, dependents={}):
+# ==================== Partners ECG stuff ====================================
+
+def _resample_voltage(voltage):
+    if len(voltage) == 5000:
+        return voltage[::2]
+    else:
+        return voltage
+
+
+COMPRESSION_LEVEL = 19
+
+
+def _make_partners_ecg_voltage(population_normalize: float = None):
+    def partners_ecg_voltage_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        tensor[:] = hd5[tm.group][:]
+        for cm in tm.channel_map:
+            voltage = _decompress_data(data_compressed=hd5[cm][()],
+                                       dtype=hd5[cm].attrs['dtype'])
+            voltage = _resample_voltage(voltage)
+            tensor[tm.channel_map[cm], :] = voltage
+
         if population_normalize is None:
             tensor = tm.zero_mean_std1(tensor)
         else:
-            tensor /= population_normalize
+            tensor /= population_normalize 
         return tensor
-    return ecg_partners_from_file
-
-TMAPS['ecg_partners'] = TensorMap('ecg_partners', shape=(12, 2500), group='voltage', tensor_from_file=_make_ecg_partners())
+    return partners_ecg_voltage_from_file
 
 
-def _make_ecg_partners_read():
-    def rhythm_tensor_from_file(tm, hd5):
+TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
+                                  shape=(12, 2500),
+                                  group='partners_ecg_voltage',
+                                  channel_map=ECG_REST_AMP_LEADS,
+                                  tensor_from_file=_make_partners_ecg_voltage())
+
+
+KEY_READ = 'read_md_clean'
+
+def make_partners_ecg_read_tensors(dict_of_list: Dict, not_found_key: str = "unspecified"):
+    def partners_ecg_read_tensor_from_file(tm, hd5, dependents={}):
+        read = _decompress_data(data_compressed=hd5[KEY_READ][()],
+                                dtype=hd5[KEY_READ].attrs['dtype'])
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        ecg_interpretation = hd5[tm.group][()].lower()
-        print(ecg_interpretation)
-        for rhythm in ['normal sinus rhythm', 'sinus rhythm', 'normal ecg', 'normal when compared with ecg of',
-                       'rhythm has reverted to normal', 'tracing within normal limits']:
-            if rhythm in ecg_interpretation:
-                categorical_data[tm.channel_map['Sinus_rhythm']] = 1.0
-                return categorical_data
-        categorical_data[tm.channel_map['Not_sinus_rhythm']] = 1.0
+        for cm in tm.channel_map:
+            for string in dict_of_list[cm]:
+                if string in read:
+                    categorical_data[tm.channel_map[cm]] = 1
+                    return categorical_data
+        categorical_data[tm.channel_map[not_found_key]] = 1
         return categorical_data
-    return rhythm_tensor_from_file
-
-TMAPS['ecg_partners_read'] = TensorMap('ecg_partners_read', shape=(2,), group='diagnosis_md', tensor_from_file=_make_ecg_partners_read(),
-                                       channel_map={'Not_sinus_rhythm': 0, 'Sinus_rhythm': 1})
+    return partners_ecg_read_tensor_from_file
 
 
-def _make_ecg_partners_intervals(population_normalize=None):
-    def ecg_partners_intervals(tm, hd5):
+def make_partners_ecg_intervals(population_normalize=None):
+    def partners_ecg_intervals(tm, hd5):
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
         for interval in tm.channel_map:
             if interval in hd5:
@@ -629,12 +663,20 @@ def _make_ecg_partners_intervals(population_normalize=None):
         if population_normalize is not None:
             continuous_data /= population_normalize
         return continuous_data
-    return ecg_partners_intervals
+    return partners_ecg_intervals
 
-TMAPS['ecg_partners_intervals'] = TensorMap('ecg_partners_interval', shape=(4,), group='ecg_partners', tensor_from_file=_make_ecg_partners_intervals(),
+
+TMAPS['partners_ecg_intervals'] = TensorMap('partners_ecg_interval',
+                                            shape=(4,),
+                                            group='partners_ecg',
+                                            tensor_from_file=make_partners_ecg_intervals(),
                                             channel_map={'printerval': 0, 'qrsduration': 1, 'qtcorrected': 2, 'qtinterval': 3})
-TMAPS['ecg_partners_qt_interval' ] = TensorMap('ecg_partners_qt_interval', shape=(1,), group='ecg_partners',
-                                               tensor_from_file=_make_ecg_partners_intervals(), channel_map={'qtinterval': 0})
+
+#TMAPS['partners_ecg_qt_interval' ] = TensorMap('partners_ecg_qt_interval', shape=(1,), group='partners_ecg',
+#                                               tensor_from_file=_make_partners_ecg_intervals(), channel_map={'qtinterval': 0})
+
+# ==================== End Partners ECG stuff =================================
+
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
