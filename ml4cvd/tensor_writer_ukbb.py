@@ -195,9 +195,9 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
                 tensor_name = series + '_annotated_' + row[instance_index]
-                tensor_path(source, dtype, MISSING_DATE, tensor_name)
-                if tensor_name in hd5:
-                    tensor = hd5[tensor_name]
+                tp = tensor_path(source, dtype, MISSING_DATE, tensor_name)
+                if tp in hd5:
+                    tensor = hd5[tp]
                     tensor[:] = full_tensor
                     stats['updated'] += 1
                 else:

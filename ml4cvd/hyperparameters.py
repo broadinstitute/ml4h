@@ -18,10 +18,10 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 from skimage.filters import threshold_otsu
 
 
-from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.tensor_maps_by_script import TMAPS
+from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
@@ -90,6 +90,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             histories.append(history.history)
             title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
             plot_metric_history(history, title, fig_path)
+            model.load_weights(os.path.join(args.output_folder, args.id, args.id + TENSOR_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
             logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
