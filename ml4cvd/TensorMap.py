@@ -320,23 +320,24 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         A numpy array whose dimension and type is dictated by tm
     """
     if tm.is_categorical():
-        index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-            if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
-                index = int(data[0])
-                categorical_data[index] = 1.0
-            else:
-                categorical_data = np.array(data)
-        elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
+        if tm.name in hd5:
+            index = int(hd5[tm.name][0])
             categorical_data[index] = 1.0
-        elif tm.path_prefix in hd5 and tm.channel_map is not None:
-            for k in tm.channel_map:
-                if k in hd5[tm.path_prefix]:
-                    categorical_data[tm.channel_map[k]] = hd5[tm.path_prefix][k][0]
+        elif tm.name in hd5['categorical']:
+            index = int(hd5['categorical'][tm.name][0])
+            categorical_data[index] = 1.0
         else:
-            raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
+            raise ValueError(f"No categorical index found for tensor map: {tm.name}.")
+        return categorical_data
+    elif tm.is_categorical_flag():
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        index = 0
+        if tm.name in hd5 and int(hd5[tm.name][0]) != 0:
+            index = 1
+        elif tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
+            index = 1
+        categorical_data[index] = 1.0
         return categorical_data
     elif tm.is_continuous():
         missing = True
@@ -359,27 +360,9 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
         elif missing:
             continuous_data[:] = tm.sentinel
-        return continuous_data
-    elif tm.is_embedding():
+        return tm.normalize_and_validate(continuous_data)
+    elif tm.is_hidden_layer():
         input_dict = {}
-        for input_parent_tm in tm.parents:
-            input_dict[input_parent_tm.input_name()] = np.expand_dims(input_parent_tm.tensor_from_file(input_parent_tm, hd5), axis=0)
+        for input_tm in tm.required_inputs:
+            input_dict[input_tm.input_name()] = np.expand_dims(input_tm.tensor_from_file(input_tm, hd5), axis=0)
         return tm.model.predict(input_dict)
-    elif tm.is_language():
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        caption = str(hd5[tm.name][0]).strip()
-        char_idx = np.random.randint(len(caption) + 1)
-        if char_idx == len(caption):
-            next_char = STOP_CHAR
-        else:
-            next_char = caption[char_idx]
-        if tm.dependent_map is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
-            window_offset = max(0, tm.shape[0] - char_idx)
-            for k in range(max(0, char_idx - tm.shape[0]), char_idx):
-                tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
-                window_offset += 1
-        return tensor
-    else:
-        raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
