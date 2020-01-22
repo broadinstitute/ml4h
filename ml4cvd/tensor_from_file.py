@@ -587,10 +587,10 @@ TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY,
                                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(256, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
-                                        tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 130, 190, 2, pad_shape=(256, 256, 208), flip_swap=True))
-TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(256, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
-                                        tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 130, 190, 2, pad_shape=(256, 256, 192), flip_swap=True))
+TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                        tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
+TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
+                                        tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
 
 TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=DataSetType.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
