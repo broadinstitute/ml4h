@@ -27,9 +27,9 @@ from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.plots import plot_metric_history
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+from ml4cvd.defines import Interpretation, JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
 from ml4cvd.optimizers import get_optimizer
-from ml4cvd.lookahead import Lookahead
+
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
@@ -371,7 +371,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
             last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
                                      conv_regularize, conv_dropout)
-            input_multimodal.append(Flatten()(last_conv))
+            input_multimodal.append(Flatten(name=f'embed_{tm.output_name()}')(last_conv))
         else:
             mlp_input = input_tensors[j]
             mlp = _dense_layer(mlp_input, layers, tm.annotation_units, activation, conv_normalize)
@@ -431,7 +431,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
             parented_activation = concatenate([multimodal_activation] + [output_predictions[p.output_name()] for p in tm.parents])
             parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
-        elif tm.is_categorical_any():
+        elif tm.is_categorical():
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
         else:
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
@@ -856,13 +856,12 @@ def _gradients_from_output(model, output_layer, output_index):
     return iterate
 
 
-def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
-    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, 'embed')
-    tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', required_inputs=tensor_maps_in.copy(), model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy',
-                        loss_weight=1.0, cacheable=False)
-    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1},
-                           dependent_map=tm_char, cacheable=False)
+def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model, embed_name='embed', embed_size=64, burn_in=100):
+    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
+    tm_embed = TensorMap(embed_name, shape=(embed_size,), interpretation=Interpretation.EMBEDDING, parents=tensor_maps_in.copy(), model=embed_model)
+    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), Interpretation=Interpretation.LANGUAGE, channel_map=ECG_CHAR_2_IDX, cacheable=False)
+    tm_burn_in = TensorMap('ecg_rest_text', shape=(burn_in, len(ECG_CHAR_2_IDX)), Interpretation=Interpretation.LANGUAGE,
+                           channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
     return [tm_embed, tm_burn_in], [tm_char]
 
 

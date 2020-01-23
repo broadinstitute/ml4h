@@ -1,7 +1,7 @@
 from ml4cvd.TensorMap import TensorMap, make_range_validator
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
-from ml4cvd.defines import DataSetType, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import Interpretation, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM, MRI_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_BIKE_RECOVERY_SIZE
 
 
@@ -457,10 +457,10 @@ TMAPS['sax_all_diastole_segmented_13'] = TensorMap('sax_all_diastole_segmented',
 TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap('sax_all_diastole_segmented', (256, 256, 12, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
 TMAPS['sax_all_diastole_segmented_weighted_13'] = TensorMap('sax_all_diastole_segmented', (256, 256, 13, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented_13'))
 
-TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', (256, 256, 12, 1), dependent_map=TMAPS['sax_all_diastole_segmented'])
-TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', (256, 256, 12, 1), dependent_map=TMAPS['sax_all_diastole_segmented_weighted'])
-TMAPS['sax_all_diastole_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1), dependent_map=TMAPS['sax_all_diastole_segmented_13'])
-TMAPS['sax_all_diastole_weighted_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1), dependent_map=TMAPS['sax_all_diastole_segmented_weighted_13'])
+TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', (256, 256, 12, 1))
+TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', (256, 256, 12, 1))
+TMAPS['sax_all_diastole_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1))
+TMAPS['sax_all_diastole_weighted_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1))
 
 
 TMAPS['genetic_pca_1'] = TensorMap('22009_Genetic-principal-components_0_1', group='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
@@ -887,19 +887,19 @@ TMAPS['categorical-phenotypes-134'] = TensorMap(
 
 TMAPS['ecg-bike-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss='logcosh', metrics=['mape'],
                                      normalization={'mean': 110.03, 'std': 20.04}, shape=(1,),
-                                     tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+                                     tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
 TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', group='ecg_bike', loss='logcosh', shape=(1,),
                                          metrics=['mape'], normalization={'mean': 71.2, 'std': 12.57},
-                                         tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+                                         tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
 TMAPS['ecg-bike-age'] = TensorMap('age', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                   normalization={'mean': 60, 'std': 7.65},
-                                  tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+                                  tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
 TMAPS['ecg-bike-max-pred-hr'] = TensorMap('max_pred_hr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                           normalization={'mean': 167.5, 'std': 5.81},
-                                          tensor_from_file=normalized_first_date, dtype=DataSetType.CONTINUOUS)
+                                          tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
 TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
-                                       tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+                                       tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY)
 TMAPS['ecg-bike-trend-load'] = TensorMap('trend_load', shape=(106, 1), group='ecg_bike',
-                                         tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+                                         tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY)
 TMAPS['ecg-bike-trend-grade'] = TensorMap('trend_grade', shape=(106, 1), group='ecg_bike',
-                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY)
+                                          tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY)

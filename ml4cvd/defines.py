@@ -2,15 +2,28 @@ from typing import List
 from enum import Enum, auto
 
 
-class DataSetType(Enum):
-    FLOAT_ARRAY = auto()
+class Interpretation(Enum):
     CONTINUOUS = auto()
     CATEGORICAL = auto()
-    STRING = auto()
-    SERIES = auto()
+    EMBEDDING = auto()
+    LANGUAGE = auto()
+    COX_PROPORTIONAL_HAZARDS = auto()
 
     def __str__(self):
-        """DataSetType.FLOAT_ARRAY becomes float_array"""
+        """class Interpretation.FLOAT_ARRAY becomes float_array"""
+        return str.lower(super().__str__().split('.')[1])
+
+
+class StorageType(Enum):
+    CONTINUOUS = auto()
+    CATEGORICAL_INDEX = auto()
+    CATEGORICAL_FLAG = auto()
+    ONE_HOT = auto()
+    STRING = auto()
+    BYTE_STRING = auto()
+
+    def __str__(self):
+        """StorageType.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split('.')[1])
 
 
@@ -23,6 +36,7 @@ IMAGE_EXT = '.png'
 PDF_EXT = '.pdf'
 TENSOR_EXT = '.hd5'
 
+STOP_CHAR = '!'
 JOIN_CHAR = '_'
 CONCAT_CHAR = '-'
 HD5_GROUP_CHAR = '/'
