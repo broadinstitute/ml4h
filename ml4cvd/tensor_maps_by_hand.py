@@ -39,81 +39,133 @@ TMAPS['ecg_block'] = TensorMap('ecg_block', Interpretation.CATEGORICAL, channel_
 TMAPS['ecg_rest_next_char'] = TensorMap('ecg_rest_next_char', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
 TMAPS['ecg_rest_text'] = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(100, len(ECG_CHAR_2_IDX)), channel_map={'context': 0, 'alphabet': 1}, dependent_map=TMAPS['ecg_rest_next_char'])
 
-TMAPS['p-axis'] = TensorMap('PAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
+TMAPS['acute_mi'] = TensorMap('acute_mi', group='ecg_categorical_interpretation', channel_map={'no_acute_mi': 0, 'ACUTE MI': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'acute_mi'))
+
+TMAPS['anterior_blocks'] = TensorMap('anterior_blocks', group='ecg_categorical_interpretation',
+                                     channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1, 'Left posterior fascicular block': 2},
+                                     loss=weighted_crossentropy([0.1, 10.0, 10.0], 'anterior_blocks'))
+
+TMAPS['av_block'] = TensorMap('av_block', group='ecg_categorical_interpretation', channel_map={'no_av_block': 0, 'st degree AV block': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'av_block'))
+
+TMAPS['incomplete_right_bundle_branch_block'] = TensorMap('incomplete_right_bundle_branch_block', group='ecg_categorical_interpretation',
+                              channel_map={'no_incomplete_right_bundle_branch_block': 0, 'Incomplete right bundle branch block': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'incomplete_right_bundle_branch_block'))
+
+TMAPS['infarcts'] = TensorMap('infarcts', group='ecg_categorical_interpretation',
+                              channel_map={'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2, 'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5},
+                              loss=weighted_crossentropy([0.1, 4.0, 6.0, 7.0, 6.0, 4.0], 'infarcts'))
+
+TMAPS['left_atrial_enlargement'] = TensorMap('left_atrial_enlargement', group='ecg_categorical_interpretation',
+                              channel_map={'no_left_atrial_enlargement': 0, 'Left atrial enlargement': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'left_atrial_enlargement'))
+
+TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy', group='ecg_categorical_interpretation',
+                              channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
+
+TMAPS['lvh_fine'] = TensorMap('lvh_fine', group='ecg_categorical_interpretation', loss=weighted_crossentropy([0.5, 12.0, 16.0, 30.0, 36.0], 'lvh_fine'),
+                              channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
+                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for left ventricular hypertrophy': 3,
+                                           'Left ventricular hypertrophy': 4})
+
+TMAPS['poor_data_quality'] = TensorMap('poor_data_quality', group='ecg_categorical_interpretation', channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
+                                       loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'))
+
+TMAPS['premature_atrial_complexes'] = TensorMap('premature_atrial_complexes', group='ecg_categorical_interpretation',
+                                                channel_map={'no_premature_atrial_complexes': 0, 'premature atrial complexes': 1},
+                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_atrial_complexes'))
+
+TMAPS['premature_supraventricular_complexes'] = TensorMap('premature_supraventricular_complexes', group='ecg_categorical_interpretation',
+                                                channel_map={'no_premature_supraventricular_complexes': 0, 'premature supraventricular complexes': 1},
+                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_supraventricular_complexes'))
+
+TMAPS['premature_ventricular_complexes'] = TensorMap('premature_ventricular_complexes', group='ecg_categorical_interpretation',
+                                                channel_map={'no_premature_ventricular_complexes': 0, 'premature ventricular complexes': 1},
+                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_ventricular_complexes'))
+
+TMAPS['prolonged_qt'] = TensorMap('prolonged_qt', group='ecg_categorical_interpretation', channel_map={'no_prolonged_qt': 0, 'Prolonged QT': 1},
+                                  loss=weighted_crossentropy([0.1, 10.0], 'prolonged_qt'))
+
+TMAPS['ecg_rest_next_char'] = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
+TMAPS['ecg_rest_text'] = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1}, dependent_map=TMAPS['ecg_rest_next_char'])
+
+TMAPS['p-axis'] = TensorMap('PAxis', Interpretation.CONTINUOUS, channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
                             normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration'] = TensorMap('PDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PDuration': 0}, loss='logcosh', validator=make_range_validator(30, 140),
+TMAPS['p-duration'] = TensorMap('PDuration', Interpretation.CONTINUOUS, channel_map={'PDuration': 0}, loss='logcosh', validator=make_range_validator(30, 140),
                                 normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset'] = TensorMap('POffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'POffset': 0}, loss='logcosh', validator=make_range_validator(200, 500),
+TMAPS['p-offset'] = TensorMap('POffset', Interpretation.CONTINUOUS, channel_map={'POffset': 0}, loss='logcosh', validator=make_range_validator(200, 500),
                               normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset'] = TensorMap('POnset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'POnset': 0}, loss='logcosh', validator=make_range_validator(120, 400),
+TMAPS['p-onset'] = TensorMap('POnset', Interpretation.CONTINUOUS, channel_map={'POnset': 0}, loss='logcosh', validator=make_range_validator(120, 400),
                              normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PPInterval': 0}, loss='logcosh', validator=make_range_validator(300, 1800),
+TMAPS['pp-interval'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, channel_map={'PPInterval': 0}, loss='logcosh', validator=make_range_validator(300, 1800),
                                  normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PQInterval': 0}, loss='logcosh', validator=make_range_validator(70, 400),
+TMAPS['pq-interval'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, channel_map={'PQInterval': 0}, loss='logcosh', validator=make_range_validator(70, 400),
                                  normalization={'mean': 165.9, 'std': 26.3})
-TMAPS['q-offset'] = TensorMap('QOffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QOffset': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+TMAPS['q-offset'] = TensorMap('QOffset', Interpretation.CONTINUOUS, channel_map={'QOffset': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                               normalization={'mean': 525.1, 'std': 13.52})
-TMAPS['q-onset'] = TensorMap('QOnset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
+TMAPS['q-onset'] = TensorMap('QOnset', Interpretation.CONTINUOUS, channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
                              normalization={'mean': 435.1, 'std': 11.420})
-TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSComplexes': 0}, loss='logcosh', validator=make_range_validator(0, 60),
+TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(30, 160),
                                    normalization={'mean': 8.0, 'std': 20.0})
-TMAPS['qrs-duration'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+TMAPS['qrs-duration'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
                                   normalization={'mean': 89.53, 'std': 12.21})
-TMAPS['qrs-num'] = TensorMap('QRSNum', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSNum': 0}, loss='logcosh', validator=make_range_validator(2, 30),
+TMAPS['qrs-num'] = TensorMap('QRSNum', Interpretation.CONTINUOUS, channel_map={'QRSNum': 0}, loss='logcosh', validator=make_range_validator(2, 30),
                              normalization={'mean': 9.61, 'std': 1.64})
-TMAPS['qt-interval'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+TMAPS['qt-interval'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                  normalization={'mean': 426.1, 'std': 32.24})
-TMAPS['qtc-interval'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+TMAPS['qtc-interval'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                   normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['r-axis'] = TensorMap('RAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+TMAPS['r-axis'] = TensorMap('RAxis', Interpretation.CONTINUOUS, channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
                             normalization={'mean': 25.7, 'std': 36.6})
-TMAPS['rr-interval'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
+TMAPS['rr-interval'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
                                  normalization={'mean': 1040.61, 'std': 175.5})
-TMAPS['ventricular-rate'] = TensorMap('VentricularRate', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
+TMAPS['ventricular-rate'] = TensorMap('VentricularRate', Interpretation.CONTINUOUS, channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
                                       loss='logcosh', normalization={'mean': 59.3, 'std': 10.6})
-TMAPS['t-offset'] = TensorMap('TOffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'TOffset': 0}, loss='logcosh', validator=make_range_validator(700, 1000),
+TMAPS['t-offset'] = TensorMap('TOffset', Interpretation.CONTINUOUS, channel_map={'TOffset': 0}, loss='logcosh', validator=make_range_validator(700, 1000),
                               normalization={'mean': 860.7, 'std': 32.52})
-TMAPS['t-axis'] = TensorMap('TAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'TAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+TMAPS['t-axis'] = TensorMap('TAxis', Interpretation.CONTINUOUS, channel_map={'TAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
                             normalization={'mean': 40.8, 'std': 32.6})
 
-TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
-TMAPS['charge'] = TensorMap('charge', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
+TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', Interpretation.CONTINUOUS, channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
+TMAPS['charge'] = TensorMap('charge', Interpretation.CONTINUOUS, channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
                             validator=make_range_validator(0, 20))
 
-TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
+TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
                                   parents=[TMAPS['qt-interval'], TMAPS['rr-interval']], normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['qrs-durationpp'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+TMAPS['qrs-durationpp'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
                                     normalization={'mean': 89.53, 'std': 12.21},
                                     parents=[TMAPS['qtc-intervalp']])
 
-TMAPS['p-axis-sentinel'] = TensorMap('PAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-axis-sentinel'] = TensorMap('PAxis', Interpretation.CONTINUOUS, channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration-sentinel'] = TensorMap('PDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-duration-sentinel'] = TensorMap('PDuration', Interpretation.CONTINUOUS, channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
                                          normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset-sentinel'] = TensorMap('POffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-offset-sentinel'] = TensorMap('POffset', Interpretation.CONTINUOUS, channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
                                        normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset-sentinel'] = TensorMap('POnset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-onset-sentinel'] = TensorMap('POnset', Interpretation.CONTINUOUS, channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
                                       normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 165.9, 'std': 26.3})
-TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
+TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, sentinel=0,
                                            normalization={'mean': 89.53, 'std': 12.21})
-TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTInterval': 0}, sentinel=0,
+TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, channel_map={'QTInterval': 0}, sentinel=0,
                                           normalization={'mean': 426.1, 'std': 32.24})
-TMAPS['qtc-interval-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
+TMAPS['qtc-interval-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, sentinel=0,
                                            normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
+TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, sentinel=0,
                                             normalization={'mean': 419.1, 'std': 20.7},
                                             parents=[TMAPS['qt-interval'], TMAPS['rr-interval']])
-TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
+TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, sentinel=0,
                                             normalization={'mean': 419.1, 'std': 20.7},
                                             parents=[TMAPS['qt-interval'], TMAPS['rr-interval']])
-TMAPS['r-axis-sentinel'] = TensorMap('RAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
-TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'RRInterval': 0}, sentinel=0,
+TMAPS['r-axis-sentinel'] = TensorMap('RAxis', Interpretation.CONTINUOUS, channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
+TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, channel_map={'RRInterval': 0}, sentinel=0,
                                           normalization={'mean': 1040.61, 'std': 175.5})
-TMAPS['t-axis-sentinel'] = TensorMap('TAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
+TMAPS['t-axis-sentinel'] = TensorMap('TAxis', Interpretation.CONTINUOUS, channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
 
 
 TMAPS['bb_baseline'] = TensorMap('bb_baseline', Interpretation.CATEGORICAL, channel_map={'no_bb_baseline': 0, 'bb_baseline': 1},
@@ -162,6 +214,21 @@ TMAPS['ecg-bike-resting-hr-no0'] = TensorMap('bike_resting_hr', Interpretation.C
                                              loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 71.2, 'std': 12.57})
 TMAPS['ecg-bike-max-pred-hr-no0'] = TensorMap('bike_max_pred_hr', Interpretation.CONTINUOUS, channel_map={'bike_max_pred_hr': 0},
                                              loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 167.5, 'std': 5.78})
+
+TMAPS['ecg_bike_0'] = TensorMap('full_0', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
+TMAPS['ecg_bike_1'] = TensorMap('full_1', shape=ECG_BIKE_FULL_SIZE, group='ecg_bike', channel_map={'I': 0, '2': 1, '3': 2})
+TMAPS['ecg_bike_recovery'] = TensorMap('full', shape=ECG_BIKE_RECOVERY_SIZE, group='ecg_bike_recovery', channel_map={'lead_I': 0, 'lead_2': 1, 'lead_3': 2})
+TMAPS['ecg_bike_m0'] = TensorMap('median_0', shape=ECG_BIKE_MEDIAN_SIZE, group='ecg_bike',
+                             channel_map={'I': 0, '2': 1, '3': 2})
+TMAPS['ecg_bike_m1'] = TensorMap('median_1', shape=ECG_BIKE_MEDIAN_SIZE, group='ecg_bike',
+                             channel_map={'I': 0, '2': 1, '3': 2})
+TMAPS['ecg_bike_s0'] = TensorMap('strip_0', shape=ECG_BIKE_STRIP_SIZE, group='ecg_bike',
+                             channel_map={'I': 0, '2': 1, '3': 2})
+TMAPS['ecg_bike_s1'] = TensorMap('strip_1', shape=ECG_BIKE_STRIP_SIZE, group='ecg_bike',
+                             channel_map={'I': 0, '2': 1, '3': 2})
+
+TMAPS['aligned_distance'] = TensorMap('aligned_distance', Interpretation.CONTINUOUS, channel_map={'zeros': 0})
+
 
 TMAPS['weight_kg'] = TensorMap('weight_kg',  Interpretation.CONTINUOUS, normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh', channel_map={'weight_kg': 0})
 TMAPS['height_cm'] = TensorMap('height_cm',  Interpretation.CONTINUOUS, normalization={'mean': 169.18064748408653, 'std': 9.265265197273026}, loss='logcosh', channel_map={'height_cm': 0})
@@ -282,70 +349,72 @@ TMAPS['RAQC'] = TensorMap('RAQC',  Interpretation.CONTINUOUS, normalization={'me
 TMAPS['RVQC'] = TensorMap('RVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='logcosh',
                           validator=make_range_validator(0, 200), channel_map={'RVQC': 0})
 
-TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', path_prefix='continuous',
+
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh',
                                      channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
-TMAPS['myocardial_mass_noheritable'] = TensorMap('inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['myocardial_mass_noheritable'] = TensorMap('inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS,
                                                  loss='logcosh', validator=make_range_validator(0, 400), normalization={'mean': 89.70, 'std': 24.80},
                                                  channel_map={'inferred_myocardial_mass_noheritable': 0})
 TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, sentinel=0, loss='logcosh',
-                                                          normalization={'mean': 89.70, 'std': 24.80}, path_prefix='continuous',
+                                                          normalization={'mean': 89.70, 'std': 24.80},
                                                           channel_map={'inferred_myocardial_mass_noheritable': 0})
 
-TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', path_prefix='continuous',
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh',
                                      channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
 
-
-TMAPS['adjusted_myocardium_mass_sentinel'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-                                                       loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
-                                                       sentinel=0.0)
-
-TMAPS['adjusted_myocardium_mass_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-                                                  loss='mse', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
-TMAPS['adjusted_myocardium_mass_y_true_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-                                                         loss=y_true_times_mse, channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
-
-TMAPS['adjusted_myocardium_mass_y_true_sqr_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-                                                         loss=y_true_squared_times_mse, channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
-
-TMAPS['adjusted_myocardium_mass_y_true_cube_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-                                                         loss=y_true_cubed_times_mse, channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
-
-
-TMAPS['adjusted_myocardium_mass_y_true_sqr_logcosh'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
-                                                      loss=y_true_squared_times_logcosh, channel_map={'adjusted_myocardium_mass': 0}, path_prefix='continuous',
+TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
+                                              loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
+                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0},
                                                       normalization={'mean': 89.70, 'std': 24.80})
 
 
 TMAPS['proton_fat'] = TensorMap('22402_Proton-density-fat-fraction-PDFF_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
-                               activation='linear', loss='logcosh',  annotation_units=1, path_prefix='continuous',
+                               activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Liver-fat-percentage_2_0': 0},
-                               activation='linear', loss='logcosh',  annotation_units=1, path_prefix='continuous',
+                               activation='linear', loss='logcosh',  annotation_units=1,
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
 TMAPS['liver_fat_sentinel'] = TensorMap('22402_Liver-fat-percentage_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Liver-fat-percentage_2_0': 0},
-                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0, path_prefix='continuous')
+                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
 TMAPS['liver_fat_echo_predicted'] = TensorMap('liver_fat_sentinel_prediction', Interpretation.CONTINUOUS, channel_map={'liver_fat_sentinel_prediction': 0},
-                               validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437}, path_prefix='continuous', activation='linear', loss='logcosh')
+                               validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', loss='logcosh')
 TMAPS['liver_fat_echo_predicted_sentinel'] = TensorMap('liver_fat_sentinel_prediction', Interpretation.CONTINUOUS, channel_map={'liver_fat_sentinel_prediction': 0},
-                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', path_prefix='continuous', sentinel=0.0)
+                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
 
-TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', shape=(160, 160, 10), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', shape=(160, 160, 10), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-TMAPS['lms_ideal_optimised_low_flip_6dyn'] = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-TMAPS['lms_ideal_optimised_low_flip_6dyn_12bit'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_12bit', shape=(232, 256, 36), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_4slice', shape=(232, 256, 4), loss='logcosh', normalization={'zero_mean_std1': 1.0})
+TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', (160, 160, 10), group='root_array', loss='logcosh')
+TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', (160, 160, 10), group='root_array', loss='logcosh')
+TMAPS['lms_ideal_optimised_low_flip_6dyn'] = TensorMap('lms_ideal_optimised_low_flip_6dyn', (232, 256, 36), group='root_array', loss='logcosh')
+TMAPS['lms_ideal_optimised_low_flip_6dyn_12bit'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_12bit', (232, 256, 36), group='root_array', loss='logcosh')
+TMAPS['lms_ideal_optimised_low_flip_6dyn_4slice'] = TensorMap('lms_ideal_optimised_low_flip_6dyn_4slice', (232, 256, 4), loss='logcosh')
 
-TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-TMAPS['shmolli_192i_liver'] = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-TMAPS['shmolli_192i_fitparams'] = TensorMap('shmolli_192i_fitparams', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-TMAPS['shmolli_192i_t1map'] = TensorMap('shmolli_192i_t1map', shape=(288, 384, 2), normalization={'zero_mean_std1': 1.0})
+TMAPS['shmolli_192i'] = TensorMap('shmolli_192i', (288, 384, 7), group='root_array')
+TMAPS['shmolli_192i_liver'] = TensorMap('shmolli_192i_liver', (288, 384, 7), group='root_array')
+TMAPS['shmolli_192i_12bit'] = TensorMap('shmolli_192i_12bit', (288, 384, 7), group='root_array')
+TMAPS['shmolli_192i_fitparams'] = TensorMap('shmolli_192i_fitparams', (288, 384, 7), group='root_array')
+TMAPS['shmolli_192i_t1map'] = TensorMap('shmolli_192i_t1map', (288, 384, 2), group='root_array')
 
 TMAPS['sax_pixel_width'] = TensorMap('mri_pixel_width_cine_segmented_sax_inlinevf', Interpretation.CONTINUOUS, annotation_units=2, channel_map={'mri_pixel_width_cine_segmented_sax_inlinevf': 0},
                                      validator=make_range_validator(0, 4), normalization={'mean': 1.83, 'std': 0.1})
 TMAPS['sax_pixel_height'] = TensorMap('mri_pixel_height_segmented_sax_inlinevf', Interpretation.CONTINUOUS, annotation_units=2, channel_map={'mri_pixel_height_cine_segmented_sax_inlinevf': 0},
                                       validator=make_range_validator(0, 4), normalization={'mean': 1.83, 'std': 0.1})
 
+TMAPS['end_systole_volumep'] = TensorMap('end_systole_volume', Interpretation.CONTINUOUS, activation='linear',
+                                     loss='logcosh', channel_map={'end_systole_volume': 0},
+                                     normalization={'mean': 47.0, 'std': 10.0},
+                                     parents=[TMAPS[MRI_SEGMENTED]])
+TMAPS['end_diastole_volumep'] = TensorMap('end_diastole_volume', Interpretation.CONTINUOUS, activation='linear',
+                                      loss='logcosh', channel_map={'end_diastole_volume': 0},
+                                      normalization={'mean': 142.0, 'std': 21.0},
+                                      parents=[TMAPS[MRI_SEGMENTED]])
+TMAPS['end_systole_volumepz'] = TensorMap('end_systole_volume', Interpretation.CONTINUOUS, activation='linear',
+                                      loss='logcosh', channel_map={'end_systole_volume': 0},
+                                      normalization={'mean': 47.0, 'std': 10.0},
+                                      parents=[TMAPS[MRI_ZOOM_MASK]])
+TMAPS['end_diastole_volumepz'] = TensorMap('end_diastole_volume', Interpretation.CONTINUOUS, activation='linear',
+                                       loss='logcosh', channel_map={'end_diastole_volume': 0},
+                                       normalization={'mean': 142.0, 'std': 21.0},
+                                       parents=[TMAPS[MRI_ZOOM_MASK]])
 TMAPS['ejection_fractionp'] = TensorMap('ejection_fraction', Interpretation.CONTINUOUS, activation='linear',
                                     normalization={'mean': 0.50, 'std': 0.046},
                                     loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
@@ -385,10 +454,14 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', Interpretation.CATEGOR
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
 
-TMAPS['sax_all_diastole_segmented'] = TensorMap('sax_all_diastole_segmented', (256, 256, 12, 3), loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
-TMAPS['sax_all_diastole_segmented_13'] = TensorMap('sax_all_diastole_segmented', (256, 256, 13, 3), loss='categorical_crossentropy',  group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
-TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap('sax_all_diastole_segmented', (256, 256, 12, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
-TMAPS['sax_all_diastole_segmented_weighted_13'] = TensorMap('sax_all_diastole_segmented', (256, 256, 13, 3), group='categorical', channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented_13'))
+TMAPS['sax_all_diastole_segmented'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 12, 3),
+                                                loss='categorical_crossentropy', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_all_diastole_segmented_13'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
+                                                   loss='categorical_crossentropy', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 12, 3),
+                                                         channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
+TMAPS['sax_all_diastole_segmented_weighted_13'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
+                                                            channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented_13'))
 
 TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', (256, 256, 12, 1))
 TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', (256, 256, 12, 1))
@@ -396,128 +469,174 @@ TMAPS['sax_all_diastole_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1))
 TMAPS['sax_all_diastole_weighted_13'] = TensorMap('sax_all_diastole', (256, 256, 13, 1))
 
 
-TMAPS['genetic_pca_1'] = TensorMap('22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+TMAPS['genetic_pca_1'] = TensorMap('22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0})
-TMAPS['genetic_pca_2'] = TensorMap('22009_Genetic-principal-components_0_2', Interpretation.CONTINUOUS, path_prefix='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+TMAPS['genetic_pca_2'] = TensorMap('22009_Genetic-principal-components_0_2', Interpretation.CONTINUOUS, #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_2': 0})
-TMAPS['genetic_pca_3'] = TensorMap('22009_Genetic-principal-components_0_3', Interpretation.CONTINUOUS, path_prefix='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+TMAPS['genetic_pca_3'] = TensorMap('22009_Genetic-principal-components_0_3', Interpretation.CONTINUOUS, #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_3': 0})
-TMAPS['genetic_pca_4'] = TensorMap('22009_Genetic-principal-components_0_4', Interpretation.CONTINUOUS, path_prefix='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+TMAPS['genetic_pca_4'] = TensorMap('22009_Genetic-principal-components_0_4', Interpretation.CONTINUOUS, #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_4': 0})
-TMAPS['genetic_pca_5'] = TensorMap('22009_Genetic-principal-components_0_5', Interpretation.CONTINUOUS, path_prefix='continuous', #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+TMAPS['genetic_pca_5'] = TensorMap('22009_Genetic-principal-components_0_5', Interpretation.CONTINUOUS, #normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', activation='linear', channel_map={'22009_Genetic-principal-components_0_5': 0})
-TMAPS['genetic_pca_all5'] = TensorMap('genetic_pca_all5', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+TMAPS['genetic_pca_all5'] = TensorMap('genetic_pca_all5', Interpretation.CONTINUOUS, normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                       loss='logcosh', annotation_units=5, shape=(5,), activation='linear',
                                       channel_map={'22009_Genetic-principal-components_0_0': 0, '22009_Genetic-principal-components_0_1': 1,
                                                    '22009_Genetic-principal-components_0_2': 2, '22009_Genetic-principal-components_0_3': 3,
                                                    '22009_Genetic-principal-components_0_4': 4})
 
-TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map={'no_caucasian': 0, 'caucasian': 1})
-TMAPS['genetic_caucasian_weighted'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical',
+TMAPS['genetic_caucasian'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, channel_map={'no_caucasian': 0, 'caucasian': 1})
+TMAPS['genetic_caucasian_weighted'] = TensorMap('Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL,
                                                 channel_map={'no_caucasian': 0, 'caucasian': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'))
 
-TMAPS['mothers_age'] = TensorMap('mothers_age_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['mothers_age'] = TensorMap('mothers_age_0', Interpretation.CONTINUOUS,
                                  channel_map={'mother_age': 0, 'mother_alive': 2, 'mother_dead': 3, 'not-missing': 1},
                                  normalization={'mean': 75.555, 'std': 11.977}, annotation_units = 4)
 
-TMAPS['fathers_age'] = TensorMap('fathers_age_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['fathers_age'] = TensorMap('fathers_age_0', Interpretation.CONTINUOUS,
                                  channel_map={'father_age': 0, 'father_alive': 2, 'father_dead': 3, 'not-missing': 1},
                                  normalization={'mean':70.928, 'std': 12.746}, annotation_units = 4)
 
-TMAPS['genetic_sex'] = TensorMap('Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
-                                 channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
-TMAPS['sex'] = TensorMap('Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
-                         channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
-TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
+TMAPS['genetic_sex'] = TensorMap('genetic_sex', Interpretation.CATEGORICAL, annotation_units=2, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
+TMAPS['sex'] = TensorMap('sex', Interpretation.CATEGORICAL, annotation_units=2, channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
+TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
                          validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh')
-TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
+TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
                                 validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739})
-TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
+TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', Interpretation.CONTINUOUS, channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
                                    validator=make_range_validator(1901, 2025), normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739})
-TMAPS['age_0'] = TensorMap('21003_Age-when-attended-assessment-centre_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+TMAPS['age_0'] = TensorMap('21003_Age-when-attended-assessment-centre_0', Interpretation.CONTINUOUS, loss='logcosh', validator=make_range_validator(1, 120),
                            normalization={'mean': 56.52847159208494, 'std': 8.095287610193827}, channel_map={'21003_Age-when-attended-assessment-centre_0_0': 0, })
-TMAPS['age_1'] = TensorMap('21003_Age-when-attended-assessment-centre_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+TMAPS['age_1'] = TensorMap('21003_Age-when-attended-assessment-centre_1', Interpretation.CONTINUOUS, loss='logcosh', validator=make_range_validator(1, 120),
                            normalization={'mean': 61.4476555588322, 'std': 7.3992113757847005}, channel_map={'21003_Age-when-attended-assessment-centre_1_0': 0, })
-TMAPS['age_2'] = TensorMap('21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+TMAPS['age_2'] = TensorMap('21003_Age-when-attended-assessment-centre_2', Interpretation.CONTINUOUS, loss='logcosh', validator=make_range_validator(1, 120),
                            normalization={'mean': 63.35798891483556, 'std': 7.554638350423902}, channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0, })
 
-TMAPS['brain_volume'] = TensorMap('25010_Volume-of-brain-greywhite-matter_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': 1165940.0, 'std': 111511.0},
+TMAPS['brain_volume'] = TensorMap('25010_Volume-of-brain-greywhite-matter_2_0', Interpretation.CONTINUOUS, normalization={'mean': 1165940.0, 'std': 111511.0},
                                   channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='logcosh', loss_weight=0.1)
 
-TMAPS['sodium'] = TensorMap('30530_Sodium-in-urine_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0},
+TMAPS['sodium'] = TensorMap('30530_Sodium-in-urine', Interpretation.CONTINUOUS, channel_map={'30530_Sodium-in-urine_0_0': 0},
                             normalization={'mean': 77.45323967267045, 'std': 44.441236848463774}, annotation_units=1, loss='logcosh')
-TMAPS['potassium'] = TensorMap('30520_Potassium-in-urine_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0},
+TMAPS['potassium'] = TensorMap('30520_Potassium-in-urine', Interpretation.CONTINUOUS, channel_map={'30520_Potassium-in-urine_0_0': 0},
                                normalization={'mean': 63.06182700345117, 'std': 33.84208704773539}, annotation_units=1, loss='logcosh')
-TMAPS['cholesterol_hdl'] = TensorMap('30760_HDL-cholesterol_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0},
+TMAPS['cholesterol_hdl'] = TensorMap('30760_HDL-cholesterol', Interpretation.CONTINUOUS, channel_map={'30760_HDL-cholesterol_0_0': 0},
                                      normalization={'mean': 1.4480129055069355, 'std': 0.3823115953478376}, annotation_units=1, loss='logcosh')
-TMAPS['cholesterol'] = TensorMap('30690_Cholesterol_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30690_Cholesterol_0_0': 0},
+TMAPS['cholesterol'] = TensorMap('30690_Cholesterol', Interpretation.CONTINUOUS, channel_map={'30690_Cholesterol_0_0': 0},
                                  normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=1, loss='logcosh')
 
-TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
-TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
-TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1498_Coffee-intake_0_0': 0},
+TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
+TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', Interpretation.CONTINUOUS, channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
+TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', Interpretation.CONTINUOUS, channel_map={'1498_Coffee-intake_0_0': 0},
                             normalization={'mean': 2.015086529948216, 'std': 2.0914960998390497}, annotation_units=1)
-TMAPS['water'] = TensorMap('1528_Water-intake_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1528_Water-intake_0_0': 0},
+TMAPS['water'] = TensorMap('1528_Water-intake_0_0', Interpretation.CONTINUOUS, channel_map={'1528_Water-intake_0_0': 0},
                             normalization={'mean': 2.7322977785723324, 'std': 2.261996814128837}, annotation_units=1)
-TMAPS['meat'] = TensorMap('3680_Age-when-last-ate-meat_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['meat'] = TensorMap('3680_Age-when-last-ate-meat_0_0', Interpretation.CONTINUOUS,
                             channel_map={'3680_Age-when-last-ate-meat_0_0': 0},
                             normalization={'mean': 29.74062983480561, 'std': 14.417292213873964}, annotation_units=1)
-TMAPS['walks'] = TensorMap('864_Number-of-daysweek-walked-10-minutes_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['walks'] = TensorMap('864_Number-of-daysweek-walked-10-minutes_0_0', Interpretation.CONTINUOUS,
                            channel_map={'864_Number-of-daysweek-walked-10-minutes_0_0': 0},
                            normalization={'mean': 5.369732285440756, 'std': 1.9564911925721618}, annotation_units=1)
-TMAPS['walk_duration'] = TensorMap('874_Duration-of-walks_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'874_Duration-of-walks_0_0': 0},
+TMAPS['walk_duration'] = TensorMap('874_Duration-of-walks_0_0', Interpretation.CONTINUOUS, channel_map={'874_Duration-of-walks_0_0': 0},
                            normalization={'mean': 61.64092215093373, 'std': 78.79522990818906}, annotation_units=1)
-TMAPS['physical_activities'] = TensorMap('884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['physical_activities'] = TensorMap('884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0', Interpretation.CONTINUOUS,
                            channel_map={'884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0': 0 },
                            normalization={'mean': 3.6258833281089258, 'std': 2.3343738999823676}, annotation_units=1)
-TMAPS['physical_activity'] = TensorMap('894_Duration-of-moderate-activity_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['physical_activity'] = TensorMap('894_Duration-of-moderate-activity_0_0', Interpretation.CONTINUOUS,
                            channel_map={'894_Duration-of-moderate-activity_0_0': 0 },
                            normalization={'mean': 66.2862593866103, 'std': 77.28681218835422}, annotation_units=1)
 TMAPS['physical_activity_vigorous'] = TensorMap('904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0', Interpretation.CONTINUOUS,
-                           channel_map={'904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 0}, path_prefix='continuous',
+                           channel_map={'904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 0},
                            normalization={'mean': 1.838718301735063, 'std': 1.9593505421480895}, annotation_units=1)
-TMAPS['physical_activity_vigorous_duration'] = TensorMap('914_Duration-of-vigorous-activity_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['physical_activity_vigorous_duration'] = TensorMap('914_Duration-of-vigorous-activity_0_0', Interpretation.CONTINUOUS,
                            channel_map={'914_Duration-of-vigorous-activity_0_0': 0},
                            normalization={'mean': 44.854488382965144, 'std': 48.159967071781466}, annotation_units=1)
-TMAPS['tv'] = TensorMap('1070_Time-spent-watching-television-TV_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['tv'] = TensorMap('1070_Time-spent-watching-television-TV_0_0', Interpretation.CONTINUOUS,
                             channel_map={'1070_Time-spent-watching-television-TV_0_0': 0},
                             normalization={'mean': 2.7753595642790914, 'std': 1.7135478462887321}, annotation_units=1)
-TMAPS['computer'] = TensorMap('1080_Time-spent-using-computer_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['computer'] = TensorMap('1080_Time-spent-using-computer_0_0', Interpretation.CONTINUOUS,
                             channel_map={'1080_Time-spent-using-computer_0_0': 0},
                             normalization={'mean': 0.9781465855433753, 'std': 1.4444414103121512}, annotation_units=1)
-TMAPS['car'] = TensorMap('1090_Time-spent-driving_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1090_Time-spent-driving_0_0': 0},
+TMAPS['car'] = TensorMap('1090_Time-spent-driving_0_0', Interpretation.CONTINUOUS, channel_map={'1090_Time-spent-driving_0_0': 0},
                             normalization={'mean': 0.8219851505445748, 'std': 1.304094814200189}, annotation_units=1)
-TMAPS['summer'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['summer'] = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', Interpretation.CONTINUOUS,
                             channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0},
                             normalization={'mean': 3.774492304870845, 'std': 2.430483731404539}, annotation_units=1)
-TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
+TMAPS['winter'] = TensorMap('1060_Time-spent-outdoors-in-winter_0_0', Interpretation.CONTINUOUS,
                             channel_map={'1060_Time-spent-outdoors-in-winter_0_0': 0},
                             normalization={'mean': 1.8629686916635555, 'std': 1.88916218603397}, annotation_units=1)
 
-TMAPS['systolic_blood_pressure_0'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+TMAPS['systolic_blood_pressure_0'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, loss='logcosh',
                                                channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0}, validator=make_range_validator(40, 400),
                                                normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
-TMAPS['diastolic_blood_pressure_0'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+TMAPS['diastolic_blood_pressure_0'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, loss='logcosh',
                                                 channel_map={'4079_Diastolic-blood-pressure-automated-reading_0_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
 
-TMAPS['systolic_blood_pressure_1'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+TMAPS['systolic_blood_pressure_1'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, loss='logcosh',
                                                channel_map={'4080_Systolic-blood-pressure-automated-reading_1_0': 0}, validator=make_range_validator(40, 400),
                                                normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
-TMAPS['diastolic_blood_pressure_1'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+TMAPS['diastolic_blood_pressure_1'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, loss='logcosh',
                                                 channel_map={'4079_Diastolic-blood-pressure-automated-reading_1_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
 
-TMAPS['systolic_blood_pressure_2'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+TMAPS['systolic_blood_pressure_2'] = TensorMap('4080_Systolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, loss='logcosh',
                                                channel_map={'4080_Systolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(40, 400),
                                                normalization={'mean': 137.79964191990328, 'std': 19.292863700283757})
-TMAPS['diastolic_blood_pressure_2'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+TMAPS['diastolic_blood_pressure_2'] = TensorMap('4079_Diastolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, loss='logcosh',
                                                 channel_map={'4079_Diastolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
 
+# example of multi-field-continuous tensor map (note shape will be 1x8 to accommodate a not-missing channel for each value
+# normalization must be dictionary of [mean, stdev] for each value. Requries an imputation method.
+TMAPS['blood-pressure'] = TensorMap('blood-pressure', group='multi_field_continuous',
+                          channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0,
+                                       '4080_Systolic-blood-pressure-automated-reading_0_1': 1,
+                                       '4079_Diastolic-blood-pressure-automated-reading_0_0': 2,
+                                       '4079_Diastolic-blood-pressure-automated-reading_0_1': 3},
+                          annotation_units=4,
+                          normalization={'4080_Systolic-blood-pressure-automated-reading_0_0': [137.79964191990328, 19.292863700283757],
+                                         '4080_Systolic-blood-pressure-automated-reading_0_1': [137.79964191990328, 19.292863700283757],
+                                         '4079_Diastolic-blood-pressure-automated-reading_0_0': [82.20657551284782, 10.496040770224475],
+                                         '4079_Diastolic-blood-pressure-automated-reading_0_1': [82.20657551284782, 10.496040770224475]},
+                          imputation=IMPUTATION_RANDOM)
+
+TMAPS['random-forest-fields'] = TensorMap('random-forest-fields', Interpretation.CATEGORICAL,
+                                  channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
+                                               'Medication-for-pain-relief-constipation-heartburn_Do-not-know': 1,
+                                               'Medication-for-pain-relief-constipation-heartburn_Ibuprofen-eg-Nurofen': 2,
+                                               'Medication-for-pain-relief-constipation-heartburn_Laxatives-eg-Dulcolax-Senokot': 3,
+                                               'Medication-for-pain-relief-constipation-heartburn_None-of-the-above': 4,
+                                               'Medication-for-pain-relief-constipation-heartburn_Omeprazole-eg-Zanprol': 5,
+                                               'Medication-for-pain-relief-constipation-heartburn_Paracetamol': 6,
+                                               'Medication-for-pain-relief-constipation-heartburn_Ranitidine-eg-Zantac': 7,
+                                               'Vascularheart-problems-diagnosed-by-doctor_None-of-the-above': 8,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Heart-attack': 9,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Angina': 10,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Stroke': 11,
+                                               'Vascularheart-problems-diagnosed-by-doctor_High-blood-pressure': 12,
+                                               'Vascularheart-problems-diagnosed-by-doctor_Prefer-not-to-answer': 13,
+                                               'Had-other-major-operations_Yes--you-will-be-asked-about-this-later-by-an-interviewer':14,
+                                               'Had-other-major-operations_No': 15,
+                                               'Had-other-major-operations_Do-not-know': 16,
+                                               'Had-other-major-operations_Prefer-not-to-answer': 17,
+                                               'Sex_Female': 18,
+                                               'Sex_Male': 19,
+                                               'Mother-still-alive_Yes': 20,
+                                               'Mother-still-alive_No': 21,
+                                               'Mother-still-alive_Do-not-know': 22,
+                                               'Mother-still-alive_Prefer-not-to-answer': 23,
+                                               'Father-still-alive_Yes': 24,
+                                               'Father-still-alive_No': 25,
+                                               'Father-still-alive_Do-not-know': 26,
+                                               'Father-still-alive_Prefer-not-to-answer': 27,
+                                               'Adopted-as-a-child_Yes': 28,
+                                               'Adopted-as-a-child_No': 29,
+                                               'Adopted-as-a-child_Do-not-know': 30,
+                                               'Adopted-as-a-child_Prefer-not-to-answer': 31
+                                               })
 
 TMAPS['categorical-phenotypes-25'] = TensorMap(
-    'categorical-phenotypes-25', Interpretation.CATEGORICAL, path_prefix='categorical',
+    'categorical-phenotypes-25', Interpretation.CATEGORICAL,
     channel_map={'Adopted-as-a-child_No_0_0': 0,
                  'Beef-intake_Less-than-once-a-week_0_0': 1,
                  'Breastfed-as-a-baby_Yes_0_0': 2,
@@ -547,7 +666,7 @@ TMAPS['categorical-phenotypes-25'] = TensorMap(
                  })
 
 TMAPS['categorical-phenotypes-36'] = TensorMap(
-    'categorical-phenotypes-36', Interpretation.CATEGORICAL, path_prefix='categorical',
+    'categorical-phenotypes-36', Interpretation.CATEGORICAL,
     channel_map={'Adopted-as-a-child_No_0_0': 0,
                  'Breastfed-as-a-baby_Yes_0_0': 1,
                  'Country-of-birth-UKelsewhere_England_0_0': 2,
@@ -586,7 +705,7 @@ TMAPS['categorical-phenotypes-36'] = TensorMap(
                  })
 
 TMAPS['categorical-phenotypes-78'] = TensorMap(
-    'categorical-phenotypes-78', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=64,
+    'categorical-phenotypes-78', Interpretation.CATEGORICAL, annotation_units=64,
     channel_map={'Adopted-as-a-child_No_0_0': 0,
                  'Alcohol-intake-versus-10-years-previously_Less-nowadays_0_0': 1,
                  'Alcohol-usually-taken-with-meals_It-varies_0_0': 2,
@@ -668,7 +787,8 @@ TMAPS['categorical-phenotypes-78'] = TensorMap(
                  'Wheeze-or-whistling-in-the-chest-in-last-year_No_0_0': 77})
 
 TMAPS['categorical-phenotypes-134'] = TensorMap(
-        'categorical-phenotypes-134', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=64,
+        'categorical-phenotypes-134',
+        Interpretation.CATEGORICAL, annotation_units=64,
         channel_map={'Adopted-as-a-child_No_0_0': 0, 'Adopted-as-a-child_No_2_0': 1,
                      'Alcohol-intake-frequency_Once-or-twice-a-week_0_0': 2,
                      'Alcohol-intake-versus-10-years-previously_About-the-same_0_0': 3,
@@ -771,21 +891,21 @@ TMAPS['categorical-phenotypes-134'] = TensorMap(
                      'Workplace-very-dusty_Rarelynever_0_0': 127, 'Workplace-very-dusty_Rarelynever_0_1': 128})
 
 
-TMAPS['ecg-bike-max-hr'] = TensorMap('max_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mape'],
+TMAPS['ecg-bike-max-hr'] = TensorMap('max_hr', source='ecg_bike', loss='logcosh', metrics=['mape'],
                                      normalization={'mean': 110.03, 'std': 20.04}, shape=(1,),
-                                     tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
-TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', group='ecg_bike', loss='logcosh', shape=(1,),
+                                     tensor_from_file=normalized_first_date)
+TMAPS['ecg-bike-resting-hr'] = TensorMap('resting_hr', Interpretation.CONTINUOUS, source='ecg_bike', loss='logcosh', shape=(1,),
                                          metrics=['mape'], normalization={'mean': 71.2, 'std': 12.57},
-                                         tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
-TMAPS['ecg-bike-age'] = TensorMap('age', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+                                         tensor_from_file=normalized_first_date)
+TMAPS['ecg-bike-age'] = TensorMap('age', Interpretation.CONTINUOUS, source='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                   normalization={'mean': 60, 'std': 7.65},
-                                  tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
-TMAPS['ecg-bike-max-pred-hr'] = TensorMap('max_pred_hr', group='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+                                  tensor_from_file=normalized_first_date)
+TMAPS['ecg-bike-max-pred-hr'] = TensorMap('max_pred_hr', Interpretation.CONTINUOUS, source='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
                                           normalization={'mean': 167.5, 'std': 5.81},
-                                          tensor_from_file=normalized_first_date, dtype=Interpretation.CONTINUOUS)
-TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', shape=(106, 1), group='ecg_bike',
-                                       tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY)
-TMAPS['ecg-bike-trend-load'] = TensorMap('trend_load', shape=(106, 1), group='ecg_bike',
-                                         tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY)
-TMAPS['ecg-bike-trend-grade'] = TensorMap('trend_grade', shape=(106, 1), group='ecg_bike',
-
+                                          tensor_from_file=normalized_first_date)
+TMAPS['ecg-bike-trend-hr'] = TensorMap('trend_heartrate', Interpretation.CONTINUOUS, shape=(106, 1), source='ecg_bike',
+                                       tensor_from_file=normalized_first_date)
+TMAPS['ecg-bike-trend-load'] = TensorMap('trend_load', Interpretation.CONTINUOUS, shape=(106, 1), source='ecg_bike',
+                                         tensor_from_file=normalized_first_date)
+TMAPS['ecg-bike-trend-grade'] = TensorMap('trend_grade', Interpretation.CONTINUOUS, shape=(106, 1), source='ecg_bike',
+                                          tensor_from_file=normalized_first_date)
