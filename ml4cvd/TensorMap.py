@@ -18,78 +18,67 @@ STD_IDX = 1
 
 
 class TensorMap(object):
-    """Tensor maps encode the semantics, shapes and types of tensors available
-
-        The mapping can be to numpy nd arrays, categorical labels, or continuous values.
-        The tensor shapes can be inferred for categorical TensorMaps which provide a channel mapping dictionary.
-        The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
-        For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
-        In general, new data sources require new TensorMaps and new tensor writers.
-        Input and output names are treated differently to allow self mappings, for example autoencoders
-    """
-    def __init__(self,
-                 name,
-                 shape=None,
-                 group=None,
+    def __init__(self, name, interpretation=Interpretation.CONTINUOUS,
                  loss=None,
+                 shape=None,
                  model=None,
+                 source=None,
                  metrics=None,
                  parents=None,
                  sentinel=None,
+                 validator=None,
+                 cacheable=True,
                  activation=None,
                  loss_weight=1.0,
                  channel_map=None,
+                 storage_type=None,
                  dependent_map=None,
                  normalization=None,
-                 interpretation=None,
                  annotation_units=32,
-                 imputation=None,
                  tensor_from_file=None,
-                 storage_type=None,
-                 validator=None,
-                 cacheable=True,):
+                 ):
         """TensorMap constructor
 
 
         :param name: String name of the tensor mapping
-        :param shape: Tuple of integers specifying tensor shape
-        :param group: String group of the tensor mapping
+        :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param loss: Loss function or str specifying pre-defined loss function
+        :param shape: Tuple of integers specifying tensor shape
         :param model: Model for hidden layer tensor maps
+        :param source: Source of the data we are tensor mapping
         :param metrics: List of metric functions of strings
         :param parents: List of tensorMaps which must be attached to the graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
+        :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
         :param activation: String specifying activation function
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
+        :param storage_type: StorageType of tensor map
         :param dependent_map: TensorMap that depends on or is determined by this one
         :param normalization: Dictionary specifying normalization values
-        :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
-        :param imputation: Method of imputation for missing values. Options are mean or random.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
-        :param storage_type: StorageType of tensor map
         """
         self.name = name
+        self.interpretation = interpretation
+
         self.loss = loss
         self.model = model
         self.shape = shape
-        self.group = group
+        self.source = source
         self.metrics = metrics
         self.parents = parents
         self.sentinel = sentinel
+        self.validator = validator
+        self.cacheable = cacheable
         self.activation = activation
         self.loss_weight = loss_weight
         self.channel_map = channel_map
+        self.storage_type = storage_type
         self.normalization = normalization
-        self.interpretation = interpretation
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
-        self.imputation = imputation
         self.tensor_from_file = tensor_from_file
-        self.storage_type = storage_type
-        self.validator = validator
-        self.cacheable = cacheable
 
         if self.shape is None:
             self.shape = (len(channel_map),)
@@ -138,6 +127,15 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x: x
+    """Tensor maps encode the semantics, shapes and types of tensors available
+
+        The mapping can be to numpy nd arrays, categorical labels, or continuous values.
+        The tensor shapes can be inferred for categorical TensorMaps which provide a channel mapping dictionary.
+        The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
+        For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
+        In general, new data sources require new TensorMaps and new tensor writers.
+        Input and output names are treated differently to allow self mappings, for example autoencoders
+    """
 
     def __hash__(self):
         return hash((self.name, self.shape, self.group))
