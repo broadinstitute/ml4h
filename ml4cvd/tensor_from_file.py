@@ -483,6 +483,69 @@ TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', Interpretation.CONTINUOUS, ten
                                   channel_map={'ecg_rest_age': 0}, validator=make_range_validator(0, 110), normalization={'mean': 65, 'std': 7.7})
 
 
+def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
+    categorical_data = np.zeros(tm.shape, dtype=np.float32)
+    for channel in tm.channel_map:
+        if channel in str(hd5['ecg_rest_text'][0]):
+            categorical_data[tm.channel_map[channel]] = 1.0
+            return categorical_data
+    if 'no_' + tm.name in tm.channel_map:
+        categorical_data[tm.channel_map['no_' + tm.name]] = 1.0
+        return categorical_data
+    else:
+        raise ValueError(f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}")
+
+TMAPS['acute_mi'] = TensorMap('acute_mi',tensorf_from_file=label_from_ecg_interpretation_text, channel_map={'no_acute_mi': 0, 'ACUTE MI': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'acute_mi'))
+
+TMAPS['anterior_blocks'] = TensorMap('anterior_blocks',tensorf_from_file=label_from_ecg_interpretation_text,
+                                     channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1, 'Left posterior fascicular block': 2},
+                                     loss=weighted_crossentropy([0.1, 10.0, 10.0], 'anterior_blocks'))
+
+TMAPS['av_block'] = TensorMap('av_block',tensorf_from_file=label_from_ecg_interpretation_text, channel_map={'no_av_block': 0, 'st degree AV block': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'av_block'))
+
+TMAPS['incomplete_right_bundle_branch_block'] = TensorMap('incomplete_right_bundle_branch_block',tensorf_from_file=label_from_ecg_interpretation_text,
+                              channel_map={'no_incomplete_right_bundle_branch_block': 0, 'Incomplete right bundle branch block': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'incomplete_right_bundle_branch_block'))
+
+TMAPS['infarcts'] = TensorMap('infarcts',tensorf_from_file=label_from_ecg_interpretation_text,
+                              channel_map={'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2, 'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5},
+                              loss=weighted_crossentropy([0.1, 4.0, 6.0, 7.0, 6.0, 4.0], 'infarcts'))
+
+TMAPS['left_atrial_enlargement'] = TensorMap('left_atrial_enlargement',tensorf_from_file=label_from_ecg_interpretation_text,
+                              channel_map={'no_left_atrial_enlargement': 0, 'Left atrial enlargement': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'left_atrial_enlargement'))
+
+TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy',tensorf_from_file=label_from_ecg_interpretation_text,
+                              channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
+                              loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
+
+TMAPS['lvh_fine'] = TensorMap('lvh_fine',tensorf_from_file=label_from_ecg_interpretation_text, loss=weighted_crossentropy([0.5, 12.0, 16.0, 30.0, 36.0], 'lvh_fine'),
+                              channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
+                                           'Moderate voltage criteria for LVH may be normal variant': 2, 'Voltage criteria for left ventricular hypertrophy': 3,
+                                           'Left ventricular hypertrophy': 4})
+
+TMAPS['poor_data_quality'] = TensorMap('poor_data_quality',tensorf_from_file=label_from_ecg_interpretation_text, channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
+                                       loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'))
+
+TMAPS['premature_atrial_complexes'] = TensorMap('premature_atrial_complexes',tensorf_from_file=label_from_ecg_interpretation_text,
+                                                channel_map={'no_premature_atrial_complexes': 0, 'premature atrial complexes': 1},
+                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_atrial_complexes'))
+
+TMAPS['premature_supraventricular_complexes'] = TensorMap('premature_supraventricular_complexes',tensorf_from_file=label_from_ecg_interpretation_text,
+                                                channel_map={'no_premature_supraventricular_complexes': 0, 'premature supraventricular complexes': 1},
+                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_supraventricular_complexes'))
+
+TMAPS['premature_ventricular_complexes'] = TensorMap('premature_ventricular_complexes',tensorf_from_file=label_from_ecg_interpretation_text,
+                                                channel_map={'no_premature_ventricular_complexes': 0, 'premature ventricular complexes': 1},
+                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_ventricular_complexes'))
+
+TMAPS['prolonged_qt'] = TensorMap('prolonged_qt',tensorf_from_file=label_from_ecg_interpretation_text, channel_map={'no_prolonged_qt': 0, 'Prolonged QT': 1},
+                                  loss=weighted_crossentropy([0.1, 10.0], 'prolonged_qt'))
+
+
+
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
