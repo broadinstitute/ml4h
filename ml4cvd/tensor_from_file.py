@@ -12,10 +12,10 @@ from keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
-from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import StorageType, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, EPS
-from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
-from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
+from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS
+from ml4cvd.defines import Interpretation, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION, MRI_FRAMES
 
 
 """
@@ -24,16 +24,21 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
-    if tm.axes() > 1:
+    tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tm.name)
+    if tm.storage_type == Interpretation.CONTINUOUS:
+        return tm.normalize_and_validate(tensor)
+    if tm.storage_type == Interpretation.FLOAT_ARRAY:
+        tensor = tm.normalize_and_validate(tensor)
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
-    else:
-        return tensor
+    if tm.storage_type == Interpretation.CATEGORICAL:
+        tensor = tm.normalize_and_validate(tensor)
+        return _pad_or_crop_array_to_shape(tm.shape, tensor)
+    raise ValueError(f'normalize_first_date not implemented for {tm.storage_type}')
 
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
     def _random_slice_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
+        big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tensor_key)
         cur_slice = np.random.choice(range(big_tensor.shape[-1]))
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[..., 0] = big_tensor[..., cur_slice]
@@ -50,7 +55,7 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
         if dtype_override is not None:
             big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
         else:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tensor_key)
 
         if flip_swap:
             big_tensor = np.flip(np.swapaxes(big_tensor, 0, swap_axes))
@@ -142,35 +147,7 @@ def _age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
     return age_at_tensor_from_file
 
 
-def prevalent_incident_tensor(start_date_key, event_date_key):
-    def _prevalent_incident_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        index = 0
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-            if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
-                index = int(data[0])
-                categorical_data[index] = 1.0
-            else:
-                categorical_data = np.array(data)
-        elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
-            categorical_data[index] = 1.0
-        else:
-            raise ValueError(f"No HD5 Key at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
-
-        if index != 0:
-            if event_date_key in hd5 and start_date_key in hd5:
-                disease_date = str2date(str(hd5[event_date_key][0]))
-                assess_date = str2date(str(hd5[start_date_key][0]))
-            else:
-                raise ValueError(f"No date found for tensor map: {tm.name}.")
-            index = 1 if disease_date < assess_date else 2
-        categorical_data[index] = 1.0
-        return categorical_data
-    return _prevalent_incident_tensor_from_file
-
-
-def _all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:
+def _all_dates(hd5: h5py.File, source: str, dtype: Interpretation, name: str) -> List[str]:
     """
     Gets the dates in the hd5 with path_prefix, dtype, name.
     """
@@ -197,7 +174,7 @@ def _nan_to_mean(tensor, max_allowed_nan_fraction=.2):
     return tensor
 
 
-def _get_tensor_at_first_date(hd5: h5py.File, path_prefix: str, name: str, handle_nan=_fail_nan):
+def _get_tensor_at_first_date(hd5: h5py.File, source: str, dtype: Interpretation, name: str, handle_nan=_fail_nan):
     """
     Gets the numpy array at the first date of path_prefix, dtype, name.
     """
@@ -227,7 +204,7 @@ def _pad_or_crop_array_to_shape(new_shape: Tuple, original: np.ndarray):
 
 # BIKE ECG
 def _check_phase_full_len(hd5: h5py.File, phase: str):
-    phase_len = _get_tensor_at_first_date(hd5, 'ecg_bike', f'{phase}_duration')
+    phase_len = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, f'{phase}_duration')
     valid = True
     if phase == 'pretest':
         valid &= phase_len == 15
@@ -243,29 +220,29 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
 
 def _first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name)
     recovery = original[-tm.shape[0]:]
     return recovery.reshape(tm.shape)
 
 
 def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'pretest')
-    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name)
     pretest = original[:tm.shape[0]]
     return pretest.reshape(tm.shape)
 
 
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_heartrate')[-1]
-    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
-    return max_hr - last_hr
+    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_heartrate')[-1]
+    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_hr')
+    return tm.normalize_and_validate(max_hr - last_hr)
 
 
 def _healthy_check(hd5):
     for phase in ('pretest', 'exercise', 'rest'):
         _check_phase_full_len(hd5, phase)
-    max_load = max(_get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_load'))
+    max_load = max(_get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_load'))
     if max_load < 60:
         raise ValueError('Max load not high enough')
 
@@ -282,18 +259,18 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
-    times = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_time')
-    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.path_prefix, 'float_array', tm.name))
-    return np.median(tensor[times <= 15])
+    times = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_time')
+    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name))
+    return tm.normalize_and_validate(np.median(tensor[times <= 15]))
 
 
 def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    hrs = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_heartrate')
-    phases = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_phasename')
+    hrs = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_heartrate')
+    phases = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_phasename')
     min_hr = hrs[phases == 2].min()
-    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
-    max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_pred_hr')
+    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_hr')
+    max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_pred_hr')
     hrr = max_hr - min_hr
     if max_hr / max_pred > 150:
         raise ValueError('Max hr / max pred hr too high.')
@@ -314,9 +291,9 @@ def _sentinel_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
-    max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_pred_hr')
-    return max_hr / max_pred
+    max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_hr')
+    max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_pred_hr')
+    return tm.normalize_and_validate(max_hr / max_pred)
 
 
 TMAPS: Dict[str, TensorMap] = dict()
@@ -324,80 +301,70 @@ TMAPS: Dict[str, TensorMap] = dict()
 
 TMAPS['ecg-bike-hrr'] = TensorMap('hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
-                                  tensor_from_file=_first_date_hrr)
-TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'],
+                                  tensor_from_file=_first_date_hrr, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', group='ecg_bike', loss='logcosh', metrics=['mae'],
                                              normalization={'mean': 113.7, 'std': 13.3}, shape=(1,),
-                                             tensor_from_file=_healthy_bike)
-TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                             tensor_from_file=_healthy_bike, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 30.47, 'std': 11.76},
-                                          tensor_from_file=_healthy_hrr)
-TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                          tensor_from_file=_healthy_hrr, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                               normalization={'mean': 70.0, 'std': 11.62},
-                                              tensor_from_file=_healthy_bike)
-TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                              tensor_from_file=_healthy_bike, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                              normalization={'mean': 70., 'std': 11.},
-                                             tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                             tensor_from_file=_median_pretest, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                 normalization={'mean': .03, 'std': .03},
-                                                tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                                tensor_from_file=_median_pretest, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                  normalization={'mean': .032, 'std': .46},
-                                                 tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                                 tensor_from_file=_median_pretest, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                   normalization={'mean': .03, 'std': .03},
-                                                  tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), path_prefix='ecg_bike', validator=no_nans,
-                                       tensor_from_file=_first_date_bike_recovery)
-TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), path_prefix='ecg_bike', validator=no_nans,
+                                                  tensor_from_file=_median_pretest, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), group='ecg_bike', validator=no_nans,
+                                       tensor_from_file=_first_date_bike_recovery, dtype=Interpretation.FLOAT_ARRAY)
+TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), group='ecg_bike', validator=no_nans,
                                       normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
-                                      tensor_from_file=_first_date_bike_pretest)
-TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), path_prefix='ecg_bike', validator=no_nans,
+                                      tensor_from_file=_first_date_bike_pretest, dtype=Interpretation.FLOAT_ARRAY)
+TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), group='ecg_bike', validator=no_nans,
                                          normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
-                                         tensor_from_file=_first_date_bike_pretest)
-TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+                                         tensor_from_file=_first_date_bike_pretest, dtype=Interpretation.FLOAT_ARRAY)
+TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', group='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                       normalization={'mean': 31, 'std': 12},
-                                      tensor_from_file=_new_hrr)
-TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', path_prefix='ecg_bike', metrics=['mae'], shape=(1,),
+                                      tensor_from_file=_new_hrr, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
                                            normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
-                                           tensor_from_file=_sentinel_hrr)
-TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', path_prefix='ecg_bike', metrics=['mae'], shape=(1,),
-                                          normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
+                                           tensor_from_file=_sentinel_hrr, dtype=Interpretation.CONTINUOUS)
+TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', group='ecg_bike', metrics=['mae'], shape=(1,),
+                                          normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL, dtype=Interpretation.CONTINUOUS,
                                           tensor_from_file=_build_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
 TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
-                                          tensor_from_file=_hr_achieved)
+                                          tensor_from_file=_hr_achieved, dtype=Interpretation.CONTINUOUS)
 
-TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                         tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                         tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                         tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                       tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                       tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                             tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-
-
-def _warp_ecg(ecg):
-    i = np.arange(ecg.shape[0])
-    warped = i + (np.random.rand() * 100 * np.sin(i / (500 + np.random.rand() * 100))
-                  + np.random.rand() * 100 * np.cos(i / (500 + np.random.rand() * 100)))
-    warped_ecg = np.zeros_like(ecg)
-    for j in range(ecg.shape[1]):
-        warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
-    return warped_ecg
+TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
+                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=Interpretation.SERIES)
+TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
+                                         tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=Interpretation.SERIES)
+TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
+                                         tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=Interpretation.SERIES)
+TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
+                                         tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5), dtype=Interpretation.SERIES)
+TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', group='proportional_hazard', shape=(100,),
+                                       tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=Interpretation.SERIES)
+TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', group='proportional_hazard', shape=(100,),
+                                       tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=Interpretation.SERIES)
+TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', group='proportional_hazard', shape=(100,),
+                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=Interpretation.SERIES)
+TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia', group='proportional_hazard', shape=(100,),
+                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=Interpretation.SERIES)
+TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2', group='proportional_hazard', shape=(100,),
+                                             tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10), dtype=Interpretation.SERIES)
 
 
-def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False, warp: bool = False):
+def _make_ecg_rest(population_normalize: float = None):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if random_roll:
@@ -586,7 +553,7 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name, _pass_nan)
+        tensor = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name, _pass_nan)
         try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -621,8 +588,8 @@ def _make_ukb_ecg_rest_lvh():
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor_ramp = _get_tensor_at_first_date(hd5, tm.path_prefix, 'ramplitude', _pass_nan)
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.path_prefix, 'samplitude', _pass_nan)
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, 'ramplitude', _pass_nan)
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
@@ -671,89 +638,108 @@ TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORI
                                           channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
                                           loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
 
-TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
-                                                         tensor_from_file=normalized_first_date, normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
-                                                         tensor_from_file=normalized_first_date, normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_slice_1'] = TensorMap('t2_flair_slice_1', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/', tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'), normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_slice_2'] = TensorMap('t2_flair_slice_2', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/', tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'), normalization={'zero_mean_std1': True})
-TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_1', shape=(256, 256, 208), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
+                                                         tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY,
+                                                         normalization={'zero_mean_std1': True})
+TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), group='ukb_brain_mri',
+                                                         tensor_from_file=normalized_first_date, dtype=Interpretation.FLOAT_ARRAY,
+                                                         normalization={'zero_mean_std1': True})
+TMAPS['t2_flair_slice_1'] = TensorMap('t2_flair_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                      tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'), normalization={'zero_mean_std1': True})
+TMAPS['t2_flair_slice_2'] = TensorMap('t2_flair_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                      tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'), normalization={'zero_mean_std1': True})
+TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_1', shape=(256, 256, 208), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                                   normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                                   normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
-TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
 
-TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
-TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'))
-TMAPS['t1_20_slices_1'] = TensorMap('t1_20_slices_1', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_20_slices_1'] = TensorMap('t1_20_slices_1', shape=(256, 256, 20), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 94, 114))
-TMAPS['t1_20_slices_2'] = TensorMap('t1_20_slices_2', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_20_slices_2'] = TensorMap('t1_20_slices_2', shape=(256, 256, 20), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_2', 94, 114))
-TMAPS['t2_20_slices_1'] = TensorMap('t2_20_slices_1', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_20_slices_1'] = TensorMap('t2_20_slices_1', shape=(256, 256, 20), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 86, 106))
-TMAPS['t2_20_slices_2'] = TensorMap('t2_20_slices_2', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_20_slices_2'] = TensorMap('t2_20_slices_2', shape=(256, 256, 20), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', 86, 106))
-TMAPS['t1_40_slices_1'] = TensorMap('t1_40_slices_1', shape=(256, 256, 40), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_40_slices_1'] = TensorMap('t1_40_slices_1', shape=(256, 256, 40), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 64, 144, 2))
-TMAPS['t2_40_slices_1'] = TensorMap('t2_40_slices_1', shape=(256, 256, 40), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_40_slices_1'] = TensorMap('t2_40_slices_1', shape=(256, 256, 40), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2))
-TMAPS['sos_te1'] = TensorMap('SOS_TE1', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['sos_te2'] = TensorMap('SOS_TE2', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi'] = TensorMap('SWI', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_total_mag'] = TensorMap('SWI_TOTAL_MAG', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_total_mag_te2_orig'] = TensorMap('SWI_TOTAL_MAG_TE2_orig', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_total_mag_orig'] = TensorMap('SWI_TOTAL_MAG_orig', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t2star'] = TensorMap('T2star', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['brain_mask_normed'] = TensorMap('brain_mask_normed', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['sos_te1'] = TensorMap('SOS_TE1', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['sos_te2'] = TensorMap('SOS_TE2', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                             normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi'] = TensorMap('SWI', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                         normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_total_mag'] = TensorMap('SWI_TOTAL_MAG', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                   normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_total_mag_te2_orig'] = TensorMap('SWI_TOTAL_MAG_TE2_orig', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_total_mag_orig'] = TensorMap('SWI_TOTAL_MAG_orig', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                        normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2star'] = TensorMap('T2star', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                            normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['brain_mask_normed'] = TensorMap('brain_mask_normed', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                       normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
-TMAPS['filtered_phase'] = TensorMap('filtered_phase', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_to_t1_40_slices'] = TensorMap('swi_to_t1_40_slices', shape=(173, 231, 40), path_prefix='ukb_brain_mri/float_array/', 
-                                         normalization={'zero_mean_std1': True},
+TMAPS['filtered_phase'] = TensorMap('filtered_phase', shape=(256, 288, 48), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                    normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_to_t1_40_slices'] = TensorMap('swi_to_t1_40_slices', shape=(173, 231, 40), group='ukb_brain_mri',
+                                         dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                          tensor_from_file=_slice_subset_tensor('SWI_TOTAL_MAG_to_T1', 60, 140, 2))
-TMAPS['t2star_to_t1_40_slices'] = TensorMap('t2star_to_t1_40_slices', shape=(173, 231, 40), path_prefix='ukb_brain_mri/float_array/', 
-                                            normalization={'zero_mean_std1': True},
+TMAPS['t2star_to_t1_40_slices'] = TensorMap('t2star_to_t1_40_slices', shape=(173, 231, 40), group='ukb_brain_mri',
+                                            dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True},
                                             tensor_from_file=_slice_subset_tensor('T2star_to_T1', 60, 140, 2))
 
-TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_brain'] = TensorMap('T1_brain', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_brain_30_slices'] = TensorMap('t1_brain_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
-TMAPS['t1_30_slices'] = TensorMap('t1_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256)))
-TMAPS['t1_30_slices_4d'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1)))
-TMAPS['t1_30_slices_fs'] = TensorMap('t1_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
-                                     tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256), flip_swap=True, swap_axes=1))
-TMAPS['t1_30_slices_4d_fs'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
-                                        tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1), flip_swap=True, swap_axes=1))
+TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain'] = TensorMap('T1_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain_30_slices'] = TensorMap('t1_brain_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                        normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
+TMAPS['t1_30_slices'] = TensorMap('t1_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                  normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256)))
+TMAPS['t1_30_slices_4d'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                     normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1)))
 
-TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
-TMAPS['t2_flair'] = TensorMap('T2_FLAIR', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t2_flair_brain'] = TensorMap('T2_FLAIR_brain', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t2_flair_brain_30_slices'] = TensorMap('t2_flair_brain_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_flair'] = TensorMap('T2_FLAIR', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2_flair_brain'] = TensorMap('T2_FLAIR_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2_flair_brain_30_slices'] = TensorMap('t2_flair_brain_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                              normalization={'zero_mean_std1': True},
                                               tensor_from_file=_slice_subset_tensor('T2_FLAIR_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
-TMAPS['t2_flair_30_slices'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_flair_30_slices'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                        normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256)))
-TMAPS['t2_flair_30_slices_4d'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/',  tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
+TMAPS['t2_flair_30_slices_4d'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
+                                           tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
                                            normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_30_slices_fs'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
-                                           tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256), flip_swap=True, swap_axes=1))
-TMAPS['t2_flair_30_slices_4d_fs'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
-                                              tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256, 1), flip_swap=True, swap_axes=1))
-TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(192, 256, 256, 1), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY, normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
 
 def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name)
     reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
     return tensor
 
 
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
-    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override='float_array')
+    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override=Interpretation.FLOAT_ARRAY)
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         original = slice_subset_tensor_from_file(tm, hd5, dependents)
@@ -762,19 +748,19 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
-TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', Interpretation.CATEGORICAL, shape=(256, 288, 48, 2), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', shape=(256, 288, 48, 2), group='ukb_brain_mri', dtype=Interpretation.CATEGORICAL,
                                     tensor_from_file=_mask_from_file, channel_map={'not_brain': 0, 'brain': 1})
-TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', Interpretation.CATEGORICAL, shape=(192, 256, 256, 2), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=Interpretation.CATEGORICAL,
                                    tensor_from_file=_mask_from_file, channel_map={'not_brain': 0, 'brain': 1})
-TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', Interpretation.CATEGORICAL, shape=(192, 256, 256, 4), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', shape=(192, 256, 256, 4), group='ukb_brain_mri', dtype=Interpretation.CATEGORICAL,
                             tensor_from_file=_mask_from_file, channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
-TMAPS['t1_seg_30_slices'] = TensorMap('T1_fast_T1_brain_seg_30_slices', Interpretation.CATEGORICAL, shape=(192, 256, 30, 4), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['t1_seg_30_slices'] = TensorMap('T1_fast_T1_brain_seg_30_slices', shape=(192, 256, 30, 4), group='ukb_brain_mri', dtype=Interpretation.CATEGORICAL,
                                       tensor_from_file=_mask_subset_tensor('T1_fast_T1_brain_seg', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
                                       channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
-TMAPS['t1_brain_mask_30_slices'] = TensorMap('T1_brain_mask_30_slices', Interpretation.CATEGORICAL, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['t1_brain_mask_30_slices'] = TensorMap('T1_brain_mask_30_slices', shape=(192, 256, 30, 2), group='ukb_brain_mri', dtype=Interpretation.CATEGORICAL,
                                              tensor_from_file=_mask_subset_tensor('T1_brain_mask', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
                                              channel_map={'not_brain': 0, 'brain': 1})
-TMAPS['lesions'] = TensorMap('lesions_final_mask', Interpretation.CATEGORICAL, shape=(192, 256, 256, 2), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['lesions'] = TensorMap('lesions_final_mask', shape=(192, 256, 256, 2), group='ukb_brain_mri', dtype=Interpretation.CATEGORICAL,
                              tensor_from_file=_mask_from_file, channel_map={'not_lesion': 0, 'lesion': 1}, loss=weighted_crossentropy([0.01, 10.0], 'lesion'))
 
 
@@ -789,7 +775,7 @@ def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
-TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri/float_array/', 
+TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', shape=(192, 256, 30, 2), group='ukb_brain_mri', dtype=Interpretation.FLOAT_ARRAY,
                                                tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
                                                normalization={'zero_mean_std1': True})
 
@@ -1186,7 +1172,7 @@ TMAPS['cine_sax_b6_192'] = TensorMap('cine_segmented_sax_b6', Interpretation.CON
 TMAPS['cine_sax_b6_192_1'] = TensorMap('cine_segmented_sax_b6', Interpretation.CONTINUOUS, shape=(192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 
 
-def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
+def _segmented_dicom_slices(dicom_key_prefix, source='ukb_cardiac_mri', dtype=Interpretation.FLOAT_ARRAY):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):

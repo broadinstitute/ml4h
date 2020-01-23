@@ -9,17 +9,18 @@
 
 import logging
 import datetime
-from enum import Enum, auto
-from typing import Any, Union, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 import h5py
-import keras
 import numpy as np
 
-from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
+from ml4cvd.defines import Interpretation, StorageType, EPS, JOIN_CHAR, STOP_CHAR
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
+
+np.set_printoptions(threshold=np.inf)
+
 
 MEAN_IDX = 0
 STD_IDX = 1
@@ -55,26 +56,26 @@ class TensorMap(object):
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
     def __init__(self,
-                 name: str,
-                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
-                 loss: Optional[Union[str, Callable]] = None,
-                 shape: Optional[Tuple[int]] = None,
-                 model: Optional[keras.Model] = None,
-                 metrics: Optional[List[Union[str, Callable]]] = None,
-                 parents: Optional[List["TensorMap"]] = None,
-                 sentinel: Optional[float] = None,
-                 validator: Optional[Callable] = None,
-                 cacheable: Optional[bool] = True,
-                 activation: Optional[Union[str, Callable]] = None,
-                 path_prefix: Optional[str] = None,
-                 loss_weight: Optional[float] = 1.0,
-                 channel_map: Optional[Dict[str, int]] = None,
-                 storage_type: Optional[StorageType] = None,
-                 dependent_map: Optional[str] = None,
-                 normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
-                 annotation_units: Optional[int] = 32,
-                 tensor_from_file: Optional[Callable] = None,
-                 ):
+                 name,
+                 shape=None,
+                 group=None,
+                 loss=None,
+                 model=None,
+                 metrics=None,
+                 parents=None,
+                 sentinel=None,
+                 activation=None,
+                 loss_weight=1.0,
+                 channel_map=None,
+                 dependent_map=None,
+                 normalization=None,
+                 interpretation=None,
+                 annotation_units=32,
+                 imputation=None,
+                 tensor_from_file=None,
+                 storage_type=None,
+                 validator=None,
+                 cacheable=True,):
         """TensorMap constructor
 
 
@@ -91,11 +92,12 @@ class TensorMap(object):
         :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
-        :param storage_type: StorageType of tensor map
         :param dependent_map: TensorMap that depends on or is determined by this one
         :param normalization: Dictionary specifying normalization values
+        :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
+        :param storage_type: StorageType of tensor map
         """
         self.name = name
         self.interpretation = interpretation
@@ -112,11 +114,14 @@ class TensorMap(object):
         self.activation = activation
         self.loss_weight = loss_weight
         self.channel_map = channel_map
-        self.storage_type = storage_type
         self.normalization = normalization
+        self.interpretation = interpretation
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
+        self.storage_type = storage_type
+        self.validator = validator
+        self.cacheable = cacheable
 
         if self.shape is None:
             self.shape = (len(channel_map),)
@@ -143,16 +148,16 @@ class TensorMap(object):
 
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
-            if self.axes() == 1:
+            if self.rank() == 1:
                 self.metrics += per_class_precision(self.channel_map)
                 self.metrics += per_class_recall(self.channel_map)
-            elif self.axes() == 2:
+            elif self.rank() == 2:
                 self.metrics += per_class_precision_3d(self.channel_map)
                 self.metrics += per_class_recall_3d(self.channel_map)
-            elif self.axes() == 3:
+            elif self.rank() == 3:
                 self.metrics += per_class_precision_4d(self.channel_map)
                 self.metrics += per_class_recall_4d(self.channel_map)
-            elif self.axes() == 4:
+            elif self.rank() == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
         elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
@@ -185,10 +190,10 @@ class TensorMap(object):
             return True
 
     def output_name(self):
-        return JOIN_CHAR.join(['output', self.name, str(self.interpretation)])
+        return JOIN_CHAR.join(['output', self.name, self.interpretation])
 
     def input_name(self):
-        return JOIN_CHAR.join(['input', self.name, str(self.interpretation)])
+        return JOIN_CHAR.join(['input', self.name, self.interpretation])
 
     def is_categorical(self):
         return self.interpretation == Interpretation.CATEGORICAL
@@ -205,18 +210,16 @@ class TensorMap(object):
     def is_cox_proportional_hazard(self):
         return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
 
-    def axes(self):
+    def rank(self):
         return len(self.shape)
 
     def hd5_key_guess(self):
-        if self.path_prefix is None:
+        if self.source is None:
             return f'/{self.name}/'
         else:
-            return f'/{self.path_prefix}/{self.name}/'
+            return f'/{self.source}/{self.name}/'
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
-        if key_prefix not in hd5:
-            raise ValueError(f'Could not find key:{key_prefix} in hd5.')
         data = hd5[key_prefix]
         if isinstance(data, h5py.Dataset):
             return data
@@ -320,49 +323,59 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         A numpy array whose dimension and type is dictated by tm
     """
     if tm.is_categorical():
+        index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.name in hd5:
-            index = int(hd5[tm.name][0])
-            categorical_data[index] = 1.0
-        elif tm.name in hd5['categorical']:
-            index = int(hd5['categorical'][tm.name][0])
+        if tm.hd5_key_guess() in hd5:
+            data = tm.hd5_first_dataset_in_group(tm.hd5_key_guess())
+            if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
+                index = int(data[0])
+                categorical_data[index] = 1.0
+            else:
+                categorical_data = np.array(data)
+        elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
         else:
-            raise ValueError(f"No categorical index found for tensor map: {tm.name}.")
-        return categorical_data
-    elif tm.is_categorical_flag():
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        index = 0
-        if tm.name in hd5 and int(hd5[tm.name][0]) != 0:
-            index = 1
-        elif tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
-            index = 1
-        categorical_data[index] = 1.0
+            raise ValueError(f"No HD5 Key {tm.hd5_key_guess()} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
             missing = False
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-            if tm.axes() > 1:
-                continuous_data = np.array(data)
-            elif hasattr(data, "__shape__"):
+            data = tm.hd5_first_dataset_in_group(tm.hd5_key_guess())
+            if hasattr(data, "__shape__"):
                 continuous_data[0] = data[0]
             else:
                 continuous_data[0] = data[()]
-        if missing and tm.channel_map is not None and tm.hd5_key_guess() in hd5:
-            for k in tm.channel_map:
-                if k in hd5[tm.hd5_key_guess()]:
-                    missing = False
-                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
-        if missing and tm.sentinel is None:
-            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
+        for k in tm.channel_map:
+            if k in hd5[tm.hd5_key_guess()]:
+                missing = False
+                continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
+        if tm.sentinel is None:
+            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
             continuous_data[:] = tm.sentinel
         return tm.normalize_and_validate(continuous_data)
-    elif tm.is_hidden_layer():
+    elif tm.is_embedding():
         input_dict = {}
-        for input_tm in tm.required_inputs:
-            input_dict[input_tm.input_name()] = np.expand_dims(input_tm.tensor_from_file(input_tm, hd5), axis=0)
+        for input_parent_tm in tm.parents:
+            input_dict[input_parent_tm.input_name()] = np.expand_dims(input_parent_tm.tensor_from_file(input_parent_tm, hd5), axis=0)
         return tm.model.predict(input_dict)
+    elif tm.is_language():
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        caption = str(hd5[tm.name][0]).strip()
+        char_idx = np.random.randint(len(caption) + 1)
+        if char_idx == len(caption):
+            next_char = STOP_CHAR
+        else:
+            next_char = caption[char_idx]
+        if tm.dependent_map is not None:
+            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+            dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
+            window_offset = max(0, tm.shape[0] - char_idx)
+            for k in range(max(0, char_idx - tm.shape[0]), char_idx):
+                tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
+                window_offset += 1
+        return tensor
+    else:
+        raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
