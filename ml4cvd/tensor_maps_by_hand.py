@@ -282,37 +282,37 @@ TMAPS['RAQC'] = TensorMap('RAQC',  Interpretation.CONTINUOUS, normalization={'me
 TMAPS['RVQC'] = TensorMap('RVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='logcosh',
                           validator=make_range_validator(0, 200), channel_map={'RVQC': 0})
 
-TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh',
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', source='continuous',
                                      channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
-TMAPS['myocardial_mass_noheritable'] = TensorMap('inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS,
+TMAPS['myocardial_mass_noheritable'] = TensorMap('inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, source='continuous',
                                                  loss='logcosh', validator=make_range_validator(0, 400), normalization={'mean': 89.70, 'std': 24.80},
                                                  channel_map={'inferred_myocardial_mass_noheritable': 0})
 TMAPS['myocardial_mass_noheritable_sentinel'] = TensorMap('inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, sentinel=0, loss='logcosh',
-                                                          normalization={'mean': 89.70, 'std': 24.80},
+                                                          normalization={'mean': 89.70, 'std': 24.80}, source='continuous',
                                                           channel_map={'inferred_myocardial_mass_noheritable': 0})
 
-TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh',
+TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', source='continuous',
                                      channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
 
-TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
+TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), source='continuous',
                                               loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
 TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
-                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0},
+                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, source='continuous',
                                                       normalization={'mean': 89.70, 'std': 24.80})
 
 
 TMAPS['proton_fat'] = TensorMap('22402_Proton-density-fat-fraction-PDFF_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
-                               activation='linear', loss='logcosh',  annotation_units=1,
+                               activation='linear', loss='logcosh',  annotation_units=1, source='continuous',
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
 TMAPS['liver_fat'] = TensorMap('22402_Liver-fat-percentage_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Liver-fat-percentage_2_0': 0},
-                               activation='linear', loss='logcosh',  annotation_units=1,
+                               activation='linear', loss='logcosh',  annotation_units=1, source='continuous',
                                validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437})
 TMAPS['liver_fat_sentinel'] = TensorMap('22402_Liver-fat-percentage_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Liver-fat-percentage_2_0': 0},
-                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
+                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0, source='continuous')
 TMAPS['liver_fat_echo_predicted'] = TensorMap('liver_fat_sentinel_prediction', Interpretation.CONTINUOUS, channel_map={'liver_fat_sentinel_prediction': 0},
-                               validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', loss='logcosh')
+                               validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437}, source='continuous', activation='linear', loss='logcosh')
 TMAPS['liver_fat_echo_predicted_sentinel'] = TensorMap('liver_fat_sentinel_prediction', Interpretation.CONTINUOUS, channel_map={'liver_fat_sentinel_prediction': 0},
-                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', sentinel=0.0)
+                               normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', source='continuous', sentinel=0.0)
 
 TMAPS['gre_mullti_echo_10_te_liver'] = TensorMap('gre_mullti_echo_10_te_liver', shape=(160, 160, 10), loss='logcosh')
 TMAPS['gre_mullti_echo_10_te_liver_12bit'] = TensorMap('gre_mullti_echo_10_te_liver_12bit', shape=(160, 160, 10), loss='logcosh')
