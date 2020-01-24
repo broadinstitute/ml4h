@@ -209,6 +209,8 @@ class TensorMap(object):
             return f'/{self.source}/{self.name}/'
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
+        if key_prefix not in hd5:
+            raise ValueError(f'Could not find key:{key_prefix} in hd5.')
         data = hd5[key_prefix]
         if isinstance(data, h5py.Dataset):
             return data
