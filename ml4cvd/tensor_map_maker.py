@@ -23,10 +23,10 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        _write_continuous_tensor_maps(f, db_client)
-        #_write_disease_tensor_maps(args.phenos_folder, f)
-        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        _write_disease_tensor_maps(args.phenos_folder, f)
+        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+        _write_continuous_tensor_maps(f, db_client)
 
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
@@ -48,7 +48,7 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO) -> None:
     f.write(f"\n\n#  TensorMaps for MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
     logging.info(f"Got:{len(disease2tsv)} disease TSVs from:{phenos_folder}")
-    status = disease_censor_status(disease2tsv, 1000000, 1100000)
+    status = disease_censor_status(disease2tsv, 1000000, 5000000)
     logging.info(f"Got status for all diseases.")
     for d in sorted(list(disease2tsv.keys())):
         total = len(status[d])
@@ -63,8 +63,8 @@ def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO)
     f.write(f"\n\n#  TensorMaps for prevalent and incident MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
     logging.info(f"Got:{len(disease2tsv)} disease TSVs from:{phenos_folder}")
-    status_p = disease_prevalence_status(disease2tsv, 1000000, 1100000)
-    status_i = disease_incidence_status(disease2tsv, 1000000, 1100000)
+    status_p = disease_prevalence_status(disease2tsv, 1000000, 2500000)
+    status_i = disease_incidence_status(disease2tsv, 1000000, 2500000)
     logging.info(f"Got prevalence and incidence status for all diseases.")
     for disease in sorted(list(disease2tsv.keys())):
         total = len(status_p[disease])
