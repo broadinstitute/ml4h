@@ -28,8 +28,8 @@ from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePo
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
-from ml4cvd.defines import Interpretation, JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
-from ml4cvd.optimizers import get_optimizer
+from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
 
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
