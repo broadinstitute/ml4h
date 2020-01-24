@@ -522,8 +522,8 @@ def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: d
             mri_data1[..., slice_index] = slicer.pixel_array.astype(np.float32)
         elif slicer.SeriesNumber in [6, 12]:
             mri_data2[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-    tensor_path_1 = tensor_path('ukb_brain_mri', Interpretation.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_1')
-    tensor_path_2 = tensor_path('ukb_brain_mri', Interpretation.FLOAT_ARRAY, _datetime_from_dicom(slicer), series + '_2')
+    tensor_path_1 = tensor_path('ukb_brain_mri', 'float_array', _datetime_from_dicom(slicer), series + '_1')
+    tensor_path_2 = tensor_path('ukb_brain_mri', 'float_array', _datetime_from_dicom(slicer), series + '_2')
     hd5.create_dataset(tensor_path_1, data=mri_data1, compression='gzip')
     hd5.create_dataset(tensor_path_2, data=mri_data2, compression='gzip')
 
@@ -695,7 +695,7 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                 if child.tag not in ECG_TABLE_TAGS:
                     continue
                 vals = list(map(_to_float_or_nan, child.text.strip().split(',')))
-                create_tensor_in_hd5(hd5, 'ukb_ecg_rest', Interpretation.FLOAT_ARRAY, ecg_date, child.tag.lower(), vals, stats)
+                create_tensor_in_hd5(hd5, 'ukb_ecg_rest', 'float_array', ecg_date, child.tag.lower(), vals, stats)
 
 
 def tensor_path(source: str, dtype: Interpretation, date: datetime.datetime, name: str) -> str:
@@ -708,7 +708,7 @@ def tensor_path(source: str, dtype: Interpretation, date: datetime.datetime, nam
 def create_tensor_in_hd5(hd5: h5py.File, source: str, dtype: Interpretation, date: datetime.datetime, name: str, value, stats: Counter):
     hd5_path = tensor_path(source, dtype, date, name)
     stats[hd5_path.strip(f'{_datetime_to_str(date)}/')] += 1
-    if dtype in {Interpretation.FLOAT_ARRAY, Interpretation.CONTINUOUS}:
+    if dtype in {'float_array', Interpretation.CONTINUOUS}:
         hd5.create_dataset(hd5_path, data=value, compression='gzip')
     elif dtype in (Interpretation.STRING,):
         hd5.create_dataset(hd5_path, data=value, dtype=h5py.special_dtype(vlen=str))
@@ -745,7 +745,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             for lead in median_ecgs:
                 median_idx = min(ECG_BIKE_MEDIAN_SIZE[0], len(median_ecgs[lead]))
                 median_np[:median_idx, ECG_BIKE_LEADS[lead]] = median_ecgs[lead][:median_idx]
-            write_to_hd5(dtype=Interpretation.FLOAT_ARRAY, name='median', value=median_np)
+            write_to_hd5(dtype='float_array', name='median', value=median_np)
         else:
             stats['missing median bike ECG'] += 1
 
@@ -757,7 +757,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             strip_idx = min(ECG_BIKE_MEDIAN_SIZE[0], len(strip_list))
             strip_np[:strip_idx, ECG_BIKE_LEADS[strip_waves.attrib['lead']]] = strip_list[:strip_idx]
         if counter > 0:
-            write_to_hd5(dtype=Interpretation.FLOAT_ARRAY, name='strip', value=strip_np)
+            write_to_hd5(dtype='float_array', name='strip', value=strip_np)
         else:
             stats['missing strip bike ECG'] += 1
 
@@ -777,7 +777,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             for i, lead in enumerate(full_ekgs):
                 full_idx = min(ECG_BIKE_FULL_SIZE[0], len(lead))
                 full_np[:full_idx, i] = lead[:full_idx]
-            write_to_hd5(dtype=Interpretation.FLOAT_ARRAY, name='full', value=full_np)
+            write_to_hd5(dtype='float_array', name='full', value=full_np)
         else:
             stats['missing full disclosure bike ECG'] += 1
 
@@ -829,7 +829,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
 
         for field, trend_list in trends.items():
-            write_to_hd5(dtype=Interpretation.FLOAT_ARRAY, name=f'trend_{str.lower(field)}', value=trend_list)
+            write_to_hd5(dtype='float_array', name=f'trend_{str.lower(field)}', value=trend_list)
 
         # Last 60 seconds of raw given that the rest phase is 60s
         phase_durations = {}
@@ -864,7 +864,7 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
             nifti_array = np.moveaxis(nifti_array, 0, 1)
             stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
-        create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype=Interpretation.FLOAT_ARRAY, source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
+        create_tensor_in_hd5(name=nii_name, value=nifti_array, dtype='float_array', source='ukb_brain_mri', date=MISSING_DATE, hd5=hd5, stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:
