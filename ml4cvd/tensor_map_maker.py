@@ -23,11 +23,10 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        _write_continuous_tensor_maps(f, db_client, False)
+        #_write_continuous_tensor_maps(f, db_client, False)
         _write_disease_tensor_maps(args.phenos_folder, f)
-        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
-        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
-        _write_continuous_tensor_maps(f, db_client)
+        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        #_write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
 
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
@@ -75,7 +74,6 @@ def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO)
                 f"source='categorical', tensor_from_file=prevalent_incident_tensor('dates/enroll_date', 'dates/{disease}_date'), "
                 f"channel_map={{'no_{disease}':0, 'prevalent_{disease}':1, 'incident_{disease}':2}}, "
                 f"loss=weighted_crossentropy([1.0, {factor_p}, {factor_i}], '{disease}_prevalent_incident'))\n")
-    logging.info(f"Done writing TensorMaps for prevalent and incident diseases.")
 
 
 def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient):
