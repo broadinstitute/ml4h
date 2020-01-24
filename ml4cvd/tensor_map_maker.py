@@ -54,7 +54,7 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO) -> None:
         total = len(status[d])
         diseased = np.sum(list(status[d].values()))
         factor = int(total / (1 + diseased * 2))
-        f.write(f"TMAPS['{d}'] = TensorMap('{d}', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, "
+        f.write(f"TMAPS['{d}'] = TensorMap('{d}', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, source='categorical', "
                 f"channel_map={{'no_{d}':0, '{d}':1}}, loss=weighted_crossentropy([1.0, {factor}], '{d}'))\n")
     logging.info(f"Done writing TensorMaps for diseases.")
 
