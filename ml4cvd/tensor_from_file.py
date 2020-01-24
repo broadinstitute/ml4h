@@ -24,7 +24,7 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tm.name)
+    tensor = _get_tensor_at_first_date(hd5, tm.source, tm.storage_type, tm.name)
     if tm.rank() > 1:
         tensor = tm.normalize_and_validate(tensor)
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
@@ -34,7 +34,7 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
     def _random_slice_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tensor_key)
+        big_tensor = _get_tensor_at_first_date(hd5, tm.source, tm.storage_type, tensor_key)
         cur_slice = np.random.choice(range(big_tensor.shape[-1]))
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[..., 0] = big_tensor[..., cur_slice]
@@ -395,18 +395,24 @@ def _make_ecg_rest(population_normalize: float = None):
             roll = np.random.randint(2500)
         if tm.dependent_map is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            key_choices = [k for k in hd5[tm.path_prefix] if tm.name in k]
+            key_choices = [k for k in hd5[tm.source] if tm.name in k]
             lead_idx = np.random.choice(key_choices)
-            tensor = np.reshape(hd5[tm.path_prefix][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.path_prefix][lead_idx.replace(tm.name, tm.dependent_map.name)])
+            tensor = np.reshape(hd5[tm.source][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
+            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.source][lead_idx.replace(tm.name, tm.dependent_map.name)])
             dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
         else:
-            for k in hd5[tm.path_prefix]:
+            for k in hd5[tm.source]:
                 if k in tm.channel_map:
-                    if random_roll:
-                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.path_prefix][k], roll)
+                    if len(tensor.shape) == 3:  # Grab the stacked tensor maps
+                        window_size = tensor.shape[0]
+                        channels = tensor.shape[2]
+                        new_shape = (window_size, channels)
+                        new_total = window_size * channels
+                        tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.source][k][:new_total], new_shape, order='F')
+                    elif tm.name == 'ecg_rest_fft':
+                        tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.source][k])) + EPS)
                     else:
-                        tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k]
+                        tensor[:, tm.channel_map[k]] = hd5[tm.source][k]
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
