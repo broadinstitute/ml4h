@@ -1,3 +1,12 @@
+# TensorMap.py
+#
+# The TensorMap takes any kind of data stored in an hd5 file
+# tags it with a semantic interpretation and converts it into a structured numpy tensor.
+# TensorMaps can be used as inputs, outputs, or hidden layers of models made by the model factory.
+# TensorMaps can perform any computation by providing a callback function called tensor_from_file.
+# A default tensor_from_file will be attempted when a callback tensor_from_file is not provided.
+# TensorMaps guarantee shape, name, interpretation and mapping from hd5 to numpy array.
+
 import logging
 import datetime
 from typing import Any
@@ -10,9 +19,6 @@ from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
-
-np.set_printoptions(threshold=np.inf)
-
 
 MEAN_IDX = 0
 STD_IDX = 1
@@ -57,10 +63,10 @@ class TensorMap(object):
         :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param loss: Loss function or str specifying pre-defined loss function
         :param shape: Tuple of integers specifying tensor shape
-        :param model: Model for hidden layer tensor maps
+        :param model: Only used by hidden layer tensor maps
         :param source: Source of the data we are tensor mapping
         :param metrics: List of metric functions of strings
-        :param parents: List of tensorMaps which must be attached to the graph before this one
+        :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
         :param activation: String specifying activation function
@@ -118,16 +124,16 @@ class TensorMap(object):
 
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
-            if self.rank() == 1:
+            if self.axes() == 1:
                 self.metrics += per_class_precision(self.channel_map)
                 self.metrics += per_class_recall(self.channel_map)
-            elif self.rank() == 2:
+            elif self.axes() == 2:
                 self.metrics += per_class_precision_3d(self.channel_map)
                 self.metrics += per_class_recall_3d(self.channel_map)
-            elif self.rank() == 3:
+            elif self.axes() == 3:
                 self.metrics += per_class_precision_4d(self.channel_map)
                 self.metrics += per_class_recall_4d(self.channel_map)
-            elif self.rank() == 4:
+            elif self.axes() == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
         elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
@@ -164,10 +170,8 @@ class TensorMap(object):
                 if self_field != other_field:
                     return False
                 if not _is_equal_field(self_value, other_value):
-                    logging.debug(f"Comparing two '{self.name}' tensor maps: "
-                                  f"'{self_field}' values '{self_value}' and '{other_value}' are not equal.")
+                    logging.debug(f"Comparing two '{self.name}' tensor maps: '{self_field}' values '{self_value}' and '{other_value}' are not equal.")
                     return False
-
             return True
 
     def output_name(self):
@@ -191,7 +195,7 @@ class TensorMap(object):
     def is_cox_proportional_hazard(self):
         return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
 
-    def rank(self):
+    def axes(self):
         return len(self.shape)
 
     def hd5_key_guess(self):

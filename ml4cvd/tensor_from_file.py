@@ -25,7 +25,7 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.source, tm.storage_type, tm.name)
-    if tm.rank() > 1:
+    if tm.axes() > 1:
         tensor = tm.normalize_and_validate(tensor)
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
     else:

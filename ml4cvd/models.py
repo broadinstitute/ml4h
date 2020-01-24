@@ -201,15 +201,15 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
 
     input_layers = []
     for it in tensor_maps_in:
-        if it.is_hidden_layer():
+        if it.is_embedding():
             embed_in = Input(shape=it.shape, name=it.input_name())
             input_layers.append(embed_in)
-        elif it.is_ecg_text():
+        elif it.is_language():
             burn_in = Input(shape=it.shape, name=it.input_name())
             input_layers.append(burn_in)
             repeater = RepeatVector(it.shape[0])
         else:
-            logging.warning(f"character model cant handle {it.name} from group:{it.group}")
+            logging.warning(f"character model cant handle  input TensorMap:{it.name} with interpretation:{it.interpretation}")
 
     logging.info(f"inputs: {[il.name for il in input_layers]}")
     wave_embeds = repeater(embed_in)
