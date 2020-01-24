@@ -35,8 +35,9 @@ import xml.etree.ElementTree as et
 from timeit import default_timer as timer
 from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
+from ml4cvd.TensorMap import Interpretation
 from ml4cvd.plots import plot_value_counter, plot_histograms
-from ml4cvd.defines import Interpretation, dataset_name_from_meaning
+from ml4cvd.defines import StorageType, dataset_name_from_meaning
 from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 
@@ -169,7 +170,7 @@ def write_tensors(a_id: str,
 def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
                                   sample_header='sample_id', dicom_header='dicom_file',
                                   instance_header='instance_number', png_postfix='.png.mask.png',
-                                  source='ukb_cardiac_mri', dtype=Interpretation.FLOAT_ARRAY):
+                                  source='ukb_cardiac_mri', storage_type='float_array'):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
@@ -192,13 +193,13 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
                 tensor_name = series + '_annotated_' + row[instance_index]
-                tp = tensor_path(path_prefix, tensor_name)
+                tp = tensor_path(source, storage_type, MISSING_DATE, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
                     tensor[:] = full_tensor
                     stats['updated'] += 1
                 else:
-                    create_tensor_in_hd5(hd5, source, Interpretation.FLOAT_ARRAY, MISSING_DATE, tensor_name, full_tensor, stats)
+                    create_tensor_in_hd5(hd5, source, storage_type, MISSING_DATE, tensor_name, full_tensor, stats)
                     stats['created'] += 1
 
         except FileNotFoundError:
