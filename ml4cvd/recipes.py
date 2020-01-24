@@ -101,7 +101,7 @@ def run(args):
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     if args.variational:  # TODO: Save the encoders and decoders
-        model, _, _ = make_multimodal_multitask_model(**args.__dict__)
+        model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
         model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
@@ -115,7 +115,7 @@ def train_multimodal_multitask(args):
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     if args.variational:
-        model, _, _ = make_multimodal_multitask_model(**args.__dict__)
+        model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
         model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')

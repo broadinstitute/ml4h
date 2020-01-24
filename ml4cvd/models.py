@@ -461,12 +461,16 @@ def make_variational_multimodal_multitask_model(
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(latent_inputs)
 
     out_list = list(output_predictions.values())
-    encoder = Model(inputs=input_tensors, outputs=multimodal_activation)
-    decoder = Model(inputs=latent_inputs, outputs=out_list)
+    encoder = Model(inputs=input_tensors, outputs=multimodal_activation, name='encoder')
+    decoder = Model(inputs=latent_inputs, outputs=out_list, name='decoder')
     outputs = decoder(encoder(input_tensors))
     m = Model(inputs=input_tensors, outputs=outputs)
     m.output_names = list(output_predictions.keys())
     decoder.output_names = list(output_predictions.keys())
+    encoder.summary()
+    print()
+    decoder.summary()
+    print()
     m.summary()
 
     model_layers = kwargs.get('model_layers', False)
