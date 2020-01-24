@@ -102,7 +102,7 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
     for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
         if k in phecode2counts:
             factor = int(total_samples / (1+phecode2counts[k]))
-            f.write(f"TMAPS['{p}_phe'] = TensorMap('{k}', Interpretation.CATEGORICAL, channel_map={{'no_{p}':0, '{p}':1}}, "
+            f.write(f"TMAPS['{p}_phe'] = TensorMap('{k}', Interpretation.CATEGORICAL, channel_map={{'no_{p}':0, '{p}':1}}, source='categorical', "
                     f"storage_type=StorageType.CATEGORICAL_FLAG, loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n")
 
     query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE prevalent_disease=1 GROUP BY disease"
