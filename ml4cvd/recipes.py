@@ -495,13 +495,13 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
 
-        if tm.is_categorical_any_with_shape_len(1):
+        if tm.is_categorical() and tm.axes() == 1:
             msg = "For tm '{}' with channel map {}: sum truth = {}; sum pred = {}"
             for m in predictions[tm]:
                 logging.info(msg.format(tm.name, tm.channel_map, np.sum(outputs[tm.output_name()], axis=0), np.sum(predictions[tm][m], axis=0)))
             plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
-        elif tm.is_categorical_any_with_shape_len(4):
+        elif tm.is_categorical() and tm.axes() == 4:
             for p in predictions[tm]:
                 y = predictions[tm][p]
                 melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
@@ -514,7 +514,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
-        elif tm.is_continuous() and len(tm.shape) == 1:
+        elif tm.is_continuous() and tm.axes() == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
             scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
