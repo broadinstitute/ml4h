@@ -179,10 +179,10 @@ class TensorMap(object):
             return True
 
     def output_name(self):
-        return JOIN_CHAR.join(['output', self.name, self.interpretation])
+        return JOIN_CHAR.join(['output', self.name, str(self.interpretation)])
 
     def input_name(self):
-        return JOIN_CHAR.join(['input', self.name, self.interpretation])
+        return JOIN_CHAR.join(['input', self.name, str(self.interpretation)])
 
     def is_categorical(self):
         return self.interpretation == Interpretation.CATEGORICAL
