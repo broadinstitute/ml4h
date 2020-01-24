@@ -1,8 +1,7 @@
-from ml4cvd.TensorMap import TensorMap, make_range_validator
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
-from ml4cvd.defines import Interpretation, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM, MRI_SEGMENTED_CHANNEL_MAP
-from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_BIKE_RECOVERY_SIZE
+from ml4cvd.TensorMap import TensorMap, make_range_validator, Interpretation
+from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
 
 
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}

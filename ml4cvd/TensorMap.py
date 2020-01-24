@@ -1,11 +1,12 @@
 import logging
 import datetime
 from typing import Any
+from enum import Enum, auto
 
 import h5py
 import numpy as np
 
-from ml4cvd.defines import Interpretation, StorageType, EPS, JOIN_CHAR, STOP_CHAR
+from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
@@ -15,6 +16,18 @@ np.set_printoptions(threshold=np.inf)
 
 MEAN_IDX = 0
 STD_IDX = 1
+
+
+class Interpretation(Enum):
+    CONTINUOUS = auto()
+    CATEGORICAL = auto()
+    EMBEDDING = auto()
+    LANGUAGE = auto()
+    COX_PROPORTIONAL_HAZARDS = auto()
+
+    def __str__(self):
+        """class Interpretation.FLOAT_ARRAY becomes float_array"""
+        return str.lower(super().__str__().split('.')[1])
 
 
 class TensorMap(object):
