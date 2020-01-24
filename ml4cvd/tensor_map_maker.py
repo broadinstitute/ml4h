@@ -26,7 +26,7 @@ def write_tensor_maps(args) -> None:
         _write_continuous_tensor_maps(f, db_client)
         #_write_disease_tensor_maps(args.phenos_folder, f)
         #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
-        #_write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
 
         f.write('\n')
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
@@ -182,7 +182,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
         for i in range(0, row.max_array + 1):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         channel_map += "}"
-        f.write(f"TMAPS['{row.FieldID}_{row.instance}'] = TensorMap('{name}', loss='logcosh', source='continuous', ")
+        f.write(f"TMAPS['{row.FieldID}_{row.instance}'] = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', source='continuous', ")
         f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
 
 
