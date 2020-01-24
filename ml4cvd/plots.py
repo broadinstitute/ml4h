@@ -171,7 +171,7 @@ def plot_metric_history(history, title, prefix='./figures/'):
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE), sharex='all')
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
     ax1.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     ax1.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
