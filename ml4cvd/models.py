@@ -1,4 +1,6 @@
 # models.py
+# This file defines model factories.
+# Model factories connect input TensorMaps to output TensorMaps with computational graphs.
 
 # Imports
 import os
