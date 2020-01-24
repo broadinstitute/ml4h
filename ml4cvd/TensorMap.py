@@ -25,6 +25,13 @@ STD_IDX = 1
 
 
 class Interpretation(Enum):
+    """Interpretations give TensorMaps semantics encoded by the numpy array the TensorMap yields.
+    Interpretations tell us the kind of thing stored but nothing about its size.
+    For example, a binary label and 2D pixel mask for segmentation should both have interpretation CATEGORICAL.
+    CONTINUOUS Interpretations are the default and make sense for scalar values like height and weight
+    as well as multidimensional arrays of raw pixel or voxel values.
+    Providing explicit interpretations in TensorMap constructors is encouraged.
+    Interpretations are used to set reasonable defaults values when explicit arguments are not provided."""
     CONTINUOUS = auto()
     CATEGORICAL = auto()
     EMBEDDING = auto()
