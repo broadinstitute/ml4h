@@ -47,11 +47,11 @@ def _get_tensor_map_file_imports() -> str:
 def _write_disease_tensor_maps(phenos_folder: str, f: TextIO) -> None:
     f.write(f"\n\n#  TensorMaps for MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
-    status = disease_censor_status(disease2tsv, 1000000, 1200000)
+    status = disease_censor_status(disease2tsv, 1000000, 1100000)
     for d in sorted(list(disease2tsv.keys())):
         total = len(status[d])
         diseased = np.sum(list(status[d].values()))
-        factor = int(total / (diseased * 2))
+        factor = int(total / (1 + diseased * 2))
         f.write(f"TMAPS['{d}'] = TensorMap('{d}', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, "
                 f"channel_map={{'no_{d}':0, '{d}':1}}, loss=weighted_crossentropy([1.0, {factor}], '{d}'))\n")
 
@@ -59,8 +59,8 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO) -> None:
 def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO) -> None:
     f.write(f"\n\n#  TensorMaps for prevalent and incident MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
-    status_p = disease_prevalence_status(disease2tsv, 1000000, 1200000)
-    status_i = disease_incidence_status(disease2tsv, 1000000, 1200000)
+    status_p = disease_prevalence_status(disease2tsv, 1000000, 1100000)
+    status_i = disease_incidence_status(disease2tsv, 1000000, 1100000)
     for disease in sorted(list(disease2tsv.keys())):
         total = len(status_p[disease])
         diseased_p = np.sum(list(status_p[disease].values()))
