@@ -49,9 +49,9 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
 def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if dtype_override is not None:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.group, dtype_override, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.source, dtype_override, tensor_key)
         else:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.source, tm.storage_type, tensor_key)
 
         if flip_swap:
             big_tensor = np.flip(np.swapaxes(big_tensor, 0, -1))
@@ -576,7 +576,7 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor = _get_tensor_at_first_date(hd5, tm.group, 'float_array', tm.name, _pass_nan)
+        tensor = _get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name, _pass_nan)
         try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -611,8 +611,8 @@ def _make_ukb_ecg_rest_lvh():
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, 'float_array', 'ramplitude', _pass_nan)
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, 'float_array', 'samplitude', _pass_nan)
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.source, 'float_array', 'ramplitude', _pass_nan)
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.source, 'float_array', 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
@@ -728,7 +728,7 @@ TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(1
 
 
 def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-    original = _get_tensor_at_first_date(hd5, tm.group, 'float_array', tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name)
     reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
     return tm.normalize_and_validate(tensor)
@@ -795,8 +795,8 @@ def _make_index_tensor_from_file(index_map_name):
     def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
-        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
+            tensor = np.array(hd5[tm.source][k], dtype=np.float32)
+        index = np.array(hd5[tm.source][index_map_name], dtype=np.float32)
         return tm.normalize_and_validate(tensor / index)
     return indexed_lvmass_tensor_from_file
 
@@ -840,7 +840,7 @@ def _select_tensor_from_file(selection_predicate: Callable):
             raise ValueError(f'Tensor did not meet selection criteria:{selection_predicate.__name__} with Tensor Map:{tm.name}')
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+            tensor = np.array(hd5[tm.source][k], dtype=np.float32)
         return tm.normalize_and_validate(tensor)
     return selected_tensor_from_file
 
