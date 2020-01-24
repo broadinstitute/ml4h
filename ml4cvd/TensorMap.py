@@ -342,7 +342,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             if k in hd5[tm.hd5_key_guess()]:
                 missing = False
                 continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
-        if tm.sentinel is None:
+        if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
             continuous_data[:] = tm.sentinel
