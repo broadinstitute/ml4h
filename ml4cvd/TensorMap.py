@@ -317,7 +317,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
-            data = tm.hd5_first_dataset_in_group(tm.hd5_key_guess())
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
                 index = int(data[0])
                 categorical_data[index] = 1.0
@@ -333,7 +333,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
             missing = False
-            data = tm.hd5_first_dataset_in_group(tm.hd5_key_guess())
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if hasattr(data, "__shape__"):
                 continuous_data[0] = data[0]
             else:
