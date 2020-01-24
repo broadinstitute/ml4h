@@ -296,6 +296,9 @@ TMAPS['myocardial_mass'] = TensorMap('myocardium_mass',  Interpretation.CONTINUO
 
 TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), source='continuous',
                                               loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+TMAPS['adjusted_myocardium_mass_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), source='continuous',
+                                                  loss='mse', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+
 TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
                                                       loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, source='continuous',
                                                       normalization={'mean': 89.70, 'std': 24.80})
