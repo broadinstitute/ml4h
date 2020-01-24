@@ -20,9 +20,6 @@ from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pear
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
-np.set_printoptions(threshold=np.inf)
-
-
 MEAN_IDX = 0
 STD_IDX = 1
 
@@ -66,7 +63,7 @@ class TensorMap(object):
         :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param loss: Loss function or str specifying pre-defined loss function
         :param shape: Tuple of integers specifying tensor shape
-        :param model: Model for hidden layer tensor maps
+        :param model: Only used by hidden layer tensor maps
         :param source: Source of the data we are tensor mapping
         :param metrics: List of metric functions of strings
         :param parents: List of TensorMaps which must be attached to the model graph before this one
@@ -128,16 +125,16 @@ class TensorMap(object):
 
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
-            if self.rank() == 1:
+            if self.axes() == 1:
                 self.metrics += per_class_precision(self.channel_map)
                 self.metrics += per_class_recall(self.channel_map)
-            elif self.rank() == 2:
+            elif self.axes() == 2:
                 self.metrics += per_class_precision_3d(self.channel_map)
                 self.metrics += per_class_recall_3d(self.channel_map)
-            elif self.rank() == 3:
+            elif self.axes() == 3:
                 self.metrics += per_class_precision_4d(self.channel_map)
                 self.metrics += per_class_recall_4d(self.channel_map)
-            elif self.rank() == 4:
+            elif self.axes() == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
         elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
@@ -199,7 +196,7 @@ class TensorMap(object):
     def is_cox_proportional_hazard(self):
         return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
 
-    def rank(self):
+    def axes(self):
         return len(self.shape)
 
     def hd5_key_guess(self):
