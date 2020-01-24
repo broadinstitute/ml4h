@@ -25,15 +25,11 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.group, tm.storage_type, tm.name)
-    if tm.storage_type == Interpretation.CONTINUOUS:
+    if tm.rank() > 1:
+        tensor = tm.normalize_and_validate(tensor)
+        return _pad_or_crop_array_to_shape(tm.shape, tensor)
+    else:
         return tm.normalize_and_validate(tensor)
-    if tm.storage_type == Interpretation.FLOAT_ARRAY:
-        tensor = tm.normalize_and_validate(tensor)
-        return _pad_or_crop_array_to_shape(tm.shape, tensor)
-    if tm.storage_type == Interpretation.CATEGORICAL:
-        tensor = tm.normalize_and_validate(tensor)
-        return _pad_or_crop_array_to_shape(tm.shape, tensor)
-    raise ValueError(f'normalize_first_date not implemented for {tm.storage_type}')
 
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
@@ -251,21 +247,21 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
 
 def _first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    original = _get_tensor_at_first_date(hd5, tm.source, Interpretation.FLOAT_ARRAY, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name)
     recovery = original[-tm.shape[0]:]
     return tm.normalize_and_validate(recovery).reshape(tm.shape)
 
 
 def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'pretest')
-    original = _get_tensor_at_first_date(hd5, tm.source, Interpretation.FLOAT_ARRAY, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name)
     pretest = original[:tm.shape[0]]
     return tm.normalize_and_validate(pretest).reshape(tm.shape)
 
 
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_heartrate')[-1]
+    last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'float_array', 'trend_heartrate')[-1]
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_hr')
     return tm.normalize_and_validate(max_hr - last_hr)
 
@@ -273,7 +269,7 @@ def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 def _healthy_check(hd5):
     for phase in ('pretest', 'exercise', 'rest'):
         _check_phase_full_len(hd5, phase)
-    max_load = max(_get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_load'))
+    max_load = max(_get_tensor_at_first_date(hd5, 'ecg_bike', 'float_array', 'trend_load'))
     if max_load < 60:
         raise ValueError('Max load not high enough')
 
@@ -290,15 +286,15 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
-    times = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_time')
-    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.source, Interpretation.FLOAT_ARRAY, tm.name))
+    times = _get_tensor_at_first_date(hd5, 'ecg_bike', 'float_array', 'trend_time')
+    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name))
     return tm.normalize_and_validate(np.median(tensor[times <= 15]))
 
 
 def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    hrs = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_heartrate')
-    phases = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.FLOAT_ARRAY, 'trend_phasename')
+    hrs = _get_tensor_at_first_date(hd5, 'ecg_bike', 'float_array', 'trend_heartrate')
+    phases = _get_tensor_at_first_date(hd5, 'ecg_bike', 'float_array', 'trend_phasename')
     min_hr = hrs[phases == 2].min()
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_hr')
     max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', Interpretation.CONTINUOUS, 'max_pred_hr')
@@ -580,7 +576,7 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name, _pass_nan)
+        tensor = _get_tensor_at_first_date(hd5, tm.group, 'float_array', tm.name, _pass_nan)
         try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -615,8 +611,8 @@ def _make_ukb_ecg_rest_lvh():
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, 'ramplitude', _pass_nan)
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, 'samplitude', _pass_nan)
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.group, 'float_array', 'ramplitude', _pass_nan)
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.group, 'float_array', 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
@@ -732,14 +728,14 @@ TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(1
 
 
 def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-    original = _get_tensor_at_first_date(hd5, tm.group, Interpretation.FLOAT_ARRAY, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.group, 'float_array', tm.name)
     reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
     return tm.normalize_and_validate(tensor)
 
 
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
-    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override=Interpretation.FLOAT_ARRAY)
+    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override='float_array')
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         original = slice_subset_tensor_from_file(tm, hd5, dependents)
