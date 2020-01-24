@@ -12,10 +12,10 @@ from keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
-from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS
-from ml4cvd.defines import Interpretation, EPS, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP
-from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION, MRI_FRAMES
+from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
+from ml4cvd.defines import StorageType, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, EPS
+from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
+from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 
 
 """
@@ -145,6 +145,34 @@ def _age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
         birth_year = hd5[birth_key][0]
         return np.array([assess_date.year-birth_year])
     return age_at_tensor_from_file
+
+
+def prevalent_incident_tensor(start_date_key, event_date_key):
+    def _prevalent_incident_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        index = 0
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        if tm.hd5_key_guess() in hd5:
+            data = tm.hd5_first_dataset_in_group(tm.hd5_key_guess())
+            if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
+                index = int(data[0])
+                categorical_data[index] = 1.0
+            else:
+                categorical_data = np.array(data)
+        elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
+            categorical_data[index] = 1.0
+        else:
+            raise ValueError(f"No HD5 Key {tm.hd5_key_guess()} found for tensor map: {tm.name}.")
+
+        if index != 0:
+            if event_date_key in hd5 and start_date_key in hd5:
+                disease_date = str2date(str(hd5[event_date_key][0]))
+                assess_date = str2date(str(hd5[start_date_key][0]))
+            else:
+                raise ValueError(f"No date found for tensor map: {tm.name}.")
+            index = 1 if disease_date < assess_date else 2
+        categorical_data[index] = 1.0
+        return categorical_data
+    return _prevalent_incident_tensor_from_file
 
 
 def _all_dates(hd5: h5py.File, source: str, dtype: Interpretation, name: str) -> List[str]:
@@ -489,6 +517,7 @@ def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
         return categorical_data
     else:
         raise ValueError(f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}")
+
 
 TMAPS['acute_mi'] = TensorMap('acute_mi',tensorf_from_file=label_from_ecg_interpretation_text, channel_map={'no_acute_mi': 0, 'ACUTE MI': 1},
                               loss=weighted_crossentropy([0.1, 10.0], 'acute_mi'))

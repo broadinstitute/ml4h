@@ -1,19 +1,6 @@
 from typing import List
 from enum import Enum, auto
 
-
-class Interpretation(Enum):
-    CONTINUOUS = auto()
-    CATEGORICAL = auto()
-    EMBEDDING = auto()
-    LANGUAGE = auto()
-    COX_PROPORTIONAL_HAZARDS = auto()
-
-    def __str__(self):
-        """class Interpretation.FLOAT_ARRAY becomes float_array"""
-        return str.lower(super().__str__().split('.')[1])
-
-
 class StorageType(Enum):
     CONTINUOUS = auto()
     CATEGORICAL_INDEX = auto()

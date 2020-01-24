@@ -71,6 +71,11 @@ ECG_BIKE_SAMPLE_RATE = 500
 ECG_BIKE_NUM_LEADS = 3
 SECONDS_PER_MINUTE = 60
 
+#CINE_segmented_Ao_dist
+# LVOT
+# Flow view
+# Segmented LVOT
+# Flow_
 
 def write_tensors(a_id: str,
                   xml_folder: str,

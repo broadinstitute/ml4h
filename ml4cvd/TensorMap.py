@@ -10,11 +10,12 @@
 import logging
 import datetime
 from typing import Any
+from enum import Enum, auto
 
 import h5py
 import numpy as np
 
-from ml4cvd.defines import Interpretation, StorageType, EPS, JOIN_CHAR, STOP_CHAR
+from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
@@ -27,13 +28,6 @@ STD_IDX = 1
 
 
 class Interpretation(Enum):
-    """Interpretations give TensorMaps semantics encoded by the numpy array the TensorMap yields.
-    Interpretations tell us the kind of thing stored but nothing about its size.
-    For example, a binary label and 2D pixel mask for segmentation should both have interpretation CATEGORICAL.
-    CONTINUOUS Interpretations are the default and make sense for scalar values like height and weight
-    as well as multidimensional arrays of raw pixel or voxel values.
-    Providing explicit interpretations in TensorMap constructors is encouraged.
-    Interpretations are used to set reasonable defaults values when explicit arguments are not provided."""
     CONTINUOUS = auto()
     CATEGORICAL = auto()
     EMBEDDING = auto()
