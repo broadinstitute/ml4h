@@ -8,21 +8,21 @@ import logging
 import operator
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable, Callable, Union, Optional
+from typing import Dict, List, Tuple, Iterable, Union, Optional
 
 # Keras imports
 import keras.backend as K
-from keras.callbacks import History
 from keras.optimizers import Adam
 from keras.models import Model, load_model
+from keras.callbacks import History, Callback
 from keras.utils.vis_utils import model_to_dot
+from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict
@@ -293,6 +293,36 @@ class KLDivergenceLayer(Layer):
         loss = K.mean(kl_batch)
         self.add_loss(loss, inputs=inputs)
         return inputs
+
+
+def _check_layer_for_kl(layer, new_weight):
+    if "kl_divergence" in layer.name:
+        K.set_value(layer.kl_weight, new_weight)
+        logging.info(f'Setting {layer.name} loss weight to {new_weight}.')
+        return True
+    return False
+
+
+class AdjustKLLoss(Callback):
+    def __init__(self, maximum, rate, shift):
+        self.rate = rate
+        self.shift = shift
+        self.maximum = maximum
+        super().__init__()
+
+    def on_epoch_end(self, epoch, logs=None):
+        kl_found = False
+        new_weight = self.maximum / (1 + np.exp(self.rate*(-self.shift - epoch)))
+        for layer in self.model.layers:
+            if isinstance(layer, Model):
+                for l in layer.layers:
+                    kl_found |= _check_layer_for_kl(l, new_weight)
+            else:
+                kl_found |= _check_layer_for_kl(layer, new_weight)
+
+        if kl_found:
+            logs = logs or {}
+            logs['KL_loss'] = new_weight
 
 
 def _get_custom_layers():
@@ -698,7 +728,10 @@ def train_model_from_generators(model: Model,
                                 inspect_model: bool,
                                 inspect_show_labels: bool,
                                 return_history: bool = False,
-                                plot: bool = True) -> Union[Model, Tuple[Model, History]]:
+                                plot: bool = True,
+                                anneal_max: Optional[float] = None,
+                                anneal_shift: Optional[float] = None,
+                                anneal_rate: Optional[float] = None) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
 	Training data lives on disk, it will be loaded by generator functions.
@@ -730,7 +763,7 @@ def train_model_from_generators(model: Model,
 
     history = model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
                                   validation_steps=validation_steps, validation_data=generate_valid,
-                                  callbacks=_get_callbacks(patience, model_file), )
+                                  callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate), )
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
@@ -740,13 +773,18 @@ def train_model_from_generators(model: Model,
     return model
 
 
-def _get_callbacks(patience: int, model_file: str) -> List[Callable]:
+def _get_callbacks(patience: int, model_file: str,
+                   anneal_max: Optional[float] = None,
+                   anneal_shift: Optional[float] = None,
+                   anneal_rate: Optional[float] = None,
+                   ) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
     ]
-
+    if anneal_max and anneal_rate and anneal_shift:
+        callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
 
 
