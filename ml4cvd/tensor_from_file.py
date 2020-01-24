@@ -495,10 +495,10 @@ def _make_rhythm_tensor(skip_poor=True):
     return rhythm_tensor_from_file
 
 
-TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm',  , Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(),
+TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(),
                                 loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
                                 channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
-TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm',  , Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
+TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
                                      loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
                                      channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 
@@ -1163,7 +1163,7 @@ def _segmented_dicom_slices(dicom_key_prefix, source='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):
-            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
+            categorical_index_slice = _get_tensor_at_first_date(hd5, source, 'float_array', dicom_key_prefix + str(i+1))
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
         return tensor
