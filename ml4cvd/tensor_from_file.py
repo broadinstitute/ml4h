@@ -608,10 +608,6 @@ def _resample_voltage(voltage):
     else:
         return voltage
 
-
-COMPRESSION_LEVEL = 19
-
-
 def _make_partners_ecg_voltage(population_normalize: float = None):
     def partners_ecg_voltage_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -619,8 +615,8 @@ def _make_partners_ecg_voltage(population_normalize: float = None):
             voltage = _decompress_data(data_compressed=hd5[cm][()],
                                        dtype=hd5[cm].attrs['dtype'])
             voltage = _resample_voltage(voltage)
-            tensor[tm.channel_map[cm], :] = voltage
-
+            tensor[:, tm.channel_map[cm]] = voltage
+    
         if population_normalize is None:
             tensor = tm.zero_mean_std1(tensor)
         else:
@@ -630,10 +626,16 @@ def _make_partners_ecg_voltage(population_normalize: float = None):
 
 
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
-                                  shape=(12, 2500),
+                                  shape=(2500, 12),
                                   group='partners_ecg_voltage',
                                   channel_map=ECG_REST_AMP_LEADS,
                                   tensor_from_file=_make_partners_ecg_voltage())
+
+TMAPS['partners_ecg_voltage_raw'] = TensorMap('partners_ecg_voltage_raw',
+                                        shape=(12, 2500),
+                                        group='partners_ecg',
+                                        tensor_from_file=_make_partners_ecg_voltage(population_normalize=2000.0),
+                                        channel_map=ECG_REST_AMP_LEADS)
 
 
 KEY_READ = 'read_md_clean'
@@ -654,29 +656,63 @@ def make_partners_ecg_read_tensors(dict_of_list: Dict, not_found_key: str = "uns
 
 
 def make_partners_ecg_intervals(population_normalize=None):
-    def partners_ecg_intervals(tm, hd5):
+    def partners_ecg_intervals(tm, hd5, dependents={}):
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
         for interval in tm.channel_map:
             if interval in hd5:
-                print(int(hd5[interval][()]))
-                continuous_data[tm.channel_map[interval]] = hd5[interval][()]
+                interval_val = _decompress_data(
+                                   data_compressed=hd5[interval][()],
+                                   dtype=hd5[interval].attrs['dtype'])
+                continuous_data[tm.channel_map[interval]] = interval_val
         if population_normalize is not None:
             continuous_data /= population_normalize
         return continuous_data
     return partners_ecg_intervals
 
+group = "partners_ecg"
 
-TMAPS['partners_ecg_intervals'] = TensorMap('partners_ecg_interval',
-                                            shape=(4,),
-                                            group='partners_ecg',
-                                            tensor_from_file=make_partners_ecg_intervals(),
-                                            channel_map={'printerval': 0, 'qrsduration': 1, 'qtcorrected': 2, 'qtinterval': 3})
+task = "partners_ecg_rate"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(10, 200),
+                        channel_map={'ventricularrate': 0})
 
-#TMAPS['partners_ecg_qt_interval' ] = TensorMap('partners_ecg_qt_interval', shape=(1,), group='partners_ecg',
-#                                               tensor_from_file=_make_partners_ecg_intervals(), channel_map={'qtinterval': 0})
+task = "partners_ecg_qrs"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(20, 400),
+                        channel_map={'qrsduration': 0})
+
+task = "partners_ecg_pr"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(50, 500),
+                        channel_map={'printerval': 0})
+
+task = "partners_ecg_qt"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(100, 800),
+                        channel_map={'qtinterval': 0})
+
+task = "partners_ecg_qtc"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(100, 800),
+                        channel_map={'qtcorrected': 0})
+
 
 # ==================== End Partners ECG stuff =================================
-
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), group='ukb_brain_mri',
                                                          tensor_from_file=normalized_first_date, dtype=DataSetType.FLOAT_ARRAY,
