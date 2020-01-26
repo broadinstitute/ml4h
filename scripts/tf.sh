@@ -11,7 +11,6 @@ DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="docker"
-INTERACTIVE=""
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
 ################### HELP TEXT ############################################
@@ -96,8 +95,9 @@ mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
-    ${DOCKER_COMMAND} run ${INTERACTIVE}
+    ${DOCKER_COMMAND} run ${INTERACTIVE_RUN}
         --rm
+	    --gpus all
         --ipc=host
         -v /home/${USER}/jupyter/root/:/root/
         -v /home/${USER}/:/home/${USER}/
@@ -108,10 +108,9 @@ LAUNCH_MESSAGE
 # echo ${DOCKER_COMMAND} run ${INTERACTIVE} -v /home/${USER}/jupyter/root/:/root/ -v /home/${USER}/:/home/${USER}/ ${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"
 
 
-
-
-${DOCKER_COMMAND} run ${INTERACTIVE} \
+${DOCKER_COMMAND} run ${INTERACTIVE_RUN} \
 --rm \
+--gpus all \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 ${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"

@@ -17,8 +17,8 @@ CONTEXT="docker/vm_boot_images"
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
 
-BASE_IMAGE_GPU="ufoym/deepo:all-jupyter-py36-cu101"
-BASE_IMAGE_CPU="ufoym/deepo:all-py36-jupyter-cpu"
+BASE_IMAGE_GPU="tensorflow/tensorflow:1.15.0-gpu-py3"
+BASE_IMAGE_CPU="tensorflow/tensorflow:1.15.0-py3"
 
 LATEST_TAG_GPU="latest-gpu"
 LATEST_TAG_CPU="latest-cpu"

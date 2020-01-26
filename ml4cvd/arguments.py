@@ -175,6 +175,10 @@ def _get_tmap(name: str) -> TensorMap:
         return TMAPS[name]
     from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
     TMAPS.update(SCRIPT_TMAPS)
+    
+    from ml4cvd.tensor_maps_partners_ecg import TMAPS as PARTNERS_TMAPS
+    TMAPS.update(PARTNERS_TMAPS)
+
     return TMAPS[name]
 
 

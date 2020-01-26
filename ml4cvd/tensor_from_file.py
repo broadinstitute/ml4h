@@ -608,15 +608,14 @@ def _resample_voltage(voltage):
     else:
         return voltage
 
-def _make_partners_ecg_voltage(population_normalize: float = None):
+def make_partners_ecg_voltage(population_normalize: float = None):
     def partners_ecg_voltage_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for cm in tm.channel_map:
             voltage = _decompress_data(data_compressed=hd5[cm][()],
                                        dtype=hd5[cm].attrs['dtype'])
             voltage = _resample_voltage(voltage)
-            tensor[:, tm.channel_map[cm]] = voltage
-    
+            tensor[:, tm.channel_map[cm]] = voltage 
         if population_normalize is None:
             tensor = tm.zero_mean_std1(tensor)
         else:
@@ -629,19 +628,19 @@ TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                   shape=(2500, 12),
                                   group='partners_ecg_voltage',
                                   channel_map=ECG_REST_AMP_LEADS,
-                                  tensor_from_file=_make_partners_ecg_voltage())
+                                  tensor_from_file=make_partners_ecg_voltage())
 
 TMAPS['partners_ecg_voltage_raw'] = TensorMap('partners_ecg_voltage_raw',
                                         shape=(12, 2500),
                                         group='partners_ecg',
-                                        tensor_from_file=_make_partners_ecg_voltage(population_normalize=2000.0),
+                                        tensor_from_file=make_partners_ecg_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
 
 KEY_READ = 'read_md_clean'
 
-def make_partners_ecg_read_tensors(dict_of_list: Dict, not_found_key: str = "unspecified"):
-    def partners_ecg_read_tensor_from_file(tm, hd5, dependents={}):
+def make_partners_ecg_reads(dict_of_list: Dict, not_found_key: str = "unspecified"):
+    def partners_ecg_reads_from_file(tm, hd5, dependents={}):
         read = _decompress_data(data_compressed=hd5[KEY_READ][()],
                                 dtype=hd5[KEY_READ].attrs['dtype'])
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
@@ -652,8 +651,7 @@ def make_partners_ecg_read_tensors(dict_of_list: Dict, not_found_key: str = "uns
                     return categorical_data
         categorical_data[tm.channel_map[not_found_key]] = 1
         return categorical_data
-    return partners_ecg_read_tensor_from_file
-
+    return partners_ecg_reads_from_file
 
 def make_partners_ecg_intervals(population_normalize=None):
     def partners_ecg_intervals(tm, hd5, dependents={}):
@@ -666,8 +664,9 @@ def make_partners_ecg_intervals(population_normalize=None):
                 continuous_data[tm.channel_map[interval]] = interval_val
         if population_normalize is not None:
             continuous_data /= population_normalize
-        return continuous_data
+        return tm.normalize_and_validate(continuous_data)
     return partners_ecg_intervals
+
 
 group = "partners_ecg"
 
@@ -675,6 +674,8 @@ task = "partners_ecg_rate"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(10, 200),
                         channel_map={'ventricularrate': 0})
@@ -683,6 +684,8 @@ task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(20, 400),
                         channel_map={'qrsduration': 0})
@@ -691,13 +694,19 @@ task = "partners_ecg_pr"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(50, 500),
                         channel_map={'printerval': 0})
 
 task = "partners_ecg_qt"
+#task = "partners_ecg_qt_test"
 TMAPS[task] = TensorMap(task,
                         group=group,
+                        shape=(1,),
+                        loss='logcosh',
+                        metrics=['mse'],
                         dtype=DataSetType.CONTINUOUS,
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(100, 800),
@@ -706,6 +715,9 @@ TMAPS[task] = TensorMap(task,
 task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(task,
                         group=group,
+                        shape=(1,),
+                        loss='logcosh',
+                        metrics=['mse'],
                         dtype=DataSetType.CONTINUOUS,
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(100, 800),
