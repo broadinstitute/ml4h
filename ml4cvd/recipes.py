@@ -214,7 +214,10 @@ def infer_hidden_layer_multimodal_multitask(args):
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
                                     cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
-    full_model = make_multimodal_multitask_model(**args.__dict__)
+    if args.variational:
+        full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
