@@ -314,7 +314,7 @@ class AdjustKLLoss(Callback):
         kl_found = False
         new_weight = self.maximum / (1 + np.exp(self.rate*(-self.shift - epoch)))
         for layer in self.model.layers:
-            if isinstance(layer, Model):
+            if isinstance(layer, Model):  # This check is necessary, because decoder and encoder are nested models
                 for l in layer.layers:
                     kl_found |= _check_layer_for_kl(l, new_weight)
             else:
@@ -497,11 +497,9 @@ def make_variational_multimodal_multitask_model(
     m = Model(inputs=input_tensors, outputs=outputs)
     m.output_names = list(output_predictions.keys())
     decoder.output_names = list(output_predictions.keys())
-    encoder.summary()
-    print()
-    decoder.summary()
-    print()
-    m.summary()
+    encoder.summary(print_fn=logging.info)
+    decoder.summary(print_fn=logging.info)
+    m.summary(print_fn=logging.info)
 
     model_layers = kwargs.get('model_layers', False)
     if model_layers:
