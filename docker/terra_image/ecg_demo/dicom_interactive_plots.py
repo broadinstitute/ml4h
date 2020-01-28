@@ -224,9 +224,9 @@ def choose_mri_series(sample_mri):
   def on_value_change(change):
     """Inner function to capture state being observed."""
     vmin_chooser.value, vmax_chooser.value = compute_color_range(
-        dicoms, change)
+        dicoms, change['new'])
     instance_chooser.value, instance_chooser.max = compute_instance_range(
-        dicoms, change)
+        dicoms, change['new'])
 
   # When the series changes, update the widgets to the proper ranges
   # for the series.
