@@ -1,7 +1,7 @@
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
-from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
+from ml4cvd.defines import MRI_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
 from ml4cvd.TensorMap import TensorMap, make_range_validator, Interpretation
-from ml4cvd.defines import MRI_SEGMENTED, MRI_ZOOM_MASK, MRI_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
+from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh, y_true_times_mse
 
 
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
@@ -298,6 +298,9 @@ TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interp
                                               loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
 TMAPS['adjusted_myocardium_mass_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), source='continuous',
                                                   loss='mse', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+TMAPS['adjusted_myocardium_mass_y_true_mse'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), source='continuous',
+                                                         loss=y_true_times_mse, channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
+
 
 TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
                                                       loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, source='continuous',
