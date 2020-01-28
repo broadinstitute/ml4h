@@ -106,11 +106,15 @@ def sentinel_logcosh_loss(sentinel: float):
     return ignore_sentinel_logcosh
 
 
-def sum_pred_loss(y_true, y_pred):
-    return K.sum(y_pred, axis=-1)
-
-
 def y_true_times_mse(y_true, y_pred):
+    return K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
+
+
+def y_true_squared_times_mse(y_true, y_pred):
+    return K.maximum(y_true*y_true, 1.0)*mean_squared_error(y_true, y_pred)
+
+
+def y_true_cubed_times_mse(y_true, y_pred):
     return K.maximum(y_true*y_true*y_true, 1.0)*mean_squared_error(y_true, y_pred)
 
 
