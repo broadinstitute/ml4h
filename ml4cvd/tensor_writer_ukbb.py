@@ -728,6 +728,16 @@ def tensor_path(source: str, name: str) -> str:
     return f'/{source}/{name}/'
 
 
+def first_dataset_at_path(hd5, path, gather_fxn=min):
+    if path not in hd5:
+        raise ValueError(f'Could not find key:{path} in hd5.')
+    data = hd5[path]
+    if isinstance(data, h5py.Dataset):
+        return data
+    deeper_key_prefix = f'{path}{gather_fxn(hd5[path])}/'
+    return first_dataset_at_path(hd5, deeper_key_prefix)
+
+
 def _datetime_to_str(dt: datetime.datetime) -> str:
     return dt.strftime(DATE_FORMAT)
 
