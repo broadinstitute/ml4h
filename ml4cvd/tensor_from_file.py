@@ -723,6 +723,65 @@ TMAPS[task] = TensorMap(task,
                         validator=make_range_validator(100, 800),
                         channel_map={'qtcorrected': 0})
 
+task = "partners_ecg_rate_norm"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'mean': 81.620467, 'std': 20.352292},
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(10, 200),
+                        channel_map={'ventricularrate': 0})
+
+task = "partners_ecg_qrs_norm"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'mean': 94.709106, 'std': 22.610711},
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(20, 400),
+                        channel_map={'qrsduration': 0})
+
+task = "partners_ecg_pr_norm"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'std': 35.003017, 'mean': 161.040738},
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(50, 500),
+                        channel_map={'printerval': 0})
+
+task = "partners_ecg_qt_norm"
+#task = "partners_ecg_qt_test"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        shape=(1,),
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'mean': 390.995792, 'std': 50.923113},
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(100, 800),
+                        channel_map={'qtinterval': 0})
+
+task = "partners_ecg_qtc_norm"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        shape=(1,),
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'std': 39.762255, 'mean': 446.505327},
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(100, 800),
+                        channel_map={'qtcorrected': 0})
+
+
 
 # ==================== End Partners ECG stuff =================================
 
