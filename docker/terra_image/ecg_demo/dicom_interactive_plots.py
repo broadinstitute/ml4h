@@ -144,8 +144,6 @@ def choose_mri_series(sample_mri):
 
   # Convert from dict of dicts to dict of ordered lists.
   dicoms = {}
-  max_num_instances = 0
-  print(os.path.basename(sample_mri) + ' contains: ')
   for series in filtered_dicoms.keys():
     dicoms[series] = [None] * (max(filtered_dicoms[series]) + 1)
     for idx, val in filtered_dicoms[series].items():
@@ -153,16 +151,13 @@ def choose_mri_series(sample_mri):
         # Notice invalid input, but don't throw an error.
         print('WARNING: Duplicate instances: ' + str(idx))
       dicoms[series][idx] = val
-    print('\t{} with {} instances.'.format(series, len(dicoms[series])))
-    if max_num_instances < len(dicoms[series]):
-      max_num_instances = len(dicoms[series])
 
   default_series_value = sorted(list(dicoms.keys()))[0]
   # Display the middle instance by default.
-  default_instance_value = int(len(dicoms[default_series_value]) / 2)
+  default_instance_value, max_instance_value = compute_instance_range(
+      dicoms, default_series_value)
   default_vmin_value, default_vmax_value = compute_color_range(
-      dicoms, default_series_value
-  )
+      dicoms, default_series_value)
 
   series_name_chooser = widgets.Dropdown(
       options=sorted(list(dicoms.keys())),
@@ -176,7 +171,7 @@ def choose_mri_series(sample_mri):
       continuous_update=True,
       value=default_instance_value,
       min=1,
-      max=max_num_instances,
+      max=max_instance_value,
       description='Image instance to display '
       + '(click on slider, then use left/right arrows):',
       style={'description_width': 'initial'},
@@ -230,7 +225,11 @@ def choose_mri_series(sample_mri):
     """Inner function to capture state being observed."""
     vmin_chooser.value, vmax_chooser.value = compute_color_range(
         dicoms, change)
+    instance_chooser.value, instance_chooser.max = compute_instance_range(
+        dicoms, change)
 
+  # When the series changes, update the widgets to the proper ranges
+  # for the series.
   series_name_chooser.observe(on_value_change, names='value')
   display(viz_controls_ui, viz_controls_output)
 
@@ -240,6 +239,13 @@ def compute_color_range(dicoms, series_name):
   vmin = np.mean([np.min(d.pixel_array) for d in dicoms[series_name]])
   vmax = np.mean([np.max(d.pixel_array) for d in dicoms[series_name]])
   return(vmin, vmax)
+
+
+def compute_instance_range(dicoms, series_name):
+  """Compute middle and max instances."""
+  middle_instance = int(len(dicoms[series_name]) / 2)
+  max_instance = len(dicoms[series_name])
+  return(middle_instance, max_instance)
 
 
 def dicom_animation(dicoms, series_name, instance, vmin, vmax, transpose,
