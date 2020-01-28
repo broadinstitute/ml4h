@@ -1,6 +1,7 @@
 from typing import List
 from enum import Enum, auto
 
+
 class StorageType(Enum):
     CONTINUOUS = auto()
     CATEGORICAL_INDEX = auto()
