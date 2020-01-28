@@ -388,7 +388,17 @@ TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2',  Interpretation.
                                              tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
 
 
-def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False):
+def _warp_ecg(ecg):
+    i = np.arange(ecg.shape[0])
+    warped = i + (np.random.rand() * 100 * np.sin(i / (500 + np.random.rand() * 100))
+                  + np.random.rand() * 100 * np.cos(i / (500 + np.random.rand() * 100)))
+    warped_ecg = np.zeros_like(ecg)
+    for j in range(ecg.shape[1]):
+        warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
+    return warped_ecg
+
+
+def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False, warp: bool = False):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if random_roll:
@@ -421,6 +431,8 @@ TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, sha
                                   channel_map=ECG_REST_LEADS)
 
 TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
+                                  channel_map=ECG_REST_LEADS)
+TMAPS['ecg_rest_raw_warp'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
                                   channel_map=ECG_REST_LEADS)
 TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
                                       channel_map=ECG_REST_LEADS)
