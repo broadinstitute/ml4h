@@ -410,16 +410,16 @@ def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_h
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         mri_date = _datetime_from_dicom(views[v][0])
         stats[v + ' mri shape:' + str(mri_shape)] += 1
-        if v in MRI_BRAIN_SERIES + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-            x = views[v][0].Rows
-            y = views[v][0].Columns
-            z = len(views[v])
-            if v in MRI_BRAIN_SERIES:
-                mri_group = 'ukb_brain_mri'
-            elif v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-                mri_group = 'ukb_liver_mri'
-        else:
+        x = views[v][0].Rows
+        y = views[v][0].Columns
+        if v in MRI_BRAIN_SERIES:
+            mri_group = 'ukb_brain_mri'
+        elif v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            mri_group = 'ukb_liver_mri'
+        elif v in MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED:
             mri_group = 'ukb_cardiac_mri'
+        else:
+            mri_group = 'ukb_mri'
 
         if v == MRI_TO_SEGMENT:
             _tensorize_short_axis_segmented_cardiac_mri(views[v], v, x, y, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, mri_date, mri_group, stats)
@@ -434,7 +434,7 @@ def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_h
                 slice_index = slicer.InstanceNumber - 1
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
-                mri_data[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
+                mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
             create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
 
 
@@ -471,13 +471,12 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
 
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-            full_slice[:sx, :sy] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-            full_mask[:sx, :sy] = mask
+            full_slice = slicer.pixel_array.astype(np.float32)
             create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_mask, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
 
             zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            zoom_mask = full_mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
+            zoom_mask = mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
             create_tensor_in_hd5(hd5, mri_group, f'{series_zoom}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_slice, stats, mri_date)
             create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_mask, stats, mri_date)
 
@@ -496,22 +495,16 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
 
     for angle in diastoles:
         logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
-        sx = min(diastoles[angle].Rows, x)
-        sy = min(diastoles[angle].Columns, y)
-        full_slice[:sx, :sy] = diastoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        full_mask[:sx, :sy] = diastoles_masks[angle][:sx, :sy]
+        full_slice = diastoles[angle].pixel_array.astype(np.float32)
         create_tensor_in_hd5(hd5, mri_group, f'diastole_frame_b{angle}', full_slice, stats, mri_date)
-        create_tensor_in_hd5(hd5, mri_group, f'diastole_mask_b{angle}', full_mask, stats, mri_date)
+        create_tensor_in_hd5(hd5, mri_group, f'diastole_mask_b{angle}', diastoles_masks[angle], stats, mri_date)
         if write_pngs:
             plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
             plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
-        sx = min(systoles[angle].Rows, x)
-        sy = min(systoles[angle].Columns, y)
-        full_slice[:sx, :sy] = systoles[angle].pixel_array.astype(np.float32)[:sx, :sy]
-        full_mask[:sx, :sy] = systoles_masks[angle][:sx, :sy]
+        full_slice = systoles[angle].pixel_array.astype(np.float32)
         create_tensor_in_hd5(hd5, mri_group, f'systole_frame_b{angle}', full_slice, stats, mri_date)
-        create_tensor_in_hd5(hd5, mri_group, f'systole_mask_b{angle}', full_mask, stats, mri_date)
+        create_tensor_in_hd5(hd5, mri_group, f'systole_mask_b{angle}', systoles_masks[angle], stats, mri_date)
         if write_pngs:
             plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
             plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
@@ -528,9 +521,9 @@ def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: i
         if slicer.SeriesNumber in [5, 11]:
             mri_data1[..., slice_index] = slicer.pixel_array.astype(np.float32)
         elif slicer.SeriesNumber in [6, 12]:
-            mri_data2[:sx, :sy, slice_index] = slicer.pixel_array.astype(np.float32)[:sx, :sy]
-    create_tensor_in_hd5(hd5, mri_group, series + '_1')
-    create_tensor_in_hd5(hd5, mri_group, series + '_2')
+            mri_data2[..., slice_index] = slicer.pixel_array.astype(np.float32)
+    create_tensor_in_hd5(hd5, mri_group, series + '_1', date=mri_date)
+    create_tensor_in_hd5(hd5, mri_group, series + '_2', date=mri_date)
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
