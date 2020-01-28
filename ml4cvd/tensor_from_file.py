@@ -388,7 +388,7 @@ TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2',  Interpretation.
                                              tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
 
 
-def _make_ecg_rest(population_normalize: float = None):
+def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if random_roll:
@@ -403,14 +403,8 @@ def _make_ecg_rest(population_normalize: float = None):
         else:
             for k in hd5[tm.source]:
                 if k in tm.channel_map:
-                    if len(tensor.shape) == 3:  # Grab the stacked tensor maps
-                        window_size = tensor.shape[0]
-                        channels = tensor.shape[2]
-                        new_shape = (window_size, channels)
-                        new_total = window_size * channels
-                        tensor[:, tm.channel_map[k], :] = np.reshape(hd5[tm.source][k][:new_total], new_shape, order='F')
-                    elif tm.name == 'ecg_rest_fft':
-                        tensor[:, tm.channel_map[k]] = np.log(np.abs(np.fft.fft(hd5[tm.source][k])) + EPS)
+                    if random_roll:
+                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.source][k], roll)
                     else:
                         tensor[:, tm.channel_map[k]] = hd5[tm.source][k]
         if population_normalize is None:
@@ -424,6 +418,9 @@ def _make_ecg_rest(population_normalize: float = None):
 
 
 TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
+                                  channel_map=ECG_REST_LEADS)
+
+TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
                                   channel_map=ECG_REST_LEADS)
 TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
                                       channel_map=ECG_REST_LEADS)
