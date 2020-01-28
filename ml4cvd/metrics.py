@@ -111,18 +111,10 @@ def y_true_times_mse(y_true, y_pred):
 
 
 def y_true_squared_times_mse(y_true, y_pred):
-    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(y_true*y_true, 1.0)*mean_squared_error(y_true, y_pred)
 
 
 def y_true_cubed_times_mse(y_true, y_pred):
-    return K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
-
-
-def y_true_squared_times_logcosh(y_true, y_pred):
-    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*logcosh(y_true, y_pred)
-
-
-def y_true_times_mse(y_true, y_pred):
     return K.maximum(y_true*y_true*y_true, 1.0)*mean_squared_error(y_true, y_pred)
 
 
