@@ -80,6 +80,7 @@ SECONDS_PER_MINUTE = 60
 # Segmented LVOT
 # Flow_
 
+
 def write_tensors(a_id: str,
                   xml_folder: str,
                   zip_folder: str,
@@ -130,42 +131,41 @@ def write_tensors(a_id: str,
     for sample_id in sorted(sample_ids):
 
         start_time = timer()  # Keep track of elapsed execution time
-
-        tensor_path = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
-        if not os.path.exists(os.path.dirname(tensor_path)):
-            os.makedirs(os.path.dirname(tensor_path))
+        tp = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+        if not os.path.exists(os.path.dirname(tp)):
+            os.makedirs(os.path.dirname(tp))
         if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder):
             continue
         try:
-            with h5py.File(tensor_path, 'w') as hd5:
+            with h5py.File(tp, 'w') as hd5:
                 _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
         except AttributeError:
-            logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered AttributeError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except ValueError:
-            logging.exception('Encountered ValueError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered ValueError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except RuntimeError:
-            logging.exception('Encountered RuntimeError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered RuntimeError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except IndexError:
-            logging.exception('Encountered IndexError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered IndexError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
         except OSError:
-            logging.exception('Encountered OSError trying to write a UKBB tensor at path:{}'.format(tensor_path))
-            logging.info('Deleting attempted tensor at path:{}'.format(tensor_path))
-            os.remove(tensor_path)
+            logging.exception('Encountered OSError trying to write a UKBB tensor at path:{}'.format(tp))
+            logging.info('Deleting attempted tensor at path:{}'.format(tp))
+            os.remove(tp)
 
         end_time = timer()
         elapsed_time = end_time - start_time
-        logging.info("Populated {} in {} seconds.".format(tensor_path, elapsed_time))
+        logging.info("Populated {} in {} seconds.".format(tp, elapsed_time))
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
@@ -413,8 +413,6 @@ def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_h
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         mri_date = _datetime_from_dicom(views[v][0])
         stats[v + ' mri shape:' + str(mri_shape)] += 1
-        x = views[v][0].Rows
-        y = views[v][0].Columns
         if v in MRI_BRAIN_SERIES:
             mri_group = 'ukb_brain_mri'
         elif v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
