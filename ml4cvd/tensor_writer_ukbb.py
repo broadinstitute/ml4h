@@ -201,7 +201,7 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
                 tensor_name = series + '_annotated_' + row[instance_index]
                 tp = tensor_path(source, tensor_name)
                 if tp in hd5:
-                    tensor = hd5[tp]
+                    tensor = first_dataset_at_path(hd5, tp)
                     tensor[:] = full_tensor
                     stats['updated'] += 1
                 else:
@@ -739,6 +739,16 @@ def tensor_path(source: str, name: str) -> str:
     In the future, TMAPs should be generated using this same function
     """
     return f'/{source}/{name}/'
+
+
+def first_dataset_at_path(hd5, path, gather_fxn=min):
+    if path not in hd5:
+        raise ValueError(f'Could not find key:{path} in hd5.')
+    data = hd5[path]
+    if isinstance(data, h5py.Dataset):
+        return data
+    deeper_key_prefix = f'{path}{gather_fxn(hd5[path])}/'
+    return first_dataset_at_path(hd5, deeper_key_prefix)
 
 
 def _datetime_to_str(dt: datetime.datetime) -> str:
