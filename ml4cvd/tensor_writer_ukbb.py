@@ -88,9 +88,6 @@ def write_tensors(a_id: str,
                   mri_unzip: str,
                   mri_field_ids: List[int],
                   xml_field_ids: List[int],
-                  x: int,
-                  y: int,
-                  z: int,
                   zoom_x: int,
                   zoom_y: int,
                   zoom_width: int,
@@ -141,7 +138,7 @@ def write_tensors(a_id: str,
             continue
         try:
             with h5py.File(tensor_path, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
@@ -335,10 +332,7 @@ def _to_float_or_nan(s):
         return np.nan
 
 
-def _write_tensors_from_zipped_dicoms(x: int,
-                                      y: int,
-                                      z: int,
-                                      zoom_x: int,
+def _write_tensors_from_zipped_dicoms(zoom_x: int,
                                       zoom_y: int,
                                       zoom_width: int,
                                       zoom_height: int,
@@ -360,8 +354,8 @@ def _write_tensors_from_zipped_dicoms(x: int,
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(x, y, z, zoom_x, zoom_y, zoom_width, zoom_height,
-                                           write_pngs, tensors, dicom_folder, hd5, sample_str, stats)
+                _write_tensors_from_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicom_folder,
+                                           hd5, sample_str, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -377,7 +371,7 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
                 stats['MRI fields written'] += 1
 
 
-def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
                                dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int]) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -431,9 +425,9 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
             mri_group = 'ukb_mri'
 
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, x, y, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, mri_date, mri_group, stats)
+            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, sample_str, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
-            _tensorize_brain_t2(views[v], v, x, y, mri_date, mri_group, hd5)
+            _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
             mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
@@ -447,9 +441,10 @@ def _write_tensors_from_dicoms(x: int, y: int, z: int, zoom_x: int, zoom_y: int,
             create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
 
 
-def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, x: int, y: int,
-                                                zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str, hd5: h5py.File,
-                                                sample_str: str, mri_date: datetime.datetime, mri_group: str, stats: Dict[str, int]) -> None:
+def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
+                                                zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+                                                hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
+                                                stats: Dict[str, int]) -> None:
     systoles = {}
     diastoles = {}
     systoles_pix = {}
@@ -466,6 +461,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             series_zoom_segmented = f'{series}_zoom_segmented'
             if _is_mitral_valve_segmentation(slicer):
                 stats['Skipped likely mitral valve segmentation'] += 1
+                continue
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
@@ -480,7 +476,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
 
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-            full_slice = slicer.pixel_array.astype(np.float32)
+            full_slice[:] = slicer.pixel_array.astype(np.float32)
             create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
             create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
 
@@ -519,9 +515,9 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
             plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
 
-def _tensorize_brain_t2(slices: List[pydicom.Dataset], series: str, x: int, y: int, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
-    mri_data1 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
-    mri_data2 = np.zeros((x, y, len(slices) // 2), dtype=np.float32)
+def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
+    mri_data1 = np.zeros((slices[0].Rows, slices[0].Columns, len(slices) // 2), dtype=np.float32)
+    mri_data2 = np.zeros((slices[0].Rows, slices[0].Columns, len(slices) // 2), dtype=np.float32)
     for slicer in slices:
         _save_pixel_dimensions_if_missing(slicer, series, hd5)
         _save_slice_thickness_if_missing(slicer, series, hd5)
