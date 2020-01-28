@@ -78,6 +78,7 @@ SECONDS_PER_MINUTE = 60
 # Segmented LVOT
 # Flow_
 
+
 def write_tensors(a_id: str,
                   xml_folder: str,
                   zip_folder: str,
@@ -134,7 +135,7 @@ def write_tensors(a_id: str,
         if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder):
             continue
         try:
-            with h5py.File(tensor_path, 'w') as hd5:
+            with h5py.File(tp, 'w') as hd5:
                 _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
@@ -410,8 +411,6 @@ def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_h
         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
         mri_date = _datetime_from_dicom(views[v][0])
         stats[v + ' mri shape:' + str(mri_shape)] += 1
-        x = views[v][0].Rows
-        y = views[v][0].Columns
         if v in MRI_BRAIN_SERIES:
             mri_group = 'ukb_brain_mri'
         elif v in MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
