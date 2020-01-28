@@ -111,7 +111,7 @@ def sum_pred_loss(y_true, y_pred):
 
 
 def y_true_times_mse(y_true, y_pred):
-    return K.maximum(4.0*y_true*y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(2.0*y_true*y_true, 1.0)*mean_squared_error(y_true, y_pred)
 
 
 def two_batch_euclidean(tensors):
