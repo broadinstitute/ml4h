@@ -103,6 +103,7 @@ def run(args):
 
 
 def explore_tensor_maps(args):
+    import pdb
     args.num_workers = 0
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = args.tensor_maps_in
@@ -113,11 +114,13 @@ def explore_tensor_maps(args):
     for gen in generators:
         path_iter = gen.path_iters[0]
 
-        for name, tm in zip(tmap_names, tmaps):
+        column_dict = dict()
+
+        for tm in tmaps:
             if tm.channel_map:
-                column_dict = {f"{name}_{cm}": list() for cm in tm.channel_map}
+                column_dict.update({f"{tm.name}_{cm}": list() for cm in tm.channel_map})
             else:
-                column_dict = {name: list() for name in tmap_names}
+                column_dict.update({tm.name: list()})
         column_dict.update({name: list() for name in error_names})
         column_dict['sample_id'] = []
 
@@ -132,34 +135,35 @@ def explore_tensor_maps(args):
                     dependents = {}
 
                     # TODO understand how error_name works
-                    for name, error_name, tm in zip(tmap_names, error_names, tmaps):
+                    for error_name, tm in zip(error_names, tmaps):
                         error = ''
+
                         # TODO implement channel_map for dependents
                         if tm in dependents:
-                            column_dict[name].append(dependents[tm])
+                            column_dict[tm.name].append(dependents[tm])
                         else:
                             try:
                                 tensor = tm.tensor_from_file(tm, hd5, dependents)
+
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        column_dict[f"{name}_{cm}"].append(
+                                        column_dict[f"{tm.name}_{cm}"].append(
                                             tensor[tm.channel_map[cm]])
                                 else:
-                                    column_dict[name].append(tensor_from_file(tm, hd5, dependents)[0])
+                                    column_dict[tm.name].append(tensor_from_file(tm, hd5, dependents)[0])
                             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                                 error = type(e).__name__
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        column_dict[f"{name}_{cm}"].append(np.nan)
+                                        column_dict[f"{tm.name}_{cm}"].append(np.nan)
                                 else:
                                     # TODO only for floats now
                                     # TODO generalize to more indices than first one
-                                    column_dict[name].append(np.full(tmap.shape, np.nan)[0]) 
+                                    column_dict[tm.name].append(np.full(tm.shape, np.nan)[0]) 
                         column_dict[error_name].append(error)
                 column_dict['sample_id'].append(os.path.basename(path).strip(TENSOR_EXT))
             except OSError:
                 continue
-
 
         # Convert column dict into dataframe
         df = pd.DataFrame(column_dict)
@@ -169,8 +173,6 @@ def explore_tensor_maps(args):
 
         # Append parent dataframe with this df
         dfs = dfs.append(df)
-
-        del df
 
     # Save parent dataframe to CSV on disk
     fpath_csv = os.path.join(args.output_folder, f"{args.id}/{args.id}_explore.csv")
@@ -185,39 +187,51 @@ def explore_tensor_maps(args):
     ss = dict()
 
     # Loop through each tensor map object and name concurrently
-    for tm, tmap_name in zip(tmaps, tmap_names):
+    for tm in tmaps:
 
         # Initialize dict to store counts for channel maps
-        cm_dict = dict()
+        cm_dict = defaultdict(list) 
 
-        # Loop through channel maps within tmap
-        for cm in tm.channel_map:
+        if tm.group == "categorical":
+            for cm in tm.channel_map:
+                cm_dict['counts'].append(np.sum(dfs[f"{tm.name}_{cm}"]))
+                cm_dict['missing'].append(dfs[f"{tm.name}_{cm}"].isna().sum())
+                 
+            # Convert dict to dataframe, indexed by count, and transposed
+            df_stats = pd.DataFrame(cm_dict, index=[cm for cm in tm.channel_map])
+ 
+            # Add new column: percent of all counts
+            df_stats['percent'] = df_stats['counts'] / df_stats['counts'].sum() * 100
+        
+        elif tm.group == "continuous":
+            for cm in tm.channel_map:
+                cm_dict['max'].append(df[f"{tm.name}_{cm}"].max())
+                cm_dict['min'].append(df[f"{tm.name}_{cm}"].min())
+                cm_dict['mode'].append(df[f"{tm.name}_{cm}"].mode()[0])
+                cm_dict['median'].append(df[f"{tm.name}_{cm}"].median())
+                cm_dict['mean'].append(df[f"{tm.name}_{cm}"].mean())
+                cm_dict['stdev'].append(df[f"{tm.name}_{cm}"].std())
+                cm_dict['missing'].append(df[f"{tm.name}_{cm}"].isna().sum())
 
-            # For each channel map, count how many labels occur
-            counts = np.sum(dfs[f"{tmap_name}_{cm}"])
-
-            # Save count indexed by channel map value
-            cm_dict[cm] = counts
-
+        # Convert dict to dataframe, indexed by count, and transposed
+        df_stats = pd.DataFrame(cm_dict, index=[cm for cm in tm.channel_map])
+ 
         # Determine key name for errors within this tmap
-        error_name = f"{tmap_name}_error_reason"
+        error_name = f"{tm.name}_error_reason"
         
         # Count non-empty errors
         counts = np.sum(dfs[error_name] != '').astype(float)
-
+    
         # Save count indexed by error name
         cm_dict[error_name] = counts
 
-        # Convert dict to dataframe, indexed by count, and transposed
-        df = pd.DataFrame(cm_dict, index=['count']).T
-
-        # Add new column: percent of all counts
-        df['percent'] = df['count'] / np.nansum(df['count']) * 100
-
         # Save parent dataframe to CSV on disk
-        fpath_csv = os.path.join(args.output_folder, f"{args.id}/{args.id}_{tmap_name}_summary_statistics.csv")
-        df.to_csv(fpath_csv)
+        fpath_csv = os.path.join(args.output_folder, f"{args.id}/{args.id}_{tm.name}_summary_statistics.csv")
+        df_stats.to_csv(fpath_csv)
         print(f"Saved counts and percents to {fpath_csv}")
+
+        # TODO add last row on the df with total and % sums to 100%
+
 
 
 def train_multimodal_multitask(args):
