@@ -437,6 +437,8 @@ TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS
                                   channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_warp'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
                                   channel_map=ECG_REST_LEADS, cacheable=False)
+TMAPS['ecg_rest_raw_warp_n_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True, warp=True),
+                                  channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
                                       channel_map=ECG_REST_LEADS)
 
