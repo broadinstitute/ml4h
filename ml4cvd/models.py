@@ -421,8 +421,8 @@ def make_variational_multimodal_multitask_model(
         m = load_model(kwargs['model_file'], custom_objects=custom_dict)
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
-        encoder = [i for i in m.layers if m.name == 'encoder']
-        decoder = [i for i in m.layers if m.name == 'decoder']
+        encoder = [i for i in m.layers if i.name == 'encoder']
+        decoder = [i for i in m.layers if i.name == 'decoder']
         if not encoder or not decoder:
             logging.warning('Encoder or decoder not found.')
         return m, encoder[0], decoder[0]
