@@ -1234,3 +1234,24 @@ TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS
                                        tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
 TMAPS['shmolli_192i_liver_only'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                              tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']))
+
+
+def preprocess_with_function(fxn):
+    def preprocess_tensor_from_file(tm, hd5, dependents={}):
+        missing = True
+        continuous_data = np.zeros(tm.shape, dtype=np.float32)
+        if tm.hd5_key_guess() in hd5:
+            missing = False
+            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[0]
+        if missing and tm.sentinel is None:
+            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
+        elif missing:
+            continuous_data[:] = tm.sentinel
+        return tm.normalize_and_validate(fxn(continuous_data))
+    return preprocess_tensor_from_file
+
+
+TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0', loss='logcosh', source='continuous',
+                             normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
+                             channel_map={'white-matter-hyper-intensities': 0})
+
