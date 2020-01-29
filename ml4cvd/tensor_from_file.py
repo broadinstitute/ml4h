@@ -626,13 +626,13 @@ def make_partners_ecg_voltage(population_normalize: float = None):
 
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                   shape=(2500, 12),
-                                  group='partners_ecg_voltage',
+                                  group='continuous',
                                   channel_map=ECG_REST_AMP_LEADS,
                                   tensor_from_file=make_partners_ecg_voltage())
 
 TMAPS['partners_ecg_voltage_raw'] = TensorMap('partners_ecg_voltage_raw',
                                         shape=(12, 2500),
-                                        group='partners_ecg',
+                                        group='continuous',
                                         tensor_from_file=make_partners_ecg_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
@@ -668,7 +668,7 @@ def make_partners_ecg_intervals(population_normalize=None):
     return partners_ecg_intervals
 
 
-group = "partners_ecg"
+group = "continuous"
 
 task = "partners_ecg_rate"
 TMAPS[task] = TensorMap(task,
@@ -701,13 +701,12 @@ TMAPS[task] = TensorMap(task,
                         channel_map={'printerval': 0})
 
 task = "partners_ecg_qt"
-#task = "partners_ecg_qt_test"
 TMAPS[task] = TensorMap(task,
                         group=group,
+                        dtype=DataSetType.CONTINUOUS,
                         shape=(1,),
                         loss='logcosh',
                         metrics=['mse'],
-                        dtype=DataSetType.CONTINUOUS,
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(100, 800),
                         channel_map={'qtinterval': 0})
@@ -715,10 +714,10 @@ TMAPS[task] = TensorMap(task,
 task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(task,
                         group=group,
+                        dtype=DataSetType.CONTINUOUS,
                         shape=(1,),
                         loss='logcosh',
                         metrics=['mse'],
-                        dtype=DataSetType.CONTINUOUS,
                         tensor_from_file=make_partners_ecg_intervals(),
                         validator=make_range_validator(100, 800),
                         channel_map={'qtcorrected': 0})
