@@ -433,23 +433,23 @@ TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', Interpretation.CONTIN
                                 validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739})
 TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
                                    validator=make_range_validator(1901, 2025), normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739})
-TMAPS['age_0'] = TensorMap('21003_Age-when-attended-assessment-centre_0', Interpretation.CONTINUOUS, source='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+TMAPS['age_0'] = TensorMap('21003_Age-when-attended-assessment-centre_0_0', Interpretation.CONTINUOUS, source='continuous', loss='logcosh', validator=make_range_validator(1, 120),
                            normalization={'mean': 56.52847159208494, 'std': 8.095287610193827}, channel_map={'21003_Age-when-attended-assessment-centre_0_0': 0, })
-TMAPS['age_1'] = TensorMap('21003_Age-when-attended-assessment-centre_1', Interpretation.CONTINUOUS, source='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+TMAPS['age_1'] = TensorMap('21003_Age-when-attended-assessment-centre_1_0', Interpretation.CONTINUOUS, source='continuous', loss='logcosh', validator=make_range_validator(1, 120),
                            normalization={'mean': 61.4476555588322, 'std': 7.3992113757847005}, channel_map={'21003_Age-when-attended-assessment-centre_1_0': 0, })
-TMAPS['age_2'] = TensorMap('21003_Age-when-attended-assessment-centre_2', Interpretation.CONTINUOUS, source='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+TMAPS['age_2'] = TensorMap('21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, source='continuous', loss='logcosh', validator=make_range_validator(1, 120),
                            normalization={'mean': 63.35798891483556, 'std': 7.554638350423902}, channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0, })
 
 TMAPS['brain_volume'] = TensorMap('25010_Volume-of-brain-greywhite-matter_2_0', Interpretation.CONTINUOUS, source='continuous', normalization={'mean': 1165940.0, 'std': 111511.0},
                                   channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='logcosh', loss_weight=0.1)
 
-TMAPS['sodium'] = TensorMap('30530_Sodium-in-urine', Interpretation.CONTINUOUS, source='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0},
+TMAPS['sodium'] = TensorMap('30530_Sodium-in-urine_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0},
                             normalization={'mean': 77.45323967267045, 'std': 44.441236848463774}, annotation_units=1, loss='logcosh')
-TMAPS['potassium'] = TensorMap('30520_Potassium-in-urine', Interpretation.CONTINUOUS, source='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0},
+TMAPS['potassium'] = TensorMap('30520_Potassium-in-urine_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0},
                                normalization={'mean': 63.06182700345117, 'std': 33.84208704773539}, annotation_units=1, loss='logcosh')
-TMAPS['cholesterol_hdl'] = TensorMap('30760_HDL-cholesterol', Interpretation.CONTINUOUS, source='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0},
+TMAPS['cholesterol_hdl'] = TensorMap('30760_HDL-cholesterol_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0},
                                      normalization={'mean': 1.4480129055069355, 'std': 0.3823115953478376}, annotation_units=1, loss='logcosh')
-TMAPS['cholesterol'] = TensorMap('30690_Cholesterol', Interpretation.CONTINUOUS, source='continuous', channel_map={'30690_Cholesterol_0_0': 0},
+TMAPS['cholesterol'] = TensorMap('30690_Cholesterol_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'30690_Cholesterol_0_0': 0},
                                  normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=1, loss='logcosh')
 
 TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
