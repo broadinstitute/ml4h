@@ -3,8 +3,10 @@
 # Imports
 import os
 import csv
+import h5py
 import logging
 import numpy as np
+import pandas as pd
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
@@ -33,6 +35,8 @@ def run(args):
             write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
                           args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
                           args.max_sample_id, args.min_values)
+        elif "explore" == args.mode:
+            explore_tensor_maps(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
@@ -92,6 +96,127 @@ def run(args):
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+
+def explore_tensor_maps(args):
+    # TODO remove this
+    import pdb
+
+    args.num_workers = 0
+    generators = test_train_valid_tensor_generators(**args.__dict__)
+    tmaps = args.tensor_maps_in
+    tmap_names = args.input_tensors
+    error_names = [name + '_error_reason' for name in tmap_names]
+    dfs = pd.DataFrame()
+
+    for gen in generators:
+        path_iter = gen.path_iters[0]
+
+        for name, tm in zip(tmap_names, tmaps):
+            if tm.channel_map:
+                column_dict = {f"{name}_{cm}": list() for cm in tm.channel_map}
+            else:
+                column_dict = {name: list() for name in tmap_names}
+        column_dict.update({name: list() for name in error_names})
+        column_dict['sample_id'] = []
+
+        for i, path in enumerate(path_iter):
+            if (i+1) % 500 == 0:
+                data_len = gen.true_epoch_lens[0]
+                logging.info(f'{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done')
+            if i == gen.true_epoch_lens[0]:
+                break
+            try:
+                with h5py.File(path, 'r') as hd5:
+                    dependents = {}
+
+                    # TODO understand how error_name works
+                    for name, error_name, tm in zip(tmap_names, error_names, tmaps):
+                        error = ''
+                        # TODO implement channel_map for dependents
+                        if tm in dependents:
+                            column_dict[name].append(dependents[tm])
+                        else:
+                            try:
+                                tensor = tm.tensor_from_file(tm, hd5, dependents)
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        column_dict[f"{name}_{cm}"].append(
+                                            tensor[tm.channel_map[cm]])
+                                else:
+                                    column_dict[name].append(tensor_from_file(tm, hd5, dependents)[0])
+                            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                                error = type(e).__name__
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        column_dict[f"{name}_{cm}"].append(np.nan)
+                                else:
+                                    # TODO only for floats now
+                                    # TODO generalize to more indices than first one
+                                    column_dict[name].append(np.full(tmap.shape, np.nan)[0]) 
+                        column_dict[error_name].append(error)
+                column_dict['sample_id'].append(os.path.basename(path).strip(TENSOR_EXT))
+            except OSError:
+                continue
+
+
+        # Convert column dict into dataframe
+        df = pd.DataFrame(column_dict)
+
+        # Append column describing train, test, or validation
+        df["set"] = gen.name.replace("_worker", "")
+
+        # Append parent dataframe with this df
+        dfs = dfs.append(df)
+
+        del df
+
+    # Save parent dataframe to CSV on disk
+    fpath_csv = os.path.join(args.output_folder, f"{args.id}/{args.id}_explore.csv")
+    dfs.to_csv(fpath_csv)
+    print(f"Saved exploration of tensor maps to {fpath_csv}")
+
+
+    # Characterize label distribution
+    # TODO move this in a standalone function
+
+    # Initialize dictionary of {tmap_name: dataframe}
+    ss = dict()
+
+    # Loop through each tensor map object and name concurrently
+    for tm, tmap_name in zip(tmaps, tmap_names):
+
+        # Initialize dict to store counts for channel maps
+        cm_dict = dict()
+
+        # Loop through channel maps within tmap
+        for cm in tm.channel_map:
+
+            # For each channel map, count how many labels occur
+            counts = np.sum(dfs[f"{tmap_name}_{cm}"])
+
+            # Save count indexed by channel map value
+            cm_dict[cm] = counts
+
+        # Determine key name for errors within this tmap
+        error_name = f"{tmap_name}_error_reason"
+        
+        # Count non-empty errors
+        counts = np.sum(dfs[error_name] != '').astype(float)
+
+        # Save count indexed by error name
+        cm_dict[error_name] = counts
+
+        # Convert dict to dataframe, indexed by count, and transposed
+        df = pd.DataFrame(cm_dict, index=['count']).T
+
+        # Add new column: percent of all counts
+        df['percent'] = df['count'] / np.nansum(df['count']) * 100
+
+        # Save parent dataframe to CSV on disk
+        fpath_csv = os.path.join(args.output_folder, f"{args.id}/{args.id}_{tmap_name}_summary_statistics.csv")
+        df.to_csv(fpath_csv)
+        print(f"Saved counts and percents to {fpath_csv}")
 
 
 def train_multimodal_multitask(args):
