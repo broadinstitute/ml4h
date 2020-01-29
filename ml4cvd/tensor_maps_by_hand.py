@@ -1,6 +1,6 @@
 from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
-from ml4cvd.defines import MRI_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
 from ml4cvd.TensorMap import TensorMap, make_range_validator, Interpretation
+from ml4cvd.defines import MRI_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, StorageType
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh, y_true_times_mse, y_true_squared_times_mse, y_true_cubed_times_mse, y_true_squared_times_logcosh
 
 
@@ -423,8 +423,10 @@ TMAPS['fathers_age'] = TensorMap('fathers_age_0', Interpretation.CONTINUOUS, sou
                                  channel_map={'father_age': 0, 'father_alive': 2, 'father_dead': 3, 'not-missing': 1},
                                  normalization={'mean':70.928, 'std': 12.746}, annotation_units = 4)
 
-TMAPS['genetic_sex'] = TensorMap('genetic_sex', Interpretation.CATEGORICAL, source='categorical', annotation_units=2, channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
-TMAPS['sex'] = TensorMap('sex', Interpretation.CATEGORICAL, source='categorical', annotation_units=2, channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
+TMAPS['genetic_sex'] = TensorMap('Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, source='categorical', annotation_units=2,
+                                 channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy')
+TMAPS['sex'] = TensorMap('Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, source='categorical', annotation_units=2,
+                         channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
 TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
                          validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh')
 TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, source='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
