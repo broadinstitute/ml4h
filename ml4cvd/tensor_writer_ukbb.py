@@ -525,8 +525,8 @@ def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: d
             mri_data1[..., slice_index] = slicer.pixel_array.astype(np.float32)
         elif slicer.SeriesNumber in [6, 12]:
             mri_data2[..., slice_index] = slicer.pixel_array.astype(np.float32)
-    create_tensor_in_hd5(hd5, mri_group, series + '_1', date=mri_date)
-    create_tensor_in_hd5(hd5, mri_group, series + '_2', date=mri_date)
+    create_tensor_in_hd5(hd5, mri_group, series + '_1', mri_data1, date=mri_date)
+    create_tensor_in_hd5(hd5, mri_group, series + '_2', mri_data2, date=mri_date)
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
