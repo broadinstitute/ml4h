@@ -13,3 +13,4 @@ google-cloud-storage==1.13.0
 jupyter
 Pillow
 numcodecs
+imageio
