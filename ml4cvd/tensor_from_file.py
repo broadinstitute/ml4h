@@ -434,9 +434,9 @@ TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, sha
                                   channel_map=ECG_REST_LEADS)
 
 TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
-                                  channel_map=ECG_REST_LEADS)
+                                  channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_warp'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
-                                  channel_map=ECG_REST_LEADS)
+                                  channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
                                       channel_map=ECG_REST_LEADS)
 
@@ -581,7 +581,6 @@ TMAPS['premature_ventricular_complexes'] = TensorMap('premature_ventricular_comp
 
 TMAPS['prolonged_qt'] = TensorMap('prolonged_qt', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, channel_map={'no_prolonged_qt': 0, 'Prolonged QT': 1},
                                   loss=weighted_crossentropy([0.1, 10.0], 'prolonged_qt'))
-
 
 
 # Extract RAmplitude and SAmplitude for LVH criteria
