@@ -122,21 +122,21 @@ def choose_mri_series(sample_mri):
       </div>
       '''.format(os.path.basename(sample_mri), e.message))
 
-    filtered_dicoms = collections.defaultdict(dict)
+    unordered_dicoms = collections.defaultdict(dict)
     for dcm_file in os.listdir(tmpdirname):
       if not dcm_file.endswith('.dcm'):
         continue
       dcm = pydicom.read_file(os.path.join(tmpdirname, dcm_file))
-      if 'brain' in sample_mri:
-        if dcm.SeriesNumber in [5, 11]:
-          continue
-        filtered_dicoms[
-            dcm.SeriesDescription.lower()][int(dcm.InstanceNumber) - 1] = dcm
-      else:
-        filtered_dicoms[
-            dcm.SeriesDescription.lower()][int(dcm.InstanceNumber) - 1] = dcm
+      key1 = (dcm.SeriesDescription.lower(), int(dcm.SeriesNumber))
+      key2 = int(dcm.InstanceNumber) - 1
+      if key2 in unordered_dicoms[key1]:
+        # Notice invalid input, but don't throw an error.
+        print('WARNING: Duplicate instances: ' + dcm.SeriesDescription
+              + ' ' + dcm.SeriesNumber
+              + ' ' + dcm.InstanceNumber)
+      unordered_dicoms[key1][key2] = dcm
 
-  if not filtered_dicoms:
+  if not unordered_dicoms:
     print('\n\nNo series available in MRI for sample ',
           os.path.basename(sample_mri),
           '\n\nTry a different MRI.')
@@ -144,12 +144,9 @@ def choose_mri_series(sample_mri):
 
   # Convert from dict of dicts to dict of ordered lists.
   dicoms = {}
-  for series in filtered_dicoms.keys():
-    dicoms[series] = [None] * (max(filtered_dicoms[series]) + 1)
-    for idx, val in filtered_dicoms[series].items():
-      if dicoms[series][idx] is not None:
-        # Notice invalid input, but don't throw an error.
-        print('WARNING: Duplicate instances: ' + str(idx))
+  for series in unordered_dicoms.keys():
+    dicoms[series] = [None] * (max(unordered_dicoms[series]) + 1)
+    for idx, val in unordered_dicoms[series].items():
       dicoms[series][idx] = val
 
   default_series_value = sorted(list(dicoms.keys()))[0]
@@ -160,7 +157,7 @@ def choose_mri_series(sample_mri):
       dicoms, default_series_value)
 
   series_name_chooser = widgets.Dropdown(
-      options=sorted(list(dicoms.keys())),
+      options=[(str(k), k) for k in sorted(dicoms.keys())],
       value=default_series_value,
       description='Choose the MRI series to visualize:',
       style={'description_width': 'initial'},
@@ -183,7 +180,7 @@ def choose_mri_series(sample_mri):
       max=MAX_COLOR_RANGE,
       description='Color range minimum:',
       style={'description_width': 'initial'},
-      layout=widgets.Layout(width='600px'))
+      layout=widgets.Layout(width='300px'))
   vmax_chooser = widgets.IntSlider(
       continuous_update=True,
       value=default_vmax_value,
@@ -207,8 +204,9 @@ def choose_mri_series(sample_mri):
 
   viz_controls_ui = widgets.VBox(
       [widgets.HTML('<h3>Visualization controls</h3>'),
-       series_name_chooser, instance_chooser, vmin_chooser, vmax_chooser,
-       transpose_chooser, fig_width_chooser],
+       series_name_chooser, instance_chooser,
+       widgets.HBox([vmin_chooser, vmax_chooser]),
+       widgets.HBox([transpose_chooser, fig_width_chooser])],
       layout=widgets.Layout(width='auto', border='solid 1px grey'))
   viz_controls_output = widgets.interactive_output(
       dicom_animation,
@@ -290,8 +288,9 @@ def dicom_animation(dicoms, series_name, instance, vmin, vmax, transpose,
             vmax=vmax)
   ax.set_title(title_prefix
                + ', Series: ' + dcm.SeriesDescription
+               + ', SeriesNumber: ' + str(dcm.SeriesNumber)
                + ', Instance: ' + str(dcm.InstanceNumber)
-               + ', Color range: ' + str(vmin) + '-' + str(vmax)
+               + '\nColor range: ' + str(vmin) + '-' + str(vmax)
                + ', Transpose: ' + str(transpose)
                + ', Figure size:' + str(fig_width) + 'x' + str(fig_height),
                fontsize=fig_width)
