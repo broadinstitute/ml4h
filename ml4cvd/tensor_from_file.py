@@ -874,7 +874,7 @@ TMAPS['myocardial_mass_noheritable_women_only'] = TensorMap('inferred_myocardial
 def _make_lvh_from_lvm_tensor_from_file(lvm_key, group_key='continuous', male_lvh_threshold=72, female_lvh_threshold=55):
     def lvh_from_lvm_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        lvm_indexed = float(hd5[group_key][lvm_key])
+        lvm_indexed = float(hd5[group_key][lvm_key][0])
         index = 0
         if _is_genetic_man(hd5) and lvm_indexed > male_lvh_threshold:
             index = 1
