@@ -8,7 +8,6 @@ import os
 import re
 import csv
 import glob
-import h5py
 import time
 import shutil
 import logging
@@ -26,8 +25,6 @@ import imageio
 import pydicom
 import sqlite3
 import zipfile
-import matplotlib
-matplotlib.use('Agg')
 import numpy as np
 import nibabel as nib
 import matplotlib.pyplot as plt
@@ -37,8 +34,9 @@ from timeit import default_timer as timer
 from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
 
 from ml4cvd.plots import plot_value_counter, plot_histograms
-from ml4cvd.defines import StorageType, dataset_name_from_meaning
-from ml4cvd.defines import IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
+from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_FRAMES
+from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
+from ml4cvd.defines import StorageType, IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 
 
@@ -71,12 +69,6 @@ ECG_TAGS_TO_WRITE = ['VentricularRate', 'PQInterval', 'PDuration', 'QRSDuration'
 ECG_BIKE_SAMPLE_RATE = 500
 ECG_BIKE_NUM_LEADS = 3
 SECONDS_PER_MINUTE = 60
-
-#CINE_segmented_Ao_dist
-# LVOT
-# Flow view
-# Segmented LVOT
-# Flow_
 
 
 def write_tensors(a_id: str,
@@ -697,7 +689,8 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                 create_tensor_in_hd5(hd5, 'ukb_ecg_rest', child.tag.lower(), values, stats, date=ecg_date)
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, name: str, value, stats: Counter=None, date: datetime.datetime=None, storage_type: StorageType=None):
+def create_tensor_in_hd5(hd5: h5py.File, source: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
+                         storage_type: Optional[StorageType] = None):
     hd5_path = tensor_path(source, name)
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'

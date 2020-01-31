@@ -26,10 +26,9 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.source, tm.name)
     if tm.axes() > 1:
-        tensor = tm.normalize_and_validate(tensor)
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
     else:
-        return tm.normalize_and_validate(tensor)
+        return tensor
 
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
@@ -260,7 +259,7 @@ def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_heartrate')[-1]
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
-    return tm.normalize_and_validate(max_hr - last_hr)
+    return max_hr - last_hr
 
 
 def _healthy_check(hd5):
@@ -285,7 +284,7 @@ def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_time')
     tensor = np.abs(_get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name))
-    return tm.normalize_and_validate(np.median(tensor[times <= 15]))
+    return np.median(tensor[times <= 15])
 
 
 def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -317,7 +316,7 @@ def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
     max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_pred_hr')
-    return tm.normalize_and_validate(max_hr / max_pred)
+    return max_hr / max_pred
 
 
 TMAPS: Dict[str, TensorMap] = dict()
@@ -808,7 +807,7 @@ def _make_index_tensor_from_file(index_map_name):
         for k in tm.channel_map:
             tensor = np.array(hd5[tm.source][k], dtype=np.float32)
         index = np.array(hd5[tm.source][index_map_name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor / index)
+        return tensor / index
     return indexed_lvmass_tensor_from_file
 
 
@@ -852,7 +851,7 @@ def _select_tensor_from_file(selection_predicate: Callable):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
             tensor = np.array(hd5[tm.source][k], dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return selected_tensor_from_file
 
 
@@ -1244,7 +1243,7 @@ def preprocess_with_function(fxn):
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
             continuous_data[:] = tm.sentinel
-        return tm.normalize_and_validate(fxn(continuous_data))
+        return fxn(continuous_data)
     return preprocess_tensor_from_file
 
 
