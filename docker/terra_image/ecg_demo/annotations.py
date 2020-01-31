@@ -69,30 +69,37 @@ def display_annotation_collector(sample_info, sample_id):
   
   return key, keyvalue, comment
 
-def format_annotation(annotator, sample_id, annotation_data):
-    # pull out values from output
-    key = annotation_data[0].value
-    keyvalue = annotation_data[1].value
-    comment = annotation_data[2].value
-    # check whether the value is string or numeric
+def format_annotation(sample_id, annotation_data):
+  # pull out values from output
+  key = annotation_data[0].value
+  keyvalue = annotation_data[1].value
+  comment = annotation_data[2].value
 
+  # Programmatically get the identity of the person running this Terra notebook.
+  USER = os.getenv('OWNER_EMAIL')
 
-    try:
-        if keyvalue == nan: # @Nicole: this may not be how you want to deal with 'nan' values (e.g. in past_tobacco_smoking)
-            raise Exception() # this will make nan values return as strings rather than numerics
-        value_numeric = float(keyvalue) # this will fail if the value is text
-        value_string = 'None'
-    except:
-        value_numeric = 'None'
-        value_string = keyvalue
+  # # Also support AI Platform Notebooks.
+  # if USER is None:
+  #   ai_platform_hostname = !hostname
+  #   USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
 
-    params = {
-        'sample_id': str(sample_id),
-        'annotator': annotator,
-        'key': key,
-        'value_numeric': value_numeric,
-        'value_string': value_string,
-        'comment': comment
-    }
+  # check whether the value is string or numeric
+  try:
+      if keyvalue == nan: # @Nicole: this may not be how you want to deal with 'nan' values (e.g. in past_tobacco_smoking)
+          raise Exception() # this will make nan values return as strings rather than numerics
+      value_numeric = float(keyvalue) # this will fail if the value is text
+      value_string = 'None'
+  except:
+      value_numeric = 'None'
+      value_string = keyvalue
 
-    return params
+  params = {
+      'sample_id': str(sample_id),
+      'annotator': USER,
+      'key': key,
+      'value_numeric': value_numeric,
+      'value_string': value_string,
+      'comment': comment
+  }
+
+  return params
