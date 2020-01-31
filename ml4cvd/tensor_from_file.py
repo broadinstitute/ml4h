@@ -889,7 +889,7 @@ TMAPS['lvh_from_indexed_lvm'] = TensorMap('lvh_from_indexed_lvm', Interpretation
                                           tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'))
 TMAPS['lvh_from_indexed_lvm_weighted'] = TensorMap('lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
                                           tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'),
-                                          loss=weighted_crossentropy([1.0, 20.0], 'lvh_from_indexed_lvm'))
+                                          loss=weighted_crossentropy([0.1, 20.0], 'lvh_from_indexed_lvm'))
 
 
 def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
