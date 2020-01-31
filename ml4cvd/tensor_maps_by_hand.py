@@ -39,81 +39,81 @@ TMAPS['ecg_block'] = TensorMap('ecg_block', Interpretation.CATEGORICAL, channel_
 TMAPS['ecg_rest_next_char'] = TensorMap('ecg_rest_next_char', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
 TMAPS['ecg_rest_text'] = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(100, len(ECG_CHAR_2_IDX)), channel_map={'context': 0, 'alphabet': 1}, dependent_map=TMAPS['ecg_rest_next_char'])
 
-TMAPS['p-axis'] = TensorMap('PAxis', Interpretation.CONTINUOUS, channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
+TMAPS['p-axis'] = TensorMap('PAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
                             normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration'] = TensorMap('PDuration', Interpretation.CONTINUOUS, channel_map={'PDuration': 0}, loss='logcosh', validator=make_range_validator(30, 140),
+TMAPS['p-duration'] = TensorMap('PDuration', Interpretation.CONTINUOUS, source='continuous', channel_map={'PDuration': 0}, loss='logcosh', validator=make_range_validator(30, 140),
                                 normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset'] = TensorMap('POffset', Interpretation.CONTINUOUS, channel_map={'POffset': 0}, loss='logcosh', validator=make_range_validator(200, 500),
+TMAPS['p-offset'] = TensorMap('POffset', Interpretation.CONTINUOUS, source='continuous', channel_map={'POffset': 0}, loss='logcosh', validator=make_range_validator(200, 500),
                               normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset'] = TensorMap('POnset', Interpretation.CONTINUOUS, channel_map={'POnset': 0}, loss='logcosh', validator=make_range_validator(120, 400),
+TMAPS['p-onset'] = TensorMap('POnset', Interpretation.CONTINUOUS, source='continuous', channel_map={'POnset': 0}, loss='logcosh', validator=make_range_validator(120, 400),
                              normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, channel_map={'PPInterval': 0}, loss='logcosh', validator=make_range_validator(300, 1800),
+TMAPS['pp-interval'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'PPInterval': 0}, loss='logcosh', validator=make_range_validator(300, 1800),
                                  normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, channel_map={'PQInterval': 0}, loss='logcosh', validator=make_range_validator(70, 400),
+TMAPS['pq-interval'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'PQInterval': 0}, loss='logcosh', validator=make_range_validator(70, 400),
                                  normalization={'mean': 165.9, 'std': 26.3})
-TMAPS['q-offset'] = TensorMap('QOffset', Interpretation.CONTINUOUS, channel_map={'QOffset': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+TMAPS['q-offset'] = TensorMap('QOffset', Interpretation.CONTINUOUS, source='continuous', channel_map={'QOffset': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                               normalization={'mean': 525.1, 'std': 13.52})
-TMAPS['q-onset'] = TensorMap('QOnset', Interpretation.CONTINUOUS, channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
+TMAPS['q-onset'] = TensorMap('QOnset', Interpretation.CONTINUOUS, source='continuous', channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
                              normalization={'mean': 435.1, 'std': 11.420})
-TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(30, 160),
+TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(30, 160),
                                    normalization={'mean': 8.0, 'std': 20.0})
-TMAPS['qrs-duration'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+TMAPS['qrs-duration'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
                                   normalization={'mean': 89.53, 'std': 12.21})
-TMAPS['qrs-num'] = TensorMap('QRSNum', Interpretation.CONTINUOUS, channel_map={'QRSNum': 0}, loss='logcosh', validator=make_range_validator(2, 30),
+TMAPS['qrs-num'] = TensorMap('QRSNum', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSNum': 0}, loss='logcosh', validator=make_range_validator(2, 30),
                              normalization={'mean': 9.61, 'std': 1.64})
-TMAPS['qt-interval'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+TMAPS['qt-interval'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                  normalization={'mean': 426.1, 'std': 32.24})
-TMAPS['qtc-interval'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+TMAPS['qtc-interval'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                   normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['r-axis'] = TensorMap('RAxis', Interpretation.CONTINUOUS, channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+TMAPS['r-axis'] = TensorMap('RAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
                             normalization={'mean': 25.7, 'std': 36.6})
-TMAPS['rr-interval'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
+TMAPS['rr-interval'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
                                  normalization={'mean': 1040.61, 'std': 175.5})
-TMAPS['ventricular-rate'] = TensorMap('VentricularRate', Interpretation.CONTINUOUS, channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
+TMAPS['ventricular-rate'] = TensorMap('VentricularRate', Interpretation.CONTINUOUS, source='continuous', channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
                                       loss='logcosh', normalization={'mean': 59.3, 'std': 10.6})
-TMAPS['t-offset'] = TensorMap('TOffset', Interpretation.CONTINUOUS, channel_map={'TOffset': 0}, loss='logcosh', validator=make_range_validator(700, 1000),
+TMAPS['t-offset'] = TensorMap('TOffset', Interpretation.CONTINUOUS, source='continuous', channel_map={'TOffset': 0}, loss='logcosh', validator=make_range_validator(700, 1000),
                               normalization={'mean': 860.7, 'std': 32.52})
-TMAPS['t-axis'] = TensorMap('TAxis', Interpretation.CONTINUOUS, channel_map={'TAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+TMAPS['t-axis'] = TensorMap('TAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'TAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
                             normalization={'mean': 40.8, 'std': 32.6})
 
-TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', Interpretation.CONTINUOUS, channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
-TMAPS['charge'] = TensorMap('charge', Interpretation.CONTINUOUS, channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
+TMAPS['af_prs'] = TensorMap('AF_PRS_LDscore', Interpretation.CONTINUOUS, source='continuous', channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
+TMAPS['charge'] = TensorMap('charge', Interpretation.CONTINUOUS, source='continuous', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
                             validator=make_range_validator(0, 20))
 
-TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
+TMAPS['qtc-intervalp'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
                                   parents=[TMAPS['qt-interval'], TMAPS['rr-interval']], normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['qrs-durationpp'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+TMAPS['qrs-durationpp'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
                                     normalization={'mean': 89.53, 'std': 12.21},
                                     parents=[TMAPS['qtc-intervalp']])
 
-TMAPS['p-axis-sentinel'] = TensorMap('PAxis', Interpretation.CONTINUOUS, channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-axis-sentinel'] = TensorMap('PAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
                                      normalization={'mean': 48.7, 'std': 23.1})
-TMAPS['p-duration-sentinel'] = TensorMap('PDuration', Interpretation.CONTINUOUS, channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-duration-sentinel'] = TensorMap('PDuration', Interpretation.CONTINUOUS, source='continuous', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
                                          normalization={'mean': 96.1, 'std': 18.85})
-TMAPS['p-offset-sentinel'] = TensorMap('POffset', Interpretation.CONTINUOUS, channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-offset-sentinel'] = TensorMap('POffset', Interpretation.CONTINUOUS, source='continuous', channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
                                        normalization={'mean': 369.1, 'std': 28.42})
-TMAPS['p-onset-sentinel'] = TensorMap('POnset', Interpretation.CONTINUOUS, channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['p-onset-sentinel'] = TensorMap('POnset', Interpretation.CONTINUOUS, source='continuous', channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
                                       normalization={'mean': 275.1, 'std': 26.420})
-TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['pp-interval-sentinel'] = TensorMap('PPInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 1036.1, 'std': 185.0})
-TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
+TMAPS['pq-interval-sentinel'] = TensorMap('PQInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
                                           normalization={'mean': 165.9, 'std': 26.3})
-TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, channel_map={'QRSDuration': 0}, sentinel=0,
+TMAPS['qrs-duration-sentinel'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSDuration': 0}, sentinel=0,
                                            normalization={'mean': 89.53, 'std': 12.21})
-TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, channel_map={'QTInterval': 0}, sentinel=0,
+TMAPS['qt-interval-sentinel'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTInterval': 0}, sentinel=0,
                                           normalization={'mean': 426.1, 'std': 32.24})
-TMAPS['qtc-interval-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, sentinel=0,
+TMAPS['qtc-interval-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
                                            normalization={'mean': 419.1, 'std': 20.7})
-TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, sentinel=0,
+TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
                                             normalization={'mean': 419.1, 'std': 20.7},
                                             parents=[TMAPS['qt-interval'], TMAPS['rr-interval']])
-TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, channel_map={'QTCInterval': 0}, sentinel=0,
+TMAPS['qtc-intervalp-sentinel'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTCInterval': 0}, sentinel=0,
                                             normalization={'mean': 419.1, 'std': 20.7},
                                             parents=[TMAPS['qt-interval'], TMAPS['rr-interval']])
-TMAPS['r-axis-sentinel'] = TensorMap('RAxis', Interpretation.CONTINUOUS, channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
-TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, channel_map={'RRInterval': 0}, sentinel=0,
+TMAPS['r-axis-sentinel'] = TensorMap('RAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
+TMAPS['rr-interval-sentinel'] = TensorMap('RRInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'RRInterval': 0}, sentinel=0,
                                           normalization={'mean': 1040.61, 'std': 175.5})
-TMAPS['t-axis-sentinel'] = TensorMap('TAxis', Interpretation.CONTINUOUS, channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
+TMAPS['t-axis-sentinel'] = TensorMap('TAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
 
 
 TMAPS['bb_baseline'] = TensorMap('bb_baseline', Interpretation.CATEGORICAL, channel_map={'no_bb_baseline': 0, 'bb_baseline': 1},
