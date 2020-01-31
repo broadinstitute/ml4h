@@ -146,7 +146,7 @@ class TestPretrainedModels(unittest.TestCase):
         delta = 1e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
-        args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted.hd5'
+        args.model_file = MODELS + 'ecg_rest_rhythm.hd5'
         args.input_tensors = ['ecg_rest']
         args.output_tensors = ['ecg_rhythm_poor']
         args.test_steps = 32
