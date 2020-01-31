@@ -896,8 +896,9 @@ TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_
                                                       loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, source='continuous',
                                                       normalization={'mean': 89.70, 'std': 24.80})
 TMAPS['lvh_from_indexed_lvm_parented'] = TensorMap('lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
-                                          tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'),
-                                          parents=[TMAPS['adjusted_myocardium_mass_indexed'], TMAPS['adjusted_myocardium_mass']])
+                                                   tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'),
+                                                   loss=weighted_crossentropy([1.0, 25.0], 'lvh_from_indexed_lvm_parented'),
+                                                   parents=[TMAPS['adjusted_myocardium_mass_indexed'], TMAPS['adjusted_myocardium_mass']])
 
 
 def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
