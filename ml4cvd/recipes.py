@@ -159,7 +159,7 @@ def _make_tmap_nan_on_fail(tmap):
 
     def _tff(tm, hd5, dependents=None):
         try:
-            tmap.tensor_from_file(tm, hd5, dependents)
+            return tmap.tensor_from_file(tm, hd5, dependents)
         except (IndexError, KeyError, ValueError, OSError, RuntimeError):
             return np.full(shape=tm.shape, fill_value=np.nan)
 
