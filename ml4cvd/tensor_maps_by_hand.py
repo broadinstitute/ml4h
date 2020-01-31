@@ -55,7 +55,7 @@ TMAPS['q-offset'] = TensorMap('QOffset', Interpretation.CONTINUOUS, source='cont
                               normalization={'mean': 525.1, 'std': 13.52})
 TMAPS['q-onset'] = TensorMap('QOnset', Interpretation.CONTINUOUS, source='continuous', channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
                              normalization={'mean': 435.1, 'std': 11.420})
-TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(30, 160),
+TMAPS['qrs-complexes'] = TensorMap('QRSComplexes', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSComplexes': 0}, loss='logcosh', validator=make_range_validator(0, 60),
                                    normalization={'mean': 8.0, 'std': 20.0})
 TMAPS['qrs-duration'] = TensorMap('QRSDuration', Interpretation.CONTINUOUS, source='continuous', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
                                   normalization={'mean': 89.53, 'std': 12.21})
