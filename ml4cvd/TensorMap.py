@@ -4,7 +4,6 @@ from typing import Any
 from dateutil import relativedelta
 
 import numpy as np
-from scipy.ndimage import zoom
 from keras.utils import to_categorical
 
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
@@ -164,9 +163,9 @@ class TensorMap(object):
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
-                self.shape = (len(channel_map) * 2,)
+                self.shape = (len(self.channel_map) * 2,)
             else:
-                self.shape = (len(channel_map),)
+                self.shape = (len(self.channel_map),)
 
         if self.activation is None and self.is_categorical_any():
             self.activation = 'softmax'
