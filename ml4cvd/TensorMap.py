@@ -172,9 +172,9 @@ class TensorMap(object):
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
-                self.shape = (len(self.channel_map) * 2,)
+                self.shape = (len(channel_map) * 2,)
             else:
-                self.shape = (len(self.channel_map),)
+                self.shape = (len(channel_map),)
 
         if self.activation is None and self.is_categorical_any():
             self.activation = 'softmax'
