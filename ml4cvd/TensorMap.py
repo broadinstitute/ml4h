@@ -168,7 +168,7 @@ class TensorMap(object):
 
         if self.channel_map is None and self.discretization:
             logging.info(f'generating channel_map for discretization with {len(self.discretization)} classes')
-            self.channel_map = {f'class_{i}': i for i in range(len(self.discretization))}
+            channel_map = {f'class_{i}': i for i in range(len(self.discretization))}
 
         if self.shape is None:
             if self.is_multi_field_continuous_with_missing_channel():
