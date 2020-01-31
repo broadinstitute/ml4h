@@ -3,7 +3,6 @@ from ml4cvd.tensor_from_file import normalized_first_date, TMAPS
 from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
 from ml4cvd.defines import DataSetType, MRI_SEGMENTED, MRI_ZOOM_MASK, IMPUTATION_RANDOM, MRI_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import ECG_BIKE_FULL_SIZE, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_CHAR_2_IDX, ECG_BIKE_RECOVERY_SIZE
-from ml4cvd.discretization import Discretization
 
 
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
@@ -115,8 +114,6 @@ TMAPS['qrs-num'] = TensorMap('QRSNum', group='continuous', channel_map={'QRSNum'
                              normalization={'mean': 9.61, 'std': 1.64})
 TMAPS['qt-interval'] = TensorMap('QTInterval', group='continuous', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                  normalization={'mean': 426.1, 'std': 32.24})
-TMAPS['qt-interval-quintiles'] = TensorMap('QTInterval', group='continuous', normalization={'mean': 426.1, 'std': 32.24},
-                                           discretization=Discretization([-0.842, -0.253, 0.253, 0.842]), dtype=DataSetType.CATEGORICAL)
 TMAPS['qtc-interval'] = TensorMap('QTCInterval', group='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                   normalization={'mean': 419.1, 'std': 20.7})
 TMAPS['r-axis'] = TensorMap('RAxis', group='continuous', channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),

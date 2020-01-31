@@ -14,7 +14,7 @@ from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv
 from ml4cvd.defines import MRI_ZOOM_INPUT, MRI_ZOOM_MASK, TENSOR_MAPS_FILE_NAME, MRI_SEGMENTED_CHANNEL_MAP, \
     dataset_name_from_meaning, DataSetType
 from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, TENSOR_MAP_GROUP_MISSING_CONTINUOUS, TENSOR_MAP_GROUP_CONTINUOUS, JOIN_CHAR
-from ml4cvd.discretization import Discretization
+from ml4cvd.discretization import discretization_from_boundaries
 
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
@@ -322,9 +322,11 @@ def generate_multi_field_continuous_tensor_map(continuous_tensors: [str], includ
 def generate_continuous_tensor_map_from_file(file_name: str, column_name, tensor_map_name: str, normalization: bool,
                                              discretization_boundaries: [float]) -> TensorMap:
     if discretization_boundaries:
-        return TensorMap(f'{tensor_map_name}', dtype=DataSetType.CATEGORICAL,
+        channel_map = {f'class_{i}': i for i in range(len(discretization_boundaries)+1)}
+        return TensorMap(f'{tensor_map_name}', channel_map=channel_map, shape=(len(discretization_boundaries)+1,),
+                         dtype=DataSetType.CATEGORICAL,
                          tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
-                         discretization=Discretization(discretization_boundaries))
+                         discretization=discretization_from_boundaries(discretization_boundaries))
 
     return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0}, dtype=DataSetType.CONTINUOUS,
                      tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))
