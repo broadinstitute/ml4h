@@ -341,14 +341,17 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if tm.hd5_key_guess() in hd5:
             missing = False
             data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-            if hasattr(data, "__shape__"):
+            if tm.axes() > 1:
+                continuous_data = np.array(data)
+            elif hasattr(data, "__shape__"):
                 continuous_data[0] = data[0]
             else:
                 continuous_data[0] = data[()]
-        for k in tm.channel_map:
-            if k in hd5[tm.hd5_key_guess()]:
-                missing = False
-                continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
+        if missing and tm.channel_map is not None:
+            for k in tm.channel_map:
+                if k in hd5[tm.hd5_key_guess()]:
+                    missing = False
+                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
