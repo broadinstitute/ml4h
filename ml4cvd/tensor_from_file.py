@@ -417,7 +417,7 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
                     else:
                         tensor[:, tm.channel_map[k]] = hd5[tm.source][k]
         if population_normalize is None:
-            tensor = tm.zero_mean_std1(tensor)
+            tm.normalization = {'zero_mean_std1': 1.0}
         else:
             tensor /= population_normalize
         if warp:
