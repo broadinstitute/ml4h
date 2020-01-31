@@ -163,7 +163,6 @@ class TensorMap(object):
         self.discretization = discretization
 
         if self.channel_map is None and self.discretization:
-            logging.info(f'generating channel_map for discretization with {len(self.discretization)} classes')
             channel_map = {f'class_{i}': i for i in range(len(self.discretization))}
 
         if self.shape is None:
