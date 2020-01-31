@@ -26,10 +26,9 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.source, tm.name)
     if tm.axes() > 1:
-        tensor = tm.normalize_and_validate(tensor)
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
     else:
-        return tm.normalize_and_validate(tensor)
+        return tensor
 
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
@@ -42,7 +41,7 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             label_tensor = np.array(hd5[dependent_key][..., cur_slice], dtype=np.float32)
             dependents[tm.dependent_map][:, :, :] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return _random_slice_tensor_from_file
 
 
@@ -67,7 +66,7 @@ def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pa
         if dependent_key is not None:
             label_tensor = np.array(hd5[dependent_key][..., start:stop], dtype=np.float32)
             dependents[tm.dependent_map] = to_categorical(label_tensor, tm.dependent_map.shape[-1])
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return _slice_subset_tensor_from_file
 
 
@@ -100,7 +99,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
             t = table[os.path.basename(hd5.filename).replace('.hd5', '')]
             if normalization:
                 tm.normalization = {'mean': mean, 'std': std}
-            tn = tm.normalize_and_validate(t)
+            tn = t
             return tn
         except KeyError:
             raise KeyError(f'User id not in file {file_name}.')
@@ -139,7 +138,7 @@ def _age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
     def age_at_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[date_key][0]))
         birth_year = hd5[birth_key][0]
-        return tm.normalize_and_validate(np.array([assess_date.year-birth_year]))
+        return np.array([assess_date.year-birth_year])
     return age_at_tensor_from_file
 
 
@@ -246,21 +245,21 @@ def _first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
     recovery = original[-tm.shape[0]:]
-    return tm.normalize_and_validate(recovery).reshape(tm.shape)
+    return recovery.reshape(tm.shape)
 
 
 def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'pretest')
     original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
     pretest = original[:tm.shape[0]]
-    return tm.normalize_and_validate(pretest).reshape(tm.shape)
+    return pretest.reshape(tm.shape)
 
 
 def _first_date_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     last_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_heartrate')[-1]
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
-    return tm.normalize_and_validate(max_hr - last_hr)
+    return max_hr - last_hr
 
 
 def _healthy_check(hd5):
@@ -285,7 +284,7 @@ def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_time')
     tensor = np.abs(_get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name))
-    return tm.normalize_and_validate(np.median(tensor[times <= 15]))
+    return np.median(tensor[times <= 15])
 
 
 def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
@@ -300,7 +299,7 @@ def _new_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
         raise ValueError('Max hr / max pred hr too high.')
     if hrr > 80:
         raise ValueError('HRR too high.')
-    return tm.normalize_and_validate(hrr)
+    return hrr
 
 
 _HRR_SENTINEL = -1000
@@ -317,7 +316,7 @@ def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
     max_hr = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_hr')
     max_pred = _get_tensor_at_first_date(hd5, 'ecg_bike', 'max_pred_hr')
-    return tm.normalize_and_validate(max_hr / max_pred)
+    return max_hr / max_pred
 
 
 TMAPS: Dict[str, TensorMap] = dict()
@@ -742,7 +741,7 @@ def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
     reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
-    return tm.normalize_and_validate(tensor)
+    return tensor
 
 
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
@@ -751,7 +750,7 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         original = slice_subset_tensor_from_file(tm, hd5, dependents)
         tensor = to_categorical(original[..., 0], tm.shape[-1])
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return mask_subset_from_file
 
 
@@ -778,7 +777,7 @@ def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i, slice_subset_tensor_from_file in enumerate(slice_subsets):
             tensor[..., i] = slice_subset_tensor_from_file(tm, hd5, dependents)
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return mask_subset_from_file
 
 
@@ -808,7 +807,7 @@ def _make_index_tensor_from_file(index_map_name):
         for k in tm.channel_map:
             tensor = np.array(hd5[tm.source][k], dtype=np.float32)
         index = np.array(hd5[tm.source][index_map_name], dtype=np.float32)
-        return tm.normalize_and_validate(tensor / index)
+        return tensor / index
     return indexed_lvmass_tensor_from_file
 
 
@@ -852,7 +851,7 @@ def _select_tensor_from_file(selection_predicate: Callable):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
             tensor = np.array(hd5[tm.source][k], dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return selected_tensor_from_file
 
 
@@ -1148,7 +1147,7 @@ def _slice_tensor(tensor_key, slice_index):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[..., 0] = np.array(hd5[tensor_key][slice_index], dtype=np.float32)
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return _slice_tensor_from_file
 
 
@@ -1159,7 +1158,7 @@ TMAPS['lax_4ch_diastole_slice'] = TensorMap('lax_4ch_diastole_slice', Interpreta
 def _name_tensor_from_file(tm, hd5, dependents={}):
     tensor = np.zeros(tm.shape, dtype=np.float32)
     tensor = _pad_or_crop_array_to_shape(tensor.shape, np.array(hd5[tm.name], dtype=np.float32))
-    return tm.normalize_and_validate(tensor)
+    return tensor
 
 
 TMAPS['cine_lax_3ch_192'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
@@ -1178,7 +1177,7 @@ def _segmented_dicom_slices(dicom_key_prefix, source='ukb_cardiac_mri'):
             categorical_index_slice = _get_tensor_at_first_date(hd5, source, dicom_key_prefix + str(i+1))
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
-        return tm.normalize_and_validate(tensor)
+        return tensor
     return _segmented_dicom_tensor_from_file
 
 
@@ -1222,7 +1221,7 @@ def _make_fallback_tensor_from_file(tensor_keys):
         for k in tensor_keys:
             if k in hd5:
                 tensor = np.array(hd5[k], dtype=np.float32)
-                return tm.normalize_and_validate(tensor)
+                return tensor
         raise ValueError(f'No fallback tensor found from keys: {tensor_keys}')
     return fallback_tensor_from_file
 
@@ -1244,7 +1243,7 @@ def preprocess_with_function(fxn):
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
             continuous_data[:] = tm.sentinel
-        return tm.normalize_and_validate(fxn(continuous_data))
+        return fxn(continuous_data)
     return preprocess_tensor_from_file
 
 

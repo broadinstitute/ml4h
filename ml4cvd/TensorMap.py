@@ -9,10 +9,11 @@
 
 import logging
 import datetime
-from typing import Any
 from enum import Enum, auto
+from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
 import h5py
+import keras
 import numpy as np
 
 from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
@@ -44,24 +45,35 @@ class Interpretation(Enum):
 
 
 class TensorMap(object):
-    def __init__(self, name, interpretation=Interpretation.CONTINUOUS,
-                 loss=None,
-                 shape=None,
-                 model=None,
-                 source=None,
-                 metrics=None,
-                 parents=None,
-                 sentinel=None,
-                 validator=None,
-                 cacheable=True,
-                 activation=None,
-                 loss_weight=1.0,
-                 channel_map=None,
-                 storage_type=None,
-                 dependent_map=None,
-                 normalization=None,
-                 annotation_units=32,
-                 tensor_from_file=None,
+    """Tensor maps encode the semantics, shapes and types of tensors available
+
+        The mapping can be to numpy nd arrays, categorical labels, or continuous values.
+        The tensor shapes can be inferred for categorical TensorMaps which provide a channel mapping dictionary.
+        The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
+        For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
+        In general, new data sources require new TensorMaps and new tensor writers.
+        Input and output names are treated differently to allow self mappings, for example auto-encoders
+    """
+    def __init__(self,
+                 name: str,
+                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
+                 loss: Optional[Union[str, Callable]] = None,
+                 shape: Optional[Tuple[int]] = None,
+                 model: Optional[keras.Model] = None,
+                 source: Optional[str] = None,
+                 metrics: Optional[List[Union[str, Callable]]] = None,
+                 parents: Optional[List["TensorMap"]] = None,
+                 sentinel: Optional[float] = None,
+                 validator: Optional[Callable] = None,
+                 cacheable: Optional[bool] = True,
+                 activation: Optional[Union[str, Callable]] = None,
+                 loss_weight: Optional[float] = 1.0,
+                 channel_map: Optional[Dict[str, int]] = None,
+                 storage_type: Optional[StorageType] = None,
+                 dependent_map: Optional[str] = None,
+                 normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
+                 annotation_units: Optional[int] = 32,
+                 tensor_from_file: Optional[Callable] = None,
                  ):
         """TensorMap constructor
 
@@ -153,15 +165,6 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x: x
-    """Tensor maps encode the semantics, shapes and types of tensors available
-
-        The mapping can be to numpy nd arrays, categorical labels, or continuous values.
-        The tensor shapes can be inferred for categorical TensorMaps which provide a channel mapping dictionary.
-        The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
-        For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
-        In general, new data sources require new TensorMaps and new tensor writers.
-        Input and output names are treated differently to allow self mappings, for example autoencoders
-    """
 
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
