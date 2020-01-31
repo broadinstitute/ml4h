@@ -427,15 +427,15 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                     last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
 
             conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
-            output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
+            output_predictions[tm] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
             parented_activation = concatenate([multimodal_activation] + [output_predictions[p.output_name()] for p in tm.parents])
             parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
+            output_predictions[tm] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
         elif tm.is_categorical():
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
+            output_predictions[tm] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
         else:
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
+            output_predictions[tm] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
 
     m = Model(inputs=input_tensors, outputs=list(output_predictions.values()))
     m.summary()
