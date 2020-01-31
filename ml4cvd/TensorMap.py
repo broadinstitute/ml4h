@@ -352,7 +352,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
             continuous_data[:] = tm.sentinel
-        return tm.normalize_and_validate(continuous_data)
+        return continuous_data
     elif tm.is_embedding():
         input_dict = {}
         for input_parent_tm in tm.parents:
