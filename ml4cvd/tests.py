@@ -122,7 +122,7 @@ class TestPretrainedModels(unittest.TestCase):
         delta = 1e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
-        args.model_file = MODELS + 'ecg_rest_regress/ecg_rest_regress.hd5'
+        args.model_file = MODELS + 'ecg_rest_regress.hd5'
         args.input_tensors = ['ecg_rest']
         args.output_tensors = ['p-axis', 'p-duration', 'p-offset', 'p-onset', 'pp-interval', 'pq-interval', 'q-offset', 'q-onset', 'qrs-complexes',
                                'qrs-duration', 'qt-interval', 'qtc-interval', 'r-axis', 'rr-interval', 't-offset', 't-axis']
@@ -146,7 +146,7 @@ class TestPretrainedModels(unittest.TestCase):
         delta = 1e-1
         args = parse_args()
         args.tensors = ALL_TENSORS
-        args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted/ecg_rest_rhythm_hyperopted.hd5'
+        args.model_file = MODELS + 'ecg_rest_rhythm_hyperopted.hd5'
         args.input_tensors = ['ecg_rest']
         args.output_tensors = ['ecg_rhythm_poor']
         args.test_steps = 32
