@@ -871,12 +871,10 @@ TMAPS['myocardial_mass_noheritable_women_only'] = TensorMap('inferred_myocardial
                                                             channel_map={'inferred_myocardial_mass_noheritable': 0}, normalization={'mean': 78.0, 'std': 16.0})
 
 
-def _make_lvh_from_lvm_tensor_from_file(bsa_key, lvm_key, group_key='continuous', male_lvh_threshold=72, female_lvh_threshold=55):
+def _make_lvh_from_lvm_tensor_from_file(lvm_key, group_key='continuous', male_lvh_threshold=72, female_lvh_threshold=55):
     def lvh_from_lvm_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        lvm = float(hd5[group_key][lvm_key])
-        bsa = float(hd5[group_key][bsa_key])
-        lvm_indexed = lvm / bsa
+        lvm_indexed = float(hd5[group_key][lvm_key])
         index = 0
         if _is_genetic_man(hd5) and lvm_indexed > male_lvh_threshold:
             index = 1
@@ -887,10 +885,8 @@ def _make_lvh_from_lvm_tensor_from_file(bsa_key, lvm_key, group_key='continuous'
     return lvh_from_lvm_tensor_from_file
 
 
-TMAPS['lvh_from_lvm_actual'] = TensorMap('lvh_from_lvm_actual', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'lvh': 1},
-                                         tensor_from_file=_make_lvh_from_lvm_tensor_from_file('bsa_dubois', 'myocardial_mass_noheritable_sentinel_actual'))
-TMAPS['lvh_from_lvm_predict'] = TensorMap('lvh_from_lvm_predict',  Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'lvh': 1},
-                                          tensor_from_file=_make_lvh_from_lvm_tensor_from_file('bsa_dubois', 'myocardial_mass_noheritable_sentinel_prediction'))
+TMAPS['lvh_from_indexed_lvm'] = TensorMap('lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
+                                          tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'))
 
 
 def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
