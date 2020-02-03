@@ -3,6 +3,7 @@
 # Imports
 import os
 import csv
+import pdb
 import sys
 import h5py
 import logging
@@ -12,7 +13,7 @@ from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
-from ml4cvd.defines import TENSOR_EXT
+from ml4cvd.defines import DataSetType, EPS, TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
@@ -103,14 +104,34 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
+def _save_samples_for_channel(cm_name, tm, dfs, output_folder, subdir):
+    '''This assumes categorical variable'''
+    cols = dfs.keys().to_list()    
+
+    for cm in tm.channel_map:
+        cols.remove(f"{tm.name}_{cm}")
+
+    cols.remove("sample_id")
+    cols.remove("set")
+
+    # Remove all keys with "error_reason"
+    cols = [col for col in cols if "error_reason" not in col]
+
+    fpath_csv = os.path.join(output_folder,
+                             f"{subdir}/{tm.name}_{cm_name}_samples.csv")
+    # Isolate cols from dataframe that only consists of matches with cm_name
+    dfs[dfs[f"{tm.name}_{cm_name}"] - EPS > 0][cols].to_csv(fpath_csv)
+
+
 def explore_tensor_maps(args):
     args.num_workers = 0
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = args.tensor_maps_in
     tmap_names = args.input_tensors
-    error_names = [name + '_error_reason' for name in tmap_names]
     dfs = pd.DataFrame()
-    
+   
+    error_names = [name + '_error_reason' for name in tmap_names]
+
     # This only works for continuous and categorical data,
     # so raise an error if a tmap other than those two types are given.
     try:
@@ -120,10 +141,10 @@ def explore_tensor_maps(args):
         logging.exception(e)
         sys.exit(1)
 
-    # This only works if all types are the same
+    # Check for input types and raise error if types are incompatible
     try:
-        if len(set([tm.group for tm in tmaps])) > 1:
-            raise ValueError("Explore only works if all input tensor maps are the same type.")
+        if {"continuous", "categorical"} in set([tm.group for tm in tmaps]):
+            raise ValueError("Explore cannot handle both continuous and categorical tensor maps!")
     except ValueError as e:
         logging.exception(e)
         sys.exit(1)
@@ -141,6 +162,7 @@ def explore_tensor_maps(args):
                 column_dict.update({tm.name: list()})
         column_dict.update({name: list() for name in error_names})
         column_dict['sample_id'] = []
+        column_dict['fpath'] = []
 
         for i, path in enumerate(gen.path_iters[0]):
             # Log progress every 500 tensors
@@ -170,7 +192,7 @@ def explore_tensor_maps(args):
                                         column_dict[f"{tm.name}_{cm}"].append(
                                             tensor[tm.channel_map[cm]])
                                 else:
-                                    column_dict[tm.name].append(tensor[0])
+                                    column_dict[tm.name].append(tensor)
                             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                                 # TODO generalize beyond floats
                                 # TODO generalize to more indices than first one
@@ -190,6 +212,8 @@ def explore_tensor_maps(args):
 
                 # Save file name
                 column_dict['sample_id'].append(os.path.basename(path).strip(TENSOR_EXT))
+                # Save full path
+                column_dict['fpath'].append(path)
 
             except OSError:
                 continue
@@ -209,6 +233,15 @@ def explore_tensor_maps(args):
     dfs.to_csv(fpath_csv)
     print(f"Saved labels, hd5 paths, and train/val/test labels to {fpath_csv}")
 
+    # If we have "unspecified", we are looking at labeled ECG reads,
+    # so save all full reads that were labeled as "unspecified" 
+    if "unspecified" in tm.channel_map:
+        _save_samples_for_channel(cm_name="unspecified",
+                                  tm=tm,
+                                  dfs=dfs,
+                                  output_folder=args.output_folder,
+                                  subdir=args.id)
+
     # Characterize label distribution
     # TODO move this to standalone function
 
@@ -218,21 +251,24 @@ def explore_tensor_maps(args):
     # Loop through each tensor map object and name concurrently
     for tm in tmaps:
 
+        if tm.dtype == DataSetType.STRING:
+            continue
+
         # Initialize dict to store counts for channel maps
         cm_dict = defaultdict(list) 
 
         if tm.group == "categorical":
-
+           
             # Initialize a counter to track missing data
             count_missing = 0
 
-            # Tally counts for each channel map, and missing total
+            # Tally counts for each channel map
             for cm in tm.channel_map:
                 cm_dict["counts"].append(dfs[f"{tm.name}_{cm}"].sum())
-                count_missing += dfs[f"{tm.name}_{cm}"].isna().sum()
-
+            
             # "missing" (across all channel maps)
-            cm_dict["counts"].append(count_missing)
+            # We assume a missing row has a nan for the 0th col
+            cm_dict["counts"].append(dfs.iloc[:, 0].isna().sum())
 
             # "all" (cumulative total)
             cm_dict["counts"].append(sum(cm_dict["counts"]))
@@ -244,8 +280,8 @@ def explore_tensor_maps(args):
             df_stats = pd.DataFrame(cm_dict, index=cm_names)
 
             # Add new column: percent of all counts
-            df_stats["percent"] = df_stats["counts"] \
-                                  / df_stats.loc["all"].counts * 100
+            df_stats["missing_frac"] = df_stats["counts"] \
+                                       / df_stats.loc["all"].counts
 
         # Note the approach for counting is different for continuous data
         elif tm.group == "continuous":
@@ -258,6 +294,9 @@ def explore_tensor_maps(args):
                 cm_dict["stdev"].append(dfs[f"{tm.name}_{cm}"].std())
                 cm_dict["count"].append(dfs[f"{tm.name}_{cm}"].notna().sum())
                 cm_dict["missing"].append(dfs[f"{tm.name}_{cm}"].isna().sum())
+                cm_dict["missing_frac"].append(
+                    dfs[f"{tm.name}_{cm}"].isna().sum()
+                    / dfs[f"{tm.name}_{cm}"].shape[0])
                 cm_dict["total"].append(dfs[f"{tm.name}_{cm}"].shape[0])
 
             # Convert dict to dataframe, indexed by channel map
