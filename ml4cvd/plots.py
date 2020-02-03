@@ -190,7 +190,7 @@ def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_
     ax1.set_xlabel('Predictions')
     ax1.set_ylabel('Actual')
     ax1.set_title(title + '\n')
-    ax1.legend(loc="upper left")
+    ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label='Predicted', color='r', ax=ax2)
     sns.distplot(truth, label='Truth', color='b', ax=ax2)
