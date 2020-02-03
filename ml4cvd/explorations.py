@@ -53,6 +53,8 @@ def sort_csv(input_csv_file, value_csv):
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
                         labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
     input_map = tensor_maps_in[0]
+    if not os.path.exists(folder):
+        os.makedirs(folder)
     for y, tm in zip(predictions, tensor_maps_out):
         if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = predictions
