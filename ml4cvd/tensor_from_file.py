@@ -1277,7 +1277,8 @@ def sax_tensor(b_series_prefix):
             try:
                 tm_shape = (tm.shape[0], tm.shape[1])
                 tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{b_series_prefix}_frame_b{b}'], dtype=np.float32))
-                dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'{b_series_prefix}_mask_b{b}']), tm.dependent_map.shape[-1])
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{b_series_prefix}_mask_b{b}'], dtype=np.float32))
+                dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
             except KeyError:
                 missing += 1
                 tensor[:, :, b, 0] = 0
