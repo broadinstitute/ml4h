@@ -6,7 +6,7 @@ from collections import defaultdict
 JOIN_CHAR = '_'
 SCRIPT_NAME = 'tensor_maps_partners_ecg.py'
 TENSOR_FUNC_NAME = "make_partners_ecg_reads"
-
+PREFIX = "partners_ecg"
 
 def _clean_label_string(string):
     '''Replace spaces and slashes with JOIN_CHAR,
@@ -44,7 +44,7 @@ def _write_tmap_to_py(py_file, label_maps, channel_maps):
 
         cm += '}'
 
-        py_file.write(f"TMAPS['{label}'] = TensorMap('{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}({label_maps[label]})) \n\n")
+        py_file.write(f"TMAPS['{prefix}_{label}'] = TensorMap('{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}({label_maps[label]})) \n\n")
 
 
 def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir):
