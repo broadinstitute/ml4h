@@ -638,11 +638,14 @@ TMAPS['partners_ecg_voltage_raw'] = TensorMap('partners_ecg_voltage_raw',
 
 
 KEY_READ = 'read_md_clean'
-
-def make_partners_ecg_reads(dict_of_list: Dict, not_found_key: str = "unspecified"):
+    
+def make_partners_ecg_reads(dict_of_list: Dict = dict(), not_found_key: str = "unspecified", return_read: bool = False):
     def partners_ecg_reads_from_file(tm, hd5, dependents={}):
         read = _decompress_data(data_compressed=hd5[KEY_READ][()],
                                 dtype=hd5[KEY_READ].attrs['dtype'])
+        if return_read:
+            return read
+        
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         for cm in tm.channel_map:
             for string in dict_of_list[cm]:
@@ -652,6 +655,17 @@ def make_partners_ecg_reads(dict_of_list: Dict, not_found_key: str = "unspecifie
         categorical_data[tm.channel_map[not_found_key]] = 1
         return categorical_data
     return partners_ecg_reads_from_file
+
+
+group = "string" 
+task = "partners_ecg_get_read"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_reads(return_read=True),
+                        shape=(1,))
+#                        channel_map={'': 0})
+
 
 def make_partners_ecg_intervals(population_normalize=None):
     def partners_ecg_intervals(tm, hd5, dependents={}):
