@@ -6,7 +6,8 @@ TFSCRIPT="tf_gpu2.sh"
     --tensors \
                 /home/${USER}/partners_ecg/hd5_subset \
     --input_tensors \
+                    partners_ecg_get_read \
                     supranodal_rhythms \
     --test_modulo 0 \
     --output_folder "/home/${USER}/Dropbox\ \(Partners\ HealthCare\)/partners_ecg/ml4cvd_results/" \
-    --id explore_supranodal_rhythms_unspecified
+    --id explore_supranodal_rhythms_get_read

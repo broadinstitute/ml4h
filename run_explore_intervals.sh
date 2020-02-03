@@ -3,7 +3,8 @@ TFSCRIPT="tf.sh"
     /home/${USER}/repos/ml/ml4cvd/recipes.py \
     --mode explore \
     --tensors /home/${USER}/partners_ecg/hd5_subset \
-    --input_tensors partners_ecg_rate \
+    --input_tensors \
+                    partners_ecg_rate \
                     partners_ecg_qrs \
                     partners_ecg_pr \
                     partners_ecg_qt \
