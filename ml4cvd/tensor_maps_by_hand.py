@@ -381,15 +381,6 @@ TMAPS['slax-view-detect'] = TensorMap('slax-view-detect', Interpretation.CATEGOR
                                                'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
                                                'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10})
 
-TMAPS['sax_all_diastole_segmented'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-                                                loss='categorical_crossentropy', channel_map=MRI_SEGMENTED_CHANNEL_MAP)
-
-TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-                                                            channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
-
-TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', shape=(256, 256, 13, 1))
-TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', shape=(256, 256, 13, 1))
-
 
 TMAPS['genetic_pca_1'] = TensorMap('22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, source='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
                                    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0})

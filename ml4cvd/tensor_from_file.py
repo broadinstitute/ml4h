@@ -1267,3 +1267,34 @@ TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintens
                              normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
                              channel_map={'white-matter-hyper-intensities': 0})
 
+
+def sax_tensor(b_series_prefix):
+    def sax_tensor_from_file(tm, hd5, dependents={}):
+        missing = 0
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        for b in range(tm.shape[-2]):
+            try:
+                tm_shape = (tm.shape[0], tm.shape[1])
+                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{b_series_prefix}_frame_b{b}'], dtype=np.float32))
+                dependents[tm.dependent_map][:, :, b, :] = to_categorical(np.array(hd5[f'{b_series_prefix}_mask_b{b}']), tm.dependent_map.shape[-1])
+            except KeyError:
+                missing += 1
+                tensor[:, :, b, 0] = 0
+                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+        if missing == tm.shape[-2]:
+            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
+        return tensor
+    return sax_tensor_from_file
+
+
+TMAPS['sax_all_diastole_segmented'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
+                                                channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap('sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
+                                                         channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+                                                         loss=weighted_crossentropy([20.0, 250.0, 250.0], 'sax_all_diastole_segmented'))
+
+TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
+                                      dependent_map=TMAPS['sax_all_diastole_segmented'])
+TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
+                                               dependent_map=TMAPS['sax_all_diastole_segmented_weighted'])
