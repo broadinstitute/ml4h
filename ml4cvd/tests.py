@@ -155,8 +155,8 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'Normal_sinus_rhythm': 0.9944891562668626, 'Sinus_bradycardia': 0.9986203969011992, 'Marked_sinus_bradycardia': 0.9998421717171717,
-                    'Other_sinus_rhythm': 0.9789624183006536, 'Atrial_fibrillation': 0.9996513944223108, 'Other_rhythm': 0.9476284584980238}
+        expected = {'Normal_sinus_rhythm': 0.9824029566392662, 'Sinus_bradycardia': 0.9918234160230809, 'Marked_sinus_bradycardia': 0.9975368393759994,
+                    'Other_sinus_rhythm': 0.8898630136986301, 'Atrial_fibrillation': 0.9869892718557407, 'Other_rhythm': 0.7223864258347017}
 
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
