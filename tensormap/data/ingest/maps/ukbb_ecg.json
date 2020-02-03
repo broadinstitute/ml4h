@@ -1,0 +1,12 @@
+{
+    "CardiologyXML":
+    {
+        "StripData": 
+        {
+            "WaveformData": 
+            {
+                "#text": {"dtype": "str", "destination": "data", "callback": ["tensormap.utils.ecg.waveform_string_toarray"], "attrs": [{"dtype": "int16"}]}
+            }
+        }
+    }
+}

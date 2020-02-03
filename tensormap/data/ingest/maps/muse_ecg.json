@@ -1,0 +1,36 @@
+{
+    "RestingECG":
+    {
+        "PatientDemographics":
+        {
+            "PatientID":   {"dtype": "uint64", "destination": "patient_info/id",  "callback": [], "attrs": [], "sep": ",", "trim": ["\n"]},
+            "PatientAge":  {"dtype": "float",  "destination": "patient_info/age", "callback": [], "attrs": []},
+            "AgeUnits":    {"dtype": "str",    "destination": "patient_info/age_units", "callback": [], "attrs": []},
+            "DateofBirth": {"dtype": "str",    "destination": "patient_info/dob", "callback": [], "attrs": []}
+        },
+        "Waveform":
+        {
+            "LeadData": 
+            {
+                "LeadAmplitudeUnitsPerBit": {"dtype": "float", "destination": "waveform/lead_units_bit", "callback": [], "attrs": []},
+                "LeadLowLimit": {"dtype": "int32", "destination": "waveform/lead_low_limit", "callback": [], "attrs": []},
+                "WaveFormData": {"dtype": "str", "destination": "data", "callback": ["tensormap.utils.ecg.muse_decode_waveform"], "attrs": [{"dtype": "int16"}]}
+            }
+        },
+        "OriginalDiagnosis":
+        {
+            "DiagnosisStatement": 
+            {
+                "StmtText": {"dtype": "str"}
+            }
+        },
+        "MeasurementMatrix": {"dtype": "str", "destination": "measurement_matrix/age", "callback": ["tensormap.utils.ecg.muse_decode_waveform"], "attrs": []},
+        "Diagnosis":
+        {
+            "DiagnosisStatement":
+            {
+                "StmtText": {"dtype": "str"}
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "RestingECG":
+    {
+        "Waveform":
+        {
+            "LeadData": 
+            {
+                "WaveFormData": {"dtype": "str", "destination": "data", "callback": ["tensormap.utils.ecg.muse_decode_waveform"], "attrs": [{"dtype": "int16"}]}
+            }
+        }
+    }
+}
