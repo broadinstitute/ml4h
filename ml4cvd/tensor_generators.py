@@ -424,7 +424,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
                 train_paths.append(os.path.join(root, name))
 
     logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
-    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
+    if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
     return train_paths, valid_paths, test_paths
 

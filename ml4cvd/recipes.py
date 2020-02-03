@@ -275,7 +275,7 @@ def plot_predictions(args):
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
-    folder = os.path.join(args.output_folder, args.id) + '/'
+    folder = os.path.join(args.output_folder, args.id, 'prediction_pngs/')
     predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, data, labels, paths, folder)
 
 
