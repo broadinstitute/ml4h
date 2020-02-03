@@ -346,7 +346,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 continuous_data[0] = data[0]
             else:
                 continuous_data[0] = data[()]
-        if missing and tm.channel_map is not None:
+        if missing and tm.channel_map is not None and tm.hd5_key_guess() in hd5:
             for k in tm.channel_map:
                 if k in hd5[tm.hd5_key_guess()]:
                     missing = False
