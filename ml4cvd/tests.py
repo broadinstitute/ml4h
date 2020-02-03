@@ -119,7 +119,7 @@ class TestTensorMaps(unittest.TestCase):
 
 class TestPretrainedModels(unittest.TestCase):
     def test_ecg_regress(self):
-        delta = 1e-1
+        delta = 15e-2
         args = parse_args()
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'ecg_rest_regress.hd5'
@@ -132,12 +132,12 @@ class TestPretrainedModels(unittest.TestCase):
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = test_multimodal_multitask(args)
         print('expected = ', performances)
-        expected = {'PAxis_pearson': 0.6412350731914113, 'PDuration_pearson': 0.44687692331923495, 'POffset_pearson': 0.8895342855600766,
-                    'POnset_pearson': 0.9497252876315257, 'PPInterval_pearson': 0.9832692070388677, 'PQInterval_pearson': 0.9301142630158935,
-                    'QOffset_pearson': 0.7336190434160246, 'QOnset_pearson': 0.47727841194039183, 'QRSComplexes_pearson': 0.8786003993101409,
-                    'QRSDuration_pearson': 0.7602037325063877, 'QTInterval_pearson': 0.947431443320984, 'QTCInterval_pearson': 0.9257252519356458,
-                    'RAxis_pearson': 0.7788158778452872, 'RRInterval_pearson': 0.9852876188767442, 'TOffset_pearson': 0.9349277072650304,
-                    'TAxis_pearson': 0.48564795968301755}
+        expected = {'PAxis_pearson': 0.6010829310005574, 'PDuration_pearson': 0.334397562979115, 'POffset_pearson': 0.8870224086564694,
+                    'POnset_pearson': 0.915672533398803, 'PPInterval_pearson': 0.9843003466847959, 'PQInterval_pearson': 0.9024483040343809,
+                    'QOffset_pearson': 0.7529739057566074, 'QOnset_pearson': 0.7417930219416248, 'QRSComplexes_pearson': 0.14711527713690073,
+                    'QRSDuration_pearson': 0.9000439573470225, 'QTInterval_pearson': 0.9572200766158885, 'QTCInterval_pearson': 0.919422124977152,
+                    'RAxis_pearson': 0.8858920261655899, 'RRInterval_pearson': 0.985806047245532, 'TOffset_pearson': 0.9446387492651126,
+                    'TAxis_pearson': 0.6731483067923112}
 
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
