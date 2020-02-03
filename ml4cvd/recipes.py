@@ -156,7 +156,7 @@ def infer_multimodal_multitask(args):
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
             if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
-            elif len(otm.shape) == 1 and otm.is_categorical_any():
+            elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
                 for k in otm.channel_map:
                     channel_columns.append(ot + '_' + k + '_prediction')
@@ -182,7 +182,7 @@ def infer_multimodal_multitask(args):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-                elif len(tm.shape) == 1 and tm.is_categorical_any():
+                elif len(tm.shape) == 1 and tm.is_categorical():
                     for k in tm.channel_map:
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
