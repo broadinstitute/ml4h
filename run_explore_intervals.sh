@@ -2,7 +2,7 @@ TFSCRIPT="tf.sh"
 ./scripts/${TFSCRIPT} -t \
     /home/${USER}/repos/ml/ml4cvd/recipes.py \
     --mode explore \
-    --tensors /home/${USER}/partners_ecg/hd5_subset \
+    --tensors /home/${USER}/partners_ecg/hd5 \
     --input_tensors \
                     partners_ecg_rate \
                     partners_ecg_qrs \
