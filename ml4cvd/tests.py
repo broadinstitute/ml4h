@@ -56,11 +56,11 @@ class TestTrainingModels(unittest.TestCase):
         args.input_tensors = ['categorical-phenotypes-134']
         args.output_tensors = ['coronary_artery_disease_soft', 'diabetes_type_2',
                                'hypertension', 'myocardial_infarction']
-        args.epochs = 1
-        args.batch_size = 32
-        args.training_steps = 20
+        args.epochs = 2
+        args.batch_size = 64
+        args.training_steps = 60
         args.validation_steps = 1
-        args.test_steps = 32
+        args.test_steps = 64
         args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
         args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
         performances = train_multimodal_multitask(args)
