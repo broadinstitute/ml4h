@@ -1253,9 +1253,9 @@ def preprocess_with_function(fxn):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess(hd5):
+        if tm.hd5_key_guess() in hd5:
             missing = False
-            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))[0]
+            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
