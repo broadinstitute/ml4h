@@ -17,7 +17,7 @@ MODELS = '/home/sam/models/'
 def _run_tests():
     suites = []
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTensorMaps))
-    #suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTrainingModels))
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTrainingModels))
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestPretrainedModels))
     unittest.TextTestRunner(verbosity=3).run(unittest.TestSuite(suites))
 
@@ -71,50 +71,6 @@ class TestTrainingModels(unittest.TestCase):
 
         for k in performances:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-
-    # def test_train_mri_sax_zoom(self):
-    #     delta = 7e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.input_tensors = ['sax_inlinevf_zoom_weighted']
-    #     args.output_tensors = ['sax_inlinevf_zoom_mask_weighted', 'sex']
-    #     args.epochs = 1
-    #     args.batch_size = 4
-    #     args.training_steps = 24
-    #     args.validation_steps = 1
-    #     args.test_steps = 36
-    #     args.t = 48
-    #     args.pool_z = 2
-    #     args.u_connect = True
-    #     args.learning_rate = 0.0001
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = train_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'background': 1.0, 'Sex_Female_0_0': 0.763668430335097, 'Sex_Male_0_0': 0.763668430335097}
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
-    # def test_train_mri_systole_diastole(self):
-    #     delta = 6e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.input_tensors = ['mri_systole_diastole']
-    #     args.output_tensors = ['corrected_extracted_lvedv', 'corrected_extracted_lvef', 'corrected_extracted_lvesv']
-    #     args.epochs = 1
-    #     args.batch_size = 6
-    #     args.training_steps = 96
-    #     args.validation_steps = 1
-    #     args.test_steps = 16
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = train_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'corrected_extracted_lvedv_pearson': 0.19424554120230303, 'corrected_extracted_lvef_pearson': 0.07104467789034338,
-    #                 'corrected_extracted_lvesv_pearson': 0.22042654515608398}
-    #
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
 
 class TestPretrainedModels(unittest.TestCase):
