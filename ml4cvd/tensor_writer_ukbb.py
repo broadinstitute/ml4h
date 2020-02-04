@@ -163,7 +163,7 @@ def write_tensors(a_id: str,
 def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
                                   sample_header='sample_id', dicom_header='dicom_file',
                                   instance_header='instance_number', png_postfix='.png.mask.png',
-                                  source='ukb_cardiac_mri'):
+                                  path_prefix='ukb_cardiac_mri'):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
@@ -186,13 +186,13 @@ def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_s
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
                 tensor_name = series + '_annotated_' + row[instance_index]
-                tp = tensor_path(source, tensor_name)
+                tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
                     tensor[:] = full_tensor
                     stats['updated'] += 1
                 else:
-                    create_tensor_in_hd5(hd5, source, tensor_name, full_tensor, stats)
+                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, full_tensor, stats)
                     stats['created'] += 1
 
         except FileNotFoundError:
@@ -689,9 +689,9 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                 create_tensor_in_hd5(hd5, 'ukb_ecg_rest', child.tag.lower(), values, stats, date=ecg_date)
 
 
-def create_tensor_in_hd5(hd5: h5py.File, source: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
+def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
                          storage_type: Optional[StorageType] = None):
-    hd5_path = tensor_path(source, name)
+    hd5_path = tensor_path(path_prefix, name)
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
@@ -710,11 +710,11 @@ def create_tensor_in_hd5(hd5: h5py.File, source: str, name: str, value, stats: O
         d.attrs['date'] = time.mktime(date.timetuple())
 
 
-def tensor_path(source: str, name: str) -> str:
+def tensor_path(path_prefix: str, name: str) -> str:
     """
     In the future, TMAPs should be generated using this same function
     """
-    return f'/{source}/{name}/'
+    return f'/{path_prefix}/{name}/'
 
 
 def first_dataset_at_path(hd5, path, gather_fxn=min):
@@ -739,7 +739,7 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         root = et.parse(ecg).getroot()
         date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
-        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, source='ukb_ecg_bike', stats=stats, date=date)
+        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, path_prefix='ukb_ecg_bike', stats=stats, date=date)
         logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
 
         instance = ecg.split(JOIN_CHAR)[-2]
@@ -875,7 +875,7 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
             nifti_array = np.moveaxis(nifti_array, 0, 1)
             stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
-        create_tensor_in_hd5(hd5=hd5, source='ukb_brain_mri', name=nii_name, value=nifti_array, stats=stats)
+        create_tensor_in_hd5(hd5=hd5, path_prefix='ukb_brain_mri', name=nii_name, value=nifti_array, stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:

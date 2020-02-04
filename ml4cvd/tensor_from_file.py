@@ -24,7 +24,7 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    tensor = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     if tm.axes() > 1:
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
     else:
@@ -33,7 +33,7 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
     def _random_slice_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        big_tensor = _get_tensor_at_first_date(hd5, tm.source, tensor_key)
+        big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
         cur_slice = np.random.choice(range(big_tensor.shape[-1]))
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[..., 0] = big_tensor[..., cur_slice]
@@ -48,9 +48,9 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
 def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False, swap_axes=-1):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if dtype_override is not None:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.source, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
         else:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.source, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
 
         if flip_swap:
             big_tensor = np.flip(np.swapaxes(big_tensor, 0, swap_axes))
@@ -170,13 +170,13 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
     return _prevalent_incident_tensor_from_file
 
 
-def _all_dates(hd5: h5py.File, source: str, name: str) -> List[str]:
+def _all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:
     """
-    Gets the dates in the hd5 with source, dtype, name.
+    Gets the dates in the hd5 with path_prefix, dtype, name.
     """
-    # TODO: This ideally would be implemented to not depend on the order of name, date, dtype, source in the hd5s
+    # TODO: This ideally would be implemented to not depend on the order of name, date, dtype, path_prefix in the hd5s
     # Unfortunately, that's hard to do efficiently
-    return hd5[source][name]
+    return hd5[path_prefix][name]
 
 
 def _pass_nan(tensor):
@@ -197,14 +197,14 @@ def _nan_to_mean(tensor, max_allowed_nan_fraction=.2):
     return tensor
 
 
-def _get_tensor_at_first_date(hd5: h5py.File, source: str, name: str, handle_nan=_fail_nan):
+def _get_tensor_at_first_date(hd5: h5py.File, path_prefix: str, name: str, handle_nan=_fail_nan):
     """
-    Gets the numpy array at the first date of source, dtype, name.
+    Gets the numpy array at the first date of path_prefix, dtype, name.
     """
-    dates = _all_dates(hd5, source, name)
+    dates = _all_dates(hd5, path_prefix, name)
     if not dates:
         raise ValueError(f'No {name} values values available.')
-    tensor = np.array(hd5[f'{tensor_path(path_prefix=source, name=name)}{min(dates)}/'], dtype=np.float32)
+    tensor = np.array(hd5[f'{tensor_path(path_prefix=path_prefix, name=name)}{min(dates)}/'], dtype=np.float32)
     tensor = handle_nan(tensor)
     return tensor
 
@@ -243,14 +243,14 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
 
 def _first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     recovery = original[-tm.shape[0]:]
     return recovery.reshape(tm.shape)
 
 
 def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'pretest')
-    original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     pretest = original[:tm.shape[0]]
     return pretest.reshape(tm.shape)
 
@@ -283,7 +283,7 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_time')
-    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name))
+    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.path_prefix, 'float_array', tm.name))
     return np.median(tensor[times <= 15])
 
 
@@ -404,18 +404,18 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
             roll = np.random.randint(2500)
         if tm.dependent_map is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            key_choices = [k for k in hd5[tm.source] if tm.name in k]
+            key_choices = [k for k in hd5[tm.path_prefix] if tm.name in k]
             lead_idx = np.random.choice(key_choices)
-            tensor = np.reshape(hd5[tm.source][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.source][lead_idx.replace(tm.name, tm.dependent_map.name)])
+            tensor = np.reshape(hd5[tm.path_prefix][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
+            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.path_prefix][lead_idx.replace(tm.name, tm.dependent_map.name)])
             dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
         else:
-            for k in hd5[tm.source]:
+            for k in hd5[tm.path_prefix]:
                 if k in tm.channel_map:
                     if random_roll:
-                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.source][k], roll)
+                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.path_prefix][k], roll)
                     else:
-                        tensor[:, tm.channel_map[k]] = hd5[tm.source][k]
+                        tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k]
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
@@ -586,7 +586,7 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor = _get_tensor_at_first_date(hd5, tm.source, tm.name, _pass_nan)
+        tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name, _pass_nan)
         try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -621,8 +621,8 @@ def _make_ukb_ecg_rest_lvh():
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor_ramp = _get_tensor_at_first_date(hd5, tm.source, 'ramplitude', _pass_nan)
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.source, 'samplitude', _pass_nan)
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.path_prefix, 'ramplitude', _pass_nan)
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.path_prefix, 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
@@ -746,7 +746,7 @@ TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(1
 
 
 def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-    original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
     return tensor
@@ -813,8 +813,8 @@ def _make_index_tensor_from_file(index_map_name):
     def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.source][k], dtype=np.float32)
-        index = np.array(hd5[tm.source][index_map_name], dtype=np.float32)
+            tensor = np.array(hd5[tm.path_prefix][k], dtype=np.float32)
+        index = np.array(hd5[tm.path_prefix][index_map_name], dtype=np.float32)
         return tensor / index
     return indexed_lvmass_tensor_from_file
 
@@ -858,7 +858,7 @@ def _select_tensor_from_file(selection_predicate: Callable):
             raise ValueError(f'Tensor did not meet selection criteria:{selection_predicate.__name__} with Tensor Map:{tm.name}')
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.source][k], dtype=np.float32)
+            tensor = np.array(hd5[tm.path_prefix][k], dtype=np.float32)
         return tensor
     return selected_tensor_from_file
 
@@ -1190,7 +1190,7 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):
-            categorical_index_slice = _get_tensor_at_first_date(hd5, source, dicom_key_prefix + str(i+1))
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
         return tensor
