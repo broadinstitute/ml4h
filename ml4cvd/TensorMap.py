@@ -60,13 +60,13 @@ class TensorMap(object):
                  loss: Optional[Union[str, Callable]] = None,
                  shape: Optional[Tuple[int]] = None,
                  model: Optional[keras.Model] = None,
-                 source: Optional[str] = None,
                  metrics: Optional[List[Union[str, Callable]]] = None,
                  parents: Optional[List["TensorMap"]] = None,
                  sentinel: Optional[float] = None,
                  validator: Optional[Callable] = None,
                  cacheable: Optional[bool] = True,
                  activation: Optional[Union[str, Callable]] = None,
+                 path_prefix: Optional[str] = None,
                  loss_weight: Optional[float] = 1.0,
                  channel_map: Optional[Dict[str, int]] = None,
                  storage_type: Optional[StorageType] = None,
@@ -82,13 +82,13 @@ class TensorMap(object):
         :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param loss: Loss function or str specifying pre-defined loss function
         :param shape: Tuple of integers specifying tensor shape
-        :param model: Only used by hidden layer tensor maps
-        :param source: Source of the data we are tensor mapping
+        :param model: The model that computes the embedding layer, only used by embedding tensor maps
         :param metrics: List of metric functions of strings
         :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
         :param activation: String specifying activation function
+        :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
         :param storage_type: StorageType of tensor map
@@ -103,7 +103,7 @@ class TensorMap(object):
         self.loss = loss
         self.model = model
         self.shape = shape
-        self.source = source
+        self.path_prefix = path_prefix
         self.metrics = metrics
         self.parents = parents
         self.sentinel = sentinel
@@ -208,11 +208,17 @@ class TensorMap(object):
     def axes(self):
         return len(self.shape)
 
-    def hd5_key_guess(self):
-        if self.source is None:
+    def hd5_key_guess(self, hd5):
+        if self.path_prefix is None and self.name in hd5:
             return f'/{self.name}/'
+        elif self.path_prefix is None:
+            return False
+        elif self.path_prefix in hd5 and self.name in hd5[self.path_prefix]:
+            return f'/{self.path_prefix}/{self.name}/'
+        elif self.path_prefix in hd5:
+            return f'/{self.path_prefix}/'
         else:
-            return f'/{self.source}/{self.name}/'
+            return False
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
         if key_prefix not in hd5:
@@ -322,8 +328,8 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     if tm.is_categorical():
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+        if tm.hd5_key_guess(hd5):
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
                 index = int(data[0])
                 categorical_data[index] = 1.0
@@ -331,26 +337,30 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 categorical_data = np.array(data)
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
+        elif tm.hd5_key_guess(hd5) and tm.channel_map is not None:
+            for k in tm.channel_map:
+                if k in hd5[tm.hd5_key_guess(hd5)]:
+                    categorical_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess(hd5)][k][0]
         else:
-            raise ValueError(f"No HD5 Key {tm.hd5_key_guess()} found for tensor map: {tm.name}.")
+            raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
+        if tm.hd5_key_guess(hd5):
             missing = False
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))
             if tm.axes() > 1:
                 continuous_data = np.array(data)
             elif hasattr(data, "__shape__"):
                 continuous_data[0] = data[0]
             else:
                 continuous_data[0] = data[()]
-        if missing and tm.channel_map is not None and tm.hd5_key_guess() in hd5:
+        if missing and tm.channel_map is not None and tm.hd5_key_guess(hd5):
             for k in tm.channel_map:
-                if k in hd5[tm.hd5_key_guess()]:
+                if k in hd5[tm.hd5_key_guess(hd5)]:
                     missing = False
-                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
+                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess(hd5)][k][0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
         elif missing:
