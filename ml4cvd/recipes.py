@@ -6,6 +6,7 @@ import csv
 import pdb
 import sys
 import h5py
+import copy
 import logging
 import numpy as np
 import pandas as pd
@@ -104,21 +105,11 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
-def _save_samples_for_channel(cm_name, tm, dfs, output_folder, subdir):
-    '''This assumes categorical variable'''
-    cols = dfs.keys().to_list()    
-
-    for cm in tm.channel_map:
-        cols.remove(f"{tm.name}_{cm}")
-
-    cols.remove("sample_id")
-    cols.remove("set")
-
-    # Remove all keys with "error_reason"
+def _save_samples_for_channel(cm_name, tm, cols, dfs, output_folder, subdir):
     cols = [col for col in cols if "error_reason" not in col]
-
     fpath_csv = os.path.join(output_folder,
                              f"{subdir}/{tm.name}_{cm_name}_samples.csv")
+
     # Isolate cols from dataframe that only consists of matches with cm_name
     dfs[dfs[f"{tm.name}_{cm_name}"] - EPS > 0][cols].to_csv(fpath_csv)
 
@@ -128,18 +119,16 @@ def explore_tensor_maps(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = args.tensor_maps_in
     tmap_names = args.input_tensors
-    dfs = pd.DataFrame()
-   
+    dfs = pd.DataFrame() 
     error_names = [name + '_error_reason' for name in tmap_names]
 
     # This only works for continuous and categorical data,
     # so raise an error if a tmap other than those two types are given.
     try:
         if any(x != 1 for x in [len(tm.shape) for tm in tmaps]):
-            raise ValueError("Explore only works for continuous or categorical data. Choose different tensor maps.")
+            raise ValueError("Explore only works for a) 1D continuous or b) categorical data. Choose different tensor maps.")
     except ValueError as e:
         logging.exception(e)
-        sys.exit(1)
 
     # Check for input types and raise error if types are incompatible
     try:
@@ -147,7 +136,6 @@ def explore_tensor_maps(args):
             raise ValueError("Explore cannot handle both continuous and categorical tensor maps!")
     except ValueError as e:
         logging.exception(e)
-        sys.exit(1)
 
     # Iterate through train, val, test generators
     for gen in generators:
@@ -231,34 +219,39 @@ def explore_tensor_maps(args):
     fpath_csv = os.path.join(args.output_folder,
                              f"{args.id}/{args.id}_labels_filenames_sets.csv")
     dfs.to_csv(fpath_csv)
-    print(f"Saved labels, hd5 paths, and train/val/test labels to {fpath_csv}")
-
-    # If we have "unspecified", we are looking at labeled ECG reads,
-    # so save all full reads that were labeled as "unspecified" 
-    if "unspecified" in tm.channel_map:
-        _save_samples_for_channel(cm_name="unspecified",
-                                  tm=tm,
-                                  dfs=dfs,
-                                  output_folder=args.output_folder,
-                                  subdir=args.id)
+    logging.info(f"Saved labels, hd5 paths, and train/val/test labels to {fpath_csv}")
 
     # Characterize label distribution
-    # TODO move this to standalone function
 
-    # Initialize empty parent dataframe for summary statistics
-    df_stats_all = pd.DataFrame()
+    # Isolate keys of dfs in list
+    cols = dfs.keys().to_list()
+    cols.remove("sample_id")
+    cols.remove("set")
+    for tm in tmaps:
+        if tm.channel_map:
+            for cm in tm.channel_map:
+                cols.remove(f"{tm.name}_{cm}")
+    
+    df_stats = pd.DataFrame()
 
     # Loop through each tensor map object and name concurrently
     for tm in tmaps:
-
-        if tm.dtype == DataSetType.STRING:
-            continue
+        # If "unspecified" in channel maps, we are looking at labeled ECG reads,
+        # so save all full reads that were labeled as "unspecified" 
+        if tm.channel_map and "unspecified" in tm.channel_map:
+            _save_samples_for_channel(cm_name="unspecified",
+                                      tm=tm,
+                                      cols=cols,
+                                      dfs=dfs,
+                                      output_folder=args.output_folder,
+                                      subdir=args.id)
+            if tm.dtype == DataSetType.STRING:
+                continue
 
         # Initialize dict to store counts for channel maps
         cm_dict = defaultdict(list) 
 
-        if tm.group == "categorical":
-           
+        if tm.group == "categorical": 
             # Initialize a counter to track missing data
             count_missing = 0
 
@@ -274,14 +267,20 @@ def explore_tensor_maps(args):
             cm_dict["counts"].append(sum(cm_dict["counts"]))
     
             # Create list of row names
-            cm_names = [cm for cm in tm.channel_map] + ["missing", "all"]
+            cm_names = [f"{tm.name}_{cm}" for cm in tm.channel_map] \
+                       + [f"missing_{tm.name}", f"all_{tm.name}"]
 
-            # Convert dict to dataframe
             df_stats = pd.DataFrame(cm_dict, index=cm_names)
 
             # Add new column: percent of all counts
-            df_stats["missing_frac"] = df_stats["counts"] \
-                                       / df_stats.loc["all"].counts
+            df_stats[f"missing_frac"] = df_stats["counts"] \
+                                       / df_stats.loc[f"all_{tm.name}"]["counts"]
+
+            # Save parent dataframe to CSV on disk
+            fpath_csv = os.path.join(args.output_folder,
+                                         f"{args.id}/{tm.name}_summary_stats.csv")
+            df_stats.to_csv(fpath_csv)
+            logging.info(f"Saved summary statistics to {fpath_csv}")
 
         # Note the approach for counting is different for continuous data
         elif tm.group == "continuous":
@@ -298,19 +297,14 @@ def explore_tensor_maps(args):
                     dfs[f"{tm.name}_{cm}"].isna().sum()
                     / dfs[f"{tm.name}_{cm}"].shape[0])
                 cm_dict["total"].append(dfs[f"{tm.name}_{cm}"].shape[0])
+            df_stats = df_stats.append(pd.DataFrame(cm_dict, index=[tm.name])) 
 
-            # Convert dict to dataframe, indexed by channel map
-            df_stats = pd.DataFrame(cm_dict,
-                                    index=[cm for cm in tm.channel_map])
-
-        # Append parent dataframe with dataframe for this tensormap
-        df_stats_all = df_stats_all.append(df_stats)
-
-    # Save parent dataframe to CSV on disk
-    fpath_csv = os.path.join(args.output_folder,
-                             f"{args.id}/{args.id}_summary_statistics.csv")
-    df_stats_all.to_csv(fpath_csv)
-    print(f"Saved summary statistics to {fpath_csv}")
+    if tm.group == "continuous":
+        # Save parent dataframe to CSV on disk
+        fpath_csv = os.path.join(args.output_folder,
+                                     f"{args.id}/{tm.name}_summary_stats.csv")
+        df_stats.to_csv(fpath_csv)
+        logging.info(f"Saved summary statistics to {fpath_csv}")
 
 
 def train_multimodal_multitask(args):
