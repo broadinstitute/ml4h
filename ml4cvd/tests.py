@@ -47,31 +47,31 @@ class TestTensorMaps(unittest.TestCase):
         self.assertEqual(tensor_map_6a, tensor_map_6b)
 
 
-#class TestTrainingModels(unittest.TestCase):
-    #
-    # def test_train_categorical_mlp(self):
-    #     delta = 1e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.input_tensors = ['categorical-phenotypes-134']
-    #     args.output_tensors = ['coronary_artery_disease_soft', 'diabetes_type_2',
-    #                            'hypertension', 'myocardial_infarction']
-    #     args.epochs = 1
-    #     args.batch_size = 32
-    #     args.training_steps = 20
-    #     args.validation_steps = 1
-    #     args.test_steps = 32
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = train_multimodal_multitask(args)
-    #     print('cat mlp expected = ', performances)
-    #     expected = {'no_coronary_artery_disease_soft': 0.5280473195567535, 'coronary_artery_disease_soft': 0.5280473195567534,
-    #                 'no_diabetes_type_2': 0.5175564681724847, 'diabetes_type_2': 0.5175564681724846, 'no_hypertension': 0.49742043019287246,
-    #                 'hypertension': 0.49742043019287246, 'no_myocardial_infarction': 0.4442053930005737, 'myocardial_infarction': 0.44420539300057377}
-    #
-    #     for k in performances:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
+class TestTrainingModels(unittest.TestCase):
+
+    def test_train_categorical_mlp(self):
+        delta = 1e-1
+        args = parse_args()
+        args.tensors = ALL_TENSORS
+        args.input_tensors = ['categorical-phenotypes-134']
+        args.output_tensors = ['coronary_artery_disease_soft', 'diabetes_type_2',
+                               'hypertension', 'myocardial_infarction']
+        args.epochs = 1
+        args.batch_size = 32
+        args.training_steps = 20
+        args.validation_steps = 1
+        args.test_steps = 32
+        args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+        args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+        performances = train_multimodal_multitask(args)
+        print('cat mlp expected = ', performances)
+        expected = {'no_coronary_artery_disease_soft': 0.5280473195567535, 'coronary_artery_disease_soft': 0.5280473195567534,
+                    'no_diabetes_type_2': 0.5175564681724847, 'diabetes_type_2': 0.5175564681724846, 'no_hypertension': 0.49742043019287246,
+                    'hypertension': 0.49742043019287246, 'no_myocardial_infarction': 0.4442053930005737, 'myocardial_infarction': 0.44420539300057377}
+
+        for k in performances:
+            self.assertAlmostEqual(performances[k], expected[k], delta=delta)
+
     # def test_train_mri_sax_zoom(self):
     #     delta = 7e-1
     #     args = parse_args()

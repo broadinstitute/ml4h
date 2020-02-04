@@ -505,43 +505,9 @@ TMAPS['diastolic_blood_pressure_2'] = TensorMap('4079_Diastolic-blood-pressure-a
                                                 channel_map={'4079_Diastolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(20, 300),
                                                 normalization={'mean': 82.20657551284782, 'std': 10.496040770224475})
 
-TMAPS['random-forest-fields'] = TensorMap('random-forest-fields', Interpretation.CATEGORICAL,
-                                  channel_map={'Medication-for-pain-relief-constipation-heartburn_Aspirin': 0,
-                                               'Medication-for-pain-relief-constipation-heartburn_Do-not-know': 1,
-                                               'Medication-for-pain-relief-constipation-heartburn_Ibuprofen-eg-Nurofen': 2,
-                                               'Medication-for-pain-relief-constipation-heartburn_Laxatives-eg-Dulcolax-Senokot': 3,
-                                               'Medication-for-pain-relief-constipation-heartburn_None-of-the-above': 4,
-                                               'Medication-for-pain-relief-constipation-heartburn_Omeprazole-eg-Zanprol': 5,
-                                               'Medication-for-pain-relief-constipation-heartburn_Paracetamol': 6,
-                                               'Medication-for-pain-relief-constipation-heartburn_Ranitidine-eg-Zantac': 7,
-                                               'Vascularheart-problems-diagnosed-by-doctor_None-of-the-above': 8,
-                                               'Vascularheart-problems-diagnosed-by-doctor_Heart-attack': 9,
-                                               'Vascularheart-problems-diagnosed-by-doctor_Angina': 10,
-                                               'Vascularheart-problems-diagnosed-by-doctor_Stroke': 11,
-                                               'Vascularheart-problems-diagnosed-by-doctor_High-blood-pressure': 12,
-                                               'Vascularheart-problems-diagnosed-by-doctor_Prefer-not-to-answer': 13,
-                                               'Had-other-major-operations_Yes--you-will-be-asked-about-this-later-by-an-interviewer':14,
-                                               'Had-other-major-operations_No': 15,
-                                               'Had-other-major-operations_Do-not-know': 16,
-                                               'Had-other-major-operations_Prefer-not-to-answer': 17,
-                                               'Sex_Female': 18,
-                                               'Sex_Male': 19,
-                                               'Mother-still-alive_Yes': 20,
-                                               'Mother-still-alive_No': 21,
-                                               'Mother-still-alive_Do-not-know': 22,
-                                               'Mother-still-alive_Prefer-not-to-answer': 23,
-                                               'Father-still-alive_Yes': 24,
-                                               'Father-still-alive_No': 25,
-                                               'Father-still-alive_Do-not-know': 26,
-                                               'Father-still-alive_Prefer-not-to-answer': 27,
-                                               'Adopted-as-a-child_Yes': 28,
-                                               'Adopted-as-a-child_No': 29,
-                                               'Adopted-as-a-child_Do-not-know': 30,
-                                               'Adopted-as-a-child_Prefer-not-to-answer': 31
-                                               })
 
 TMAPS['categorical-phenotypes-25'] = TensorMap(
-    'categorical-phenotypes-25', Interpretation.CATEGORICAL,
+    'categorical-phenotypes-25', Interpretation.CATEGORICAL, path_prefix='categorical',
     channel_map={'Adopted-as-a-child_No_0_0': 0,
                  'Beef-intake_Less-than-once-a-week_0_0': 1,
                  'Breastfed-as-a-baby_Yes_0_0': 2,
@@ -571,7 +537,7 @@ TMAPS['categorical-phenotypes-25'] = TensorMap(
                  })
 
 TMAPS['categorical-phenotypes-36'] = TensorMap(
-    'categorical-phenotypes-36', Interpretation.CATEGORICAL,
+    'categorical-phenotypes-36', Interpretation.CATEGORICAL, path_prefix='categorical',
     channel_map={'Adopted-as-a-child_No_0_0': 0,
                  'Breastfed-as-a-baby_Yes_0_0': 1,
                  'Country-of-birth-UKelsewhere_England_0_0': 2,
@@ -610,7 +576,7 @@ TMAPS['categorical-phenotypes-36'] = TensorMap(
                  })
 
 TMAPS['categorical-phenotypes-78'] = TensorMap(
-    'categorical-phenotypes-78', Interpretation.CATEGORICAL, annotation_units=64,
+    'categorical-phenotypes-78', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=64,
     channel_map={'Adopted-as-a-child_No_0_0': 0,
                  'Alcohol-intake-versus-10-years-previously_Less-nowadays_0_0': 1,
                  'Alcohol-usually-taken-with-meals_It-varies_0_0': 2,
