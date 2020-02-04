@@ -1,11 +1,12 @@
 # models.py
+# This file defines model factories.
+# Model factories connect input TensorMaps to output TensorMaps with computational graphs.
 
 # Imports
 import os
 import h5py
 import time
 import logging
-import operator
 import numpy as np
 from collections import defaultdict
 from typing import Dict, List, Tuple, Iterable, Union, Optional
@@ -24,12 +25,12 @@ from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, 
 from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 
-from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import get_metric_dict
-from ml4cvd.plots import plot_metric_history
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
 from ml4cvd.optimizers import get_optimizer
-from ml4cvd.lookahead import Lookahead
+from ml4cvd.plots import plot_metric_history
+from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
@@ -202,15 +203,15 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
 
     input_layers = []
     for it in tensor_maps_in:
-        if it.is_hidden_layer():
+        if it.is_embedding():
             embed_in = Input(shape=it.shape, name=it.input_name())
             input_layers.append(embed_in)
-        elif it.is_ecg_text():
+        elif it.is_language():
             burn_in = Input(shape=it.shape, name=it.input_name())
             input_layers.append(burn_in)
             repeater = RepeatVector(it.shape[0])
         else:
-            logging.warning(f"character model cant handle {it.name} from group:{it.group}")
+            logging.warning(f"character model cant handle  input TensorMap:{it.name} with interpretation:{it.interpretation}")
 
     logging.info(f"inputs: {[il.name for il in input_layers]}")
     wave_embeds = repeater(embed_in)
@@ -1271,13 +1272,12 @@ def _gradients_from_output(model, output_layer, output_index):
     return iterate
 
 
-def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model):
-    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, 'embed')
-    tm_embed = TensorMap('embed', shape=(64,), group='hidden_layer', required_inputs=tensor_maps_in.copy(), model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy',
-                        loss_weight=1.0, cacheable=False)
-    tm_burn_in = TensorMap('ecg_rest_text', shape=(100, len(ECG_CHAR_2_IDX)), group='ecg_text', channel_map={'context': 0, 'alphabet': 1},
-                           dependent_map=tm_char, cacheable=False)
+def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model, embed_name='embed', embed_size=64, burn_in=100):
+    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
+    tm_embed = TensorMap(embed_name, shape=(embed_size,), interpretation=Interpretation.EMBEDDING, parents=tensor_maps_in.copy(), model=embed_model)
+    tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), Interpretation=Interpretation.LANGUAGE, channel_map=ECG_CHAR_2_IDX, cacheable=False)
+    tm_burn_in = TensorMap('ecg_rest_text', shape=(burn_in, len(ECG_CHAR_2_IDX)), Interpretation=Interpretation.LANGUAGE,
+                           channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
     return [tm_embed, tm_burn_in], [tm_char]
 
 
