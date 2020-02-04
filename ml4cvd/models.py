@@ -812,7 +812,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     output_tensor_maps_to_process = tensor_maps_out.copy()
     while len(output_tensor_maps_to_process) > 0:
         tm = output_tensor_maps_to_process.pop(0)
-        if set(tm.parents) <= set(tensor_maps_out):
+        if tm.parents is not None and set(tm.parents) <= set(tensor_maps_out):
             raise ValueError(f'Output tensor {tm.output_name()} must have all its parents as output.')
         if tm.parents is not None and not (set(tm.parents) <= set(output_predictions.keys())):
             output_tensor_maps_to_process.append(tm)
