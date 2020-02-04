@@ -337,10 +337,10 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 categorical_data = np.array(data)
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
-        elif tm.hd5_key_guess(hd5) and tm.channel_map is not None:
-            for k in tm.channel_map:
-                if k in hd5[tm.hd5_key_guess(hd5)]:
-                    categorical_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess(hd5)][k][0]
+        # elif tm.hd5_key_guess(hd5) and tm.channel_map is not None:
+        #     for k in tm.channel_map:
+        #         if k in hd5[tm.hd5_key_guess(hd5)]:
+        #             categorical_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess(hd5)][k][0]
         else:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
