@@ -3,6 +3,7 @@
 # Imports
 import os
 import csv
+import copy
 import logging
 import numpy as np
 from functools import reduce
@@ -21,7 +22,7 @@ from ml4cvd.models import make_character_model_plus, embed_model_predict, make_s
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps
-from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
+from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
 
 def run(args):
@@ -100,9 +101,15 @@ def run(args):
 
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    if args.variational:  # TODO: Save the encoders and decoders
+        model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        model = make_multimodal_multitask_model(**args.__dict__)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+        anneal_rate=args.anneal_rate, anneal_shift=args.anneal_shift, anneal_max=args.anneal_max,
+    )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -111,7 +118,10 @@ def train_multimodal_multitask(args):
 
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
+    if args.variational:
+        model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
@@ -141,16 +151,37 @@ def compare_multimodal_scalar_task_models(args):
     _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
 
 
+def _make_tmap_nan_on_fail(tmap):
+    """
+    Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
+    """
+    new_tmap = copy.deepcopy(tmap)
+
+    def _tff(tm, hd5, dependents=None):
+        try:
+            return tmap.tensor_from_file(tm, hd5, dependents)
+        except (IndexError, KeyError, ValueError, OSError, RuntimeError):
+            return np.full(shape=tm.shape, fill_value=np.nan)
+
+    new_tmap.tensor_from_file = _tff
+    return new_tmap
+
+
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    if args.variational:
+        model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        model = make_multimodal_multitask_model(**args.__dict__)
+    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    model = make_multimodal_multitask_model(**args.__dict__)
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-                                    cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    generate_test = TensorGenerator(1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
+                                    cache_size=0, keep_paths=True, mixup=args.mixup_alpha)
     with open(inference_tsv, mode='w') as inference_file:
+        # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
@@ -171,21 +202,23 @@ def infer_multimodal_multitask(args):
                 break
 
             prediction = model.predict(input_data)
-            if len(args.tensor_maps_out) == 1:
+            if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
 
             csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
-            for y, tm in zip(prediction, args.tensor_maps_out):
+            for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
+                    if ((tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0])
+                            or np.isnan(true_label[tm.output_name()][0][0])):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and tm.is_categorical():
-                    for k in tm.channel_map:
+                    for k, i in tm.channel_map.items():
                         csv_row.append(str(y[0][tm.channel_map[k]]))
-                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
+                        actual = true_label[tm.output_name()][0][i]
+                        csv_row.append("NA" if np.isnan(actual) else str(actual))
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
@@ -202,7 +235,10 @@ def infer_hidden_layer_multimodal_multitask(args):
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
                                     cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
-    full_model = make_multimodal_multitask_model(**args.__dict__)
+    if args.variational:
+        full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
+    else:
+        full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
