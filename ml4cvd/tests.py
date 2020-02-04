@@ -116,45 +116,6 @@ class TestPretrainedModels(unittest.TestCase):
         for k in expected:
             self.assertAlmostEqual(performances[k], expected[k], delta=delta)
 
-    #
-    # def test_mri_systole_diastole_volumes(self):
-    #     delta = 2e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.model_file = MODELS + 'mri_sd_unet_volumes/mri_sd_unet_volumes.hd5'
-    #     args.input_tensors = ['mri_systole_diastole']
-    #     args.output_tensors = ['mri_systole_diastole_segmented', 'corrected_extracted_lvedv', 'corrected_extracted_lvef', 'corrected_extracted_lvesv']
-    #     args.optimizer = 'radam'
-    #     args.test_steps = 32
-    #     args.batch_size = 4
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = test_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'corrected_extracted_lvedv_pearson': 0.6844248954350666, 'corrected_extracted_lvef_pearson': 0.4995376682046898,
-    #                 'corrected_extracted_lvesv_pearson': 0.6096212678064499}
-    #
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-    #
-    # def test_mri_systole_diastole_8_segment(self):
-    #     delta = 1e-1
-    #     args = parse_args()
-    #     args.tensors = ALL_TENSORS
-    #     args.model_file = MODELS + 'mri_sd8_unet/mri_sd8_unet.hd5'
-    #     args.input_tensors = ['mri_systole_diastole_8_weighted']
-    #     args.output_tensors = ['mri_systole_diastole_8_segmented_weighted']
-    #     args.optimizer = 'radam'
-    #     args.test_steps = 12
-    #     args.batch_size = 4
-    #     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    #     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
-    #     performances = test_multimodal_multitask(args)
-    #     print('expected = ', performances)
-    #     expected = {'background': 0.9999999999999999}
-    #     for k in expected:
-    #         self.assertAlmostEqual(performances[k], expected[k], delta=delta)
-
 
 # Back to the top!
 if '__main__' == __name__:
