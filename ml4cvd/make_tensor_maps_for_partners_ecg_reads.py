@@ -19,7 +19,7 @@ def _clean_label_string(string):
     return string
 
 
-def _write_tmap_to_py(py_file, label_maps, channel_maps):
+def _write_tmap_to_py(py_file, label_maps, channel_maps, keys_in_hd5):
     '''Given label_maps (which associates labels with source phrases)
        and channel_maps (which associates labels with unique sublabels),
        define the tensormaps to associate source phrases with precise labels,
@@ -44,10 +44,11 @@ def _write_tmap_to_py(py_file, label_maps, channel_maps):
 
         cm += '}'
 
-        py_file.write(f"TMAPS['{prefix}_{label}'] = TensorMap('{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}({label_maps[label]})) \n\n")
+        for key_in_hd5 in keys_in_hd5:
+            py_file.write(f"TMAPS['{PREFIX}_{key_in_hd5}_{label}'] = TensorMap('{PREFIX}_{key_in_hd5}_{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(key_in_hd5='{key_in_hd5}', dict_of_list = {label_maps[label]})) \n\n")
 
 
-def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir):
+def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
     # Iterate through all files in the partners CSV labels folder
     for file in os.listdir(partners_ecg_label_dir):
 
@@ -109,18 +110,9 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir):
                     # create a new list and initialize with the source phrase
                     else:
                         label_maps[task][label_str] = [row[0]]
-                # ???
                 else:
-                    #print('===== prefix:', prefix, '=====')
-                    
-                    # TODO I don't think we need to call join because the label_str
-                    # should already be a single string with spaces replaced by
-                    # JOIN_CHARs
-
                     # Join elements in prefix list by JOIN_CHAR
                     prefix_merged = JOIN_CHAR.join(prefix)
-
-                    # ?
                     channel_maps[prefix_merged].add(label_str)
 
                     if label_str in label_maps[prefix_merged]:
@@ -132,7 +124,7 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir):
 
                 prefix.append(label_str)
 
-        _write_tmap_to_py(py_file, label_maps, channel_maps)
+        _write_tmap_to_py(py_file, label_maps, channel_maps, keys_in_hd5)
 
     print(f"Created TMAPS from CSV files and saved in {SCRIPT_NAME}")
 
@@ -143,8 +135,10 @@ if __name__ == '__main__':
     subdir = 'partners_ecg/partners_ecg_labeling'
     fpath_csv_dir = os.path.join(fpath_dropbox, subdir)
     
+    # List of keys in HD5 file to parse (that contain the reads)
+    keys_in_hd5 = ["read_md_clean", "read_pc_clean"]
 
     # Open the python script, parse the .csv label maps,
     # and create code that creates TensorMaps
     with open(SCRIPT_NAME, 'w') as py_file:
-        _write_partners_ecg_tmap_script(py_file, fpath_csv_dir)
+        _write_partners_ecg_tmap_script(py_file, fpath_csv_dir, keys_in_hd5)
