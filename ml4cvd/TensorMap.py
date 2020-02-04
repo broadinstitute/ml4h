@@ -208,17 +208,11 @@ class TensorMap(object):
     def axes(self):
         return len(self.shape)
 
-    def hd5_key_guess(self, hd5):
-        if self.path_prefix is None and self.name in hd5:
+    def hd5_key_guess(self):
+        if self.path_prefix is None:
             return f'/{self.name}/'
-        elif self.path_prefix is None:
-            return False
-        elif self.path_prefix in hd5 and self.name in hd5[self.path_prefix]:
-            return f'/{self.path_prefix}/{self.name}/'
-        elif self.path_prefix in hd5:
-            return f'/{self.path_prefix}/'
         else:
-            return False
+            return f'/{self.path_prefix}/{self.name}/'
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
         if key_prefix not in hd5:
@@ -328,8 +322,8 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     if tm.is_categorical():
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess(hd5):
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))
+        if tm.hd5_key_guess() in hd5:
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
                 index = int(data[0])
                 categorical_data[index] = 1.0
@@ -337,30 +331,30 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 categorical_data = np.array(data)
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
-        # elif tm.hd5_key_guess(hd5) and tm.channel_map is not None:
-        #     for k in tm.channel_map:
-        #         if k in hd5[tm.hd5_key_guess(hd5)]:
-        #             categorical_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess(hd5)][k][0]
+        elif tm.path_prefix in hd5 and tm.channel_map is not None:
+            for k in tm.channel_map:
+                if k in hd5[tm.path_prefix]:
+                    categorical_data[tm.channel_map[k]] = hd5[tm.path_prefix][k][0]
         else:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess(hd5):
+        if tm.hd5_key_guess() in hd5:
             missing = False
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.axes() > 1:
                 continuous_data = np.array(data)
             elif hasattr(data, "__shape__"):
                 continuous_data[0] = data[0]
             else:
                 continuous_data[0] = data[()]
-        if missing and tm.channel_map is not None and tm.hd5_key_guess(hd5):
+        if missing and tm.channel_map is not None and tm.hd5_key_guess() in hd5:
             for k in tm.channel_map:
-                if k in hd5[tm.hd5_key_guess(hd5)]:
+                if k in hd5[tm.hd5_key_guess()]:
                     missing = False
-                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess(hd5)][k][0]
+                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
         elif missing:

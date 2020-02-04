@@ -146,8 +146,8 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
     def _prevalent_incident_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess(hd5):
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))
+        if tm.hd5_key_guess() in hd5:
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
                 index = int(data[0])
                 categorical_data[index] = 1.0
