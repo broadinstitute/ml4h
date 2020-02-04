@@ -625,24 +625,16 @@ def make_partners_ecg_voltage(population_normalize: float = None):
 
 
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
-                                  shape=(2500, 12),
-                                  group='continuous',
-                                  channel_map=ECG_REST_AMP_LEADS,
-                                  tensor_from_file=make_partners_ecg_voltage())
-
-TMAPS['partners_ecg_voltage_raw'] = TensorMap('partners_ecg_voltage_raw',
                                         shape=(12, 2500),
                                         group='continuous',
                                         tensor_from_file=make_partners_ecg_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
 
-KEY_READ = 'read_md_clean'
-    
-def make_partners_ecg_reads(dict_of_list: Dict = dict(), not_found_key: str = "unspecified", return_read: bool = False):
+def make_partners_ecg_reads(key_in_hd5: str = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified", return_read: bool = False):
     def partners_ecg_reads_from_file(tm, hd5, dependents={}):
-        read = _decompress_data(data_compressed=hd5[KEY_READ][()],
-                                dtype=hd5[KEY_READ].attrs['dtype'])
+        read = _decompress_data(data_compressed=hd5[key_in_hd5][()],
+                                dtype=hd5[key_in_hd5].attrs['dtype'])
         if return_read:
             return read
         
@@ -656,15 +648,22 @@ def make_partners_ecg_reads(dict_of_list: Dict = dict(), not_found_key: str = "u
         return categorical_data
     return partners_ecg_reads_from_file
 
-
 group = "string" 
-task = "partners_ecg_get_read"
+task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.STRING,
-                        tensor_from_file=make_partners_ecg_reads(return_read=True),
+                        tensor_from_file=make_partners_ecg_reads(
+                            key_in_hd5="read_md_clean", return_read=True),
                         shape=(1,))
-#                        channel_map={'': 0})
+
+task = "partners_ecg_read_pc_raw"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_reads(
+                            key_in_hd5="read_pc_clean", return_read=True),
+                        shape=(1,))
 
 
 def make_partners_ecg_intervals(population_normalize=None):
