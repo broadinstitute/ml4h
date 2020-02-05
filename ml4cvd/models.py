@@ -668,7 +668,7 @@ def _build_decoder(
 
         conv_label = conv_layer(tm.shape[-1], _one_by_n_kernel(tm.axes()), activation="linear")(last_conv)
         return Activation(tm.activation, name=tm.output_name())(conv_label)
-    elif tm.is_categorical_any():
+    elif tm.is_categorical():
         return Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
     else:
         return Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)
@@ -757,6 +757,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     layers = {}
     mlp_inputs = []
 
+    last_conv = None
     for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
         if tm.axes() > 1:
             last_conv = _build_convolutional_encoder(
