@@ -629,6 +629,7 @@ def _build_bottleneck(
 def _build_decoder(
         tm: TensorMap,
         multimodal_activation: K.placeholder,
+        last_conv: K.placeholder,
         layers: Dict[str, Layer],
         losses: List[str],
         loss_weights: List[float],
@@ -782,6 +783,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                 pool_type,
                 padding,
             )
+            last_conv = decoder_out
         else:
             decoder_out = _build_mlp_encoder(
                 input_tensor,
@@ -821,6 +823,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
         output_predictions[tm] = _build_decoder(
             tm,
             multimodal_activation,
+            last_conv,  # TODO: this should be unnecessary
             layers,
             losses,
             loss_weights,
