@@ -575,7 +575,7 @@ def _build_convolutional_encoder(
     dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
     last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
                              conv_regularize, conv_dropout)
-    return Flatten()(last_conv)
+    return last_conv
 
 
 def _build_mlp_encoder(
@@ -759,7 +759,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
 
     for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
         if len(tm.shape) > 1:
-            decoder_out = _build_convolutional_encoder(
+            last_conv = _build_convolutional_encoder(
                 input_tensor,
                 tm,
                 layers,
@@ -783,7 +783,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                 pool_type,
                 padding,
             )
-            last_conv = decoder_out
+            decoder_out = Flatten(last_conv)
         else:
             decoder_out = _build_mlp_encoder(
                 input_tensor,
