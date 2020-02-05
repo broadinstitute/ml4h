@@ -285,7 +285,7 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     else:
         target_layer = parent_model.get_layer(output_layer_name)
     parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    dummy_input = {tm.input_name(): np.zeros((1,) + tuple(parent_model.get_layer(tm.input_name()).input_shape[1:])) for tm in tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input)
