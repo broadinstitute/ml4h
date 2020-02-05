@@ -566,14 +566,14 @@ def _build_convolutional_encoder(
         pool_type: int = None,
         padding: str = None,
 ) -> K.placeholder:
-    conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
-    pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-    last_conv = _conv_block_new(input_tensor, layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
+    conv_fxns = _conv_layers_from_kind_and_dimension(tm.axes(), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
+    pool_layers = _pool_layers_from_kind_and_dimension(tm.axes(), pool_type, len(max_pools), pool_x, pool_y, pool_z)
+    last_conv = _conv_block_new(input_tensor, layers, conv_fxns, pool_layers, tm.axes(), activation, conv_normalize, conv_regularize,
                                 conv_dropout, None)
-    dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
+    dense_conv_fxns = _conv_layers_from_kind_and_dimension(tm.axes(), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
                                                            block_size)
-    dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-    last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
+    dense_pool_layers = _pool_layers_from_kind_and_dimension(tm.axes(), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
+    last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, tm.axes(), activation, conv_normalize,
                              conv_regularize, conv_dropout)
     return last_conv
 
@@ -652,21 +652,21 @@ def _build_decoder(
     loss_weights.append(tm.loss_weight)
     my_metrics[tm.output_name()] = tm.metrics
 
-    if len(tm.shape) > 1:
+    if tm.axes() > 1:
         all_filters = conv_layers + dense_blocks
-        conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
+        conv_layer, kernel = _conv_layer_from_kind_and_dimension(tm.axes(), conv_type, conv_width, conv_x, conv_y, conv_z)
         for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
             early_conv = _get_last_layer_by_kind(layers, 'Conv', int(name.split(JOIN_CHAR)[-1]))
             if u_connect:
-                last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
+                last_conv = _upsampler(tm.axes(), pool_x, pool_y, pool_z)(last_conv)
                 last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
                 last_conv = _activation_layer(activation)(last_conv)
                 last_conv = concatenate([last_conv, early_conv])
             else:
-                last_conv = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(last_conv)
+                last_conv = _upsampler(tm.axes(), pool_x, pool_y, pool_z)(last_conv)
                 last_conv = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)(last_conv)
 
-        conv_label = conv_layer(tm.shape[-1], _one_by_n_kernel(len(tm.shape)), activation="linear")(last_conv)
+        conv_label = conv_layer(tm.shape[-1], _one_by_n_kernel(tm.axes()), activation="linear")(last_conv)
         return Activation(tm.activation, name=tm.output_name())(conv_label)
     elif tm.is_categorical_any():
         return Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
@@ -758,7 +758,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     mlp_inputs = []
 
     for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
-        if len(tm.shape) > 1:
+        if tm.axes() > 1:
             last_conv = _build_convolutional_encoder(
                 input_tensor,
                 tm,
