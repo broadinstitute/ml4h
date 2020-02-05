@@ -783,7 +783,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                 pool_type,
                 padding,
             )
-            decoder_out = Flatten(last_conv)
+            decoder_out = Flatten()(last_conv)
         else:
             decoder_out = _build_mlp_encoder(
                 input_tensor,
