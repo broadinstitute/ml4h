@@ -63,6 +63,9 @@ TMAPS['qrs-num'] = TensorMap('QRSNum', Interpretation.CONTINUOUS, source='contin
                              normalization={'mean': 9.61, 'std': 1.64})
 TMAPS['qt-interval'] = TensorMap('QTInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                  normalization={'mean': 426.1, 'std': 32.24})
+TMAPS['qt-interval-quintiles'] = TensorMap('QTIntervalQuantile', Interpretation.DISCRETIZED, source='continuous',
+                                           channel_map={'QTInterval': 0}, normalization={'mean': 426.1, 'std': 32.24},
+                                           discretization_boundaries=[-0.842, -0.253, 0.253, 0.842])
 TMAPS['qtc-interval'] = TensorMap('QTCInterval', Interpretation.CONTINUOUS, source='continuous', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
                                   normalization={'mean': 419.1, 'std': 20.7})
 TMAPS['r-axis'] = TensorMap('RAxis', Interpretation.CONTINUOUS, source='continuous', channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),

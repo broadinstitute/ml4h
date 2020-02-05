@@ -187,7 +187,7 @@ def infer_multimodal_multitask(args):
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
             if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
-            elif len(otm.shape) == 1 and otm.is_categorical():
+            elif len(otm.shape) == 1 and (otm.is_categorical() or otm.is_discretized()):
                 channel_columns = []
                 for k in otm.channel_map:
                     channel_columns.append(ot + '_' + k + '_prediction')
@@ -214,7 +214,7 @@ def infer_multimodal_multitask(args):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-                elif len(tm.shape) == 1 and tm.is_categorical():
+                elif len(tm.shape) == 1 and (tm.is_categorical() or tm.is_discretized()):
                     for k in tm.channel_map:
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         actual = true_label[tm.output_name()][0][i]
@@ -531,13 +531,13 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
 
-        if tm.is_categorical() and tm.axes() == 1:
+        if (tm.is_categorical() or tm.is_discretized()) and tm.axes() == 1:
             msg = "For tm '{}' with channel map {}: sum truth = {}; sum pred = {}"
             for m in predictions[tm]:
                 logging.info(msg.format(tm.name, tm.channel_map, np.sum(outputs[tm.output_name()], axis=0), np.sum(predictions[tm][m], axis=0)))
             plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
-        elif tm.is_categorical() and tm.axes() == 4:
+        elif (tm.is_categorical() or tm.is_discretized()) and tm.axes() == 4:
             for p in predictions[tm]:
                 y = predictions[tm][p]
                 melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])

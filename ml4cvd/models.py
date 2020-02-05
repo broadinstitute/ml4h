@@ -695,7 +695,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
             parented_activation = concatenate([multimodal_activation] + [output_predictions[p] for p in tm.parents])
             parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
             output_predictions[tm] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
-        elif tm.is_categorical():
+        elif tm.is_categorical() or tm.is_discretized():
             output_predictions[tm] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(multimodal_activation)
         else:
             output_predictions[tm] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(multimodal_activation)

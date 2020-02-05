@@ -38,6 +38,7 @@ class Interpretation(Enum):
     EMBEDDING = auto()
     LANGUAGE = auto()
     COX_PROPORTIONAL_HAZARDS = auto()
+    DISCRETIZED = auto()
 
     def __str__(self):
         """class Interpretation.FLOAT_ARRAY becomes float_array"""
@@ -74,6 +75,7 @@ class TensorMap(object):
                  normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
                  annotation_units: Optional[int] = 32,
                  tensor_from_file: Optional[Callable] = None,
+                 discretization_boundaries: Optional[List[float]] = None,
                  ):
         """TensorMap constructor
 
@@ -97,6 +99,8 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
+        :param discretization_boundaries: List of floats that delineate the boundaries of the bins that will be used
+                                          for producing categorical values from continuous values
         """
         self.name = name
         self.interpretation = interpretation
@@ -118,16 +122,17 @@ class TensorMap(object):
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
+        self.discretization_boundaries = discretization_boundaries
 
         if self.shape is None:
             self.shape = (len(channel_map),)
 
-        if self.activation is None and self.is_categorical():
+        if self.activation is None and (self.is_categorical() or self.is_discretized()):
             self.activation = 'softmax'
         elif self.activation is None and self.is_continuous():
             self.activation = 'linear'
 
-        if self.loss is None and self.is_categorical():
+        if self.loss is None and (self.is_categorical() or self.is_discretized()):
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
@@ -142,7 +147,7 @@ class TensorMap(object):
         elif self.loss is None:
             self.loss = 'mse'
 
-        if self.metrics is None and self.is_categorical():
+        if self.metrics is None and (self.is_categorical() or self.is_discretized()):
             self.metrics = ['categorical_accuracy']
             if self.axes() == 1:
                 self.metrics += per_class_precision(self.channel_map)
@@ -166,6 +171,13 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x: x
+
+        if self.discretization_boundaries is not None:
+            self.input_shape = self.shape
+            self.input_channel_map = self.channel_map
+            self.shape = tuple(len(self.discretization_boundaries)+1 if i == len(self.input_shape)-1 else c for i, c in
+                               enumerate(self.input_shape))
+            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_boundaries)+1)}
 
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
@@ -205,6 +217,9 @@ class TensorMap(object):
 
     def is_cox_proportional_hazard(self):
         return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
+
+    def is_discretized(self):
+        return self.interpretation == Interpretation.DISCRETIZED
 
     def axes(self):
         return len(self.shape)
@@ -308,6 +323,30 @@ def _get_name_if_function(field: Any) -> Any:
         return field
 
 
+def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map):
+    missing = True
+    continuous_data = np.zeros(input_shape, dtype=np.float32)
+    if tm.hd5_key_guess() in hd5:
+        missing = False
+        data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+        if tm.axes() > 1:
+            continuous_data = np.array(data)
+        elif hasattr(data, "__shape__"):
+            continuous_data[0] = data[0]
+        else:
+            continuous_data[0] = data[()]
+    if missing and input_channel_map is not None and tm.hd5_key_guess() in hd5:
+        for k in input_channel_map:
+            if k in hd5[tm.hd5_key_guess()]:
+                missing = False
+                continuous_data[input_channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
+    if missing and tm.sentinel is None:
+        raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
+    elif missing:
+        continuous_data[:] = tm.sentinel
+    return continuous_data
+
+
 def _default_tensor_from_file(tm, hd5, dependents={}):
     """Reconstruct a tensor from an hd5 file
 
@@ -336,27 +375,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             raise ValueError(f"No HD5 Key {tm.hd5_key_guess()} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():
-        missing = True
-        continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
-            missing = False
-            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-            if tm.axes() > 1:
-                continuous_data = np.array(data)
-            elif hasattr(data, "__shape__"):
-                continuous_data[0] = data[0]
-            else:
-                continuous_data[0] = data[()]
-        if missing and tm.channel_map is not None and tm.hd5_key_guess() in hd5:
-            for k in tm.channel_map:
-                if k in hd5[tm.hd5_key_guess()]:
-                    missing = False
-                    continuous_data[tm.channel_map[k]] = hd5[tm.hd5_key_guess()][k][0]
-        if missing and tm.sentinel is None:
-            raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value.')
-        elif missing:
-            continuous_data[:] = tm.sentinel
-        return continuous_data
+        return _default_continuous_tensor_from_file(tm, hd5, tm.shape, tm.channel_map)
+    elif tm.is_discretized():
+        continuous_data = _default_continuous_tensor_from_file(tm, hd5, tm.input_shape, tm.input_channel_map)
+        return keras.utils.to_categorical(np.digitize(continuous_data, bins=tm.discretization_boundaries),
+                                          num_classes=len(tm.discretization_boundaries)+1)
     elif tm.is_embedding():
         input_dict = {}
         for input_parent_tm in tm.parents:
