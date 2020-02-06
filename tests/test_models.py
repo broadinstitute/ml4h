@@ -6,18 +6,6 @@ from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation
 
 
-
-tmap_continuous_1d = TensorMap('1d', shape=(2,), interpretation=Interpretation.CONTINUOUS)
-tmap_continuous_2d = TensorMap('2d', shape=(2, 3), interpretation=Interpretation.CONTINUOUS)
-tmap_continuous_3d = TensorMap('3d', shape=(2, 3, 4), interpretation=Interpretation.CONTINUOUS)
-tmap_continuous_4d = TensorMap('4d', shape=(2, 3, 4, 5), interpretation=Interpretation.CONTINUOUS)
-
-tmap_categorical_1d = TensorMap('1d_cat', channel_map={}, shape=(2,), interpretation=Interpretation.CATEGORICAL)
-tmap_categorical_2d = TensorMap('2d_cat', channel_map={}, shape=(2, 3), interpretation=Interpretation.CATEGORICAL)
-tmap_categorical_3d = TensorMap('3d_cat', channel_map={}, shape=(2, 3, 4), interpretation=Interpretation.CATEGORICAL)
-tmap_categorical_4d = TensorMap('4d_cat', channel_map={}, shape=(2, 3, 4, 5), interpretation=Interpretation.CATEGORICAL)
-tmap_categorical_5d = TensorMap('5d_cat', channel_map={}, shape=(2, 3, 4, 5, 6), interpretation=Interpretation.CATEGORICAL)
-
 CONTINUOUS_TMAPS = [
     TensorMap(f'{n}d_cont', shape=tuple(range(1, n + 1)), interpretation=Interpretation.CONTINUOUS)
     for n in range(1, 6)
