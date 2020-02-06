@@ -179,6 +179,8 @@ class TensorMap(object):
         if self.validator is None:
             self.validator = lambda tm, x: x
 
+        logging.info(f'TensorMap {self.name} loss {self.loss} metrics {self.metrics} shape {self.shape}')
+
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
 
