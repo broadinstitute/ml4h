@@ -200,6 +200,7 @@ def _process_args(args):
         args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file, args.continuous_file_column,
                                                                              args.output_tensors.pop(0), args.continuous_file_normalize))
     args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+    [logging.info(f'TensorMap {ot.name} loss {ot.loss} metrics {ot.metrics} shape {ot.shape}') for ot in args.tensor_maps_out]
 
     np.random.seed(args.random_seed)
 
