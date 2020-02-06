@@ -5,9 +5,8 @@ import random
 import json
 import numpy
 import h5py
-from datetime import datetime # timestamp
+from datetime import datetime
 import sys
-# import matplotlib.pyplot as pyplot # Plotting
 from ..utils.ingest import open_read_load, str_to_dtype, zstd_compress, zstd_decompress, xml_parse
 from ..utils.ecg import process_waveform, ukbb_ecg_parse_timestamp
 from ..utils.utils import add_hdf5_text_nonempty_int, add_text_nonempty_int, parse_missing_array,xml_extract_value_attributes
@@ -50,9 +49,6 @@ class Importer(object):
         for kwarg in kwargs:
             if kwarg not in allowed_kwargs:
                 raise TypeError('Keyword argument not understood:', kwarg)
-        
-        # name = kwargs.get('name')
-        # self.name = name
 
     @property
     def input_file(self) -> str:
@@ -168,9 +164,9 @@ class Importer(object):
         return f"ML4CVD-{filename.split(os.extsep, 1)[0]}-{hex(random.getrandbits(128))[2:(hex_length+2)]}"
 
 
-class EcgImporter(Importer):
-    def __init__(self, files = None, **kwargs):
-        super(EcgImporter, self).__init__(files, **kwargs)
+class XmlImporter(Importer):
+    def __init__(self, input_file = None, **kwargs):
+        super(XmlImporter, self).__init__(input_file, **kwargs)
         self._modality = 'ecg'
         self._hdf5_basepath = 'instance0'
 
@@ -194,7 +190,7 @@ class EcgImporter(Importer):
                 dat_name = field_name + '-' + str(g[field_name].attrs['depth'])
 
                 # Store dataset
-                dat = self._store_dataset(g, dat_name, data, None, 19)
+                dat = self._store_hdf5_dataset(g, dat_name, data, None, 19)
 
                 # Lift over attributes
                 for a in g[field_name].attrs:
@@ -205,11 +201,11 @@ class EcgImporter(Importer):
             # Key is not available in HDF5 file
             else:
                 # Store dataset
-                dat = self._store_dataset(g, field_name, data, None, 19)
+                dat = self._store_hdf5_dataset(g, field_name, data, None, 19)
                 dat.attrs['depth']  = 1
                 dat.attrs['origin'] = (path + '/' + field_name).encode()
 
-    def _store_dataset(self, group: h5py.Group, dataset_name, data, mapper: dict, compression_level = 19):
+    def _store_hdf5_dataset(self, group: h5py.Group, dataset_name, data, mapper: dict, compression_level = 19):
         """Store data in a HDF5 dataset. Data will be compressed uisng Zstd if the
         compressed data is smaller compared to the input data. This cost/trade-off
         ignores the significant overhead of storing meta information in the HDF5
@@ -352,7 +348,7 @@ class EcgImporter(Importer):
                                 dat_name = v + '-' + str(g[v].attrs['depth'])
 
                                 # Store dataset
-                                dat = self._store_dataset(g, dat_name, l[v], mapper[v], 19)
+                                dat = self._store_hdf5_dataset(g, dat_name, l[v], mapper[v], 19)
 
                                 # Lift over attributes
                                 for a in g[v].attrs:
@@ -372,7 +368,7 @@ class EcgImporter(Importer):
                             # Key is not available in HDF5 file
                             else:
                                 # Store dataset
-                                dat = self._store_dataset(g, v, l[v], mapper[v], 19)
+                                dat = self._store_hdf5_dataset(g, v, l[v], mapper[v], 19)
                                 dat.attrs['depth']  = 1
                                 dat.attrs['origin'] = (path + '/' + v).encode()
                                 self._mapped_paths.append(dat.attrs['origin'].decode())
@@ -410,7 +406,7 @@ class EcgImporter(Importer):
                     
                     # print(f"final {xml[v]} at {path + '/' + v}")
                     g = self._file.require_group(name = gname)
-                    dat = self._store_dataset(g, v, xml[v], mapper[v], 19)
+                    dat = self._store_hdf5_dataset(g, v, xml[v], mapper[v], 19)
                     dat.attrs['depth']  = 1
                     dat.attrs['origin'] = (path + '/' + v).encode()
                     self._mapped_paths.append(dat.attrs['origin'].decode())
@@ -478,7 +474,6 @@ class EcgImporter(Importer):
                     # Store data
                     self._store_unique_dataset(path, v, xml[v])
 
-    # TODO: not part of importer but used during debugging
     def voltage_postprocessing(self, 
                             sample_rate: int = 500, 
                             wiggle_room: int = 50, 
@@ -538,7 +533,7 @@ class EcgImporter(Importer):
         processed_data_len = []
         processed_data_b = bytes()
         peaks_len = []
-        peaks_b = bytes()
+        peaks_b   = bytes()
 
         for idx, d in enumerate(parsed_data):
             processed, peaks_x, peaks_y = process_waveform(d, sample_rate = 150)
@@ -611,8 +606,6 @@ class EcgImporter(Importer):
                     self.input_callbacks.append(xml_parse)
                     # Parse UKBB data
                     self.input_callbacks.append(self.parse_ukbb_xml)
-                    # Parse
-                    # self.build_callbacks.append(self.voltage_postprocessing)
 
             # Iterate over input callbacks
             if len(self.input_callbacks):
@@ -643,6 +636,7 @@ class EcgImporter(Importer):
             print('Already built')
         self._built = True
 
+    # TODO: not part of importer but used during debugging
     def retrieve_processed_data(self):
         """Returns processed data as either a numpy.ndarray if all data is
         of equal lengths or an array of numpy.ndarrays if the shapes are
@@ -824,7 +818,7 @@ class EcgImporter(Importer):
                 # Compress data using Blosc using Zstd. This approach
                 # median_samples.create_dataset(name, data = s, **hdf5plugin.Blosc(cname='zstd', clevel=1, shuffle=hdf5plugin.Blosc.SHUFFLE))
                 # Store data
-                dat = self._store_dataset(median_samples, name, s, None, 19)
+                dat = self._store_hdf5_dataset(median_samples, name, s, None, 19)
 
 
         if 'f' in xml['CardiologyXML']:
@@ -872,7 +866,7 @@ class EcgImporter(Importer):
             # Cast the array into signed 16-bit integers.
             s = s.astype("int16")
             # Store data
-            dat = self._store_dataset(strip_wave, name, s, None, 19)
+            dat = self._store_hdf5_dataset(strip_wave, name, s, None, 19)
 
         strip_data.create_dataset('NumberOfLeads', data = int(target['NumberOfLeads']))
         strip_data.create_dataset('SampleRate',    data = add_text_nonempty_int(xml_extract_value_attributes(target['SampleRate'])['data']))

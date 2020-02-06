@@ -9,7 +9,7 @@ import pdb
 def example1():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml.zst'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.build(preset = 'ukbb', compression = 'zstd')
     print(imp._input_file)
@@ -19,7 +19,7 @@ def example1():
 def example2():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.build(preset = 'ukbb', compression = 'none')
     print(imp._input_file)
@@ -29,7 +29,7 @@ def example2():
 def example3():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml.zst'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.build(preset = 'ukbb', compression = 'zstd')
     print(imp._input_file)
@@ -39,7 +39,7 @@ def example3():
 def example4():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
@@ -60,7 +60,7 @@ def example4():
 def example5():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
@@ -81,7 +81,7 @@ def example5():
 def example6():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
@@ -102,7 +102,7 @@ def example6():
 def example7():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
@@ -123,7 +123,7 @@ def example7():
 def example8():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
@@ -144,7 +144,7 @@ def example8():
 def example9():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
@@ -165,7 +165,7 @@ def example9():
 def example10():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml.zst'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.zstd_decompress,
@@ -187,7 +187,7 @@ def example10():
 def example11():
     cur_path = pathlib.Path(__file__).parent.absolute()
     filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml.zst'
-    imp = tensormap.ingest.importer.EcgImporter(filename)
+    imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.zstd_decompress,
