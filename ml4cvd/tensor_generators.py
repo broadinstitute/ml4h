@@ -21,7 +21,7 @@ from collections import Counter
 from multiprocessing import Process, Queue
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any
-
+from keras.utils import to_categorical
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -253,6 +253,9 @@ class _MultiModalMultiTaskWorker:
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.normalize_and_validate(tm.tensor_from_file(tm, self.hd5, self.dependents))
+        if tm.is_discretized():
+            tensor = to_categorical(np.digitize(tensor, bins=tm.discretization_boundaries),
+                                    num_classes=len(tm.discretization_boundaries)+1)
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
