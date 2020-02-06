@@ -1,6 +1,5 @@
 import pytest
 
-import keras
 import keras.backend as K
 
 from ml4cvd.models import make_multimodal_multitask_model
@@ -58,7 +57,7 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
 
 def layer_shape(layer):
     shape = K.int_shape(layer)
-    if shape[0] == None:
+    if shape[0] is None:
         shape = shape[1:]
     return shape
 
@@ -71,17 +70,16 @@ class TestMakeMultimodalMultitaskModel:
     )
     @pytest.mark.parametrize(
         'output_tmap',
-        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
-        )
-    def test_unimodal_unitask(self, input_tmap: TensorMap, output_tmap: TensorMap):
+        CATEGORICAL_TMAPS[:1] + CONTINUOUS_TMAPS[:1],
+    )
+    def test_unimodal_1d_task(self, input_tmap: TensorMap, output_tmap: TensorMap):
         m = make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
             **DEFAULT_PARAMS,
         )
-
-        assert layer_shape(m.input) == input_tmap.shape
-        assert m.output_shape[1:] == output_tmap.shape  # m.output_shape begins with None
+        assert m.input_shape[1:] == input_tmap.shape
+        assert m.output_shape[1:] == output_tmap.shape
         assert m.input_names[0] == input_tmap.input_name()
         assert m.output_names[0] == output_tmap.output_name()
 
@@ -93,9 +91,44 @@ class TestMakeMultimodalMultitaskModel:
         'output_tmap',
         CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
     )
-    def test_input_too_high_dimensionsal(self, input_tmap, output_tmap):
+    def test_input_too_high_dimensional(self, input_tmap, output_tmap):
         with pytest.raises(ValueError):
-            m = make_multimodal_multitask_model(
+            make_multimodal_multitask_model(
+                [input_tmap],
+                [output_tmap],
+                **DEFAULT_PARAMS,
+            )
+
+    @pytest.mark.parametrize(
+        'input_tmap',
+        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
+    )
+    @pytest.mark.parametrize(
+        'output_tmap',
+        CATEGORICAL_TMAPS[-1:] + CONTINUOUS_TMAPS[-1:],
+    )
+    def test_output_too_high_dimensional(self, input_tmap, output_tmap):
+        with pytest.raises(ValueError):
+            make_multimodal_multitask_model(
+                [input_tmap],
+                [output_tmap],
+                **DEFAULT_PARAMS,
+            )
+
+    @pytest.mark.parametrize(
+        'input_tmap',
+        CATEGORICAL_TMAPS[:1] + CONTINUOUS_TMAPS[:1],
+    )
+    @pytest.mark.parametrize(
+        'output_tmap',
+        CATEGORICAL_TMAPS[-1:] + CONTINUOUS_TMAPS[-1:],
+    )
+    def test_1d_to_nd(self, input_tmap, output_tmap):
+        """
+        This is a test we would like to pass, but fails now
+        """
+        with pytest.raises(UnboundLocalError):
+            make_multimodal_multitask_model(
                 [input_tmap],
                 [output_tmap],
                 **DEFAULT_PARAMS,
