@@ -193,8 +193,8 @@ class XmlImporter(Importer):
                 dat = self._store_hdf5_dataset(g, dat_name, data, None, 19)
 
                 # Lift over attributes
-                for a in g[field_name].attrs:
-                    dat.attrs[a] = g[field_name].attrs[a]
+                #for a in g[field_name].attrs:
+                #    dat.attrs[a] = g[field_name].attrs[a]
                 
                 dat.attrs['origin'] = (path + '/' + field_name).encode()
 
@@ -205,7 +205,12 @@ class XmlImporter(Importer):
                 dat.attrs['depth']  = 1
                 dat.attrs['origin'] = (path + '/' + field_name).encode()
 
-    def _store_hdf5_dataset(self, group: h5py.Group, dataset_name, data, mapper: dict, compression_level = 19):
+    def _store_hdf5_dataset(self, 
+                            group: h5py.Group, 
+                            dataset_name: str, 
+                            data, 
+                            mapper: dict, 
+                            compression_level = 19):
         """Store data in a HDF5 dataset. Data will be compressed uisng Zstd if the
         compressed data is smaller compared to the input data. This cost/trade-off
         ignores the significant overhead of storing meta information in the HDF5
@@ -213,7 +218,7 @@ class XmlImporter(Importer):
         
         Arguments:
             group {h5py.Group} -- Target HDF5 group to add new dataset to
-            dataset_name {[type]} -- Name for the new dataset
+            dataset_name {str} -- Name for the new dataset
             data {[type]} -- Data to store
             mapper {dict} -- Mapper dictionary if used
         
@@ -247,9 +252,12 @@ class XmlImporter(Importer):
             #     print(f"is numpy type: using uncompressed {data.size * data.itemsize}")
 
             dat = group.create_dataset(dataset_name, data = data)
-            dat.attrs['len']   = data.size
-            if clen < ulen: dat.attrs['compression'] = 'zstd'
-            else: dat.attrs['compression'] = 'none'
+            dat.attrs['len'] = data.size
+            if clen < ulen: 
+                dat.attrs['compression'] = 'zstd'
+            else: 
+                dat.attrs['compression'] = 'none'
+            
             dat.attrs['uncompressed_size'] = ulen
             dat.attrs['compressed_size']   = clen
             dat.attrs['shape'] = data.shape
@@ -264,14 +272,17 @@ class XmlImporter(Importer):
             # type.
             if clen < ulen:
                 dat = group.create_dataset(dataset_name, data = numpy.void(compressed))
+                dat.attrs['dtype'] = "bstr"
+                dat.attrs['compression'] = 'zstd'
             else:
-                dat = group.create_dataset(dataset_name, data = data, dtype = h5py.string_dtype(encoding='ascii'))
+                print(f"clen >= ulen. {clen} >= {ulen} for {data} for {dataset_name}")
+                dat = group.create_dataset(dataset_name, data = numpy.void(data.encode()))
+                dat.attrs['dtype'] = "str"
+                dat.attrs['compression'] = 'none'
                 clen = ulen
-                
-            dat.attrs['dtype'] = "bstr"
+                print(f"{dataset_name}: {dat.attrs['dtype']}, {dat.attrs['compression']}, {bytes(dat[()]).decode()}")
+            
             dat.attrs['len']   = len(data)
-            if clen < ulen: dat.attrs['compression'] = 'zstd'
-            else: dat.attrs['compression'] = 'none'
             dat.attrs['uncompressed_size'] = ulen
             dat.attrs['compressed_size']   = clen
         # All other cases
@@ -284,10 +295,17 @@ class XmlImporter(Importer):
             else: clen = ulen
             dat = group.create_dataset(dataset_name, data = data)
 
-            dat.attrs['dtype'] = mapper['dtype']
-            dat.attrs['len']   = len(data)
-            if clen < ulen: dat.attrs['compression'] = 'zstd'
-            else: dat.attrs['compression'] = 'none'
+            dat.attrs['len'] = len(data)
+            if clen < ulen: 
+                dat.attrs['compression'] = 'zstd'
+                if mapper['dtype'] == 'str':
+                    dat.attrs['dtype'] = "bstr"
+                else:
+                    dat.attrs['dtype'] = mapper['dtype']
+            else: 
+                dat.attrs['compression'] = 'none'
+                dat.attrs['dtype'] = mapper['dtype']
+
             dat.attrs['uncompressed_size'] = ulen
             dat.attrs['compressed_size']   = clen
         
@@ -351,8 +369,8 @@ class XmlImporter(Importer):
                                 dat = self._store_hdf5_dataset(g, dat_name, l[v], mapper[v], 19)
 
                                 # Lift over attributes
-                                for a in g[v].attrs:
-                                    dat.attrs[a] = g[v].attrs[a]                                        
+                                # for a in g[v].attrs:
+                                #     dat.attrs[a] = g[v].attrs[a]                                        
                                 
                                 dat.attrs['origin'] = (path + '/' + v).encode()
                                 self._mapped_paths.append(dat.attrs['origin'].decode())
