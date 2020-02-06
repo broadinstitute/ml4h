@@ -127,6 +127,13 @@ class TensorMap(object):
         if self.shape is None:
             self.shape = (len(channel_map),)
 
+        if self.discretization_boundaries is not None:
+            self.input_shape = self.shape
+            self.input_channel_map = self.channel_map
+            self.shape = tuple(len(self.discretization_boundaries)+1 if i == len(self.input_shape)-1 else c for i, c in
+                               enumerate(self.input_shape))
+            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_boundaries)+1)}
+
         if self.activation is None and (self.is_categorical() or self.is_discretized()):
             self.activation = 'softmax'
         elif self.activation is None and self.is_continuous():
@@ -171,13 +178,6 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x: x
-
-        if self.discretization_boundaries is not None:
-            self.input_shape = self.shape
-            self.input_channel_map = self.channel_map
-            self.shape = tuple(len(self.discretization_boundaries)+1 if i == len(self.input_shape)-1 else c for i, c in
-                               enumerate(self.input_shape))
-            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_boundaries)+1)}
 
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
