@@ -108,6 +108,9 @@ class TestMakeMultimodalMultitaskModel:
         CATEGORICAL_TMAPS[-1:] + CONTINUOUS_TMAPS[-1:],
     )
     def test_output_too_high_dimensional(self, input_tmap, output_tmap):
+        """
+        Shows we can't handle >4d tensors.
+        """
         with pytest.raises(ValueError):
             make_multimodal_multitask_model(
                 [input_tmap],
@@ -121,11 +124,12 @@ class TestMakeMultimodalMultitaskModel:
     )
     @pytest.mark.parametrize(
         'output_tmap',
-        CATEGORICAL_TMAPS[-1:] + CONTINUOUS_TMAPS[-1:],
+        CATEGORICAL_TMAPS[1:-1] + CONTINUOUS_TMAPS[1:-1],
     )
     def test_1d_to_nd(self, input_tmap, output_tmap):
         """
-        This is a test we would like to pass, but fails now
+        This is a test we would like to pass, but fails now.
+        Shows we can't go from 1d to >1d.
         """
         with pytest.raises(UnboundLocalError):
             make_multimodal_multitask_model(
