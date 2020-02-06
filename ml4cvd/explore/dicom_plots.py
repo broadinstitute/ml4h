@@ -24,6 +24,7 @@ from IPython.display import display
 from IPython.display import HTML
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
+import ml4cvd.runtime_data_defines as runtime_data_defines
 import numpy as np
 import pydicom
 from scipy.ndimage.morphology import binary_closing
@@ -357,25 +358,22 @@ def choose_mri_series(sample_mri):
       return None
 
 
-def choose_cardiac_mri(sample_id, gcs_folder=None):
+def choose_cardiac_mri(sample_id, folder=None):
   """Render widget to choose the cardiac MRI to plot.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
-    gcs_folder: The local or Cloud Storage folder under which the files reside.
+    folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
     ipywidget or HTML upon error.
   """
-  if gcs_folder is None:
-    if 'fake' in str(sample_id):
-      gcs_folder = DEFAULT_MRI_FOLDERS['fake']
-    else:
-      gcs_folder = DEFAULT_MRI_FOLDERS['ukb']
+  if folder is None:
+    folder = runtime_data_defines.get_cardiac_mri_folder(sample_id)
 
   sample_mri_glob = str(sample_id) + '_*.zip'
   try:
-    sample_mris = tf.io.gfile.glob(pattern=os.path.join(gcs_folder,
+    sample_mris = tf.io.gfile.glob(pattern=os.path.join(folder,
                                                         sample_mri_glob))
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
     return HTML('''

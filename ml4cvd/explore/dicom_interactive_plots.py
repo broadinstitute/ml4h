@@ -22,20 +22,10 @@ from IPython.display import display
 from IPython.display import HTML
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
+import ml4cvd.runtime_data_defines as runtime_data_defines
 import numpy as np
 import pydicom
 import tensorflow as tf
-
-DEFAULT_MRI_FOLDERS = {
-    'fake': [
-        'gs://ml4cvd/projects/fake_mris/',
-        'gs://ml4cvd/projects/fake_brain_mris/',
-        ],
-    'ukb': [
-        'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        'gs://ml4cvd/data/mris/cardiac/'
-        ]
-}
 
 MIN_IMAGE_WIDTH = 8
 DEFAULT_IMAGE_WIDTH = 12
@@ -45,28 +35,25 @@ MIN_COLOR_RANGE = 0
 MAX_COLOR_RANGE = 6000
 
 
-def choose_mri(sample_id, gcs_folder=None):
+def choose_mri(sample_id, folder=None):
   """Render widget to choose the MRI to plot.
 
   Args:
     sample_id: The id of the sample to retrieve.
-    gcs_folder: The local or Cloud Storage folder under which the files reside.
+    folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
     ipywidget or HTML upon error.
   """
-  if gcs_folder is None:
-    if 'fake' in str(sample_id):
-      gcs_folders = DEFAULT_MRI_FOLDERS['fake']
-    else:
-      gcs_folders = DEFAULT_MRI_FOLDERS['ukb']
+  if folder is None:
+    folders = runtime_data_defines.get_mri_folders(sample_id)
   else:
-    gcs_folders = [gcs_folder]
+    folders = [folder]
 
   sample_mris = []
   sample_mri_glob = str(sample_id) + '_*.zip'
   try:
-    for folder in gcs_folders:
+    for folder in folders:
       sample_mris.extend(
           tf.io.gfile.glob(pattern=os.path.join(folder, sample_mri_glob)))
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
@@ -288,7 +275,7 @@ def dicom_animation(dicoms, series_name, instance, vmin, vmax, transpose,
             vmax=vmax)
   ax.set_title(title_prefix
                + ', Series: ' + dcm.SeriesDescription
-               + ', SeriesNumber: ' + str(dcm.SeriesNumber)
+               + ', Series Number: ' + str(dcm.SeriesNumber)
                + ', Instance: ' + str(dcm.InstanceNumber)
                + '\nColor range: ' + str(vmin) + '-' + str(vmax)
                + ', Transpose: ' + str(transpose)

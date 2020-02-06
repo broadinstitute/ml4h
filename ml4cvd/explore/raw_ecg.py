@@ -4,15 +4,10 @@ import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
+import ml4cvd.runtime_data_defines as runtime_data_defines
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
-DEFAULT_RESTING_ECG_HD5_FOLDERS = {
-    'fake': 'gs://ml4cvd/projects/fake_ecgs/',
-    'ukb': 'gs://ml4cvd/rest-ecg-hd5s/2019-11-19/'
-}
-DEFAULT_RAW_EXERCISE_DATA_PATH = 'gs://uk-biobank-sek-data-ttl-one-week/fc-bccc59a1-eb3e-456c-99f7-19593d55c953/ecg-rest-and-bike-with-trend-tensors/'
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
@@ -20,7 +15,7 @@ RESTING_SIGNAL_LENGTH = 5000
 EXERCISE_SIGNAL_LENGTH = 30000
 
 
-def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
+def reshape_resting_ecg_to_tidy(sample_id, folder=None):
   """Wrangle raw resting ECG data to tidy.
 
   TODO:
@@ -28,16 +23,13 @@ def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
-    gcs_folder: The local or Cloud Storage folder under which the files reside.
+    folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
     A pandas dataframe in tidy format or a notebook-friendly error.
   """
-  if gcs_folder is None:
-    if 'fake' in str(sample_id):
-      gcs_folder = DEFAULT_RESTING_ECG_HD5_FOLDERS['fake']
-    else:
-      gcs_folder = DEFAULT_RESTING_ECG_HD5_FOLDERS['ukb']
+  if folder is None:
+    folder = runtime_data_defines.get_resting_ecg_hd5_folder(sample_id)
 
   data = {'lead': [], 'raw': [], 'ts_reference': [],
           'filtered': [], 'filtered_1': [], 'filtered_2': []}
@@ -46,7 +38,7 @@ def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
     sample_hd5 = str(sample_id) + '.hd5'
     local_path = os.path.join(tmpdirname, sample_hd5)
     try:
-      tf.io.gfile.copy(src=os.path.join(gcs_folder, sample_hd5),
+      tf.io.gfile.copy(src=os.path.join(folder, sample_hd5),
                        dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
       print('Warning: Resting ECG raw signal not available for sample ',
@@ -65,7 +57,8 @@ def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
       for field in list(hd5['ecg_rest'].keys()):
         signal = hd5['ecg_rest'][field][:]
         signal_length = len(signal)
-        if signal_length == RESTING_SIGNAL_LENGTH:  # If 5000 steps long, this is raw.
+        # If 5000 steps long, this is raw.
+        if signal_length == RESTING_SIGNAL_LENGTH:
           data['raw'].extend(signal)
           data['lead'].extend([field] * signal_length)
           data['ts_reference'].extend(np.array(
@@ -115,8 +108,7 @@ def reshape_resting_ecg_to_tidy(sample_id, gcs_folder=None):
   return tidy_signal_df
 
 
-def reshape_exercise_ecg_to_tidy(sample_id,
-                                 gcs_folder=DEFAULT_RAW_EXERCISE_DATA_PATH):
+def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
   """Wrangle raw exercise ECG data to tidy.
 
   TODO:
@@ -126,11 +118,14 @@ def reshape_exercise_ecg_to_tidy(sample_id,
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
-    gcs_folder: The local or Cloud Storage folder under which the files reside.
+    folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
     A pandas dataframe in tidy format or a notebook-friendly error.
   """
+  if folder is None:
+    folder = runtime_data_defines.get_exercise_ecg_hd5_folder(sample_id)
+
   data = {}
   full_data = {}
   signal_data = {}
@@ -139,7 +134,7 @@ def reshape_exercise_ecg_to_tidy(sample_id,
     sample_hd5 = str(sample_id) + '.hd5'
     local_path = os.path.join(tmpdirname, sample_hd5)
     try:
-      tf.io.gfile.copy(src=os.path.join(gcs_folder, sample_hd5),
+      tf.io.gfile.copy(src=os.path.join(folder, sample_hd5),
                        dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
       print('Error: Exercise ECG raw signal not available for sample ',
@@ -173,7 +168,9 @@ def reshape_exercise_ecg_to_tidy(sample_id,
 
       # shape (30000,)
       signal_data['ts_reference'] = np.array(
-          [i * 1. / (SAMPLING_RATE + 1.) for i in range(0, EXERCISE_SIGNAL_LENGTH)])
+          [i * 1. / (SAMPLING_RATE + 1.) for i in range(0,
+                                                        EXERCISE_SIGNAL_LENGTH)
+          ])
       for lead in list(hd5['ecg_bike_recovery'].keys()):
         raw = np.array(hd5['ecg_bike_recovery'][lead])
         filtered, _, _ = filter_signal(signal=np.array(raw),

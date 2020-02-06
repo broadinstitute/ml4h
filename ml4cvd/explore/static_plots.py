@@ -4,36 +4,29 @@ import tempfile
 
 from IPython.display import HTML
 from IPython.display import SVG
+import ml4cvd.runtime_data_defines as runtime_data_defines
 import numpy as np
 import tensorflow as tf
 
-DEFAULT_RESTING_ECG_SVG_FOLDERS = {
-    'fake': 'gs://ml4cvd/ecg_views_fake/',
-    'ukb': 'gs://ml4cvd/ecg_views_11_04_2019_svg/'
-}
 
-
-def display_resting_ecg(sample_id, gcs_folder=None):
+def display_resting_ecg(sample_id, folder=None):
   """Retrieve and display the SVG of the resting ECG.
 
   Args:
     sample_id: The id of the ECG SVG to retrieve.
-    gcs_folder: The local or Cloud Storage path under which the files reside.
+    folder: The local or Cloud Storage path under which the files reside.
 
   Returns:
     An IPython SVG object or a notebook-friendly error.
   """
-  if gcs_folder is None:
-    if 'fake' in str(sample_id):
-      gcs_folder = DEFAULT_RESTING_ECG_SVG_FOLDERS['fake']
-    else:
-      gcs_folder = DEFAULT_RESTING_ECG_SVG_FOLDERS['ukb']
+  if folder is None:
+    folder = runtime_data_defines.get_resting_ecg_svg_folder(sample_id)
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_svg = str(sample_id) + '.svg'
     local_path = os.path.join(tmpdirname, sample_svg)
     try:
-      tf.io.gfile.copy(src=os.path.join(gcs_folder, sample_svg),
+      tf.io.gfile.copy(src=os.path.join(folder, sample_svg),
                        dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
       return HTML('''
