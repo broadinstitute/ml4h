@@ -326,7 +326,7 @@ def _get_name_if_function(field: Any) -> Any:
 def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map):
     missing = True
     continuous_data = np.zeros(input_shape, dtype=np.float32)
-    logging.info(f'looking for {tm.hd5_key_guess()} in {hd5}')
+    # logging.info(f'looking for {tm.hd5_key_guess()} in {hd5}')
     if tm.hd5_key_guess() in hd5:
         missing = False
         data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
