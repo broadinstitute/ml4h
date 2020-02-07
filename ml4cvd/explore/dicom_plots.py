@@ -31,10 +31,6 @@ from scipy.ndimage.morphology import binary_closing
 from scipy.ndimage.morphology import binary_erosion
 import tensorflow as tf
 
-DEFAULT_MRI_FOLDERS = {
-    'fake': 'gs://ml4cvd/projects/fake_mris/',
-    'ukb': 'gs://ml4cvd/data/mris/cardiac/'
-}
 # Constants for use with 'CINE_segmented_SAX_InlineVF'
 # TODO(deflaux) move these constants into ml4cvd/defines.py and then import the
 # ml4cvd package.
