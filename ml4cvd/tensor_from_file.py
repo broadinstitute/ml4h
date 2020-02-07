@@ -625,7 +625,7 @@ def make_partners_ecg_voltage(population_normalize: float = None):
 
 
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
-                                        shape=(12, 2500),
+                                        shape=(2500, 12),
                                         group='continuous',
                                         tensor_from_file=make_partners_ecg_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
