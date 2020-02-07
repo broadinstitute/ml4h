@@ -11,7 +11,7 @@ def example1():
     filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml.zst'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
-    imp.build(preset = 'ukbb', compression = 'zstd')
+    imp.build(preset = 'ukbb_ecg', compression = 'zstd')
     print(imp._input_file)
     print(imp.retrieve_processed_data())
 
@@ -21,7 +21,7 @@ def example2():
     filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
-    imp.build(preset = 'ukbb', compression = 'none')
+    imp.build(preset = 'ukbb_ecg', compression = 'none')
     print(imp._input_file)
     print(imp.retrieve_processed_data())
 
@@ -31,7 +31,7 @@ def example3():
     filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml.zst'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
-    imp.build(preset = 'ukbb', compression = 'zstd')
+    imp.build(preset = 'ukbb_ecg', compression = 'zstd')
     print(imp._input_file)
     print(imp.retrieve_processed_data())
 

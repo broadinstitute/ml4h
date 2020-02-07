@@ -4,25 +4,30 @@ Clinical data is available in a multitude of different modalities such as electr
 
 ## Examples
 
+## XML
+
 ### Presets
 
-Several modalities have manually coded import procedures as presets. For example,importing ECGs recorded as part of the UK Biobank data cohort from compressed XMLs requires the `ukbb` preset and compression set to `zstd`.
+Several modalities have manually coded import procedures as presets. For example,importing ECGs recorded as part of the UK Biobank data cohort from compressed XMLs requires the `ukbb_ecg` preset and compression set to `zstd`.
 
 ```py
 import tensormap.utils.ingest
 # Bundled example data
 cur_path = pathlib.Path(__file__).parent.absolute()
 filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml.zst'
+# XML importer
 imp = tensormap.ingest.importer.XmlImporter(filename)
+# Use an automatically generated name
 imp.output_file = '/'.join(["./", imp.automated_name()])
-imp.build(preset = 'ukbb', compression = 'zstd')
+# Ingest input data using
+imp.build(preset = 'ukbb_ecg', compression = 'zstd')
 ```
 
 Parsed waveform data can be retrieved using the `retrieve_processed_data()` function of `XmlImporter`. This subroutine returns either an array of arrays with different lengths or a `numpy.ndarray` if all individual waveform measurements are of equal length and the same primitive type. Internally, data will be decompressed and decoded, if required.
 
 ```py
 >>> imp.retrieve_processed_data()
-[array(array([ 50,  68,  69, ...,   2,  -8, -23], dtype=int16), ...]
+[array(array([ 50,  68,  69, ...,   2,  -8, -23], dtype = int16), ...]
 ```
 
 ### Default behavior

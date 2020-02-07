@@ -628,7 +628,7 @@ class XmlImporter(Importer):
 
             using_preset = False
             if preset is not None:
-                if preset == 'ukbb':
+                if preset == 'ukbb_ecg':
                     using_preset = True
                     self.input_callbacks = [open_read_load]
                     self.build_callbacks = [self.voltage_postprocessing]
