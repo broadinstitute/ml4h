@@ -19,7 +19,7 @@ def _clean_label_string(string):
     return string
 
 
-def _write_tmap_to_py(py_file, label_maps, channel_maps, keys_in_hd5):
+def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_hd5):
     '''Given label_maps (which associates labels with source phrases)
        and channel_maps (which associates labels with unique sublabels),
        define the tensormaps to associate source phrases with precise labels,
@@ -27,9 +27,10 @@ def _write_tmap_to_py(py_file, label_maps, channel_maps, keys_in_hd5):
     '''
 
     # Add import statements to .py
-    py_file.write(f"from ml4cvd.TensorMap import TensorMap\n")
-    py_file.write(f"from ml4cvd.tensor_maps_by_hand import TMAPS\n")
-    py_file.write(f"from ml4cvd.tensor_from_file import {TENSOR_FUNC_NAME}\n\n")
+    if write_imports:
+        py_file.write(f"from ml4cvd.TensorMap import TensorMap\n")
+        py_file.write(f"from ml4cvd.tensor_maps_by_hand import TMAPS\n")
+        py_file.write(f"from ml4cvd.tensor_from_file import {TENSOR_FUNC_NAME}\n\n")
 
     for label in label_maps:
         cm = '{'
@@ -49,6 +50,9 @@ def _write_tmap_to_py(py_file, label_maps, channel_maps, keys_in_hd5):
 
 
 def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
+    # Set flag for writing import statements to true
+    write_imports = True
+
     # Iterate through all files in the partners CSV labels folder
     for file in os.listdir(partners_ecg_label_dir):
 
@@ -124,9 +128,10 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5
 
                 prefix.append(label_str)
 
-        _write_tmap_to_py(py_file, label_maps, channel_maps, keys_in_hd5)
+        _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_hd5)
+        write_imports = False
 
-    print(f"Created TMAPS from CSV files and saved in {SCRIPT_NAME}")
+        print(f"Created TMAPS from {file} and saved in {SCRIPT_NAME}")
 
 
 if __name__ == '__main__':
