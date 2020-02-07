@@ -193,7 +193,7 @@ class XmlImporter(Importer):
                 dat = self._store_hdf5_dataset(g, dat_name, data, None, 19)
 
                 # Lift over attributes
-                #for a in g[field_name].attrs:
+                # for a in g[field_name].attrs:
                 #    dat.attrs[a] = g[field_name].attrs[a]
                 
                 dat.attrs['origin'] = (path + '/' + field_name).encode()

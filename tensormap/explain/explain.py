@@ -5,7 +5,7 @@ import numpy
 import glob
 from typing import Union
 
-import pdb
+# import pdb
 
 def str_trim_end_chars(data: str) -> str:
     return data
@@ -16,32 +16,75 @@ class ExplainStats():
         self._is_string = False
         self._mean = 0
         self._n    = 0
-        self._sum  = 0
-        self._sum_squares = 0
+        self._sum  = numpy.float64(0)
+        self._sum_squares = numpy.float64(0)
         self._n_nans = 0
+        self._min = numpy.float64(0)
+        self._max = numpy.float64(0)
+        self._shapes = dict()
     
     def __str__(self) -> str:
-        return(f"ExplainStats count {self._n}, with mean {self._mean}")
+        if self._is_string:
+            return(f"{self._n}")
+        else:
+            if self._sum != 0:
+                self._mean = self._sum/self._n
+            else:
+                self._mean = 0
+            return(f"{self._n}, {self._sum}, {self._sum_squares}, {self._min}, {self._max}, {self._mean}")
+
+    def update_vector(self, vector: numpy.ndarray):
+        if self._shapes.get(vector.shape) == None:
+            self._shapes[vector.shape] = 1
+        else:
+            self._shapes[vector.shape] += 1
+
+        for v in vector:
+            self.__add__(v)
 
     def __add__(self, value):
-        self._n += 1
-        self._sum += value
-        self._sum_squares += value * value
+        if type(value).__module__ == numpy.__name__:
+            if value.shape != ():
+                return self.update_vector(value)
+            else:
+                self._min = min(self._min, value)
+                self._max = max(self._max, value)
+                self._n += 1
+                self._sum += value
+                
+                # Convert smaller primitive types to signed 64-bit values to
+                # prevent overflowing/underflowing issues.
+                if value.itemsize < 8 and str(value.dtype) != "float32":
+                    value.astype('int64')
+                    self._sum_squares += numpy.int64(value)**2
+                else:
+                    self._sum_squares += value * value
+        elif isinstance(value, str):
+            self._is_string = True
+            self._n += 1
+        else:
+            self._min = min(self._min, value)
+            self._max = max(self._max, value)
+            self._n += 1
+            self._sum += value
+            self._sum_squares += value * value
 
 
 class Explain():
     def __init__(self, **kwargs):
         # Dictionary of dictionaries mapping paths -> types/tokens -> stats
         self._stats = dict()
-        self._track_histogram = False
+        self._track_histogram  = False
         self._tokenize_strings = False
-        self._tokenize_token = " "
+        self._tokenize_token   = " "
+        self._callbacks = dict()
     
     def __str__(self) -> str:
         strings = []
         for s in self._stats:
             for k in self._stats[s]:
-                strings.append(f"{s}-{k}: {self._stats[s][k].__str__()}")
+                strings.append(f"{s}: {'STRING ' if self._stats[s][k]._is_string else ''}{k} {self._stats[s][k].__str__()}")
+
         return '\n'.join(strings)
     
     def _visitor(self, name: str, node: Union[h5py.Group, h5py.Dataset]):
@@ -62,6 +105,10 @@ class Explain():
             if node.attrs.get('compression') != None:
                 # Is compressed with Zstd
                 if node.attrs['compression'] == 'zstd':
+                    # Ascertain correctness
+                    if node.attrs.get('dtype') == None:
+                        raise KeyError("Mandatory attribute 'dtype' is not set for this compressed dataset.")
+
                     zstd = numcodecs.zstd.Zstd()
                     decompressed = zstd.decode(node[()])
 
@@ -73,13 +120,11 @@ class Explain():
                             
                     elif node.attrs['dtype'] == "str":
                         print("is str comp")
+                        for k in node.attrs:
+                            print(k, node.attrs[k])
                     else:
-                        # print(f"numpy compute stats: {node.attrs['dtype']}")
-
                         decompressed = numpy.frombuffer(decompressed, node.attrs['dtype'])
-                    # if self._stats.get(node.name) == None:
-                    #     self._stats[node.name] = dict()
-                    #     self._stats[node.name][node.attrs['dtype']] = ExplainStats()
+                        self._stats[node.name][node.attrs['dtype']] + (decompressed)
 
                 # Is uncompressed
                 elif node.attrs['compression'] == 'none':
@@ -90,18 +135,13 @@ class Explain():
                             print(node.attrs.keys())
                             print(node[()])
                             print(node.name)
-                            # print(bytes(node[()]).decode())
                             return 0
 
-                        # print(f"is bstr uncomp with comp: {node.attrs['compression']}")
                         string = node[()]
-                        print(f"type {type(string)}")
                         if isinstance(string, bytes):
                             string = string.decode()
                         elif isinstance(string, numpy.void):
-                            print("is numpy void die")
-                            print(string)
-                            exit(1)
+                            string = bytes(string).decode()
 
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
@@ -109,43 +149,30 @@ class Explain():
                                 print(t)
                                 if self._stats[node.name].get(t) == None:
                                     self._stats[node.name][t] = ExplainStats()
-                                    self._stats[node.name][t]._n += 1
-                                else:
-                                    self._stats[node.name][t]._n += 1
+                                self._stats[node.name][t]._n + (t)
 
                     elif node.attrs['dtype'] == "str":
                         string = node[()]
-                        print(f"type {type(string)}")
                         if isinstance(string, bytes):
                             string = string.decode()
                         elif isinstance(string, numpy.void):
-                            print("is numpy void die")
-                            print(f"{node.name}: {string}")
-                            print(node.attrs.keys())
-                            for k in node.attrs:
-                                print(f"attrs: {k}, {node.attrs[k]}")
-                            
-                            #pdb.set_trace()
                             string = bytes(string).decode()
-                            #print(string)
-                            #exit(1)
-                        print(string)
 
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
                             for t in tokens:    
-                                print(f"token {t}")
                                 if self._stats[node.name].get(t) == None:
                                     self._stats[node.name][t] = ExplainStats()
-                                    self._stats[node.name][t]._n += 1
-                                else:
-                                    self._stats[node.name][t]._n += 1
+                                self._stats[node.name][t] + (t)
                     else:
-                        print(numpy.frombuffer(node[()], node.attrs['dtype']))
+                        if self._stats[node.name].get(node.attrs['dtype']) == None:
+                            self._stats[node.name][node.attrs['dtype']] = ExplainStats()
+
+                        self._stats[node.name][node.attrs['dtype']] + numpy.frombuffer(node[()], node.attrs['dtype'])
+                        # print(numpy.frombuffer(node[()], node.attrs['dtype']))
                 # Other unknown compression method
                 else:
-                    print("unknwon compression methid: {node.attrs['compression']}")
-                    exit(1)
+                    raise ValueError(f"Unknown compression type: {node.attrs['compression']}")
             # Attribute 'compression' have not been set
             # Assume that the data is uncompressed
             else:
