@@ -1,3 +1,4 @@
+
 import datetime
 from typing import List, Dict, Tuple, Callable
 
@@ -24,7 +25,7 @@ For now, all we will map `group` in TensorMap to `source` in tensor_path and `na
 
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
-    tensor = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     if tm.axes() > 1:
         return _pad_or_crop_array_to_shape(tm.shape, tensor)
     else:
@@ -33,7 +34,7 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 def _random_slice_tensor(tensor_key, dependent_key=None):
     def _random_slice_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        big_tensor = _get_tensor_at_first_date(hd5, tm.source, tensor_key)
+        big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
         cur_slice = np.random.choice(range(big_tensor.shape[-1]))
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[..., 0] = big_tensor[..., cur_slice]
@@ -48,9 +49,9 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
 def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False, swap_axes=-1):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if dtype_override is not None:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.source, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
         else:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.source, tensor_key)
+            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
 
         if flip_swap:
             big_tensor = np.flip(np.swapaxes(big_tensor, 0, swap_axes))
@@ -147,7 +148,7 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
-            data = tm.hd5_first_dataset_in_group(tm.hd5_key_guess())
+            data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
                 index = int(data[0])
                 categorical_data[index] = 1.0
@@ -156,7 +157,7 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
         else:
-            raise ValueError(f"No HD5 Key {tm.hd5_key_guess()} found for tensor map: {tm.name}.")
+            raise ValueError(f"No HD5 Key at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
 
         if index != 0:
             if event_date_key in hd5 and start_date_key in hd5:
@@ -170,13 +171,13 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
     return _prevalent_incident_tensor_from_file
 
 
-def _all_dates(hd5: h5py.File, source: str, name: str) -> List[str]:
+def _all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:
     """
     Gets the dates in the hd5 with path_prefix, dtype, name.
     """
     # TODO: This ideally would be implemented to not depend on the order of name, date, dtype, path_prefix in the hd5s
     # Unfortunately, that's hard to do efficiently
-    return hd5[source][name]
+    return hd5[path_prefix][name]
 
 
 def _pass_nan(tensor):
@@ -197,14 +198,14 @@ def _nan_to_mean(tensor, max_allowed_nan_fraction=.2):
     return tensor
 
 
-def _get_tensor_at_first_date(hd5: h5py.File, source: str, name: str, handle_nan=_fail_nan):
+def _get_tensor_at_first_date(hd5: h5py.File, path_prefix: str, name: str, handle_nan=_fail_nan):
     """
     Gets the numpy array at the first date of path_prefix, dtype, name.
     """
-    dates = _all_dates(hd5, source, name)
+    dates = _all_dates(hd5, path_prefix, name)
     if not dates:
         raise ValueError(f'No {name} values values available.')
-    tensor = np.array(hd5[f'{tensor_path(source=source, name=name)}{min(dates)}/'], dtype=np.float32)
+    tensor = np.array(hd5[f'{tensor_path(path_prefix=path_prefix, name=name)}{min(dates)}/'], dtype=np.float32)
     tensor = handle_nan(tensor)
     return tensor
 
@@ -243,14 +244,14 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
 
 def _first_date_bike_recovery(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'rest')
-    original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     recovery = original[-tm.shape[0]:]
     return recovery.reshape(tm.shape)
 
 
 def _first_date_bike_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _check_phase_full_len(hd5, 'pretest')
-    original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     pretest = original[:tm.shape[0]]
     return pretest.reshape(tm.shape)
 
@@ -283,7 +284,7 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = _get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_time')
-    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.source, 'float_array', tm.name))
+    tensor = np.abs(_get_tensor_at_first_date(hd5, tm.path_prefix, 'float_array', tm.name))
     return np.median(tensor[times <= 15])
 
 
@@ -322,48 +323,48 @@ def _hr_achieved(tm: TensorMap, hd5: h5py.File, dependents=None):
 TMAPS: Dict[str, TensorMap] = dict()
 
 
-TMAPS['ecg-bike-hrr'] = TensorMap('hrr', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-hrr'] = TensorMap('hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                   normalization={'mean': 30.55, 'std': 12.81},
                                   tensor_from_file=_first_date_hrr)
-TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', source='ecg_bike', loss='logcosh', metrics=['mae'],
+TMAPS['ecg-bike-healthy-max-hr'] = TensorMap('max_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'],
                                              normalization={'mean': 113.7, 'std': 13.3}, shape=(1,),
                                              tensor_from_file=_healthy_bike)
-TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-healthy-hrr'] = TensorMap('hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 30.47, 'std': 11.76},
                                           tensor_from_file=_healthy_hrr)
-TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-healthy-resting'] = TensorMap('resting_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                               normalization={'mean': 70.0, 'std': 11.62},
                                               tensor_from_file=_healthy_bike)
-TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-hr'] = TensorMap('trend_heartrate', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                              normalization={'mean': 70., 'std': 11.},
                                              tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-stamp'] = TensorMap('trend_stamplitude', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                 normalization={'mean': .03, 'std': .03},
                                                 tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-jpoint'] = TensorMap('trend_jpointamplitude', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                  normalization={'mean': .032, 'std': .46},
                                                  tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-med-pretest-stamp20'] = TensorMap('trend_stamplitude20ms', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                                   normalization={'mean': .03, 'std': .03},
                                                   tensor_from_file=_median_pretest)
-TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), source='ecg_bike', validator=no_nans,
+TMAPS['ecg-bike-recovery'] = TensorMap('full', shape=(30000, 1), path_prefix='ecg_bike', validator=no_nans,
                                        tensor_from_file=_first_date_bike_recovery)
-TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), source='ecg_bike', validator=no_nans,
+TMAPS['ecg-bike-pretest'] = TensorMap('full', shape=(500 * 15 - 4, 3), path_prefix='ecg_bike', validator=no_nans,
                                       normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
                                       tensor_from_file=_first_date_bike_pretest)
-TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), source='ecg_bike', validator=no_nans,
+TMAPS['ecg-bike-pretest-5k'] = TensorMap('full', shape=(5000, 3), path_prefix='ecg_bike', validator=no_nans,
                                          normalization={'mean': np.array([7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
                                          tensor_from_file=_first_date_bike_pretest)
-TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-new-hrr'] = TensorMap('hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                       normalization={'mean': 31, 'std': 12},
                                       tensor_from_file=_new_hrr)
-TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', source='ecg_bike', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-hrr-sentinel'] = TensorMap('hrr', path_prefix='ecg_bike', metrics=['mae'], shape=(1,),
                                            normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
                                            tensor_from_file=_sentinel_hrr)
-TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', source='ecg_bike', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-hrr-student'] = TensorMap('hrr', path_prefix='ecg_bike', metrics=['mae'], shape=(1,),
                                           normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
                                           tensor_from_file=_build_tensor_from_file('inference.tsv', 'ecg-bike-hrr-sentinel_prediction'))
-TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', source='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
+TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved)
 
@@ -404,18 +405,18 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
             roll = np.random.randint(2500)
         if tm.dependent_map is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            key_choices = [k for k in hd5[tm.source] if tm.name in k]
+            key_choices = [k for k in hd5[tm.path_prefix] if tm.name in k]
             lead_idx = np.random.choice(key_choices)
-            tensor = np.reshape(hd5[tm.source][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
-            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.source][lead_idx.replace(tm.name, tm.dependent_map.name)])
+            tensor = np.reshape(hd5[tm.path_prefix][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
+            dependents[tm.dependent_map][:, 0] = np.array(hd5[tm.path_prefix][lead_idx.replace(tm.name, tm.dependent_map.name)])
             dependents[tm.dependent_map] = tm.zero_mean_std1(dependents[tm.dependent_map])
         else:
-            for k in hd5[tm.source]:
+            for k in hd5[tm.path_prefix]:
                 if k in tm.channel_map:
                     if random_roll:
-                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.source][k], roll)
+                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.path_prefix][k], roll)
                     else:
-                        tensor[:, tm.channel_map[k]] = hd5[tm.source][k]
+                        tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k]
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
@@ -426,41 +427,41 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
     return ecg_rest_from_file
 
 
-TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
+TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
                                   channel_map=ECG_REST_LEADS)
 
-TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
+TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
                                   channel_map=ECG_REST_LEADS, cacheable=False)
-TMAPS['ecg_rest_raw_warp'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
+TMAPS['ecg_rest_raw_warp'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
                                   channel_map=ECG_REST_LEADS, cacheable=False)
-TMAPS['ecg_rest_raw_warp_n_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True, warp=True),
+TMAPS['ecg_rest_raw_warp_n_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True, warp=True),
                                   channel_map=ECG_REST_LEADS, cacheable=False)
-TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
+TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
                                       channel_map=ECG_REST_LEADS)
 
-TMAPS['ecg_rest'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(),
                               channel_map=ECG_REST_LEADS)
 
-TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', Interpretation.CONTINUOUS, shape=(5000, 12), source='ecg_rest', tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest_fft'] = TensorMap('ecg_rest_fft', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                   channel_map=ECG_REST_LEADS)
 
-TMAPS['ecg_rest_stack'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 12, 8), source='ecg_rest', tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest_stack'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 12, 8), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                     channel_map=ECG_REST_LEADS)
 
-TMAPS['ecg_rest_median_raw'] = TensorMap('median', Interpretation.CONTINUOUS, source='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
+TMAPS['ecg_rest_median_raw'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
                                          metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
 
-TMAPS['ecg_rest_median'] = TensorMap('median', Interpretation.CONTINUOUS, source='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest_median'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
                                      metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
 
-TMAPS['ecg_rest_median_stack'] = TensorMap('median', Interpretation.CONTINUOUS, source='ecg_rest', shape=(600, 12, 1), activation='linear', tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest_median_stack'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ecg_rest', shape=(600, 12, 1), activation='linear', tensor_from_file=_make_ecg_rest(),
                                            metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
                                            channel_map=ECG_REST_MEDIAN_LEADS)
 
-TMAPS['ecg_median_1lead'] = TensorMap('median', Interpretation.CONTINUOUS, source='ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_median_1lead'] = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
                                       activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0})
 
-TMAPS['ecg_rest_1lead'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 8), source='ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest_1lead'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 8), path_prefix='ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
                                     dependent_map=TMAPS['ecg_median_1lead'])
 
 
@@ -478,7 +479,7 @@ TMAPS['ecg_median_1lead_categorical'] = TensorMap('median',  Interpretation.CATE
                                                   channel_map=_get_lead_cm(32)[0],
                                                   loss=weighted_crossentropy(_get_lead_cm(32)[1], 'ecg_median_categorical'))
 
-TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), source='ecg_rest', tensor_from_file=_make_ecg_rest(),
+TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), path_prefix='ecg_rest', tensor_from_file=_make_ecg_rest(),
                                                 channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
                                                              'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
                                                 dependent_map=TMAPS['ecg_median_1lead_categorical'])
@@ -586,7 +587,7 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor = _get_tensor_at_first_date(hd5, tm.source, tm.name, _pass_nan)
+        tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name, _pass_nan)
         try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -598,16 +599,16 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     return ukb_ecg_rest_from_file
 
 
-TMAPS['ecg_rest_ramplitude_raw'] = TensorMap('ramplitude', Interpretation.CONTINUOUS, source='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
+TMAPS['ecg_rest_ramplitude_raw'] = TensorMap('ramplitude', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
                                              loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
-TMAPS['ecg_rest_samplitude_raw'] = TensorMap('samplitude', Interpretation.CONTINUOUS, source='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
+TMAPS['ecg_rest_samplitude_raw'] = TensorMap('samplitude', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
                                              loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
-TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', Interpretation.CONTINUOUS, source='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(),
+TMAPS['ecg_rest_ramplitude'] = TensorMap('ramplitude', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(),
                                          loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
-TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', Interpretation.CONTINUOUS, source='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(),
+TMAPS['ecg_rest_samplitude'] = TensorMap('samplitude', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(),
                                          loss='logcosh', metrics=['mse', 'mape', 'mae'], loss_weight=1.0)
 
 
@@ -621,8 +622,8 @@ def _make_ukb_ecg_rest_lvh():
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError('Group with R and S amplitudes not present in hd5')
-        tensor_ramp = _get_tensor_at_first_date(hd5, tm.source, 'ramplitude', _pass_nan)
-        tensor_samp = _get_tensor_at_first_date(hd5, tm.source, 'samplitude', _pass_nan)
+        tensor_ramp = _get_tensor_at_first_date(hd5, tm.path_prefix, 'ramplitude', _pass_nan)
+        tensor_samp = _get_tensor_at_first_date(hd5, tm.path_prefix, 'samplitude', _pass_nan)
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
@@ -659,94 +660,94 @@ def _make_ukb_ecg_rest_lvh():
     return ukb_ecg_rest_lvh_from_file
 
 
-TMAPS['ecg_rest_lvh_avl'] = TensorMap('avl_lvh', Interpretation.CATEGORICAL, source='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
+TMAPS['ecg_rest_lvh_avl'] = TensorMap('avl_lvh', Interpretation.CATEGORICAL, path_prefix='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                                       channel_map={'no_avl_lvh': 0, 'aVL LVH': 1},
                                       loss=weighted_crossentropy([0.006, 1.0], 'avl_lvh'))
 
-TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', Interpretation.CATEGORICAL, source='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
+TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', Interpretation.CATEGORICAL, path_prefix='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                                                channel_map={'no_sokolow_lyon_lvh': 0, 'Sokolow Lyon LVH': 1},
                                                loss=weighted_crossentropy([0.005, 1.0], 'sokolov_lyon_lvh'))
 
-TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORICAL, source='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
+TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORICAL, path_prefix='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                                           channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
                                           loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
 
-TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), source='ukb_brain_mri/float_array/',
+TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
                                                          tensor_from_file=normalized_first_date, normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), source='ukb_brain_mri/float_array/',
+TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_2'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
                                                          tensor_from_file=normalized_first_date, normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_slice_1'] = TensorMap('t2_flair_slice_1', shape=(256, 256, 1), source='ukb_brain_mri/float_array/', tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'), normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_slice_2'] = TensorMap('t2_flair_slice_2', shape=(256, 256, 1), source='ukb_brain_mri/float_array/', tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'), normalization={'zero_mean_std1': True})
-TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_1', shape=(256, 256, 208), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t2_flair_slice_1'] = TensorMap('t2_flair_slice_1', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/', tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1'), normalization={'zero_mean_std1': True})
+TMAPS['t2_flair_slice_2'] = TensorMap('t2_flair_slice_2', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/', tensor_from_file=_random_slice_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2'), normalization={'zero_mean_std1': True})
+TMAPS['t1_p2_1mm_fov256_sag_ti_880_1'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_1', shape=(256, 256, 208), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_p2_1mm_fov256_sag_ti_880_2'] = TensorMap('t1_p2_1mm_fov256_sag_ti_880_2', shape=(256, 256, 208), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_dicom_30_slices'] = TensorMap('t1_dicom_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
-TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t2_dicom_30_slices'] = TensorMap('t2_dicom_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True))
 
-TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t1_slice_1'] = TensorMap('t1_slice_1', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'))
-TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
+TMAPS['t1_slice_2'] = TensorMap('t1_slice_2', shape=(256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True},
                                 tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'))
-TMAPS['t1_20_slices_1'] = TensorMap('t1_20_slices_1', shape=(256, 256, 20), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_20_slices_1'] = TensorMap('t1_20_slices_1', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 94, 114))
-TMAPS['t1_20_slices_2'] = TensorMap('t1_20_slices_2', shape=(256, 256, 20), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_20_slices_2'] = TensorMap('t1_20_slices_2', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_2', 94, 114))
-TMAPS['t2_20_slices_1'] = TensorMap('t2_20_slices_1', shape=(256, 256, 20), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_20_slices_1'] = TensorMap('t2_20_slices_1', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 86, 106))
-TMAPS['t2_20_slices_2'] = TensorMap('t2_20_slices_2', shape=(256, 256, 20), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_20_slices_2'] = TensorMap('t2_20_slices_2', shape=(256, 256, 20), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_2', 86, 106))
-TMAPS['t1_40_slices_1'] = TensorMap('t1_40_slices_1', shape=(256, 256, 40), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_40_slices_1'] = TensorMap('t1_40_slices_1', shape=(256, 256, 40), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t1_p2_1mm_fov256_sag_ti_880_1', 64, 144, 2))
-TMAPS['t2_40_slices_1'] = TensorMap('t2_40_slices_1', shape=(256, 256, 40), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_40_slices_1'] = TensorMap('t2_40_slices_1', shape=(256, 256, 40), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                     tensor_from_file=_slice_subset_tensor('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2))
-TMAPS['sos_te1'] = TensorMap('SOS_TE1', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['sos_te2'] = TensorMap('SOS_TE2', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi'] = TensorMap('SWI', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_total_mag'] = TensorMap('SWI_TOTAL_MAG', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_total_mag_te2_orig'] = TensorMap('SWI_TOTAL_MAG_TE2_orig', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_total_mag_orig'] = TensorMap('SWI_TOTAL_MAG_orig', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t2star'] = TensorMap('T2star', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['brain_mask_normed'] = TensorMap('brain_mask_normed', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['sos_te1'] = TensorMap('SOS_TE1', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['sos_te2'] = TensorMap('SOS_TE2', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi'] = TensorMap('SWI', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_total_mag'] = TensorMap('SWI_TOTAL_MAG', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_total_mag_te2_orig'] = TensorMap('SWI_TOTAL_MAG_TE2_orig', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_total_mag_orig'] = TensorMap('SWI_TOTAL_MAG_orig', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2star'] = TensorMap('T2star', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['brain_mask_normed'] = TensorMap('brain_mask_normed', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
-TMAPS['filtered_phase'] = TensorMap('filtered_phase', shape=(256, 288, 48), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['swi_to_t1_40_slices'] = TensorMap('swi_to_t1_40_slices', shape=(173, 231, 40), source='ukb_brain_mri/float_array/', 
+TMAPS['filtered_phase'] = TensorMap('filtered_phase', shape=(256, 288, 48), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['swi_to_t1_40_slices'] = TensorMap('swi_to_t1_40_slices', shape=(173, 231, 40), path_prefix='ukb_brain_mri/float_array/', 
                                          normalization={'zero_mean_std1': True},
                                          tensor_from_file=_slice_subset_tensor('SWI_TOTAL_MAG_to_T1', 60, 140, 2))
-TMAPS['t2star_to_t1_40_slices'] = TensorMap('t2star_to_t1_40_slices', shape=(173, 231, 40), source='ukb_brain_mri/float_array/', 
+TMAPS['t2star_to_t1_40_slices'] = TensorMap('t2star_to_t1_40_slices', shape=(173, 231, 40), path_prefix='ukb_brain_mri/float_array/', 
                                             normalization={'zero_mean_std1': True},
                                             tensor_from_file=_slice_subset_tensor('T2star_to_T1', 60, 140, 2))
 
-TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_brain'] = TensorMap('T1_brain', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_brain_30_slices'] = TensorMap('t1_brain_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
-TMAPS['t1_30_slices'] = TensorMap('t1_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256)))
-TMAPS['t1_30_slices_4d'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1)))
-TMAPS['t1_30_slices_fs'] = TensorMap('t1_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1'] = TensorMap('T1', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain'] = TensorMap('T1_brain', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain_30_slices'] = TensorMap('t1_brain_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
+TMAPS['t1_30_slices'] = TensorMap('t1_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256)))
+TMAPS['t1_30_slices_4d'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True}, tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1)))
+TMAPS['t1_30_slices_fs'] = TensorMap('t1_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                      tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256), flip_swap=True, swap_axes=1))
-TMAPS['t1_30_slices_4d_fs'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t1_30_slices_4d_fs'] = TensorMap('t1_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('T1', 90, 150, 2, pad_shape=(192, 256, 256, 1), flip_swap=True, swap_axes=1))
 
-TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_brain_to_mni'] = TensorMap('T1_brain_to_MNI', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t1_fast_t1_brain_bias'] = TensorMap('T1_fast_T1_brain_bias', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
-TMAPS['t2_flair'] = TensorMap('T2_FLAIR', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t2_flair_brain'] = TensorMap('T2_FLAIR_brain', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
-TMAPS['t2_flair_brain_30_slices'] = TensorMap('t2_flair_brain_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_flair'] = TensorMap('T2_FLAIR', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2_flair_brain'] = TensorMap('T2_FLAIR_brain', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2_flair_brain_30_slices'] = TensorMap('t2_flair_brain_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                               tensor_from_file=_slice_subset_tensor('T2_FLAIR_brain', 66, 126, 2, pad_shape=(192, 256, 256)))
-TMAPS['t2_flair_30_slices'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_flair_30_slices'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                         tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256)))
-TMAPS['t2_flair_30_slices_4d'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), source='ukb_brain_mri/float_array/',  tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
+TMAPS['t2_flair_30_slices_4d'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/',  tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
                                            normalization={'zero_mean_std1': True})
-TMAPS['t2_flair_30_slices_fs'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_flair_30_slices_fs'] = TensorMap('t2_flair_30_slices', shape=(192, 256, 30), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                            tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256), flip_swap=True, swap_axes=1))
-TMAPS['t2_flair_30_slices_4d_fs'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), source='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
+TMAPS['t2_flair_30_slices_4d_fs'] = TensorMap('t2_flair_30_slices_4d', shape=(192, 256, 30, 1), path_prefix='ukb_brain_mri/float_array/', normalization={'zero_mean_std1': True},
                                               tensor_from_file=_slice_subset_tensor('T2_FLAIR', 90, 150, 2, pad_shape=(192, 256, 256, 1), flip_swap=True, swap_axes=1))
-TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(192, 256, 256, 1), source='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
+TMAPS['t2_flair_unbiased_brain'] = TensorMap('T2_FLAIR_unbiased_brain', shape=(192, 256, 256, 1), path_prefix='ukb_brain_mri/float_array/',  normalization={'zero_mean_std1': True}, tensor_from_file=normalized_first_date)
 
 
 def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-    original = _get_tensor_at_first_date(hd5, tm.source, tm.name)
+    original = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
     reshaped = _pad_or_crop_array_to_shape(tm.shape, original)
     tensor = to_categorical(reshaped[..., 0], tm.shape[-1])
     return tensor
@@ -762,19 +763,19 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
-TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', Interpretation.CATEGORICAL, shape=(256, 288, 48, 2), source='ukb_brain_mri/float_array/', 
+TMAPS['swi_brain_mask'] = TensorMap('SWI_brain_mask', Interpretation.CATEGORICAL, shape=(256, 288, 48, 2), path_prefix='ukb_brain_mri/float_array/', 
                                     tensor_from_file=_mask_from_file, channel_map={'not_brain': 0, 'brain': 1})
-TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', Interpretation.CATEGORICAL, shape=(192, 256, 256, 2), source='ukb_brain_mri/float_array/', 
+TMAPS['t1_brain_mask'] = TensorMap('T1_brain_mask', Interpretation.CATEGORICAL, shape=(192, 256, 256, 2), path_prefix='ukb_brain_mri/float_array/', 
                                    tensor_from_file=_mask_from_file, channel_map={'not_brain': 0, 'brain': 1})
-TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', Interpretation.CATEGORICAL, shape=(192, 256, 256, 4), source='ukb_brain_mri/float_array/', 
+TMAPS['t1_seg'] = TensorMap('T1_fast_T1_brain_seg', Interpretation.CATEGORICAL, shape=(192, 256, 256, 4), path_prefix='ukb_brain_mri/float_array/', 
                             tensor_from_file=_mask_from_file, channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
-TMAPS['t1_seg_30_slices'] = TensorMap('T1_fast_T1_brain_seg_30_slices', Interpretation.CATEGORICAL, shape=(192, 256, 30, 4), source='ukb_brain_mri/float_array/', 
+TMAPS['t1_seg_30_slices'] = TensorMap('T1_fast_T1_brain_seg_30_slices', Interpretation.CATEGORICAL, shape=(192, 256, 30, 4), path_prefix='ukb_brain_mri/float_array/', 
                                       tensor_from_file=_mask_subset_tensor('T1_fast_T1_brain_seg', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
                                       channel_map={'not_brain_tissue': 0, 'csf': 1, 'grey': 2, 'white': 3})
-TMAPS['t1_brain_mask_30_slices'] = TensorMap('T1_brain_mask_30_slices', Interpretation.CATEGORICAL, shape=(192, 256, 30, 2), source='ukb_brain_mri/float_array/', 
+TMAPS['t1_brain_mask_30_slices'] = TensorMap('T1_brain_mask_30_slices', Interpretation.CATEGORICAL, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri/float_array/', 
                                              tensor_from_file=_mask_subset_tensor('T1_brain_mask', 90, 150, 2, pad_shape=(192, 256, 256, 1)),
                                              channel_map={'not_brain': 0, 'brain': 1})
-TMAPS['lesions'] = TensorMap('lesions_final_mask', Interpretation.CATEGORICAL, shape=(192, 256, 256, 2), source='ukb_brain_mri/float_array/', 
+TMAPS['lesions'] = TensorMap('lesions_final_mask', Interpretation.CATEGORICAL, shape=(192, 256, 256, 2), path_prefix='ukb_brain_mri/float_array/', 
                              tensor_from_file=_mask_from_file, channel_map={'not_lesion': 0, 'lesion': 1}, loss=weighted_crossentropy([0.01, 10.0], 'lesion'))
 
 
@@ -789,7 +790,7 @@ def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
-TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), source='ukb_brain_mri/float_array/', 
+TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri/float_array/', 
                                                tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
                                                normalization={'zero_mean_std1': True})
 
@@ -813,8 +814,8 @@ def _make_index_tensor_from_file(index_map_name):
     def indexed_lvmass_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.source][k], dtype=np.float32)
-        index = np.array(hd5[tm.source][index_map_name], dtype=np.float32)
+            tensor = np.array(hd5[tm.path_prefix][k], dtype=np.float32)
+        index = np.array(hd5[tm.path_prefix][index_map_name], dtype=np.float32)
         return tensor / index
     return indexed_lvmass_tensor_from_file
 
@@ -858,7 +859,7 @@ def _select_tensor_from_file(selection_predicate: Callable):
             raise ValueError(f'Tensor did not meet selection criteria:{selection_predicate.__name__} with Tensor Map:{tm.name}')
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
-            tensor = np.array(hd5[tm.source][k], dtype=np.float32)
+            tensor = np.array(hd5[tm.path_prefix][k], dtype=np.float32)
         return tensor
     return selected_tensor_from_file
 
@@ -898,10 +899,10 @@ TMAPS['lvh_from_indexed_lvm'] = TensorMap('lvh_from_indexed_lvm', Interpretation
 TMAPS['lvh_from_indexed_lvm_weighted'] = TensorMap('lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
                                           tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'),
                                           loss=weighted_crossentropy([1.0, 25.0], 'lvh_from_indexed_lvm'))
-TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), source='continuous',
+TMAPS['adjusted_myocardium_mass'] = TensorMap('adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
                                               loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80})
 TMAPS['adjusted_myocardium_mass_indexed'] = TensorMap('adjusted_myocardium_mass_indexed', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
-                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, source='continuous',
+                                                      loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, path_prefix='continuous',
                                                       normalization={'mean': 89.70, 'std': 24.80})
 TMAPS['lvh_from_indexed_lvm_parented'] = TensorMap('lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
                                                    tensor_from_file=_make_lvh_from_lvm_tensor_from_file('adjusted_myocardium_mass_indexed'),
@@ -968,25 +969,25 @@ def _make_mri_series_orientation_and_position_from_file(population_normalize=Non
     return mri_series_orientation_and_position
 
 
-TMAPS['mri_patient_orientation_cine_segmented_lax_2ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(6,), source='mri_orientation',
+TMAPS['mri_patient_orientation_cine_segmented_lax_2ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(6,), path_prefix='mri_orientation',
                                                                     tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_orientation_cine_segmented_lax_3ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(6,), source='mri_orientation',
+TMAPS['mri_patient_orientation_cine_segmented_lax_3ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(6,), path_prefix='mri_orientation',
                                                                     tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_orientation_cine_segmented_lax_4ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(6,), source='mri_orientation',
+TMAPS['mri_patient_orientation_cine_segmented_lax_4ch'] = TensorMap('mri_patient_orientation_cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(6,), path_prefix='mri_orientation',
                                                                     tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_orientation_cine_segmented_sax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', Interpretation.CONTINUOUS, shape=(6,), source='mri_orientation',
+TMAPS['mri_patient_orientation_cine_segmented_sax_b1'] = TensorMap('mri_patient_orientation_cine_segmented_sax_b1', Interpretation.CONTINUOUS, shape=(6,), path_prefix='mri_orientation',
                                                                    tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_orientation_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_orientation_cine_segmented_sax_inlinevf', Interpretation.CONTINUOUS, shape=(6, 750), source='mri_orientation',
+TMAPS['mri_patient_orientation_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_orientation_cine_segmented_sax_inlinevf', Interpretation.CONTINUOUS, shape=(6, 750), path_prefix='mri_orientation',
                                                                          tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_position_cine_segmented_lax_2ch'] = TensorMap('mri_patient_position_cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(3,), source='mri_position',
+TMAPS['mri_patient_position_cine_segmented_lax_2ch'] = TensorMap('mri_patient_position_cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(3,), path_prefix='mri_position',
                                                                  tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_position_cine_segmented_lax_3ch'] = TensorMap('mri_patient_position_cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(3,), source='mri_position',
+TMAPS['mri_patient_position_cine_segmented_lax_3ch'] = TensorMap('mri_patient_position_cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(3,), path_prefix='mri_position',
                                                                  tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_position_cine_segmented_lax_4ch'] = TensorMap('mri_patient_position_cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(3,), source='mri_position',
+TMAPS['mri_patient_position_cine_segmented_lax_4ch'] = TensorMap('mri_patient_position_cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(3,), path_prefix='mri_position',
                                                                  tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_position_cine_segmented_sax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', Interpretation.CONTINUOUS, shape=(3,), source='mri_position',
+TMAPS['mri_patient_position_cine_segmented_sax_b1'] = TensorMap('mri_patient_position_cine_segmented_sax_b1', Interpretation.CONTINUOUS, shape=(3,), path_prefix='mri_position',
                                                                 tensor_from_file=_make_mri_series_orientation_and_position_from_file())
-TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_position_cine_segmented_sax_inlinevf', Interpretation.CONTINUOUS, shape=(3, 750), source='mri_position',
+TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap('mri_patient_position_cine_segmented_sax_inlinevf', Interpretation.CONTINUOUS, shape=(3, 750), path_prefix='mri_position',
                                                                       tensor_from_file=_make_mri_series_orientation_and_position_from_file())
 
 
@@ -1186,11 +1187,11 @@ TMAPS['cine_sax_b6_192'] = TensorMap('cine_segmented_sax_b6', Interpretation.CON
 TMAPS['cine_sax_b6_192_1'] = TensorMap('cine_segmented_sax_b6', Interpretation.CONTINUOUS, shape=(192, 192, 50, 1), tensor_from_file=_name_tensor_from_file, normalization={'zero_mean_std1': True})
 
 
-def _segmented_dicom_slices(dicom_key_prefix, source='ukb_cardiac_mri'):
+def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(tm.shape[-2]):
-            categorical_index_slice = _get_tensor_at_first_date(hd5, source, dicom_key_prefix + str(i+1))
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
         return tensor
@@ -1252,9 +1253,9 @@ def preprocess_with_function(fxn):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
+        if tm.hd5_key_guess(hd5):
             missing = False
-            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[0]
+            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess(hd5))[0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
@@ -1263,7 +1264,7 @@ def preprocess_with_function(fxn):
     return preprocess_tensor_from_file
 
 
-TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0', loss='logcosh', source='continuous',
+TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0', loss='logcosh', path_prefix='continuous',
                              normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
                              channel_map={'white-matter-hyper-intensities': 0})
 
@@ -1299,3 +1300,46 @@ TMAPS['sax_all_diastole'] = TensorMap('sax_all_diastole', shape=(256, 256, 13, 1
                                       dependent_map=TMAPS['sax_all_diastole_segmented'])
 TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
                                                dependent_map=TMAPS['sax_all_diastole_segmented_weighted'])
+
+TMAPS['sax_all_systole_segmented'] = TensorMap('sax_all_systole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
+                                                channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_all_systole_segmented_weighted'] = TensorMap('sax_all_systole_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
+                                                         channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+                                                         loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'))
+
+TMAPS['sax_all_systole'] = TensorMap('sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
+                                      dependent_map=TMAPS['sax_all_systole_segmented'])
+TMAPS['sax_all_systole_weighted'] = TensorMap('sax_all_systole_weighted', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
+                                               dependent_map=TMAPS['sax_all_systole_segmented_weighted'])
+
+
+def all_sax_tensor(total_b_slices=13):
+    def sax_tensor_from_file(tm, hd5, dependents={}):
+        missing = 0
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        for b in range(total_b_slices):
+            try:
+                tm_shape = (tm.shape[0], tm.shape[1])
+                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'diastole_mask_b{b}'], dtype=np.float32))
+                dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
+                tensor[:, :, b + total_b_slices, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'systole_frame_b{b}'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'systole_mask_b{b}'], dtype=np.float32))
+                dependents[tm.dependent_map][:, :, b + total_b_slices, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
+            except KeyError:
+                missing += 1
+                tensor[:, :, b, 0] = 0
+                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+        if missing == tm.shape[-2]:
+            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
+        return tensor
+    return sax_tensor_from_file
+
+
+TMAPS['sax_all_segmented'] = TensorMap('sax_all_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 26, 3), channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+TMAPS['sax_all_segmented_weighted'] = TensorMap('sax_all_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 26, 3),
+                                                channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_segmented'))
+
+TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented'])
+TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])

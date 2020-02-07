@@ -215,7 +215,7 @@ def infer_multimodal_multitask(args):
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and (tm.is_categorical() or tm.is_discretized()):
-                    for k in tm.channel_map:
+                    for k, i in tm.channel_map.items():
                         csv_row.append(str(y[0][tm.channel_map[k]]))
                         actual = true_label[tm.output_name()][0][i]
                         csv_row.append("NA" if np.isnan(actual) else str(actual))

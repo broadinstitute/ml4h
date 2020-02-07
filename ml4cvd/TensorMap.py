@@ -61,13 +61,13 @@ class TensorMap(object):
                  loss: Optional[Union[str, Callable]] = None,
                  shape: Optional[Tuple[int]] = None,
                  model: Optional[keras.Model] = None,
-                 source: Optional[str] = None,
                  metrics: Optional[List[Union[str, Callable]]] = None,
                  parents: Optional[List["TensorMap"]] = None,
                  sentinel: Optional[float] = None,
                  validator: Optional[Callable] = None,
                  cacheable: Optional[bool] = True,
                  activation: Optional[Union[str, Callable]] = None,
+                 path_prefix: Optional[str] = None,
                  loss_weight: Optional[float] = 1.0,
                  channel_map: Optional[Dict[str, int]] = None,
                  storage_type: Optional[StorageType] = None,
@@ -84,8 +84,7 @@ class TensorMap(object):
         :param interpretation: Enum specifying semantic interpretation of the tensor: is it a label, a continuous value an embedding...
         :param loss: Loss function or str specifying pre-defined loss function
         :param shape: Tuple of integers specifying tensor shape
-        :param model: Only used by hidden layer tensor maps
-        :param source: Source of the data we are tensor mapping
+        :param model: The model that computes the embedding layer, only used by embedding tensor maps
         :param metrics: List of metric functions of strings
         :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
@@ -108,7 +107,7 @@ class TensorMap(object):
         self.loss = loss
         self.model = model
         self.shape = shape
-        self.source = source
+        self.path_prefix = path_prefix
         self.metrics = metrics
         self.parents = parents
         self.sentinel = sentinel
@@ -225,10 +224,10 @@ class TensorMap(object):
         return len(self.shape)
 
     def hd5_key_guess(self):
-        if self.source is None:
+        if self.path_prefix is None:
             return f'/{self.name}/'
         else:
-            return f'/{self.source}/{self.name}/'
+            return f'/{self.path_prefix}/{self.name}/'
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
         if key_prefix not in hd5:
@@ -371,8 +370,12 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 categorical_data = np.array(data)
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
+        elif tm.path_prefix in hd5 and tm.channel_map is not None:
+            for k in tm.channel_map:
+                if k in hd5[tm.path_prefix]:
+                    categorical_data[tm.channel_map[k]] = hd5[tm.path_prefix][k][0]
         else:
-            raise ValueError(f"No HD5 Key {tm.hd5_key_guess()} found for tensor map: {tm.name}.")
+            raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():
         return _default_continuous_tensor_from_file(tm, hd5, tm.shape, tm.channel_map)
