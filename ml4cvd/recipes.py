@@ -105,27 +105,48 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
-def _save_samples_for_channel(cm_name, tm, cols, dfs, output_folder, subdir):
-    cols = [col for col in cols if "error_reason" not in col]
+def _save_samples_for_channel(dfs, tm, cm, error_msg, output_folder, subdir):
+    # Remove columns with error message
+    cols = [col for col in dfs.columns if error_msg not in col]
     fpath_csv = os.path.join(output_folder,
-                             f"{subdir}/{tm.name}_{cm_name}_samples.csv")
+                             f"{subdir}/{tm.name}_{cm}_samples.csv")
 
-    # Isolate cols from dataframe that only consists of matches with cm_name
-    dfs[dfs[f"{tm.name}_{cm_name}"] - EPS > 0][cols].to_csv(fpath_csv)
+    # Isolate cols from df that have positive labels for the given channel map
+    dfs[dfs[(tm.name, cm)] - EPS > 0][cols].to_csv(fpath_csv)
+
+
+# TODO generalize
+def make_histogram_reads(dfs):
+    read = dict()
+    dfs[f"partners_ecg_read_join_raw_tensor"] \
+        = dfs[f"partners_ecg_read_md_raw_tensor"] \
+          + "_" \
+          + dfs[f"partners_ecg_read_pc_raw_tensor"] 
+
+    for read_type in ["md", "pc", "join"]:
+        vc = dfs[f"partners_ecg_read_{read_type}_raw_tensor"].value_counts()
+        vc = vc.rename_axis('unique_values').reset_index(name='counts')
+        vc = vc[["counts", "unique_values"]]
+        fpath_csv = os.path.join(args.output_folder,
+                                 f"{args.id}/{args.id}_read_{read_type}_counts.csv")
+        vc.to_csv(fpath_csv)
+        logging.info(f"Saved {read_type} unique reads and counts to {fpath_csv}")
 
 
 def explore_tensor_maps(args):
+    '''comments here'''
+    # TODO implement dependents
     args.num_workers = 0
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = args.tensor_maps_in
-    tmap_names = args.input_tensors
-    dfs = pd.DataFrame() 
-    error_names = [name + '_error_reason' for name in tmap_names]
+    dependents = {}
+    channel_to_save = "unspecified"
+    error_msg = "error_types"
 
     # This only works for continuous and categorical data,
     # so raise an error if a tmap other than those two types are given.
     try:
-        if any(x != 1 for x in [len(tm.shape) for tm in tmaps]):
+        if any([len(tm.shape) != 1 for tm in tmaps]):
             raise ValueError("Explore only works for a) 1D continuous or b) categorical data. Choose different tensor maps.")
     except ValueError as e:
         logging.exception(e)
@@ -137,145 +158,128 @@ def explore_tensor_maps(args):
     except ValueError as e:
         logging.exception(e)
 
-    # Iterate through train, val, test generators
+    # Iterate through tmaps and initialize dict in which to store tensors,
+    # error types, and fpath for tensor
+    tdict = defaultdict(dict)
+    for tm in tmaps:
+        if tm.channel_map:
+            for cm in tm.channel_map:
+                tdict[tm.name].update({(tm.name, cm): list()})
+        else:
+            tdict[tm.name].update({f"{tm.name}_tensor": list()})
+        tdict[tm.name].update({error_msg: list()})
+        tdict[tm.name].update({"fpath": list()})
+   
+    # Iterate through train, validation, & test sets (i.e. generators)
     for gen in generators:
-
-        column_dict = dict()
-
-        # Update keys in the dictionary
-        for tm in tmaps:
-            if tm.channel_map:
-                column_dict.update({f"{tm.name}_{cm}": list() for cm in tm.channel_map})
-            else:
-                column_dict.update({tm.name: list()})
-        column_dict.update({name: list() for name in error_names})
-        column_dict['sample_id'] = []
-        column_dict['fpath'] = []
-
+        # For each generator, iterate through all paths to tensors
         for i, path in enumerate(gen.path_iters[0]):
             # Log progress every 500 tensors
             if (i+1) % 500 == 0:
                 data_len = gen.true_epoch_lens[0]
-                logging.info(f'{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done')
+                logging.info(f"{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done")
             if i == gen.true_epoch_lens[0]:
                 break
             try:
-                with h5py.File(path, 'r') as hd5:
-                    dependents = {}
+                with h5py.File(path, "r") as hd5:
+                    # Iterate through each tmap
+                    for tm in tmaps:
+                        error_type = ""
+                        try:
+                            tensor = tm.tensor_from_file(tm, hd5, dependents)
+                            # Append tensor to dict
+                            if tm.channel_map: 
+                                for cm in tm.channel_map:
+                                    tdict[tm.name][(tm.name, cm)].append(
+                                        tensor[tm.channel_map[cm]])
+                            else:
+                                tdict[tm.name][f"{tm.name}_tensor"].append(tensor)
+                        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                            # Could not obtain tensor, so instead append nan 
+                            if tm.channel_map:
+                                for cm in tm.channel_map:
+                                    tdict[tm.name][(tm.name, cm)].append(np.nan)
+                            else:
+                                # TODO figure out the np.full stuff
+                                tdict[tm.name][f"{tm.name}_tensor"].append(np.full(tm.shape, np.nan)[0])
 
-                    # Iterate through each tmap and concordant error_name
-                    for tm, error_name in zip(tmaps, error_names):
-                        error_type = ''
+                            # Save  error type to more readable string
+                            error_type = type(e).__name__
 
-                        # TODO implement channel_map for dependents
-                        if tm in dependents:
-                            column_dict[tm.name].append(dependents[tm])
-                        else:
-                            try:
-                                tensor = tm.tensor_from_file(tm, hd5, dependents)
-
-                                # Append column_dict with tensor
-                                if tm.channel_map:
-                                    for cm in tm.channel_map:
-                                        column_dict[f"{tm.name}_{cm}"].append(
-                                            tensor[tm.channel_map[cm]])
-                                else:
-                                    column_dict[tm.name].append(tensor)
-                            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                                # TODO generalize beyond floats
-                                # TODO generalize to more indices than first one
-
-                                # Append column_dict with nan 
-                                if tm.channel_map:
-                                    for cm in tm.channel_map:
-                                        column_dict[f"{tm.name}_{cm}"].append(np.nan)
-                                else:
-                                    column_dict[tm.name].append(np.full(tm.shape, np.nan)[0])
-
-                                # Save  error type to more readable string
-                                error_type = type(e).__name__
-
-                        # Save either '' or the error type if tensorizing threw error
-                        column_dict[error_name].append(error_type)
-
-                # Save file name
-                column_dict['sample_id'].append(os.path.basename(path).strip(TENSOR_EXT))
-                # Save full path
-                column_dict['fpath'].append(path)
-
+                        # Save error type and fpath
+                        tdict[tm.name][error_msg].append(error_type)
+                        tdict[tm.name]['fpath'].append(path)
             except OSError:
                 continue
 
-        # Convert column dict into dataframe
-        df = pd.DataFrame(column_dict)
-
-        # Append column describing train, test, or validation
-        df["set"] = gen.name.replace("_worker", "")
-
-        # Append parent dataframe with this df
-        dfs = dfs.append(df)
-
-    # Save parent dataframe to CSV
-    fpath_csv = os.path.join(args.output_folder,
-                             f"{args.id}/{args.id}_labels_filenames_sets.csv")
-    dfs.to_csv(fpath_csv)
-    logging.info(f"Saved labels, hd5 paths, and train/val/test labels to {fpath_csv}")
-
-    # Characterize label distribution
-
-    # Isolate keys of dfs in list
-    cols = dfs.keys().to_list()
-    cols.remove("sample_id")
-    cols.remove("set")
+    # Iterate through tmaps and append horizontally to parent df;
+    # rows are unique tensor files, and columns are tensors
+    # TODO ignore already existing columns
+    dfs = pd.DataFrame()
     for tm in tmaps:
-        if tm.channel_map:
-            for cm in tm.channel_map:
-                cols.remove(f"{tm.name}_{cm}")
-    
+        df = pd.DataFrame(tdict[tm.name])
+        dfs = pd.concat([dfs, df], axis=1)
+
+    # Remove duplicate columns (e.g. error_types and fpath)
+    dfs = dfs.loc[:, ~dfs.columns.duplicated()]
+
+    # Set path to CSV and save dfs
+    fpath_csv = os.path.join(args.output_folder,
+                             f"{args.id}/{args.id}_tensors.csv")
+    dfs.to_csv(fpath_csv)
+    logging.info(f"Saved tensor values and paths to {fpath_csv}")
+
+    # Sort reads by unique count and save as CSVs    
+    make_histogram_reads(dfs)
+
+    # Initialize a dataframe to store summary statistics
     df_stats = pd.DataFrame()
 
-    # Loop through each tensor map object and name concurrently
+    # Iterate through tensor maps
     for tm in tmaps:
-        # If "unspecified" in channel maps, we are looking at labeled ECG reads,
-        # so save all full reads that were labeled as "unspecified" 
-        if tm.channel_map and "unspecified" in tm.channel_map:
-            _save_samples_for_channel(cm_name="unspecified",
+        # If channel_to_save is in channel maps, save tensors that are positive for that channel
+        # TODO generalize the save condition, e.g. for continuous tensors > threshold, etc.
+        if tm.channel_map and channel_to_save in tm.channel_map:
+            _save_samples_for_channel(dfs=dfs,
                                       tm=tm,
-                                      cols=cols,
-                                      dfs=dfs,
+                                      cm=channel_to_save,
+                                      error_msg=error_msg,
                                       output_folder=args.output_folder,
                                       subdir=args.id)
+            # TODO remember why we do this
             if tm.dtype == DataSetType.STRING:
                 continue
 
-        # Initialize dict to store counts for channel maps
-        cm_dict = defaultdict(list) 
-
         if tm.group == "categorical": 
-            # Initialize a counter to track missing data
-            count_missing = 0
+            counts = []
+            counts_missing = []
 
-            # Tally counts for each channel map
-            for cm in tm.channel_map:
-                cm_dict["counts"].append(dfs[f"{tm.name}_{cm}"].sum())
-            
-            # "missing" (across all channel maps)
-            # We assume a missing row has a nan for the 0th col
-            cm_dict["counts"].append(dfs.iloc[:, 0].isna().sum())
+            # Iterate throgh channel maps and append count to list
+            if tm.channel_map:
+                for cm in tm.channel_map:
+                    counts.append(dfs[(tm.name, cm)].sum())
+                    counts_missing.append(dfs[(tm.name, cm)].isna().sum())
+            else:
+                counts.append(dfs[tm.name].sum())
+                counts_missing.append(dfs[tm.name].isna().sum())
+        
+            # Append list with missing counts
+            # TODO come up with more elegant approach
+            counts.append(counts_missing[0])
 
-            # "all" (cumulative total)
-            cm_dict["counts"].append(sum(cm_dict["counts"]))
+            # Append list with total counts
+            counts.append(sum(counts))
     
             # Create list of row names
-            cm_names = [f"{tm.name}_{cm}" for cm in tm.channel_map] \
-                       + [f"missing_{tm.name}", f"all_{tm.name}"]
+            cm_names = [cm for cm in tm.channel_map] \
+                       + [f"missing", f"all"]
 
-            df_stats = pd.DataFrame(cm_dict, index=cm_names)
-
+            df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
+        
             # Add new column: percent of all counts
-            df_stats[f"missing_frac"] = df_stats["counts"] \
-                                       / df_stats.loc[f"all_{tm.name}"]["counts"]
-
+            df_stats["missing_frac"] = df_stats["counts"] \
+                                       / df_stats.loc[f"all"]["counts"]
+            
             # Save parent dataframe to CSV on disk
             fpath_csv = os.path.join(args.output_folder,
                                          f"{args.id}/{tm.name}_summary_stats.csv")
@@ -283,7 +287,10 @@ def explore_tensor_maps(args):
             logging.info(f"Saved summary statistics to {fpath_csv}")
 
         # Note the approach for counting is different for continuous data
+        # TODO
         elif tm.group == "continuous":
+            # Initialize dict to store counts, indexed by channel maps
+            cm_dict = defaultdict(list) 
             for cm in tm.channel_map:
                 cm_dict["max"].append(dfs[f"{tm.name}_{cm}"].max())
                 cm_dict["min"].append(dfs[f"{tm.name}_{cm}"].min())
