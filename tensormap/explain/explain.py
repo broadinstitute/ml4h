@@ -5,13 +5,13 @@ import numpy
 import glob
 from typing import Union
 
-# import pdb
-
-def str_trim_end_chars(data: str) -> str:
-    return data
-
 
 class ExplainStats():
+    """Internal class for storing summary statistics for both numeric and
+    string input values. Updating this structure should be done primarily
+    through the overloaded add operator (`__add__`) not the add equality
+    operator (+=).
+    """
     def __init__(self, **kwargs):
         self._is_string = False
         self._mean = 0
@@ -78,6 +78,7 @@ class Explain():
         self._track_histogram  = False
         self._tokenize_strings = False
         self._tokenize_token   = " "
+        self._tokenize_only    = False
     
     def __str__(self) -> str:
         strings = []
@@ -112,51 +113,58 @@ class Explain():
                     zstd = numcodecs.zstd.Zstd()
                     decompressed = zstd.decode(node[()])
 
-                    if self._stats[node.name].get(node.attrs['dtype']) == None:
-                        self._stats[node.name][node.attrs['dtype']] = ExplainStats()
-
                     if node.attrs['dtype'] == "bstr":
-                        print("is bstr comp")
                         decompressed = bytes(decompressed).decode()
-                        # self._stats[node.name][node.attrs['dtype']] + (decompressed)
+                        if self._tokenize_only == False:
+                            if self._stats[node.name].get(decompressed) == None:
+                                self._stats[node.name][decompressed] = ExplainStats()        
+                                # Increment full string
+                                self._stats[node.name][decompressed] + (decompressed)
 
                         if self._tokenize_strings:
                             tokens = decompressed.split(self._tokenize_token)
-                            for t in tokens:
-                                print(t)
-                                if self._stats[node.name].get(t) == None:
-                                    self._stats[node.name][t] = ExplainStats()
-                                self._stats[node.name][t] + (t)
+                            print(len(tokens))
+                            if len(tokens) > 1:
+                                for t in tokens:
+                                    print(t)
+                                    if self._stats[node.name].get(t) == None:
+                                        self._stats[node.name][t] = ExplainStats()
+                                    self._stats[node.name][t] + (t)
                             
                     elif node.attrs['dtype'] == "str":
                         raise TypeError('Illegal relationship: Zstd compression and storage type as "str"')
                     else:
+                        if self._stats[node.name].get(node.attrs['dtype']) == None:
+                            self._stats[node.name][node.attrs['dtype']] = ExplainStats()
+
                         decompressed = numpy.frombuffer(decompressed, node.attrs['dtype'])
                         self._stats[node.name][node.attrs['dtype']] + (decompressed)
 
                 # Is uncompressed
                 elif node.attrs['compression'] == 'none':
                     if node.attrs['dtype'] == "bstr":
-                        # Todo
-                        if isinstance(node[()], numpy.void):
-                            print('====>>>')
-                            print(node.attrs.keys())
-                            print(node[()])
-                            print(node.name)
-                            return 0
-
                         string = node[()]
                         if isinstance(string, bytes):
                             string = string.decode()
                         elif isinstance(string, numpy.void):
                             string = bytes(string).decode()
 
+                        if self._tokenize_only == False:
+                            if self._stats[node.name].get(string) == None:
+                                self._stats[node.name][string] = ExplainStats()        
+                                # Increment full string
+                                self._stats[node.name][string] + (string)
+
+
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
-                            for t in tokens:
-                                if self._stats[node.name].get(t) == None:
-                                    self._stats[node.name][t] = ExplainStats()
-                                self._stats[node.name][t] + (t)
+                            print(len(tokens))
+                            if len(tokens) > 1:
+                                for t in tokens:
+                                    print(t)
+                                    if self._stats[node.name].get(t) == None:
+                                        self._stats[node.name][t] = ExplainStats()
+                                    self._stats[node.name][t] + (t)
 
                     elif node.attrs['dtype'] == "str":
                         string = node[()]
@@ -165,12 +173,21 @@ class Explain():
                         elif isinstance(string, numpy.void):
                             string = bytes(string).decode()
 
+                        if self._tokenize_only == False:
+                            if self._stats[node.name].get(string) == None:
+                                self._stats[node.name][string] = ExplainStats()        
+                                # Increment full string
+                                self._stats[node.name][string] + (string)
+
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
-                            for t in tokens:    
-                                if self._stats[node.name].get(t) == None:
-                                    self._stats[node.name][t] = ExplainStats()
-                                self._stats[node.name][t] + (t)
+                            print(len(tokens))
+                            if len(tokens) > 1:
+                                for t in tokens:    
+                                    print(t)
+                                    if self._stats[node.name].get(t) == None:
+                                        self._stats[node.name][t] = ExplainStats()
+                                    self._stats[node.name][t] + (t)
                     else:
                         if self._stats[node.name].get(node.attrs['dtype']) == None:
                             self._stats[node.name][node.attrs['dtype']] = ExplainStats()
@@ -183,8 +200,8 @@ class Explain():
             # Attribute 'compression' have not been set
             # Assume that the data is uncompressed
             else:
-                print('======compression not specified')
-                print(f"data {node.name}, {node[()]}")
+                # TODO: Add support for uncompressed datasets without meta fields
+                print(f"Currently unsupported: compression type is not specified for field {node.name}")
         # Current node is a group. Do nothing
         elif isinstance(node, h5py.Group):
             # print(f"group: {name} at {node.name}")
@@ -193,11 +210,7 @@ class Explain():
             raise TypeError('Illegal input type in visitor pattern')
     
     def explain(self, input_file):
-        # if isinstance(path, str) == False:
-        #     raise TypeError('HDF5 path must be of type str')
-        # recurse
-        #input_file = glob.glob('ML4CVD-muse_ecg_deidentified_1*.h5')[1]
         with h5py.File(input_file, 'r') as f:
             f.visititems(self._visitor)
-        return 1
+
 
