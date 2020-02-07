@@ -1,10 +1,13 @@
-"""Methods for working with raw ECG signal data."""
+"""Methods for reshaping raw ECG signal data for use in the pandas ecosystem."""
 import os
 import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
+from ml4cvd.defines import DataSetType
 import ml4cvd.runtime_data_defines as runtime_data_defines
+from ml4cvd.tensor_from_file import _get_tensor_at_first_date
+from ml4cvd.tensor_from_file import _pass_nan
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -13,6 +16,8 @@ RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
 RESTING_SIGNAL_LENGTH = 5000
 EXERCISE_SIGNAL_LENGTH = 30000
+EXERCISE_LEADS = ['I', 'II', 'III']
+EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
 
 def reshape_resting_ecg_to_tidy(sample_id, folder=None):
@@ -109,26 +114,19 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
 
 
 def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
-  """Wrangle raw exercise ECG data to tidy.
-
-  TODO:
-    * Per Puneet, this code is not correctly reading the data from the HD5 file.
-    * Refactor this to reduce duplicate code from above and elsewhere in this
-      repository.
+  """Wrangle raw exercise ECG signal data to tidy format.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
 
   Returns:
-    A pandas dataframe in tidy format or a notebook-friendly error.
+    A tuple of pandas dataframesor a notebook-friendly error.
+    * first tuple element is trend data in wide format
+    * second tuple element is signal data in tidy format
   """
   if folder is None:
     folder = runtime_data_defines.get_exercise_ecg_hd5_folder(sample_id)
-
-  data = {}
-  full_data = {}
-  signal_data = {}
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_hd5 = str(sample_id) + '.hd5'
@@ -141,82 +139,79 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
             sample_id,
             '\n\n',
             e.message)
-      return (pd.DataFrame(data), pd.DataFrame(data))
+      return (pd.DataFrame({}), pd.DataFrame({}))
 
     with h5py.File(local_path, mode='r') as hd5:
-      if 'ecg_bike_recovery' not in hd5:
-        print('Warning: Exercise ECG raw signal does not contain ',
-              'ecg_bike_recovery for sample ',
-              sample_id,
-              '\n\n',
-              e.message)
-        return (pd.DataFrame(data), pd.DataFrame(data))
+      if 'ecg_bike' not in hd5:
+        print('Warning: Exercise ECG does not contain ',
+              'ecg_bike_recovery for sample ', sample_id)
+        return (pd.DataFrame({}), pd.DataFrame({}))
+      trend_data = {}
+      for key in hd5['ecg_bike']['float_array'].keys():
+        if not key.startswith('trend_'):
+          continue
+        tensor = _get_tensor_at_first_date(
+            hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, key, handle_nan=_pass_nan)
+        if len(tensor.shape) == 1:  # Add 1-d trend data to this dictionary.
+          trend_data[key.replace('trend_', '')] = tensor
 
-      trends = hd5['ecg_bike_trend']
-      rest_start_idx = list(trends['PhaseName']).index(2)
+      full = _get_tensor_at_first_date(
+          hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'full')
 
-      # shape (57, )
-      full_data['full_times'] = np.array(list(trends['time']))
-      full_data['full_hrs'] = np.array(list(trends['HeartRate']))
-      full_data['full_loads'] = np.array(list(trends['Load']))
-      full_data['artifacts'] = np.array(list(trends['Artifact']))
+  signal_data = {}
+  for idx in range(0, len(EXERCISE_LEADS)):
+    signal_data['raw_mV_' + EXERCISE_LEADS[idx]] = full[:, idx] * RAW_SCALE
+  signal_data['time'] = np.arange(len(full)) / SAMPLING_RATE
 
-      # shape (6, )
-      data['times'] = np.array(list(trends['PhaseTime'])[rest_start_idx:])
-      data['hrs'] = np.array(list(trends['HeartRate'])[rest_start_idx:])
-      data['loads'] = np.array(list(trends['Load'])[rest_start_idx:])
+  # Convert exercise ecg trend tensor dictionarys to a dataframe and
+  # clean data as needed
+  trend_df = pd.DataFrame(trend_data)
+  # Clean data - convert to categorical string.
+  trend_df['phasename'] = trend_df.phasename.map(
+      EXERCISE_PHASES).astype('category')
 
-      # shape (30000,)
-      signal_data['ts_reference'] = np.array(
-          [i * 1. / (SAMPLING_RATE + 1.) for i in range(0,
-                                                        EXERCISE_SIGNAL_LENGTH)
-          ])
-      for lead in list(hd5['ecg_bike_recovery'].keys()):
-        raw = np.array(hd5['ecg_bike_recovery'][lead])
-        filtered, _, _ = filter_signal(signal=np.array(raw),
-                                       ftype='FIR',
-                                       band='bandpass',
-                                       order=int(0.3 * SAMPLING_RATE),
-                                       frequency=[.9, 50],
-                                       sampling_rate=SAMPLING_RATE)
-        signal_data['raw_mV_' + lead] = raw * RAW_SCALE
-        signal_data['filtered_mV_' + lead] = filtered * RAW_SCALE
-      signal_data['raw_mV_average'] = (
-          1/3.0 * (signal_data['raw_mV_lead_I']
-                   + signal_data['raw_mV_lead_2']
-                   + signal_data['raw_mV_lead_3']))
-      signal_data['filtered_mV_average'] = (
-          1/3.0 * (signal_data['filtered_mV_lead_I']
-                   + signal_data['filtered_mV_lead_2']
-                   + signal_data['filtered_mV_lead_3']))
-
-      # shape (1,)
-      data['max_hr'] = list(hd5['continuous']['bike_max_hr'])[0]
-      data['resting_hr'] = list(hd5['continuous']['bike_resting_hr'])[0]
-      data['max_pred_hr'] = list(hd5['continuous']['bike_max_pred_hr'])[0]
-
-  # shape (1,)
-  data['hr_recovery_60s'] = data['max_hr'] - data['hrs'][-1]
-  data['hr_increase'] = data['max_hr'] - data['resting_hr']
-  data['max_hr_achieved_ratio'] = data['max_hr'] / data['max_pred_hr']
-  data['pred_peak_exercise'] = data['max_pred_hr'] - data['resting_hr']
-  data['peak_hr_reserve'] = data['max_hr'] / data['pred_peak_exercise']
-
-  full_df = pd.DataFrame(full_data)
+  # Convert exercise ecg signal tensor dictionary to a dataframe, clean data
+  # as needed, and then pivot to tidy.
   signal_df = pd.DataFrame(signal_data)
   tidy_signal_df = pd.wide_to_long(signal_df,
-                                   stubnames=['raw_mV', 'filtered_mV'],
-                                   i='ts_reference',
+                                   stubnames=['raw_mV'],
+                                   i='time',
                                    j='lead',
                                    sep='_',
                                    suffix='.*')
   tidy_signal_df.reset_index(inplace=True)  # Turn pd multiindex into columns.
-
   # The leads have a meaningful order, apply the order to this column.
   lead_factor_type = pd.api.types.CategoricalDtype(
-      categories=['average', 'lead_I', 'lead_2', 'lead_3'],
-      ordered=True)
+      categories=EXERCISE_LEADS, ordered=True)
   tidy_signal_df['lead'] = tidy_signal_df.lead.astype(lead_factor_type)
 
-  return (full_df, tidy_signal_df)
+  return (trend_df, tidy_signal_df)
 
+
+def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
+  """Wrangle raw exercise ECG signal and trend data to tidy format.
+
+  Args:
+    sample_id: The id of the ECG sample to retrieve.
+    folder: The local or Cloud Storage folder under which the files reside.
+
+  Returns:
+    A tuple of pandas dataframesor a notebook-friendly error.
+    * first tuple element is trend data in tidy format
+    * second tuple element is signal data in tidy format
+  """
+
+  # Get the trend data in wide format and pivot it to tidy.
+  (trend_df, tidy_signal_df) = reshape_exercise_ecg_to_tidy(sample_id, folder)
+  # Clean data - drop zero-valued columns.
+  trend_df = trend_df.loc[:, ~trend_df.eq(0).all()]
+  trend_id_vars = ['time', 'phasename', 'phasetime']
+  trend_value_vars = trend_df.columns[
+      ~trend_df.columns.isin(trend_id_vars)].tolist()
+  tidy_trend_df = trend_df.melt(
+      id_vars=trend_id_vars,
+      value_vars=trend_value_vars,
+      var_name='measurement',
+      value_name='value')
+
+  return (tidy_trend_df, tidy_signal_df)
