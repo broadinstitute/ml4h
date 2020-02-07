@@ -301,6 +301,8 @@ class _MultiModalMultiTaskWorker:
         logging.info(f"Worker {self.name} - In true epoch {self.stats['epochs']}:\n\t{info_string}")
         if self.stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
+        if 'test' in self.name:
+            logging.warning(f'Test worker completed a full epoch. Test results may be double counting samples.')
         self.start = time.time()
         self.epoch_stats = Counter()
 
@@ -357,7 +359,6 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         paths = first_batch[2]
 
     input_tensors, output_tensors = list(first_batch[0]), list(first_batch[1])
-    t = 0
     for i in range(1, minibatches):
         logging.info(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
@@ -371,8 +372,8 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
 
     for key, array in saved_tensors.items():
         logging.info(f"Tensor '{key}' has shape {array.shape}.")
-    inputs = {key: saved_tensors[key][:t] for key in input_tensors}
-    outputs = {key: saved_tensors[key][:t] for key in output_tensors}
+    inputs = {key: saved_tensors[key] for key in input_tensors}
+    outputs = {key: saved_tensors[key] for key in output_tensors}
     if keep_paths:
         return inputs, outputs, paths
     else:
