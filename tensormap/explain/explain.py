@@ -73,11 +73,11 @@ class ExplainStats():
 class Explain():
     def __init__(self, **kwargs):
         # Dictionary of dictionaries mapping paths -> types/tokens -> stats
-        self._stats = dict()
+        self._stats     = dict()
+        self._callbacks = dict()
         self._track_histogram  = False
         self._tokenize_strings = False
         self._tokenize_token   = " "
-        self._callbacks = dict()
     
     def __str__(self) -> str:
         strings = []
@@ -117,11 +117,19 @@ class Explain():
 
                     if node.attrs['dtype'] == "bstr":
                         print("is bstr comp")
+                        decompressed = bytes(decompressed).decode()
+                        # self._stats[node.name][node.attrs['dtype']] + (decompressed)
+
+                        if self._tokenize_strings:
+                            tokens = decompressed.split(self._tokenize_token)
+                            for t in tokens:
+                                print(t)
+                                if self._stats[node.name].get(t) == None:
+                                    self._stats[node.name][t] = ExplainStats()
+                                self._stats[node.name][t] + (t)
                             
                     elif node.attrs['dtype'] == "str":
-                        print("is str comp")
-                        for k in node.attrs:
-                            print(k, node.attrs[k])
+                        raise TypeError('Illegal relationship: Zstd compression and storage type as "str"')
                     else:
                         decompressed = numpy.frombuffer(decompressed, node.attrs['dtype'])
                         self._stats[node.name][node.attrs['dtype']] + (decompressed)
@@ -146,10 +154,9 @@ class Explain():
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
                             for t in tokens:
-                                print(t)
                                 if self._stats[node.name].get(t) == None:
                                     self._stats[node.name][t] = ExplainStats()
-                                self._stats[node.name][t]._n + (t)
+                                self._stats[node.name][t] + (t)
 
                     elif node.attrs['dtype'] == "str":
                         string = node[()]
@@ -177,10 +184,13 @@ class Explain():
             # Assume that the data is uncompressed
             else:
                 print('======compression not specified')
+                print(f"data {node.name}, {node[()]}")
         # Current node is a group. Do nothing
-        else:
+        elif isinstance(node, h5py.Group):
             # print(f"group: {name} at {node.name}")
             pass
+        else:
+            raise TypeError('Illegal input type in visitor pattern')
     
     def explain(self, input_file):
         # if isinstance(path, str) == False:

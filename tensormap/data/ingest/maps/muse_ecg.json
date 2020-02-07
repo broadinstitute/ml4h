@@ -24,7 +24,7 @@
                 "StmtText": {"dtype": "str"}
             }
         },
-        "MeasurementMatrix": {"dtype": "str", "destination": "measurement_matrix/age", "callback": ["tensormap.utils.ecg.muse_decode_waveform"], "attrs": []},
+        "MeasurementMatrix": {"dtype": "str", "destination": "measurement_matrix/age", "callback": ["tensormap.utils.ecg.muse_decode_waveform"], "attrs": [{"dtype": "int16"}]},
         "Diagnosis":
         {
             "DiagnosisStatement":

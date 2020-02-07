@@ -275,12 +275,10 @@ class XmlImporter(Importer):
                 dat.attrs['dtype'] = "bstr"
                 dat.attrs['compression'] = 'zstd'
             else:
-                print(f"clen >= ulen. {clen} >= {ulen} for {data} for {dataset_name}")
                 dat = group.create_dataset(dataset_name, data = numpy.void(data.encode()))
                 dat.attrs['dtype'] = "str"
                 dat.attrs['compression'] = 'none'
                 clen = ulen
-                print(f"{dataset_name}: {dat.attrs['dtype']}, {dat.attrs['compression']}, {bytes(dat[()]).decode()}")
             
             dat.attrs['len']   = len(data)
             dat.attrs['uncompressed_size'] = ulen
@@ -579,8 +577,21 @@ class XmlImporter(Importer):
         dat.attrs['compression'] = 'zstd'
         dat.attrs['uncompressed_size'] = len(processed_data_b)
         dat.attrs['compressed_size']   = len(processed)
-        peaks_b = zstd_compress(peaks_b, 1, 19)
-        group.create_dataset('peaks', data = numpy.void(peaks_b))
+        ulen = len(peaks_b)
+        compressed = zstd_compress(peaks_b, 1, 19)
+        clen = len(compressed)
+        if clen < ulen:
+            dat = group.create_dataset('peaks', data = numpy.void(compressed))
+            dat.attrs['compression'] = 'zstd'
+        else:
+            dat = group.create_dataset('peaks', data = numpy.void(peaks_b))
+            dat.attrs['compression'] = 'none'
+            
+        dat.attrs['len'] = len(peaks_len)
+        dat.attrs['uncompressed_size'] = ulen
+        dat.attrs['compressed_size']   = clen
+        dat.attrs['shape'] = peaks_len
+        dat.attrs['dtype'] = str(peaks_b.dtype)
 
     def build(self, preset: str = None, compression: str = "zstd"):
         """Construct the target output HDF5 file.
