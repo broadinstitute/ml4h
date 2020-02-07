@@ -765,13 +765,13 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
                 conv_normalize, conv_regularize, conv_x, conv_y, conv_z, conv_dropout, conv_width, conv_dilate, pool_x,
                 pool_y, pool_z, pool_type, padding,
             )
-            decoder_out = Flatten()(last_conv)
+            encoder_out = Flatten()(last_conv)
         else:
-            decoder_out = _build_mlp_encoder(
+            encoder_out = _build_mlp_encoder(
                 input_tensor, tm, layers, activation, conv_normalize,
             )
-            mlp_inputs.append(decoder_out)
-        input_multimodal.append(decoder_out)
+            mlp_inputs.append(encoder_out)
+        input_multimodal.append(encoder_out)
 
     multimodal_activation = _build_bottleneck(
         input_multimodal, layers, mlp_inputs, activation, dense_layers, dropout, mlp_concat, conv_normalize,
