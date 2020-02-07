@@ -116,7 +116,7 @@ def _save_samples_for_channel(dfs, tm, cm, error_msg, output_folder, subdir):
 
 
 # TODO generalize
-def make_histogram_reads(dfs):
+def quantify_read_distribution(dfs):
     read = dict()
     dfs[f"partners_ecg_read_join_raw_tensor"] \
         = dfs[f"partners_ecg_read_md_raw_tensor"] \
@@ -220,6 +220,8 @@ def explore_tensor_maps(args):
         df = pd.DataFrame(tdict[tm.name])
         dfs = pd.concat([dfs, df], axis=1)
 
+    pdb.set_trace()
+    
     # Remove duplicate columns (e.g. error_types and fpath)
     dfs = dfs.loc[:, ~dfs.columns.duplicated()]
 
@@ -229,8 +231,9 @@ def explore_tensor_maps(args):
     dfs.to_csv(fpath_csv)
     logging.info(f"Saved tensor values and paths to {fpath_csv}")
 
+    '''
     # Sort reads by unique count and save as CSVs    
-    make_histogram_reads(dfs)
+    # quantify_read_distribution(dfs)
 
     # Initialize a dataframe to store summary statistics
     df_stats = pd.DataFrame()
@@ -312,7 +315,7 @@ def explore_tensor_maps(args):
                                      f"{args.id}/{tm.name}_summary_stats.csv")
         df_stats.to_csv(fpath_csv)
         logging.info(f"Saved summary statistics to {fpath_csv}")
-
+    '''
 
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
