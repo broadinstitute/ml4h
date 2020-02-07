@@ -9,7 +9,7 @@ from datetime import datetime
 import sys
 from ..utils.ingest import open_read_load, str_to_dtype, zstd_compress, zstd_decompress, xml_parse
 from ..utils.ecg import process_waveform, ukbb_ecg_parse_timestamp
-from ..utils.utils import add_hdf5_text_nonempty_int, add_text_nonempty_int, parse_missing_array,xml_extract_value_attributes
+from ..utils.utils import add_hdf5_text_nonempty_int, add_text_nonempty_int, parse_missing_array, xml_extract_value_attributes
 
 class Importer(object):
     def __init__(self, input_file = None, output_file = None, **kwargs):
@@ -165,6 +165,8 @@ class Importer(object):
 
 
 class XmlImporter(Importer):
+    """Ingestion class for XML-based input files.
+    """
     def __init__(self, input_file = None, **kwargs):
         super(XmlImporter, self).__init__(input_file, **kwargs)
         self._modality = 'ecg'
@@ -210,7 +212,7 @@ class XmlImporter(Importer):
                             dataset_name: str, 
                             data, 
                             mapper: dict, 
-                            compression_level = 19):
+                            compression_level: int = 19):
         """Store data in a HDF5 dataset. Data will be compressed uisng Zstd if the
         compressed data is smaller compared to the input data. This cost/trade-off
         ignores the significant overhead of storing meta information in the HDF5
