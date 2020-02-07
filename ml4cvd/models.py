@@ -751,64 +751,33 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
 
-    # BUILD DECODERS
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     input_multimodal = []
     layers = {}
     mlp_inputs = []
 
+    # build encoders
     last_conv = None
     for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
         if tm.axes() > 1:
             last_conv = _build_convolutional_encoder(
-                input_tensor,
-                tm,
-                layers,
-                activation,
-                conv_layers,
-                max_pools,
-                dense_blocks,
-                block_size,
-                conv_type,
-                conv_normalize,
-                conv_regularize,
-                conv_x,
-                conv_y,
-                conv_z,
-                conv_dropout,
-                conv_width,
-                conv_dilate,
-                pool_x,
-                pool_y,
-                pool_z,
-                pool_type,
-                padding,
+                input_tensor, tm, layers, activation, conv_layers, max_pools, dense_blocks, block_size, conv_type,
+                conv_normalize, conv_regularize, conv_x, conv_y, conv_z, conv_dropout, conv_width, conv_dilate, pool_x,
+                pool_y, pool_z, pool_type, padding,
             )
             decoder_out = Flatten()(last_conv)
         else:
             decoder_out = _build_mlp_encoder(
-                input_tensor,
-                tm,
-                layers,
-                activation,
-                conv_normalize,
+                input_tensor, tm, layers, activation, conv_normalize,
             )
             mlp_inputs.append(decoder_out)
         input_multimodal.append(decoder_out)
 
-    # BUILD BOTTLENECK
     multimodal_activation = _build_bottleneck(
-        input_multimodal,
-        layers,
-        mlp_inputs,
-        activation,
-        dense_layers,
-        dropout,
-        mlp_concat,
-        conv_normalize,
+        input_multimodal, layers, mlp_inputs, activation, dense_layers, dropout, mlp_concat, conv_normalize,
     )
 
-    # BUILD DECODERS
+    # build decoders
     losses = []
     my_metrics = {}
     loss_weights = []
@@ -822,33 +791,15 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
             output_tensor_maps_to_process.append(tm)
             continue
         output_predictions[tm] = _build_decoder(
-            tm,
-            multimodal_activation,
-            last_conv,  # TODO: this should be unnecessary
-            layers,
-            losses,
-            loss_weights,
-            my_metrics,
-            activation,
-            conv_layers,
-            dense_blocks,
-            conv_type,
-            conv_x,
-            conv_y,
-            conv_z,
-            conv_width,
-            u_connect,
-            pool_x,
-            pool_y,
-            pool_z,
-            padding,
+            tm, multimodal_activation, last_conv, layers, losses, loss_weights, my_metrics, activation, conv_layers,
+            dense_blocks, conv_type, conv_x, conv_y, conv_z, conv_width, u_connect, pool_x, pool_y, pool_z, padding,
         )
 
-    # MERGE COMPONENTS INTO FINAL MODEL
+    # merge encoders, bottleneck, decoders
     m = Model(inputs=input_tensors, outputs=[output_predictions[tm] for tm in tensor_maps_out])
     m.summary()
 
-    # LOAD LAYERS FOR TRANSFER LEARNING
+    # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
     if model_layers:
         loaded = 0
