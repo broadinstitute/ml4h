@@ -665,6 +665,21 @@ TMAPS[task] = TensorMap(task,
                             key_in_hd5="read_pc_clean", return_read=True),
                         shape=(1,))
 
+task = "partners_ecg_mrn"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_reads(
+                            key_in_hd5="patientid", return_read=True),
+                        shape=(1,))
+
+task = "partners_ecg_date"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_reads(
+                            key_in_hd5="acquisitiondate", return_read=True),
+                        shape=(1,))
 
 def make_partners_ecg_intervals(population_normalize=None):
     def partners_ecg_intervals(tm, hd5, dependents={}):
