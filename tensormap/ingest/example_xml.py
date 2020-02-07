@@ -8,7 +8,7 @@ import pdb
 
 def example1():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml.zst'
+    filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml.zst'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.build(preset = 'ukbb', compression = 'zstd')
@@ -18,7 +18,7 @@ def example1():
 
 def example2():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.build(preset = 'ukbb', compression = 'none')
@@ -28,7 +28,7 @@ def example2():
 
 def example3():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml.zst'
+    filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml.zst'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.build(preset = 'ukbb', compression = 'zstd')
@@ -38,14 +38,14 @@ def example3():
 
 def example4():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/muse_ecg_deidentified_1.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/muse_ecg.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/muse_ecg.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -59,14 +59,14 @@ def example4():
 
 def example5():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/muse_ecg_deidentified_1.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/muse_ecg.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/muse_ecg.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -80,14 +80,14 @@ def example5():
 
 def example6():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/ukbb_ecg.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/ukbb_ecg.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -101,14 +101,14 @@ def example6():
 
 def example7():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/ukbb_scrubbed.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/ukbb_scrubbed.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/ukbb_ecg.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/ukbb_ecg.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -122,14 +122,14 @@ def example7():
 
 def example8():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/muse_ecg_deidentified_1.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/muse_ecg_data.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/muse_ecg_data.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -143,14 +143,14 @@ def example8():
 
 def example9():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml'
+    filename = str(cur_path) + '/../data/ingest/ecg/muse_ecg_deidentified_1.xml'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/muse_ecg_data.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/muse_ecg_data.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -164,7 +164,7 @@ def example9():
 
 def example10():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml.zst'
+    filename = str(cur_path) + '/../data/ingest/ecg/muse_ecg_deidentified_1.xml.zst'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
@@ -172,7 +172,7 @@ def example10():
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/muse_ecg_data.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/muse_ecg_data.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper
@@ -186,7 +186,7 @@ def example10():
 
 def example11():
     cur_path = pathlib.Path(__file__).parent.absolute()
-    filename = str(cur_path) + '/tensormap/data/ingest/ecg/muse_ecg_deidentified_1.xml.zst'
+    filename = str(cur_path) + '/../data/ingest/ecg/muse_ecg_deidentified_1.xml.zst'
     imp = tensormap.ingest.importer.XmlImporter(filename)
     imp.output_file = '/'.join(["./", imp.automated_name()])
     imp.input_callbacks = [tensormap.utils.ingest.open_read_load,
@@ -194,7 +194,7 @@ def example11():
                            tensormap.utils.ingest.xml_parse]
 
     # JSON mapper file
-    with open(str(cur_path) + '/tensormap/data/ingest/maps/muse_ecg_data.json') as r:
+    with open(str(cur_path) + '/../data/ingest/maps/muse_ecg_data.json') as r:
         mapper = json.loads(r.read())
 
     imp.mapper = mapper

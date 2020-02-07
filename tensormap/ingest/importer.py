@@ -573,10 +573,12 @@ class XmlImporter(Importer):
         processed_data_b = zstd_compress(processed_data_b, 1, 19)
         dat = group.create_dataset('data', data = numpy.void(processed_data_b))
         dat.attrs['len'] = processed_data_len
-        dat.attrs['dtype'] = 'int16'
-        dat.attrs['compression'] = 'zstd'
+        dat.attrs['dtype'] = 'int16' # fix
         dat.attrs['uncompressed_size'] = len(processed_data_b)
         dat.attrs['compressed_size']   = len(processed)
+        dat.attrs['shape'] = processed_data_len
+        
+        # Peaks
         ulen = len(peaks_b)
         compressed = zstd_compress(peaks_b, 1, 19)
         clen = len(compressed)
@@ -587,11 +589,11 @@ class XmlImporter(Importer):
             dat = group.create_dataset('peaks', data = numpy.void(peaks_b))
             dat.attrs['compression'] = 'none'
             
-        dat.attrs['len'] = len(peaks_len)
+        dat.attrs['len'] = peaks_len
         dat.attrs['uncompressed_size'] = ulen
         dat.attrs['compressed_size']   = clen
         dat.attrs['shape'] = peaks_len
-        dat.attrs['dtype'] = str(peaks_b.dtype)
+        dat.attrs['dtype'] = str("int16") # todo: fix
 
     def build(self, preset: str = None, compression: str = "zstd"):
         """Construct the target output HDF5 file.

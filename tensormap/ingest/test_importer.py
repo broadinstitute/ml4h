@@ -1,10 +1,10 @@
-import tensormap.ingest.importer
-import tensormap.utils.ingest
 import pytest
 import numpy
 import h5py
 import pathlib
 from contextlib import contextmanager
+import tensormap.ingest.importer
+import tensormap.utils.ingest
 
 
 @contextmanager
