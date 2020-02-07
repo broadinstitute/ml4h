@@ -22,6 +22,60 @@ from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNES
 For now, all we will map `group` in TensorMap to `source` in tensor_path and `name` to `name`
 """
 
+def make_partners_ecg_reads(key_in_hd5: str = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified", return_read: bool = False):
+    def partners_ecg_reads_from_file(tm, hd5, dependents={}):
+        read = _decompress_data(data_compressed=hd5[key_in_hd5][()],
+                                dtype=hd5[key_in_hd5].attrs['dtype'])
+        if return_read:
+            return read
+        
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        for cm in tm.channel_map:
+            for string in dict_of_list[cm]:
+                if string in read:
+                    categorical_data[tm.channel_map[cm]] = 1
+                    return categorical_data
+        categorical_data[tm.channel_map[not_found_key]] = 1
+        return categorical_data
+    return partners_ecg_reads_from_file
+
+group = "string" 
+task = "partners_ecg_read_md_raw"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_reads(
+                            key_in_hd5="read_md_clean", return_read=True),
+                        shape=(1,))
+
+def make_partners_ecg_intervals(population_normalize=None):
+    def partners_ecg_intervals(tm, hd5, dependents={}):
+        continuous_data = np.zeros(tm.shape, dtype=np.float32)
+        for interval in tm.channel_map:
+            if interval in hd5:
+                interval_val = _decompress_data(
+                                   data_compressed=hd5[interval][()],
+                                   dtype=hd5[interval].attrs['dtype'])
+                continuous_data[tm.channel_map[interval]] = interval_val
+        if population_normalize is not None:
+            continuous_data /= population_normalize
+        return tm.normalize_and_validate(continuous_data)
+    return partners_ecg_intervals
+
+
+group = "continuous"
+
+task = "partners_ecg_rate"
+TMAPS[task] = TensorMap(task,
+                        group=group,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_intervals(),
+                        validator=make_range_validator(10, 200),
+                        channel_map={'ventricularrate': 0})
+
+
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.group, tm.dtype, tm.name)
