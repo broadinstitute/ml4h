@@ -123,10 +123,8 @@ class Explain():
 
                         if self._tokenize_strings:
                             tokens = decompressed.split(self._tokenize_token)
-                            print(len(tokens))
                             if len(tokens) > 1:
                                 for t in tokens:
-                                    print(t)
                                     if self._stats[node.name].get(t) == None:
                                         self._stats[node.name][t] = ExplainStats()
                                     self._stats[node.name][t] + (t)
@@ -158,10 +156,8 @@ class Explain():
 
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
-                            print(len(tokens))
                             if len(tokens) > 1:
                                 for t in tokens:
-                                    print(t)
                                     if self._stats[node.name].get(t) == None:
                                         self._stats[node.name][t] = ExplainStats()
                                     self._stats[node.name][t] + (t)
@@ -181,10 +177,8 @@ class Explain():
 
                         if self._tokenize_strings:
                             tokens = string.split(self._tokenize_token)
-                            print(len(tokens))
                             if len(tokens) > 1:
                                 for t in tokens:    
-                                    print(t)
                                     if self._stats[node.name].get(t) == None:
                                         self._stats[node.name][t] = ExplainStats()
                                     self._stats[node.name][t] + (t)
@@ -193,7 +187,6 @@ class Explain():
                             self._stats[node.name][node.attrs['dtype']] = ExplainStats()
 
                         self._stats[node.name][node.attrs['dtype']] + numpy.frombuffer(node[()], node.attrs['dtype'])
-                        # print(numpy.frombuffer(node[()], node.attrs['dtype']))
                 # Other unknown compression method
                 else:
                     raise ValueError(f"Unknown compression type: {node.attrs['compression']}")
