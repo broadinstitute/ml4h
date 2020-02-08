@@ -572,30 +572,48 @@ class XmlImporter(Importer):
             raise KeyError('dataset peaks already exists')
 
         # print(gname, peaks_len, processed_data_len)
-        processed_data_b = zstd_compress(processed_data_b, 1, 19)
-        dat = group.create_dataset('data', data = numpy.void(processed_data_b))
-        dat.attrs['len'] = processed_data_len
-        dat.attrs['dtype'] = 'int16' # fix
-        dat.attrs['uncompressed_size'] = len(processed_data_b)
-        dat.attrs['compressed_size']   = len(processed)
-        dat.attrs['shape'] = processed_data_len
-        
-        # Peaks
-        ulen = len(peaks_b)
-        compressed = zstd_compress(peaks_b, 1, 19)
+        compressed = zstd_compress(processed_data_b, 1, 19)
+        ulen = len(processed_data_b)
         clen = len(compressed)
+        
+        # Mutate data if the compressed size < uncompressed size
         if clen < ulen:
-            dat = group.create_dataset('peaks', data = numpy.void(compressed))
-            dat.attrs['compression'] = 'zstd'
+            processed_data_b = numpy.void(compressed)
         else:
-            dat = group.create_dataset('peaks', data = numpy.void(peaks_b))
+            clen = ulen
+
+        dat = group.create_dataset('data', data = processed_data_b)
+        dat.attrs['len'] = len(processed_data_b)
+        if clen < ulen: 
+            dat.attrs['compression'] = 'zstd'
+        else: 
             dat.attrs['compression'] = 'none'
-            
-        dat.attrs['len'] = peaks_len
+        
         dat.attrs['uncompressed_size'] = ulen
         dat.attrs['compressed_size']   = clen
-        dat.attrs['shape'] = peaks_len
-        dat.attrs['dtype'] = str("int16") # todo: fix
+        dat.attrs['dtype'] = str("int16")
+        
+        # Peaks
+        compressed = zstd_compress(peaks_b, 1, 19)
+        ulen = len(peaks_b)
+        clen = len(compressed)
+        
+        # Mutate data if the compressed size < uncompressed size
+        if clen < ulen:
+            peaks_b = numpy.void(compressed)
+        else:
+            clen = ulen
+
+        dat = group.create_dataset('peaks', data = peaks_b)
+        dat.attrs['len'] = len(peaks_b)
+        if clen < ulen: 
+            dat.attrs['compression'] = 'zstd'
+        else: 
+            dat.attrs['compression'] = 'none'
+        
+        dat.attrs['uncompressed_size'] = ulen
+        dat.attrs['compressed_size']   = clen
+        dat.attrs['dtype'] = str("int16")
 
     def build(self, preset: str = None, compression: str = "zstd"):
         """Construct the target output HDF5 file.
@@ -740,8 +758,10 @@ class XmlImporter(Importer):
         # Store processed datetime
         data.create_dataset('recorded_timestamp', data = ukbb_ecg_parse_timestamp(xml['CardiologyXML']['ObservationDateTime']).__str__())
         data.create_dataset('dicom_uid', data = xml['CardiologyXML']['UID']['DICOMStudyUID'])
+        data['recorded_timestamp'].attrs['dtype'] = 'str'
+        data['dicom_uid'].attrs['dtype'] = 'str'
 
-        # Store patient information from the ECG XML! This could be different from the
+        # Store patient information from the ECG XML. This could be different from the
         # collective meta information for the UKBB cohort.
         target = xml['CardiologyXML']['PatientInfo']
         pinfo = data.create_group("patient_info")
@@ -757,6 +777,18 @@ class XmlImporter(Importer):
         pinfo.create_dataset('Height',     data = int(xml_extract_value_attributes(target['Height'])['data']))
         pinfo.create_dataset('Weight',     data = float(xml_extract_value_attributes(target['Weight'])['data']))
         pinfo.create_dataset('PaceMaker',  data = xml_extract_value_attributes(target['PaceMaker'])['data'])
+        pinfo['PID'].attrs['dtype'] = 'int32'
+        pinfo['FamilyName'].attrs['dtype'] = 'int32'
+        pinfo['GivenName'].attrs['dtype'] = 'str'
+        pinfo['Age'].attrs['dtype'] = 'int32'
+        pinfo['BornDay'].attrs['dtype'] = 'int32'
+        pinfo['BornMonth'].attrs['dtype'] = 'int32'
+        pinfo['BornYear'].attrs['dtype'] = 'int32'
+        pinfo['Gender'].attrs['dtype'] = 'str'
+        pinfo['Race'].attrs['dtype'] = 'str'
+        pinfo['Height'].attrs['dtype'] = 'int'
+        pinfo['Weight'].attrs['dtype'] = 'float32'
+        pinfo['PaceMaker'].attrs['dtype'] = 'str'
         
         # Diagnosis text
         diagnosis_text = str()
@@ -768,6 +800,7 @@ class XmlImporter(Importer):
                         diagnosis_text += j + ' '
 
                 data.create_dataset('diagnosis_text', data = diagnosis_text)
+                data['diagnosis_text'].attrs['dtype'] = 'str'
             except Exception:
                 pass
 
@@ -780,6 +813,7 @@ class XmlImporter(Importer):
                         conclusion_text += j + ' '
 
                 data.create_dataset('conclusion_text', data = conclusion_text)
+                data['conclusion_text'].attrs['dtype'] = 'str'
             except Exception:
                 pass
 
@@ -797,6 +831,7 @@ class XmlImporter(Importer):
         add_hdf5_text_nonempty_int(emeasure, 'PAxis', target, 'PAxis')
         add_hdf5_text_nonempty_int(emeasure, 'RAxis', target, 'RAxis')
         add_hdf5_text_nonempty_int(emeasure, 'TAxis', target, 'TAxis')
+
         try:
             emeasure.create_dataset('QRSNum', data = int(target['QRSNum']))
         except Exception:
@@ -813,16 +848,23 @@ class XmlImporter(Importer):
                     # Cast char array to float array
                     # Numpy only have subroutines supporting NaNs when the primitive type is float
                     s = s.astype("float")
-                    mtable.create_dataset(j, data = s)
+                    dat = mtable.create_dataset(j, data = s)
+                    dat.attrs['dtype'] = "float32"
                 else:
                     # For the UKBiobank this value will always be 'LeadOrder'
-                    mtable.create_dataset(j, data = x)
+                    dat = mtable.create_dataset(j, data = x)
+                    dat.attrs['dtype'] = "str"
 
             mtable.create_dataset('POnset',  data = add_text_nonempty_int(xml_extract_value_attributes(target['POnset'])['data']))
             mtable.create_dataset('POffset', data = add_text_nonempty_int(xml_extract_value_attributes(target['POffset'])['data']))
             mtable.create_dataset('QOnset',  data = add_text_nonempty_int(xml_extract_value_attributes(target['QOnset'])['data']))
             mtable.create_dataset('QOffset', data = add_text_nonempty_int(xml_extract_value_attributes(target['QOffset'])['data']))
             mtable.create_dataset('TOffset', data = add_text_nonempty_int(xml_extract_value_attributes(target['TOffset'])['data']))
+            mtable['POnset'].attrs['dtype'] = 'int32'
+            mtable['POffset'].attrs['dtype'] = 'int32'
+            mtable['QOnset'].attrs['dtype'] = 'int32'
+            mtable['QOffset'].attrs['dtype'] = 'int32'
+            mtable['TOffset'].attrs['dtype'] = 'int32'
 
             # print(mtable.keys())
 
@@ -835,6 +877,10 @@ class XmlImporter(Importer):
             median_samples.create_dataset('Resolution',    data = add_text_nonempty_int(xml_extract_value_attributes(target['Resolution'])['data']))
             median_samples.create_dataset('FirstValid',    data = add_text_nonempty_int(xml_extract_value_attributes(target['FirstValid'])['data']))
             median_samples.create_dataset('LastValid',     data = add_text_nonempty_int(xml_extract_value_attributes(target['LastValid'])['data']))
+            median_samples['SampleRate'].attrs['dtype'] = 'int32'
+            median_samples['Resolution'].attrs['dtype'] = 'int32'
+            median_samples['FirstValid'].attrs['dtype'] = 'int32'
+            median_samples['LastValid'].attrs['dtype'] = 'int32'
 
             # median_data = []
 
@@ -852,6 +898,7 @@ class XmlImporter(Importer):
                 # median_samples.create_dataset(name, data = s, **hdf5plugin.Blosc(cname='zstd', clevel=1, shuffle=hdf5plugin.Blosc.SHUFFLE))
                 # Store data
                 dat = self._store_hdf5_dataset(median_samples, name, s, None, 19)
+                dat.attrs['dtype'] = 'int16'
 
 
         if 'f' in xml['CardiologyXML']:
@@ -861,12 +908,18 @@ class XmlImporter(Importer):
             horizontal   = vector_loops.create_group("Horizontal")
             sagittal     = vector_loops.create_group("Sagittal")
 
-            frontal.create_dataset(target['Frontal'][0][list(target['Frontal'][0].keys())[0]], data = parse_missing_array(target['Frontal'][0]['#text']))
-            frontal.create_dataset(target['Frontal'][1][list(target['Frontal'][1].keys())[0]], data = parse_missing_array(target['Frontal'][1]['#text']))
-            horizontal.create_dataset(target['Horizontal'][0][list(target['Horizontal'][0].keys())[0]], data = parse_missing_array(target['Horizontal'][0]['#text']))
-            horizontal.create_dataset(target['Horizontal'][1][list(target['Horizontal'][1].keys())[0]], data = parse_missing_array(target['Horizontal'][1]['#text']))
-            sagittal.create_dataset(target['Sagittal'][0][list(target['Sagittal'][0].keys())[0]], data = parse_missing_array(target['Sagittal'][0]['#text']))
-            sagittal.create_dataset(target['Sagittal'][1][list(target['Sagittal'][1].keys())[0]], data = parse_missing_array(target['Sagittal'][1]['#text']))
+            dat = frontal.create_dataset(target['Frontal'][0][list(target['Frontal'][0].keys())[0]], data = parse_missing_array(target['Frontal'][0]['#text']))
+            dat.attrs['dtype'] = 'int16'
+            dat = frontal.create_dataset(target['Frontal'][1][list(target['Frontal'][1].keys())[0]], data = parse_missing_array(target['Frontal'][1]['#text']))
+            dat.attrs['dtype'] = 'int16'
+            dat = horizontal.create_dataset(target['Horizontal'][0][list(target['Horizontal'][0].keys())[0]], data = parse_missing_array(target['Horizontal'][0]['#text']))
+            dat.attrs['dtype'] = 'int16'
+            dat = horizontal.create_dataset(target['Horizontal'][1][list(target['Horizontal'][1].keys())[0]], data = parse_missing_array(target['Horizontal'][1]['#text']))
+            dat.attrs['dtype'] = 'int16'
+            dat = sagittal.create_dataset(target['Sagittal'][0][list(target['Sagittal'][0].keys())[0]], data = parse_missing_array(target['Sagittal'][0]['#text']))
+            dat.attrs['dtype'] = 'int16'
+            dat = sagittal.create_dataset(target['Sagittal'][1][list(target['Sagittal'][1].keys())[0]], data = parse_missing_array(target['Sagittal'][1]['#text']))
+            dat.attrs['dtype'] = 'int16'
 
             vector_loops.create_dataset('Resolution', data = add_text_nonempty_int(xml_extract_value_attributes(target['Resolution'])['data']))
             vector_loops.create_dataset('POnset',     data = add_text_nonempty_int(xml_extract_value_attributes(target['POnset'])['data']))
@@ -875,6 +928,13 @@ class XmlImporter(Importer):
             vector_loops.create_dataset('QOffset',    data = add_text_nonempty_int(xml_extract_value_attributes(target['QOffset'])['data']))
             vector_loops.create_dataset('TOffset',    data = add_text_nonempty_int(xml_extract_value_attributes(target['TOffset'])['data']))
             vector_loops.create_dataset('ChannelSampleCountTotal', data = int(target['ChannelSampleCountTotal']))
+            vector_loops['Resolution'].attrs['dtype'] = 'int32'
+            vector_loops['POnset'].attrs['dtype'] = 'int32'
+            vector_loops['POffset'].attrs['dtype'] = 'int32'
+            vector_loops['QOnset'].attrs['dtype'] = 'int32'
+            vector_loops['QOffset'].attrs['dtype'] = 'int32'
+            vector_loops['TOffset'].attrs['dtype'] = 'int32'
+            vector_loops['ChannelSampleCountTotal'].attrs['dtype'] = 'int32'
 
         # Strip data
         target = xml['CardiologyXML']['StripData']
@@ -900,11 +960,16 @@ class XmlImporter(Importer):
             s = s.astype("int16")
             # Store data
             dat = self._store_hdf5_dataset(strip_wave, name, s, None, 19)
+            dat.attrs['dtype'] = 'int16'
 
         strip_data.create_dataset('NumberOfLeads', data = int(target['NumberOfLeads']))
         strip_data.create_dataset('SampleRate',    data = add_text_nonempty_int(xml_extract_value_attributes(target['SampleRate'])['data']))
         strip_data.create_dataset('ChannelSampleCountTotal', data = int(target['ChannelSampleCountTotal']))
         strip_data.create_dataset('Resolution',    data = add_text_nonempty_int(xml_extract_value_attributes(target['Resolution'])['data']))
+        strip_data['NumberOfLeads'].attrs['dtype'] = 'int32'
+        strip_data['SampleRate'].attrs['dtype'] = 'int32'
+        strip_data['ChannelSampleCountTotal'].attrs['dtype'] = 'int32'
+        strip_data['Resolution'].attrs['dtype'] = 'int32'
 
         if 'ArrhythmiaResults' in target:
             target = target['ArrhythmiaResults']
@@ -915,7 +980,9 @@ class XmlImporter(Importer):
             for _,j in enumerate(target['Time']):
                 times.append(int(j['#text']))
 
-            arry_result.create_dataset('Time', data = times)
+            times = numpy.asarray(times, dtype="int32")
+            dat = arry_result.create_dataset('Time', data = times)
+            dat.attrs['dtype'] = 'int32'
 
         # Full disclosure information does not always exist
         # TODO: At the moment we are ignoring FullDisclosure data

@@ -68,7 +68,9 @@ def add_hdf5_text_nonempty_int(grp: h5py.Group, dataset_name: str, target, field
     except KeyError:
         return None
 
-    return grp.create_dataset(dataset_name, data = add_text_nonempty_int(xml_extract_value_attributes(data)['data']))
+    ret = grp.create_dataset(dataset_name, data = add_text_nonempty_int(xml_extract_value_attributes(data)['data']))
+    ret.attrs['dtype'] = 'int32'
+    return ret
 
 
 def parse_missing_array(data: str, pop_last: bool = False, dtype: str = "int16") -> numpy.array:

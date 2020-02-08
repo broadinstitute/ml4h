@@ -194,7 +194,36 @@ class Explain():
             # Assume that the data is uncompressed
             else:
                 # TODO: Add support for uncompressed datasets without meta fields
-                print(f"Currently unsupported: compression type is not specified for field {node.name}")
+                if node.attrs.get('dtype') == None:
+                    print(f"Currently unsupported: compression type is not specified for field {node.name}")
+                    # return 1
+
+                elif node.attrs['dtype'] == "str":
+                    string = node[()]
+                    if isinstance(string, bytes):
+                        string = string.decode()
+                    elif isinstance(string, numpy.void):
+                        string = bytes(string).decode()
+
+                    if self._tokenize_only == False:
+                        if self._stats[node.name].get(string) == None:
+                            self._stats[node.name][string] = ExplainStats()        
+                            # Increment full string
+                            self._stats[node.name][string] + (string)
+
+                    if self._tokenize_strings:
+                        tokens = string.split(self._tokenize_token)
+                        if len(tokens) > 1:
+                            for t in tokens:    
+                                if self._stats[node.name].get(t) == None:
+                                    self._stats[node.name][t] = ExplainStats()
+                                self._stats[node.name][t] + (t)
+                else:
+                    if self._stats[node.name].get(node.attrs['dtype']) == None:
+                        self._stats[node.name][node.attrs['dtype']] = ExplainStats()
+
+                    self._stats[node.name][node.attrs['dtype']] + numpy.frombuffer(node[()], node.attrs['dtype'])
+
         # Current node is a group. Do nothing
         elif isinstance(node, h5py.Group):
             # print(f"group: {name} at {node.name}")
