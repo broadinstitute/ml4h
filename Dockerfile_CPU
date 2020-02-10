@@ -3,7 +3,7 @@ MAINTAINER M. D. R. Klarqvist <mklarqvi@broadinstitute.org>
 
 # Temporary solution.
 # Circumvent grabbing latest codebase from GitHub.
-RUN apt-get update && apt-get install -y git && pip install --upgrade pip
+RUN apt-get update && apt-get install -y git libgl1-mesa-glx libsm6 && pip install --upgrade pip
 # Copy current directory to container.
 COPY . ml
 # Install the codebase.
