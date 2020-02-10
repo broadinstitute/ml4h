@@ -203,6 +203,11 @@ class TensorMap(object):
         return JOIN_CHAR.join(['input', self.name, str(self.interpretation)])
 
     def is_categorical(self):
+        """For most cases categorical and discretized TensorMaps should be handled in the same way.
+        The two main differences are:
+            1. Discretized TensorMaps are read from disk as continuous values before they are discretized
+            2. Discretization is applied to discretized TensorMaps (obvious)
+        """
         return self.interpretation == Interpretation.CATEGORICAL or self.interpretation == Interpretation.DISCRETIZED
 
     def is_continuous(self):
@@ -323,6 +328,10 @@ def _get_name_if_function(field: Any) -> Any:
 
 
 def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map):
+    """ input_shape and input_channel_map are supplied as arguments rather than accessed as attributes of tm
+    so that this function can be applied to TensorMaps that are to be discretized for which tm.input_shape and
+    tm.input_channel_map reflect the state of the TensorMap post-discretization
+    """
     missing = True
     continuous_data = np.zeros(input_shape, dtype=np.float32)
     if tm.hd5_key_guess() in hd5:
