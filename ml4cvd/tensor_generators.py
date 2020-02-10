@@ -302,7 +302,7 @@ class _MultiModalMultiTaskWorker:
         if self.stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
         if 'test' in self.name:
-            logging.warning(f'Test worker completed a full epoch. Test results may be double counting samples.')
+            logging.warning(f'Test worker {self.name} completed a full epoch. Test results may be double counting samples.')
         self.start = time.time()
         self.epoch_stats = Counter()
 
