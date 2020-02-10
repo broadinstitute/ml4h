@@ -1,0 +1,10 @@
+FROM intelaipg/intel-optimized-tensorflow:1.15.0-mkl-py3-jupyter
+MAINTAINER M. D. R. Klarqvist <mklarqvi@broadinstitute.org>
+
+# Temporary solution.
+# Circumvent grabbing latest codebase from GitHub.
+RUN apt-get update && apt-get install -y git && pip install --upgrade pip
+# Copy current directory to container.
+COPY . ml
+# Install the codebase.
+RUN cd ml; pip install .
