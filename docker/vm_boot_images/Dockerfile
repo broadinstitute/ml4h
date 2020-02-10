@@ -2,9 +2,9 @@
 #   - ufoym/deepo:all-py36-jupyter for GPU-enabled machines
 #   - ufoym/deepo:all-py36-jupyter-cpu for CPU-only (non-GPU-enabled) machines
 # BASE_IMAGE can be specified at build time by adding the following argument:
-#   --build_arg BASE_IMAGE="some_other_image"
+#   --build-arg BASE_IMAGE="some_other_image"
 
-ARG BASE_IMAGE
+ARG BASE_IMAGE="ufoym/deepo:all-py36-jupyter-cpu"
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="James Pirruccello <jamesp@broadinstitute.org>"
@@ -30,3 +30,4 @@ RUN apt-get update && apt-get install -y wget unzip curl python-pydot python-pyd
 # RUN ./fastai.sh
 
 RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
+RUN pip3 install -r tensorflow-requirements.txt
