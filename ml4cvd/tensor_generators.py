@@ -254,8 +254,8 @@ class _MultiModalMultiTaskWorker:
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.normalize_and_validate(tm.tensor_from_file(tm, self.hd5, self.dependents))
         if tm.is_discretized():
-            tensor = to_categorical(np.digitize(tensor, bins=tm.discretization_boundaries),
-                                    num_classes=len(tm.discretization_boundaries)+1)
+            tensor = to_categorical(np.digitize(tensor, bins=tm.discretization_bounds),
+                                    num_classes=len(tm.discretization_bounds) + 1)
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor

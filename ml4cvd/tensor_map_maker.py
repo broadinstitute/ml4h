@@ -209,11 +209,11 @@ def generate_continuous_tensor_map_from_file(file_name: str,
                                              column_name,
                                              tensor_map_name: str,
                                              normalization: bool,
-                                             discretization_boundaries: List[float]) -> TensorMap:
-    if discretization_boundaries:
+                                             discretization_bounds: List[float]) -> TensorMap:
+    if discretization_bounds:
         return TensorMap(f'{tensor_map_name}', Interpretation.DISCRETIZED, channel_map={tensor_map_name: 0},
                          tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
-                         discretization_boundaries=discretization_boundaries)
+                         discretization_bounds=discretization_bounds)
     else:
         return TensorMap(f'{tensor_map_name}', channel_map={tensor_map_name: 0},
                          tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization))

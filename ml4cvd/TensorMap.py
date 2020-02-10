@@ -75,7 +75,7 @@ class TensorMap(object):
                  normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
                  annotation_units: Optional[int] = 32,
                  tensor_from_file: Optional[Callable] = None,
-                 discretization_boundaries: Optional[List[float]] = None,
+                 discretization_bounds: Optional[List[float]] = None,
                  ):
         """TensorMap constructor
 
@@ -98,7 +98,7 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
-        :param discretization_boundaries: List of floats that delineate the boundaries of the bins that will be used
+        :param discretization_bounds: List of floats that delineate the boundaries of the bins that will be used
                                           for producing categorical values from continuous values
         """
         self.name = name
@@ -121,17 +121,17 @@ class TensorMap(object):
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
-        self.discretization_boundaries = discretization_boundaries
+        self.discretization_bounds = discretization_bounds
 
         if self.shape is None:
             self.shape = (len(channel_map),)
 
-        if self.discretization_boundaries is not None:
+        if self.discretization_bounds is not None:
             self.input_shape = self.shape
             self.input_channel_map = self.channel_map
-            self.shape = tuple(len(self.discretization_boundaries)+1 if i == len(self.input_shape)-1 else c for i, c in
+            self.shape = tuple(len(self.discretization_bounds) + 1 if i == len(self.input_shape) - 1 else c for i, c in
                                enumerate(self.input_shape))
-            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_boundaries)+1)}
+            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
 
         if self.activation is None and self.is_categorical():
             self.activation = 'softmax'
