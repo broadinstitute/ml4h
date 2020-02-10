@@ -1,10 +1,14 @@
-"""Methods for reshaping raw ECG signal data for use in the pandas ecosystem."""
+"""Methods for reshaping raw ECG signal data for use in the pandas ecosystem.
+
+TODO(deflaux): refactor this to make more use of the hd5 parsing code elsewhere
+in the ml4cvd package, so that these reshaping methods become more tolerant of
+file format changes.
+"""
 import os
 import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
-from ml4cvd.defines import DataSetType
 import ml4cvd.runtime_data_defines as runtime_data_defines
 from ml4cvd.tensor_from_file import _get_tensor_at_first_date
 from ml4cvd.tensor_from_file import _pass_nan
@@ -14,7 +18,9 @@ import tensorflow as tf
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
+RESTING_ECG_PATH_PREFIX = 'ecg_rest'
 RESTING_SIGNAL_LENGTH = 5000
+EXERCISE_ECG_PATH_PREFIX = 'ukb_ecg_bike'
 EXERCISE_SIGNAL_LENGTH = 30000
 EXERCISE_LEADS = ['I', 'II', 'III']
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
@@ -22,9 +28,6 @@ EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
 def reshape_resting_ecg_to_tidy(sample_id, folder=None):
   """Wrangle raw resting ECG data to tidy.
-
-  TODO:
-    * Refactor this to reduce duplicate code from elsewhere in this repository.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
@@ -53,14 +56,14 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
       return pd.DataFrame(data)
 
     with h5py.File(local_path, mode='r') as hd5:
-      if 'ecg_rest' not in hd5:
+      if RESTING_ECG_PATH_PREFIX not in hd5:
         return None
 
       # Loop over all ecg_rest fields. If they are the raw waveforms (not
       # medians), use biosppy package to apply band-pass filter and store
       # additional data.
-      for field in list(hd5['ecg_rest'].keys()):
-        signal = hd5['ecg_rest'][field][:]
+      for field in list(hd5[RESTING_ECG_PATH_PREFIX].keys()):
+        signal = hd5[RESTING_ECG_PATH_PREFIX][field][:]
         signal_length = len(signal)
         # If 5000 steps long, this is raw.
         if signal_length == RESTING_SIGNAL_LENGTH:
@@ -142,21 +145,21 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
       return (pd.DataFrame({}), pd.DataFrame({}))
 
     with h5py.File(local_path, mode='r') as hd5:
-      if 'ecg_bike' not in hd5:
+      if EXERCISE_ECG_PATH_PREFIX not in hd5:
         print('Warning: Exercise ECG does not contain ',
               'ecg_bike_recovery for sample ', sample_id)
         return (pd.DataFrame({}), pd.DataFrame({}))
       trend_data = {}
-      for key in hd5['ecg_bike']['float_array'].keys():
+      for key in hd5[EXERCISE_ECG_PATH_PREFIX].keys():
         if not key.startswith('trend_'):
           continue
         tensor = _get_tensor_at_first_date(
-            hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, key, handle_nan=_pass_nan)
+            hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name=key, handle_nan=_pass_nan)
         if len(tensor.shape) == 1:  # Add 1-d trend data to this dictionary.
           trend_data[key.replace('trend_', '')] = tensor
 
       full = _get_tensor_at_first_date(
-          hd5, 'ecg_bike', DataSetType.FLOAT_ARRAY, 'full')
+          hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name='full')
 
   signal_data = {}
   for idx in range(0, len(EXERCISE_LEADS)):
