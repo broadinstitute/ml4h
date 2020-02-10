@@ -20,7 +20,7 @@ WORKDIR /app
 # to minimize full recompilation where possible.
 
 # Basic setup
-RUN ./ubuntu.sh
+RUN apt-get update && apt-get install -y wget unzip curl python-pydot python-pydot-ng graphviz
 
 # FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
 # understand this odd sequence of installing then uninstalling fastai before 
@@ -30,5 +30,3 @@ RUN ./ubuntu.sh
 # RUN ./fastai.sh
 
 RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
-# Requirements for the tensorflow project
-RUN pip3 install -r tensorflow-requirements.txt
