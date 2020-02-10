@@ -117,6 +117,7 @@ class TensorGenerator:
                 self.batch_function, self.batch_size, self.keep_paths, self.batch_function_kwargs,
                 self.cache_size,
                 name,
+                self.augment,
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
