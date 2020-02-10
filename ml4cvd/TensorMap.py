@@ -133,12 +133,12 @@ class TensorMap(object):
                                enumerate(self.input_shape))
             self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_boundaries)+1)}
 
-        if self.activation is None and (self.is_categorical() or self.is_discretized()):
+        if self.activation is None and self.is_categorical():
             self.activation = 'softmax'
         elif self.activation is None and self.is_continuous():
             self.activation = 'linear'
 
-        if self.loss is None and (self.is_categorical() or self.is_discretized()):
+        if self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
@@ -153,7 +153,7 @@ class TensorMap(object):
         elif self.loss is None:
             self.loss = 'mse'
 
-        if self.metrics is None and (self.is_categorical() or self.is_discretized()):
+        if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
             if self.axes() == 1:
                 self.metrics += per_class_precision(self.channel_map)
@@ -203,7 +203,7 @@ class TensorMap(object):
         return JOIN_CHAR.join(['input', self.name, str(self.interpretation)])
 
     def is_categorical(self):
-        return self.interpretation == Interpretation.CATEGORICAL
+        return self.interpretation == Interpretation.CATEGORICAL or self.interpretation == Interpretation.DISCRETIZED
 
     def is_continuous(self):
         return self.interpretation == Interpretation.CONTINUOUS
@@ -358,7 +358,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     Returns
         A numpy array whose dimension and type is dictated by tm
     """
-    if tm.is_categorical():
+    if tm.is_categorical() and not tm.is_discretized():
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
