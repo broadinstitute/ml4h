@@ -1166,9 +1166,9 @@ def _slice_tensor(tensor_key, slice_index):
 
 
 TMAPS['lax_4ch_diastole_slice0'] = TensorMap('lax_4ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('cine_segmented_lax_4ch', 0))
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
 TMAPS['lax_3ch_diastole_slice0'] = TensorMap('lax_3ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('cine_segmented_lax_3ch', 0))
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
 
 
 def _name_tensor_from_file(tm, hd5, dependents={}):
