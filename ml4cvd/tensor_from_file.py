@@ -1349,7 +1349,7 @@ def bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: st
         tensor = np.zeros(tm.shape, dtype=np.float32)
         index_tensor = _pad_or_crop_array_to_shape(segmented_shape, np.array(hd5[segmented_key], dtype=np.float32))
         bitmask = np.where(index_tensor == class_index)
-        logging.info(f'index bit mask is shape:{bitmask.shape} {np.min(bitmask[0])}   max x: {np.max(bitmask[0])}\n')
+        logging.info(f'index bit mask min x {np.min(bitmask[0])}   max x: {np.max(bitmask[0])}\n')
         total_axes = tm.shape[-1] // 2  # Divide by 2 because we need min and max for each axes
         for i in range(total_axes):
             tensor[i] = np.min(bitmask[i])
