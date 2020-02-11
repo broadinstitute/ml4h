@@ -20,9 +20,9 @@ from keras.utils.vis_utils import model_to_dot
 from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate, Concatenate
+from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D, Add
 from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 
 from ml4cvd.metrics import get_metric_dict
@@ -940,6 +940,97 @@ def _conv_block_new(x: K.placeholder,
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
                 x = layers[f"add_{str(len(layers))}"] = add([x, residual])
     return _get_last_layer(layers)
+
+
+class ConvBlock(Layer):
+    """
+    Usually used right after the input layer before a series of DenseBlocks
+    TODO: merge with DenseBlock, Adding doesn't work, so use how _conv_block_new works
+    """
+
+    def __init__(
+            self,
+            dimension: int,
+            conv_layer_type: str,
+            conv_width,
+            conv_x,
+            conv_y,
+            conv_z,
+            block_size: int,
+            activation: str,
+            normalization: str,
+            regularization: str,
+            regularization_rate: float,
+            residual: bool,
+            dilate: bool,
+            pool_type: str,
+            pool_x: int,
+            pool_y: int,
+            pool_z: int,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
+        self.conv_layers = [
+            conv_layer(filters=conv_width, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
+            for i in range(block_size)]
+        self.activations = [_activation_layer(activation) for _ in range(block_size)]
+        self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
+        self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
+        if residual:
+            self.adds = [Add() for _ in range(block_size)]
+        self.pool = _pool_layers_from_kind_and_dimension(dimension, pool_type, 1, pool_x, pool_y, pool_z)[0]
+
+    def call(self, x, **kwargs):
+        previous = x
+        for conv, activation, norm, reg, adder in zip(
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.adds):
+            x = reg(norm(activation(conv(x))))
+            x = adder([x, previous])
+            previous = x
+        x = self.pool(x)
+        return x
+
+
+class DenseBlock(Layer):
+
+    def __init__(
+            self,
+            dimension: int,
+            conv_layer_type: str,
+            conv_width,
+            conv_x,
+            conv_y,
+            conv_z,
+            block_size: int,
+            activation: str,
+            normalization: str,
+            regularization: str,
+            regularization_rate: float,
+            pool_type: str,
+            pool_x: int,
+            pool_y: int,
+            pool_z: int,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
+        self.conv_layers = [conv_layer(filters=conv_width, kernel_size=kernel, padding='same') for _ in range(block_size)]
+        self.activations = [_activation_layer(activation) for _ in range(block_size)]
+        self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
+        self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
+        self.concatenations = [Concatenate() for _ in range(block_size)]
+        self.pool = _pool_layers_from_kind_and_dimension(dimension, pool_type, 1, pool_x, pool_y, pool_z)[0]
+
+    def call(self, x, **kwargs):
+        dense_connections = [x]
+        for conv, activation, norm, reg, concat in zip(
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.concatenations):
+            x = reg(norm(activation(conv(x))))
+            dense_connections.append(x)
+            x = concat(dense_connections)
+        x = self.pool(x)
+        return x
 
 
 def _dense_block(x: K.placeholder,
