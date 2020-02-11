@@ -14,4 +14,4 @@ bokeh
 Pillow==7.0.0
 keras-rectified-adam==0.10.0
 notebook
-
+pytest
