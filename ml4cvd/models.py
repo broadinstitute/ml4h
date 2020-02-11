@@ -876,6 +876,8 @@ def train_model_from_generators(model: Model,
 
     history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1, validation_steps=validation_steps,
                         validation_data=generate_valid, callbacks=_get_callbacks(patience, model_file))
+    generate_train.kill_workers()  # TODO: this should not be necessary. Somehow the model is keeping a reference to these generators, so __del__ is never called.
+    generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
