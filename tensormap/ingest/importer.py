@@ -583,7 +583,8 @@ class XmlImporter(Importer):
             clen = ulen
 
         dat = group.create_dataset('data', data = processed_data_b)
-        dat.attrs['len'] = len(processed_data_b)
+        dat.attrs['len'] = processed_data_len
+        
         if clen < ulen: 
             dat.attrs['compression'] = 'zstd'
         else: 
@@ -605,7 +606,7 @@ class XmlImporter(Importer):
             clen = ulen
 
         dat = group.create_dataset('peaks', data = peaks_b)
-        dat.attrs['len'] = len(peaks_b)
+        dat.attrs['len'] = peaks_len
         if clen < ulen: 
             dat.attrs['compression'] = 'zstd'
         else: 
