@@ -111,12 +111,12 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     elif tm.is_cox_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
-    elif len(tm.shape) > 1:
+    elif tm.axes() > 1:
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
-    elif tm.is_continuous():
+    elif tm.is_continuous() or tm.is_mesh():
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]

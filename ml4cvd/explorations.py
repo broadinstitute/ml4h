@@ -52,6 +52,7 @@ def sort_csv(input_csv_file, value_csv):
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
                         labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
+    # TODO Remove this command line order dependency
     input_map = tensor_maps_in[0]
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -69,14 +70,16 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                if len(data[input_map.input_name()].shape) == 3:
+                if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                elif input_map.axes() == 2:
                     plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
-                elif len(data[input_map.input_name()].shape) == 4:
+                elif input_map.axes() == 3:
                     for j in range(data[input_map.input_name()].shape[-1]):
                         image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                         plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
-                elif len(data[input_map.input_name()].shape) == 5:
-                    for j in range(data[input_map.input_name()].shape[-1]):
+                elif input_map.axes() == 4:
+                    for j in range(data[input_map.input_name()].shape[-2]):
                         image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
                         plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
         elif len(tm.shape) == 3:
