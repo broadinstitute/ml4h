@@ -243,8 +243,7 @@ class TensorMap(object):
         deeper_key_prefix = f'{key_prefix}{min(hd5[key_prefix])}/'
         return self.hd5_first_dataset_in_group(hd5, deeper_key_prefix)
 
-    def normalize_and_validate(self, np_tensor):
-        self.validator(self, np_tensor)
+    def normalize(self, np_tensor):
         if self.normalization is None:
             return np_tensor
         elif 'zero_mean_std1' in self.normalization:
@@ -257,6 +256,17 @@ class TensorMap(object):
             return np_tensor
         else:
             raise ValueError(f'No way to normalize Tensor Map named:{self.name}')
+
+    def discretize(self, np_tensor):
+        if not self.is_discretized():
+            return np_tensor
+        return keras.utils.to_categorical(np.digitize(np_tensor, bins=self.discretization_bounds),
+                                          num_classes=len(self.discretization_bounds) + 1)
+
+    def postprocess_tensor(self, np_tensor):
+        self.validator(self, np_tensor)
+        np_tensor = self.normalize(np_tensor)
+        return self.discretize(np_tensor)
 
     def rescale(self, np_tensor):
         if self.normalization is None:
