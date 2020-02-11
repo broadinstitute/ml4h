@@ -1165,8 +1165,10 @@ def _slice_tensor(tensor_key, slice_index):
     return _slice_tensor_from_file
 
 
-TMAPS['lax_4ch_diastole_slice'] = TensorMap('lax_4ch_diastole_slice', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+TMAPS['lax_4ch_diastole_slice0'] = TensorMap('lax_4ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
                                             normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('cine_segmented_lax_4ch', 0))
+TMAPS['lax_3ch_diastole_slice0'] = TensorMap('lax_3ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('cine_segmented_lax_3ch', 0))
 
 
 def _name_tensor_from_file(tm, hd5, dependents={}):
@@ -1340,4 +1342,22 @@ TMAPS['sax_all_segmented_weighted'] = TensorMap('sax_all_segmented_weighted', In
 
 TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented'])
 TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])
+
+
+def bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: str, class_index: int) -> Callable:
+    def bbox_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        index_tensor = _pad_or_crop_array_to_shape(segmented_shape, np.array(hd5[segmented_key], dtype=np.float32))
+        index_bitmask = np.argmax(index_tensor == class_index, axis=-1)
+        total_axes = tm.shape[-1] // 2  # Divide by 2 because we need min and max for each axes
+        for i in range(total_axes):
+            tensor[i] = np.min(index_bitmask, axis=i)
+            tensor[i+total_axes] = np.max(index_bitmask, axis=i)
+        return tensor
+    return bbox_from_file
+
+
+TMAPS['lax_3ch_lv_cavity_bbox_slice'] = TensorMap('lax_3ch_lv_cavity_bbox_slice', Interpretation.MESH, shape=(4,),
+                                                  tensor_from_file=bounding_box_from_categorical((160, 160, 50), 'cine_segmented_lax_3ch_annotated_0'),
+                                                  channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
 
