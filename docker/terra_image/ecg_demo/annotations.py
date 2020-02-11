@@ -1,26 +1,20 @@
 """Methods for collecting and submitting annotations within notebooks."""
 import os
-import tempfile
-
-from IPython.display import HTML
-from IPython.display import SVG
-import numpy as np
-
 import ipywidgets as widgets
+from google.cloud import bigquery
 
 
 def get_df_sample(sample_info, sample_id):
-    df_sample = sample_info[sample_info['sample_id']==str(sample_id)]
+    df_sample = sample_info[sample_info['sample_id'] == str(sample_id)]
     if 0 == df_sample.shape[0]: df_sample = sample_info.query('sample_id == ' + str(sample_id))
-    
     return df_sample
 
-def display_annotation_collector(sample_info, sample_id):
-  """Method to create a gui (set of widgets) through which the user can create an annotation
 
+def display_annotation_collector(sample_info, sample_id):
+    """Method to create a gui (set of widgets) through which the user can create an annotation
   Args:
-    sample_id: The selected sample for which the values will be displayed.
     sample_info: dataframe containing all the samples and data
+    sample_id: The selected sample for which the values will be displayed.
 
   Returns:
     key: Jupyter widget containing (in .value) the key (column in sample_info) that was selected by the user
@@ -28,78 +22,141 @@ def display_annotation_collector(sample_info, sample_id):
     comment: The annotator's comment text
   """
 
-  df_sample = get_df_sample(sample_info, sample_id)
-  
-  # show the sample ID for this annotation
-  sample = widgets.HTML(value = f"For sample <b>{sample_id}</b>")
+    df_sample = get_df_sample(sample_info, sample_id)
 
-  # allow the user to pick a key about which to comment
-  key = widgets.Dropdown(
-      options=sample_info.keys(),
-      description='Key:',
-      disabled=False)
+    # show the sample ID for this annotation
+    sample = widgets.HTML(value=f"For sample <b>{sample_id}</b>")
 
-  # return the sample's value for that key
-  valuelabel = widgets.Label(value='Value: ')
-  keyvalue = widgets.Label(value=str(df_sample[key.value].iloc[0]))
-  
-  box1 = widgets.HBox([key, valuelabel, keyvalue], 
-                      layout=widgets.Layout(width='50%'))
+    # allow the user to pick a key about which to comment
+    key = widgets.Dropdown(
+        options=sample_info.keys(),
+        description='Key:',
+        disabled=False)
 
-  # allow the user to leave a text comment
-  comment = widgets.Textarea(
-      value='',
-      placeholder='Type your comment here',
-      description=f'Comment:',
-      disabled=False,
-      layout=widgets.Layout(width='80%', height='50px'),
-      style={'description_width': 'initial'}
-  )
+    # return the sample's value for that key
+    valuelabel = widgets.Label(value='Value: ')
+    keyvalue = widgets.Label(value=str(df_sample[key.value].iloc[0]))
 
-  
-  
-  def handle_key_change(change):
-      keyvalue.value = str(df_sample[key.value].iloc[0]) 
-  
-  key.observe(handle_key_change, names='value')
+    box1 = widgets.HBox([key, valuelabel, keyvalue],
+                        layout=widgets.Layout(width='50%'))
 
-  
-  # display everything
-  display(sample, box1, comment) 
-  
-  return key, keyvalue, comment
+    # have keyvalue auto update depending on the selected key
+    def handle_key_change(change):
+        keyvalue.value = str(df_sample[key.value].iloc[0])
+
+    key.observe(handle_key_change, names='value')
+
+    # allow the user to leave a text comment
+    comment = widgets.Textarea(
+        value='',
+        placeholder='Type your comment here',
+        description=f'Comment:',
+        disabled=False,
+        layout=widgets.Layout(width='80%', height='50px'),
+        style={'description_width': 'initial'}
+    )
+
+    # configure submission button
+    submit_button = widgets.Button(description="Submit annotation")
+    output = widgets.Output()
+
+    def get_key(): return key
+    def get_keyvalue(): return keyvalue
+    def get_comment(): return comment
+
+    def on_button_clicked(b):
+        params = format_annotation(sample_id, [get_key(), get_keyvalue(), get_comment()])
+        success = bq_submission(params) # returns boolean True if submission succeeded
+        with output:
+            if success: # show the information that was submitted
+                print('Submitted:\n  '+'\n  '.join([ key+': '+params[key] for key in params.keys() ])+'\n')
+            else:
+                print('Annotation not submitted. Please try again.\n') # TODO give more information on failure
+
+
+    submit_button.on_click(on_button_clicked)
+
+    # display everything
+    display(sample, box1, comment, submit_button, output)
+
+    return key, keyvalue, comment
+
 
 def format_annotation(sample_id, annotation_data):
-  # pull out values from output
-  key = annotation_data[0].value
-  keyvalue = annotation_data[1].value
-  comment = annotation_data[2].value
+    # pull out values from output
+    key = annotation_data[0].value
+    keyvalue = annotation_data[1].value
+    comment = annotation_data[2].value
 
-  # Programmatically get the identity of the person running this Terra notebook.
-  USER = os.getenv('OWNER_EMAIL')
+    # Programmatically get the identity of the person running this Terra notebook.
+    USER = os.getenv('OWNER_EMAIL')
 
-  # # Also support AI Platform Notebooks.
-  # if USER is None:
-  #   ai_platform_hostname = !hostname
-  #   USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
+    # # Also support AI Platform Notebooks. TODO @Nicole will need help to make this work
+    # if USER is None:
+    #     ai_platform_hostname = !hostname
+    #     USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
 
-  # check whether the value is string or numeric
-  try:
-      if keyvalue == nan: # @Nicole: this may not be how you want to deal with 'nan' values (e.g. in past_tobacco_smoking)
-          raise Exception() # this will make nan values return as strings rather than numerics
-      value_numeric = float(keyvalue) # this will fail if the value is text
-      value_string = 'None'
-  except:
-      value_numeric = 'None'
-      value_string = keyvalue
+    # check whether the value is string or numeric
+    try:
+        if keyvalue == nan:  # @Nicole: this may not be how you want to deal with 'nan' values (e.g. in past_tobacco_smoking)
+            raise Exception()  # this will make nan values return as strings rather than numerics
+        value_numeric = float(keyvalue)  # this will fail if the value is text
+        value_string = 'None'
+    except:
+        value_numeric = 'None'
+        value_string = keyvalue
 
-  params = {
-      'sample_id': str(sample_id),
-      'annotator': USER,
-      'key': key,
-      'value_numeric': value_numeric,
-      'value_string': value_string,
-      'comment': comment
-  }
+    params = {
+        'sample_id': str(sample_id),
+        'annotator': USER,
+        'key': key,
+        'value_numeric': value_numeric,
+        'value_string': value_string,
+        'comment': comment
+    }
 
-  return params
+    return params
+
+
+def bq_submission(params, table='uk-biobank-sek-data.ml_results.annotations'):
+    # set up biquery client
+    bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)
+
+    # format the insert string
+    query_string = '''
+INSERT INTO `{table}`
+(sample_id, annotator, annotation_timestamp, key, value_numeric, value_string, comment)
+VALUES
+('{sample_id}', '{annotator}', CURRENT_TIMESTAMP(), '{key}', SAFE_CAST('{value_numeric}' as NUMERIC), '{value_string}', '{comment}')
+'''.format(table=table,
+           sample_id=params['sample_id'],
+           annotator=params['annotator'],
+           key=params['key'],
+           value_numeric=params['value_numeric'],
+           value_string=params['value_string'],
+           comment=params['comment'])
+
+    # submit the insert request
+    submission = bqclient.query(query_string)
+
+    return submission.done() # boolean
+
+
+def view_submissions(count, table='uk-biobank-sek-data.ml_results.annotations'):
+
+    # set up biquery client
+    bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)
+
+    # format the query string
+    query_string = '''SELECT * FROM `{table}`
+WHERE annotator = '{annotator}'
+ORDER BY annotation_timestamp DESC
+LIMIT {count}'''.format(table=table,
+                        annotator=os.getenv('OWNER_EMAIL'),
+                        count=str(count))
+
+    # submit the query and store the result as a dataframe
+    df = bqclient.query(query_string).result().to_dataframe()
+
+    return df
+
