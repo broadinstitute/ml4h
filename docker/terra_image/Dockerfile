@@ -12,6 +12,20 @@ ENV PATH $PATH:$HOME/.local/bin
 # Temporarily make pip install to the system directory.
 ENV PIP_USER=false
 
+# Add minimal ml4cvd dependencies.
+RUN apt-get install libxt-dev -y \
+  # TODO(deflaux) update and use https://github.com/broadinstitute/ml/blob/master/docker/vm_boot_images/config/tensorflow-requirements.txt
+  # instead, after the Tensorflow 2.0 pull request is merged.
+  && pip3 install \
+  apache-beam[gcp]==2.12.0 \
+  google-cloud-storage==1.25.0 \
+  h5py==2.9.0 \
+  imageio==2.6.1 \
+  keras==2.2.5 \
+  nibabel==2.5.0 \
+  seaborn==0.9.0 \
+  vtk==8.1.2
+
 # Add visualization libraries not installed by default on Terra and upgrade
 # to newer versions for other libraries that are installed by default.
 RUN pip3 install --upgrade \
@@ -50,20 +64,6 @@ RUN pip3 install --upgrade \
 # TODO(deflaux): this also needs libgl1-mesa-glx and/or python3-tk to fix error
 # "ModuleNotFoundError: No module named 'vtkOpenGLKitPython'"
 # but neither of those have installation candidate for this base image.
-
-# Add minimal ml4cvd dependencies.
-RUN apt-get install libxt-dev -y \
-  # TODO(deflaux) update and use https://github.com/broadinstitute/ml/blob/master/docker/vm_boot_images/config/tensorflow-requirements.txt
-  # instead, after the Tensorflow 2.0 pull request is merged.
-  && pip3 install \
-  apache-beam[gcp]==2.12.0 \
-  google-cloud-storage==1.13.0 \
-  h5py==2.9.0 \
-  imageio==2.6.1 \
-  keras==2.2.5 \
-  nibabel==2.5.0 \
-  seaborn==0.9.0 \
-  vtk==8.1.2
 
 # Terra notebook Content Security Policy prohibits importing this HTML from a
 # remote location, so we download a local copy instead. The instructions in
