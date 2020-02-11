@@ -1348,18 +1348,17 @@ def bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: st
     def bbox_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         index_tensor = _pad_or_crop_array_to_shape(segmented_shape, np.array(hd5[segmented_key], dtype=np.float32))
-        index_bitmask = np.argmax(index_tensor == class_index, axis=-1)
-        logging.info(f'index bit mask is shape:{index_bitmask.shape} \n\nindex bitmask first:{index_bitmask[0]}, \nlast: {index_bitmask[:-1]}')
+        bitmask = np.where(index_tensor == class_index)
+        logging.info(f'index bit mask is shape:{bitmask.shape} {np.min(bitmask[0])}   max x: {np.max(bitmask[0])}\n')
         total_axes = tm.shape[-1] // 2  # Divide by 2 because we need min and max for each axes
         for i in range(total_axes):
-            if i == 0:
-                tensor[i] = np.amin(index_bitmask)
-                tensor[i+total_axes] = np.amax(index_bitmask)
+            tensor[i] = np.min(bitmask[i])
+            tensor[i+total_axes] = np.max(bitmask[i])
         return tensor
     return bbox_from_file
 
 
 TMAPS['lax_3ch_lv_cavity_bbox_slice0'] = TensorMap('lax_3ch_lv_cavity_bbox_slice0', Interpretation.MESH, shape=(4,),
-                                                  tensor_from_file=bounding_box_from_categorical((160, 160, 50), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', 5),
+                                                  tensor_from_file=bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', 5),
                                                   channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
 
