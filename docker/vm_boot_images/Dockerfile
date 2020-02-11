@@ -19,8 +19,11 @@ WORKDIR /app
 # Note that some layers are kept separate to encourage layer re-use and to try
 # to minimize full recompilation where possible.
 
-# Basic setup
-RUN apt-get update && apt-get install -y wget unzip curl python-pydot python-pydot-ng graphviz
+# The base Dockerfile have custom repos:
+# http://ppa.launchpad.net/jonathonf
+# Several of these are broken. We circumentvent this by forcing a 0 exit code.
+RUN apt-get update; exit 0 
+RUN apt-get install -y wget unzip curl python-pydot python-pydot-ng graphviz
 
 # FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
 # understand this odd sequence of installing then uninstalling fastai before 
@@ -29,5 +32,7 @@ RUN apt-get update && apt-get install -y wget unzip curl python-pydot python-pyd
 # RUN pip3 uninstall -y fastai
 # RUN ./fastai.sh
 
-RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
-RUN pip3 install -r tensorflow-requirements.txt
+RUN apt-get install -y python3-tk libgl1-mesa-glx libxt-dev
+RUN pip3 install --upgrade pip
+COPY tensorflow_requirements.txt .
+RUN pip3 install -r ./tensorflow_requirements.txt
