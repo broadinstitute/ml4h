@@ -49,10 +49,12 @@ MRI_BIG_RADIUS_FACTOR = 0.9
 MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_MITRAL_VALVE_THICKNESS = 6
 MRI_SWI_SLICES_TO_AXIS_SHIFT = 48
-MRI_CARDIAC_SERIES = ['cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
-                      'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
-                      'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
-                      'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist']
+MRI_CARDIAC_SERIES = [
+    'cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 'cine_segmented_sax_b1', 'cine_segmented_sax_b2',
+    'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
+    'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
+    'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist',
+]
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'}
@@ -75,22 +77,24 @@ ECG_BIKE_NUM_LEADS = 3
 SECONDS_PER_MINUTE = 60
 
 
-def write_tensors(a_id: str,
-                  xml_folder: str,
-                  zip_folder: str,
-                  output_folder: str,
-                  tensors: str,
-                  mri_unzip: str,
-                  mri_field_ids: List[int],
-                  xml_field_ids: List[int],
-                  zoom_x: int,
-                  zoom_y: int,
-                  zoom_width: int,
-                  zoom_height: int,
-                  write_pngs: bool,
-                  min_sample_id: int,
-                  max_sample_id: int,
-                  min_values_to_print: int) -> None:
+def write_tensors(
+    a_id: str,
+    xml_folder: str,
+    zip_folder: str,
+    output_folder: str,
+    tensors: str,
+    mri_unzip: str,
+    mri_field_ids: List[int],
+    xml_field_ids: List[int],
+    zoom_x: int,
+    zoom_y: int,
+    zoom_width: int,
+    zoom_height: int,
+    write_pngs: bool,
+    min_sample_id: int,
+    max_sample_id: int,
+    min_values_to_print: int,
+) -> None:
     """Write tensors as HD5 files containing any kind of data from UK BioBank
 
     One HD5 file is generated per sample.  Each file may contain many tensor encodings of data including:
@@ -164,10 +168,12 @@ def write_tensors(a_id: str,
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
-def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
-                                  sample_header='sample_id', dicom_header='dicom_file',
-                                  instance_header='instance_number', png_postfix='.png.mask.png',
-                                  path_prefix='ukb_cardiac_mri'):
+def write_tensors_from_dicom_pngs(
+    tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
+    sample_header='sample_id', dicom_header='dicom_file',
+    instance_header='instance_number', png_postfix='.png.mask.png',
+    path_prefix='ukb_cardiac_mri',
+):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
@@ -328,18 +334,20 @@ def _to_float_or_nan(s):
         return np.nan
 
 
-def _write_tensors_from_zipped_dicoms(zoom_x: int,
-                                      zoom_y: int,
-                                      zoom_width: int,
-                                      zoom_height: int,
-                                      write_pngs: bool,
-                                      tensors: str,
-                                      dicoms: str,
-                                      mri_field_ids: List[str],
-                                      zip_folder: str,
-                                      hd5: h5py.File,
-                                      sample_id: int,
-                                      stats: Dict[str, int]) -> None:
+def _write_tensors_from_zipped_dicoms(
+    zoom_x: int,
+    zoom_y: int,
+    zoom_width: int,
+    zoom_height: int,
+    write_pngs: bool,
+    tensors: str,
+    dicoms: str,
+    mri_field_ids: List[str],
+    zip_folder: str,
+    hd5: h5py.File,
+    sample_id: int,
+    stats: Dict[str, int],
+) -> None:
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
@@ -350,8 +358,10 @@ def _write_tensors_from_zipped_dicoms(zoom_x: int,
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicom_folder,
-                                           hd5, sample_str, stats)
+                _write_tensors_from_dicoms(
+                    zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicom_folder,
+                    hd5, sample_str, stats,
+                )
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -367,8 +377,10 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
                 stats['MRI fields written'] += 1
 
 
-def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
-                               dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int]) -> None:
+def _write_tensors_from_dicoms(
+    zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+    dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int],
+) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
     Segmented dicoms require special processing and are written to tensor per-slice
@@ -435,10 +447,12 @@ def _write_tensors_from_dicoms(zoom_x: int, zoom_y: int, zoom_width: int, zoom_h
             create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
 
 
-def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
-                                                zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
-                                                hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
-                                                stats: Dict[str, int]) -> None:
+def _tensorize_short_axis_segmented_cardiac_mri(
+    slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
+    zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+    hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
+    stats: Dict[str, int],
+) -> None:
     systoles = {}
     diastoles = {}
     systoles_pix = {}
@@ -448,7 +462,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(slices: List[pydicom.Dataset], s
     for slicer in slices:
         full_mask = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
         full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
-        
+
         if _has_overlay(slicer):
             series_segmented = f'{series}_segmented'
             series_zoom = f'{series}_zoom'
@@ -695,8 +709,10 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
                 create_tensor_in_hd5(hd5, 'ukb_ecg_rest', child.tag.lower(), values, stats, date=ecg_date)
 
 
-def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
-                         storage_type: Optional[StorageType] = None):
+def create_tensor_in_hd5(
+    hd5: h5py.File, path_prefix: str, name: str, value, stats: Optional[Counter] = None, date: Optional[datetime.datetime] = None,
+    storage_type: Optional[StorageType] = None,
+):
     hd5_path = tensor_path(path_prefix, name)
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'

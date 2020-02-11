@@ -9,7 +9,7 @@ import tensorflow as tf
 
 DEFAULT_RESTING_ECG_SVG_FOLDERS = {
     'fake': 'gs://ml4cvd/ecg_views_fake/',
-    'ukb': 'gs://ml4cvd/ecg_views_11_04_2019_svg/'
+    'ukb': 'gs://ml4cvd/ecg_views_11_04_2019_svg/',
 }
 
 
@@ -33,15 +33,19 @@ def display_resting_ecg(sample_id, gcs_folder=None):
     sample_svg = str(sample_id) + '.svg'
     local_path = os.path.join(tmpdirname, sample_svg)
     try:
-      tf.io.gfile.copy(src=os.path.join(gcs_folder, sample_svg),
-                       dst=local_path)
+      tf.io.gfile.copy(
+          src=os.path.join(gcs_folder, sample_svg),
+          dst=local_path,
+      )
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      return HTML('''
+      return HTML(
+          '''
       <div class="alert alert-block alert-danger">
       <b>Warning:</b> Resting ECG image not available for sample {}:
       <hr><p><pre>{}</pre></p>
       </div>
-      '''.format(sample_id, e.message))
+      '''.format(sample_id, e.message)
+      )
 
     return SVG(filename=local_path)
 
@@ -69,4 +73,3 @@ def major_breaks_x_resting_ecg(limits):
     min_break = 7.5
     max_break = 10.0
   return np.arange(min_break, max_break + step, step)
-

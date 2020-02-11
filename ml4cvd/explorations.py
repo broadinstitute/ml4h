@@ -50,8 +50,10 @@ def sort_csv(input_csv_file, value_csv):
             [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
 
 
-def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
-                        labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
+def predictions_to_pngs(
+    predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
+    labels: Dict[str, np.ndarray], paths: List[str], folder: str,
+) -> None:
     input_map = tensor_maps_in[0]
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -170,10 +172,12 @@ def plot_while_learning(
         model.fit_generator(generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1)
 
 
-def plot_histograms_of_tensors_in_pdf(run_id: str,
-                                      tensor_folder: str,
-                                      output_folder: str,
-                                      max_samples: int = None) -> None:
+def plot_histograms_of_tensors_in_pdf(
+    run_id: str,
+    tensor_folder: str,
+    output_folder: str,
+    max_samples: int = None,
+) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -185,11 +189,13 @@ def plot_histograms_of_tensors_in_pdf(run_id: str,
     plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
 
-def plot_heatmap_of_tensors(id: str,
-                            tensor_folder: str,
-                            output_folder: str,
-                            min_samples: int,
-                            max_samples: int = None) -> None:
+def plot_heatmap_of_tensors(
+    id: str,
+    tensor_folder: str,
+    output_folder: str,
+    min_samples: int,
+    max_samples: int = None,
+) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -202,11 +208,13 @@ def plot_heatmap_of_tensors(id: str,
     plot_heatmap(stats, id, min_samples, output_folder)
 
 
-def tabulate_correlations_of_tensors(run_id: str,
-                                     tensor_folder: str,
-                                     output_folder: str,
-                                     min_samples: int,
-                                     max_samples: int = None) -> None:
+def tabulate_correlations_of_tensors(
+    run_id: str,
+    tensor_folder: str,
+    output_folder: str,
+    min_samples: int,
+    max_samples: int = None,
+) -> None:
     """
     :param id: name for the plotting run
     :param tensor_folder: directory with tensor files to plot histograms from
@@ -362,8 +370,10 @@ def infer_with_pixels(args):
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     model = make_multimodal_multitask_model(**args.__dict__)
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
-                                    cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    generate_test = TensorGenerator(
+        1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
+        cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+    )
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']

@@ -54,27 +54,28 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
-    def __init__(self,
-                 name: str,
-                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
-                 loss: Optional[Union[str, Callable]] = None,
-                 shape: Optional[Tuple[int]] = None,
-                 model: Optional[keras.Model] = None,
-                 metrics: Optional[List[Union[str, Callable]]] = None,
-                 parents: Optional[List["TensorMap"]] = None,
-                 sentinel: Optional[float] = None,
-                 validator: Optional[Callable] = None,
-                 cacheable: Optional[bool] = True,
-                 activation: Optional[Union[str, Callable]] = None,
-                 path_prefix: Optional[str] = None,
-                 loss_weight: Optional[float] = 1.0,
-                 channel_map: Optional[Dict[str, int]] = None,
-                 storage_type: Optional[StorageType] = None,
-                 dependent_map: Optional[str] = None,
-                 normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
-                 annotation_units: Optional[int] = 32,
-                 tensor_from_file: Optional[Callable] = None,
-                 ):
+    def __init__(
+        self,
+        name: str,
+        interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
+        loss: Optional[Union[str, Callable]] = None,
+        shape: Optional[Tuple[int]] = None,
+        model: Optional[keras.Model] = None,
+        metrics: Optional[List[Union[str, Callable]]] = None,
+        parents: Optional[List["TensorMap"]] = None,
+        sentinel: Optional[float] = None,
+        validator: Optional[Callable] = None,
+        cacheable: Optional[bool] = True,
+        activation: Optional[Union[str, Callable]] = None,
+        path_prefix: Optional[str] = None,
+        loss_weight: Optional[float] = 1.0,
+        channel_map: Optional[Dict[str, int]] = None,
+        storage_type: Optional[StorageType] = None,
+        dependent_map: Optional[str] = None,
+        normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
+        annotation_units: Optional[int] = 32,
+        tensor_from_file: Optional[Callable] = None,
+    ):
         """TensorMap constructor
 
 

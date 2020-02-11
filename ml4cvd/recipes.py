@@ -31,9 +31,11 @@ def run(args):
         start_time = timer()
 
         if 'tensorize' == args.mode:
-            write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                          args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
-                          args.max_sample_id, args.min_values)
+            write_tensors(
+                args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
+                args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
+                args.max_sample_id, args.min_values,
+            )
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
         elif 'train' == args.mode:
@@ -178,8 +180,10 @@ def infer_multimodal_multitask(args):
         model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
-                                    cache_size=0, keep_paths=True, mixup=args.mixup_alpha)
+    generate_test = TensorGenerator(
+        1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
+        cache_size=0, keep_paths=True, mixup=args.mixup_alpha,
+    )
     with open(inference_tsv, mode='w') as inference_file:
         # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -233,8 +237,10 @@ def infer_hidden_layer_multimodal_multitask(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-                                    cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    generate_test = TensorGenerator(
+        1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
+        cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+    )
     if args.variational:
         full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
