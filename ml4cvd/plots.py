@@ -4,7 +4,6 @@
 import os
 import math
 import h5py
-import time
 import glob
 import logging
 import hashlib
@@ -31,9 +30,11 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_prec
 
 import seaborn as sns
 from biosppy.signals import ecg
+from scipy.ndimage.filters import gaussian_filter
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT
+from ml4cvd.metrics import concordance_index, coefficient_of_determination
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -50,28 +51,20 @@ COLOR_ARRAY = [
 
 ECG_REST_PLOT_DEFAULT_YRANGE = 3.0
 ECG_REST_PLOT_MAX_YRANGE = 10.0
-ECG_REST_PLOT_LEADS = [
-    ['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
-    ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
-    ['strip_III','strip_aVF', 'strip_V3', 'strip_V6'],
-]
-ECG_REST_PLOT_MEDIAN_LEADS = [
-    ['median_I','median_aVR', 'median_V1', 'median_V4'],
-    ['median_II','median_aVL', 'median_V2', 'median_V5'],
-    ['median_III','median_aVF', 'median_V3', 'median_V6'],
-]
-ECG_REST_PLOT_AMP_LEADS = [
-    [0, 3, 6, 9],
-    [1, 4, 7, 10],
-    [2, 5, 8, 11],
-]
+ECG_REST_PLOT_LEADS = [['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
+                       ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
+                       ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']]
+ECG_REST_PLOT_MEDIAN_LEADS = [['median_I','median_aVR', 'median_V1', 'median_V4'],
+                              ['median_II','median_aVL', 'median_V2', 'median_V5'],
+                              ['median_III','median_aVF', 'median_V3', 'median_V6']]
+ECG_REST_PLOT_AMP_LEADS = [[0, 3, 6, 9],
+                           [1, 4, 7, 10],
+                           [2, 5, 8, 11]]
 
 
-def evaluate_predictions(
-    tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-    max_melt: int = 5000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
-    scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
-) -> Dict[str, float]:
+def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
+                         max_melt: int = 15000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+                         scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = []) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
 
@@ -87,38 +80,48 @@ def evaluate_predictions(
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
     performance_metrics = {}
-    if tm.is_categorical_any() and len(tm.shape) == 1:
+    if tm.is_categorical() and tm.axes() == 1:
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical() and len(tm.shape) == 2:
+    elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
-        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
-        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-    elif tm.is_categorical() and len(tm.shape) == 3:
+        rocs.append((y_predictions, y_truth, tm.channel_map))
+    elif tm.is_categorical() and tm.axes() == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
-        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
-        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-    elif tm.is_categorical_any() and len(tm.shape) == 4:
+        rocs.append((y_predictions, y_truth, tm.channel_map))
+    elif tm.is_categorical() and tm.axes() == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
-        y_predictions = y_predictions.reshape(melt_shape)[:max_melt]
-        y_truth = y_truth.reshape(melt_shape)[:max_melt]
+        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-    elif tm.name == 'aligned_distance':
-        logging.info(f"a dist has y shape:{y_predictions.shape} and test labels has shape:{y_truth.shape}")
+        rocs.append((y_predictions, y_truth, tm.channel_map))
+    elif tm.is_cox_proportional_hazard():
+        plot_survival(y_predictions, y_truth, title, prefix=folder)
+        plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
     elif len(tm.shape) > 1:
-        prediction_flat = tm.rescale(y_predictions).flatten()
-        truth_flat = tm.rescale(y_truth).flatten()
+        prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
+        truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
+        if tm.sentinel is not None:
+            y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
+            y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
@@ -170,24 +173,30 @@ def plot_metric_history(history, title, prefix='./figures/'):
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
     margin = float((np.max(truth)-np.min(truth))/100)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
-    plt.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
+    ax1.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+    ax1.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-    logging.info("Pearson coefficient is: {}".format(pearson))
-    plt.scatter(prediction, truth, label=f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
+    big_r_squared = coefficient_of_determination(truth, prediction)
+    logging.info(f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}')
+    ax1.scatter(prediction, truth, label=f'Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}', marker='.', alpha=alpha)
     if paths is not None:
         diff = np.abs(prediction-truth)
         arg_sorted = diff[:, 0].argsort()
         # The path of the best prediction, ie the inlier
-        plt.text(prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
+        _text_on_plot(ax1, prediction[arg_sorted[0]]+margin, truth[arg_sorted[0]]+margin, os.path.basename(paths[arg_sorted[0]]))
         # Plot the paths of the worst predictions ie the outliers
         for idx in arg_sorted[-top_k:]:
-            plt.text(prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
-    plt.xlabel('Predictions')
-    plt.ylabel('Actual')
-    plt.title(title + '\n')
-    plt.legend(loc="upper left")
+            _text_on_plot(ax1, prediction[idx]+margin, truth[idx]+margin, os.path.basename(paths[idx]))
+
+    ax1.set_xlabel('Predictions')
+    ax1.set_ylabel('Actual')
+    ax1.set_title(title + '\n')
+    ax1.legend(loc="lower right")
+
+    sns.distplot(prediction, label='Predicted', color='r', ax=ax2)
+    sns.distplot(truth, label='Truth', color='b', ax=ax2)
+    ax2.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, 'scatter_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -205,14 +214,16 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
     for k in predictions:
         color = _hash_string_to_color(k)
         pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+        r2 = pearson*pearson
+        big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
         plt.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=color)
-        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", marker='.', alpha=alpha)
+        plt.scatter(predictions[k], truth, color=color, label=str(k) + f" Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", marker='.', alpha=alpha)
         if paths is not None:
             diff = np.abs(predictions[k] - truth)
             arg_sorted = diff[:, 0].argsort()
-            plt.text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(plt, predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             for idx in arg_sorted[-top_k:]:
-                plt.text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                _text_on_plot(plt, predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
     plt.title(title + '\n')
@@ -241,15 +252,17 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
             # The path of the best prediction, ie the inlier
-            axes[row, col].text(prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+            _text_on_plot(axes[row, col], prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
             # Plot the paths of the worst predictions ie the outliers
             for idx in arg_sorted[-top_k:]:
-                axes[row, col].text(prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                _text_on_plot(axes[row, col], prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
         pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} R^2:{pearson*pearson:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
+        r2 = pearson*pearson
+        big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
+        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
 
         row += 1
         if row == rows:
@@ -279,17 +292,18 @@ def subplot_comparison_scatters(
         for k in predictions:
             c = _hash_string_to_color(title+k)
             pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-            r_sqr = pearson * pearson
+            r2 = pearson * pearson
+            big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
             axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
-            axes[row, col].scatter(predictions[k], truth, color=c, label=str(k) + ' R:%0.3f R^2:%0.3f' % (pearson, r_sqr), marker='.', alpha=alpha)
+            axes[row, col].scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}', marker='.', alpha=alpha)
             axes[row, col].legend(loc="upper left")
             if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
-                axes[row, col].text(predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                _text_on_plot(axes[row, col], predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
                 for idx in arg_sorted[-top_k:]:
-                    axes[row, col].text(predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+                    _text_on_plot(axes[row, col], predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
         axes[row, col].set_xlabel('Predictions')
         axes[row, col].set_ylabel('Actual')
         axes[row, col].set_title(title + '\n')
@@ -306,6 +320,69 @@ def subplot_comparison_scatters(
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
+
+
+def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
+    c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
+    logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
+    intervals = truth.shape[-1] // 2
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
+    logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
+    logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
+    predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
+    true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
+    logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
+    if paths is not None:
+        pass
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Proportion Surviving')
+    plt.title(title + '\n')
+    plt.legend(loc="upper right")
+
+    figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save survival plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    return {}
+
+
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50, paths=None):
+    intervals = truth.shape[-1] // 2
+    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
+    sick = np.sum(truth[:, intervals:], axis=-1)
+    x_days = range(0, days_window, 1 + days_window // intervals)
+    cur_sick = 0
+    cur_healthy = 0
+    min_sick = num_curves * 0.1
+    for i in range(truth.shape[0]):
+        p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
+        last_prob = predicted_survivals[i, -1]
+        if sick[i] == 1:
+            sick_period = np.argmax(truth[i, intervals:])
+            sick_day = sick_period*(days_window // intervals)
+            plt.plot(x_days, predicted_survivals[i], label=f'sick:{p} p:{last_prob:0.2f}', color='red')
+            plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} id:{p}')
+            cur_sick += 1
+            if cur_sick >= min_sick and i >= num_curves:
+                break
+        elif cur_healthy < num_curves:
+            plt.plot(x_days, predicted_survivals[i], label=f'id:{p} p:{last_prob:0.2f}', color='green')
+            cur_healthy += 1
+    plt.title(title + '\n')
+    plt.legend(loc="upper right")
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Survival Curve Prediction')
+    figure_path = os.path.join(prefix, 'survival_curves_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save survival plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    return {}
 
 
 def plot_noise(noise):
@@ -958,7 +1035,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
     lw = 2.0
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for k in labels:
         c = _hash_string_to_color(k)
@@ -1061,7 +1138,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [8, 50]
+    perplexities = [10, 25, 60]
     (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
@@ -1082,7 +1159,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
             ax = subplots[j, i]
-            ax.set_title(tm.name)  # + ", Perplexity=%d" % p)
+            ax.set_title(f'{tm.name} | t-SNE perplexity:{p}')
             if tm in categorical_labels + gene_labels:
                 color_labels = []
                 for c in tm.channel_map:
@@ -1108,9 +1185,124 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
+def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
+    """Plot saliency maps of a batch of input tensors.
+
+    Saliency maps for each input tensor in the batch will be saved at the file path indicated by prefix.
+    Also creates a mean saliency map across the batch
+    2D tensors are assumed to be ECGs and 3D tensors are plotted with each slice as an RGB image.
+    The red channel indicates negative gradients, and the green channel positive ones.
+
+    :param data: A batch of input tensors
+    :param gradients: A corresponding batch of gradients for those inputs, must be the same shape as data
+    :param prefix: file path prefix where saliency maps will be saved
+    """
+    if data.shape[-1] == 1:
+        data = data[..., 0]
+        gradients = gradients[..., 0]
+
+    mean_saliency = np.zeros(data.shape[1:] + (3,))
+    for batch_i in range(data.shape[0]):
+        if len(data.shape) == 3:
+            ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
+            _plot_ecgs(ecgs, f'{prefix}_saliency_map_{batch_i}{IMAGE_EXT}')
+        elif len(data.shape) == 4:
+            cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
+            rows = max(2, int(math.ceil(data.shape[-1] / cols)))
+            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), f'{prefix}_saliency_{batch_i}{IMAGE_EXT}', cols, rows)
+            saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=0.0, max_value=1.0/data.shape[0])
+            mean_saliency[..., 0] -= saliency
+            mean_saliency[..., 1] += saliency
+        else:
+            logging.warning(f'No method to plot saliency for data shape: {data.shape}')
+
+    if len(data.shape) == 4:
+        _plot_3d_tensor_slices_as_rgb(_scale_tensor_inplace(mean_saliency), f'{prefix}_batch_mean_saliency{IMAGE_EXT}', cols, rows)
+    logging.info(f"Saved saliency maps at:{prefix}")
+
+
+def _scale_tensor_inplace(tensor, min_value=0.0, max_value=1.0):
+    tensor -= tensor.min()
+    tensor *= (max_value - min_value) / tensor.max()
+    tensor += min_value
+    return tensor
+
+
+def _saliency_blurred_and_scaled(gradients, blur_radius, max_value=1.0):
+    blurred = gaussian_filter(gradients, sigma=blur_radius)
+    _scale_tensor_inplace(blurred, max_value=max_value)
+    blurred -= blurred.mean()
+    return blurred
+
+
+def _saliency_map_rgb(image, gradients, blur_radius=0):
+    _scale_tensor_inplace(image)
+    rgb_map = np.zeros(image.shape + (3,))
+    blurred = _saliency_blurred_and_scaled(gradients, blur_radius)
+    rgb_map[..., 0] = image - blurred
+    rgb_map[..., 1] = image + blurred
+    rgb_map[..., 2] = image
+    rgb_map = np.clip(rgb_map, 0, 1)
+    #_scale_tensor_inplace(rgb_map)
+    return rgb_map
+
+
+def _plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500, lead_dictionary=ECG_REST_LEADS):
+    index2leads = {v: k for k, v in lead_dictionary.items()}
+    _, axes = plt.subplots(rows, cols, figsize=(18, 16))
+    for i in range(rows):
+        for j in range(cols):
+            start = int(i*time_interval*hertz)
+            stop = int((i+1)*time_interval*hertz)
+            axes[i, j].set_xlim(start, stop)
+            for label in ecgs:
+                axes[i, j].plot(range(start, stop), ecgs[label][start:stop, j + i*cols] * raw_scale, label=label)
+            axes[i, j].legend(loc='lower right')
+            axes[i, j].set_xlabel('milliseconds')
+            axes[i, j].set_ylabel('mV')
+            axes[i, j].set_title(index2leads[j + i*cols])
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+
+
+def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
+    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    for i in range(tensor.shape[-2]):
+        axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
+        axes[i // cols, i % cols].set_yticklabels([])
+        axes[i // cols, i % cols].set_xticklabels([])
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+
+
+def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10):
+    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    vmin = np.min(tensor)
+    vmax = np.max(tensor)
+    for i in range(tensor.shape[-1]):
+        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
+        axes[i // cols, i % cols].set_yticklabels([])
+        axes[i // cols, i % cols].set_xticklabels([])
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+
+
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
     return COLOR_ARRAY[int(hashlib.sha1(string.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
+
+
+def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
+    t = axes.text(x, y, text)
+    t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
 if __name__ == '__main__':

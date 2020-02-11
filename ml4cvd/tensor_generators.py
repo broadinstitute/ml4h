@@ -42,13 +42,14 @@ class _ShufflePaths(Iterator):
 
     def __init__(self, paths: List[Path]):
         self.paths = paths
+        self.paths.sort()
         self.idx = 0
 
     def __next__(self):
+        self.idx += 1
         if self.idx >= len(self.paths):
             self.idx = 0
             np.random.shuffle(self.paths)
-        self.idx += 1
         return self.paths[self.idx - 1]
 
 
@@ -254,7 +255,7 @@ class _MultiModalMultiTaskWorker:
             return self.hd5
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
-        tensor = tm.tensor_from_file(tm, self.hd5, self.dependents)
+        tensor = tm.normalize_and_validate(tm.tensor_from_file(tm, self.hd5, self.dependents))
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
@@ -305,6 +306,8 @@ class _MultiModalMultiTaskWorker:
         logging.info(f"Worker {self.name} - In true epoch {self.stats['epochs']}:\n\t{info_string}")
         if self.stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
+        if 'test' in self.name:
+            logging.warning(f'Test worker {self.name} completed a full epoch. Test results may be double counting samples.')
         self.start = time.time()
         self.epoch_stats = Counter()
 
@@ -312,10 +315,13 @@ class _MultiModalMultiTaskWorker:
         for i, path in enumerate(self.path_iter):
             self._handle_tensor_path(path)
             if self.stats['batch_index'] == self.batch_size:
+
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
                 self.q.put(out)
-                self.stats['batch_index'] = 0
                 self.paths_in_batch = []
+                self.stats['batch_index'] = 0
+                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
+                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.output_maps}
             if i > 0 and i % self.true_epoch_len == 0:
                 self._on_epoch_end()
 
@@ -425,7 +431,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
                 train_paths.append(os.path.join(root, name))
 
     logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
-    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
+    if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
         raise ValueError(f"Not enough tensors at {tensors}\n")
     return train_paths, valid_paths, test_paths
 
@@ -522,7 +528,7 @@ def test_train_valid_tensor_generators(
         weights = None
     generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
     generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
-    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, cache_size, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
+    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
     return generate_train, generate_valid, generate_test
 
 
