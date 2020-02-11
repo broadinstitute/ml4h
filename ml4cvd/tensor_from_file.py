@@ -1357,7 +1357,7 @@ def bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: st
     return bbox_from_file
 
 
-TMAPS['lax_3ch_lv_cavity_bbox_slice'] = TensorMap('lax_3ch_lv_cavity_bbox_slice', Interpretation.MESH, shape=(4,),
-                                                  tensor_from_file=bounding_box_from_categorical((160, 160, 50), 'cine_segmented_lax_3ch_annotated_0'),
+TMAPS['lax_3ch_lv_cavity_bbox_slice0'] = TensorMap('lax_3ch_lv_cavity_bbox_slice0', Interpretation.MESH, shape=(4,),
+                                                  tensor_from_file=bounding_box_from_categorical((160, 160, 50), 'cine_segmented_lax_3ch_annotated_0', 5),
                                                   channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
 
