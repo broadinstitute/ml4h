@@ -1250,21 +1250,6 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     plt.clf()
 
 
-def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10):
-    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
-    vmin = np.min(tensor)
-    vmax = np.max(tensor)
-    for i in range(tensor.shape[-1]):
-        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
-        axes[i // cols, i % cols].set_yticklabels([])
-        axes[i // cols, i % cols].set_xticklabels([])
-
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
-    plt.clf()
-
-
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
     return COLOR_ARRAY[int(hashlib.sha1(string.encode('utf-8')).hexdigest(), 16) % len(COLOR_ARRAY)]
