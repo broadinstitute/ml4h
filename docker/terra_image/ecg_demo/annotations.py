@@ -1,10 +1,14 @@
 """Methods for collecting and submitting annotations within notebooks."""
 import os
 import ipywidgets as widgets
+from IPython.display import display
 from google.cloud import bigquery
 
 
 def get_df_sample(sample_info, sample_id):
+    """ return a dataframe containing only the row for the indicated sample_id
+    """
+
     df_sample = sample_info[sample_info['sample_id'] == str(sample_id)]
     if 0 == df_sample.shape[0]: df_sample = sample_info.query('sample_id == ' + str(sample_id))
     return df_sample
@@ -69,11 +73,10 @@ def display_annotation_collector(sample_info, sample_id):
         success = bq_submission(params) # returns boolean True if submission succeeded
         with output:
             if success: # show the information that was submitted
-                print('Submitted:\n  '+'\n  '.join([ key+': '+params[key] for key in params.keys() ])+'\n')
+                print('Submission successful:')
+                display(view_submissions(1))
             else:
                 print('Annotation not submitted. Please try again.\n') # TODO give more information on failure
-
-
     submit_button.on_click(on_button_clicked)
 
     # display everything
@@ -92,13 +95,14 @@ def format_annotation(sample_id, annotation_data):
     USER = os.getenv('OWNER_EMAIL')
 
     # # Also support AI Platform Notebooks. TODO @Nicole will need help to make this work
-    # if USER is None:
-    #     ai_platform_hostname = !hostname
-    #     USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
+    if USER is None:
+        raise Exception('AI Platform notebook user not resolved')
+        # ai_platform_hostname = !hostname
+        # USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
 
     # check whether the value is string or numeric
     try:
-        if keyvalue == nan:  # @Nicole: this may not be how you want to deal with 'nan' values (e.g. in past_tobacco_smoking)
+        if keyvalue == nan:  # @Nicole: is this how you want to deal with 'nan' values? (e.g. in past_tobacco_smoking)
             raise Exception()  # this will make nan values return as strings rather than numerics
         value_numeric = float(keyvalue)  # this will fail if the value is text
         value_string = 'None'
@@ -106,6 +110,7 @@ def format_annotation(sample_id, annotation_data):
         value_numeric = 'None'
         value_string = keyvalue
 
+    # format into a dictionary
     params = {
         'sample_id': str(sample_id),
         'annotator': USER,
@@ -119,6 +124,9 @@ def format_annotation(sample_id, annotation_data):
 
 
 def bq_submission(params, table='uk-biobank-sek-data.ml_results.annotations'):
+    """ call a bigquery insert statement to add a row containing annotation information containing
+    params (a dict created/formatted by format_annotation)
+    """
     # set up biquery client
     bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)
 
@@ -139,10 +147,13 @@ VALUES
     # submit the insert request
     submission = bqclient.query(query_string)
 
-    return submission.done() # boolean
+    # return True if the submission completed TODO test behavior when submission fails
+    return submission.done()
 
 
-def view_submissions(count, table='uk-biobank-sek-data.ml_results.annotations'):
+def view_submissions(count=10, table='uk-biobank-sek-data.ml_results.annotations'):
+    """ view a list of up to [count] most recent submissions from the user
+    """
 
     # set up biquery client
     bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)
