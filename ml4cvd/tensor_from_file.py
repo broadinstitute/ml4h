@@ -1215,7 +1215,7 @@ TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented',  Interpretation.CATE
 TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 6),
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
-TMAPS['lax_3ch_segmented_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(160, 160, 50, 6),
+TMAPS['lax_3ch_segmented_192_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map={'background': 0, 'LV_A_S': 1, 'left_atrium': 2, 'LV_I_P': 3, 'LV_Pap': 4, 'LV_Cavity': 5})
 TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 50, 14),
@@ -1356,6 +1356,16 @@ TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_fil
 TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])
 
 
+def _segmented_index_slices(key_prefix, shape, path_prefix='ukb_cardiac_mri'):
+    def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(shape, dtype=np.float32)
+        for i in range(shape[-1]):
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, key_prefix + str(i + 1))
+            tensor[..., i] = _pad_or_crop_array_to_shape(shape[:-1], categorical_index_slice)
+        return tensor
+    return _segmented_dicom_tensor_from_file
+
+
 def bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: str, class_index: int) -> Callable:
     def bbox_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -1368,10 +1378,11 @@ def bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: st
         return tensor
     return bbox_from_file
 
-def bounding_box_from_tensor_from_file(segmented_shape: Tuple[int], segmented_key: str, class_index: int) -> Callable:
+
+def bounding_box_from_callable(class_index: int, tensor_from_file_fxn: Callable) -> Callable:
     def bbox_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        index_tensor = _pad_or_crop_array_to_shape(segmented_shape, np.array(hd5[segmented_key], dtype=np.float32))
+        index_tensor = tensor_from_file_fxn(None, hd5)
         bitmask = np.where(index_tensor == class_index)
         total_axes = tm.shape[-1] // 2  # Divide by 2 because we need min and max for each axis
         for i in range(total_axes):
@@ -1387,6 +1398,7 @@ TMAPS['lax_3ch_lv_cavity_bbox_slice0'] = TensorMap('lax_3ch_lv_cavity_bbox_slice
 TMAPS['lax_3ch_left_atrium_bbox_slice0'] = TensorMap('lax_3ch_left_atrium_bbox_slice0', Interpretation.MESH, shape=(4,),
                                                   tensor_from_file=bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', 2),
                                                   channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
+
 TMAPS['lax_3ch_lv_cavity_bbox'] = TensorMap('lax_3ch_lv_cavity_bbox', Interpretation.MESH, shape=(6,),
-                                            tensor_from_file=bounding_box_from_categorical((192, 160, 50), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', 5),
+                                            tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_lax_3ch_annotated_', (192, 160, 50)),
                                             channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
