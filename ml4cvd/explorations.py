@@ -66,15 +66,16 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 input_map = im
         logging.info(f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
         if tm.is_mesh():
-            vmin = np.min(data[input_map.input_name()])
-            vmax = np.max(data[input_map.input_name()])
+
             for i in range(y.shape[0]):
+                vmin = np.min(data[input_map.input_name()][i])
+                vmax = np.max(data[input_map.input_name()][i])
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 fig, ax = plt.subplots(1)
                 if input_map.axes() == 3 and input_map.shape[-1] == 1:
-                    ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                    ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray')#, vmin=vmin, vmax=vmax)
                 elif input_map.axes() == 2:
-                    ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                    ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray')#, vmin=vmin, vmax=vmax)
                 corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
                 ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
                 y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
