@@ -1400,5 +1400,5 @@ TMAPS['lax_3ch_left_atrium_bbox_slice0'] = TensorMap('lax_3ch_left_atrium_bbox_s
                                                   channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
 
 TMAPS['lax_3ch_lv_cavity_bbox'] = TensorMap('lax_3ch_lv_cavity_bbox', Interpretation.MESH, shape=(6,),
-                                            tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_lax_3ch_annotated_', (192, 160, 50)),
+                                            tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_lax_3ch_annotated_', (192, 160, 50))),
                                             channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
