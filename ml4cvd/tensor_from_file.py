@@ -15,7 +15,7 @@ from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
 from ml4cvd.defines import StorageType, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, EPS
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
-from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
+from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION, MRI_AO_SEGMENTED_CHANNEL_MAP
 
 
 """
@@ -1188,6 +1188,7 @@ TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation
                                         tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_3ch_192_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 50, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
+
 TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
                                       tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50, 1), path_prefix='ukb_cardiac_mri',
@@ -1242,6 +1243,8 @@ TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CAT
                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                       channel_map={'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4,
                                                    'LV_cavity': 5, 'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10})
+TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(256, 256, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
+                                            tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
 
 
 def _make_fallback_tensor_from_file(tensor_keys):
@@ -1399,6 +1402,16 @@ TMAPS['lax_3ch_left_atrium_bbox_slice0'] = TensorMap('lax_3ch_left_atrium_bbox_s
                                                   tensor_from_file=bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', 2),
                                                   channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
 
+aorta_descending_tff = bounding_box_from_categorical((256, 256), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'])
+TMAPS['cine_segmented_ao_descending_aorta_bbox_slice0'] = TensorMap('cine_segmented_ao_descending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
+                                                  tensor_from_file=aorta_descending_tff,
+                                                  channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
+
+
 TMAPS['lax_3ch_lv_cavity_bbox'] = TensorMap('lax_3ch_lv_cavity_bbox', Interpretation.MESH, shape=(6,),
                                             tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_lax_3ch_annotated_', (192, 160, 50))),
+                                            channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
+
+TMAPS['cine_segmented_ao_descending_aorta_bbox'] = TensorMap('cine_segmented_ao_descending_aorta_bbox', Interpretation.MESH, shape=(6,),
+                                            tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_ao_dist_annotated_', (256, 256, 100))),
                                             channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
