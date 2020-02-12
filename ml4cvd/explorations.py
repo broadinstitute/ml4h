@@ -64,7 +64,7 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 input_map = im
             elif len(tm.shape) == len(im.shape):
                 input_map = im
-        logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
+        logging.info(f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
         if tm.is_mesh():
             vmin = np.min(data[input_map.input_name()])
             vmax = np.max(data[input_map.input_name()])
@@ -79,6 +79,7 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
                 y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
                 ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
+                logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif len(tm.shape) in [1, 2]:
             vmin = np.min(data[input_map.input_name()])
