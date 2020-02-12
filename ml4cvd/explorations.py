@@ -458,9 +458,10 @@ def _sample_with_heat(preds, temperature=1.0):
 
 
 def _2d_bbox_to_corner_and_size(bbox):
+    total_axes = bbox.shape[-1] // 2
     lower_left_corner = (bbox[1], bbox[0])
-    height = bbox[2] - bbox[0]
-    width = bbox[3] - bbox[1]
+    height = bbox[total_axes] - bbox[0]
+    width = bbox[total_axes+1] - bbox[1]
     return lower_left_corner, width, height
 
 
