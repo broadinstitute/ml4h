@@ -71,11 +71,11 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if input_map.axes() == 4 and input_map.shape[-1] == 1:
-                    cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
-                    rows = max(2, int(math.ceil(data.shape[-1] / cols)))
+                    sample_data = data[input_map.input_name()][i, ..., 0]
+                    cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
+                    rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
-                    bboxes = [labels[tm.output_name()][i], y[i]]
-                    _plot_3d_tensor_slices_as_gray(data[input_map.input_name()][i, ..., 0], path_prefix, cols, rows, bboxes=bboxes)
+                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
                 else:
                     fig, ax = plt.subplots(1)
                     if input_map.axes() == 3 and input_map.shape[-1] == 1:
