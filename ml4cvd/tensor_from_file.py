@@ -1160,10 +1160,10 @@ TMAPS['cine_segmented_lax_4ch_proj_from_lax'] = TensorMap('cine_segmented_lax_4c
 def _slice_tensor(tensor_key, slice_index):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
         if tm.shape[-1] == 1:
-            t = _pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[tensor_key][slice_index], dtype=np.float32))
+            t = _pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[tensor_key][..., slice_index], dtype=np.float32))
             tensor = np.expand_dims(t, axis=-1)
         else:
-            tensor = _pad_or_crop_array_to_shape(tm.shape, np.array(hd5[tensor_key][slice_index], dtype=np.float32))
+            tensor = _pad_or_crop_array_to_shape(tm.shape, np.array(hd5[tensor_key][..., slice_index], dtype=np.float32))
         logging.info(f'Slice min {np.min(tensor)} max {np.max(tensor)}')
         return tensor
     return _slice_tensor_from_file
