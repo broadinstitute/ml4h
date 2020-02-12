@@ -1159,15 +1159,22 @@ TMAPS['cine_segmented_lax_4ch_proj_from_lax'] = TensorMap('cine_segmented_lax_4c
 
 def _slice_tensor(tensor_key, slice_index):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        tensor[..., 0] = _pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[tensor_key][slice_index], dtype=np.float32))
+        if tm.shape[-1] == 1:
+            t = _pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[tensor_key][slice_index], dtype=np.float32))
+            tensor = np.expand_dims(t, axis=-1)
+        else:
+            tensor = _pad_or_crop_array_to_shape(tm.shape, np.array(hd5[tensor_key][slice_index], dtype=np.float32))
         return tensor
     return _slice_tensor_from_file
 
 
-TMAPS['lax_4ch_diastole_slice0'] = TensorMap('lax_4ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+TMAPS['lax_4ch_diastole_slice0_3d'] = TensorMap('lax_4ch_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
                                             normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
-TMAPS['lax_3ch_diastole_slice0'] = TensorMap('lax_3ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+TMAPS['lax_3ch_diastole_slice0_3d'] = TensorMap('lax_3ch_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
+TMAPS['lax_4ch_diastole_slice0'] = TensorMap('lax_4ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
+                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
+TMAPS['lax_3ch_diastole_slice0'] = TensorMap('lax_3ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
                                             normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
 
 
