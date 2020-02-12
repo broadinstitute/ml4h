@@ -1191,7 +1191,8 @@ TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation
                                         tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_3ch_192_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 50, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
-
+TMAPS['cine_segmented_ao_dist_4d'] = TensorMap('cine_segmented_ao_dist', Interpretation.CONTINUOUS, shape=(192, 192, 100, 1), path_prefix='ukb_cardiac_mri',
+                                            tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
                                       tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50, 1), path_prefix='ukb_cardiac_mri',
