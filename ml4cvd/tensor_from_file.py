@@ -1410,12 +1410,18 @@ aorta_descending_tff = bounding_box_from_categorical((256, 256), 'ukb_cardiac_mr
 TMAPS['cine_segmented_ao_descending_aorta_bbox_slice0'] = TensorMap('cine_segmented_ao_descending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
                                                   tensor_from_file=aorta_descending_tff,
                                                   channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
-
+aorta_ascending_tff = bounding_box_from_categorical((256, 256), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'])
+TMAPS['cine_segmented_ao_ascending_aorta_bbox_slice0'] = TensorMap('cine_segmented_ao_ascending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
+                                                  tensor_from_file=aorta_ascending_tff,
+                                                  channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'max_axis_0': 2, 'max_axis_1': 3})
 
 TMAPS['lax_3ch_lv_cavity_bbox'] = TensorMap('lax_3ch_lv_cavity_bbox', Interpretation.MESH, shape=(6,),
                                             tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_lax_3ch_annotated_', (192, 160, 50))),
                                             channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
 
-TMAPS['cine_segmented_ao_descending_aorta_bbox'] = TensorMap('cine_segmented_ao_descending_aorta_bbox', Interpretation.MESH, shape=(6,),
-                                            tensor_from_file=bounding_box_from_callable(5, _segmented_index_slices('cine_segmented_ao_dist_annotated_', (256, 256, 100))),
+bbfc = bounding_box_from_callable(MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'], _segmented_index_slices('cine_segmented_ao_dist_annotated_', (256, 256, 100)))
+TMAPS['cine_segmented_ao_descending_aorta_bbox'] = TensorMap('cine_segmented_ao_descending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=bbfc,
+                                            channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
+abbfc = bounding_box_from_callable(MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'], _segmented_index_slices('cine_segmented_ao_dist_annotated_', (256, 256, 100)))
+TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap('cine_segmented_ao_ascending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=abbfc,
                                             channel_map={'min_axis_0': 0, 'min_axis_1': 1, 'min_axis_2': 2, 'max_axis_0': 3, 'max_axis_1': 4, 'max_axis_2': 5})
