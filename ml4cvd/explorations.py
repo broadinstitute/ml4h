@@ -450,10 +450,10 @@ def _sample_with_heat(preds, temperature=1.0):
 
 
 def _2d_bbox_to_corner_and_size(bbox):
-    corner = (bbox[0], bbox[1])
+    lower_left_corner = (bbox[0], bbox[3])
     width = bbox[2] - bbox[0]
     height = bbox[3] - bbox[1]
-    return corner, width, height
+    return lower_left_corner, width, height
 
 
 def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
