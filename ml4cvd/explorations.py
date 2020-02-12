@@ -65,7 +65,22 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             elif len(tm.shape) == len(im.shape):
                 input_map = im
         logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if len(tm.shape) in [1, 2]:
+        if tm.is_mesh():
+            vmin = np.min(data[input_map.input_name()])
+            vmax = np.max(data[input_map.input_name()])
+            for i in range(y.shape[0]):
+                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                fig, ax = plt.subplots(1)
+                if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                    ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                elif input_map.axes() == 2:
+                    ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
+                ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
+                ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
+                plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
+        elif len(tm.shape) in [1, 2]:
             vmin = np.min(data[input_map.input_name()])
             vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
@@ -431,6 +446,13 @@ def _sample_with_heat(preds, temperature=1.0):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
+
+
+def _2d_bbox_to_corner_and_size(bbox):
+    corner = (bbox[0], bbox[2])
+    width = bbox[1] - bbox[0]
+    height = bbox[3] - bbox[2]
+    return corner, width, height
 
 
 def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
