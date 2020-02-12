@@ -480,7 +480,6 @@ def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10, bboxes=
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
 
 
 def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],
