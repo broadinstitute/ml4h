@@ -75,7 +75,7 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                     cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
                     rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
-                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows}, {height} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
+                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
                     _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
                 else:
                     fig, ax = plt.subplots(1)
