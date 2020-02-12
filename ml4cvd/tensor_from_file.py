@@ -1181,6 +1181,7 @@ TMAPS['lax_3ch_diastole_slice0'] = TensorMap('lax_3ch_diastole_slice0', Interpre
 TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap('cine_segmented_ao_dist_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
                                             normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0))
 
+
 def _pad_crop_tensor(tm, hd5, dependents={}):
     return _pad_or_crop_array_to_shape(tm.shape, np.array(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32))
 
@@ -1191,7 +1192,7 @@ TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation
                                         tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_3ch_192_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 50, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
-TMAPS['cine_ao_dist_4d'] = TensorMap('cine_segmented_ao_dist', Interpretation.CONTINUOUS, shape=(192, 192, 100, 1), path_prefix='ukb_cardiac_mri',
+TMAPS['cine_ao_dist_4d'] = TensorMap('cine_segmented_ao_dist', Interpretation.CONTINUOUS, shape=(256, 256, 100, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
                                       tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
