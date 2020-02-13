@@ -367,10 +367,10 @@ def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples:
 
     for tm in test_labels:
         for i in range(examples):
-            if tm.is_continuous():
+            if tm.is_continuous() and tm.axes() == 1:
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            elif tm.is_categorical():
+            elif tm.is_categorical() and tm.axes() == 1:
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 
