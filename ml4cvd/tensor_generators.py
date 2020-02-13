@@ -21,6 +21,7 @@ from collections import Counter
 from multiprocessing import Process, Queue
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any
+from tensorflow.keras.utils import Sequence
 
 
 from ml4cvd.defines import TENSOR_EXT
@@ -199,6 +200,130 @@ class TensorMapArrayCache:
 
     def average_fill(self):
         return np.mean(list(self.files_seen.values()) or [0]) / self.nrows
+
+
+class MultiModalMultiTaskSequence(Sequence):
+
+    def __init__(self,
+                 input_maps: List[TensorMap], output_maps: List[TensorMap],
+                 paths: List[str], batch_size: int, cache_size: float,
+                 weights=None, keep_paths=False, mixup=0.0, siamese=False,
+                 ):
+        """
+        :param paths: If weights is provided, paths should be a list of path lists the same length as weights
+        """
+        self.weights = weights
+        self.keep_paths = keep_paths
+        self.siamese = siamese
+        self.mixup = mixup
+
+        self.batch_function_kwargs = {}
+        if mixup > 0:
+            self.batch_function = _mixup_batch
+            self.batch_size *= 2
+            self.batch_function_kwargs = {'alpha': mixup}
+        elif siamese:
+            self.batch_function = _make_batch_siamese
+        else:
+            self.batch_function = _identity_batch
+        self.input_maps = input_maps
+        self.output_maps = output_maps
+        self.batch_size = batch_size
+        self.cache_size = cache_size
+        self.paths = paths
+        self.stats = Counter()
+        self.epoch_stats = Counter()
+        self.start = time.time()
+        self.paths_in_batch = []
+        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
+        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
+
+        self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, len(self.paths))
+        logging.info(f'Generator initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
+
+        self.all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
+
+        self.dependents = {}
+
+    def __len__(self):
+        return np.ceil(len(self.paths) / self.batch_size)
+
+    def _handle_tm(self, tm: TensorMap, is_input: bool, path: Path) -> h5py.File:
+        name = tm.input_name() if is_input else tm.output_name()
+        batch = self.in_batch if is_input else self.out_batch
+        idx = self.stats['batch_index']
+        if tm in self.dependents:
+            batch[name][idx] = self.dependents[tm]
+            if tm.cacheable:
+                self.cache[path, name] = self.dependents[tm]
+            return self.hd5
+        if (path, name) in self.cache:
+            batch[name][idx] = self.cache[path, name]
+            return self.hd5
+        if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
+            self.hd5 = h5py.File(path, 'r')
+        tensor = tm.normalize_and_validate(tm.tensor_from_file(tm, self.hd5, self.dependents))
+        batch[name][idx] = tensor
+        if tm.cacheable:
+            self.cache[path, name] = tensor
+        return self.hd5
+
+    def _handle_tensor_path(self, path: Path) -> None:
+        hd5 = None
+        if path in self.cache.failed_paths and self.all_cacheable:
+            self.epoch_stats['skipped_paths'] += 1
+            return
+        try:
+            self.dependents = {}
+            self.hd5 = None
+            for tm in self.input_maps:
+                hd5 = self._handle_tm(tm, True, path)
+            for tm in self.output_maps:
+                hd5 = self._handle_tm(tm, False, path)
+            self.paths_in_batch.append(path)
+            self.stats['Tensors presented'] += 1
+            self.stats['batch_index'] += 1
+        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+            error_name = type(e).__name__
+            self.stats[f"{error_name} while attempting to generate tensor:\n{traceback.format_exc()}\n"] += 1
+            self.epoch_stats[f"{error_name}: {e}"] += 1
+            self.cache.failed_paths.add(path)
+            _log_first_error(self.stats, path)
+        finally:
+            if hd5 is not None:
+                hd5.close()
+
+    def on_epoch_end(self):
+        self.stats['epochs'] += 1
+        for k in self.stats:
+            logging.debug(f"{k}: {self.stats[k]}")
+        error_info = '\n\t\t'.join([f'[{error}] - {count}'
+                                    for error, count in sorted(self.epoch_stats.items(), key=lambda x: x[1], reverse=True)])
+        info_string = '\n\t'.join([
+            f"The following errors occurred:\n\t\t{error_info}",
+            f"Generator looped & shuffled over {self.true_epoch_len} paths.",
+            f"{int(self.stats['Tensors presented']/self.stats['epochs'])} tensors were presented.",
+            f"The cache holds {len(self.cache)} out of a possible {self.true_epoch_len * (len(self.input_maps) + len(self.output_maps))} tensors and is {100 * self.cache.average_fill():.0f}% full.",
+            f"So far there have been {self.cache.hits} cache hits.",
+            f"{self.epoch_stats['skipped_paths']} paths were skipped because they previously failed.",
+            f"{(time.time() - self.start):.2f} seconds elapsed.",
+        ])
+        logging.info(f"In epoch {self.stats['epochs']}:\n\t{info_string}")
+        if self.stats['Tensors presented'] == 0:
+            raise ValueError(f"Completed an epoch but did not find any tensors to yield")
+        self.start = time.time()
+        self.epoch_stats = Counter()
+
+    def __getitem__(self, idx):
+        path_idx = idx * self.batch_size
+        while self.stats['batch_index'] < self.batch_size:
+            path = self.paths[path_idx % len(self)]  # TODO: how to handle duplications? Do they average out with shuffling?
+            self._handle_tensor_path(path)
+            path_idx += 1
+        self.stats['batch_index'] = 0
+        out = self.batch_function(self.in_batch, self.out_batch, self.keep_paths, self.paths_in_batch, **self.batch_func_kwargs)
+        self.paths_in_batch = []
+        return out
 
 
 class _MultiModalMultiTaskWorker:
@@ -492,7 +617,7 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
                                        mixup_alpha: float = -1.0,
                                        test_csv: str = None,
                                        siamese: bool = False,
-                                       **kwargs) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
+                                       **kwargs) -> Tuple[MultiModalMultiTaskSequence, MultiModalMultiTaskSequence, MultiModalMultiTaskSequence]:
     """ Get 3 tensor generator functions for training, validation and testing data.
 
     :param tensor_maps_in: list of TensorMaps that are input names to a model
@@ -519,9 +644,9 @@ def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = None
-    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese)
-    generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese)
-    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese)
+    generate_train = MultiModalMultiTaskSequence(tensor_maps_in, tensor_maps_out, train_paths, batch_size, cache_size, weights, keep_paths, mixup_alpha, siamese)
+    generate_valid = MultiModalMultiTaskSequence(tensor_maps_in, tensor_maps_out, train_paths, batch_size, cache_size, weights, keep_paths, mixup_alpha, siamese)
+    generate_test = MultiModalMultiTaskSequence(tensor_maps_in, tensor_maps_out, train_paths, batch_size, cache_size, weights, keep_paths or keep_paths_test, mixup_alpha, siamese)
     return generate_train, generate_valid, generate_test
 
 
