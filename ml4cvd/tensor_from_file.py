@@ -1193,7 +1193,7 @@ TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation
                                         tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_3ch_192_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 50, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
-TMAPS['cine_ao_dist_4d'] = TensorMap('cine_segmented_ao_dist', Interpretation.CONTINUOUS, shape=(192, 224, 100, 1), path_prefix='ukb_cardiac_mri',
+TMAPS['cine_ao_dist_4d'] = TensorMap('cine_segmented_ao_dist', Interpretation.CONTINUOUS, shape=(160, 192, 100, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
                                       tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
@@ -1241,7 +1241,7 @@ TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', Interpretation.CATEGOR
 TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CATEGORICAL, shape=(192, 192, 50, 11),
                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                       channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
-TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(192, 224, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
+TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
 
 
