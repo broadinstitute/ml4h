@@ -13,6 +13,7 @@ from __future__ import print_function
 import os
 import csv
 import h5py
+import math
 import time
 import logging
 import traceback
@@ -242,11 +243,16 @@ class MultiModalMultiTaskSequence(Sequence):
         logging.info(f'Generator initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
 
         self.all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
-
         self.dependents = {}
 
+        self._iter_index = 0  # For when used as a generator
+
+    def __next__(self):
+        self._iter_index += 1
+        return self[self._iter_index - 1]
+
     def __len__(self):
-        return np.ceil(len(self.paths) / self.batch_size)
+        return math.ceil(len(self.paths) / self.batch_size)
 
     def _handle_tm(self, tm: TensorMap, is_input: bool, path: Path) -> h5py.File:
         name = tm.input_name() if is_input else tm.output_name()
@@ -321,7 +327,7 @@ class MultiModalMultiTaskSequence(Sequence):
             self._handle_tensor_path(path)
             path_idx += 1
         self.stats['batch_index'] = 0
-        out = self.batch_function(self.in_batch, self.out_batch, self.keep_paths, self.paths_in_batch, **self.batch_func_kwargs)
+        out = self.batch_function(self.in_batch, self.out_batch, self.keep_paths, self.paths_in_batch, **self.batch_function_kwargs)
         self.paths_in_batch = []
         return out
 
