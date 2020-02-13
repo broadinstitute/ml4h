@@ -4,7 +4,7 @@ import tempfile
 
 from IPython.display import HTML
 from IPython.display import SVG
-import ml4cvd.runtime_data_defines as runtime_data_defines
+from ml4cvd.runtime_data_defines import get_resting_ecg_svg_folder
 import numpy as np
 import tensorflow as tf
 
@@ -20,21 +20,19 @@ def display_resting_ecg(sample_id, folder=None):
     An IPython SVG object or a notebook-friendly error.
   """
   if folder is None:
-    folder = runtime_data_defines.get_resting_ecg_svg_folder(sample_id)
+    folder = get_resting_ecg_svg_folder(sample_id)
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_svg = str(sample_id) + '.svg'
     local_path = os.path.join(tmpdirname, sample_svg)
     try:
-      tf.io.gfile.copy(src=os.path.join(folder, sample_svg),
-                       dst=local_path)
+      tf.io.gfile.copy(src=os.path.join(folder, sample_svg), dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      return HTML('''
+      return HTML(f'''
       <div class="alert alert-block alert-danger">
-      <b>Warning:</b> Resting ECG image not available for sample {}:
-      <hr><p><pre>{}</pre></p>
-      </div>
-      '''.format(sample_id, e.message))
+      <b>Warning:</b> Resting ECG image not available for sample {sample_id}:
+      <hr><p><pre>{e.message}</pre></p>
+      </div>''')
 
     return SVG(filename=local_path)
 

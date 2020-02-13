@@ -9,7 +9,8 @@ import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
-import ml4cvd.runtime_data_defines as runtime_data_defines
+from ml4cvd.runtime_data_defines import get_exercise_ecg_hd5_folder
+from ml4cvd.runtime_data_defines import get_resting_ecg_hd5_folder
 from ml4cvd.tensor_from_file import _get_tensor_at_first_date
 from ml4cvd.tensor_from_file import _pass_nan
 import numpy as np
@@ -37,22 +38,17 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
     A pandas dataframe in tidy format or a notebook-friendly error.
   """
   if folder is None:
-    folder = runtime_data_defines.get_resting_ecg_hd5_folder(sample_id)
+    folder = get_resting_ecg_hd5_folder(sample_id)
 
-  data = {'lead': [], 'raw': [], 'ts_reference': [],
-          'filtered': [], 'filtered_1': [], 'filtered_2': []}
+  data = {'lead': [], 'raw': [], 'ts_reference': [], 'filtered': [], 'filtered_1': [], 'filtered_2': []}
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_hd5 = str(sample_id) + '.hd5'
     local_path = os.path.join(tmpdirname, sample_hd5)
     try:
-      tf.io.gfile.copy(src=os.path.join(folder, sample_hd5),
-                       dst=local_path)
+      tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      print('Warning: Resting ECG raw signal not available for sample ',
-            sample_id,
-            '\n\n',
-            e.message)
+      print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}')
       return pd.DataFrame(data)
 
     with h5py.File(local_path, mode='r') as hd5:
@@ -69,8 +65,7 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
         if signal_length == RESTING_SIGNAL_LENGTH:
           data['raw'].extend(signal)
           data['lead'].extend([field] * signal_length)
-          data['ts_reference'].extend(np.array(
-              [i*1./(SAMPLING_RATE+1.) for i in range(0, signal_length)]))
+          data['ts_reference'].extend(np.array([i*1./(SAMPLING_RATE+1.) for i in range(0, signal_length)]))
           filtered, _, _ = filter_signal(signal=signal,
                                          ftype='FIR',
                                          band='bandpass',
@@ -101,8 +96,7 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
   signal_df['filtered_2_mV'] = signal_df['filtered_2'] * RAW_SCALE
   # Reshape to tidy (long format).
   tidy_signal_df = signal_df.melt(id_vars=['lead', 'ts_reference'],
-                                  value_vars=['raw_mV', 'filtered_mV',
-                                              'filtered_1_mV', 'filtered_2_mV'],
+                                  value_vars=['raw_mV', 'filtered_mV', 'filtered_1_mV', 'filtered_2_mV'],
                                   var_name='filtering', value_name='signal_mV')
 
   # The leads have a meaningful order, apply the order to this column.
@@ -129,37 +123,30 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
     * second tuple element is signal data in tidy format
   """
   if folder is None:
-    folder = runtime_data_defines.get_exercise_ecg_hd5_folder(sample_id)
+    folder = get_exercise_ecg_hd5_folder(sample_id)
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_hd5 = str(sample_id) + '.hd5'
     local_path = os.path.join(tmpdirname, sample_hd5)
     try:
-      tf.io.gfile.copy(src=os.path.join(folder, sample_hd5),
-                       dst=local_path)
+      tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      print('Error: Exercise ECG raw signal not available for sample ',
-            sample_id,
-            '\n\n',
-            e.message)
+      print(f'Error: Exercise ECG raw signal not available for sample {sample_id}\n\n{e.message}')
       return (pd.DataFrame({}), pd.DataFrame({}))
 
     with h5py.File(local_path, mode='r') as hd5:
       if EXERCISE_ECG_PATH_PREFIX not in hd5:
-        print('Warning: Exercise ECG does not contain ',
-              'ecg_bike_recovery for sample ', sample_id)
+        print(f'Warning: Exercise ECG does not contain ecg_bike_recovery for sample {sample_id}.')
         return (pd.DataFrame({}), pd.DataFrame({}))
       trend_data = {}
       for key in hd5[EXERCISE_ECG_PATH_PREFIX].keys():
         if not key.startswith('trend_'):
           continue
-        tensor = _get_tensor_at_first_date(
-            hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name=key, handle_nan=_pass_nan)
+        tensor = _get_tensor_at_first_date(hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name=key, handle_nan=_pass_nan)
         if len(tensor.shape) == 1:  # Add 1-d trend data to this dictionary.
           trend_data[key.replace('trend_', '')] = tensor
 
-      full = _get_tensor_at_first_date(
-          hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name='full')
+      full = _get_tensor_at_first_date(hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name='full')
 
   signal_data = {}
   for idx in range(0, len(EXERCISE_LEADS)):
@@ -170,8 +157,7 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
   # clean data as needed
   trend_df = pd.DataFrame(trend_data)
   # Clean data - convert to categorical string.
-  trend_df['phasename'] = trend_df.phasename.map(
-      EXERCISE_PHASES).astype('category')
+  trend_df['phasename'] = trend_df.phasename.map(EXERCISE_PHASES).astype('category')
 
   # Convert exercise ecg signal tensor dictionary to a dataframe, clean data
   # as needed, and then pivot to tidy.
@@ -184,8 +170,7 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
                                    suffix='.*')
   tidy_signal_df.reset_index(inplace=True)  # Turn pd multiindex into columns.
   # The leads have a meaningful order, apply the order to this column.
-  lead_factor_type = pd.api.types.CategoricalDtype(
-      categories=EXERCISE_LEADS, ordered=True)
+  lead_factor_type = pd.api.types.CategoricalDtype(categories=EXERCISE_LEADS, ordered=True)
   tidy_signal_df['lead'] = tidy_signal_df.lead.astype(lead_factor_type)
 
   return (trend_df, tidy_signal_df)
@@ -209,8 +194,7 @@ def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
   # Clean data - drop zero-valued columns.
   trend_df = trend_df.loc[:, ~trend_df.eq(0).all()]
   trend_id_vars = ['time', 'phasename', 'phasetime']
-  trend_value_vars = trend_df.columns[
-      ~trend_df.columns.isin(trend_id_vars)].tolist()
+  trend_value_vars = trend_df.columns[~trend_df.columns.isin(trend_id_vars)].tolist()
   tidy_trend_df = trend_df.melt(
       id_vars=trend_id_vars,
       value_vars=trend_value_vars,
