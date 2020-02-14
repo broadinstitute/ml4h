@@ -791,12 +791,13 @@ def _combined_subset_tensor(tensor_keys, start, stop, step=1, pad_shape=None, fl
 TMAPS['t1_and_t2_flair_30_slices'] = TensorMap('t1_and_t2_flair_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',
                                                tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
                                                normalization={'zero_mean_std1': True})
-TMAPS['t1_and_t2_flair_dicom_30_slices'] = TensorMap('t1_and_t2_flair_dicom_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',
-                                               tensor_from_file=_combined_subset_tensor(['t1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1'], 130, 190, 2, pad_shape=(192, 256, 256)),
-                                               normalization={'zero_mean_std1': True})
-TMAPS['t1_and_t2_flair_dicom_50_slices'] = TensorMap('t1_and_t2_flair_dicom_50_slices', Interpretation.CONTINUOUS, shape=(192, 256, 50, 2), path_prefix='ukb_brain_mri',
-                                               tensor_from_file=_combined_subset_tensor(['t1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1'], 100, 200, 2, pad_shape=(192, 256, 256)),
-                                               normalization={'zero_mean_std1': True})
+_dicom_keys = ['t1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1']
+TMAPS['t1_t2_dicom_50_slices'] = TensorMap('t1_t2_dicom_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',
+                                           tensor_from_file=_combined_subset_tensor(_dicom_keys, 130, 190, 2, pad_shape=(192, 256, 256), flip_swap=True),
+                                           normalization={'zero_mean_std1': True})
+TMAPS['t1_t2_dicom_50_slices'] = TensorMap('t1_t2_dicom_50_slices', Interpretation.CONTINUOUS, shape=(192, 256, 50, 2), path_prefix='ukb_brain_mri',
+                                           tensor_from_file=_combined_subset_tensor(_dicom_keys, 100, 200, 2, pad_shape=(192, 256, 256), flip_swap=True),
+                                           normalization={'zero_mean_std1': True})
 
 
 def _ttn_tensor_from_file(tm, hd5, dependents={}):
