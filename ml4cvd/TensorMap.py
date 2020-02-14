@@ -166,6 +166,9 @@ class TensorMap(object):
         if self.validator is None:
             self.validator = lambda tm, x: x
 
+    def __repr__(self):
+        return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
+
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
 

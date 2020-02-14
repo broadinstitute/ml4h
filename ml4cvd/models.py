@@ -12,18 +12,20 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Iterable, Union, Optional
 
 # Keras imports
-import keras.backend as K
-from keras.optimizers import Adam
-from keras.models import Model, load_model
-from keras.callbacks import History, Callback
-from keras.utils.vis_utils import model_to_dot
-from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
-from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate, Concatenate
-from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D, Add
-from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+import tensorflow.keras.backend as K
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.callbacks import History, Callback
+# from tensorflow.keras.utils.vis_utils import model_to_dot
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
+from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate, Concatenate
+from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D, Add
+from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
@@ -553,7 +555,7 @@ class MLP(Layer):
             regularization_rate: float,
             **kwargs
     ):
-        super().__init__(**kwargs)
+        super(MLP, self).__init__(**kwargs)
         self.denses = [Dense(units=width) for width in widths]
         self.activations = [_activation_layer(activation) for _ in widths]
         self.regularizations = [_regularization_layer(1, regularization, regularization_rate) for _ in widths]
@@ -572,7 +574,7 @@ class FlattenAll(Layer):
 
     def __init__(
             self,
-            input_shapes: List[Tuple[int, ...]],
+            num_inputs: int,
             activation: str,
             normalization: str,
             dense_layers: List[int],
@@ -580,9 +582,11 @@ class FlattenAll(Layer):
             regularization_rate: float,
             **kwargs
     ):
-        super().__init__(**kwargs)
-        self.flattens = [Flatten() for _ in input_shapes]
-        self.concat = Concatenate()
+        super(FlattenAll, self).__init__(**kwargs)
+        self.flattens = [Flatten() for _ in range(num_inputs)]
+        self.concat = None
+        if num_inputs > 1:
+            self.concat = Concatenate()
         self.mlp = MLP(
             dense_layers,
             activation,
@@ -593,7 +597,9 @@ class FlattenAll(Layer):
 
     def call(self, inputs, **kwargs):
         flattened = [flat(x) for x, flat in zip(inputs, self.flattens)]
-        return self.mlp(self.concat(flattened))
+        if self.concat:
+            return self.mlp(self.concat(flattened))
+        return self.mlp(flattened[0])
 
 
 class FlatToStructure(Layer):
@@ -639,8 +645,11 @@ class ConvDecoder(Layer):
                  **kwargs
                  ):
         super().__init__(**kwargs)
-        num_blocks = int(min(np.log(pool) / np.log(final_shape[i])
-                             for i, pool in enumerate([pool_x, pool_y, pool_z][:len(final_shape)])))
+        if pool_x == pool_y == pool_z == 1:
+            num_blocks = 1
+        else:
+            num_blocks = int(min(np.log(pool) / np.log(final_shape[i])
+                                 for i, pool in enumerate([pool_x, pool_y, pool_z][:len(final_shape)])))
         first_shape = tuple(dim // pool**num_blocks for dim, pool in zip(final_shape, [pool_x, pool_y, pool_z]))
         self.structurize = FlatToStructure(first_shape, activation, normalization)
         self.dense_blocks = [DenseBlock(
@@ -695,7 +704,7 @@ class ConvEncoder(Layer):
             pool_y: int,
             pool_z: int,
             **kwargs):
-        super().__init__(**kwargs)
+        super(ConvEncoder).__init__(**kwargs)
         self.res_block = ResidualBlock(
             dimension, res_filters, conv_layer_type, conv_width, conv_x, conv_y, conv_z, res_layers, activation, normalization,
             regularization, regularization_rate, dilate, pool_type, pool_x, pool_y, pool_z,
@@ -755,7 +764,8 @@ class MultiModalMultiTask(Model):
             pool_type: str = None,
             *args, **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        super(MultiModalMultiTask, self).__init__(*args, **kwargs)
+        self.inputs = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
         self.encoders: Dict[TensorMap: Layer] = {}
         for tm in tensor_maps_in:
             if tm.axes() > 1:
@@ -790,12 +800,12 @@ class MultiModalMultiTask(Model):
                 )
 
         self.bottle_neck = FlattenAll(  # TODO: Handle mlp_concat, variational
-            [enc.output_shape for enc in self.encoders],
+            len(tensor_maps_in),
             activation,
             normalization,
             dense_layers,
             dense_regularize,
-            dense_regularize_rate
+            dense_regularize_rate,
         )
 
         self.decoders: Dict[TensorMap, Layer] = {}
@@ -822,19 +832,19 @@ class MultiModalMultiTask(Model):
                 )
             else:
                 self.decoders[tm] = MLP(
-                    [tm.annotation_units, tm.shape],
+                    [tm.annotation_units, tm.shape[0]],
                     activation,
                     normalization,
                     dense_regularize,
                     dense_regularize_rate,
                 )
-            self.decoders[tm].add_loss(tm.loss)
-            self.loss_weights.append(tm.loss_weight)
-            for metric in tm.metrics:
-                self.decoders[tm].add_metric(metric, name=tm.output_name())
+            # TODO: self.decoders[tm].add_loss(tm.loss)
+            #  TODO: self.loss_weights.append(tm.loss_weight)
+            # for metric in tm.metrics:
+                # self.decoders[tm].add_metric(metric, name=tm.output_name())
 
     def call(self, inputs, mask=None):
-        encoded = [encoder(x) for x, encoder in zip(inputs, self.encoders.values())]
+        encoded = [encoder(x) for x, encoder in zip(inputs, self.encoders.values())]  # TODO: enforce order on encoders
         latent = self.bottle_neck(encoded)
         return [decoder(latent) for decoder in self.decoders.values()]
 
@@ -915,7 +925,6 @@ def make_multimodal_multitask_model(
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
-
     m = MultiModalMultiTask(
         tensor_maps_in,
         tensor_maps_out,
@@ -942,8 +951,6 @@ def make_multimodal_multitask_model(
         pool_z,
         pool_type,
     )
-    m.summary()
-
     # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
     if model_layers:
@@ -966,6 +973,9 @@ def make_multimodal_multitask_model(
         logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
 
     m.compile(optimizer=opt)
+    input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
+    m(input_tensors)
+    m.summary()
     return m
 
 
