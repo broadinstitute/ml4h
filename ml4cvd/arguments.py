@@ -106,7 +106,6 @@ def parse_args():
     parser.add_argument('--conv_x', default=3, type=int, help='X dimension of convolutional kernel.')
     parser.add_argument('--conv_y', default=3, type=int, help='Y dimension of convolutional kernel.')
     parser.add_argument('--conv_z', default=2, type=int, help='Z dimension of convolutional kernel.')
-    parser.add_argument('--conv_width', default=71, type=int, help='Width of convolutional kernel for 1D CNNs.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')

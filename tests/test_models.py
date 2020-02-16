@@ -1,7 +1,5 @@
 import pytest
-import tensorflow as tf
 
-import tensorflow.keras.backend as K
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation
@@ -19,6 +17,8 @@ CATEGORICAL_TMAPS = [
     )
     for n in range(1, 6)
 ]
+TMAPS_UP_TO_4D = CONTINUOUS_TMAPS[:-1] + CATEGORICAL_TMAPS[:-1]
+TMAPS_5D = CONTINUOUS_TMAPS[-1:] + CATEGORICAL_TMAPS[-1:]
 
 
 DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
@@ -45,13 +45,6 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
 }
 
 
-def layer_shape(layer):
-    shape = K.int_shape(layer)
-    if shape[0] is None:
-        shape = shape[1:]
-    return shape
-
-
 def assert_shapes_correct(input_tmap, output_tmap):
     m = make_multimodal_multitask_model(
         [input_tmap],
@@ -66,33 +59,22 @@ class TestMakeMultimodalMultitaskModel:
 
     @pytest.mark.parametrize(
         'input_tmap',
-        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
-    )
-    @pytest.mark.parametrize(
-        'output_tmap',
-        CATEGORICAL_TMAPS[:1] + CONTINUOUS_TMAPS[:1],
-    )
-    def test_unimodal_1d_task(self, input_tmap: TensorMap, output_tmap: TensorMap):
-        assert_shapes_correct(input_tmap, output_tmap)
-
-    @pytest.mark.parametrize(
-        'input_tmap',
-        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
+        TMAPS_UP_TO_4D,
         )
     @pytest.mark.parametrize(
         'output_tmap',
-        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
+        TMAPS_UP_TO_4D,
         )
     def test_unimodal_md_to_nd(self, input_tmap: TensorMap, output_tmap: TensorMap):
         assert_shapes_correct(input_tmap, output_tmap)
 
     @pytest.mark.parametrize(
         'input_tmap',
-        CATEGORICAL_TMAPS[-1:] + CONTINUOUS_TMAPS[-1:],
+        TMAPS_5D,
     )
     @pytest.mark.parametrize(
         'output_tmap',
-        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
+        TMAPS_UP_TO_4D,
     )
     def test_input_too_high_dimensional(self, input_tmap, output_tmap):
         with pytest.raises(ValueError):
@@ -104,11 +86,11 @@ class TestMakeMultimodalMultitaskModel:
 
     @pytest.mark.parametrize(
         'input_tmap',
-        CATEGORICAL_TMAPS[:-1] + CONTINUOUS_TMAPS[:-1],
+        TMAPS_UP_TO_4D,
     )
     @pytest.mark.parametrize(
         'output_tmap',
-        CATEGORICAL_TMAPS[-1:] + CONTINUOUS_TMAPS[-1:],
+        TMAPS_5D,
     )
     def test_output_too_high_dimensional(self, input_tmap, output_tmap):
         """
@@ -120,18 +102,3 @@ class TestMakeMultimodalMultitaskModel:
                 [output_tmap],
                 **DEFAULT_PARAMS,
             )
-
-    @pytest.mark.parametrize(
-        'input_tmap',
-        CATEGORICAL_TMAPS[:1] + CONTINUOUS_TMAPS[:1],
-    )
-    @pytest.mark.parametrize(
-        'output_tmap',
-        CATEGORICAL_TMAPS[1:-1] + CONTINUOUS_TMAPS[1:-1],
-    )
-    def test_1d_to_nd(self, input_tmap, output_tmap):
-        """
-        This is a test we would like to pass, but fails now.
-        Shows we can't go from 1d to >1d.
-        """
-        assert_shapes_correct(input_tmap, output_tmap)

@@ -384,166 +384,6 @@ def _variational_dense_layer(x: K.placeholder,
     return sampled, mu, log_var
 
 
-def make_variational_multimodal_multitask_model(
-        tensor_maps_in: List[TensorMap] = None,
-        tensor_maps_out: List[TensorMap] = None,
-        activation: str = None,
-        dense_layers: List[int] = None,
-        dropout: float = None,
-        mlp_concat: bool = None,
-        conv_layers: List[int] = None,
-        max_pools: List[int] = None,
-        dense_blocks: List[int] = None,
-        block_size: List[int] = None,
-        conv_type: str = None,
-        conv_normalize: str = None,
-        conv_regularize: str = None,
-        conv_x: int = None,
-        conv_y: int = None,
-        conv_z: int = None,
-        conv_dropout: float = None,
-        conv_width: int = None,
-        conv_dilate: bool = None,
-        pool_x: int = None,
-        pool_y: int = None,
-        pool_z: int = None,
-        pool_type: int = None,
-        padding: str = None,
-        learning_rate: float = None,
-        optimizer: str = 'radam',
-        **kwargs) -> Tuple[Model, Model, Model]:
-    """
-    variational version of make_multimodal_multitask_model
-    """
-    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
-    metric_dict = get_metric_dict(tensor_maps_out)
-    layers_dict = _get_custom_layers()
-    custom_dict = {**metric_dict, **layers_dict, type(opt).__name__: opt}
-    if 'model_file' in kwargs and kwargs['model_file'] is not None:
-        logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
-        m = load_model(kwargs['model_file'], custom_objects=custom_dict)
-        m.summary()
-        logging.info("Loaded model file from: {}".format(kwargs['model_file']))
-        encoder = [i for i in m.layers if i.name == 'encoder']
-        decoder = [i for i in m.layers if i.name == 'decoder']
-        if not encoder or not decoder:
-            logging.warning('Encoder or decoder not found.')
-        return m, encoder[0], decoder[0]
-
-    input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-    input_multimodal = []
-    channel_axis = -1
-    layers = {}
-
-    for j, tm in enumerate(tensor_maps_in):
-        if len(tm.shape) > 1:
-            conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
-            pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
-                                        conv_dropout, None)
-            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
-                                                                   block_size)
-            dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
-                                     conv_regularize, conv_dropout, tm)
-            input_multimodal.append(Flatten()(last_conv))
-        else:
-            mlp_input = input_tensors[j]
-            mlp = _dense_layer(mlp_input, layers, tm.annotation_units, activation, conv_normalize)
-            input_multimodal.append(mlp)
-    if len(input_multimodal) > 1:
-        multimodal_activation = concatenate(input_multimodal, axis=channel_axis)
-    elif len(input_multimodal) == 1:
-        multimodal_activation = input_multimodal[0]
-    else:
-        raise ValueError('No input activations.')
-
-    for i, hidden_units in enumerate(dense_layers):
-        if i == len(dense_layers) - 1:
-            multimodal_activation = _variational_dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize, name='embed')[0]
-        else:
-            multimodal_activation = _dense_layer(multimodal_activation, layers, hidden_units, activation, conv_normalize)
-        if dropout > 0:
-            multimodal_activation = Dropout(dropout)(multimodal_activation)
-        if mlp_concat:
-            multimodal_activation = concatenate([multimodal_activation, mlp_input], axis=channel_axis)
-
-    latent_inputs = Input(shape=(dense_layers[-1],), name='latent_input')
-    losses = []
-    my_metrics = {}
-    loss_weights = []
-    output_predictions = {}
-    output_tensor_maps_to_process = tensor_maps_out.copy()
-
-    while len(output_tensor_maps_to_process) > 0:
-        tm = output_tensor_maps_to_process.pop(0)
-
-        if tm.parents is not None and any(p not in output_predictions for p in tm.parents):
-            output_tensor_maps_to_process.append(tm)
-            continue
-
-        losses.append(tm.loss)
-        loss_weights.append(tm.loss_weight)
-        my_metrics[tm.output_name()] = tm.metrics
-
-        if len(tm.shape) > 1:
-            all_filters = conv_layers + dense_blocks
-            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
-            num_upsamples = len([pool for pool in reversed(_get_layer_kind_sorted(layers, 'Pooling'))
-                             if tm.input_name() in pool]) or 3  # TODO: arbitrary 3 upsamples if no matching input
-            dense, reshape = _build_embed_adapters(tm, num_upsamples, pool_x, pool_y, pool_z)
-            to_upsample = reshape(dense(latent_inputs))
-            for i in range(num_upsamples):
-                conv_embed = conv_layer(filters=all_filters[-(1 + i)], kernel_size=kernel, padding=padding)
-                to_upsample = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(conv_embed(to_upsample))
-
-            conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(
-                to_upsample)
-            output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
-        elif tm.parents is not None:
-            parented_activation = concatenate([latent_inputs] + [output_predictions[p.output_name()] for p in tm.parents])
-            parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
-        elif tm.is_categorical_any():
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(latent_inputs)
-        else:
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(latent_inputs)
-
-    out_list = list(output_predictions.values())
-    encoder = Model(inputs=input_tensors, outputs=multimodal_activation, name='encoder')
-    decoder = Model(inputs=latent_inputs, outputs=out_list, name='decoder')
-    outputs = decoder(encoder(input_tensors))
-    m = Model(inputs=input_tensors, outputs=outputs)
-    m.output_names = list(output_predictions.keys())
-    decoder.output_names = list(output_predictions.keys())
-    encoder.summary(print_fn=logging.info)
-    decoder.summary(print_fn=logging.info)
-    m.summary(print_fn=logging.info)
-
-    model_layers = kwargs.get('model_layers', False)
-    if model_layers:
-        loaded = 0
-        freeze = kwargs.get('freeze_model_layers', False)
-        m.load_weights(model_layers, by_name=True)
-        try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
-            for other_layer in m_other.layers:
-                try:
-                    target_layer = m.get_layer(other_layer.name)
-                    target_layer.set_weights(other_layer.get_weights())
-                    loaded += 1
-                    if freeze:
-                        target_layer.trainable = False
-                except (ValueError, KeyError):
-                    logging.warning(f'Error loading layer {other_layer.name} from model: {model_layers}. Will still try to load other layers.')
-        except ValueError as e:
-            logging.info(f'Loaded model weights, but got ValueError in model loading: {str(e)}')
-        logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
-
-    m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
-    return m, encoder, decoder
-
-
 class MLP(Layer):
 
     def __init__(
@@ -622,13 +462,12 @@ class FlatToStructure(Layer):
         return self.reshape(self.norm(self.activation(self.dense(x))))
 
 
-class ConvDecoder(Layer):
+class ConvDecoder(Model):
 
     def __init__(self,
                  final_shape: Tuple[int, ...],
-                 dense_widths: List[int],
+                 filters_per_dense: List[int],
                  conv_layer_type: str,
-                 conv_width,
                  conv_x,
                  conv_y,
                  conv_z,
@@ -644,7 +483,7 @@ class ConvDecoder(Layer):
                  categorical: bool,
                  **kwargs
                  ):
-        super().__init__(**kwargs)
+        super(ConvDecoder, self).__init__(**kwargs)
         if pool_x == pool_y == pool_z == 1:
             num_blocks = 1
         else:
@@ -655,7 +494,7 @@ class ConvDecoder(Layer):
         self.dense_blocks = [DenseBlock(
             len(final_shape),
             conv_layer_type,
-            conv_width,
+            filters,
             conv_x,
             conv_y,
             conv_z,
@@ -668,9 +507,9 @@ class ConvDecoder(Layer):
             pool_x,
             pool_y,
             pool_z,
-        ) for conv_width in list(reversed(dense_widths))[:num_blocks]]
+        ) for filters in list(reversed(filters_per_dense))[:num_blocks]]
         final_activation = 'softmax' if categorical else 'linear'
-        conv_layer, _ = _conv_layer_from_kind_and_dimension(len(final_shape), 'conv', conv_width, conv_x, conv_y, conv_z)
+        conv_layer, _ = _conv_layer_from_kind_and_dimension(len(final_shape), 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(final_shape[-1], _one_by_n_kernel(len(final_shape)), activation=final_activation)
 
     def call(self, x, **kwargs):
@@ -680,19 +519,17 @@ class ConvDecoder(Layer):
         return self.conv_label(x)
 
 
-class ConvEncoder(Layer):
+class ConvEncoder(Model):
 
     def __init__(
             self,
-            res_layers: int,
-            dense_widths: List[int],
+            filters_per_dense: List[int],
             dimension: int,
-            res_filters: int,
+            res_filters: List[int],
             conv_layer_type: str,
-            conv_width,
-            conv_x,
-            conv_y,
-            conv_z,
+            conv_x: int,
+            conv_y: int,
+            conv_z: int,
             block_size: int,
             activation: str,
             normalization: str,
@@ -704,9 +541,9 @@ class ConvEncoder(Layer):
             pool_y: int,
             pool_z: int,
             **kwargs):
-        super(ConvEncoder).__init__(**kwargs)
+        super(ConvEncoder, self).__init__(**kwargs)
         self.res_block = ResidualBlock(
-            dimension, res_filters, conv_layer_type, conv_width, conv_x, conv_y, conv_z, res_layers, activation, normalization,
+            dimension, res_filters, conv_layer_type, conv_x, conv_y, conv_z, activation, normalization,
             regularization, regularization_rate, dilate, pool_type, pool_x, pool_y, pool_z,
         )
         self.dense_blocks = [DenseBlock(
@@ -725,7 +562,7 @@ class ConvEncoder(Layer):
             pool_x,
             pool_y,
             pool_z,
-        ) for conv_width in dense_widths]
+        ) for conv_width in filters_per_dense]
 
     def call(self, x, **kwargs):
         x = self.res_block(x)
@@ -744,7 +581,7 @@ class MultiModalMultiTask(Model):
             dense_layers: List[int] = None,
             dense_regularize_rate: float = 0,
             mlp_concat: bool = False,
-            res_layers: int = None,
+            res_layers: List[int] = None,
             dense_blocks: List[int] = None,
             block_size: int = None,
             conv_type: str = None,
@@ -770,12 +607,10 @@ class MultiModalMultiTask(Model):
         for tm in tensor_maps_in:
             if tm.axes() > 1:
                 self.encoders[tm] = ConvEncoder(
-                    res_layers,
                     dense_blocks,
                     tm.axes(),
-                    tm.shape[-1],
+                    res_layers,
                     conv_type,
-                    conv_width,
                     conv_x,
                     conv_y,
                     conv_z,
@@ -815,7 +650,6 @@ class MultiModalMultiTask(Model):
                     tm.shape,
                     dense_layers,
                     conv_type,
-                    conv_width,
                     conv_x,
                     conv_y,
                     conv_z,
@@ -1105,13 +939,11 @@ class ResidualBlock(Layer):
     def __init__(
             self,
             dimension: int,
-            filters: int,
+            filters: List[int],
             conv_layer_type: str,
-            conv_width,
-            conv_x,
-            conv_y,
-            conv_z,
-            block_size: int,
+            conv_x: int,
+            conv_y: int,
+            conv_z: int,
             activation: str,
             normalization: str,
             regularization: str,
@@ -1123,29 +955,28 @@ class ResidualBlock(Layer):
             pool_z: int,
             **kwargs
     ):
-        super().__init__(**kwargs)
-        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
+        super(ResidualBlock, self).__init__(**kwargs)
+        block_size = len(filters)
+        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
         self.conv_layers = [
-            conv_layer(filters=conv_width, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
-            for i in range(block_size)]
+            conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
+            for i, num_filters in enumerate(filters)]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
-        self.adds = [Add() for _ in range(block_size)]
+        self.adds = [Add() for _ in range(block_size - 1)]
         self.pool = _pool_layers_from_kind_and_dimension(dimension, pool_type, 1, pool_x, pool_y, pool_z)[0]
-        residual_conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_width, conv_x, conv_y, conv_z)
-        self.residual_convs = [residual_conv_layer(filters=filters, kernel_size=(1, 1)) for _ in range(block_size)]
+        residual_conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
+        self.residual_convs = [residual_conv_layer(filters=filters, kernel_size=_one_by_n_kernel(dimension)) for _ in range(block_size - 1)]
 
     def call(self, x, **kwargs):
-        """
-        x.shape[-1] = self.filters
-        """
         previous = x
         for conv, activation, norm, reg, adder, res in zip(
-                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.adds, self.residual_convs
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.adds, [None] + self.residual_convs
         ):
-            x = res(reg(norm(activation(conv(x)))))
-            x = adder([x, previous])
+            x = reg(norm(activation(conv(x))))
+            if add is not None and res is not None:  # Do not residual add the input
+                x = adder([x, previous])
             previous = x
         x = self.pool(x)
         return x
@@ -1157,7 +988,7 @@ class DenseBlock(Layer):
             self,
             dimension: int,
             conv_layer_type: str,
-            conv_width,
+            filters: int,
             conv_x,
             conv_y,
             conv_z,
@@ -1173,8 +1004,8 @@ class DenseBlock(Layer):
             **kwargs
     ):
         super().__init__(**kwargs)
-        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
-        self.conv_layers = [conv_layer(filters=conv_width, kernel_size=kernel, padding='same') for _ in range(block_size)]
+        conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
+        self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for _ in range(block_size)]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
@@ -1222,7 +1053,7 @@ def _one_by_n_kernel(dimension):
     return tuple([1] * (dimension - 1))
 
 
-def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z):
+def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z):
     if dimension == 4 and conv_layer_type == 'conv':
         conv_layer = Conv3D
         kernel = (conv_x, conv_y, conv_z)
@@ -1231,32 +1062,19 @@ def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, 
         kernel = (conv_x, conv_y)
     elif dimension == 2 and conv_layer_type == 'conv':
         conv_layer = Conv1D
-        kernel = conv_width
+        kernel = conv_x
     elif dimension == 3 and conv_layer_type == 'separable':
         conv_layer = SeparableConv2D
         kernel = (conv_x, conv_y)
     elif dimension == 2 and conv_layer_type == 'separable':
         conv_layer = SeparableConv1D
-        kernel = conv_width
+        kernel = conv_x
     elif dimension == 3 and conv_layer_type == 'depth':
         conv_layer = DepthwiseConv2D
         kernel = (conv_x, conv_y)
     else:
         raise ValueError(f'Unknown convolution type: {conv_layer_type} for dimension: {dimension}')
     return conv_layer, kernel
-
-
-def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
-    conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
-    dilation_rate = 1
-    conv_layer_functions = []
-    for i, c in enumerate(conv_layers):
-        for _ in range(inner_loop):
-            if dilate:
-                dilation_rate = 1 << i
-            conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
-
-    return conv_layer_functions
 
 
 def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool_x, pool_y, pool_z):
