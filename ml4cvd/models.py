@@ -489,7 +489,7 @@ class ConvDecoder(Model):
         else:
             num_blocks = int(min(np.log(pool) / np.log(final_shape[i])
                                  for i, pool in enumerate([pool_x, pool_y, pool_z][:len(final_shape)])))
-        first_shape = tuple(dim // pool**num_blocks for dim, pool in zip(final_shape, [pool_x, pool_y, pool_z]))
+        first_shape = tuple(dim // pool**num_blocks for dim, pool in zip(final_shape, [pool_x, pool_y, pool_z, 1,]))  # 1 necessary for 4D outputs
         self.structurize = FlatToStructure(first_shape, activation, normalization)
         self.dense_blocks = [DenseBlock(
             len(final_shape),
