@@ -18,6 +18,7 @@ import operator
 import datetime
 import numpy as np
 import multiprocessing
+from typing import List, Tuple
 
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
@@ -120,7 +121,8 @@ def parse_args():
     parser.add_argument('--padding', default='same', help='Valid or same border padding on the convolutional layers.')
     parser.add_argument('--dense_blocks', nargs='*', default=[32, 24, 16], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
-    parser.add_argument('--u_connect', default=False, action='store_true', help='Connect early convolutional layers to later ones of the same size, as in U-Net.')
+    parser.add_argument('--u_connect', nargs=2, action='append',
+                        help='U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.')
     parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument('--max_parameters', default=9000000, type=int,
                         help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
@@ -191,8 +193,23 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
+    new_u_connect: List[Tuple[TensorMap, TensorMap]] = []
+    for connect_pair in args.u_connect:
+        tmap_in, tmap_out = connect_pair[0], connect_pair[1]
+        if tmap_in not in args.input_tensors:
+            logging.warning(f'{tmap_in} provided in u_connect but not input_tensors. appending to input_tensors.')
+            args.input_tensors.append(tmap_in)
+        if tmap_out not in args.output_tensors:
+            logging.warning(f'{tmap_out} provided in u_connect but not input_tensors. appending to input_tensors.')
+            args.output_tensors.append(tmap_out)
+        tmap_in, tmap_out = _get_tmap(tmap_in), _get_tmap(tmap_out)
+        if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
+            raise TypeError(f'Cannot u_connect {tmap_in} {tmap_out} of different shapes.')
+        if tmap_in.axes() < 2 or tmap_out.axes() < 2:
+            raise TypeError(f'Cannot u_connect 1d TensorMaps.')
+        new_u_connect.append((tmap_in, tmap_out))
+    args.u_connect = new_u_connect
     args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
-
     args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
