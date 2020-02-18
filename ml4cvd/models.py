@@ -682,6 +682,8 @@ class MultiModalMultiTask(Model):
         self.input_names = [tm.input_name() for tm in tensor_maps_in]
 
     def encode(self, inputs: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
+        if isinstance(inputs, tf.Tensor):
+            inputs = {list(self.encoders.keys())[0]: inputs}
         return {tm: enc(inputs[tm]) for tm, enc in self.encoders.items()}
 
     def decode(self, embed: tf.Tensor):
