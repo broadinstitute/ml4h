@@ -605,7 +605,7 @@ class MultiModalMultiTask(Model):
         self.encoders: Dict[TensorMap: Layer] = {}
         for tm in tensor_maps_in:
             if tm.axes() > 1:
-                self.encoders[tm] = ConvEncoder(
+                self.encoders[tm.input_name()] = ConvEncoder(
                     dense_blocks,
                     tm.axes(),
                     res_layers,
@@ -625,7 +625,7 @@ class MultiModalMultiTask(Model):
                     pool_z,
                 )
             else:
-                self.encoders[tm] = MLP(
+                self.encoders[tm.input_name()] = MLP(
                     [tm.annotation_units],
                     activation,
                     normalization,
@@ -664,7 +664,7 @@ class MultiModalMultiTask(Model):
                     tm.is_categorical()
                 )
             else:
-                self.decoders[tm] = MLP(
+                self.decoders[tm.output_name()] = MLP(
                     [tm.annotation_units, tm.shape[0]],
                     activation,
                     normalization,
@@ -676,10 +676,21 @@ class MultiModalMultiTask(Model):
             # for metric in tm.metrics:
                 # self.decoders[tm].add_metric(metric, name=tm.output_name())
 
-    def call(self, inputs, mask=None):
-        encoded = [encoder(x) for x, encoder in zip(inputs, self.encoders.values())]  # TODO: enforce order on encoders
-        latent = self.bottle_neck(encoded)
-        return [decoder(latent) for decoder in self.decoders.values()]
+        # Initialize shapes
+        input_tensors = {tm.input_name(): Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in}
+        self(input_tensors)
+        self.input_names = [tm.input_name() for tm in tensor_maps_in]
+
+    def encode(self, inputs: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
+        return {tm: enc(inputs[tm]) for tm, enc in self.encoders.items()}
+
+    def decode(self, embed: tf.Tensor):
+        return [decoder(embed) for decoder in self.decoders.values()]  # TODO: ordering
+
+    def call(self, inputs: Dict[str, tf.Tensor], mask=None):
+        encoded = self.encode(inputs)
+        embed = self.bottle_neck(encoded.values())  # TODO: ordering
+        return self.decode(embed)
 
 
 def make_multimodal_multitask_model(
@@ -805,8 +816,6 @@ def make_multimodal_multitask_model(
         logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
 
     m.compile(optimizer=opt)
-    input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-    m(input_tensors)
     m.summary()
     return m
 

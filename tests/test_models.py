@@ -1,4 +1,6 @@
 import pytest
+import tempfile
+import tensorflow as tf
 
 
 from ml4cvd.models import make_multimodal_multitask_model
@@ -51,8 +53,9 @@ def assert_shapes_correct(input_tmap, output_tmap):
         [output_tmap],
         **DEFAULT_PARAMS,
     )
-    assert m.input_shape[0][1:] == input_tmap.shape
+    assert m.input_shape[input_tmap][1:] == input_tmap.shape
     assert m.output_shape[0][1:] == output_tmap.shape
+    m({input_tmap: tf.zeros((1,) + input_tmap.shape)})  # Does calling work?
 
 
 class TestMakeMultimodalMultitaskModel:
@@ -100,5 +103,28 @@ class TestMakeMultimodalMultitaskModel:
             make_multimodal_multitask_model(
                 [input_tmap],
                 [output_tmap],
+                **DEFAULT_PARAMS,
+            )
+
+    @pytest.mark.parametrize(
+        'input_tmap',
+        TMAPS_UP_TO_4D,
+    )
+    @pytest.mark.parametrize(
+        'output_tmap',
+        TMAPS_UP_TO_4D,
+    )
+    def test_load_model(self, input_tmap, output_tmap):
+        m = make_multimodal_multitask_model(
+            [input_tmap],
+            [output_tmap],
+            **DEFAULT_PARAMS,
+        )
+        with tempfile.NamedTemporaryFile() as f:
+            m.save(f.name)
+            m2 = make_multimodal_multitask_model(
+                [input_tmap],
+                [output_tmap],
+                model_file=f.name,
                 **DEFAULT_PARAMS,
             )

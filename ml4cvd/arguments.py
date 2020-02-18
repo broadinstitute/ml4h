@@ -194,6 +194,7 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     new_u_connect: List[Tuple[TensorMap, TensorMap]] = []
+    # TODO: make sure output layer does not have multiple input u_connections?
     for connect_pair in args.u_connect:
         tmap_in, tmap_out = connect_pair[0], connect_pair[1]
         if tmap_in not in args.input_tensors:
