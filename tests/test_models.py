@@ -1,3 +1,4 @@
+import os
 import pytest
 import tempfile
 import tensorflow as tf
@@ -120,11 +121,12 @@ class TestMakeMultimodalMultitaskModel:
             [output_tmap],
             **DEFAULT_PARAMS,
         )
-        with tempfile.NamedTemporaryFile() as f:
-            m.save(f.name)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'm')
+            m.save(path)
             m2 = make_multimodal_multitask_model(
                 [input_tmap],
                 [output_tmap],
-                model_file=f.name,
+                model_file=path,
                 **DEFAULT_PARAMS,
             )

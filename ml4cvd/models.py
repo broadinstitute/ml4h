@@ -679,10 +679,10 @@ class MultiModalMultiTask(Model):
         # Initialize shapes
         input_tensors = {tm.input_name(): Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in}
         self(input_tensors)
-        self.input_names = [tm.input_name() for tm in tensor_maps_in]
+        self.input_names = [tm.input_name() for tm in tensor_maps_in]  # somehow a problem
 
     def encode(self, inputs: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
-        if isinstance(inputs, tf.Tensor):
+        if isinstance(inputs, tf.Tensor):  # this is necessary to save the model for 1d inputs
             inputs = {list(self.encoders.keys())[0]: inputs}
         return {tm: enc(inputs[tm]) for tm, enc in self.encoders.items()}
 
