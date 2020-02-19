@@ -151,7 +151,7 @@ def _tensor_to_df(args, tmap_type):
                 tdict[tm.name].update({(tm.name, cm): list()})
         else:
             tdict[tm.name].update({f"{tm.name}": list()})
-        tdict[tm.name].update({error_msg: list()})
+        tdict[tm.name].update({f"{error_msg}_{tm.name}": list()})
         tdict[tm.name].update({"fpath": list()})
    
     # Iterate through train, validation, & test sets (i.e. generators)
@@ -191,12 +191,12 @@ def _tensor_to_df(args, tmap_type):
                             error_type = type(e).__name__
 
                         # Save error type and fpath
-                        tdict[tm.name][error_msg].append(error_type)
+                        tdict[tm.name][f"{error_msg}_{tm.name}"].append(error_type)
                         tdict[tm.name]['fpath'].append(path)
             except OSError:
                 continue
 
-    # Concatenate tensors into dataframe
+    # Concatenate tensors from dict into dataframe
     df = pd.DataFrame()
     for tm in tmaps:
         df = pd.concat([df, pd.DataFrame(tdict[tm.name])], axis=1)
@@ -214,9 +214,12 @@ def explore(args):
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
 
+    # Initialize empty dict to store df of tensors
+    df = {}
+
     try:
         if any([len(tm.shape) != 1 for tm in tmaps]):
-            raise ValueError("Explore works for 1D continuous, categorical, or string data. Choose different tensor maps.")
+            raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
     except ValueError as e:
         logging.exception(e)
 
@@ -226,7 +229,7 @@ def explore(args):
     if tmap_type in [tm.group for tm in tmaps]:
 
         # Isolate all categorical tensors to dataframe
-        df = _tensor_to_df(args, tmap_type=tmap_type)
+        df[tmap_type] = _tensor_to_df(args, tmap_type=tmap_type)
 
         # Iterate through tmaps
         for tm in [tm for tm in tmaps if tm.group is tmap_type]:
@@ -236,11 +239,11 @@ def explore(args):
             # Iterate through channel maps and append counts to list
             if tm.channel_map:
                 for cm in tm.channel_map:
-                    counts.append(df[(tm.name, cm)].sum())
-                    counts_missing.append(df[(tm.name, cm)].isna().sum())
+                    counts.append(df[tmap_type][(tm.name, cm)].sum())
+                    counts_missing.append(df[tmap_type][(tm.name, cm)].isna().sum())
             else:
-                counts.append(df[tm.name].sum())
-                counts_missing.append(df[tm.name].isna().sum())
+                counts.append(df[tmap_type][tm.name].sum())
+                counts_missing.append(df[tmap_type][tm.name].isna().sum())
         
             # Append list with missing counts
             # TODO come up with more elegant approach
@@ -251,13 +254,13 @@ def explore(args):
 
             # Create list of row names
             cm_names = [cm for cm in tm.channel_map] \
-                       + [f"missing", f"all"]
+                       + [f"missing", f"total"]
 
             df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
 
             # Add new column: percent of all counts
             df_stats["fraction_of_total"] = df_stats["counts"] \
-                                            / df_stats.loc[f"all"]["counts"]
+                                            / df_stats.loc[f"total"]["counts"]
             
             # Save parent dataframe to CSV on disk
             fpath_csv = os.path.join(args.output_folder,
@@ -265,14 +268,15 @@ def explore(args):
             df_stats.to_csv(fpath_csv)
             logging.info(f"Saved summary stats of {tmap_type} {tm.name} tmaps to {fpath_csv}")
 
-
     # Check if any tmaps are continuous
     tmap_type = "continuous"
 
     if tmap_type in [tm.group for tm in tmaps]:
 
         # Isolate all continuous tensors to dataframe
-        df = _tensor_to_df(args, tmap_type=tmap_type)
+        df[tmap_type] = _tensor_to_df(args, tmap_type=tmap_type)
+
+        pdb.set_trace()
 
         df_stats = pd.DataFrame()
 
@@ -283,27 +287,26 @@ def explore(args):
             if tm.channel_map:
                 for cm in tm.channel_map:
                     stats = dict()
-                    stats["min"] = np.nanmin(df[(tm.name, cm)])
-                    stats["max"] = np.nanmax(df[(tm.name, cm)])
-                    stats["mean"] = np.nanmean(df[(tm.name, cm)])
-                    stats["median"] = np.nanmedian(df[(tm.name, cm)])
-                    stats["mode"] = mode(df[(tm.name, cm)], nan_policy="omit")[0].item()
-                    stats["count"] = df[(tm.name, cm)].notna().sum()
-                    stats["missing"] = df[(tm.name, cm)].isna().sum()
-                    stats["total"] = df[(tm.name, cm)].shape[0]
+                    stats["min"] = np.nanmin(df[tmap_type][(tm.name, cm)])
+                    stats["max"] = np.nanmax(df[tmap_type][(tm.name, cm)])
+                    stats["mean"] = np.nanmean(df[tmap_type][(tm.name, cm)])
+                    stats["median"] = np.nanmedian(df[tmap_type][(tm.name, cm)])
+                    stats["mode"] = mode(df[tmap_type][(tm.name, cm)], nan_policy="omit")[0].item()
+                    stats["count"] = df[tmap_type][(tm.name, cm)].notna().sum()
+                    stats["missing"] = df[tmap_type][(tm.name, cm)].isna().sum()
+                    stats["total"] = df[tmap_type][(tm.name, cm)].shape[0]
                     df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
             else:
                 stats = dict()
-                stats["min"] = np.nanmin(df[tm.name])
-                stats["max"] = np.nanmax(df[tm.name])
-                stats["mean"] = np.nanmean(df[tm.name])
-                stats["median"] = np.nanmedian(df[tm.name])
-                stats["mode"] = mode(df[tm.name], nan_policy="omit")[0].item()
-                stats["count"] = df[tm.name].notna().sum()
-                stats["missing"] = df[tm.name].isna().sum()
-                stats["total"] = df[tm.name].shape[0]
+                stats["min"] = np.nanmin(df[tmap_type][tm.name])
+                stats["max"] = np.nanmax(df[tmap_type][tm.name])
+                stats["mean"] = np.nanmean(df[tmap_type][tm.name])
+                stats["median"] = np.nanmedian(df[tmap_type][tm.name])
+                stats["mode"] = mode(df[tmap_type][tm.name], nan_policy="omit")[0].item()
+                stats["count"] = df[tmap_type][tm.name].notna().sum()
+                stats["missing"] = df[tmap_type][tm.name].isna().sum()
+                stats["total"] = df[tmap_type][tm.name].shape[0]
                 df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
-                pdb.set_trace()
 
         # Save parent dataframe to CSV on disk
         fpath_csv = os.path.join(args.output_folder,
@@ -317,7 +320,7 @@ def explore(args):
     if tmap_type in [tm.group for tm in tmaps]:
 
         # Isolate all continuous tensors to dataframe
-        df = _tensor_to_df(args, tmap_type=tmap_type)
+        df[tmap_type] = _tensor_to_df(args, tmap_type=tmap_type)
 
         df_stats = pd.DataFrame()
 
@@ -328,15 +331,15 @@ def explore(args):
             if tm.channel_map:
                 for cm in tm.channel_map:
                     stats = dict()
-                    stats["count"] = df[(tm.name, cm)].notna().sum()
-                    stats["missing"] = df[(tm.name, cm)].isna().sum()
-                    stats["total"] = df[(tm.name, cm)].shape[0]
+                    stats["count"] = df[tmap_type][(tm.name, cm)].notna().sum()
+                    stats["missing"] = df[tmap_type][(tm.name, cm)].isna().sum()
+                    stats["total"] = df[tmap_type][(tm.name, cm)].shape[0]
                     df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
             else:
                 stats = dict()
-                stats["count"] = df[tm.name].notna().sum()
-                stats["missing"] = df[tm.name].isna().sum()
-                stats["total"] = df[tm.name].shape[0]
+                stats["count"] = df[tmap_type][tm.name].notna().sum()
+                stats["missing"] = df[tmap_type][tm.name].isna().sum()
+                stats["total"] = df[tmap_type][tm.name].shape[0]
                 df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
 
         # Save parent dataframe to CSV on disk
@@ -345,6 +348,19 @@ def explore(args):
         df_stats.to_csv(fpath_csv)
         logging.info(f"Saved summary stats of {tmap_type} tmaps to {fpath_csv}")
 
+    # Iterate through dict of df of tensors to concatenate into single df
+    df_all = pd.DataFrame()
+    for key in df:
+        df_all = pd.concat([df_all, df[key]], axis=1)
+
+    # Remove duplicate columns
+    df_all = df_all.loc[:, ~df_all.columns.duplicated()]
+
+    # Save parent dataframe to CSV on disk
+    fpath_csv = os.path.join(args.output_folder,
+                             f"{args.id}/tensors_all.csv")
+    df_all.to_csv(fpath_csv)
+    logging.info(f"Saved all tensors to {fpath_csv}")
 
 
 def train_multimodal_multitask(args):
