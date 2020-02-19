@@ -1,10 +1,9 @@
 TFSCRIPT="tf.sh"
-#TFSCRIPT="tf_gpu2.sh"
 ./scripts/${TFSCRIPT} -t \
     /home/${USER}/repos/ml/ml4cvd/recipes.py \
     --mode explore \
     --tensors \
-                /home/${USER}/partners_ecg/hd5_subset \
+                /data/partners_ecg/hd5_subset \
     --input_tensors \
                     partners_ecg_read_md_clean_supranodal_rhythms \
                     partners_ecg_rate \
@@ -12,6 +11,8 @@ TFSCRIPT="tf.sh"
                     partners_ecg_pr \
                     partners_ecg_qt \
                     partners_ecg_qtc \
+                    partners_ecg_mrn \
+                    partners_ecg_date \
     --test_modulo 0 \
-    --output_folder "/home/${USER}/Dropbox\ \(Partners\ HealthCare\)/partners_ecg/ml4cvd_results/" \
+    --output_folder "/home/${USER}/ml4cvd_results/" \
     --id explore_hd5_subset
