@@ -1,7 +1,7 @@
 import os
 import pytest
 import tensorflow as tf
-from typing import List
+from typing import List, Optional
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap
@@ -32,12 +32,13 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
 }
 
 
-def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]):
-    m = make_multimodal_multitask_model(
-        input_tmaps,
-        output_tmaps,
-        **DEFAULT_PARAMS,
-    )
+def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model]=None):
+    if m is None:
+        m = make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **DEFAULT_PARAMS,
+        )
     for tmap, tensor in zip(input_tmaps, m.inputs):
         assert tensor.shape[1:] == tmap.shape
         assert tensor.shape[1:] == tmap.shape
@@ -116,3 +117,13 @@ class TestMakeMultimodalMultitaskModel:
             model_file=path,
             **DEFAULT_PARAMS,
         )
+
+    def test_u_connect(self):
+        tmap = CONTINUOUS_TMAPS[2]
+        m = make_multimodal_multitask_model(
+            [tmap],
+            [tmap],
+            u_connect={tmap: {tmap, }},
+            **DEFAULT_PARAMS,
+        )
+        assert_shapes_correct([tmap], [tmap], m)

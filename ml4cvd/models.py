@@ -9,7 +9,7 @@ import time
 import logging
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable, Union, Optional, TypeVar
+from typing import Dict, List, Tuple, Iterable, Union, Optional, TypeVar, Set
 
 # Keras imports
 import tensorflow as tf
@@ -571,6 +571,63 @@ class ConvEncoder(Model):
         return x
 
 
+class UConnectConvDecoder(Model):
+
+    def __init__(self,
+                 encoder: ConvEncoder,  # TODO: could be a list of encoders
+                 final_shape: Tuple[int, ...],
+                 filters_per_dense: List[int],
+                 conv_layer_type: str,
+                 conv_x,
+                 conv_y,
+                 conv_z,
+                 block_size: int,
+                 activation: str,
+                 normalization: str,
+                 regularization: str,
+                 regularization_rate: float,
+                 pool_type: str,
+                 pool_x: int,
+                 pool_y: int,
+                 pool_z: int,
+                 categorical: bool,
+                 **kwargs
+                 ):
+        super(UConnectConvDecoder, self).__init__(**kwargs)
+        num_blocks = len(encoder.dense_blocks)
+        self.encoder = encoder
+        first_shape = encoder.res_block.output_shape[1:]
+        self.structurize = FlatToStructure(first_shape, activation, normalization)
+        self.dense_blocks = [DenseBlock(
+            len(final_shape),
+            conv_layer_type,
+            filters,
+            conv_x,
+            conv_y,
+            conv_z,
+            block_size,
+            activation,
+            normalization,
+            regularization,
+            regularization_rate,
+            pool_type,
+            pool_x,
+            pool_y,
+            pool_z,
+        ) for filters in list(reversed(filters_per_dense))[:num_blocks]]
+        final_activation = 'softmax' if categorical else 'linear'
+        conv_layer, _ = _conv_layer_from_kind_and_dimension(len(final_shape), 'conv', conv_x, conv_y, conv_z)
+        self.conv_label = conv_layer(final_shape[-1], _one_by_n_kernel(len(final_shape)), activation=final_activation)
+
+    def call(self, x, **kwargs):
+        x = self.structurize(x)
+        for dense_block, enc_dense_block in zip(self.dense_blocks, reversed(self.encoder.dense_blocks)):
+            x = concatenate([enc_dense_block.output, x])
+            x = dense_block(x)
+        x = concatenate([self.encoder.res_block.output, x])
+        return self.conv_label(x)
+
+
 T = TypeVar('T')
 
 
@@ -599,7 +656,7 @@ def make_multimodal_multitask_model(
         conv_z: int = None,
         conv_dropout: float = None,
         conv_dilate: bool = None,
-        u_connect: bool = None,
+        u_connect: Dict[TensorMap, Set[TensorMap]] = None,
         pool_x: int = None,
         pool_y: int = None,
         pool_z: int = None,
@@ -624,6 +681,7 @@ def make_multimodal_multitask_model(
     conv_regularize_rate = conv_dropout
 
     encoders: Dict[TensorMap: Layer] = {}
+    u_connect_encoders: Dict[TensorMap, ConvEncoder] = {}
     for tm in tensor_maps_in:
         if tm.axes() > 1:
             encoder = ConvEncoder(
@@ -655,6 +713,8 @@ def make_multimodal_multitask_model(
             )
         encoder_input = Input(name=tm.input_name(), shape=tm.shape)
         out = encoder(encoder_input)
+        if tm in u_connect:
+            u_connect_encoders[tm] = encoder
         encoders[tm] = Model(name=f'{tm.input_name()}_encoder', inputs=encoder_input, outputs=out)
 
     bottle_neck = FlattenAll(  # TODO: Handle mlp_concat, variational
@@ -671,7 +731,29 @@ def make_multimodal_multitask_model(
 
     decoders: Dict[TensorMap, Layer] = {}
     for tm in tensor_maps_out:  # TODO: handle u_connect, parents
-        if tm.axes() > 1:
+        u_parent = [tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]][0]
+        # TODO: this is getting a bit long - could be shortened by taking advantage of kwargs
+        if u_parent:
+            decoder = UConnectConvDecoder(
+                u_connect_encoders[u_parent],
+                tm.shape,
+                dense_layers,
+                conv_type,
+                conv_x,
+                conv_y,
+                conv_z,
+                block_size,
+                activation,
+                normalization,
+                conv_regularize,
+                conv_regularize_rate,
+                pool_type,
+                pool_x,
+                pool_y,
+                pool_z,
+                tm.is_categorical()
+            )
+        elif tm.axes() > 1:
             decoder = ConvDecoder(
                 tm.shape,
                 dense_layers,
