@@ -150,7 +150,7 @@ def _tensor_to_df(args, tmap_type):
             for cm in tm.channel_map:
                 tdict[tm.name].update({(tm.name, cm): list()})
         else:
-            tdict[tm.name].update({f"{tm.name}_tensor": list()})
+            tdict[tm.name].update({f"{tm.name}": list()})
         tdict[tm.name].update({error_msg: list()})
         tdict[tm.name].update({"fpath": list()})
    
@@ -177,7 +177,7 @@ def _tensor_to_df(args, tmap_type):
                                     tdict[tm.name][(tm.name, cm)].append(
                                         tensor[tm.channel_map[cm]])
                             else:
-                                tdict[tm.name][f"{tm.name}_tensor"].append(tensor)
+                                tdict[tm.name][tm.name].append(tensor)
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so instead append nan 
                             if tm.channel_map:
@@ -185,7 +185,7 @@ def _tensor_to_df(args, tmap_type):
                                     tdict[tm.name][(tm.name, cm)].append(np.nan)
                             else:
                                 # TODO figure out the np.full stuff
-                                tdict[tm.name][f"{tm.name}_tensor"].append(np.full(tm.shape, np.nan)[0])
+                                tdict[tm.name][tm.name].append(np.full(tm.shape, np.nan)[0])
 
                             # Save  error type to more readable string
                             error_type = type(e).__name__
@@ -195,7 +195,6 @@ def _tensor_to_df(args, tmap_type):
                         tdict[tm.name]['fpath'].append(path)
             except OSError:
                 continue
-
 
     # Concatenate tensors into dataframe
     df = pd.DataFrame()
@@ -213,12 +212,11 @@ def _tensor_to_df(args, tmap_type):
 def explore(args):
     args.num_workers = 0
     tmaps = args.tensor_maps_in
+    fpath_prefix = "summary_stats"
 
-    # This only works for continuous and categorical data,
-    # so raise an error if a tmap other than those two types are given.
     try:
         if any([len(tm.shape) != 1 for tm in tmaps]):
-            raise ValueError("Explore only works for a) 1D continuous or b) categorical data. Choose different tensor maps.")
+            raise ValueError("Explore works for 1D continuous, categorical, or string data. Choose different tensor maps.")
     except ValueError as e:
         logging.exception(e)
 
@@ -232,8 +230,6 @@ def explore(args):
 
         # Iterate through tmaps
         for tm in [tm for tm in tmaps if tm.group is tmap_type]:
-            print(tm.name)
-
             counts = []
             counts_missing = []
 
@@ -265,9 +261,9 @@ def explore(args):
             
             # Save parent dataframe to CSV on disk
             fpath_csv = os.path.join(args.output_folder,
-                                         f"{args.id}/categorical_{tm.name}_summary_stats.csv")
+                                     f"{args.id}/{fpath_prefix}_{tmap_type}_{tm.name}.csv")
             df_stats.to_csv(fpath_csv)
-            logging.info(f"Saved summary stats of {tm.name} to {fpath_csv}")
+            logging.info(f"Saved summary stats of {tmap_type} {tm.name} tmaps to {fpath_csv}")
 
 
     # Check if any tmaps are continuous
@@ -297,13 +293,58 @@ def explore(args):
                     stats["total"] = df[(tm.name, cm)].shape[0]
                     df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
             else:
-                print("Hello")
-            
+                stats = dict()
+                stats["min"] = np.nanmin(df[tm.name])
+                stats["max"] = np.nanmax(df[tm.name])
+                stats["mean"] = np.nanmean(df[tm.name])
+                stats["median"] = np.nanmedian(df[tm.name])
+                stats["mode"] = mode(df[tm.name], nan_policy="omit")[0].item()
+                stats["count"] = df[tm.name].notna().sum()
+                stats["missing"] = df[tm.name].isna().sum()
+                stats["total"] = df[tm.name].shape[0]
+                df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
+                pdb.set_trace()
+
         # Save parent dataframe to CSV on disk
         fpath_csv = os.path.join(args.output_folder,
-                                     f"{args.id}/continuous_summary_stats.csv")
+                                 f"{args.id}/{fpath_prefix}_{tmap_type}.csv")
         df_stats.to_csv(fpath_csv)
-        logging.info(f"Saved summary stats of continuous tmaps to {fpath_csv}")
+        logging.info(f"Saved summary stats of {tmap_type} tmaps to {fpath_csv}")
+    
+    # Check if any tmaps are strings
+    tmap_type = "string"
+
+    if tmap_type in [tm.group for tm in tmaps]:
+
+        # Isolate all continuous tensors to dataframe
+        df = _tensor_to_df(args, tmap_type=tmap_type)
+
+        df_stats = pd.DataFrame()
+
+        # Iterate through tmaps
+        for tm in [tm for tm in tmaps if tm.group is tmap_type]:
+
+            # Iterate through channel maps
+            if tm.channel_map:
+                for cm in tm.channel_map:
+                    stats = dict()
+                    stats["count"] = df[(tm.name, cm)].notna().sum()
+                    stats["missing"] = df[(tm.name, cm)].isna().sum()
+                    stats["total"] = df[(tm.name, cm)].shape[0]
+                    df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+            else:
+                stats = dict()
+                stats["count"] = df[tm.name].notna().sum()
+                stats["missing"] = df[tm.name].isna().sum()
+                stats["total"] = df[tm.name].shape[0]
+                df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
+
+        # Save parent dataframe to CSV on disk
+        fpath_csv = os.path.join(args.output_folder,
+                                 f"{args.id}/{fpath_prefix}_{tmap_type}.csv")
+        df_stats.to_csv(fpath_csv)
+        logging.info(f"Saved summary stats of {tmap_type} tmaps to {fpath_csv}")
+
 
 
 def train_multimodal_multitask(args):
