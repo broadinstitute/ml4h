@@ -102,6 +102,7 @@ Attempting to run Docker with
         -v /home/${USER}/jupyter/root/:/root/
         -v /home/${USER}/:/home/${USER}/
         -v /mnt/:/mnt/
+        -v /data/:/data/
         ${DOCKER_IMAGE} python ${PYTHON_ARGS}
 LAUNCH_MESSAGE
 
@@ -113,4 +114,5 @@ ${DOCKER_COMMAND} run ${INTERACTIVE_RUN} \
 --gpus all \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
+-v /data/:/data/ \
 ${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"
