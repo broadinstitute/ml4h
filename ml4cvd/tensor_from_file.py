@@ -631,10 +631,20 @@ TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         channel_map=ECG_REST_AMP_LEADS)
 
 
-def make_partners_ecg_reads(key_in_hd5: str = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified", return_read: bool = False):
-    def partners_ecg_reads_from_file(tm, hd5, dependents={}):
+def make_partners_ecg_data(key_in_hd5: str = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified", return_read: bool = False):
+    def partners_ecg_key_from_hd5(tm, hd5, dependents={}):
         read = _decompress_data(data_compressed=hd5[key_in_hd5][()],
                                 dtype=hd5[key_in_hd5].attrs['dtype'])
+        #if key_in_hd5 == "patientid":
+        #    return float(read)
+
+        if key_in_hd5 == "acquisitiondate":
+            try:
+                dt = datetime.datetime.strptime(read, "%m-%d-%Y")
+            except ValueError:
+                dt = None 
+            return dt
+
         if return_read:
             return read
         
@@ -646,14 +656,15 @@ def make_partners_ecg_reads(key_in_hd5: str = "read_md_clean", dict_of_list: Dic
                     return categorical_data
         categorical_data[tm.channel_map[not_found_key]] = 1
         return categorical_data
-    return partners_ecg_reads_from_file
+    return partners_ecg_key_from_hd5
+
 
 group = "string" 
 task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.STRING,
-                        tensor_from_file=make_partners_ecg_reads(
+                        tensor_from_file=make_partners_ecg_data(
                             key_in_hd5="read_md_clean", return_read=True),
                         shape=(1,))
 
@@ -661,7 +672,7 @@ task = "partners_ecg_read_pc_raw"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.STRING,
-                        tensor_from_file=make_partners_ecg_reads(
+                        tensor_from_file=make_partners_ecg_data(
                             key_in_hd5="read_pc_clean", return_read=True),
                         shape=(1,))
 
@@ -669,7 +680,7 @@ task = "partners_ecg_mrn"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.STRING,
-                        tensor_from_file=make_partners_ecg_reads(
+                        tensor_from_file=make_partners_ecg_data(
                             key_in_hd5="patientid", return_read=True),
                         shape=(1,))
 
@@ -677,7 +688,7 @@ task = "partners_ecg_date"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.STRING,
-                        tensor_from_file=make_partners_ecg_reads(
+                        tensor_from_file=make_partners_ecg_data(
                             key_in_hd5="acquisitiondate", return_read=True),
                         shape=(1,))
 
