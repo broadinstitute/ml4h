@@ -695,15 +695,9 @@ class MultiModalMultiTask(Model):
 T = TypeVar('T')
 
 
-def len_one_to_list(x: List[T]) -> Union[T, List[T]]:
+def delist_len_one(x: List[T]) -> Union[T, List[T]]:
     if len(x) == 1:
         return x[0]
-    return x
-
-
-def listify(x: Union[List[T], T]) -> List[T]:
-    if not isinstance(x, list):
-        return [x]
     return x
 
 
@@ -831,7 +825,7 @@ def make_multimodal_multitask_model(
 
     inputs = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     out = [encoders[tm](x) for x, tm in zip(inputs, tensor_maps_in)]
-    out = bottle_neck(out)
+    out = bottle_neck(delist_len_one(out))
     out = [decoders[tm](out) for tm in tensor_maps_out]
     m = Model(inputs=inputs, outputs=out)
 
