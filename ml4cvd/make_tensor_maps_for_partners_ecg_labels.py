@@ -5,7 +5,7 @@ from collections import defaultdict
 
 JOIN_CHAR = '_'
 SCRIPT_NAME = 'tensor_maps_partners_ecg.py'
-TENSOR_FUNC_NAME = "make_partners_ecg_reads"
+TENSOR_FUNC_NAME = "make_partners_ecg_label"
 PREFIX = "partners_ecg"
 
 def _clean_label_string(string):
@@ -45,8 +45,8 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
 
         cm += '}'
 
-        for key_in_hd5 in keys_in_hd5:
-            py_file.write(f"TMAPS['{PREFIX}_{key_in_hd5}_{label}'] = TensorMap('{PREFIX}_{key_in_hd5}_{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(key_in_hd5='{key_in_hd5}', dict_of_list = {label_maps[label]})) \n\n")
+        for key in keys_in_hd5:
+            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}'] = TensorMap('{PREFIX}_{key}_{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(key='{key}', dict_of_list = {label_maps[label]})) \n\n")
 
 
 def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
