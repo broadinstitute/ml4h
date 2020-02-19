@@ -2,28 +2,10 @@ import os
 import pytest
 import tensorflow as tf
 from typing import List
-from itertools import product
-
 
 from ml4cvd.models import make_multimodal_multitask_model
-from ml4cvd.TensorMap import TensorMap, Interpretation
-
-
-CONTINUOUS_TMAPS = [
-    TensorMap(f'{n}d_cont', shape=tuple(range(1, n + 1)), interpretation=Interpretation.CONTINUOUS)
-    for n in range(1, 6)
-]
-CATEGORICAL_TMAPS = [
-    TensorMap(
-        f'{n}d_cat', shape=tuple(range(1, n + 1)),
-        interpretation=Interpretation.CATEGORICAL,
-        channel_map={f'c_{i}': i for i in range(n)},
-    )
-    for n in range(1, 6)
-]
-TMAPS_UP_TO_4D = CONTINUOUS_TMAPS[:-1] + CATEGORICAL_TMAPS[:-1]
-TMAPS_5D = CONTINUOUS_TMAPS[-1:] + CATEGORICAL_TMAPS[-1:]
-MULTIMODAL_UP_TO_4D = [list(x) for x in product(CONTINUOUS_TMAPS[:-1], CATEGORICAL_TMAPS[:-1])]
+from ml4cvd.TensorMap import TensorMap
+from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS
 
 
 DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
