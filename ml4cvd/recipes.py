@@ -249,8 +249,6 @@ def explore(args):
         # Isolate all continuous tensors to dataframe
         df[tmap_interpretation] = _tensor_to_df(args, tmap_interpretation=tmap_interpretation)
 
-        pdb.set_trace()
-
         df_stats = pd.DataFrame()
 
         # Iterate through tmaps
