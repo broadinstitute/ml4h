@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS
+from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT
 
 
 DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
@@ -118,7 +118,7 @@ class TestMakeMultimodalMultitaskModel:
             **DEFAULT_PARAMS,
         )
 
-    def test_u_connect(self):
+    def test_auto_u_connect(self):
         tmap = CONTINUOUS_TMAPS[2]
         m = make_multimodal_multitask_model(
             [tmap],
@@ -127,3 +127,12 @@ class TestMakeMultimodalMultitaskModel:
             **DEFAULT_PARAMS,
         )
         assert_shapes_correct([tmap], [tmap], m)
+
+    def test_u_connect_segment(self):
+        m = make_multimodal_multitask_model(
+            [SEGMENT_IN],
+            [SEGMENT_OUT],
+            u_connect={SEGMENT_IN: {SEGMENT_OUT, }},
+            **DEFAULT_PARAMS,
+        )
+        assert_shapes_correct([SEGMENT_IN], [SEGMENT_OUT], m)
