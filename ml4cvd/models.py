@@ -18,7 +18,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.callbacks import History, Callback
-# from tensorflow.keras.utils.vis_utils import model_to_dot
+from tensorflow.keras.utils import model_to_dot
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
