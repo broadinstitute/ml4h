@@ -1,6 +1,5 @@
 import os
 import pytest
-import tempfile
 import tensorflow as tf
 
 
@@ -115,18 +114,17 @@ class TestMakeMultimodalMultitaskModel:
         'output_tmap',
         TMAPS_UP_TO_4D,
     )
-    def test_load_model(self, input_tmap, output_tmap):
+    def test_load_model(self, tmpdir, input_tmap, output_tmap):
         m = make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
             **DEFAULT_PARAMS,
         )
-        with tempfile.TemporaryDirectory() as d:
-            path = os.path.join(d, 'm')
-            m.save(path)
-            m2 = make_multimodal_multitask_model(
-                [input_tmap],
-                [output_tmap],
-                model_file=path,
-                **DEFAULT_PARAMS,
-            )
+        path = os.path.join(tmpdir, 'm')
+        m.save(path)
+        m2 = make_multimodal_multitask_model(
+            [input_tmap],
+            [output_tmap],
+            model_file=path,
+            **DEFAULT_PARAMS,
+        )
