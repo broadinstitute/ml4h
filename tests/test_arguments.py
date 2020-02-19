@@ -45,3 +45,34 @@ class TestUConnect:
         ]
         with pytest.raises(ValueError):
             parse_args()
+
+    def test_one_to_many(self, tmpdir):
+        key1 = '3d_cont'
+        key2 = '3d_cat'
+        sys.argv = [
+            'train',
+            '--output_folder', str(tmpdir),
+            '--input_tensors', key1, key2,
+            '--output_tensors', key1, key2,
+            '--u_connect', key1, key1,
+            '--u_connect', key1, key2,
+        ]
+        args = parse_args()
+        assert len(args.u_connect) == 1
+        assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1], MOCK_TMAPS[key2]}
+
+    def test_multi_u(self, tmpdir):
+        key1 = '3d_cont'
+        key2 = '3d_cat'
+        sys.argv = [
+            'train',
+            '--output_folder', str(tmpdir),
+            '--input_tensors', key1, key2,
+            '--output_tensors', key1, key2,
+            '--u_connect', key1, key1,
+            '--u_connect', key2, key2,
+        ]
+        args = parse_args()
+        assert len(args.u_connect) == 2
+        assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1], }
+        assert args.u_connect[MOCK_TMAPS[key2]] == {MOCK_TMAPS[key2], }
