@@ -23,7 +23,7 @@ from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialD
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Reshape
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Reshape, Add
 
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
@@ -743,7 +743,7 @@ def make_multimodal_multitask_model(
             decoder = UConnectConvDecoder(
                 u_connect_encoders[u_parent],
                 tm.shape,
-                dense_layers,
+                dense_blocks,
                 conv_type,
                 conv_x,
                 conv_y,
@@ -762,7 +762,7 @@ def make_multimodal_multitask_model(
         elif tm.axes() > 1:
             decoder = ConvDecoder(
                 tm.shape,
-                dense_layers,
+                dense_blocks,
                 conv_type,
                 conv_x,
                 conv_y,

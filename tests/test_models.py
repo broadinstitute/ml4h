@@ -121,6 +121,8 @@ class TestMakeMultimodalMultitaskModel:
         tmap = SEGMENT_IN
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
+        params['conv_layers'] = [8, 8]
+        params['dense_blocks'] = [4, 4, 2]
         m = make_multimodal_multitask_model(
             [tmap],
             [tmap],
