@@ -28,7 +28,6 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
     'pool_y': 1,
     'pool_z': 1,
     'dropout': 0,
-    'conv_normalize': 'batch_norm',
 }
 
 
