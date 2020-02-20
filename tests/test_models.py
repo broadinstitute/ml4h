@@ -117,21 +117,25 @@ class TestMakeMultimodalMultitaskModel:
             **DEFAULT_PARAMS,
         )
 
-    def test_auto_u_connect(self):
-        tmap = CONTINUOUS_TMAPS[2]
+    def test_u_connect_auto_encode(self):
+        tmap = SEGMENT_IN
+        params = DEFAULT_PARAMS.copy()
+        params['pool_x'] = params['pool_y'] = 2
         m = make_multimodal_multitask_model(
             [tmap],
             [tmap],
             u_connect={tmap: {tmap, }},
-            **DEFAULT_PARAMS,
+            **params,
         )
         assert_shapes_correct([tmap], [tmap], m)
 
     def test_u_connect_segment(self):
+        params = DEFAULT_PARAMS.copy()
+        params['pool_x'] = params['pool_y'] = 2
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_OUT],
             u_connect={SEGMENT_IN: {SEGMENT_OUT, }},
-            **DEFAULT_PARAMS,
+            **params,
         )
         assert_shapes_correct([SEGMENT_IN], [SEGMENT_OUT], m)

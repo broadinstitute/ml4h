@@ -505,15 +505,18 @@ class ConvDecoder(Model):
             pool_x,
             pool_y,
             pool_z,
+            upsample=True,
         ) for filters in list(reversed(filters_per_dense))[:num_blocks]]
         final_activation = 'softmax' if categorical else 'linear'
         conv_layer, _ = _conv_layer_from_kind_and_dimension(len(final_shape), 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(final_shape[-1], _one_by_n_kernel(len(final_shape)), activation=final_activation)
+        self.upsample = _upsampler(len(final_shape), pool_x, pool_y, pool_z)
 
     def call(self, x, **kwargs):
         x = self.structurize(x)
         for dense_block in self.dense_blocks:
             x = dense_block(x)
+        x = self.upsample(x)
         return self.conv_label(x)
 
 
@@ -594,7 +597,7 @@ class UConnectConvDecoder(Model):
         super(UConnectConvDecoder, self).__init__(**kwargs)
         num_blocks = len(encoder.dense_blocks)
         self.encoder = encoder
-        first_shape = encoder.res_block.output_shape[1:]
+        first_shape = encoder.output_shape[1:]
         self.structurize = FlatToStructure(first_shape, activation, normalization)
         self.dense_blocks = [DenseBlock(
             len(final_shape),
@@ -612,10 +615,12 @@ class UConnectConvDecoder(Model):
             pool_x,
             pool_y,
             pool_z,
+            upsample=True,
         ) for filters in list(reversed(filters_per_dense))[:num_blocks]]
         final_activation = 'softmax' if categorical else 'linear'
         conv_layer, _ = _conv_layer_from_kind_and_dimension(len(final_shape), 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(final_shape[-1], _one_by_n_kernel(len(final_shape)), activation=final_activation)
+        self.upsample = _upsampler(len(final_shape), pool_x, pool_y, pool_z)
 
     def call(self, x, **kwargs):
         x = self.structurize(x)
@@ -623,6 +628,7 @@ class UConnectConvDecoder(Model):
             x = concatenate([enc_dense_block.output, x])
             x = dense_block(x)
         x = concatenate([self.encoder.res_block.output, x])
+        x = self.upsample(x)
         return self.conv_label(x)
 
 
@@ -969,6 +975,7 @@ class DenseBlock(Layer):
             pool_x: int,
             pool_y: int,
             pool_z: int,
+            upsample: bool = False,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -978,7 +985,10 @@ class DenseBlock(Layer):
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
         self.concatenations = [Concatenate() for _ in range(block_size)]
-        self.pool = _pool_layers_from_kind_and_dimension(dimension, pool_type, 1, pool_x, pool_y, pool_z)[0]
+        if upsample:
+            self.pool = _upsampler(dimension, pool_x, pool_y, pool_z)
+        else:
+            self.pool = _pool_layers_from_kind_and_dimension(dimension, pool_type, 1, pool_x, pool_y, pool_z)[0]
 
     def call(self, x, **kwargs):
         dense_connections = [x]
