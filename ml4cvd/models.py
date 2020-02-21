@@ -565,10 +565,15 @@ class ConvEncoder(Model):
             pool_z,
         ) for conv_width in filters_per_dense]
 
-    def call(self, x, **kwargs):
+    def call(self, x, return_intermediates: bool = False, **kwargs):
+        intermediates = []
         x = self.res_block(x)
+        intermediates.append(x)
         for dense_block in self.dense_blocks:
             x = dense_block(x)
+            intermediates.append(x)
+        if return_intermediates:
+            return x, intermediates
         return x
 
 
@@ -716,7 +721,7 @@ def make_multimodal_multitask_model(
                 dense_regularize,
                 dense_regularize_rate,
             )
-        encoder_input = Input(name=tm.input_name(), shape=tm.shape)
+        encoder_input = Input(name=tm.input_name() + '_encoder', shape=tm.shape)
         out = encoder(encoder_input)
         if tm in u_connect:
             u_connect_encoders[tm] = encoder
@@ -788,7 +793,7 @@ def make_multimodal_multitask_model(
             )
         decoder_input = Input(name='embed', shape=bottle_neck.output_shape[1:])
         out = decoder(decoder_input)
-        decoders[tm] = Model(name=f'{tm.output_name()}_decoder', inputs=decoder_input, outputs=out)
+        decoders[tm] = Model(name=f'{tm.output_name()}', inputs=decoder_input, outputs=out)
 
     inputs = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
     out = [encoders[tm](x) for x, tm in zip(inputs, tensor_maps_in)]

@@ -1,7 +1,8 @@
 import os
 import pytest
+import numpy as np
 import tensorflow as tf
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple, Generator
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap
@@ -31,7 +32,15 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
 }
 
 
-def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model]=None):
+TrainType = Dict[str, np.ndarray]  # TODO: better name
+
+
+def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], n: int = 5) -> Generator[Tuple[TrainType, TrainType], None, None]:
+    return (({tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
+            {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},) for _ in range(n))
+
+
+def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None):
     if m is None:
         m = make_multimodal_multitask_model(
             input_tmaps,
@@ -44,7 +53,8 @@ def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[Tenso
     for tmap, tensor in zip(output_tmaps, m.outputs):
         assert tensor.shape[1:] == tmap.shape
         assert tensor.shape[1:] == tmap.shape
-    m({tm.input_name(): tf.zeros((1,) + tm.shape) for tm in input_tmaps})  # Does calling work?
+    data = make_training_data(input_tmaps, output_tmaps)
+    m.fit(data, steps_per_epoch=1, epochs=2)
 
 
 class TestMakeMultimodalMultitaskModel:
