@@ -94,11 +94,10 @@ def format_annotation(sample_id, annotation_data):
     # Programmatically get the identity of the person running this Terra notebook.
     USER = os.getenv('OWNER_EMAIL')
 
-    # # Also support AI Platform Notebooks. TODO @Nicole will need help to make this work
+    # Also support AI Platform Notebooks.
     if USER is None:
-        raise Exception('AI Platform notebook user not resolved')
-        # ai_platform_hostname = !hostname
-        # USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
+        ai_platform_hostname = os.environ['hostname']
+        USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
 
     # check whether the value is string or numeric
     try:
