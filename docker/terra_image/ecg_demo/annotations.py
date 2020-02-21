@@ -100,14 +100,16 @@ def format_annotation(sample_id, annotation_data):
         USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
 
     # check whether the value is string or numeric
-    try:
-        if keyvalue == nan:  # @Nicole: is this how you want to deal with 'nan' values? (e.g. in past_tobacco_smoking)
-            raise Exception()  # this will make nan values return as strings rather than numerics
-        value_numeric = float(keyvalue)  # this will fail if the value is text
-        value_string = 'None'
-    except:
+    if keyvalue is None:  # @Nicole: is this how you want to deal with 'nan' values? (e.g. in past_tobacco_smoking)
         value_numeric = 'None'
-        value_string = keyvalue
+        value_string = 'None'
+    else:
+        try:
+            value_numeric = float(keyvalue)  # this will fail if the value is text
+            value_string = 'None'
+        except:
+            value_numeric = 'None'
+            value_string = keyvalue
 
     # format into a dictionary
     params = {
