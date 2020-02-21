@@ -101,14 +101,14 @@ def format_annotation(sample_id, annotation_data):
 
     # check whether the value is string or numeric
     if keyvalue is None:  # @Nicole: is this how you want to deal with 'nan' values? (e.g. in past_tobacco_smoking)
-        value_numeric = 'None'
-        value_string = 'None'
+        value_numeric = None
+        value_string = None
     else:
         try:
             value_numeric = float(keyvalue)  # this will fail if the value is text
-            value_string = 'None'
+            value_string = None
         except:
-            value_numeric = 'None'
+            value_numeric = None
             value_string = keyvalue
 
     # format into a dictionary
