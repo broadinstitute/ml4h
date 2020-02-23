@@ -580,7 +580,7 @@ class ConvEncoder(Model):
 class UConnectConvDecoder(Model):
 
     def __init__(self,
-                 encoder: ConvEncoder,  # TODO: could be a list of encoders
+                 encoder: ConvEncoder,
                  final_shape: Tuple[int, ...],
                  filters_per_dense: List[int],
                  conv_layer_type: str,
@@ -601,7 +601,6 @@ class UConnectConvDecoder(Model):
                  ):
         super(UConnectConvDecoder, self).__init__(**kwargs)
         num_blocks = len(encoder.dense_blocks)
-        self.encoder = encoder
         first_shape = encoder.output_shape[1:]
         self.structurize = FlatToStructure(first_shape, activation, normalization)
         self.dense_blocks = [DenseBlock(
@@ -627,16 +626,19 @@ class UConnectConvDecoder(Model):
         self.conv_label = conv_layer(final_shape[-1], _one_by_n_kernel(len(final_shape)), activation=final_activation)
         self.upsample = _upsampler(len(final_shape), pool_x, pool_y, pool_z)
 
-    def call(self, x, **kwargs):
+    def call(self, x, encoder_intermediates, **kwargs):
+        assert len(encoder_intermediates) == len(self.dense_blocks) + 1
         x = self.structurize(x)
-        for dense_block, enc_dense_block in zip(self.dense_blocks, reversed(self.encoder.dense_blocks)):
-            x = concatenate([enc_dense_block.output, x])
+        import pdb; pdb.set_trace()
+        for dense_block, enc_intermediate in zip(self.dense_blocks, reversed(encoder_intermediates)):
+            x = concatenate([enc_intermediate, x])
             x = dense_block(x)
-        x = concatenate([self.encoder.res_block.output, x])
+        x = concatenate([encoder_intermediates[0], x])
         x = self.upsample(x)
         return self.conv_label(x)
 
 
+S = TypeVar('S')
 T = TypeVar('T')
 
 
@@ -646,7 +648,15 @@ def delist_len_one(x: List[T]) -> Union[T, List[T]]:
     return x
 
 
-def make_multimodal_multitask_model(
+def invert_dict(d: Dict[S, Set[T]]) -> Dict[S, T]:
+    new_dict = {}
+    for k, v in d.items():
+        for x in v:
+            new_dict[x] = k
+    return new_dict
+
+
+def make_multimodal_multitask_model(  # TODO: rename params, and share their names in Layer implementations
         tensor_maps_in: List[TensorMap] = None,
         tensor_maps_out: List[TensorMap] = None,
         activation: str = None,
@@ -674,6 +684,12 @@ def make_multimodal_multitask_model(
         optimizer: str = 'adam',
         **kwargs
 ) -> Model:
+    """
+    TODO: think about the following.
+    Complicated model logic will be done with the keras functional API, because TF has trouble saving/loading otherwise.
+    1 input -> 1 output can be done with an extension of the Layer class.
+    That exlcudes encoders + decoders because of u_connect.
+    """
     u_connect = u_connect or defaultdict(set)
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)
@@ -740,9 +756,9 @@ def make_multimodal_multitask_model(
     bottle_neck = Model(name='bottleneck', inputs=bottle_neck_inputs, outputs=out)
 
     decoders: Dict[TensorMap, Layer] = {}
+    u_parents = invert_dict(u_connect)
     for tm in tensor_maps_out:  # TODO: handle u_connect, parents
-        u_parent = [tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]]
-        u_parent = u_parent[0] if u_parent else False
+        u_parent = u_parents.get(tm, False)
         # TODO: this is getting a bit long - could be shortened by taking advantage of kwargs
         if u_parent:
             decoder = UConnectConvDecoder(
@@ -792,14 +808,38 @@ def make_multimodal_multitask_model(
                 dense_regularize_rate,
             )
         decoder_input = Input(name='embed', shape=bottle_neck.output_shape[1:])
-        out = decoder(decoder_input)
-        decoders[tm] = Model(name=f'{tm.output_name()}', inputs=decoder_input, outputs=out)
+        if u_parent:
+            encoder_input = Input(name=u_parent.input_name(), shape=u_parent.shape)
+            _, intermediates = u_connect_encoders[tm](encoder_input, return_intermediates=True)
+            intermediates = [Input(inter.shape[1:], name=f'intermediate_{i}') for i, inter in enumerate(intermediates)]
+            out = decoder(decoder_input, intermediates)
+            decoders[tm] = Model(name=f'{tm.output_name()}', inputs=[decoder_input, intermediates], outputs=out)
+        else:
+            out = decoder(decoder_input)
+            decoders[tm] = Model(name=f'{tm.output_name()}', inputs=decoder_input, outputs=out)
 
     inputs = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-    out = [encoders[tm](x) for x, tm in zip(inputs, tensor_maps_in)]
+    out = []
+    encoder_intermediates: Dict[TensorMap, List[tf.TensorSpec]] = {}
+    for x, tm in zip(inputs, tensor_maps_in):
+        encoder = encoders[tm]
+        if tm in u_connect:
+            encoded, inter = encoder(x, return_intermediates=True)
+            encoder_intermediates[tm] = inter
+        else:
+            encoded = encoder(x)
+        out.append(encoded)
     out = bottle_neck(delist_len_one(out))
-    out = [decoders[tm](out) for tm in tensor_maps_out]
-    m = Model(inputs=inputs, outputs=out)
+    final_out = []
+    for tm in tensor_maps_out:
+        decoder = decoders[tm]
+        if tm in u_parents:
+            inter = encoder_intermediates[u_parents[tm]]
+            final_out.append(decoder(out, inter))
+        else:
+            final_out.append(decoder(out))
+
+    m = Model(inputs=inputs, outputs=final_out)
 
     # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
