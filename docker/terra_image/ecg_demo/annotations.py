@@ -89,8 +89,7 @@ def format_annotation(sample_id, annotation_data):
     USER = os.getenv('OWNER_EMAIL')
     # Also support other environments such as AI Platform Notebooks.
     if USER is None:
-        hostname = socket.gethostname()
-        USER = hostname[0] # By convention, we prefix the hostname with our username.
+        USER = socket.gethostname() # By convention, we prefix the hostname with our username.
 
     # check whether the value is string or numeric
     if keyvalue is None:
