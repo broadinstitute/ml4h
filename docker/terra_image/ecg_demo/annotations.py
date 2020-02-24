@@ -1,5 +1,6 @@
 """Methods for collecting and submitting annotations within notebooks."""
 import os
+import socket
 import ipywidgets as widgets
 from IPython.display import display
 from google.cloud import bigquery
@@ -19,11 +20,6 @@ def display_annotation_collector(sample_info, sample_id):
   Args:
     sample_info: dataframe containing all the samples and data
     sample_id: The selected sample for which the values will be displayed.
-
-  Returns:
-    key: Jupyter widget containing (in .value) the key (column in sample_info) that was selected by the user
-    keyvalue: Jupyter widget containing the value specified by key.value for the sample (defined by sample_id)
-    comment: The annotator's comment text
   """
 
     df_sample = get_df_sample(sample_info, sample_id)
@@ -82,8 +78,6 @@ def display_annotation_collector(sample_info, sample_id):
     # display everything
     display(sample, box1, comment, submit_button, output)
 
-    return key, keyvalue, comment
-
 
 def format_annotation(sample_id, annotation_data):
     # pull out values from output
@@ -93,14 +87,13 @@ def format_annotation(sample_id, annotation_data):
 
     # Programmatically get the identity of the person running this Terra notebook.
     USER = os.getenv('OWNER_EMAIL')
-
-    # Also support AI Platform Notebooks.
+    # Also support other environments such as AI Platform Notebooks.
     if USER is None:
-        ai_platform_hostname = os.environ['hostname']
-        USER = ai_platform_hostname[0] # By convention, we prefix the hostname with our username.
+        hostname = socket.gethostname()
+        USER = hostname[0] # By convention, we prefix the hostname with our username.
 
     # check whether the value is string or numeric
-    if keyvalue is None:  # @Nicole: is this how you want to deal with 'nan' values? (e.g. in past_tobacco_smoking)
+    if keyvalue is None:
         value_numeric = None
         value_string = None
     else:
