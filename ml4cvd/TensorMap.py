@@ -265,9 +265,9 @@ class TensorMap(object):
         return keras.utils.to_categorical(np.digitize(np_tensor, bins=self.discretization_bounds),
                                           num_classes=len(self.discretization_bounds) + 1)
 
-    def postprocess_tensor(self, np_tensor):
+    def postprocess_tensor(self, np_tensor, augment: bool):
         self.validator(self, np_tensor)
-        self.apply_augmentations(np_tensor)
+        np_tensor = self.apply_augmentations(np_tensor, augment)
         np_tensor = self.normalize(np_tensor)
         return self.discretize(np_tensor)
 
