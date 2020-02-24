@@ -466,7 +466,7 @@ def _2d_bbox_to_corner_and_size(bbox):
 
 
 def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10, bboxes=[]):
-    colors = ['red', 'blue', 'green', 'yellow']
+    colors = ['blue', 'red', 'green', 'yellow']
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     vmin = np.min(tensor)
     vmax = np.max(tensor)
