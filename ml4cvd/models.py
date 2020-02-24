@@ -8,7 +8,7 @@ import time
 import logging
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable, Union, Optional, TypeVar, Set
+from typing import Dict, List, Tuple, Iterable, Union, Optional, TypeVar, Set, Callable
 
 # Keras imports
 import tensorflow as tf
@@ -656,7 +656,7 @@ def invert_dict(d: Dict[S, Set[T]]) -> Dict[S, T]:
     return new_dict
 
 
-def make_multimodal_multitask_model(  # TODO: rename params, and share their names in Layer implementations
+def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap] = None,
         tensor_maps_out: List[TensorMap] = None,
         activation: str = None,
@@ -674,6 +674,36 @@ def make_multimodal_multitask_model(  # TODO: rename params, and share their nam
         conv_y: int = None,
         conv_z: int = None,
         conv_dropout: float = None,
+        conv_dilate: bool = None,
+        u_connect: Dict[TensorMap, Set[TensorMap]] = None,
+        pool_x: int = None,
+        pool_y: int = None,
+        pool_z: int = None,
+        pool_type: str = None,
+        learning_rate: float = None,
+        optimizer: str = 'adam',
+        **kwargs
+) -> Model:
+    pass
+
+
+TensorFunc = Callable[[tf.Tensor], tf.Tensor]
+
+
+def _make_multimodal_multitask_model(
+        tensor_maps_in: List[TensorMap] = None,
+        tensor_maps_out: List[TensorMap] = None,
+        activation: str = None,
+        dense_layers: List[int] = None,
+        dense_normalizer: TensorFunc = None,
+        dense_regularizer: TensorFunc = None,
+        conv_layers: List[int] = None,
+        dense_blocks: List[int] = None,
+        conv_block: TensorFunc = None,
+        conv_normalizer: TensorFunc = None,
+        conv_x: int = None,
+        conv_y: int = None,
+        conv_z: int = None,
         conv_dilate: bool = None,
         u_connect: Dict[TensorMap, Set[TensorMap]] = None,
         pool_x: int = None,
