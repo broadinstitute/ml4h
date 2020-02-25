@@ -13,8 +13,8 @@ from keras.utils import to_categorical
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path, path_date_to_datetime
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import StorageType, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, EPS
-from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 
 
@@ -668,6 +668,27 @@ TMAPS['ecg_rest_lvh_sokolow_lyon'] = TensorMap('sokolow_lyon_lvh', Interpretatio
 TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORICAL, path_prefix='ukb_ecg_rest', tensor_from_file=_make_ukb_ecg_rest_lvh(),
                                           channel_map={'no_cornell_lvh': 0, 'Cornell LVH': 1},
                                           loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
+
+
+def ecg_rest_section_to_segment(tm, hd5, dependents={}):
+    hertz = 500
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    segmented = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+    offset_seconds = segmented.attrs['offset_seconds']
+    offset_samples = offset_seconds * hertz
+    dependents[tm.dependent_map] = np.array(segmented, dtype=np.float32)
+    for k in hd5[tm.path_prefix]:
+        if k in tm.channel_map:
+            tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k][offset_samples:offset_samples+tm.shape[0]]
+
+
+TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(2500, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+                                   channel_map=ECG_SEGMENTED_CHANNEL_MAP)
+TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(2500, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
+                                            channel_map=ECG_REST_LEADS, tensor_from_file=ecg_rest_section_to_segment)
+
+
+
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
                                                          tensor_from_file=normalized_first_date, normalization={'zero_mean_std1': True})

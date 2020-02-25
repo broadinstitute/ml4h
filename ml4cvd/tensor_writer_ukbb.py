@@ -216,7 +216,8 @@ def write_tensors_from_ecg_pngs(tensors, png_path, min_sample_id, max_sample_id,
 
         png = imageio.imread(os.path.join(png_path, png_file))
         stats[f'png shape {png.shape}'] += 1
-        ecg_1d_segmentation = png[:, 0]
+        ecg_1d_segmentation = png[0, :, 0]
+        logging.info(f' ecg1d segmentation unique: {np.unique(ecg_1d_segmentation)} \nstart {ecg_1d_segmentation[:60]} ')
         stats[f'ecg_1d_segmentation shape {ecg_1d_segmentation.shape}'] += 1
         tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
         if not os.path.exists(os.path.dirname(tensor_file)):
