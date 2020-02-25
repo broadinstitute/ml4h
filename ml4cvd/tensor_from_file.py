@@ -715,6 +715,13 @@ TMAPS[task] = TensorMap(task,
                             key="acquisitiondate"),
                         shape=(1,))
 
+task = "partners_ecg_dob"
+TMAPS[task] = TensorMap(task,
+                        group="string",
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="dateofbirth"),
+                        shape=(1,))
+
 task = "partners_ecg_sampling_frequency"
 TMAPS[task] = TensorMap(task,
                         group="continuous",
