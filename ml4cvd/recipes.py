@@ -359,7 +359,7 @@ def explore(args):
     # Save parent dataframe to CSV on disk
     fpath_csv = os.path.join(args.output_folder,
                              f"{args.id}/tensors_all.csv")
-    df_all.to_csv(fpath_csv)
+    df_all.to_csv(fpath_csv, index=False)
     logging.info(f"Saved all tensors to {fpath_csv}")
 
 
