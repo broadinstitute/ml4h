@@ -677,7 +677,7 @@ def ecg_rest_section_to_segment(tm, hd5, dependents={}):
     offset_seconds = segmented.attrs['offset_seconds']
     offset_samples = offset_seconds * hertz
     segment_index = np.array(segmented[:tm.dependent_map.shape[0]], dtype=np.float32)
-    dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map[-1])
+    dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map.shape[-1])
     for k in hd5[tm.path_prefix]:
         if k in tm.channel_map:
             tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k][offset_samples:offset_samples+tm.shape[0]]
