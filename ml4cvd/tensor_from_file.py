@@ -675,10 +675,12 @@ def _ecg_rest_to_segment(warp=False, population_normalize=None, hertz=500, rando
         tensor = np.zeros(tm.shape, dtype=np.float32)
         segmented = tm.dependent_map.hd5_first_dataset_in_group(hd5, tm.dependent_map.hd5_key_guess())
         offset_seconds = float(segmented.attrs['offset_seconds'])
+        random_offset_begin = 0
         if random_offset_seconds > 0:
-            offset_seconds += np.random.uniform(random_offset_seconds)
+            random_offset_begin = np.random.uniform(random_offset_seconds)
+            offset_seconds += random_offset_begin
         offset_begin = int(offset_seconds * hertz)
-        segment_index = np.array(segmented[:tm.dependent_map.shape[0]], dtype=np.float32)
+        segment_index = np.array(segmented[random_offset_begin:random_offset_begin+tm.dependent_map.shape[0]], dtype=np.float32)
         dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map.shape[-1])
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
