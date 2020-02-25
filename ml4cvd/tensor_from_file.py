@@ -700,6 +700,28 @@ TMAPS[task] = TensorMap(task,
                             key="read_pc_clean"),
                         shape=(1,))
 
+def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
+    if int(tensor) not in tm.cross_reference:
+        raise ValueError(f"Skipping TensorMap {tm.name} not found in Apollo.")
+
+def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
+    with open(fpath, mode="r") as f:
+        reader = csv.reader(f)
+        next(reader)
+        cross_reference_dict = {int(rows[0]):None for rows in reader}
+    return cross_reference_dict
+
+task = "partners_ecg_patientid_cross_reference_apollo"
+TMAPS[task] = TensorMap(task,
+                        group="string",
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientid"),
+                        shape=(1,),
+                        validator=validator_cross_reference)
+
+TMAPS[task].cross_reference = create_cross_reference_dict()
+
 task = "partners_ecg_patientid"
 TMAPS[task] = TensorMap(task,
                         group="string",
