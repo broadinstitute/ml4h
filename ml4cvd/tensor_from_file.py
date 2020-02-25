@@ -676,18 +676,17 @@ def ecg_rest_section_to_segment(tm, hd5, dependents={}):
     segmented = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
     offset_seconds = segmented.attrs['offset_seconds']
     offset_samples = offset_seconds * hertz
-    dependents[tm.dependent_map] = np.array(segmented, dtype=np.float32)
+    segment_index = np.array(segmented[:tm.dependent_map.shape[0]], dtype=np.float32)
+    dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map[-1])
     for k in hd5[tm.path_prefix]:
         if k in tm.channel_map:
             tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k][offset_samples:offset_samples+tm.shape[0]]
 
 
-TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(2478, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(2472, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
                                    channel_map=ECG_SEGMENTED_CHANNEL_MAP)
-TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(2478, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
+TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(2472, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
                                             channel_map=ECG_REST_LEADS, tensor_from_file=ecg_rest_section_to_segment)
-
-
 
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
