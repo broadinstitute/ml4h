@@ -673,7 +673,7 @@ TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORI
 def ecg_rest_section_to_segment(tm, hd5, dependents={}):
     hertz = 500
     tensor = np.zeros(tm.shape, dtype=np.float32)
-    segmented = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
+    segmented = tm.dependent_map.hd5_first_dataset_in_group(hd5, tm.dependent_map.hd5_key_guess())
     offset_seconds = segmented.attrs['offset_seconds']
     offset_samples = offset_seconds * hertz
     segment_index = np.array(segmented[:tm.dependent_map.shape[0]], dtype=np.float32)
