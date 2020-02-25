@@ -691,7 +691,7 @@ def _ecg_rest_section_to_segment(warp=False, population_normalize=None, hertz = 
     return ecg_rest_section_to_segment
 
 
-TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(1, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(1224, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
                                    channel_map=ECG_SEGMENTED_CHANNEL_MAP)
 TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(1224, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
                                             channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_section_to_segment())
