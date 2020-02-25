@@ -674,13 +674,17 @@ def _ecg_rest_section_to_segment(warp=False, population_normalize=None, hertz = 
     def ecg_rest_section_to_segment(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         segmented = tm.dependent_map.hd5_first_dataset_in_group(hd5, tm.dependent_map.hd5_key_guess())
-        offset_seconds = segmented.attrs['offset_seconds']
+        offset_seconds = float(segmented.attrs['offset_seconds'])
         offset_samples = int(offset_seconds * hertz)
+
         segment_index = np.array(segmented[:tm.dependent_map.shape[0]], dtype=np.float32)
         dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map.shape[-1])
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
-                tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[offset_samples:offset_samples+tm.shape[0]]
+                try:
+                    tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[offset_samples:offset_samples+tm.shape[0]]
+                except:
+                    logging.info(f'FAILED to index k: {k} and shape {np.array(hd5[tm.path_prefix][k], dtype=np.float32).shape} in offset in seconds is {offset_seconds} in samples: {offset_samples}')
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
