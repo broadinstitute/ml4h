@@ -705,7 +705,7 @@ TMAPS['ecg_segmented_second'] = TensorMap('ecg_segmented_second', Interpretation
 TMAPS['ecg_second_to_segment'] = TensorMap('ecg_second_to_segment', shape=(496, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
                                            cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(random_offset_seconds=1.5))
 TMAPS['ecg_second_to_segment_warp'] = TensorMap('ecg_second_to_segment', shape=(496, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
-                                                cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(warp=True), random_offset_seconds=1.5)
+                                                cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(warp=True, random_offset_seconds=1.5))
 
 
 TMAPS['t2_flair_sag_p2_1mm_fs_ellip_pf78_1'] = TensorMap('t2_flair_sag_p2_1mm_fs_ellip_pf78_1', shape=(256, 256, 192), path_prefix='ukb_brain_mri/float_array/',
