@@ -682,9 +682,9 @@ def ecg_rest_section_to_segment(tm, hd5, dependents={}):
             tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k][offset_samples:offset_samples+tm.shape[0]]
 
 
-TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(2500, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+TMAPS['ecg_segmented'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(2478, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
                                    channel_map=ECG_SEGMENTED_CHANNEL_MAP)
-TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(2500, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
+TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(2478, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
                                             channel_map=ECG_REST_LEADS, tensor_from_file=ecg_rest_section_to_segment)
 
 
