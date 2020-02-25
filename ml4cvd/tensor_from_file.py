@@ -682,9 +682,9 @@ def _ecg_rest_section_to_segment(warp=False, population_normalize=None, hertz = 
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
                 try:
-                    tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[offset_samples:offset_samples+tm.shape[0]]
+                    tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[offset_samples:(offset_samples+tm.shape[0])]
                 except:
-                    logging.info(f'FAILED to index k: {k} and shape {np.array(hd5[tm.path_prefix][k], dtype=np.float32).shape} in offset in seconds is {offset_seconds} in samples: {offset_samples}')
+                    logging.info(f'FAILED to index k: {k} and shape {np.array(hd5[tm.path_prefix][k], dtype=np.float32).shape} in offset in seconds is {offset_seconds} in samples: {offset_samples} to {offset_samples+tm.shape[0]} total {tm.shape[0]}')
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
