@@ -700,7 +700,7 @@ TMAPS['ecg_section_to_segment'] = TensorMap('ecg_section_to_segment', shape=(122
 TMAPS['ecg_section_to_segment_warp'] = TensorMap('ecg_section_to_segment', shape=(1224, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
                                                  cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(warp=True))
 
-TMAPS['ecg_segmented_second'] = TensorMap('ecg_segmented_second', Interpretation.CATEGORICAL, shape=(496, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
+TMAPS['ecg_segmented_second'] = TensorMap('ecg_segmented', Interpretation.CATEGORICAL, shape=(496, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
                                           cacheable=False, channel_map=ECG_SEGMENTED_CHANNEL_MAP)
 TMAPS['ecg_second_to_segment'] = TensorMap('ecg_second_to_segment', shape=(496, 12), path_prefix='ecg_rest', dependent_map=TMAPS['ecg_segmented'],
                                            cacheable=False, channel_map=ECG_REST_LEADS, tensor_from_file=_ecg_rest_to_segment(random_offset_seconds=1.5))
