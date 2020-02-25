@@ -687,7 +687,7 @@ def _ecg_rest_section_to_segment(warp=False, population_normalize=None):
         else:
             tensor /= population_normalize
         if warp:
-            tensor = _warp_ecg(tensor)
+            tensor = _warp_ecg(tensor.copy())
         return tensor
     return ecg_rest_section_to_segment
 
