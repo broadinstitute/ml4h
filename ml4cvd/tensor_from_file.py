@@ -682,12 +682,12 @@ def _ecg_rest_section_to_segment(warp=False, population_normalize=None):
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
                 tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k][offset_samples:offset_samples+tm.shape[0]]
-            if population_normalize is None:
-                tm.normalization = {'zero_mean_std1': 1.0}
-            else:
-                tensor /= population_normalize
-            if warp:
-                tensor = _warp_ecg(tensor)
+        if population_normalize is None:
+            tm.normalization = {'zero_mean_std1': 1.0}
+        else:
+            tensor /= population_normalize
+        if warp:
+            tensor = _warp_ecg(tensor)
         return tensor
     return ecg_rest_section_to_segment
 
