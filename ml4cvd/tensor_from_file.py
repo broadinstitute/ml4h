@@ -700,6 +700,22 @@ TMAPS[task] = TensorMap(task,
                             key="read_pc_clean"),
                         shape=(1,))
 
+task = "partners_ecg_patientfirstname"
+TMAPS[task] = TensorMap(task,
+                        group="string",
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientfirstname"),
+                        shape=(1,))
+
+task = "partners_ecg_patientlastname"
+TMAPS[task] = TensorMap(task,
+                        group="string",
+                        dtype=DataSetType.STRING,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientlastname"),
+                        shape=(1,))
+
 task = "partners_ecg_patientid"
 TMAPS[task] = TensorMap(task,
                         group="string",

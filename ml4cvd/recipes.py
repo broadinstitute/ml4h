@@ -21,7 +21,7 @@ from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
-from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
+from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf, plot_partners_ecgs
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
@@ -74,6 +74,8 @@ def run(args):
             plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'plot_heatmap' == args.mode:
             plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+        elif 'plot_partners_ecgs' == args.mode:
+            plot_partners_ecgs(args.tensors, args.output_folder, args.id, args.tensor_maps_in)
         elif 'tabulate_correlations' == args.mode:
             tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
