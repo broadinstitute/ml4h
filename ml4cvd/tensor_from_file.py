@@ -670,9 +670,8 @@ TMAPS['ecg_rest_lvh_cornell'] = TensorMap('cornell_lvh', Interpretation.CATEGORI
                                           loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'))
 
 
-def _ecg_rest_section_to_segment(warp=False, population_normalize=None):
+def _ecg_rest_section_to_segment(warp=False, population_normalize=None, hertz = 500):
     def ecg_rest_section_to_segment(tm, hd5, dependents={}):
-        hertz = 500
         tensor = np.zeros(tm.shape, dtype=np.float32)
         segmented = tm.dependent_map.hd5_first_dataset_in_group(hd5, tm.dependent_map.hd5_key_guess())
         offset_seconds = segmented.attrs['offset_seconds']
@@ -681,13 +680,13 @@ def _ecg_rest_section_to_segment(warp=False, population_normalize=None):
         dependents[tm.dependent_map] = to_categorical(segment_index, tm.dependent_map.shape[-1])
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
-                tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k][offset_samples:offset_samples+tm.shape[0]]
+                tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[offset_samples:offset_samples+tm.shape[0]]
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
             tensor /= population_normalize
         if warp:
-            tensor = _warp_ecg(tensor.copy())
+            tensor = _warp_ecg(tensor)
         return tensor
     return ecg_rest_section_to_segment
 
