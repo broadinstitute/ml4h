@@ -29,6 +29,6 @@ RUN ./ubuntu.sh
 # RUN pip3 uninstall -y fastai
 # RUN ./fastai.sh
 
-RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
+RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev python-pydot python-pydot-ng graphviz  -y
 # Requirements for the tensorflow project
 RUN pip3 install -r tensorflow-requirements.txt
