@@ -664,23 +664,11 @@ def make_partners_ecg_label(key: str = "read_md_clean",
     return get_partners_ecg_label
 
 
-def make_partners_ecg_tensor(key: str = "read_md_clean",
-                             dict_of_list: Dict = dict(),
-                             not_found_key: str = "unspecified",
-                             return_tensor: bool = False):
+def make_partners_ecg_tensor(key: str, tensor_type = float):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         tensor = _decompress_data(data_compressed=hd5[key][()],
                                   dtype=hd5[key].attrs['dtype'])
-        if key == "patientid":
-            return float(tensor)
-
-        if key == "acquisitiondate":
-            try:
-                dt = datetime.datetime.strptime(tensor, "%m-%d-%Y")
-            except ValueError:
-                dt = None 
-            return dt
-        return tensor
+        return np.array(tensor_type(tensor))
     return get_partners_ecg_tensor
 
 
@@ -689,7 +677,7 @@ TMAPS[task] = TensorMap(task,
                         group="string",
                         dtype=DataSetType.STRING,
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="read_md_clean"),
+                            key="read_md_clean", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_read_pc_raw"
@@ -697,7 +685,7 @@ TMAPS[task] = TensorMap(task,
                         group="string",
                         dtype=DataSetType.STRING,
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="read_pc_clean"),
+                            key="read_pc_clean", tensor_type=str),
                         shape=(1,))
 
 def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
@@ -716,7 +704,7 @@ TMAPS[task] = TensorMap(task,
                         group="string",
                         dtype=DataSetType.STRING,
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="patientid"),
+                            key="patientid", tensor_type=float),
                         shape=(1,),
                         validator=validator_cross_reference)
 
@@ -727,21 +715,21 @@ TMAPS[task] = TensorMap(task,
                         group="string",
                         dtype=DataSetType.STRING,
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="patientid"),
+                            key="patientid", tensor_type=float),
                         shape=(1,))
 
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(task,
                         group="string",
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="acquisitiondate"),
+                            key="acquisitiondate", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_dob"
 TMAPS[task] = TensorMap(task,
                         group="string",
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="dateofbirth"),
+                            key="dateofbirth", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_sampling_frequency"
@@ -749,25 +737,8 @@ TMAPS[task] = TensorMap(task,
                         group="continuous",
                         dtype=DataSetType.STRING,
                         tensor_from_file=make_partners_ecg_tensor(
-                            key="ecgsamplebase"),
+                            key="ecgsamplebase", tensor_type=float),
                         shape=(1,))
-
-
-
-def make_partners_ecg_intervals(population_normalize=None):
-    def partners_ecg_intervals(tm, hd5, dependents={}):
-        continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        for interval in tm.channel_map:
-            if interval in hd5:
-                interval_val = _decompress_data(
-                                   data_compressed=hd5[interval][()],
-                                   dtype=hd5[interval].attrs['dtype'])
-                continuous_data[tm.channel_map[interval]] = interval_val
-        if population_normalize is not None:
-            continuous_data /= population_normalize
-        return tm.normalize_and_validate(continuous_data)
-    return partners_ecg_intervals
-
 
 group = "continuous"
 
@@ -777,9 +748,10 @@ TMAPS[task] = TensorMap(task,
                         dtype=DataSetType.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(10, 200),
-                        channel_map={'ventricularrate': 0})
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="ventricularrate", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(10, 200))
 
 task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(task,
@@ -787,9 +759,10 @@ TMAPS[task] = TensorMap(task,
                         dtype=DataSetType.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(20, 400),
-                        channel_map={'qrsduration': 0})
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="qrsduration", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(20, 400))
 
 task = "partners_ecg_pr"
 TMAPS[task] = TensorMap(task,
@@ -797,32 +770,34 @@ TMAPS[task] = TensorMap(task,
                         dtype=DataSetType.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(50, 500),
-                        channel_map={'printerval': 0})
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="printerval", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(50, 500))
 
 task = "partners_ecg_qt"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.CONTINUOUS,
-                        shape=(1,),
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(100, 800),
-                        channel_map={'qtinterval': 0})
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="qtinterval", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
 
 task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(task,
                         group=group,
                         dtype=DataSetType.CONTINUOUS,
-                        shape=(1,),
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(100, 800),
-                        channel_map={'qtcorrected': 0})
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="qtcorrected", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
 
+'''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
                         group=group,
@@ -830,9 +805,9 @@ TMAPS[task] = TensorMap(task,
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'mean': 81.620467, 'std': 20.352292},
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(10, 200),
-                        channel_map={'ventricularrate': 0})
+                        tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
+                        shape=(1,),
+                        validator=make_range_validator(10, 200))
 
 task = "partners_ecg_qrs_norm"
 TMAPS[task] = TensorMap(task,
@@ -841,9 +816,9 @@ TMAPS[task] = TensorMap(task,
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'mean': 94.709106, 'std': 22.610711},
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(20, 400),
-                        channel_map={'qrsduration': 0})
+                        tensor_from_file=make_partners_ecg_tensor(key="qrsduration"),
+                        shape=(1,),
+                        validator=make_range_validator(20, 400))
 
 task = "partners_ecg_pr_norm"
 TMAPS[task] = TensorMap(task,
@@ -852,36 +827,32 @@ TMAPS[task] = TensorMap(task,
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'std': 35.003017, 'mean': 161.040738},
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(50, 500),
-                        channel_map={'printerval': 0})
+                        tensor_from_file=make_partners_ecg_tensor(key="printerval"),
+                        shape=(1,),
+                        validator=make_range_validator(50, 500))
 
 task = "partners_ecg_qt_norm"
-#task = "partners_ecg_qt_test"
 TMAPS[task] = TensorMap(task,
                         group=group,
-                        shape=(1,),
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'mean': 390.995792, 'std': 50.923113},
                         dtype=DataSetType.CONTINUOUS,
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(100, 800),
-                        channel_map={'qtinterval': 0})
+                        tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
 
 task = "partners_ecg_qtc_norm"
 TMAPS[task] = TensorMap(task,
                         group=group,
-                        shape=(1,),
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'std': 39.762255, 'mean': 446.505327},
                         dtype=DataSetType.CONTINUOUS,
-                        tensor_from_file=make_partners_ecg_intervals(),
-                        validator=make_range_validator(100, 800),
-                        channel_map={'qtcorrected': 0})
-
-
+                        tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
+'''
 
 # ==================== End Partners ECG stuff =================================
 
@@ -1021,10 +992,10 @@ def _make_index_tensor_from_file(index_map_name):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
             if k in hd5[tm.group]:
-                tensor = np.array(hd5[tm.group][k], dtype=np.float32)
+                tensor = hd5[tm.group][k]
             else:
                 return tensor
-        index = np.array(hd5[tm.group][index_map_name], dtype=np.float32)
+        index = hd5[tm.group][index_map_name]
         return tm.normalize_and_validate(tensor / index)
     return indexed_lvmass_tensor_from_file
 
