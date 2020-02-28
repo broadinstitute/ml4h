@@ -117,5 +117,5 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 --ipc=host \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
--v /mnt/:/mnt/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+-v /data/:/data/ \
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
