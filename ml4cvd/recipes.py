@@ -306,13 +306,13 @@ def explore(args):
     
     # Check if any tmaps are strings
     interpretation = "string"
-    if interpretation in [tm.group for tm in tmaps]:
+    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
 
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
 
             # Iterate through tmaps
-            for tm in [tm for tm in tmaps if tm.group is interpretation]:
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.LANGUAGE]:
 
                 # Iterate through channel maps
                 if tm.channel_map:
