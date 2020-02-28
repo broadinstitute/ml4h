@@ -4,7 +4,7 @@ from getpass import getuser
 from collections import defaultdict
 
 JOIN_CHAR = '_'
-SCRIPT_NAME = 'tensor_maps_partners_ecg.py'
+SCRIPT_NAME = 'tensor_maps_partners_ecg_labels.py'
 TENSOR_FUNC_NAME = "make_partners_ecg_label"
 PREFIX = "partners_ecg"
 
