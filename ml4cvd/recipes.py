@@ -3,8 +3,6 @@
 # Imports
 import os
 import csv
-import pdb # remove later
-import sys
 import h5py
 import copy
 import logging
@@ -39,7 +37,7 @@ def run(args):
 
         if 'tensorize' == args.mode:
             write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                          args.x, args.y, args.z, args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
+                          args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
@@ -413,25 +411,43 @@ def compare_multimodal_scalar_task_models(args):
     _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
 
 
+def _make_tmap_nan_on_fail(tmap):
+    """
+    Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
+    """
+    new_tmap = copy.deepcopy(tmap)
+
+    def _tff(tm, hd5, dependents=None):
+        try:
+            return tmap.tensor_from_file(tm, hd5, dependents)
+        except (IndexError, KeyError, ValueError, OSError, RuntimeError):
+            return np.full(shape=tm.shape, fill_value=np.nan)
+
+    new_tmap.tensor_from_file = _tff
+    return new_tmap
+
+
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     if args.variational:
         model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
         model = make_multimodal_multitask_model(**args.__dict__)
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-                                    cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
+    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+    generate_test = TensorGenerator(1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
+                                    cache_size=0, keep_paths=True, mixup=args.mixup_alpha)
     with open(inference_tsv, mode='w') as inference_file:
+        # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
             if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
-            elif len(otm.shape) == 1 and otm.is_categorical_any():
+            elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
                 for k in otm.channel_map:
                     channel_columns.append(ot + '_' + k + '_prediction')
@@ -446,21 +462,23 @@ def infer_multimodal_multitask(args):
                 break
 
             prediction = model.predict(input_data)
-            if len(args.tensor_maps_out) == 1:
+            if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
 
             csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
-            for y, tm in zip(prediction, args.tensor_maps_out):
+            for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
+                    if ((tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0])
+                            or np.isnan(true_label[tm.output_name()][0][0])):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
-                elif len(tm.shape) == 1 and tm.is_categorical_any():
-                    for k in tm.channel_map:
+                elif len(tm.shape) == 1 and tm.is_categorical():
+                    for k, i in tm.channel_map.items():
                         csv_row.append(str(y[0][tm.channel_map[k]]))
-                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
+                        actual = true_label[tm.output_name()][0][i]
+                        csv_row.append("NA" if np.isnan(actual) else str(actual))
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred[tensor_path[0]] = True
@@ -553,7 +571,7 @@ def plot_predictions(args):
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
-    folder = os.path.join(args.output_folder, args.id) + '/'
+    folder = os.path.join(args.output_folder, args.id, 'prediction_pngs/')
     predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, data, labels, paths, folder)
 
 
@@ -773,13 +791,13 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         plot_title = tm.name+'_'+args.id
         plot_folder = os.path.join(args.output_folder, args.id)
 
-        if tm.is_categorical_any_with_shape_len(1):
+        if tm.is_categorical() and tm.axes() == 1:
             msg = "For tm '{}' with channel map {}: sum truth = {}; sum pred = {}"
             for m in predictions[tm]:
                 logging.info(msg.format(tm.name, tm.channel_map, np.sum(outputs[tm.output_name()], axis=0), np.sum(predictions[tm][m], axis=0)))
             plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
-        elif tm.is_categorical_any_with_shape_len(4):
+        elif tm.is_categorical() and tm.axes() == 4:
             for p in predictions[tm]:
                 y = predictions[tm][p]
                 melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
@@ -792,7 +810,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
-        elif tm.is_continuous() and len(tm.shape) == 1:
+        elif tm.is_continuous() and tm.axes() == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
             scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
