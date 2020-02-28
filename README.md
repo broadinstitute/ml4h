@@ -1,11 +1,14 @@
 # ml4cvd
-`ml4cvd` is a set of tooling to make it easy to work on UK Biobank data on a Google Cloud machine.
+`ml4cvd` is a project aimed at using machine learning to model multi-modal cardiovascular
+time series and imaging data. `ml4cvd` began as a set of tools to make it easy to work
+with the UK Biobank on the Google Cloud and has since expanded to include other data sources
+and functionality.   
 
 
 Getting Started
 * Setting up your local environment
 * Setting up a remote VM
-* Modeling/Data Sources/Tests (`ml4cvd/DATA_MODELING_TESTS.md`) 
+* Modeling/Data Sources/Tests (`ml4cvd/DATA_MODELING_TESTS.md`)
 
 Advanced Topics:
 * Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4cvd/tensorize/README.md, TENSORIZE.md` )
@@ -16,7 +19,7 @@ Clone the repo
 ```
 git clone git@github.com:broadinstitute/ml.git
 ```
-Make sure you have installed the [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install). With [Homebrew](https://brew.sh/), you can use 
+Make sure you have installed the [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install). With [Homebrew](https://brew.sh/), you can use
 ```
 brew cask install google-cloud-sdk
 ```
@@ -27,13 +30,13 @@ If you don't have your gcloud already configured -- set the project to broad-ml4
 
 
 ### Conda (Python package manager)
-* Download onto your laptop the Miniconda `bash` or `.pkg` installer for `Python 3.7` and `Mac OS X` 
+* Download onto your laptop the Miniconda `bash` or `.pkg` installer for `Python 3.7` and `Mac OS X`
 from [here](https://conda.io/en/latest/miniconda.html), and run it. If you installed Python via a package manager
 such as `Homebrew`, you may want to uninstall that first, to avoid potential conflicts.
 * On your laptop, at the root directory of your `ml4cvd` GitHub clone, load the `ml4cvd` environment via
     ```
     conda env create -f env/ml4cvd_osx64.yml
-    ``` 
+    ```
     If you get an error, try updating your `Conda` via
     ```
     sudo conda update -n base -c defaults conda
@@ -43,26 +46,26 @@ such as `Homebrew`, you may want to uninstall that first, to avoid potential con
     brew install gmp
     ```
     The version used at the time of this writing was `4.6.1`.
-    
+
     If you plan to run jupyter locally, you should also (after you have `conda activate ml4cvd`, run `pip install ~/ml` (or wherever you have stored the repo)
 * Activate the environment:
     ```
     source activate ml4cvd
-    ``` 
+    ```
 You may now run code on your `Terminal`, like so
 ```
 python recipes.py --mode ...
-``` 
+```
 **Note** that *recipe*s require having the right input files in place and running them without proper inputs will not
 yield meaningful results.   
 
 ### PyCharm (Python IDE if interested)
-* Install PyCharm either directly from [here](https://www.jetbrains.com/pycharm/download/#section=mac), or download 
-the [Toolbox App](https://www.jetbrains.com/toolbox/app/) and have the app install PyCharm. The latter makes 
+* Install PyCharm either directly from [here](https://www.jetbrains.com/pycharm/download/#section=mac), or download
+the [Toolbox App](https://www.jetbrains.com/toolbox/app/) and have the app install PyCharm. The latter makes
 PyCharm upgrades easier. It also allows you to manage your JetBrains IDEs from a single place if you have multiple
 (e.g. IntelliJ for Java/Scala).
 * Launch PyCharm.
-* (Optional) Import the custom [settings](https://drive.google.com/open?id=1YvNVgVEH-rzsCJtrJ0mCi1nyAxG8Xync) as 
+* (Optional) Import the custom [settings](https://drive.google.com/open?id=1YvNVgVEH-rzsCJtrJ0mCi1nyAxG8Xync) as
 described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-settings.html).
 * Open the project on PyCharm from the `File` menu by pointing to where you have your GitHub repo.
 * Next, configure your Python interpreter to use the Conda environment you set up previously:
@@ -71,7 +74,7 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
     * Highlight `Project Interpreter`.
     * On the right-hand side of the window, where it says `Project Interpreter`, find and select your `python`
     binary installed by `Conda`. It should be a path like `~/conda/miniconda3/envs/ml4cvd/bin/python` where `conda`
-    is the directory you may have selected when installing `Conda`. 
+    is the directory you may have selected when installing `Conda`.
     * For a test run:
         * Open `recipes.py` (shortcut `Shift+Cmd+N` if you imported the custom settings).
         * Right-click on `if __name__=='__main__'` and select `Run recipes`.
@@ -142,3 +145,29 @@ If you get a public key error run: `gcloud compute config-ssh`
 
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
+
+### Installing git-secrets
+
+```git-secrets``` helps us avoid committing secrets (e.g. private keys) and other critical data (e.g. PHI) to our 
+repositories. ```git-secrets``` can be obtained via [github](https://github.com/awslabs/git-secrets) or on MacOS can be 
+installed with Homebrew by running ```brew install git-secrets```. 
+
+To add hooks to all repositories that you initialize or clone in the future:
+
+```git secrets --install --global```
+
+To add hooks to all local repositories:
+
+```
+git secrets --install ~/.git-templates/git-secrets
+git config --global init.templateDir ~/.git-templates/git-secrets
+```
+
+We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid 
+committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to 
+```git_secrets_provider_ml4cvd.txt``` to match types of critical data that are not currently covered by the patterns in that 
+file. To register the patterns in this file with ```git-secrets```:
+
+```
+git secrets --add-provider -- cat ${HOME}/ml/git_secrets_provider_ml4cvd.txt
+```
