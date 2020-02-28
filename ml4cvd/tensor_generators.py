@@ -71,6 +71,7 @@ class TensorGenerator:
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
+        self.paths = paths
         self.run_on_main_thread = num_workers == 0
         self.q = None
         self._started = False
