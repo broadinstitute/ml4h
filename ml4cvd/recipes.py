@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import mode
 from functools import reduce
+from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -107,6 +108,21 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
+def _init_tdict_for_explore(tmaps):
+    # Iterate through tmaps and initialize dict in which to store tensors,
+    # error types, and fpath
+    tdict = defaultdict(dict)
+    for tm in tmaps:
+        if tm.channel_map:
+            for cm in tm.channel_map:
+                tdict[tm.name].update({(tm.name, cm): list()})
+        else:
+            tdict[tm.name].update({f"{tm.name}": list()})
+        tdict[tm.name].update({f"error_type_{tm.name}": list()})
+        tdict[tm.name].update({"fpath": list()})
+    return tdict
+
+
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
@@ -126,7 +142,7 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.normalize_and_validate(tensor)
+                            tensor = tm.postprocess_tensor(tensor, augment=False)
 
                             # Get the item inside the np.array as a scalar
                             #tensor = tensor.item
