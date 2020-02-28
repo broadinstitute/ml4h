@@ -3,14 +3,11 @@
 # Imports
 import os
 import csv
-import pdb
-import sys
 import h5py
 import copy
 import logging
 import numpy as np
 import pandas as pd
-from scipy.stats import mode
 from functools import reduce
 from operator import itemgetter
 from timeit import default_timer as timer
@@ -126,7 +123,7 @@ def _init_tdict_for_explore(tmaps):
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    ld = [] # list of dicts
+    ld = []  # list of dicts
     dependents = {}
 
     for gen in generators:
@@ -145,7 +142,7 @@ def _tensors_to_df(args):
                             tensor = tm.postprocess_tensor(tensor, augment=False)
 
                             # Get the item inside the np.array as a scalar
-                            #tensor = tensor.item
+                            # tensor = tensor.item
 
                             # Append tensor to dict
                             if tm.channel_map:
@@ -173,7 +170,7 @@ def _tensors_to_df(args):
                 logging.info(f"OSError {e}")
 
             # Append list of dicts with tdict
-            ld.append(tdict)  
+            ld.append(tdict)
 
     # Now we have a list of dicts where each dict has {tmaps:values} and
     # each HD5 -> one dict in the list
@@ -188,7 +185,6 @@ def _tensors_to_df(args):
 
         # Convert list of dicts into dataframe and concatenate to big df
         df = pd.concat([df, pd.DataFrame(dl)], axis=1)
-
 
     # Remove duplicate columns: error_types, fpath
     df = df.loc[:, ~df.columns.duplicated()]
@@ -251,7 +247,7 @@ def explore(args):
                     key = tm.name
                     counts.append(df_cur[key].sum())
                     counts_missing.append(df_cur[key].isna().sum())
-            
+
                 # Append list with missing counts
                 counts.append(counts_missing[0])
 
@@ -265,7 +261,7 @@ def explore(args):
 
                 # Add new column: percent of all counts
                 df_stats["fraction_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"]
-                
+
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(args.output_folder,
                             f"{args.id}/{fpath_prefix}_{interpretation}_{tm.name}_{df_str}.csv")
@@ -279,7 +275,7 @@ def explore(args):
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
-            
+
             # Iterate through tmaps
             for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CONTINUOUS]:
 
@@ -319,7 +315,7 @@ def explore(args):
                         f"{args.id}/{fpath_prefix}_{interpretation}_{df_str}.csv")
             df_stats.to_csv(fpath)
             logging.info(f"Saved summary stats of {interpretation} tmaps to {fpath}")
-    
+
     # Check if any tmaps are strings
     interpretation = "string"
     if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
@@ -336,7 +332,7 @@ def explore(args):
                         stats = dict()
                         key = (tm.name, cm)
                         stats["count"] = df_cur[key].count()
-                        stats["count_unique"] = len(df_cur[key].value_counts()) 
+                        stats["count_unique"] = len(df_cur[key].value_counts()
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
                         stats["missing_fraction"] = stats["missing"] / stats["total"]
@@ -345,7 +341,7 @@ def explore(args):
                     stats = dict()
                     key = tm.name
                     stats["count"] = df_cur[key].count()
-                    stats["count_unique"] = len(df_cur[key].value_counts()) 
+                    stats["count_unique"] = len(df_cur[key].value_counts())
                     stats["missing"] = df_cur[key].isna().sum()
                     stats["total"] = len(df_cur[key])
                     stats["missing_fraction"] = stats["missing"] / stats["total"]
@@ -384,7 +380,7 @@ def test_multimodal_multitask(args):
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
-  
+
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
