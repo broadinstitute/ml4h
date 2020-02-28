@@ -167,6 +167,7 @@ def parse_args():
     return args
 
 
+# TODO fix this
 def _get_tmap(name: str) -> TensorMap:
     """
     This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
@@ -176,7 +177,7 @@ def _get_tmap(name: str) -> TensorMap:
     from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
     TMAPS.update(SCRIPT_TMAPS)
     
-    from ml4cvd.tensor_maps_partners_ecg import TMAPS as PARTNERS_TMAPS
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as PARTNERS_TMAPS
     TMAPS.update(PARTNERS_TMAPS)
 
     return TMAPS[name]
@@ -185,7 +186,7 @@ def _get_tmap(name: str) -> TensorMap:
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
-    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
+    command_line = f"\n./scripts/tf.sh {' '.join(sys.argv)}\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
@@ -208,5 +209,5 @@ def _process_args(args):
 
     np.random.seed(args.random_seed)
 
-    logging.info(f"Command Line was:{command_line}")
-    logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
+    logging.info(f"Command Line was: {command_line}")
+    logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
