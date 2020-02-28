@@ -25,7 +25,8 @@ RUN pip3 install --upgrade \
 
   # Upgrade to latest version of this so that %%bigquery does not print the
   # first few rows of the downloaded dataframe of query results.
-  google-cloud-bigquery[pandas] \
+  # Pin version due to https://github.com/googleapis/google-cloud-python/issues/9965
+  google-cloud-bigquery[pandas]==1.22.0 \
 
   # Upgrade to latest version of tensorflow.
   tensorflow \
@@ -35,7 +36,8 @@ RUN pip3 install --upgrade \
 
   # Install data visualization libraries.
   facets-overview \
-  altair \
+  # Pin version due to Terra's more strict 'Content Security Policy'.
+  altair==3.3.0 \
   plotnine \
   pydicom \
   vega \
@@ -59,12 +61,9 @@ RUN cd $JUPYTER_HOME/custom \
 # context of a notebook.
 ENV PIP_USER=true
 
+# Install custom private python package from Puneet Batra's team.
 USER $USER
-
-# Install custom private python package from Puneet Batra's team. Due to the
-# preceeding USER command, this is done as the notebook user so that the file
-# permissions allow for editing of the code.
 RUN mkdir -p $HOME/ml4cvd/ecg_demo
-COPY ecg_demo $HOME/ml4cvd/ecg_demo
+COPY --chown=jupyter-user:users ecg_demo $HOME/ml4cvd/ecg_demo
 ENV PYTHONPATH $PYTHONPATH:$HOME/ml4cvd
 
