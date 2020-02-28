@@ -8,7 +8,6 @@ TFSCRIPT="tf.sh"
         partners_ecg_date \
         partners_ecg_dob \
         partners_ecg_read_md_raw \
-        partners_ecg_read_md_clean_supranodal_rhythms \
         partners_ecg_read_pc_raw \
         partners_ecg_rate \
         partners_ecg_qrs \
