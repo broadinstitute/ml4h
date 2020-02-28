@@ -7,10 +7,13 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="docker"
+INTERACTIVE=""
+PYTHON_COMMAND="python"
+TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
 ################### HELP TEXT ############################################
@@ -33,12 +36,13 @@ usage()
         -h                  Print this help text.
 
         -i      <image>     Run Docker with the specified custom <image>. The default image is '${DOCKER_IMAGE}'.
+        -T                  Run tests
 USAGE_MESSAGE
 }
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:cth" opt ; do
+while getopts ":i:cthT" opt ; do
     case ${opt} in
         h)
             usage
@@ -52,7 +56,10 @@ while getopts ":i:cth" opt ; do
             DOCKER_COMMAND=docker
             ;;
         t)
-            INTERACTIVE_RUN="-it"
+            INTERACTIVE="-it"
+            ;;
+        T)
+            PYTHON_COMMAND=${TEST_COMMAND}
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -76,10 +83,10 @@ fi
 
 ################### SCRIPT BODY ##########################################
 
-# if ! docker pull ${DOCKER_IMAGE}; then
-#     echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-#     exit 1;
-# fi
+if ! docker pull ${DOCKER_IMAGE}; then
+    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
+    exit 1;
+fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
@@ -95,24 +102,20 @@ mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
-    ${DOCKER_COMMAND} run ${INTERACTIVE_RUN}
+    ${DOCKER_COMMAND} run ${INTERACTIVE}
         --rm
-	    --gpus all
         --ipc=host
         -v /home/${USER}/jupyter/root/:/root/
         -v /home/${USER}/:/home/${USER}/
         -v /mnt/:/mnt/
-        -v /data/:/data/
-        ${DOCKER_IMAGE} python ${PYTHON_ARGS}
+        ${DOCKER_IMAGE} ${PYTHON_COMMAND} ${PYTHON_ARGS}
 LAUNCH_MESSAGE
 
-# echo ${DOCKER_COMMAND} run ${INTERACTIVE} -v /home/${USER}/jupyter/root/:/root/ -v /home/${USER}/:/home/${USER}/ ${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"
 
-
-${DOCKER_COMMAND} run ${INTERACTIVE_RUN} \
+${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 --rm \
---gpus all \
+--ipc=host \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
--v /data/:/data/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; python ${PYTHON_ARGS}"
+-v /mnt/:/mnt/ \
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
