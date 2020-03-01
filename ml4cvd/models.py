@@ -487,7 +487,7 @@ class DenseBlock:
         return x
 
 
-class MLP(Encoder, Decoder):
+class MLP(Encoder):
 
     def __init__(
             self,
@@ -509,8 +509,7 @@ class MLP(Encoder, Decoder):
         self.is_encoder = is_encoder
         self.parents = parents or []
 
-    def __call__(self, x: Tensor, intermediates=None, decoder_outputs: Dict[TensorMap, Tensor] = None) -> Tensor:
-        x = concatenate([x] + [decoder_outputs[parent] for parent in self.parents]) if self.parents else x
+    def __call__(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
         for dense, norm, activation, reg in zip(self.denses, self.norms, self.activations, self.regularizations):
             x = norm(reg(activation(dense(x))))
         if self.is_encoder:
@@ -616,8 +615,21 @@ def _calc_start_shape(num_blocks: int, output_shape: Tuple[int, ...], upsample_r
     return tuple((shape // rate**num_blocks for shape, rate in zip(output_shape, upsample_rates)))
 
 
-class ConvDecoder(Decoder):
+class DenseDecoder(Decoder):
+    def __init__(
+            self,
+            tensor_map_out: TensorMap,
+            parents: List[TensorMap] = None,
+    ):
+        self.parents = parents
+        activation = 'softmax' if tensor_map_out.is_categorical() else 'linear'
+        self.dense = Dense(units=tensor_map_out.shape[0], name=tensor_map_out.output_name(), activation=activation)
 
+    def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
+        return self.dense(Concatenate()([x] + [decoder_outputs[parent] for parent in self.parents]))
+
+
+class ConvDecoder(Decoder):
     def __init__(
             self,
             *,
@@ -645,7 +657,7 @@ class ConvDecoder(Decoder):
             for filters in filters_per_dense_block]
         final_activation = 'softmax' if tensor_map_out.is_categorical() else 'linear'
         conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
-        self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=final_activation)
+        self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=final_activation, name=tensor_map_out.output_name())
         self.upsamples = [_upsampler(dimension, upsample_x, upsample_y, upsample_z) for _ in filters_per_dense_block]
         self.u_connect_parents = u_connect_parents or []
 
@@ -659,14 +671,6 @@ class ConvDecoder(Decoder):
         x = concatenate(intermediate + [x]) if intermediate else x
         # x = self.upsample(x)  # TODO: necessary?
         return self.conv_label(x)
-
-
-def _invert_u_connect_dict(d: Dict[TensorMap, Set[TensorMap]]) -> Dict[TensorMap, TensorMap]:
-    new_dict = {}
-    for k, v in d.items():
-        for x in v:
-            new_dict[x] = k
-    return new_dict
 
 
 def make_multimodal_multitask_model(
@@ -777,12 +781,8 @@ def make_multimodal_multitask_model(
                 u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm]],
             )
         else:
-            decoders[tm] = MLP(
-                widths=[tm.annotation_units, tm.shape[0]],
-                activation=activation,
-                normalization=normalization,
-                regularization=dense_regularize,
-                regularization_rate=dense_regularize_rate,
+            decoders[tm] = DenseDecoder(
+                tensor_map_out=tm,
                 parents=tm.parents,
             )
 
@@ -835,8 +835,7 @@ def _make_multimodal_multitask_model(
     for tm, decoder in decoders.items():
         decoder_outputs[tm] = decoder(bottle_neck_outputs[tm], encoder_intermediates, decoder_outputs)
 
-    return Model(inputs={tm.input_name(): inp for tm, inp in inputs.items()},
-                 outputs={tm.output_name(): out for tm, out in decoder_outputs.items()})
+    return Model(inputs=list(inputs.values()), outputs=list(decoder_outputs.values()))
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
