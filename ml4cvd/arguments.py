@@ -100,7 +100,7 @@ def parse_args():
     parser.add_argument('--zoom_height', default=96, type=int, help='zoom_height tensor resolution')
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
-    parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')
+    parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
     parser.add_argument('--dense_layers', nargs='*', default=[16, 64], type=int, help='List of number of hidden units in neural nets dense layers.')
     parser.add_argument('--dropout', default=0.0, type=float, help='Dropout rate of dense layers must be in [0.0, 1.0].')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
