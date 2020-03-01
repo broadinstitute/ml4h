@@ -58,6 +58,9 @@ def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[Tenso
 
 
 class TestMakeMultimodalMultitaskModel:
+    """
+    TODO: test parents
+    """
 
     @pytest.mark.parametrize(
         'input_tmaps',

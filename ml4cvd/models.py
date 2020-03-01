@@ -483,7 +483,7 @@ class DenseBlock:
                 self.conv_layers, self.activations, self.normalizations, self.regularizations, self.concatenations):
             x = reg(norm(activation(conv(x))))
             dense_connections.append(x)
-            x = concat(dense_connections)
+            x = concat(dense_connections[:])  # [:] is necessary because of tf weirdness
         return x
 
 
@@ -534,14 +534,17 @@ class FlattenAll(BottleNeck):
             normalization=normalization,
             regularization=regularization,
             regularization_rate=regularization_rate,
+            name='embed'
         )
         self.restructures = {tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
                              for tm, shape in pre_decoder_shapes.items()}
 
     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
         y = [Flatten()(x) for x in encoder_outputs.values()]
-        if len(encoder_outputs) > 1:
+        if len(y) > 1:
             y = concatenate(y)
+        else:
+            y = y[0]
         y = self.mlp(y)
         return {tm: restructure(y) for tm, restructure in self.restructures.items()}
 
@@ -606,7 +609,7 @@ class ConvEncoder(Encoder):
         for dense_block in self.dense_blocks:
             x = dense_block(x)
             intermediates.append(x)
-            # TODO: add upsample
+            # TODO: add pooling
         return x, intermediates
 
 
@@ -626,7 +629,8 @@ class DenseDecoder(Decoder):
         self.dense = Dense(units=tensor_map_out.shape[0], name=tensor_map_out.output_name(), activation=activation)
 
     def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
-        return self.dense(Concatenate()([x] + [decoder_outputs[parent] for parent in self.parents]))
+        x = Concatenate()([x] + [decoder_outputs[parent] for parent in self.parents]) if self.parents else x
+        return self.dense(x)
 
 
 class ConvDecoder(Decoder):
