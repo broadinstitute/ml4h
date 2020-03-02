@@ -50,7 +50,7 @@ def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[Tenso
     for tmap, tensor in zip(input_tmaps, m.inputs):
         assert tensor.shape[1:] == tmap.shape
         assert tensor.shape[1:] == tmap.shape
-    for tmap, tensor in zip(output_tmaps, m.outputs):
+    for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
         assert tensor.shape[1:] == tmap.shape
         assert tensor.shape[1:] == tmap.shape
     data = make_training_data(input_tmaps, output_tmaps)
