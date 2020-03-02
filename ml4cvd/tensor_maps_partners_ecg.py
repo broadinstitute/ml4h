@@ -1,28 +1,284 @@
-from ml4cvd.TensorMap import TensorMap
+import csv
+import numcodecs
+import numpy as np
+from typing import Dict
+from ml4cvd.TensorMap import (TensorMap, no_nans, str2date,
+        make_range_validator, Interpretation)
+from ml4cvd.defines import ECG_REST_AMP_LEADS
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.tensor_from_file import make_partners_ecg_label
 
-TMAPS['partners_ecg_read_md_clean_supranodal_rhythms'] = TensorMap('partners_ecg_read_md_clean_supranodal_rhythms', group='categorical', channel_map={'narrow_qrs_tachycardia': 0, 'atrial_flutter': 1, 'retrograde_atrial_activation': 2, 'svt': 3, 'sinus_rhythm': 4, 'ectopic_atrial_tachycardia': 5, 'unspecified': 6, 'ectopic_atrial_rhythm': 7, 'atrial_fibrillation': 8, }, tensor_from_file=make_partners_ecg_label(key='read_md_clean', dict_of_list = {'atrial_fibrillation': ['atrial fib', 'afib', 'atrial fibrillation', 'atrial  fibrillation', 'afibrillation'], 'sinus_rhythm': ['marked sinus arrhythmia', 'sinus arrhythmia', 'normal ecg', 'atrial bigeminal rhythm', 'atrial bigeminy and ventricular bigeminy', 'atrial trigeminy', 'atrialbigeminy', 'normal sinus rhythm', 'normal when compared with ecg of', 'rhythm has reverted to normal', 'rhythm is now clearly sinus', 'sinus bradycardia', 'sinus rhythm', 'sinus rhythm at a rate', 'sinus tachycardia', 'tracing within normal limits', 'tracing is within normal limits', 'tracing within normal limits', 'sinoatrial block', 'sa block', 'sinoatrial block, type ii', 'sa block, type i', 'type i sinoatrial block', 'type i sa block', 'sinoatrial block, type ii', 'sa block, type i', 'type ii sinoatrial block', 'type ii sa block', 'sinus pause', 'sinus arrest', 'sinus slowing', 'with occasional native sinus beats', 'frequent native sinus beats', 'conducted sinus impulses', 'sinus mechanism has replaced', 'rhythm is normal sinus', 'rhythm remains normal sinus'], 'atrial_flutter': ['fibrillation/flutter', 'aflutter', 'atrial flutter', 'probable flutter', 'atrial flutter fixed block', 'atrial flutter variable block', 'atrial flutter unspecified block', 'tachycardia possibly flutter'], 'ectopic_atrial_rhythm': ['unifocal atrial tachycardia', 'unifocal ectopic atrial rhythm', 'unifocal ear', 'multifocal atrial tachycardia', 'multifocal ectopic atrial rhythm', 'multifocal ear', 'wandering atrial tachycardia', 'wandering ectopic atrial rhythm', 'wandering ear', 'wandering atrial pacemaker', 'atrial rhythm', 'ectopic atrial rhythm', 'ear', 'dual atrial foci ', 'ectopic atrial bradycardia', 'multiple atrial foci', 'abnormal p vector', 'nonsinus atrial mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'low atrial bradycardia', 'multifocal atrial rhythm', 'multifocal atrialrhythm', 'unusual p wave axis', 'low atrial pacer'], 'ectopic_atrial_tachycardia': ['ectopic atrial tachycardia', 'ectopic atrial tachycardia, unspecified', 'unspecified ectopic atrial tachycardia', 'ectopic atrial tachycardia, unifocal', 'unifocal ectopic atrial tachycardia', 'ectopic atrial tachycardia, multifocal', 'multifocal ectopic atrial tachycardia'], 'narrow_qrs_tachycardia': ['narrow qrs tachycardia', 'narrow qrs tachycardia', 'tachycardia narrow qrs', 'narrow complex tachycardia'], 'retrograde_atrial_activation': ['retrograde atrial activation'], 'svt': ['sinus arrhythmia accelerated atrioventricular junctional rhythm', 'supraventricular tachycardia', 'accelerated atrioventricular nodal rhythm', 'accelerated nodal rhythm', 'atrial tachycardia', 'av nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'avnrt', 'atrioventricular reentrant tachycardia ', 'av reentrant tachycardia ', 'avrt'], 'unspecified': ['junctional tachycardia', 'atrial arrhythmia', 'technically poor tracing ', 'accelerated idioventricular rhythm', 'atrial activity is indistinct', 'rhythm uncertain', 'rhythm unclear', 'uncertain rhythm', 'undetermined rhythm', 'supraventricular rhythm']})) 
 
-TMAPS['partners_ecg_read_pc_clean_supranodal_rhythms'] = TensorMap('partners_ecg_read_pc_clean_supranodal_rhythms', group='categorical', channel_map={'narrow_qrs_tachycardia': 0, 'atrial_flutter': 1, 'retrograde_atrial_activation': 2, 'svt': 3, 'sinus_rhythm': 4, 'ectopic_atrial_tachycardia': 5, 'unspecified': 6, 'ectopic_atrial_rhythm': 7, 'atrial_fibrillation': 8, }, tensor_from_file=make_partners_ecg_label(key='read_pc_clean', dict_of_list = {'atrial_fibrillation': ['atrial fib', 'afib', 'atrial fibrillation', 'atrial  fibrillation', 'afibrillation'], 'sinus_rhythm': ['marked sinus arrhythmia', 'sinus arrhythmia', 'normal ecg', 'atrial bigeminal rhythm', 'atrial bigeminy and ventricular bigeminy', 'atrial trigeminy', 'atrialbigeminy', 'normal sinus rhythm', 'normal when compared with ecg of', 'rhythm has reverted to normal', 'rhythm is now clearly sinus', 'sinus bradycardia', 'sinus rhythm', 'sinus rhythm at a rate', 'sinus tachycardia', 'tracing within normal limits', 'tracing is within normal limits', 'tracing within normal limits', 'sinoatrial block', 'sa block', 'sinoatrial block, type ii', 'sa block, type i', 'type i sinoatrial block', 'type i sa block', 'sinoatrial block, type ii', 'sa block, type i', 'type ii sinoatrial block', 'type ii sa block', 'sinus pause', 'sinus arrest', 'sinus slowing', 'with occasional native sinus beats', 'frequent native sinus beats', 'conducted sinus impulses', 'sinus mechanism has replaced', 'rhythm is normal sinus', 'rhythm remains normal sinus'], 'atrial_flutter': ['fibrillation/flutter', 'aflutter', 'atrial flutter', 'probable flutter', 'atrial flutter fixed block', 'atrial flutter variable block', 'atrial flutter unspecified block', 'tachycardia possibly flutter'], 'ectopic_atrial_rhythm': ['unifocal atrial tachycardia', 'unifocal ectopic atrial rhythm', 'unifocal ear', 'multifocal atrial tachycardia', 'multifocal ectopic atrial rhythm', 'multifocal ear', 'wandering atrial tachycardia', 'wandering ectopic atrial rhythm', 'wandering ear', 'wandering atrial pacemaker', 'atrial rhythm', 'ectopic atrial rhythm', 'ear', 'dual atrial foci ', 'ectopic atrial bradycardia', 'multiple atrial foci', 'abnormal p vector', 'nonsinus atrial mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'low atrial bradycardia', 'multifocal atrial rhythm', 'multifocal atrialrhythm', 'unusual p wave axis', 'low atrial pacer'], 'ectopic_atrial_tachycardia': ['ectopic atrial tachycardia', 'ectopic atrial tachycardia, unspecified', 'unspecified ectopic atrial tachycardia', 'ectopic atrial tachycardia, unifocal', 'unifocal ectopic atrial tachycardia', 'ectopic atrial tachycardia, multifocal', 'multifocal ectopic atrial tachycardia'], 'narrow_qrs_tachycardia': ['narrow qrs tachycardia', 'narrow qrs tachycardia', 'tachycardia narrow qrs', 'narrow complex tachycardia'], 'retrograde_atrial_activation': ['retrograde atrial activation'], 'svt': ['sinus arrhythmia accelerated atrioventricular junctional rhythm', 'supraventricular tachycardia', 'accelerated atrioventricular nodal rhythm', 'accelerated nodal rhythm', 'atrial tachycardia', 'av nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'avnrt', 'atrioventricular reentrant tachycardia ', 'av reentrant tachycardia ', 'avrt'], 'unspecified': ['junctional tachycardia', 'atrial arrhythmia', 'technically poor tracing ', 'accelerated idioventricular rhythm', 'atrial activity is indistinct', 'rhythm uncertain', 'rhythm unclear', 'uncertain rhythm', 'undetermined rhythm', 'supraventricular rhythm']})) 
+def _compress_data(hf, name, data, dtype, method='zstd', compression_opts=19):
+    # Define codec
+    codec = numcodecs.zstd.Zstd(level=compression_opts)
 
-TMAPS['partners_ecg_read_md_clean_sinus_rhythm'] = TensorMap('partners_ecg_read_md_clean_sinus_rhythm', group='categorical', channel_map={'sinus_arrhythmia': 0, 'unspecified': 1}, tensor_from_file=make_partners_ecg_label(key='read_md_clean', dict_of_list = {'sinus_arrhythmia': ['marked sinus arrhythmia', 'marked sinus arrhythmia', 'sinus arrhythmia', 'sinus arrhythmia']})) 
+    # If data is string, encode to bytes
+    if dtype == 'str':
+        data_compressed = codec.encode(data.encode())
+        dsize = len(data.encode())
+    else:
+        data_compressed = codec.encode(data)
+        dsize = len(data) * data.itemsize
 
-TMAPS['partners_ecg_read_pc_clean_sinus_rhythm'] = TensorMap('partners_ecg_read_pc_clean_sinus_rhythm', group='categorical', channel_map={'sinus_arrhythmia': 0, 'unspecified': 1}, tensor_from_file=make_partners_ecg_label(key='read_pc_clean', dict_of_list = {'sinus_arrhythmia': ['marked sinus arrhythmia', 'marked sinus arrhythmia', 'sinus arrhythmia', 'sinus arrhythmia']})) 
+    # Save data to hdf5
+    dat = hf.create_dataset(name=name, data=np.void(data_compressed))
 
-TMAPS['partners_ecg_read_md_clean_atrial_flutter'] = TensorMap('partners_ecg_read_md_clean_atrial_flutter', group='categorical', channel_map={'unspecified': 0, 'variable_block': 1, 'fixed_block': 2, }, tensor_from_file=make_partners_ecg_label(key='read_md_clean', dict_of_list = {'unspecified': ['fibrillation/flutter', 'fibrillation/flutter', 'aflutter', 'aflutter', 'atrial flutter', 'atrial flutter', 'probable flutter', 'probable flutter', 'atrial flutter unspecified block', 'atrial flutter unspecified block'], 'fixed_block': ['atrial flutter fixed block', 'atrial flutter fixed block'], 'variable_block': ['atrial flutter variable block', 'atrial flutter variable block']})) 
+    # Set attributes
+    dat.attrs['method']              = method
+    dat.attrs['compression_level']   = compression_opts
+    dat.attrs['len']                 = len(data)
+    dat.attrs['uncompressed_length'] = dsize
+    dat.attrs['compressed_length']   = len(data_compressed)
+    dat.attrs['dtype'] = dtype
+   
 
-TMAPS['partners_ecg_read_pc_clean_atrial_flutter'] = TensorMap('partners_ecg_read_pc_clean_atrial_flutter', group='categorical', channel_map={'unspecified': 0, 'variable_block': 1, 'fixed_block': 2, }, tensor_from_file=make_partners_ecg_label(key='read_pc_clean', dict_of_list = {'unspecified': ['fibrillation/flutter', 'fibrillation/flutter', 'aflutter', 'aflutter', 'atrial flutter', 'atrial flutter', 'probable flutter', 'probable flutter', 'atrial flutter unspecified block', 'atrial flutter unspecified block'], 'fixed_block': ['atrial flutter fixed block', 'atrial flutter fixed block'], 'variable_block': ['atrial flutter variable block', 'atrial flutter variable block']})) 
+def _decompress_data(data_compressed, dtype):
+    codec = numcodecs.zstd.Zstd() 
+    data_decompressed = codec.decode(data_compressed)
+    if dtype == 'str':
+        data = data_decompressed.decode()
+    else:
+        data = np.frombuffer(data_decompressed, dtype)
+    return data
 
-TMAPS['partners_ecg_read_md_clean_ectopic_atrial_rhythm'] = TensorMap('partners_ecg_read_md_clean_ectopic_atrial_rhythm', group='categorical', channel_map={'wandering': 0, 'unifocal': 1, 'unspecified': 2, 'multifocal': 3, }, tensor_from_file=make_partners_ecg_label(key='read_md_clean', dict_of_list = {'unifocal': ['unifocal atrial tachycardia', 'unifocal atrial tachycardia', 'unifocal ectopic atrial rhythm', 'unifocal ectopic atrial rhythm', 'unifocal ear', 'unifocal ear', 'unusual p wave axis', 'unusual p wave axis', 'low atrial pacer', 'low atrial pacer'], 'multifocal': ['multifocal atrial tachycardia', 'multifocal atrial tachycardia', 'multifocal ectopic atrial rhythm', 'multifocal ectopic atrial rhythm', 'multifocal ear', 'multifocal ear', 'dual atrial foci ', 'dual atrial foci ', 'multiple atrial foci', 'multiple atrial foci', 'multifocal atrial rhythm', 'multifocal atrial rhythm', 'multifocal atrialrhythm', 'multifocal atrialrhythm'], 'wandering': ['wandering atrial tachycardia', 'wandering atrial tachycardia', 'wandering ectopic atrial rhythm', 'wandering ectopic atrial rhythm', 'wandering ear', 'wandering ear', 'wandering atrial pacemaker', 'wandering atrial pacemaker'], 'unspecified': ['atrial rhythm', 'atrial rhythm', 'ectopic atrial rhythm', 'ectopic atrial rhythm', 'ear', 'ear', 'ectopic atrial bradycardia', 'ectopic atrial bradycardia', 'abnormal p vector', 'abnormal p vector', 'nonsinus atrial mechanism', 'nonsinus atrial mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'low atrial bradycardia', 'low atrial bradycardia']})) 
 
-TMAPS['partners_ecg_read_pc_clean_ectopic_atrial_rhythm'] = TensorMap('partners_ecg_read_pc_clean_ectopic_atrial_rhythm', group='categorical', channel_map={'wandering': 0, 'unifocal': 1, 'unspecified': 2, 'multifocal': 3, }, tensor_from_file=make_partners_ecg_label(key='read_pc_clean', dict_of_list = {'unifocal': ['unifocal atrial tachycardia', 'unifocal atrial tachycardia', 'unifocal ectopic atrial rhythm', 'unifocal ectopic atrial rhythm', 'unifocal ear', 'unifocal ear', 'unusual p wave axis', 'unusual p wave axis', 'low atrial pacer', 'low atrial pacer'], 'multifocal': ['multifocal atrial tachycardia', 'multifocal atrial tachycardia', 'multifocal ectopic atrial rhythm', 'multifocal ectopic atrial rhythm', 'multifocal ear', 'multifocal ear', 'dual atrial foci ', 'dual atrial foci ', 'multiple atrial foci', 'multiple atrial foci', 'multifocal atrial rhythm', 'multifocal atrial rhythm', 'multifocal atrialrhythm', 'multifocal atrialrhythm'], 'wandering': ['wandering atrial tachycardia', 'wandering atrial tachycardia', 'wandering ectopic atrial rhythm', 'wandering ectopic atrial rhythm', 'wandering ear', 'wandering ear', 'wandering atrial pacemaker', 'wandering atrial pacemaker'], 'unspecified': ['atrial rhythm', 'atrial rhythm', 'ectopic atrial rhythm', 'ectopic atrial rhythm', 'ear', 'ear', 'ectopic atrial bradycardia', 'ectopic atrial bradycardia', 'abnormal p vector', 'abnormal p vector', 'nonsinus atrial mechanism', 'nonsinus atrial mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'p wave axis suggests atrial rather than sinus mechanism', 'low atrial bradycardia', 'low atrial bradycardia']})) 
+def _resample_voltage(voltage):
+    if len(voltage) == 5000:
+        return voltage[::2]
+    else:
+        return voltage
 
-TMAPS['partners_ecg_read_md_clean_ectopic_atrial_tachycardia'] = TensorMap('partners_ecg_read_md_clean_ectopic_atrial_tachycardia', group='categorical', channel_map={'unifocal': 0, 'unspecified': 1, 'multifocal': 2, }, tensor_from_file=make_partners_ecg_label(key='read_md_clean', dict_of_list = {'unspecified': ['ectopic atrial tachycardia', 'ectopic atrial tachycardia', 'ectopic atrial tachycardia, unspecified', 'ectopic atrial tachycardia, unspecified', 'unspecified ectopic atrial tachycardia', 'unspecified ectopic atrial tachycardia'], 'unifocal': ['ectopic atrial tachycardia, unifocal', 'ectopic atrial tachycardia, unifocal', 'unifocal ectopic atrial tachycardia', 'unifocal ectopic atrial tachycardia'], 'multifocal': ['ectopic atrial tachycardia, multifocal', 'ectopic atrial tachycardia, multifocal', 'multifocal ectopic atrial tachycardia', 'multifocal ectopic atrial tachycardia']})) 
+def make_voltage(population_normalize: float = None):
+    def get_voltage_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for cm in tm.channel_map:
+            voltage = _decompress_data(data_compressed=hd5[cm][()],
+                                       dtype=hd5[cm].attrs['dtype'])
+            voltage = _resample_voltage(voltage)
+            tensor[:, tm.channel_map[cm]] = voltage 
+        if population_normalize is None:
+            tensor = tm.zero_mean_std1(tensor)
+        else:
+            tensor /= population_normalize 
+        return tensor
+    return get_voltage_from_file
 
-TMAPS['partners_ecg_read_pc_clean_ectopic_atrial_tachycardia'] = TensorMap('partners_ecg_read_pc_clean_ectopic_atrial_tachycardia', group='categorical', channel_map={'unifocal': 0, 'unspecified': 1, 'multifocal': 2, }, tensor_from_file=make_partners_ecg_label(key='read_pc_clean', dict_of_list = {'unspecified': ['ectopic atrial tachycardia', 'ectopic atrial tachycardia', 'ectopic atrial tachycardia, unspecified', 'ectopic atrial tachycardia, unspecified', 'unspecified ectopic atrial tachycardia', 'unspecified ectopic atrial tachycardia'], 'unifocal': ['ectopic atrial tachycardia, unifocal', 'ectopic atrial tachycardia, unifocal', 'unifocal ectopic atrial tachycardia', 'unifocal ectopic atrial tachycardia'], 'multifocal': ['ectopic atrial tachycardia, multifocal', 'ectopic atrial tachycardia, multifocal', 'multifocal ectopic atrial tachycardia', 'multifocal ectopic atrial tachycardia']})) 
 
-TMAPS['partners_ecg_read_md_clean_svt'] = TensorMap('partners_ecg_read_md_clean_svt', group='categorical', channel_map={'avrt': 0, 'avnrt': 1, 'unspecified': 2}, tensor_from_file=make_partners_ecg_label(key='read_md_clean', dict_of_list = {'avnrt': ['av nodal reentry tachycardia', 'av nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'avnrt', 'avnrt'], 'avrt': ['atrioventricular reentrant tachycardia ', 'atrioventricular reentrant tachycardia ', 'av reentrant tachycardia ', 'av reentrant tachycardia ', 'avrt', 'avrt']})) 
+TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
+                                        shape=(2500, 12),
+                                        interpretation=Interpretation.CONTINUOUS,
+                                        tensor_from_file=make_voltage(population_normalize=2000.0),
+                                        channel_map=ECG_REST_AMP_LEADS)
 
-TMAPS['partners_ecg_read_pc_clean_svt'] = TensorMap('partners_ecg_read_pc_clean_svt', group='categorical', channel_map={'avrt': 0, 'avnrt': 1, 'unspecified': 2}, tensor_from_file=make_partners_ecg_label(key='read_pc_clean', dict_of_list = {'avnrt': ['av nodal reentry tachycardia', 'av nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'avnrt', 'avnrt'], 'avrt': ['atrioventricular reentrant tachycardia ', 'atrioventricular reentrant tachycardia ', 'av reentrant tachycardia ', 'av reentrant tachycardia ', 'avrt', 'avrt']})) 
+
+def make_voltage_attr(volt_attr: str = ""):
+    def get_voltage_attr_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for cm in tm.channel_map:
+            tensor[tm.channel_map[cm]] = hd5[cm].attrs[volt_attr]
+        return tensor
+    return get_voltage_attr_from_file
+
+TMAPS["voltage_len"] = TensorMap("voltage_len",
+                                 interpretation=Interpretation.CONTINUOUS,
+                                 tensor_from_file=make_voltage_attr(volt_attr="len"),
+                                 shape=(12,),
+                                 channel_map=ECG_REST_AMP_LEADS)
+
+
+def make_partners_ecg_label(key: str = "read_md_clean",
+                            dict_of_list: Dict = dict(),
+                            not_found_key: str = "unspecified"):
+    def get_partners_ecg_label(tm, hd5, dependents={}):
+        read = _decompress_data(data_compressed=hd5[key][()],
+                                dtype=hd5[key].attrs['dtype'])       
+        label_array = np.zeros(tm.shape, dtype=np.float32)
+        for cm in tm.channel_map:
+            for string in dict_of_list[cm]:
+                if string in read:
+                    label_array[tm.channel_map[cm]] = 1
+                    return label_array
+        label_array[tm.channel_map[not_found_key]] = 1
+        return label_array
+    return get_partners_ecg_label
+
+
+def make_partners_ecg_tensor(key: str, tensor_type = float):
+    def get_partners_ecg_tensor(tm, hd5, dependents={}):
+        tensor = _decompress_data(data_compressed=hd5[key][()],
+                                  dtype=hd5[key].attrs['dtype'])
+        return np.array(tensor_type(tensor))
+    return get_partners_ecg_tensor
+
+
+task = "partners_ecg_read_md_raw"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="read_md_clean", tensor_type=str),
+                        shape=(1,))
+
+
+task = "partners_ecg_read_pc_raw"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="read_pc_clean", tensor_type=str),
+                        shape=(1,))
+
+def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
+    if int(tensor) not in tm.cross_reference:
+        raise ValueError(f"Skipping TensorMap {tm.name} not found in Apollo.")
+
+def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
+    with open(fpath, mode="r") as f:
+        reader = csv.reader(f)
+        next(reader)
+        cross_reference_dict = {int(rows[0]):None for rows in reader}
+    return cross_reference_dict
+
+task = "partners_ecg_patientid_cross_reference_apollo"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientid", tensor_type=float),
+                        shape=(1,),
+                        validator=validator_cross_reference)
+
+TMAPS[task].cross_reference = create_cross_reference_dict()
+
+task = "partners_ecg_patientid"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientid", tensor_type=float),
+                        shape=(1,))
+
+task = "partners_ecg_date"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="acquisitiondate", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_dob"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="dateofbirth", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_sampling_frequency"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="ecgsamplebase", tensor_type=float),
+                        shape=(1,))
+
+task = "partners_ecg_rate"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="ventricularrate", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(10, 200))
+
+task = "partners_ecg_qrs"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="qrsduration", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(20, 400))
+
+task = "partners_ecg_pr"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="printerval", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(50, 500))
+
+task = "partners_ecg_qt"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="qtinterval", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
+
+task = "partners_ecg_qtc"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="qtcorrected", tensor_type=float),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
+
+'''
+task = "partners_ecg_rate_norm"
+TMAPS[task] = TensorMap(task,
+                        interpretation=interpretation,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'mean': 81.620467, 'std': 20.352292},
+                        tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
+                        shape=(1,),
+                        validator=make_range_validator(10, 200))
+
+task = "partners_ecg_qrs_norm"
+TMAPS[task] = TensorMap(task,
+                        interpretation=interpretation,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'mean': 94.709106, 'std': 22.610711},
+                        tensor_from_file=make_partners_ecg_tensor(key="qrsduration"),
+                        shape=(1,),
+                        validator=make_range_validator(20, 400))
+
+task = "partners_ecg_pr_norm"
+TMAPS[task] = TensorMap(task,
+                        interpretation=interpretation,
+                        dtype=DataSetType.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'std': 35.003017, 'mean': 161.040738},
+                        tensor_from_file=make_partners_ecg_tensor(key="printerval"),
+                        shape=(1,),
+                        validator=make_range_validator(50, 500))
+
+task = "partners_ecg_qt_norm"
+TMAPS[task] = TensorMap(task,
+                        interpretation=interpretation,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'mean': 390.995792, 'std': 50.923113},
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
+
+task = "partners_ecg_qtc_norm"
+TMAPS[task] = TensorMap(task,
+                        interpretation=interpretation,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        normalization={'std': 39.762255, 'mean': 446.505327},
+                        dtype=DataSetType.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
+'''
 

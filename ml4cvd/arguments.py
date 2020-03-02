@@ -23,7 +23,7 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_map_maker import generate_multi_field_continuous_tensor_map, generate_continuous_tensor_map_from_file
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
 def parse_args():
@@ -38,7 +38,6 @@ def parse_args():
     # Tensor Map arguments
     parser.add_argument('--input_tensors', default=[], nargs='+')
     parser.add_argument('--output_tensors', default=[], nargs='+')
-    parser.add_argument('--input_continuous_tensors', default=[], nargs='+', help='Continuous tensor maps to be combined.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
 
@@ -50,7 +49,7 @@ def parse_args():
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
     parser.add_argument('--phenos_folder', default='gs://ml4cvd/phenotypes/', help='Path to folder of phenotype defining CSVs.')
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
-    parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms ( dicoms/labels/sample_id/field_id/*dcm.')
+    parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
     parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
@@ -66,6 +65,8 @@ def parse_args():
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
+    parser.add_argument('--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
+                        help='Bin boundaries to use to discretize a continuous TensorMap read from a file.')
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.')
     parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
@@ -82,6 +83,7 @@ def parse_args():
     parser.add_argument('--min_sample_id', default=0, type=int, help='Minimum sample id to write to tensor.')
     parser.add_argument('--max_sample_id', default=7000000, type=int, help='Maximum sample id to write to tensor.')
     parser.add_argument('--max_slices', default=999999, type=int, help='Maximum number of dicom slices to read')
+    parser.add_argument('--dicom_series', default='cine_segmented_sax_b6', help='Maximum number of dicom slices to read')
     parser.add_argument('--b_slice_force', default=None,
                         help='If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).')
     parser.add_argument('--include_missing_continuous_channel', default=False, action='store_true',
@@ -107,11 +109,10 @@ def parse_args():
     parser.add_argument('--conv_y', default=3, type=int, help='Y dimension of convolutional kernel.')
     parser.add_argument('--conv_z', default=2, type=int, help='Z dimension of convolutional kernel.')
     parser.add_argument('--conv_width', default=71, type=int, help='Width of convolutional kernel for 1D CNNs.')
-    parser.add_argument('--conv_bn', default=False, action='store_true', help='Batch normalize convolutional layers.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
-    parser.add_argument('--conv_normalize', default=None, choices=['batch_norm'], help='Type of normalization layer for convolutions')
+    parser.add_argument('--conv_normalize', default=None, choices=['', 'batch_norm'], help='Type of normalization layer for convolutions')
     parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
@@ -127,6 +128,7 @@ def parse_args():
     parser.add_argument('--max_parameters', default=9000000, type=int,
                         help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
+    parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
@@ -147,7 +149,10 @@ def parse_args():
     parser.add_argument('--max_models', default=16, type=int,
                         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
-    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
+    parser.add_argument('--anneal_rate', default=1.0, type=float, help='Annealing rate in epochs of loss terms during training')
+    parser.add_argument('--anneal_shift', default=10, type=float, help='Annealing offset in epochs of loss terms during training')
+    parser.add_argument('--anneal_max', default=1.0, type=float, help='Annealing maximum value')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -160,13 +165,14 @@ def parse_args():
 
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
-    parser.add_argument('--cache_size', default=4e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
+    parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
     args = parser.parse_args()
     _process_args(args)
     return args
 
 
+# TODO fix this
 def _get_tmap(name: str) -> TensorMap:
     """
     This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
@@ -176,7 +182,7 @@ def _get_tmap(name: str) -> TensorMap:
     from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
     TMAPS.update(SCRIPT_TMAPS)
     
-    from ml4cvd.tensor_maps_partners_ecg import TMAPS as PARTNERS_TMAPS
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as PARTNERS_TMAPS
     TMAPS.update(PARTNERS_TMAPS)
 
     return TMAPS[name]
@@ -185,7 +191,7 @@ def _get_tmap(name: str) -> TensorMap:
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
-    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
+    command_line = f"\n./scripts/tf.sh {' '.join(sys.argv)}\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
@@ -194,19 +200,18 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
-    if len(args.input_continuous_tensors) > 0:
-        multi_field_tensor_map = [generate_multi_field_continuous_tensor_map(args.input_continuous_tensors, args.include_missing_continuous_channel,
-                                                                             args.imputation_method_for_continuous_fields)]
-        args.tensor_maps_in.extend(multi_field_tensor_map)
 
     args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
-        args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file, args.continuous_file_column,
-                                                                             args.output_tensors.pop(0), args.continuous_file_normalize))
+        args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file,
+                                                                             args.continuous_file_column,
+                                                                             args.output_tensors.pop(0),
+                                                                             args.continuous_file_normalize,
+                                                                             args.continuous_file_discretization_bounds))
     args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
 
     np.random.seed(args.random_seed)
 
-    logging.info(f"Command Line was:{command_line}")
-    logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
+    logging.info(f"Command Line was: {command_line}")
+    logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
