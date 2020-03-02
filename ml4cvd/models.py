@@ -682,7 +682,7 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
         tm = to_process.pop()
         visited[tm] += 1
         if visited[tm] > len(tms):
-            raise ValueError('Cycle detected in parent structure.')
+            raise ValueError('Problem detected in parent structure. Could be cycle or missing parent.')
         if not tm.parents or set(tm.parents) <= set(final):
             final.append(tm)
         else:
