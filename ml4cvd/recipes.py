@@ -9,14 +9,13 @@ import logging
 import numpy as np
 import pandas as pd
 from functools import reduce
-from scipy.stats import mode
 from operator import itemgetter
-from joblib import Parallel, delayed
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
-from ml4cvd.defines import EPS, TENSOR_EXT
+from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
+from ml4cvd.TensorMap import Interpretation
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
@@ -41,7 +40,7 @@ def run(args):
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
-        elif "explore" == args.mode:
+        elif 'explore' == args.mode:
             explore(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
@@ -106,7 +105,6 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
-
 def _init_tdict_for_explore(tmaps):
     # Iterate through tmaps and initialize dict in which to store tensors,
     # error types, and fpath
@@ -125,7 +123,7 @@ def _init_tdict_for_explore(tmaps):
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    ld = [] # list of dicts
+    ld = []  # list of dicts
     dependents = {}
 
     for gen in generators:
@@ -144,7 +142,7 @@ def _tensors_to_df(args):
                             tensor = tm.postprocess_tensor(tensor, augment=False)
 
                             # Get the item inside the np.array as a scalar
-                            #tensor = tensor.item
+                            # tensor = tensor.item
 
                             # Append tensor to dict
                             if tm.channel_map:
@@ -172,7 +170,7 @@ def _tensors_to_df(args):
                 logging.info(f"OSError {e}")
 
             # Append list of dicts with tdict
-            ld.append(tdict)  
+            ld.append(tdict)
 
     # Now we have a list of dicts where each dict has {tmaps:values} and
     # each HD5 -> one dict in the list
@@ -187,7 +185,6 @@ def _tensors_to_df(args):
 
         # Convert list of dicts into dataframe and concatenate to big df
         df = pd.concat([df, pd.DataFrame(dl)], axis=1)
-
 
     # Remove duplicate columns: error_types, fpath
     df = df.loc[:, ~df.columns.duplicated()]
@@ -230,13 +227,13 @@ def explore(args):
 
     # Check if any tmaps are categorical
     interpretation = "categorical"
-    if interpretation in [tm.group for tm in tmaps]:
+    if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
 
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
 
             # Iterate through tmaps
-            for tm in [tm for tm in tmaps if tm.group is interpretation]:
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]:
                 counts = []
                 counts_missing = []
 
@@ -250,7 +247,7 @@ def explore(args):
                     key = tm.name
                     counts.append(df_cur[key].sum())
                     counts_missing.append(df_cur[key].isna().sum())
-            
+
                 # Append list with missing counts
                 counts.append(counts_missing[0])
 
@@ -258,15 +255,13 @@ def explore(args):
                 counts.append(sum(counts))
 
                 # Create list of row names
-                cm_names = [cm for cm in tm.channel_map] \
-                           + [f"missing", f"total"]
+                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
 
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
 
                 # Add new column: percent of all counts
-                df_stats["fraction_of_total"] = df_stats["counts"] \
-                                                / df_stats.loc[f"total"]["counts"]
-                
+                df_stats["fraction_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"]
+
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(args.output_folder,
                             f"{args.id}/{fpath_prefix}_{interpretation}_{tm.name}_{df_str}.csv")
@@ -275,14 +270,14 @@ def explore(args):
 
     # Check if any tmaps are continuous
     interpretation = "continuous"
-    if interpretation in [tm.group for tm in tmaps]:
+    if Interpretation.CONTINUOUS in [tm.interpretation for tm in tmaps]:
 
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
-            
+
             # Iterate through tmaps
-            for tm in [tm for tm in tmaps if tm.group is interpretation]:
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CONTINUOUS]:
 
                 # Iterate through channel maps
                 if tm.channel_map:
@@ -320,16 +315,16 @@ def explore(args):
                         f"{args.id}/{fpath_prefix}_{interpretation}_{df_str}.csv")
             df_stats.to_csv(fpath)
             logging.info(f"Saved summary stats of {interpretation} tmaps to {fpath}")
-    
+
     # Check if any tmaps are strings
     interpretation = "string"
-    if interpretation in [tm.group for tm in tmaps]:
+    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
 
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
             df_stats = pd.DataFrame()
 
             # Iterate through tmaps
-            for tm in [tm for tm in tmaps if tm.group is interpretation]:
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.LANGUAGE]:
 
                 # Iterate through channel maps
                 if tm.channel_map:
@@ -337,7 +332,7 @@ def explore(args):
                         stats = dict()
                         key = (tm.name, cm)
                         stats["count"] = df_cur[key].count()
-                        stats["count_unique"] = len(df_cur[key].value_counts()) 
+                        stats["count_unique"] = len(df_cur[key].value_counts())
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
                         stats["missing_fraction"] = stats["missing"] / stats["total"]
@@ -346,7 +341,7 @@ def explore(args):
                     stats = dict()
                     key = tm.name
                     stats["count"] = df_cur[key].count()
-                    stats["count_unique"] = len(df_cur[key].value_counts()) 
+                    stats["count_unique"] = len(df_cur[key].value_counts())
                     stats["missing"] = df_cur[key].isna().sum()
                     stats["total"] = len(df_cur[key])
                     stats["missing_fraction"] = stats["missing"] / stats["total"]
@@ -385,7 +380,7 @@ def test_multimodal_multitask(args):
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
-  
+
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
@@ -860,4 +855,4 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
 
 if __name__ == '__main__':
     args = parse_args()
-    run(args)
+    run(args)  # back to the top
