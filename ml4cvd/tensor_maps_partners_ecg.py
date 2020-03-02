@@ -154,6 +154,18 @@ TMAPS[task] = TensorMap(task,
                             key="patientid", tensor_type=float),
                         shape=(1,))
 
+task = "partners_ecg_patientfirstname"
+TMAPS[task] = TensorMap(task,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientfirstname", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_patientlastname"
+TMAPS[task] = TensorMap(task,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientlastname", tensor_type=str),
+                        shape=(1,))
+
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
