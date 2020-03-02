@@ -131,11 +131,14 @@ def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
         raise ValueError(f"Skipping TensorMap {tm.name} not found in Apollo.")
 
 def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
-    with open(fpath, mode="r") as f:
-        reader = csv.reader(f)
-        next(reader)
-        cross_reference_dict = {int(rows[0]):None for rows in reader}
-    return cross_reference_dict
+    try:
+        with open(fpath, mode="r") as f:
+            reader = csv.reader(f)
+            next(reader)
+            cross_reference_dict = {int(rows[0]):None for rows in reader}
+        return cross_reference_dict
+    except FileNotFoundError:
+        return {}
 
 task = "partners_ecg_patientid_cross_reference_apollo"
 TMAPS[task] = TensorMap(task,
@@ -152,6 +155,18 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="patientid", tensor_type=float),
+                        shape=(1,))
+
+task = "partners_ecg_patientfirstname"
+TMAPS[task] = TensorMap(task,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientfirstname", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_patientlastname"
+TMAPS[task] = TensorMap(task,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientlastname", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_date"
