@@ -83,10 +83,10 @@ fi
 
 ################### SCRIPT BODY ##########################################
 
-if ! docker pull ${DOCKER_IMAGE}; then
-    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-    exit 1;
-fi
+#if ! docker pull ${DOCKER_IMAGE}; then
+#    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
+#    exit 1;
+#fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
