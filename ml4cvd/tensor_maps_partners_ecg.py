@@ -1,4 +1,5 @@
-from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
+from ml4cvd.TensorMap import (TensorMap, no_nans, str2date
+        make_range_validator, Interpretation)
 
 def _resample_voltage(voltage):
     if len(voltage) == 5000:
@@ -27,7 +28,6 @@ TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         group='continuous',
                                         tensor_from_file=make_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
-
 
 
 def make_voltage_attr(volt_attr: str = ""):
