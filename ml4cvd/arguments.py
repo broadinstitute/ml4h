@@ -65,6 +65,8 @@ def parse_args():
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
+    parser.add_argument('--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
+                        help='Bin boundaries to use to discretize a continuous TensorMap read from a file.')
     parser.add_argument('--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.')
     parser.add_argument('--continuous_field_ids', nargs='*', default=[], type=int,
@@ -147,7 +149,7 @@ def parse_args():
     parser.add_argument('--max_models', default=16, type=int,
                         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.')
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
-    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
     parser.add_argument('--anneal_rate', default=1.0, type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=10, type=float, help='Annealing offset in epochs of loss terms during training')
     parser.add_argument('--anneal_max', default=1.0, type=float, help='Annealing maximum value')
@@ -197,8 +199,11 @@ def _process_args(args):
     args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
-        args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file, args.continuous_file_column,
-                                                                             args.output_tensors.pop(0), args.continuous_file_normalize))
+        args.tensor_maps_out.append(generate_continuous_tensor_map_from_file(args.continuous_file,
+                                                                             args.continuous_file_column,
+                                                                             args.output_tensors.pop(0),
+                                                                             args.continuous_file_normalize,
+                                                                             args.continuous_file_discretization_bounds))
     args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
 
     np.random.seed(args.random_seed)
