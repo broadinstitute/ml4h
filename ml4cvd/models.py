@@ -423,10 +423,6 @@ class ResidualBlock:
             regularization: str,
             regularization_rate: float,
             dilate: bool,
-            pool_type: str,
-            pool_x: int,
-            pool_y: int,
-            pool_z: int,
     ):
         block_size = len(filters_per_conv)
         conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
@@ -437,7 +433,6 @@ class ResidualBlock:
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
         self.adds = [Add() for _ in range(block_size - 1)]
-        self.pool = _pool_layers_from_kind_and_dimension(dimension, pool_type, 1, pool_x, pool_y, pool_z)[0]
         residual_conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.residual_convs = [residual_conv_layer(filters=filters_per_conv, kernel_size=_one_by_n_kernel(dimension)) for _ in range(block_size - 1)]
 
@@ -450,7 +445,6 @@ class ResidualBlock:
             if add is not None and res is not None:  # Do not residual add the input
                 x = adder([x, previous])
             previous = x
-        x = self.pool(x)
         return x
 
 
@@ -593,23 +587,24 @@ class ConvEncoder(Encoder):
         self.res_block = ResidualBlock(
             dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=conv_x,
             conv_y=conv_y, conv_z=conv_z, activation=activation, normalization=normalization,
-            regularization=regularization, regularization_rate=regularization_rate, dilate=dilate, pool_type=pool_type,
-            pool_x=pool_x, pool_y=pool_y, pool_z=pool_z,
+            regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
         )
         self.dense_blocks = [DenseBlock(
             dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x, conv_y=conv_y,
             conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
             regularization=regularization, regularization_rate=regularization_rate
         ) for filters in filters_per_dense_block]
+        self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(filters_per_dense_block) + 1, pool_x, pool_y, pool_z)
 
     def __call__(self, x: Tensor) -> Tuple[Tensor, List[Tensor]]:
         intermediates = []
         x = self.res_block(x)
         intermediates.append(x)
-        for dense_block in self.dense_blocks:
+        x = self.pools[0](x)
+        for dense_block, pool in zip(self.dense_blocks, self.pools[1:]):
             x = dense_block(x)
             intermediates.append(x)
-            # TODO: add pooling
+            x = pool(x)
         return x, intermediates
 
 
@@ -782,7 +777,7 @@ def make_multimodal_multitask_model(
                 upsample_x=pool_x,
                 upsample_y=pool_y,
                 upsample_z=pool_z,
-                u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm]],
+                u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
             )
         else:
             decoders[tm] = DenseDecoder(
