@@ -717,6 +717,7 @@ def make_multimodal_multitask_model(
         optimizer: str = 'adam',
         **kwargs
 ) -> Model:
+    tensor_maps_out = parent_sort(tensor_maps_out)
     u_connect = u_connect or defaultdict(set)
     opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)

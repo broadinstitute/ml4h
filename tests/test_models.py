@@ -57,11 +57,11 @@ def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[Tenso
     m.fit(data, steps_per_epoch=1, epochs=2)
 
 
-class TestMakeMultimodalMultitaskModel:
-    """
-    TODO: test parents
-    """
+def _rotate(a: List, n: int):
+    return a[-n:] + a[:-n]
 
+
+class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         'input_tmaps',
         MULTIMODAL_UP_TO_4D,
@@ -155,9 +155,12 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_shapes_correct([SEGMENT_IN], [SEGMENT_OUT], m)
 
-
-def _rotate(a: List, n: int):
-    return a[-n:] + a[:-n]
+    @pytest.mark.parametrize(
+        'output_tmaps',
+        [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
+    )
+    def test_parents(self, output_tmaps):
+        assert_shapes_correct([TMAPS_UP_TO_4D[-1]], output_tmaps)
 
 
 @pytest.mark.parametrize(
