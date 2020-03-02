@@ -23,40 +23,6 @@ from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNES
 For now, all we will map `group` in TensorMap to `source` in tensor_path and `name` to `name`
 """
 
-def _compress_data(hf, name, data, dtype, method='zstd',
-                  compression_opts=19):
-    # Define codec
-    codec = numcodecs.zstd.Zstd(level=compression_opts)
-
-    # If data is string, encode to bytes
-    if dtype == 'str':
-        data_compressed = codec.encode(data.encode())
-        dsize = len(data.encode())
-    else:
-        data_compressed = codec.encode(data)
-        dsize = len(data) * data.itemsize
-
-    # Save data to hdf5
-    dat = hf.create_dataset(name=name, data=np.void(data_compressed))
-
-    # Set attributes
-    dat.attrs['method']              = method
-    dat.attrs['compression_level']   = compression_opts
-    dat.attrs['len']                 = len(data)
-    dat.attrs['uncompressed_length'] = dsize
-    dat.attrs['compressed_length']   = len(data_compressed)
-    dat.attrs['dtype'] = dtype
-   
-
-def _decompress_data(data_compressed, dtype):
-    codec = numcodecs.zstd.Zstd() 
-    data_decompressed = codec.decode(data_compressed)
-    if dtype == 'str':
-        data = data_decompressed.decode()
-    else:
-        data = np.frombuffer(data_decompressed, dtype)
-    return data
-
 
 def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
     tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)

@@ -141,7 +141,7 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.normalize_and_validate(tensor)
+                            tensor = tm.postprocess_tensor(tensor, augment=False)
 
                             # Get the item inside the np.array as a scalar
                             #tensor = tensor.item

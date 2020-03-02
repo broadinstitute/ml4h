@@ -1,10 +1,45 @@
 import csv
+import numcodecs
 import numpy as np
 from typing import Dict
 from ml4cvd.TensorMap import (TensorMap, no_nans, str2date,
         make_range_validator, Interpretation)
 from ml4cvd.defines import ECG_REST_AMP_LEADS
 from ml4cvd.tensor_maps_by_hand import TMAPS
+
+
+def _compress_data(hf, name, data, dtype, method='zstd', compression_opts=19):
+    # Define codec
+    codec = numcodecs.zstd.Zstd(level=compression_opts)
+
+    # If data is string, encode to bytes
+    if dtype == 'str':
+        data_compressed = codec.encode(data.encode())
+        dsize = len(data.encode())
+    else:
+        data_compressed = codec.encode(data)
+        dsize = len(data) * data.itemsize
+
+    # Save data to hdf5
+    dat = hf.create_dataset(name=name, data=np.void(data_compressed))
+
+    # Set attributes
+    dat.attrs['method']              = method
+    dat.attrs['compression_level']   = compression_opts
+    dat.attrs['len']                 = len(data)
+    dat.attrs['uncompressed_length'] = dsize
+    dat.attrs['compressed_length']   = len(data_compressed)
+    dat.attrs['dtype'] = dtype
+   
+
+def _decompress_data(data_compressed, dtype):
+    codec = numcodecs.zstd.Zstd() 
+    data_decompressed = codec.decode(data_compressed)
+    if dtype == 'str':
+        data = data_decompressed.decode()
+    else:
+        data = np.frombuffer(data_decompressed, dtype)
+    return data
 
 
 def _resample_voltage(voltage):
