@@ -7,7 +7,7 @@ import os
 import time
 import logging
 import numpy as np
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Iterable, Union, Optional, TypeVar, Set, Sequence
 from abc import ABC, abstractmethod
 
@@ -668,8 +668,26 @@ class ConvDecoder(Decoder):
             x = upsample(x)
         intermediate = [intermediates[tm][0] for tm in self.u_connect_parents]
         x = concatenate(intermediate + [x]) if intermediate else x
-        # x = self.upsample(x)  # TODO: necessary?
         return self.conv_label(x)
+
+
+def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
+    """
+    Parents will always appear after their children after sorting
+    """
+    to_process = tms[:]
+    final: List[TensorMap] = []
+    visited = Counter()
+    while to_process:
+        tm = to_process.pop()
+        visited[tm] += 1
+        if visited[tm] > len(tms):
+            raise ValueError('Cycle detected in parent structure.')
+        if set(tm.parents) <= set(final):
+            final.append(tm)
+        else:
+            to_process.insert(0, tm)
+    return final
 
 
 def make_multimodal_multitask_model(

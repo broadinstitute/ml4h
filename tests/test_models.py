@@ -4,9 +4,9 @@ import numpy as np
 import tensorflow as tf
 from typing import List, Optional, Dict, Tuple, Generator
 
-from ml4cvd.models import make_multimodal_multitask_model
+from ml4cvd.models import make_multimodal_multitask_model, parent_sort
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT
+from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
 DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
@@ -154,3 +154,24 @@ class TestMakeMultimodalMultitaskModel:
             **params,
         )
         assert_shapes_correct([SEGMENT_IN], [SEGMENT_OUT], m)
+
+
+def _rotate(a: List, n: int):
+    return a[-n:] + a[:-n]
+
+
+@pytest.mark.parametrize(
+    'tmaps',
+    [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
+)
+def test_parent_sort(tmaps):
+    assert parent_sort(tmaps) == PARENT_TMAPS
+
+
+@pytest.mark.parametrize(
+    'tmaps',
+    [_rotate(CYCLE_PARENTS, i) for i in range(len(CYCLE_PARENTS))],
+)
+def test_parent_sort_cycle(tmaps):
+    with pytest.raises(ValueError):
+        parent_sort(tmaps)

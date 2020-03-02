@@ -26,3 +26,15 @@ TMAPS = {
     tmap.name: tmap
     for tmap in CONTINUOUS_TMAPS + CATEGORICAL_TMAPS
 }
+PARENT_TMAPS = [
+    TensorMap(f'parent_test_{i}', shape=(1,), interpretation=Interpretation.CONTINUOUS)
+    for i in range(3)
+]
+for i in range(len(PARENT_TMAPS)):
+    PARENT_TMAPS[i].parents = PARENT_TMAPS[:i]
+CYCLE_PARENTS = [
+    TensorMap(f'parent_test_cycle_{i}', shape=(1,), interpretation=Interpretation.CONTINUOUS)
+    for i in range(3)
+]
+for i in range(len(CYCLE_PARENTS)):
+    CYCLE_PARENTS[i].parents = [CYCLE_PARENTS[i - 1]]  # 0th tmap will be child of last
