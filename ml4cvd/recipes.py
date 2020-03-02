@@ -15,7 +15,7 @@ from joblib import Parallel, delayed
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
-from ml4cvd.defines import DataSetType, EPS, TENSOR_EXT
+from ml4cvd.defines import EPS, TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv

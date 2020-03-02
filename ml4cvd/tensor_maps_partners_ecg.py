@@ -1,5 +1,11 @@
-from ml4cvd.TensorMap import (TensorMap, no_nans, str2date
+import csv
+import numpy as np
+from typing import Dict
+from ml4cvd.TensorMap import (TensorMap, no_nans, str2date,
         make_range_validator, Interpretation)
+from ml4cvd.defines import ECG_REST_AMP_LEADS
+from ml4cvd.tensor_maps_by_hand import TMAPS
+
 
 def _resample_voltage(voltage):
     if len(voltage) == 5000:
@@ -25,7 +31,7 @@ def make_voltage(population_normalize: float = None):
 
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         shape=(2500, 12),
-                                        group='continuous',
+                                        interpretation=Interpretation.CONTINUOUS,
                                         tensor_from_file=make_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
@@ -39,7 +45,7 @@ def make_voltage_attr(volt_attr: str = ""):
     return get_voltage_attr_from_file
 
 TMAPS["voltage_len"] = TensorMap("voltage_len",
-                                 group="continuous",
+                                 interpretation=Interpretation.CONTINUOUS,
                                  tensor_from_file=make_voltage_attr(volt_attr="len"),
                                  shape=(12,),
                                  channel_map=ECG_REST_AMP_LEADS)
@@ -72,16 +78,15 @@ def make_partners_ecg_tensor(key: str, tensor_type = float):
 
 task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(task,
-                        group="string",
-                        dtype=DataSetType.STRING,
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="read_md_clean", tensor_type=str),
                         shape=(1,))
 
+
 task = "partners_ecg_read_pc_raw"
 TMAPS[task] = TensorMap(task,
-                        group="string",
-                        dtype=DataSetType.STRING,
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="read_pc_clean", tensor_type=str),
                         shape=(1,))
@@ -99,8 +104,7 @@ def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
 
 task = "partners_ecg_patientid_cross_reference_apollo"
 TMAPS[task] = TensorMap(task,
-                        group="string",
-                        dtype=DataSetType.STRING,
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="patientid", tensor_type=float),
                         shape=(1,),
@@ -110,40 +114,35 @@ TMAPS[task].cross_reference = create_cross_reference_dict()
 
 task = "partners_ecg_patientid"
 TMAPS[task] = TensorMap(task,
-                        group="string",
-                        dtype=DataSetType.STRING,
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="patientid", tensor_type=float),
                         shape=(1,))
 
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(task,
-                        group="string",
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="acquisitiondate", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_dob"
 TMAPS[task] = TensorMap(task,
-                        group="string",
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="dateofbirth", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_sampling_frequency"
 TMAPS[task] = TensorMap(task,
-                        group="continuous",
-                        dtype=DataSetType.STRING,
+                        interpretation=Interpretation.CONTINUOUS,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="ecgsamplebase", tensor_type=float),
                         shape=(1,))
 
-group = "continuous"
-
 task = "partners_ecg_rate"
 TMAPS[task] = TensorMap(task,
-                        group=group,
-                        dtype=DataSetType.CONTINUOUS,
+                        interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(
@@ -153,8 +152,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(task,
-                        group=group,
-                        dtype=DataSetType.CONTINUOUS,
+                        interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(
@@ -164,8 +162,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_pr"
 TMAPS[task] = TensorMap(task,
-                        group=group,
-                        dtype=DataSetType.CONTINUOUS,
+                        interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(
@@ -175,8 +172,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_qt"
 TMAPS[task] = TensorMap(task,
-                        group=group,
-                        dtype=DataSetType.CONTINUOUS,
+                        interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(
@@ -186,8 +182,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(task,
-                        group=group,
-                        dtype=DataSetType.CONTINUOUS,
+                        interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(
@@ -198,7 +193,7 @@ TMAPS[task] = TensorMap(task,
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
-                        group=group,
+                        interpretation=interpretation,
                         dtype=DataSetType.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
@@ -209,7 +204,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_qrs_norm"
 TMAPS[task] = TensorMap(task,
-                        group=group,
+                        interpretation=interpretation,
                         dtype=DataSetType.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
@@ -220,7 +215,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_pr_norm"
 TMAPS[task] = TensorMap(task,
-                        group=group,
+                        interpretation=interpretation,
                         dtype=DataSetType.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
@@ -231,7 +226,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_qt_norm"
 TMAPS[task] = TensorMap(task,
-                        group=group,
+                        interpretation=interpretation,
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'mean': 390.995792, 'std': 50.923113},
@@ -242,7 +237,7 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_qtc_norm"
 TMAPS[task] = TensorMap(task,
-                        group=group,
+                        interpretation=interpretation,
                         loss='logcosh',
                         metrics=['mse'],
                         normalization={'std': 39.762255, 'mean': 446.505327},

@@ -28,9 +28,9 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
 
     # Add import statements to .py
     if write_imports:
-        py_file.write(f"from ml4cvd.TensorMap import TensorMap\n")
+        py_file.write(f"from ml4cvd.TensorMap import TensorMap, Interpretation\n")
         py_file.write(f"from ml4cvd.tensor_maps_by_hand import TMAPS\n")
-        py_file.write(f"from ml4cvd.tensor_from_file import {TENSOR_FUNC_NAME}\n\n")
+        py_file.write(f"from ml4cvd.tensor_maps_partners_ecg import {TENSOR_FUNC_NAME}\n\n")
 
     for label in label_maps:
         cm = '{'
@@ -46,7 +46,7 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
         cm += '}'
 
         for key in keys_in_hd5:
-            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}'] = TensorMap('{PREFIX}_{key}_{label}', group='categorical', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(key='{key}', dict_of_list = {label_maps[label]})) \n\n")
+            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}'] = TensorMap('{PREFIX}_{key}_{label}', interpretation=Interpretation.CATEGORICAL, channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(key='{key}', dict_of_list = {label_maps[label]})) \n\n")
 
 
 def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
