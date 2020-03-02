@@ -992,8 +992,8 @@ def make_multimodal_multitask_model(
         except ValueError as e:
             logging.info(f'Loaded model weights, but got ValueError in model loading: {str(e)}')
         logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
-
-    m.compile(optimizer=opt, loss=[tm.loss for tm in tensor_maps_out])
+    m.compile(optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
+              metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
     m.summary()
     return m
 

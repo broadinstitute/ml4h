@@ -2,7 +2,8 @@ import os
 import pytest
 import numpy as np
 import tensorflow as tf
-from typing import List, Optional, Dict, Tuple, Generator
+from itertools import cycle
+from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4cvd.models import make_multimodal_multitask_model, parent_sort
 from ml4cvd.TensorMap import TensorMap
@@ -35,12 +36,12 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
 TrainType = Dict[str, np.ndarray]  # TODO: better name
 
 
-def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], n: int = 5) -> Generator[Tuple[TrainType, TrainType], None, None]:
-    return (({tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
-            {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},) for _ in range(n))
+def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]) -> Iterator[Tuple[TrainType, TrainType]]:
+    return cycle([({tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
+                   {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},)])
 
 
-def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None):
+def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None):
     if m is None:
         m = make_multimodal_multitask_model(
             input_tmaps,
@@ -54,7 +55,11 @@ def assert_shapes_correct(input_tmaps: List[TensorMap], output_tmaps: List[Tenso
         assert tensor.shape[1:] == tmap.shape
         assert tensor.shape[1:] == tmap.shape
     data = make_training_data(input_tmaps, output_tmaps)
-    m.fit(data, steps_per_epoch=1, epochs=2)
+    history = m.fit(data, steps_per_epoch=2, epochs=2, validation_data=data, validation_steps=2)
+    for tmap in output_tmaps:
+        for metric in tmap.metrics:
+            name = f'{tmap.output_name()}_{metric}' if type(metric) == str else f'{tmap.output_name()}_{metric.__name__}'
+            assert name in history.history
 
 
 def _rotate(a: List, n: int):
@@ -71,7 +76,7 @@ class TestMakeMultimodalMultitaskModel:
         MULTIMODAL_UP_TO_4D,
     )
     def test_multimodal(self, input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]):
-        assert_shapes_correct(input_tmaps, output_tmaps)
+        assert_model_trains(input_tmaps, output_tmaps)
 
     @pytest.mark.parametrize(
         'input_tmap',
@@ -82,7 +87,7 @@ class TestMakeMultimodalMultitaskModel:
         TMAPS_UP_TO_4D,
         )
     def test_unimodal_md_to_nd(self, input_tmap: TensorMap, output_tmap: TensorMap):
-        assert_shapes_correct([input_tmap], [output_tmap])
+        assert_model_trains([input_tmap], [output_tmap])
 
     @pytest.mark.parametrize(
         'input_tmap',
@@ -142,7 +147,7 @@ class TestMakeMultimodalMultitaskModel:
             u_connect={tmap: {tmap, }},
             **params,
         )
-        assert_shapes_correct([tmap], [tmap], m)
+        assert_model_trains([tmap], [tmap], m)
 
     def test_u_connect_segment(self):
         params = DEFAULT_PARAMS.copy()
@@ -153,14 +158,14 @@ class TestMakeMultimodalMultitaskModel:
             u_connect={SEGMENT_IN: {SEGMENT_OUT, }},
             **params,
         )
-        assert_shapes_correct([SEGMENT_IN], [SEGMENT_OUT], m)
+        assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
 
     @pytest.mark.parametrize(
         'output_tmaps',
         [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
     )
     def test_parents(self, output_tmaps):
-        assert_shapes_correct([TMAPS_UP_TO_4D[-1]], output_tmaps)
+        assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps)
 
 
 @pytest.mark.parametrize(
