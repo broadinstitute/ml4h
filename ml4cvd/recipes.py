@@ -332,7 +332,7 @@ def explore(args):
                         stats = dict()
                         key = (tm.name, cm)
                         stats["count"] = df_cur[key].count()
-                        stats["count_unique"] = len(df_cur[key].value_counts()
+                        stats["count_unique"] = len(df_cur[key].value_counts())
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
                         stats["missing_fraction"] = stats["missing"] / stats["total"]
