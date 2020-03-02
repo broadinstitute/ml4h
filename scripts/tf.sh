@@ -118,4 +118,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 -v /data/:/data/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install numcodecs /home/${USER}/repos/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/repos/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
