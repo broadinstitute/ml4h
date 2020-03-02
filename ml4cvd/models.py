@@ -367,6 +367,97 @@ def sampling(args):
     return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
 
+def _get_last_layer(named_layers):
+    max_index = -1
+    max_layer = ''
+    for k in named_layers:
+        cur_index = int(k.split('_')[-1])
+        if max_index < cur_index:
+            max_index = cur_index
+            max_layer = k
+    return named_layers[max_layer]
+
+
+def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
+    conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
+    dilation_rate = 1
+    conv_layer_functions = []
+    for i, c in enumerate(conv_layers):
+        for _ in range(inner_loop):
+            if dilate:
+                dilation_rate = 1 << i
+            conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
+
+    return conv_layer_functions
+
+
+def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
+    if name is not None:
+        x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
+    else:
+        x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
+    x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+    x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+    return _get_last_layer(layers)
+
+
+def _conv_block_new(x: K.placeholder,
+                    layers: Dict[str, K.placeholder],
+                    conv_layers: List[Layer],
+                    pool_layers: List[Layer],
+                    dimension: int,
+                    activation: str,
+                    normalization: str,
+                    regularization: str,
+                    regularization_rate: float,
+                    residual_convolution_layer: Layer):
+    pool_diff = len(conv_layers) - len(pool_layers)
+
+    for i, conv_layer in enumerate(conv_layers):
+        residual = x
+        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
+        if i >= pool_diff:
+            x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](x)
+            if residual_convolution_layer is not None:
+                residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
+        if residual_convolution_layer is not None:
+            if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
+            else:
+                residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
+    return x
+
+
+def _dense_block(x: K.placeholder,
+                 layers: Dict[str, K.placeholder],
+                 block_size: int,
+                 conv_layers: List[Layer],
+                 pool_layers: List[Layer],
+                 dimension: int,
+                 activation: str,
+                 normalization: str,
+                 regularization: str,
+                 regularization_rate: float,
+                 tm: Optional[TensorMap] = None):
+    name_prefix = "{tm.input_name()}_" if tm else ""
+    for i, conv_layer in enumerate(conv_layers):
+        layers[f"{name_prefix}Conv_{str(len(layers))}"] = conv_layer(x)
+        layers[f"{name_prefix}Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
+        layers[f"{name_prefix}Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(_get_last_layer(layers))
+        layers[f"{name_prefix}Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(_get_last_layer(layers))
+        if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
+            x = layers[f"{name_prefix}Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](_get_last_layer(layers))
+            dense_connections = [_get_last_layer(layers)]
+        else:
+            dense_connections += [_get_last_layer(layers)]
+            x = layers[f"{name_prefix}concatenate{JOIN_CHAR}{str(len(layers))}"] = tf.keras.layers.Concatenate(axis=CHANNEL_AXIS)(dense_connections[:])
+    return _get_last_layer(layers)
+
+
 def _variational_dense_layer(x: K.placeholder,
                              layers: Dict[str, K.placeholder],
                              units: int,
@@ -381,6 +472,81 @@ def _variational_dense_layer(x: K.placeholder,
     mu, log_var = KLDivergenceLayer()([mu, log_var])
     sampled = Lambda(sampling)([mu, log_var])
     return sampled, mu, log_var
+
+
+def make_variational_multimodal_multitask_model(
+        tensor_maps_in: List[TensorMap] = None,
+        tensor_maps_out: List[TensorMap] = None,
+        activation: str = None,
+        dense_layers: List[int] = None,
+        dropout: float = None,
+        mlp_concat: bool = None,
+        conv_layers: List[int] = None,
+        max_pools: List[int] = None,
+        dense_blocks: List[int] = None,
+        block_size: List[int] = None,
+        conv_type: str = None,
+        conv_normalize: str = None,
+        conv_regularize: str = None,
+        conv_x: int = None,
+        conv_y: int = None,
+        conv_z: int = None,
+        conv_dropout: float = None,
+        conv_width: int = None,
+        conv_dilate: bool = None,
+        pool_x: int = None,
+        pool_y: int = None,
+        pool_z: int = None,
+        pool_type: int = None,
+        padding: str = None,
+        learning_rate: float = None,
+        optimizer: str = 'radam',
+        **kwargs) -> Tuple[Model, Model, Model]:
+    """
+    variational version of make_multimodal_multitask_model
+    """
+    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    metric_dict = get_metric_dict(tensor_maps_out)
+    layers_dict = _get_custom_layers()
+    custom_dict = {**metric_dict, **layers_dict, type(opt).__name__: opt}
+    if 'model_file' in kwargs and kwargs['model_file'] is not None:
+        logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict)
+        m.summary()
+        logging.info("Loaded model file from: {}".format(kwargs['model_file']))
+        encoder = [i for i in m.layers if i.name == 'encoder']
+        decoder = [i for i in m.layers if i.name == 'decoder']
+        if not encoder or not decoder:
+            logging.warning('Encoder or decoder not found.')
+        return m, encoder[0], decoder[0]
+
+    input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
+    input_multimodal = []
+    channel_axis = -1
+    layers = {}
+
+    for j, tm in enumerate(tensor_maps_in):
+        if len(tm.shape) > 1:
+            conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
+            pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
+            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
+                                        conv_dropout, None)
+            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
+                                                                   block_size)
+            dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
+            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
+                                     conv_regularize, conv_dropout, tm)
+            input_multimodal.append(Flatten()(last_conv))
+        else:
+            mlp_input = input_tensors[j]
+            mlp = _dense_layer(mlp_input, layers, tm.annotation_units, activation, conv_normalize)
+            input_multimodal.append(mlp)
+    if len(input_multimodal) > 1:
+        multimodal_activation = concatenate(input_multimodal, axis=channel_axis)
+    elif len(input_multimodal) == 1:
+        multimodal_activation = input_multimodal[0]
+    else:
+        raise ValueError('No input activations.')
 
 
 Tensor = tf.Tensor
@@ -673,7 +839,7 @@ class ConvDecoder(Decoder):
 
 def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     """
-    Parents will always appear after their children after sorting
+    Parents will always appear before their children after sorting
     """
     to_process = tms[:]
     final: List[TensorMap] = []
