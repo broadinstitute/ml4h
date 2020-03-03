@@ -18,7 +18,7 @@ CATEGORICAL_TMAPS = [
 TMAPS_UP_TO_4D = CONTINUOUS_TMAPS[:-1] + CATEGORICAL_TMAPS[:-1]
 TMAPS_5D = CONTINUOUS_TMAPS[-1:] + CATEGORICAL_TMAPS[-1:]
 MULTIMODAL_UP_TO_4D = [list(x) for x in product(CONTINUOUS_TMAPS[:-1], CATEGORICAL_TMAPS[:-1])]
-SEGMENT_IN = TensorMap(f'2d_for_segment_in', shape=(32, 32, 1), interpretation=Interpretation.CONTINUOUS)
+SEGMENT_IN = TensorMap(f'2d_for_segment_in', shape=(32, 32, 1), interpretation=Interpretation.CONTINUOUS, metrics=['mse'])
 SEGMENT_OUT = TensorMap(f'2d_for_segment_out', shape=(32, 32, 2), interpretation=Interpretation.CATEGORICAL, channel_map={'yes': 0, 'no': 1})
 
 
