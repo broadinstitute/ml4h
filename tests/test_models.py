@@ -58,7 +58,8 @@ def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorM
     history = m.fit(data, steps_per_epoch=2, epochs=2, validation_data=data, validation_steps=2)
     for tmap in output_tmaps:
         for metric in tmap.metrics:
-            name = f'{tmap.output_name()}_{metric}' if type(metric) == str else f'{tmap.output_name()}_{metric.__name__}'
+            metric_name = metric if type(metric) == str else metric.__name__
+            name = f'{tmap.output_name()}_{metric_name}' if len(output_tmaps) > 1 else metric_name
             assert name in history.history
 
 
