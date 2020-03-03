@@ -496,7 +496,6 @@ def make_variational_multimodal_multitask_model(
         conv_y: int = None,
         conv_z: int = None,
         conv_dropout: float = None,
-        conv_width: int = None,
         conv_dilate: bool = None,
         pool_x: int = None,
         pool_y: int = None,
@@ -582,7 +581,7 @@ def make_variational_multimodal_multitask_model(
 
         if len(tm.shape) > 1:
             all_filters = conv_layers + dense_blocks
-            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
+            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_x, conv_y, conv_z)
             num_upsamples = len([pool for pool in reversed(_get_layer_kind_sorted(layers, 'Pooling'))
                              if tm.input_name() in pool]) or 3  # TODO: arbitrary 3 upsamples if no matching input
             dense, reshape = _build_embed_adapters(tm, num_upsamples, pool_x, pool_y, pool_z)
@@ -598,7 +597,7 @@ def make_variational_multimodal_multitask_model(
             parented_activation = concatenate([latent_inputs] + [output_predictions[p.output_name()] for p in tm.parents])
             parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
-        elif tm.is_categorical_any():
+        elif tm.is_categorical():
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(latent_inputs)
         else:
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation,
