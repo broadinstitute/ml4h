@@ -219,11 +219,9 @@ def explore(args):
     df = _tensors_to_df(args)
 
     # Save dataframe to CSV
-    fpath = os.path.join(args.output_folder,
-                         f"{args.id}/tensors_all_union.csv")
+    fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
     df.to_csv(fpath, index=False)
-    fpath = os.path.join(args.output_folder,
-                         f"{args.id}/tensors_all_intersect.csv")
+    fpath = os.path.join(args.output_folder, args.id, "tensors_all_intersect.csv")
     df.dropna().to_csv(fpath, index=False)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
@@ -265,8 +263,8 @@ def explore(args):
                 df_stats["fraction_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"]
 
                 # Save parent dataframe to CSV on disk
-                fpath = os.path.join(args.output_folder,
-                            f"{args.id}/{fpath_prefix}_{interpretation}_{tm.name}_{df_str}.csv")
+                fpath = os.path.join(args.output_folder, args.id, 
+                            f"{fpath_prefix}_{interpretation}_{tm.name}_{df_str}.csv")
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {interpretation} {tm.name} tmaps to {fpath}")
 
@@ -313,8 +311,8 @@ def explore(args):
                     df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[key])])
 
             # Save parent dataframe to CSV on disk
-            fpath = os.path.join(args.output_folder,
-                        f"{args.id}/{fpath_prefix}_{interpretation}_{df_str}.csv")
+            fpath = os.path.join(args.output_folder, args.id,
+                        f"{fpath_prefix}_{interpretation}_{df_str}.csv")
             df_stats.to_csv(fpath)
             logging.info(f"Saved summary stats of {interpretation} tmaps to {fpath}")
 
@@ -350,8 +348,8 @@ def explore(args):
                     df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
 
             # Save parent dataframe to CSV on disk
-            fpath = os.path.join(args.output_folder,
-                        f"{args.id}/{fpath_prefix}_{interpretation}_{df_str}.csv")
+            fpath = os.path.join(args.output_folder, args.id,
+                        f"{fpath_prefix}_{interpretation}_{df_str}.csv")
             df_stats.to_csv(fpath)
             logging.info(f"Saved summary stats of {interpretation} tmaps to {fpath}")
 
