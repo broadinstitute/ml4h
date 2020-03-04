@@ -176,7 +176,7 @@ class TensorMapArrayCache:
 
     def _fix_key(self, key: Tuple[str, str]) -> Tuple[str, str]:
         file_path, name = key
-        return file_path, self.autoencode_names.get(name, default=name)
+        return file_path, self.autoencode_names.get(name, name)
 
     def __setitem__(self, key: Tuple[str, str], value) -> bool:
         """
