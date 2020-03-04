@@ -203,6 +203,14 @@ class TensorMapArrayCache:
     def average_fill(self):
         return np.mean(list(self.files_seen.values()) or [0]) / self.nrows
 
+    def __str__(self):
+        counts_by_tensor = Counter()
+        for _, name in self.files_seen.keys():
+            counts_by_tensor[name] += 1
+        hits = f"The cache has had {self.hits} hits."
+        fullness = ' - '.join(f"{name} has {counts_by_tensor} / {self.nrows} tensors" for name, count in counts_by_tensor.items())
+        return f'{hits} {fullness}.'
+
 
 class _MultiModalMultiTaskWorker:
 
@@ -238,8 +246,6 @@ class _MultiModalMultiTaskWorker:
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
         logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
 
-        self.all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
-
         self.dependents = {}
         self.idx = 0
 
@@ -265,7 +271,7 @@ class _MultiModalMultiTaskWorker:
 
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
-        if path in self.cache.failed_paths and self.all_cacheable:
+        if path in self.cache.failed_paths:
             self.epoch_stats['skipped_paths'] += 1
             return
         try:
@@ -298,9 +304,9 @@ class _MultiModalMultiTaskWorker:
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {self.true_epoch_len} paths.",
             f"{int(self.stats['Tensors presented']/self.stats['epochs'])} tensors were presented.",
-            f"The cache holds {len(self.cache)} out of a possible {self.true_epoch_len * (len(self.input_maps) + len(self.output_maps))} tensors and is {100 * self.cache.average_fill():.0f}% full.",
             f"So far there have been {self.cache.hits} cache hits.",
             f"{self.epoch_stats['skipped_paths']} paths were skipped because they previously failed.",
+            str(self.cache),
             f"{(time.time() - self.start):.2f} seconds elapsed.",
         ])
         logging.info(f"Worker {self.name} - In true epoch {self.stats['epochs']}:\n\t{info_string}")
