@@ -158,12 +158,12 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="patientid"),
                         shape=(1,))
 
-task = "partners_ecg_patientfirstname"
+task = "partners_ecg_firstname"
 TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
                         shape=(1,))
 
-task = "partners_ecg_patientlastname"
+task = "partners_ecg_lastname"
 TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
                         shape=(1,))
