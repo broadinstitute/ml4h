@@ -166,7 +166,7 @@ class TensorMapArrayCache:
             self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
         for tm in output_tms:
             if tm in input_tms:  # Useful for autoencoders
-                self.autoencode_names[tm.output_name()] = tm.output_name()
+                self.autoencode_names[tm.output_name()] = tm.input_name()
             else:
                 self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
         self.files_seen = Counter()  # name -> max position filled in cache
