@@ -174,12 +174,15 @@ class TensorMapArrayCache:
         self.hits = 0
         self.failed_paths: Set[str] = set()
 
+    def _fix_key(self, key: Tuple[str, str]) -> Tuple[str, str]:
+        file_path, name = key
+        return file_path, self.autoencode_names.get(name, default=name)
+
     def __setitem__(self, key: Tuple[str, str], value) -> bool:
         """
         :param key: should be a tuple file_path, name
         """
-        file_path, name = key
-        name = self.autoencode_names.get(name, default=name)
+        file_path, name = self._fix_key(key)
         if key in self.key_to_index:  # replace existing value
             self.data[name][self.key_to_index[key]] = value
             return True
@@ -194,14 +197,13 @@ class TensorMapArrayCache:
         """
         :param key: should be a tuple file_path, name
         """
-        file_path, name = key
-        name = self.autoencode_names.get(name, default=name)
+        file_path, name = self._fix_key(key)
         val = self.data[name][self.key_to_index[file_path, name]]
         self.hits += 1
         return val
 
     def __contains__(self, key: Tuple[str, str]):
-        return key in self.key_to_index
+        return self._fix_key(key) in self.key_to_index
 
     def __len__(self):
         return sum(self.files_seen.values())
