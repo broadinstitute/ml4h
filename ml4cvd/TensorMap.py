@@ -392,6 +392,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     """
     if tm.is_categorical() and not tm.is_discretized():
         index = 0
+        missing = True
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
             data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
@@ -400,13 +401,16 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 categorical_data[index] = 1.0
             else:
                 categorical_data = np.array(data)
+            missing = False
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
+            missing = False
         elif tm.path_prefix in hd5 and tm.channel_map is not None:
             for k in tm.channel_map:
                 if k in hd5[tm.path_prefix]:
                     categorical_data[tm.channel_map[k]] = 1.0
-        else:
+                    missing = False
+        if missing:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():
