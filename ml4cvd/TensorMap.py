@@ -405,7 +405,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         elif tm.path_prefix in hd5 and tm.channel_map is not None:
             for k in tm.channel_map:
                 if k in hd5[tm.path_prefix]:
-                    categorical_data[tm.channel_map[k]] = hd5[tm.path_prefix][k][0]
+                    categorical_data[tm.channel_map[k]] = 1.0
         else:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data

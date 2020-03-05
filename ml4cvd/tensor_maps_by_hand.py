@@ -448,6 +448,24 @@ TMAPS['cholesterol'] = TensorMap('30690_Cholesterol_0_0', Interpretation.CONTINU
 
 TMAPS['cigarettes'] = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
 TMAPS['alcohol'] = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
+
+
+def alcohol_channel_map(instance=0, array_idx=0):
+    return {
+        f'Alcohol-intake-frequency_Never_{instance}_{array_idx}': 0,
+        f'Alcohol-intake-frequency_Special-occasions-only_{instance}_{array_idx}': 1,
+        f'Alcohol-intake-frequency_One-to-three-times-a-month_{instance}_{array_idx}': 2,
+        f'Alcohol-intake-frequency_Once-or-twice-a-week_{instance}_{array_idx}': 3,
+        f'Alcohol-intake-frequency_Three-or-four-times-a-week_{instance}_{array_idx}': 4,
+        f'Alcohol-intake-frequency_Daily-or-almost-daily_{instance}_{array_idx}': 5,
+    }
+
+
+TMAPS['alcohol_0'] = TensorMap('alcohol_0', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_channel_map(instance=0))
+TMAPS['alcohol_1'] = TensorMap('alcohol_1', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_channel_map(instance=1))
+TMAPS['alcohol_2'] = TensorMap('alcohol_2', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_channel_map(instance=2))
+
+
 TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1498_Coffee-intake_0_0': 0},
                             normalization={'mean': 2.015086529948216, 'std': 2.0914960998390497}, annotation_units=1)
 TMAPS['water'] = TensorMap('1528_Water-intake_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1528_Water-intake_0_0': 0},
