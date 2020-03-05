@@ -410,7 +410,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 if k in hd5[tm.path_prefix]:
                     categorical_data[tm.channel_map[k]] = 1.0
                     missing = False
-                    logging.info(f'got something from channel map {k}')
+                    break
         if missing:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
