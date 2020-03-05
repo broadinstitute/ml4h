@@ -309,7 +309,6 @@ class _MultiModalMultiTaskWorker:
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {self.true_epoch_len} paths.",
             f"{int(self.stats['Tensors presented']/self.stats['epochs'])} tensors were presented.",
-            f"So far there have been {self.cache.hits} cache hits.",
             f"{self.epoch_stats['skipped_paths']} paths were skipped because they previously failed.",
             str(self.cache),
             f"{(time.time() - self.start):.2f} seconds elapsed.",
