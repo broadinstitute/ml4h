@@ -247,17 +247,17 @@ TMAPS[task] = TensorMap(task,
                         validator=make_range_validator(100, 800))
 
 
-def _str2date(d):
+def _partners_str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
         raise ValueError(f'Can not parse date: {d}')
-    return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+    return datetime.date(int(parts[2]), int(parts[1]), int(parts[0]))
 
 
 def get_partners_ecg_age(tm, hd5, dependents={}):
     birthday = _decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype'])
     acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
-    delta = _str2date(acquisition) - _str2date(birthday)
+    delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
     years = delta.days / 365.0
     logging.info(f'{birthday} axqusition {acquisition} delat {delta} years: {years}')
     return np.array([years])
