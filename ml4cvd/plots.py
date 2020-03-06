@@ -644,6 +644,7 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 
 def _plot_partners_ecg(data, args):
+    matplotlib.use( 'tkagg' )
     print('Data Keys: {}'.format(list(data.keys())))
     lead_names = list(data['voltage'].keys())
 
@@ -664,47 +665,154 @@ def _plot_partners_ecg(data, args):
     ax0.set_xlim(0, 1)
     ax0.set_ylim(0, 1)
 
-    ax0.text(0.0, 0.9, '{}, {}'.format(data['patientlastname'], data['patientfirstname']))
-    ax0.text(0.2, 0.9, 'ID: {}'.format(int(data['patientid'])))
-    ax0.text(0.4, 0.9, '{}'.format(data['sitename']))
+    ax0.text(0.0, 0.9, f"{data['lastname']}, {data['firstname']}")
+    ax0.text(0.0, 0.7, f"{data['age']} yr")
+    ax0.text(0.0, 0.6, f"{data['gender']}")
+    ax0.text(0.0, 0.4, f"Room: ")
+    ax0.text(0.0, 0.3, f"Loc: {data['location']}")
 
-    ax0.text(0.0, 0.7, '{} yr'.format(int(data['patientage'])))
-    ax0.text(0.0, 0.6, '{}'.format(data['gender']))
-    ax0.text(0.0, 0.4, 'Room: ')
-    ax0.text(0.0, 0.3, 'Loc: {}'.format(data['location']))
+    ax0.text(0.15, 0.9, f"ID: {data['patientid']}")
+    ax0.text(0.15, 0.7, f"Vent. rate                    {int(data['rate'])}    BPM")
+    ax0.text(0.15, 0.6, f"PR interval                {int(data['pr'])}       ms")
+    ax0.text(0.15, 0.5, f"QRS duration            {int(data['qrs'])}       ms")
+    ax0.text(0.15, 0.4, f"QT/QTc              {int(data['qt'])}/{int(data['qtc'])}       ms")
+    ax0.text(0.15, 0.3, f"P-R-T axes                    {int(data['paxis'])} {int(data['raxis'])} {int(data['taxis'])}")
 
+    ax0.text(0.4, 0.9, f"{data['sitename']}")
+    ax0.text(0.4, 0.3, f"{data['read_md_raw']}", wrap=True)
 
-    ax0.text(0.2, 0.7, 'Vent. rate                    {}    BPM'.format(data['rate']))
-    ax0.text(0.2, 0.6, 'PR interval                {}       ms'.format(data['pr']))
-    ax0.text(0.2, 0.5, 'QRS duration            {}       ms'.format(data['qrs']))
+    temp = np.array(data['voltage']['I'])
+    # print(data['voltage']['I'])
+    print(temp)
+    print(temp.shape)
 
-    ax0.text(0.2, 0.4, 'QT/QTc              {}/{}      ms'.format(data['qt'], data['qtc']))
+    # middle signal panel
 
-    # axes = data['paxis'] + ' ' \
-    #        + data['raxis'] + ' ' \
-    #        + data['taxis']
-    # ax0.text(0.2, 0.3, 'P-R-T axes                    ' + axes)
+    all_leads = np.zeros((6, 2500)) + np.nan
+    print(all_leads.shape)
+    halfgap = 5
+
+    # all_leads[0][0:625 - halfgap] = ecg_signal[lead_names.index('I')][
+    #                                0:625 - halfgap]
+    # all_leads[0][625 + halfgap:1250 - halfgap] = ecg_signal[
+    #                                                 lead_names.index('aVR')][
+    #                                             625 + halfgap:1250 - halfgap]
+    # all_leads[0][1250 + halfgap:1875 - halfgap] = ecg_signal[
+    #                                                  lead_names.index('V1')][
+    #                                              1250 + halfgap:1875 - halfgap]
+    # all_leads[0][1875 + halfgap:2500] = ecg_signal[lead_names.index('V4')][
+    #                                    1875 + halfgap:2500]
     #
-    # ax0.text(0.4, 0.3, '' + data['diagnosis_md'])
+    # all_leads[1][0:625 - halfgap] = ecg_signal[lead_names.index('II')][
+    #                                0:625 - halfgap]
+    # all_leads[1][625 + halfgap:1250 - halfgap] = ecg_signal[
+    #                                                 lead_names.index('aVL')][
+    #                                             625 + halfgap:1250 - halfgap]
+    # all_leads[1][1250 + halfgap:1875 - halfgap] = ecg_signal[
+    #                                                  lead_names.index('V2')][
+    #                                              1250 + halfgap:1875 - halfgap]
+    # all_leads[1][1875 + halfgap:2500] = ecg_signal[lead_names.index('V5')][
+    #                                    1875 + halfgap:2500]
+    #
+    # all_leads[2][0:625 - halfgap] = ecg_signal[lead_names.index('III')][
+    #                                0:625 - halfgap]
+    # all_leads[2][625 + halfgap:1250 - halfgap] = ecg_signal[
+    #                                                 lead_names.index('aVF')][
+    #                                             625 + halfgap:1250 - halfgap]
+    # all_leads[2][1250 + halfgap:1875 - halfgap] = ecg_signal[
+    #                                                  lead_names.index('V3')][
+    #                                              1250 + halfgap:1875 - halfgap]
+    # all_leads[2][1875 + halfgap:2500] = ecg_signal[lead_names.index('V6')][
+    #                                    1875 + halfgap:2500]
+    #
+    # all_leads[3] = ecg_signal[lead_names.index('V1')]
+    # all_leads[4] = ecg_signal[lead_names.index('II')]
+    # all_leads[5] = ecg_signal[lead_names.index('V5')]
 
-    plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder'+IMAGE_EXT))
+    max_range = 1.5*max(
+        [np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in
+         all_leads])
+    print(f"MAX RANGE: {max_range}")
+    max_range = 2
+    ax1.set_xlim(-65, len(all_leads[0])+110)
+    ax1.set_ylim(0, 100+len(all_leads) * max_range)
+    offset = max_range
+    fs = 250
+
+    # Set vertical gridlines
+    for i, v in enumerate(np.arange(-65,len(all_leads[0]+110), 1./25*fs)):
+        ax1.axvline(v, lw=1 if i % 5 == 0 else 0.2, color='r') # 25mm/s
+
+    # Set horizontal gridlines
+    for i, v in enumerate(np.arange(0,offset*len(all_leads), 1./10*1000.)):
+        ax1.axhline(v, lw=1 if i % 5 == 0 else 0.2, color='r') # 10mm/mV
+
+    # Add text labels to ECG signal
+    # text_xoffset = 5
+    # text_yoffset = -350
+
+    for i in range(len(all_leads)):
+        this_offset = (len(all_leads) - 0.5 - i) * offset
+        ax1.plot(all_leads[i] + this_offset, color='black', linewidth = 0.375)
+    #     if i == 0:
+    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'I',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVR',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V1',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V4',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #     elif i == 1:
+    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'II',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVL',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V2',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V5',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #     elif i == 2:
+    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'III',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVF',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V3',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #         ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V6',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #     elif i == 3:
+    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V1',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #     elif i == 4:
+    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'II',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+    #     elif i == 5:
+    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V5',
+    #                  ha='left', va='top', weight='bold', fontsize=10)
+
+    ax1.tick_params(labelleft=False, labelbottom=False)
+    # print(len(all_leads[0]))
+
+    # plt.show()
+    # plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder'+IMAGE_EXT))
 
 
 def plot_partners_ecgs(args):
     '''
     Required tensors:
         partners_ecg_patientid
-        partners_ecg_patientfirstname
-        partners_ecg_patientlastname
+        partners_ecg_firstname
+        partners_ecg_lastname
+        partners_ecg_gender
+        partners_ecg_dob
+        partners_ecg_age
         partners_ecg_date
+        partners_ecg_sitename
+        partners_ecg_location
         partners_ecg_read_md_raw
         partners_ecg_read_pc_raw
         partners_ecg_voltage
-        partners_ecg_dob
-        partners_ecg_sitename
-        partners_ecg_gender
-        partners_ecg_location
-        partners_ecg_patientage
         partners_ecg_rate
         partners_ecg_pr
         partners_ecg_qrs
@@ -732,8 +840,10 @@ def plot_partners_ecgs(args):
                 for tm in tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
+
                         # Append tensor to dict
                         if tm.channel_map:
+                            print(tensor[tm.channel_map['I']])
                             for cm in tm.channel_map:
                                 tdict[tm.name][cm].append(
                                     tensor[tm.channel_map[cm]])
