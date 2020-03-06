@@ -1,4 +1,5 @@
 import csv
+import logging
 import numcodecs
 import numpy as np
 from typing import Dict
@@ -234,6 +235,29 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
                         shape=(1,),
                         validator=make_range_validator(100, 800))
+
+
+task = "partners_weight_lbs"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
+                        shape=(1,),
+                        validator=make_range_validator(100, 800))
+
+
+def get_partners_ecg_age(tm, hd5, dependents={}):
+    birthday_string = _decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype'])
+    logging.info(f'{birthday_string}')
+    return np.array(str(birthday_string))
+
+
+task = "partners_ecg_age"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        tensor_from_file=get_partners_ecg_age,
+                        shape=(1,))
 
 '''
 task = "partners_ecg_rate_norm"
