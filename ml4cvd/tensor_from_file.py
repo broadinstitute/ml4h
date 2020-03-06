@@ -412,10 +412,11 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
         else:
             for k in hd5[tm.path_prefix]:
                 if k in tm.channel_map:
+                    data = tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}/{k}/')
                     if random_roll:
-                        tensor[:, tm.channel_map[k]] = np.roll(hd5[tm.path_prefix][k], roll)
+                        tensor[:, tm.channel_map[k]] = np.roll(data, roll)
                     else:
-                        tensor[:, tm.channel_map[k]] = hd5[tm.path_prefix][k]
+                        tensor[:, tm.channel_map[k]] = data
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
