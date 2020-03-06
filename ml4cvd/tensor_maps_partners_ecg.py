@@ -48,12 +48,12 @@ def _resample_voltage(voltage):
     else:
         return voltage
 
+
 def make_voltage(population_normalize: float = None):
     def get_voltage_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for cm in tm.channel_map:
-            voltage = _decompress_data(data_compressed=hd5[cm][()],
-                                       dtype=hd5[cm].attrs['dtype'])
+            voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
             voltage = _resample_voltage(voltage)
             tensor[:, tm.channel_map[cm]] = voltage 
         if population_normalize is None:
@@ -78,6 +78,7 @@ def make_voltage_attr(volt_attr: str = ""):
             tensor[tm.channel_map[cm]] = hd5[cm].attrs[volt_attr]
         return tensor
     return get_voltage_attr_from_file
+
 
 TMAPS["voltage_len"] = TensorMap("voltage_len",
                                  interpretation=Interpretation.CONTINUOUS,
@@ -129,9 +130,11 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
                         shape=(1,))
 
+
 def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
     if int(tensor) not in tm.cross_reference:
         raise ValueError(f"Skipping TensorMap {tm.name} not found in Apollo.")
+
 
 def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
     try:
@@ -142,6 +145,7 @@ def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
         return cross_reference_dict
     except FileNotFoundError:
         return {}
+
 
 task = "partners_ecg_patientid_cross_reference_apollo"
 TMAPS[task] = TensorMap(task,
@@ -219,7 +223,6 @@ task = "partners_ecg_qt"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
-                        metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
                         shape=(1,),
                         validator=make_range_validator(100, 800))
@@ -228,7 +231,6 @@ task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
-                        metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
                         shape=(1,),
                         validator=make_range_validator(100, 800))
