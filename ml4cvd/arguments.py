@@ -18,7 +18,7 @@ import operator
 import datetime
 import numpy as np
 import multiprocessing
-from typing import Set, Dict
+from typing import Set, Dict, List, Optional
 from collections import defaultdict
 
 from ml4cvd.logger import load_config
@@ -186,6 +186,20 @@ def _get_tmap(name: str) -> TensorMap:
     return TMAPS[name]
 
 
+def _process_u_connect_args(u_connect: Optional[List[List]]) -> Dict[TensorMap, Set[TensorMap]]:
+    u_connect = u_connect or []
+    new_u_connect = defaultdict(set)
+    for connect_pair in u_connect:
+        tmap_key_in, tmap_key_out = connect_pair[0], connect_pair[1]
+        tmap_in, tmap_out = _get_tmap(tmap_key_in), _get_tmap(tmap_key_out)
+        if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
+            raise TypeError(f'u_connect of {tmap_in} {tmap_out} requires matching shapes besides channel dimension.')
+        if tmap_in.axes() < 2 or tmap_out.axes() < 2:
+            raise TypeError(f'Cannot u_connect 1d TensorMaps ({tmap_in} {tmap_out}).')
+        new_u_connect[tmap_in].add(tmap_out)
+    return new_u_connect
+
+
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
@@ -197,27 +211,7 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    new_u_connect: Dict[TensorMap, Set[TensorMap]] = defaultdict(set)
-    # TODO: make sure output layer does not have multiple input u_connections?
-    if args.u_connect is None:
-        args.u_connect = []
-    for connect_pair in args.u_connect:
-        tmap_key_in, tmap_key_out = connect_pair[0], connect_pair[1]
-        if tmap_key_in not in args.input_tensors:
-            logging.warning(f'{tmap_key_in} provided in u_connect but not input_tensors. appending to input_tensors.')
-            args.input_tensors.append(tmap_key_in)
-        if tmap_key_out not in args.output_tensors:
-            logging.warning(f'{tmap_key_out} provided in u_connect but not input_tensors. appending to input_tensors.')
-            args.output_tensors.append(tmap_key_out)
-        tmap_in, tmap_out = _get_tmap(tmap_key_in), _get_tmap(tmap_key_out)
-        if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
-            raise TypeError(f'Cannot u_connect {tmap_in} {tmap_out} of different shapes.')
-        if tmap_in.axes() < 2 or tmap_out.axes() < 2:
-            raise TypeError(f'Cannot u_connect 1d TensorMaps.')
-        if any(tmap_out in con for con in new_u_connect.values()):
-            raise ValueError(f'{tmap_key_out} cannot be u_connected to multiple times.')
-        new_u_connect[tmap_in].add(tmap_out)
-    args.u_connect = new_u_connect
+    args.u_connect = _process_u_connect_args(args.u_connect)
     args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
     args.tensor_maps_out = []
     if args.continuous_file is not None:

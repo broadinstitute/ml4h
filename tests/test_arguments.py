@@ -32,7 +32,7 @@ class TestUConnect:
         assert inp == tmap
         assert out == {tmap, }
 
-    def test_bad_u(self, tmpdir):
+    def test_many_to_one(self, tmpdir):
         inp_key1 = '3d_cont'
         inp_key2 = '3d_cat'
         sys.argv = [
@@ -43,8 +43,10 @@ class TestUConnect:
             '--u_connect', inp_key1, inp_key1,
             '--u_connect', inp_key2, inp_key1,
         ]
-        with pytest.raises(ValueError):
-            parse_args()
+        args = parse_args()
+        assert len(args.u_connect) == 2
+        assert args.u_connect[MOCK_TMAPS[inp_key1]] == {MOCK_TMAPS[inp_key1]}
+        assert args.u_connect[MOCK_TMAPS[inp_key2]] == {MOCK_TMAPS[inp_key1]}
 
     def test_one_to_many(self, tmpdir):
         key1 = '3d_cont'
