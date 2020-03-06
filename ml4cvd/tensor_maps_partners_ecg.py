@@ -159,14 +159,23 @@ TMAPS[task] = TensorMap(task,
 
 task = "partners_ecg_patientfirstname"
 TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="patientfirstname", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_patientlastname"
 TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="patientlastname", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_patientage"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="patientage", tensor_type=float),
                         shape=(1,))
 
 task = "partners_ecg_date"
@@ -181,6 +190,27 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
                         tensor_from_file=make_partners_ecg_tensor(
                             key="dateofbirth", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_gender"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="gender", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_sitename"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="sitename", tensor_type=str),
+                        shape=(1,))
+
+task = "partners_ecg_location"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(
+                            key="location", tensor_type=str),
                         shape=(1,))
 
 task = "partners_ecg_sampling_frequency"

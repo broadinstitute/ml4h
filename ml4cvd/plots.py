@@ -23,6 +23,7 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
@@ -642,7 +643,74 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
+def _plot_partners_ecg(data, args):
+    print('Data Keys: {}'.format(list(data.keys())))
+    lead_names = list(data['voltage'].keys())
+
+    # Set up plot
+    fig = plt.figure('ECG plot',
+                     constrained_layout=True,
+                     figsize=(13, 10))
+    gs = GridSpec(ncols=1, nrows=3, figure=fig,
+                  height_ratios=[8, 20, 1])
+    ax0 = fig.add_subplot(gs[0])
+    ax1 = fig.add_subplot(gs[1])
+    ax2 = fig.add_subplot(gs[2])
+    fig.set_size_inches(11, 8.5)
+    plt.rcParams["font.family"] = "Times New Roman"
+
+    # top information panel
+    ax0.axis('off')
+    ax0.set_xlim(0, 1)
+    ax0.set_ylim(0, 1)
+
+    ax0.text(0.0, 0.9, '{}, {}'.format(data['patientlastname'], data['patientfirstname']))
+    ax0.text(0.2, 0.9, 'ID: {}'.format(int(data['patientid'])))
+    ax0.text(0.4, 0.9, '{}'.format(data['sitename']))
+
+    ax0.text(0.0, 0.7, '{} yr'.format(int(data['patientage'])))
+    ax0.text(0.0, 0.6, '{}'.format(data['gender']))
+    ax0.text(0.0, 0.4, 'Room: ')
+    ax0.text(0.0, 0.3, 'Loc: {}'.format(data['location']))
+
+
+    ax0.text(0.2, 0.7, 'Vent. rate                    {}    BPM'.format(data['rate']))
+    ax0.text(0.2, 0.6, 'PR interval                {}       ms'.format(data['pr']))
+    ax0.text(0.2, 0.5, 'QRS duration            {}       ms'.format(data['qrs']))
+
+    ax0.text(0.2, 0.4, 'QT/QTc              {}/{}      ms'.format(data['qt'], data['qtc']))
+
+    # axes = data['paxis'] + ' ' \
+    #        + data['raxis'] + ' ' \
+    #        + data['taxis']
+    # ax0.text(0.2, 0.3, 'P-R-T axes                    ' + axes)
+    #
+    # ax0.text(0.4, 0.3, '' + data['diagnosis_md'])
+
+    plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder'+IMAGE_EXT))
+
+
 def plot_partners_ecgs(args):
+    '''
+    Required tensors:
+        partners_ecg_patientid
+        partners_ecg_patientfirstname
+        partners_ecg_patientlastname
+        partners_ecg_date
+        partners_ecg_read_md_raw
+        partners_ecg_read_pc_raw
+        partners_ecg_voltage
+        partners_ecg_dob
+        partners_ecg_sitename
+        partners_ecg_gender
+        partners_ecg_location
+        partners_ecg_patientage
+        partners_ecg_rate
+        partners_ecg_pr
+        partners_ecg_qrs
+        partners_ecg_qt
+        partners_ecg_qtc
+    '''
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
     tensor_maps_in = args.tensor_maps_in
 
@@ -651,7 +719,7 @@ def plot_partners_ecgs(args):
     for tm in tensor_maps_in:
         if tm.channel_map:
             for cm in tm.channel_map:
-                tdict[tm.name].update({(tm.name, cm): list()})
+                tdict[tm.name].update({cm: list()})
         else:
             tdict[tm.name].update({tm.name: list()})
 
@@ -659,13 +727,14 @@ def plot_partners_ecgs(args):
     for tp in tensor_paths:
         try:
             with h5py.File(tp, 'r') as hd5:
+                print('HD5 Keys: {}'.format(list(hd5.keys())))
                 for tm in tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
                         # Append tensor to dict
                         if tm.channel_map:
                             for cm in tm.channel_map:
-                                tdict[tm.name][(tm.name, cm)].append(
+                                tdict[tm.name][cm].append(
                                     tensor[tm.channel_map[cm]])
                         else:
                             tdict[tm.name][tm.name].append(tensor)
@@ -673,18 +742,26 @@ def plot_partners_ecgs(args):
                         # Could not obtain tensor, append nan
                         if tm.channel_map:
                             for cm in tm.channel_map:
-                                tdict[tm.name][(tm.name, cm)].append(np.nan)
+                                tdict[tm.name][cm].append(np.nan)
                         else:
                             tdict[tm.name][tm.name].append(np.nan)
                         logging.exception(e)
         except:
             logging.exception(f"Broken tensor at: {tp}")
 
-    # TODO plot ecgs w/ data in tdict and save to output folder / run_id
+    # gather data for each ecg together to plot
+    for i, tp in enumerate(tensor_paths):
+        data = {}
+        for tm in tensor_maps_in:
+            key = tm.name.split('partners_ecg_')[1]
+            if tm.channel_map:
+                data.update({key: {}})
+                for cm in tm.channel_map:
+                    data[key].update({cm: tdict[tm.name][cm][i]})
+            else:
+                data.update({key: tdict[tm.name][tm.name][i]})
 
-    plt.figure(figsize=(5, 5))
-    plt.title('THIS IS A PLACEHOLDER')
-    plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder'+IMAGE_EXT))
+        _plot_partners_ecg(data, args)
 
 
 def _ecg_rest_traces(hd5):
