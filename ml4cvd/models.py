@@ -401,16 +401,16 @@ def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int,
     return _get_last_layer(layers)
 
 
-def _conv_block_new(x: K.placeholder,
-                    layers: Dict[str, K.placeholder],
-                    conv_layers: List[Layer],
-                    pool_layers: List[Layer],
-                    dimension: int,
-                    activation: str,
-                    normalization: str,
-                    regularization: str,
-                    regularization_rate: float,
-                    residual_convolution_layer: Layer):
+def _conv_block(x: K.placeholder,
+                layers: Dict[str, K.placeholder],
+                conv_layers: List[Layer],
+                pool_layers: List[Layer],
+                dimension: int,
+                activation: str,
+                normalization: str,
+                regularization: str,
+                regularization_rate: float,
+                residual_convolution_layer: Layer):
     pool_diff = len(conv_layers) - len(pool_layers)
 
     for i, conv_layer in enumerate(conv_layers):
@@ -532,8 +532,8 @@ def make_variational_multimodal_multitask_model(
         if len(tm.shape) > 1:
             conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_x, conv_y, conv_z, padding, conv_dilate)
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block_new(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
-                                        conv_dropout, None)
+            last_conv = _conv_block(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
+                                    conv_dropout, None)
             dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_x, conv_y, conv_z, padding, False,
                                                                    block_size)
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
@@ -729,15 +729,15 @@ class DenseBlock:
 
     def __call__(self, x: Tensor) -> Tensor:
         dense_connections = [x]
-        for conv, activation, norm, reg, concat in zip(
+        for convolve, activate, normalize, regularize, concat in zip(
                 self.conv_layers, self.activations, self.normalizations, self.regularizations, self.concatenations):
-            x = reg(norm(activation(conv(x))))
+            x = normalize(regularize(activate(convolve(x))))
             dense_connections.append(x)
             x = concat(dense_connections[:])  # [:] is necessary because of tf weirdness
         return x
 
 
-class MLP(Encoder):
+class FullyConnectedBlock(Encoder):
 
     def __init__(
             self,
@@ -760,10 +760,10 @@ class MLP(Encoder):
         self.parents = parents or []
 
     def __call__(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
-        for dense, norm, activation, reg in zip(self.denses, self.norms, self.activations, self.regularizations):
-            x = norm(reg(activation(dense(x))))
+        for dense, normalize, activate, regularize in zip(self.denses, self.norms, self.activations, self.regularizations):
+            x = normalize(regularize(activate(dense(x))))
         if self.is_encoder:
-            return x, []  # No intermediates from an MLP
+            return x, []
         return x
 
 
@@ -778,7 +778,7 @@ class FlattenAll(BottleNeck):
             regularization: str,
             regularization_rate: float,
     ):
-        self.mlp = MLP(
+        self.fully_connected = FullyConnectedBlock(
             widths=widths,
             activation=activation,
             normalization=normalization,
@@ -795,7 +795,7 @@ class FlattenAll(BottleNeck):
             y = concatenate(y)
         else:
             y = y[0]
-        y = self.mlp(y)
+        y = self.fully_connected(y)
         return {tm: restructure(y) for tm, restructure in self.restructures.items()}
 
 
@@ -876,8 +876,7 @@ class DenseDecoder(Decoder):
             parents: List[TensorMap] = None,
     ):
         self.parents = parents
-        activation = 'softmax' if tensor_map_out.is_categorical() else 'linear'
-        self.dense = Dense(units=tensor_map_out.shape[0], name=tensor_map_out.output_name(), activation=activation)
+        self.dense = Dense(units=tensor_map_out.shape[0], name=tensor_map_out.output_name(), activation=tensor_map_out.activation)
 
     def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
         x = Concatenate()([x] + [decoder_outputs[parent] for parent in self.parents]) if self.parents else x
@@ -1013,7 +1012,7 @@ def make_multimodal_multitask_model(
                 pool_z=pool_z,
             )
         else:
-            encoders[tm] = MLP(
+            encoders[tm] = FullyConnectedBlock(
                 widths=[tm.annotation_units],
                 activation=activation,
                 normalization=normalization,
