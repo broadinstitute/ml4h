@@ -154,7 +154,7 @@ class TensorMapArrayCache:
     Caches numpy arrays created by tensor maps up to a maximum number of bytes
     """
 
-    def __init__(self, max_size, input_tms: List[TensorMap], output_tms: List[TensorMap], max_rows: int):
+    def __init__(self, max_size, input_tms: List[TensorMap], output_tms: List[TensorMap], max_rows: Optional[int] = np.inf):
         input_tms = [tm for tm in input_tms if tm.cacheable]
         output_tms = [tm for tm in output_tms if tm.cacheable]
         self.max_size = max_size
