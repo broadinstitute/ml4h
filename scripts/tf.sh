@@ -93,7 +93,7 @@ WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
 
 # Let anyone run this script
 USER=$(whoami)
-
+WORKDIR=$(pwd)
 mkdir -p /home/${USER}/jupyter/
 chmod o+w /home/${USER}/jupyter/
 mkdir -p /home/${USER}/jupyter/root/
@@ -118,4 +118,4 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 -v /home/${USER}/jupyter/root/:/root/ \
 -v /home/${USER}/:/home/${USER}/ \
 -v /data/:/data/ \
-${DOCKER_IMAGE} /bin/bash -c "pip install /home/${USER}/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
