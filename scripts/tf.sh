@@ -115,7 +115,6 @@ LAUNCH_MESSAGE
 ${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 --rm \
 --ipc=host \
--v /home/${USER}/jupyter/root/:/root/ \
--v /home/${USER}/:/home/${USER}/ \
+-v ${WORKDIR}/:${WORKDIR}/ \
 -v /data/:/data/ \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
