@@ -481,9 +481,9 @@ TMAPS['alcohol_status_2'] = TensorMap('alcohol_status_2', Interpretation.CATEGOR
 
 def alcohol_meals_map(instance=0, array_idx=0):
     return {
-        f'Alcohol-drinker-status_No_{instance}_{array_idx}': 0,
-        f'Alcohol-drinker-status_It-varies_{instance}_{array_idx}': 1,
-        f'Alcohol-drinker-status_Yes_{instance}_{array_idx}': 2,
+        f'Alcohol-usually-taken-with-meals_No_{instance}_{array_idx}': 0,
+        f'Alcohol-usually-taken-with-meals_It-varies_{instance}_{array_idx}': 1,
+        f'Alcohol-usually-taken-with-meals_Yes_{instance}_{array_idx}': 2,
     }
 
 
