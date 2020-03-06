@@ -668,18 +668,17 @@ class ResidualBlock:
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
-        self.adds = [Add() for _ in range(block_size - 1)]
         residual_conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
-        self.residual_convs = [residual_conv_layer(filters=filters_per_conv, kernel_size=_one_by_n_kernel(dimension)) for _ in range(block_size - 1)]
+        self.residual_convs = [residual_conv_layer(filters=filters_per_conv[0], kernel_size=_one_by_n_kernel(dimension)) for _ in range(block_size - 1)]
 
     def __call__(self, x: Tensor) -> Tensor:
         previous = x
-        for conv, activation, norm, reg, adder, res in zip(
-                self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.adds, [None] + self.residual_convs
+        for convolve, activate, normalize, regularize, one_by_n_convolve in zip(
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.residual_convs
         ):
-            x = reg(norm(activation(conv(x))))
-            if add is not None and res is not None:  # Do not residual add the input
-                x = adder([x, previous])
+            x = regularize(normalize(activate(convolve(x))))
+            if one_by_n_convolve is not None:  # Do not residual add the input
+                x = Add()([one_by_n_convolve(x), previous])
             previous = x
         return x
 

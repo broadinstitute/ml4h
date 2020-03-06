@@ -10,7 +10,7 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
-DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
+DEFAULT_PARAMS = {
     'activation': 'relu',
     'dense_layers': [4, 2],
     'dense_blocks': [5, 3],
@@ -19,7 +19,7 @@ DEFAULT_PARAMS = {  # TODO: should this come from the default arg parse?
     'learning_rate': 1e-3,
     'optimizer': 'adam',
     'conv_type': 'conv',
-    'conv_layers': [4],
+    'conv_layers': [6, 5, 3],
     'conv_x': 3,
     'conv_y': 3,
     'conv_z': 2,
