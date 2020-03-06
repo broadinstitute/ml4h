@@ -37,7 +37,7 @@ TMAPS['ecg_block'] = TensorMap('ecg_block', Interpretation.CATEGORICAL, channel_
                              loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'))
 
 TMAPS['ecg_rest_next_char'] = TensorMap('ecg_rest_next_char', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
-TMAPS['ecg_rest_text'] = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(100, len(ECG_CHAR_2_IDX)), channel_map={'context': 0, 'alphabet': 1}, dependent_map=TMAPS['ecg_rest_next_char'])
+TMAPS['ecg_rest_text'] = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(100, len(ECG_CHAR_2_IDX)), path_prefix='ukb_ecg_rest', channel_map={'context': 0, 'alphabet': 1}, dependent_map=TMAPS['ecg_rest_next_char'])
 
 TMAPS['p-axis'] = TensorMap('PAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
                             normalization={'mean': 48.7, 'std': 23.1})

@@ -522,7 +522,7 @@ TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', Interpretation.CONTINUOUS, ten
 def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
     for channel in tm.channel_map:
-        if channel in str(hd5['ecg_rest_text'][0]):
+        if channel in str(hd5['ukb_ecg_rest/ecg_rest_text'][0]):
             categorical_data[tm.channel_map[channel]] = 1.0
             return categorical_data
     if 'no_' + tm.name in tm.channel_map:
