@@ -711,6 +711,7 @@ def plot_partners_ecgs(args):
         partners_ecg_qt
         partners_ecg_qtc
     '''
+
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
     tensor_maps_in = args.tensor_maps_in
 

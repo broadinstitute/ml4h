@@ -103,27 +103,30 @@ def make_partners_ecg_label(key: str = "read_md_clean",
     return get_partners_ecg_label
 
 
-def make_partners_ecg_tensor(key: str, tensor_type = float):
+def make_partners_ecg_tensor(key: str):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         tensor = _decompress_data(data_compressed=hd5[key][()],
                                   dtype=hd5[key].attrs['dtype'])
-        return np.array(tensor_type(tensor))
+        if tm.interpretation == Interpretation.LANGUAGE:
+            return np.array(str(tensor))
+        elif tm.interpretation == Interpretation.CONTINUOUS:
+            return np.array(float(tensor))
+        elif tm.interpretation == Interpretation.CATEGORICAL:
+            return np.array(float(tensor))
     return get_partners_ecg_tensor
 
 
 task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="read_md_clean", tensor_type=str),
+                        tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
                         shape=(1,))
 
 
 task = "partners_ecg_read_pc_raw"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="read_pc_clean", tensor_type=str),
+                        tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
                         shape=(1,))
 
 def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
@@ -143,8 +146,7 @@ def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
 task = "partners_ecg_patientid_cross_reference_apollo"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="patientid", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="patientid"),
                         shape=(1,),
                         validator=validator_cross_reference)
 
@@ -153,8 +155,19 @@ TMAPS[task].cross_reference = create_cross_reference_dict()
 task = "partners_ecg_patientid"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="patientid", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="patientid"),
+                        shape=(1,))
+
+task = "partners_ecg_firstname"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
+                        shape=(1,))
+
+task = "partners_ecg_lastname"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
                         shape=(1,))
 
 task = "partners_ecg_patientfirstname"
@@ -181,15 +194,13 @@ TMAPS[task] = TensorMap(task,
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="acquisitiondate", tensor_type=str),
+                        tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
                         shape=(1,))
 
 task = "partners_ecg_dob"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="dateofbirth", tensor_type=str),
+                        tensor_from_file=make_partners_ecg_tensor(key="dateofbirth"),
                         shape=(1,))
 
 task = "partners_ecg_gender"
@@ -216,8 +227,7 @@ TMAPS[task] = TensorMap(task,
 task = "partners_ecg_sampling_frequency"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="ecgsamplebase", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase"),
                         shape=(1,))
 
 task = "partners_ecg_rate"
@@ -225,8 +235,7 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="ventricularrate", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
                         shape=(1,),
                         validator=make_range_validator(10, 200))
 
@@ -235,8 +244,7 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="qrsduration", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="qrsduration"),
                         shape=(1,),
                         validator=make_range_validator(20, 400))
 
@@ -245,8 +253,7 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="printerval", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="printerval"),
                         shape=(1,),
                         validator=make_range_validator(50, 500))
 
@@ -255,8 +262,7 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="qtinterval", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
                         shape=(1,),
                         validator=make_range_validator(100, 800))
 
@@ -265,8 +271,7 @@ TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
                         metrics=['mse'],
-                        tensor_from_file=make_partners_ecg_tensor(
-                            key="qtcorrected", tensor_type=float),
+                        tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
                         shape=(1,),
                         validator=make_range_validator(100, 800))
 
