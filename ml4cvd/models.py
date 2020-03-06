@@ -8,8 +8,7 @@ import time
 import logging
 import numpy as np
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Iterable, Union, Optional, TypeVar, Set, Sequence
-from abc import ABC, abstractmethod
+from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable
 
 # Keras imports
 import tensorflow as tf
@@ -640,28 +639,9 @@ def make_variational_multimodal_multitask_model(
 
 
 Tensor = tf.Tensor
-
-
-class Encoder(ABC):
-    @abstractmethod
-    def __call__(self, x: Tensor) -> Tuple[Tensor, List[Tensor]]:
-        """ Output is (pre-embed, intermediates for u_connect) """
-        pass
-
-
-class Decoder(ABC):
-    @abstractmethod
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]], decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
-        """Input is embed, intermediates for u_connect, previous decoder outputs for hierarchies"""
-        pass
-
-
-class BottleNeck(ABC):
-    """BottleNeck should name one of its layers 'embed'."""
-    @abstractmethod
-    def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
-        """Output is embedding for each output TensorMap"""
-        pass
+Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
+Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
+BottleNeck = Callable[[Dict[TensorMap, Tensor]], Dict[TensorMap, Tensor]]
 
 
 class ResidualBlock:
@@ -737,7 +717,7 @@ class DenseBlock:
         return x
 
 
-class FullyConnectedBlock(Encoder):
+class FullyConnectedBlock:
 
     def __init__(
             self,
@@ -767,7 +747,7 @@ class FullyConnectedBlock(Encoder):
         return x
 
 
-class FlattenAll(BottleNeck):
+class FlattenAll:
 
     def __init__(
             self,
@@ -817,7 +797,7 @@ class FlatToStructure:
         return self.reshape(self.norm(self.activation(self.dense(x))))
 
 
-class ConvEncoder(Encoder):
+class ConvEncoder:
 
     def __init__(
             self,
@@ -869,7 +849,7 @@ def _calc_start_shape(num_blocks: int, output_shape: Tuple[int, ...], upsample_r
     return tuple((shape // rate**num_blocks for shape, rate in zip(output_shape, upsample_rates)))
 
 
-class DenseDecoder(Decoder):
+class DenseDecoder:
     def __init__(
             self,
             tensor_map_out: TensorMap,
@@ -883,7 +863,7 @@ class DenseDecoder(Decoder):
         return self.dense(x)
 
 
-class ConvDecoder(Decoder):
+class ConvDecoder:
     def __init__(
             self,
             *,
@@ -1102,7 +1082,7 @@ def _make_multimodal_multitask_model(
         encoder_outputs[tm] = y
         encoder_intermediates[tm] = intermediates
 
-    bottle_neck_outputs: Dict[TensorMap, Tensor] = bottle_neck(encoder_outputs)
+    bottle_neck_outputs = bottle_neck(encoder_outputs)
 
     decoder_outputs = {}
     for tm, decoder in decoders.items():
