@@ -259,7 +259,6 @@ def get_partners_ecg_age(tm, hd5, dependents={}):
     acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
     delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
     years = delta.days / 365.0
-    logging.info(f'{birthday} axqusition {acquisition} delat {delta} years: {years}')
     return np.array([years])
 
 
