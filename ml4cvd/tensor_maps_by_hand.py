@@ -466,6 +466,31 @@ TMAPS['alcohol_1'] = TensorMap('alcohol_1', Interpretation.CATEGORICAL, path_pre
 TMAPS['alcohol_2'] = TensorMap('alcohol_2', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_channel_map(instance=2))
 
 
+def alcohol_status_map(instance=0, array_idx=0):
+    return {
+        f'Alcohol-drinker-status_Never_{instance}_{array_idx}': 0,
+        f'Alcohol-drinker-status_Previous_{instance}_{array_idx}': 1,
+        f'Alcohol-drinker-status_Current_{instance}_{array_idx}': 2,
+    }
+
+
+TMAPS['alcohol_status_0'] = TensorMap('alcohol_status_0', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_status_map(instance=0))
+TMAPS['alcohol_status_1'] = TensorMap('alcohol_status_1', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_status_map(instance=1))
+TMAPS['alcohol_status_2'] = TensorMap('alcohol_status_2', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_status_map(instance=2))
+
+
+def alcohol_meals_map(instance=0, array_idx=0):
+    return {
+        f'Alcohol-drinker-status_No_{instance}_{array_idx}': 0,
+        f'Alcohol-drinker-status_It-varies_{instance}_{array_idx}': 1,
+        f'Alcohol-drinker-status_Yes_{instance}_{array_idx}': 2,
+    }
+
+
+TMAPS['alcohol_meals_0'] = TensorMap('alcohol_meals_0', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_meals_map(instance=0))
+TMAPS['alcohol_meals_1'] = TensorMap('alcohol_meals_1', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_meals_map(instance=1))
+TMAPS['alcohol_meals_2'] = TensorMap('alcohol_meals_2', Interpretation.CATEGORICAL, path_prefix='categorical', channel_map=alcohol_meals_map(instance=2))
+
 TMAPS['coffee'] = TensorMap('1498_Coffee-intake_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1498_Coffee-intake_0_0': 0},
                             normalization={'mean': 2.015086529948216, 'std': 2.0914960998390497}, annotation_units=1)
 TMAPS['water'] = TensorMap('1528_Water-intake_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'1528_Water-intake_0_0': 0},
