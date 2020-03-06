@@ -60,7 +60,7 @@ def make_voltage(population_normalize: float = None):
             tensor = tm.zero_mean_std1(tensor)
         else:
             tensor /= population_normalize 
-        return tensor
+        return tensor.T
     return get_voltage_from_file
 
 
