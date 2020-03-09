@@ -519,7 +519,7 @@ TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', Interpretation.CATEGORICAL, tensor
                                 loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
                                 channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
-                                     loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
+                                     loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor'),
                                      channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 
 TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', Interpretation.CONTINUOUS, tensor_from_file=_age_in_years_tensor('ecg_rest_date'), loss='logcosh',
