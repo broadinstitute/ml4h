@@ -499,12 +499,8 @@ def _make_rhythm_tensor(skip_poor=True):
         if skip_poor and 'Poor data quality' in ecg_interpretation:
             raise ValueError(f'Poor data quality skipped by {tm.name}.')
         for channel in tm.channel_map:
-            if channel in hd5['categorical']:
+            if channel.replace('_', ' ') in ecg_interpretation:
                 categorical_data[tm.channel_map[channel]] = 1.0
-                return categorical_data
-        for afib in ['Atrial fibrillation']:
-            if afib in ecg_interpretation:
-                categorical_data[tm.channel_map['Atrial_fibrillation']] = 1.0
                 return categorical_data
         for rhythm in ['sinus', 'Sinus']:
             if rhythm in ecg_interpretation:
