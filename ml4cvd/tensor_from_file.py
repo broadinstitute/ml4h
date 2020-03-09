@@ -482,12 +482,6 @@ def _get_lead_cm(length):
     return lead_cm, lead_weights
 
 
-TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                                                channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
-                                                             'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
-                                                dependent_map=TMAPS['ecg_median_1lead_categorical'])
-
-
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
