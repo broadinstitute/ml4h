@@ -60,7 +60,7 @@ def make_voltage(population_normalize: float = None):
             tensor = tm.zero_mean_std1(tensor)
         else:
             tensor /= population_normalize
-        return tensor.T
+        return tensor
     return get_voltage_from_file
 
 
@@ -206,6 +206,12 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
                         shape=(1,))
 
+task = "partners_ecg_time"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="acquisitiontime"),
+                        shape=(1,))
+
 task = "partners_ecg_sitename"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
@@ -218,10 +224,22 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="location"),
                         shape=(1,))
 
+task = "partners_ecg_location_name"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="locationname"),
+                        shape=(1,))
+
 task = "partners_ecg_sampling_frequency"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase"),
+                        shape=(1,))
+
+task = "partners_ecg_sampling_exponent"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        tensor_from_file=make_partners_ecg_tensor(key="ecgsampleexponent"),
                         shape=(1,))
 
 task = "partners_ecg_rate"

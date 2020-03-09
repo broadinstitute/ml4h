@@ -8,6 +8,7 @@ import glob
 import logging
 import hashlib
 import operator
+from datetime import datetime
 from textwrap import wrap
 from functools import reduce
 from multiprocessing import Pool
@@ -644,9 +645,7 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 
 def _plot_partners_ecg(data, args):
-    matplotlib.use( 'tkagg' )
-    print('Data Keys: {}'.format(list(data.keys())))
-    lead_names = list(data['voltage'].keys())
+    # print(f"DATA KEYS: {data.keys()}")
 
     # Set up plot
     fig = plt.figure('ECG plot',
@@ -661,141 +660,150 @@ def _plot_partners_ecg(data, args):
     plt.rcParams["font.family"] = "Times New Roman"
 
     # top information panel
+    dt = datetime.strptime(f"{data['date']} {data['time']}", '%m-%d-%Y %H:%M:%S')
+    dob = datetime.strptime(f"{data['dob']}", '%m-%d-%Y')
+    dob = f"{dob:%d-%b-%Y}".upper()
+
     ax0.axis('off')
     ax0.set_xlim(0, 1)
     ax0.set_ylim(0, 1)
 
-    ax0.text(0.0, 0.9, f"{data['lastname']}, {data['firstname']}")
-    ax0.text(0.0, 0.7, f"{data['age']} yr")
-    ax0.text(0.0, 0.6, f"{data['gender']}")
-    ax0.text(0.0, 0.4, f"Room: ")
-    ax0.text(0.0, 0.3, f"Loc: {data['location']}")
+    ax0.text(0.0, 0.9,   f"{data['lastname']}, {data['firstname']}".title(), weight='bold')
+    ax0.text(0.23, 0.9,  f"ID:{data['patientid']}", weight='bold')
+    ax0.text(0.385, 0.9, f"{dt:%d-%b-%Y %H:%M:%S}".upper(), weight='bold')
+    ax0.text(0.55, 0.9,  f"{data['sitename']}", weight='bold')
 
-    ax0.text(0.15, 0.9, f"ID: {data['patientid']}")
-    ax0.text(0.15, 0.7, f"Vent. rate                    {int(data['rate'])}    BPM")
-    ax0.text(0.15, 0.6, f"PR interval                {int(data['pr'])}       ms")
-    ax0.text(0.15, 0.5, f"QRS duration            {int(data['qrs'])}       ms")
-    ax0.text(0.15, 0.4, f"QT/QTc              {int(data['qt'])}/{int(data['qtc'])}       ms")
-    ax0.text(0.15, 0.3, f"P-R-T axes                    {int(data['paxis'])} {int(data['raxis'])} {int(data['taxis'])}")
+    ax0.text(0.0, 0.75, f"{dob} ({data['age']} yr)", weight='bold') # TODO age units
+    ax0.text(0.0, 0.67, f"{data['gender']}".title(), weight='bold')
+    ax0.text(0.0, 0.51, f"Room: ", weight='bold') # TODO room?
+    ax0.text(0.0, 0.43, f"Loc: {data['location']}", weight='bold')
 
-    ax0.text(0.4, 0.9, f"{data['sitename']}")
-    ax0.text(0.4, 0.3, f"{data['read_md_raw']}", wrap=True)
+    ax0.text(0.15, 0.75, f"Vent. rate", weight='bold')
+    ax0.text(0.15, 0.67, f"PR interval", weight='bold')
+    ax0.text(0.15, 0.59, f"QRS duration", weight='bold')
+    ax0.text(0.15, 0.51, f"QT/QTc", weight='bold')
+    ax0.text(0.15, 0.43, f"P-R-T axes", weight='bold')
 
-    temp = np.array(data['voltage']['I'])
-    # print(data['voltage']['I'])
-    print(temp)
-    print(temp.shape)
+    ax0.text(0.315, 0.75, f"{int(data['rate'])}", weight='bold', ha='right')
+    ax0.text(0.315, 0.67, f"{int(data['pr'])}", weight='bold', ha='right')
+    ax0.text(0.315, 0.59, f"{int(data['qrs'])}", weight='bold', ha='right')
+    ax0.text(0.315, 0.51, f"{int(data['qt'])}/{int(data['qtc'])}", weight='bold', ha='right')
+    ax0.text(0.315, 0.43, f"{int(data['paxis'])}   {int(data['raxis'])}", weight='bold', ha='right')
+
+    ax0.text(0.35, 0.75, f"BPM", weight='bold', ha='right')
+    ax0.text(0.35, 0.67, f"ms", weight='bold', ha='right')
+    ax0.text(0.35, 0.59, f"ms", weight='bold', ha='right')
+    ax0.text(0.35, 0.51, f"ms", weight='bold', ha='right')
+    ax0.text(0.35, 0.43, f"{int(data['taxis'])}", weight='bold', ha='right')
+
+    ax0.text(0.4, 0.43, f"{data['read_md_raw']}", wrap=True, weight='bold')
+
+    # TODO tensorize these values from XML
+    ax0.text(0.1, 0.23, f"Technician: {'placeholder'}", weight='bold')
+    ax0.text(0.1, 0.15, f"Test ind: {'placeholder'}", weight='bold')
+    ax0.text(0.4, 0,    f"Referred by: {'placeholder'}", weight='bold')
+    ax0.text(0.7, 0,    f"Electronically Signed By: {'placeholder'}", weight='bold')
+
 
     # middle signal panel
+    ecg_signal = data['voltage']
 
     all_leads = np.zeros((6, 2500)) + np.nan
-    print(all_leads.shape)
     halfgap = 5
 
-    # all_leads[0][0:625 - halfgap] = ecg_signal[lead_names.index('I')][
-    #                                0:625 - halfgap]
-    # all_leads[0][625 + halfgap:1250 - halfgap] = ecg_signal[
-    #                                                 lead_names.index('aVR')][
-    #                                             625 + halfgap:1250 - halfgap]
-    # all_leads[0][1250 + halfgap:1875 - halfgap] = ecg_signal[
-    #                                                  lead_names.index('V1')][
-    #                                              1250 + halfgap:1875 - halfgap]
-    # all_leads[0][1875 + halfgap:2500] = ecg_signal[lead_names.index('V4')][
-    #                                    1875 + halfgap:2500]
-    #
-    # all_leads[1][0:625 - halfgap] = ecg_signal[lead_names.index('II')][
-    #                                0:625 - halfgap]
-    # all_leads[1][625 + halfgap:1250 - halfgap] = ecg_signal[
-    #                                                 lead_names.index('aVL')][
-    #                                             625 + halfgap:1250 - halfgap]
-    # all_leads[1][1250 + halfgap:1875 - halfgap] = ecg_signal[
-    #                                                  lead_names.index('V2')][
-    #                                              1250 + halfgap:1875 - halfgap]
-    # all_leads[1][1875 + halfgap:2500] = ecg_signal[lead_names.index('V5')][
-    #                                    1875 + halfgap:2500]
-    #
-    # all_leads[2][0:625 - halfgap] = ecg_signal[lead_names.index('III')][
-    #                                0:625 - halfgap]
-    # all_leads[2][625 + halfgap:1250 - halfgap] = ecg_signal[
-    #                                                 lead_names.index('aVF')][
-    #                                             625 + halfgap:1250 - halfgap]
-    # all_leads[2][1250 + halfgap:1875 - halfgap] = ecg_signal[
-    #                                                  lead_names.index('V3')][
-    #                                              1250 + halfgap:1875 - halfgap]
-    # all_leads[2][1875 + halfgap:2500] = ecg_signal[lead_names.index('V6')][
-    #                                    1875 + halfgap:2500]
-    #
-    # all_leads[3] = ecg_signal[lead_names.index('V1')]
-    # all_leads[4] = ecg_signal[lead_names.index('II')]
-    # all_leads[5] = ecg_signal[lead_names.index('V5')]
+    all_leads[0][0:625 - halfgap] = ecg_signal['I'][0:625 - halfgap]
+    all_leads[0][625 + halfgap:1250 - halfgap] = ecg_signal['aVR'][625 + halfgap:1250 - halfgap]
+    all_leads[0][1250 + halfgap:1875 - halfgap] = ecg_signal['V1'][1250 + halfgap:1875 - halfgap]
+    all_leads[0][1875 + halfgap:2500] = ecg_signal['V4'][1875 + halfgap:2500]
 
-    max_range = 1.5*max(
-        [np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in
-         all_leads])
-    print(f"MAX RANGE: {max_range}")
-    max_range = 2
-    ax1.set_xlim(-65, len(all_leads[0])+110)
-    ax1.set_ylim(0, 100+len(all_leads) * max_range)
+    all_leads[1][0:625 - halfgap] = ecg_signal['II'][0:625 - halfgap]
+    all_leads[1][625 + halfgap:1250 - halfgap] = ecg_signal['aVL'][625 + halfgap:1250 - halfgap]
+    all_leads[1][1250 + halfgap:1875 - halfgap] = ecg_signal['V2'][1250 + halfgap:1875 - halfgap]
+    all_leads[1][1875 + halfgap:2500] = ecg_signal['V5'][1875 + halfgap:2500]
+
+    all_leads[2][0:625 - halfgap] = ecg_signal['III'][0:625 - halfgap]
+    all_leads[2][625 + halfgap:1250 - halfgap] = ecg_signal['aVF'][625 + halfgap:1250 - halfgap]
+    all_leads[2][1250 + halfgap:1875 - halfgap] = ecg_signal['V3'][1250 + halfgap:1875 - halfgap]
+    all_leads[2][1875 + halfgap:2500] = ecg_signal['V6'][1875 + halfgap:2500]
+
+    all_leads[3] = ecg_signal['V1']
+    all_leads[4] = ecg_signal['II']
+    all_leads[5] = ecg_signal['V5']
+
+    max_range = max([np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in all_leads]) * 2
+    ax1.set_xlim(-50, len(all_leads[0]) + 50)
+    ax1.set_ylim(0, len(all_leads) * max_range * 1.1)
     offset = max_range
-    fs = 250
+    fs = 250 # TODO sampling frequency
 
     # Set vertical gridlines
-    for i, v in enumerate(np.arange(-65,len(all_leads[0]+110), 1./25*fs)):
-        ax1.axvline(v, lw=1 if i % 5 == 0 else 0.2, color='r') # 25mm/s
+    for i, v in enumerate(np.arange(-50,len(all_leads[0]) + 50, 1./25*fs)):
+        ax1.axvline(v, lw=0.5 if i % 5 == 0 else 0.2, color='r') # 25mm/s
 
     # Set horizontal gridlines
-    for i, v in enumerate(np.arange(0,offset*len(all_leads), 1./10*1000.)):
-        ax1.axhline(v, lw=1 if i % 5 == 0 else 0.2, color='r') # 10mm/mV
+    for i, v in enumerate(np.arange(0,len(all_leads) * max_range * 1.1, 0.1)): # TODO figure out scale
+        ax1.axhline(v, lw=0.5 if i % 5 == 0 else 0.2, color='r') # 10mm/mV
 
     # Add text labels to ECG signal
-    # text_xoffset = 5
-    # text_yoffset = -350
+    text_xoffset = 5
+    text_yoffset = -max_range / 10
 
     for i in range(len(all_leads)):
-        this_offset = (len(all_leads) - 0.5 - i) * offset
+        this_offset = (len(all_leads) - 0.375 - i) * offset
         ax1.plot(all_leads[i] + this_offset, color='black', linewidth = 0.375)
-    #     if i == 0:
-    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'I',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVR',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V1',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V4',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #     elif i == 1:
-    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'II',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVL',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V2',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V5',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #     elif i == 2:
-    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'III',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVF',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V3',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #         ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V6',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #     elif i == 3:
-    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V1',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #     elif i == 4:
-    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'II',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
-    #     elif i == 5:
-    #         ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V5',
-    #                  ha='left', va='top', weight='bold', fontsize=10)
+        if i == 0:
+            ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'I',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVR',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V1',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V4',
+                     ha='left', va='top', weight='bold', fontsize=10)
+        elif i == 1:
+            ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'II',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVL',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V2',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V5',
+                     ha='left', va='top', weight='bold', fontsize=10)
+        elif i == 2:
+            ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'III',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(625 + text_xoffset, this_offset + text_yoffset, 'aVF',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(1250 + text_xoffset, this_offset + text_yoffset, 'V3',
+                     ha='left', va='top', weight='bold', fontsize=10)
+            ax1.text(1875 + text_xoffset, this_offset + text_yoffset, 'V6',
+                     ha='left', va='top', weight='bold', fontsize=10)
+        elif i == 3:
+            ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V1',
+                     ha='left', va='top', weight='bold', fontsize=10)
+        elif i == 4:
+            ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'II',
+                     ha='left', va='top', weight='bold', fontsize=10)
+        elif i == 5:
+            ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V5',
+                     ha='left', va='top', weight='bold', fontsize=10)
 
     ax1.tick_params(labelleft=False, labelbottom=False)
-    # print(len(all_leads[0]))
 
-    # plt.show()
-    # plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder'+IMAGE_EXT))
+    # lower left information panel
+    ax2.axis('off')
+    ax2.set_xlim(0, 1)
+    ax2.set_ylim(0, 1)
+    ax2.text(0, 0.5, f"25mm/s    10mm/mV    {fs}Hz", ha='left', va='center') # TODO actually pull this data
+
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.02,
+                        right=0.98,
+                        top=0.96,
+                        bottom=0.04,
+                        hspace=0.01)
+
+    plt.savefig(os.path.join(args.output_folder, args.id, f"{data['date']}-{data['patientid']}{IMAGE_EXT}"))
 
 
 def plot_partners_ecgs(args):
@@ -808,16 +816,19 @@ def plot_partners_ecgs(args):
         partners_ecg_dob
         partners_ecg_age
         partners_ecg_date
+        partners_ecg_time
         partners_ecg_sitename
         partners_ecg_location
         partners_ecg_read_md_raw
-        partners_ecg_read_pc_raw
         partners_ecg_voltage
         partners_ecg_rate
         partners_ecg_pr
         partners_ecg_qrs
         partners_ecg_qt
         partners_ecg_qtc
+        partners_ecg_paxis
+        partners_ecg_raxis
+        partners_ecg_taxis
     '''
 
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
@@ -836,17 +847,16 @@ def plot_partners_ecgs(args):
     for tp in tensor_paths:
         try:
             with h5py.File(tp, 'r') as hd5:
-                print('HD5 Keys: {}'.format(list(hd5.keys())))
+                # print(f"HD5 Keys: {list(hd5.keys)}")
                 for tm in tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
 
                         # Append tensor to dict
                         if tm.channel_map:
-                            print(tensor[tm.channel_map['I']])
                             for cm in tm.channel_map:
                                 tdict[tm.name][cm].append(
-                                    tensor[tm.channel_map[cm]])
+                                    tensor[:, tm.channel_map[cm]])
                         else:
                             tdict[tm.name][tm.name].append(tensor)
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
