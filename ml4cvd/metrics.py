@@ -35,7 +35,7 @@ def weighted_crossentropy(weights, name='anonymous'):
     string_fxn = 'def ' + name + fxn_postfix + '(y_true, y_pred):\n'
     string_fxn += '\ty_pred /= K.sum(y_pred, axis=-1, keepdims=True)\n'
     string_fxn += '\ty_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())\n'
-    string_fxn += '\tloss = y_true * K.log(y_pred) * weights'  # + name + '_weights\n'
+    string_fxn += '\tloss = y_true * K.log(y_pred) * weights\n'  # + name + '_weights\n'
     string_fxn += '\tloss = -K.sum(loss, -1)\n'
     string_fxn += '\treturn loss\n'
     exec(string_fxn, globals(), locals())
