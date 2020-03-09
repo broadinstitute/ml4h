@@ -482,12 +482,22 @@ def _get_lead_cm(length):
     return lead_cm, lead_weights
 
 
+TMAPS['ecg_median_1lead_categorical'] = TensorMap('median',  Interpretation.CATEGORICAL, shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
+                                                  channel_map=_get_lead_cm(32)[0],
+                                                  loss=weighted_crossentropy(np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical'))
+
+TMAPS['ecg_rest_1lead_categorical'] = TensorMap('strip', shape=(600, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+                                                channel_map={'window0': 0, 'window1': 1, 'window2': 2, 'window3': 3,
+                                                             'window4': 4, 'window5': 5, 'window6': 6, 'window7': 7},
+                                                dependent_map=TMAPS['ecg_median_1lead_categorical'])
+
+
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        if skip_poor and 'poor_data_quality' in hd5['categorical']:
+        ecg_interpretation = str(hd5['ukb_ecg_rest/ecg_rest_text'][0])
+        if skip_poor and 'Poor data quality' in ecg_interpretation:
             raise ValueError(f'Poor data quality skipped by {tm.name}.')
-        ecg_interpretation = str(hd5['ecg_rest_text'][0])
         for channel in tm.channel_map:
             if channel in hd5['categorical']:
                 categorical_data[tm.channel_map[channel]] = 1.0
@@ -506,7 +516,7 @@ def _make_rhythm_tensor(skip_poor=True):
 
 
 TMAPS['ecg_rhythm'] = TensorMap('ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(),
-                                loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_wl'),
+                                loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
                                 channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5})
 TMAPS['ecg_rhythm_poor'] = TensorMap('ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
                                      loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor'),
