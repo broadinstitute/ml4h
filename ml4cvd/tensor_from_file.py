@@ -496,7 +496,6 @@ def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         ecg_interpretation = str(tm.hd5_first_dataset_in_group(hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
-        logging.info(f'ecg interp:{ecg_interpretation}')
         if skip_poor and 'Poor data quality' in ecg_interpretation:
             raise ValueError(f'Poor data quality skipped by {tm.name}.')
         for channel in tm.channel_map:
@@ -525,7 +524,7 @@ TMAPS['ecg_rest_age'] = TensorMap('ecg_rest_age', Interpretation.CONTINUOUS, ten
 
 def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    ecg_interpretation = str(tm.hd5_first_dataset_in_group(hd5, 'ukb_ecg_rest/ecg_rest_text/'))
+    ecg_interpretation = str(tm.hd5_first_dataset_in_group(hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
     for channel in tm.channel_map:
         if channel in ecg_interpretation:
             categorical_data[tm.channel_map[channel]] = 1.0
