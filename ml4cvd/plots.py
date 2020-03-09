@@ -1171,7 +1171,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         data = data[..., 0]
         gradients = gradients[..., 0]
 
-    mean_saliency = np.zeros(data.shape[1:] + (3,))
+    mean_saliency = np.zeros(data.shape[1:4] + (3,))
     for batch_i in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
