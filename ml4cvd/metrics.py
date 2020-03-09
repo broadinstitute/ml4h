@@ -26,16 +26,16 @@ def weighted_crossentropy(weights, name='anonymous'):
         keras loss function named name+'_weighted_loss'
     
     """
-    string_globe = 'global ' + name + '_weights\n'
-    string_globe += 'global ' + name + '_kweights\n'
-    string_globe += name + '_weights = np.array(weights)\n'
-    string_globe += name + '_kweights = K.variable('+name+'_weights, name="'+name+'_kkweights")\n'
-    exec(string_globe)
+    # string_globe = 'global ' + name + '_weights\n'
+    # string_globe += 'global ' + name + '_kweights\n'
+    # string_globe += name + '_weights = np.array(weights)\n'
+    # string_globe += name + '_kweights = K.variable('+name+'_weights, name="'+name+'_kkweights")\n'
+    # exec(string_globe)
     fxn_postfix = '_weighted_loss'
     string_fxn = 'def ' + name + fxn_postfix + '(y_true, y_pred):\n'
     string_fxn += '\ty_pred /= K.sum(y_pred, axis=-1, keepdims=True)\n'
     string_fxn += '\ty_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())\n'
-    string_fxn += '\tloss = y_true * K.log(y_pred) * ' + name + '_kweights\n'
+    string_fxn += '\tloss = y_true * K.log(y_pred) * weights'  # + name + '_weights\n'
     string_fxn += '\tloss = -K.sum(loss, -1)\n'
     string_fxn += '\treturn loss\n'
     exec(string_fxn, globals(), locals())
