@@ -326,6 +326,8 @@ def plot_while_training(args):
 
 
 def saliency_maps(args):
+    import tensorflow as tf
+    tf.compat.v1.disable_eager_execution()
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
