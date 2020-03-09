@@ -397,7 +397,8 @@ def _warp_ecg(ecg):
     return warped_ecg
 
 
-def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False, warp: bool = False, short_time_nperseg=0, short_time_noverlap=0):
+def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False, warp: bool = False, downsample_steps: int = 0,
+                   short_time_nperseg: int = 0, short_time_noverlap: int = 0):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if random_roll:
@@ -416,6 +417,8 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
                     if short_time_nperseg > 0 and short_time_noverlap > 0:
                         f, t, short_time_ft = scipy.signal.stft(data, nperseg=short_time_nperseg, noverlap=short_time_noverlap)
                         tensor[..., tm.channel_map[k]] = short_time_ft
+                    elif downsample_steps > 1:
+                        tensor[:, tm.channel_map[k]] = data[::downsample_steps]
                     elif random_roll:
                         tensor[:, tm.channel_map[k]] = np.roll(data, roll)
                     else:
@@ -444,6 +447,8 @@ TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINU
 
 TMAPS['ecg_rest'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
                               channel_map=ECG_REST_LEADS)
+TMAPS['ecg_rest_2500'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+                                   tensor_from_file=_make_ecg_rest(downsample_steps=2))
 
 TMAPS['ecg_rest_stft'] = TensorMap('ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
                                    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32))
