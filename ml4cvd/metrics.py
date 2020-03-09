@@ -30,7 +30,7 @@ def weighted_crossentropy(weights, name='anonymous'):
     string_globe += 'global ' + name + '_kweights\n'
     string_globe += name + '_weights = np.array(weights)\n'
     string_globe += name + '_kweights = K.variable('+name+'_weights, name="'+name+'_kkweights")\n'
-    exec(string_globe, globals(), locals())
+    exec(string_globe)
     fxn_postfix = '_weighted_loss'
     string_fxn = 'def ' + name + fxn_postfix + '(y_true, y_pred):\n'
     string_fxn += '\ty_pred /= K.sum(y_pred, axis=-1, keepdims=True)\n'
