@@ -511,7 +511,7 @@ def make_variational_multimodal_multitask_model(
     encoder = Model(inputs=input_tensors, outputs=multimodal_activation, name='encoder')
     decoder = Model(inputs=latent_inputs, outputs=out_list, name='decoder')
     outputs = decoder(encoder(input_tensors))
-    m = Model(inputs=input_tensors, outputs=outputs)
+    m = Model(inputs=input_tensors, outputs=outputs, compile=False)
     m.output_names = list(output_predictions.keys())
     decoder.output_names = list(output_predictions.keys())
     encoder.summary(print_fn=logging.info)
