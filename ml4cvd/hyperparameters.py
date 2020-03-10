@@ -64,8 +64,9 @@ def run(args):
 def hyperparameter_optimizer(args, space, param_lists={}):
     args.keep_paths = False
     args.keep_paths_test = False
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     test_data, test_labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    generate_test.kill_workers()
     histories = []
     fig_path = os.path.join(args.output_folder, args.id, 'plots')
     i = 0
@@ -82,7 +83,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             if model.count_params() > args.max_parameters:
                 logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 return MAX_LOSS
-
+            generate_train, generate_valid, _ = test_train_valid_tensor_generators(**args.__dict__)
             model, history = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps,
                                                          args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
                                                          args.inspect_model, args.inspect_show_labels, True, False)
@@ -94,6 +95,8 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
             logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
+            generate_train.kill_workers()
+            generate_valid.kill_workers()
             return loss_and_metrics[0]
 
         except ValueError:
