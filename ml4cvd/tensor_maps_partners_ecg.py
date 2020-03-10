@@ -294,7 +294,7 @@ def partners_bmi(tm, hd5, dependents={}):
     return np.array([weight_kg / (height_m*height_m)])
 
 
-TMAPS['partners_bmi'] = TensorMap('bmi', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_bmi)
+TMAPS['partners_bmi'] = TensorMap('bmi', channel_map={'bmi': 0}, tensor_from_file=partners_bmi)
 
 '''
 task = "partners_ecg_rate_norm"
