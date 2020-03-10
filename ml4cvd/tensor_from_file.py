@@ -1284,11 +1284,10 @@ def preprocess_with_function(fxn, hd5_key=None):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if hd5_key is None:
-            hd5_key = tm.hd5_key_guess()
-        if hd5_key in hd5:
+        my_key = tm.hd5_key_guess() if hd5_key is None else hd5_key
+        if my_key in hd5:
             missing = False
-            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, hd5_key)[0]
+            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, my_key)[0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
