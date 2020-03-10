@@ -1300,7 +1300,7 @@ def preprocess_with_function(fxn, hd5_key=None):
 TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0', loss='logcosh', path_prefix='continuous',
                              normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
                              channel_map={'white-matter-hyper-intensities': 0})
-TMAPS['weight_lbs_2'] = TensorMap('weight_lbs',  Interpretation.CONTINUOUS, normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh',
+TMAPS['weight_lbs_2'] = TensorMap('weight_lbs',  Interpretation.CONTINUOUS, normalization={'mean': 168.74, 'std': 34.1}, loss='logcosh',
                                   channel_map={'weight_lbs': 0}, tensor_from_file=preprocess_with_function(lambda x: x*2.20462, 'continuous/21002_Weight_2_0'))
 
 def sax_tensor(b_series_prefix):
