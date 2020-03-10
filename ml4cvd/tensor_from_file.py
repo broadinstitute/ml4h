@@ -447,8 +447,8 @@ TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINU
 
 TMAPS['ecg_rest'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
                               channel_map=ECG_REST_LEADS)
-TMAPS['ecg_rest_2500'] = TensorMap('strip', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                   tensor_from_file=_make_ecg_rest(downsample_steps=2))
+TMAPS['ecg_rest_2500_ukb'] = TensorMap('ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+                                       tensor_from_file=_make_ecg_rest(downsample_steps=2))
 
 TMAPS['ecg_rest_stft'] = TensorMap('ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
                                    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32))
