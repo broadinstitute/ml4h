@@ -93,8 +93,7 @@ def make_partners_ecg_label(key: str = "read_md_clean",
                             dict_of_list: Dict = dict(),
                             not_found_key: str = "unspecified"):
     def get_partners_ecg_label(tm, hd5, dependents={}):
-        read = _decompress_data(data_compressed=hd5[key][()],
-                                dtype=hd5[key].attrs['dtype'])       
+        read = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
         label_array = np.zeros(tm.shape, dtype=np.float32)
         for cm in tm.channel_map:
             for string in dict_of_list[cm]:
@@ -108,8 +107,7 @@ def make_partners_ecg_label(key: str = "read_md_clean",
 
 def make_partners_ecg_tensor(key: str):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
-        tensor = _decompress_data(data_compressed=hd5[key][()],
-                                  dtype=hd5[key].attrs['dtype'])
+        tensor = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
         if tm.interpretation == Interpretation.LANGUAGE:
             return np.array(str(tensor))
         elif tm.interpretation == Interpretation.CONTINUOUS:
