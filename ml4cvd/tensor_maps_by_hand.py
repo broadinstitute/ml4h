@@ -423,6 +423,8 @@ TMAPS['sex'] = TensorMap('Sex_Male_0_0', Interpretation.CATEGORICAL, storage_typ
                          channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy')
 TMAPS['bmi'] = TensorMap('23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
                          validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh')
+TMAPS['bmi_ukb'] = TensorMap('bmi', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
+                             validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh')
 TMAPS['birth_year'] = TensorMap('22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
                                 validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739})
 TMAPS['birth_year_34'] = TensorMap('34_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
