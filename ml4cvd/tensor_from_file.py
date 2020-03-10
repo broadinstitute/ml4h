@@ -1280,13 +1280,15 @@ TMAPS['shmolli_192i_liver_only'] = TensorMap('shmolli_192i', Interpretation.CONT
                                              tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']))
 
 
-def preprocess_with_function(fxn):
+def preprocess_with_function(fxn, hd5_key=None):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):
         missing = True
         continuous_data = np.zeros(tm.shape, dtype=np.float32)
-        if tm.hd5_key_guess() in hd5:
+        if hd5_key is None:
+            hd5_key = tm.hd5_key_guess()
+        if hd5_key in hd5:
             missing = False
-            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[0]
+            continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, hd5_key)[0]
         if missing and tm.sentinel is None:
             raise ValueError(f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.')
         elif missing:
@@ -1298,7 +1300,8 @@ def preprocess_with_function(fxn):
 TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0', loss='logcosh', path_prefix='continuous',
                              normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
                              channel_map={'white-matter-hyper-intensities': 0})
-
+TMAPS['weight_lbs_2'] = TensorMap('weight_lbs',  Interpretation.CONTINUOUS, normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh',
+                                  channel_map={'weight_lbs': 0}, tensor_from_file=preprocess_with_function(lambda x: x*2.20462, 'continuous/21002_Weight_2_0'))
 
 def sax_tensor(b_series_prefix):
     def sax_tensor_from_file(tm, hd5, dependents={}):
@@ -1443,3 +1446,6 @@ TMAPS['cine_segmented_ao_descending_aorta_bbox'] = TensorMap('cine_segmented_ao_
 abbfc = _bounding_box_from_callable(MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'], _segmented_index_slices('cine_segmented_ao_dist_annotated_', (192, 224, 100)))
 TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap('cine_segmented_ao_ascending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=abbfc,
                                                             channel_map=_bounding_box_channel_map(3))
+
+
+
