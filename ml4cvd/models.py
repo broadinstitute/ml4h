@@ -524,7 +524,7 @@ def make_variational_multimodal_multitask_model(
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
