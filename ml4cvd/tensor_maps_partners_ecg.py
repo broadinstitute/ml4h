@@ -288,9 +288,10 @@ TMAPS['partners_gender'] = TensorMap('partners_gender', interpretation=Interpret
 
 def partners_bmi(tm, hd5, dependents={}):
     weight_lbs = _decompress_data(data_compressed=hd5['weightlbs'][()], dtype=hd5['weightlbs'].attrs['dtype'])
-    weight_kg = 0.453592 * weight_lbs
+    weight_kg = 0.453592 * float(weight_lbs)
     height_in = _decompress_data(data_compressed=hd5['heightin'][()], dtype=hd5['heightin'].attrs['dtype'])
-    height_m = 0.0254 * height_in
+    height_m = 0.0254 * float(height_in)
+    logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {weight_kg / (height_m*height_m)}')
     return np.array([weight_kg / (height_m*height_m)])
 
 
