@@ -95,7 +95,7 @@ def make_partners_ecg_label(key: str = "read_md_clean",
     def get_partners_ecg_label(tm, hd5, dependents={}):
         read = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
         label_array = np.zeros(tm.shape, dtype=np.float32)
-        for cm in tm.channel_map:
+        for cm in dict_of_list:
             for string in dict_of_list[cm]:
                 if string in read:
                     label_array[tm.channel_map[cm]] = 1
