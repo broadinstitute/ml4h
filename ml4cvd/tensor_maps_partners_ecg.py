@@ -203,7 +203,7 @@ TMAPS[task] = TensorMap(task,
                         validator=make_range_validator(10, 200))
 
 TMAPS['partners_ventricular_rate'] = TensorMap('VentricularRate', loss='logcosh', tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"), shape=(1,),
-                                               validator=make_range_validator(10, 200))
+                                               validator=make_range_validator(10, 200), normalization={'mean': 59.3, 'std': 10.6})
 
 task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(task,
