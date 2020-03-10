@@ -274,8 +274,12 @@ TMAPS[task] = TensorMap(task,
 
 def partners_gender(tm, hd5, dependents={}):
     gender = _decompress_data(data_compressed=hd5['gender'][()], dtype=hd5['gender'].attrs['dtype'])
-    logging.info(f'gender is: {gender}')
-    return np.array([gender])
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    for key in tm.channel_map:
+        if gender.lower() == key:
+            tensor[tm.channel_map[key]] = 1.0
+            return tensor
+    raise ValueError(f'Gender {gender} not found in channel map.')
 
 
 TMAPS['partners_gender'] = TensorMap('partners_gender', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_gender, channel_map={'female': 0, 'male': 1})
