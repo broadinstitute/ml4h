@@ -198,7 +198,6 @@ task = "partners_ecg_rate"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
-                        metrics=['mse'],
                         tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
                         shape=(1,),
                         validator=make_range_validator(10, 200))
