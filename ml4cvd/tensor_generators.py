@@ -109,7 +109,6 @@ class TensorGenerator:
         self._started = True
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
-            logging.info(f"Starting {name}.")
             worker_instance = _MultiModalMultiTaskWorker(
                 self.q,
                 self.input_maps, self.output_maps,
@@ -125,6 +124,7 @@ class TensorGenerator:
                                   args=())
                 process.start()
                 self.workers.append(process)
+        logging.info(f"Started {i} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB.")
 
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
@@ -138,8 +138,8 @@ class TensorGenerator:
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
-                logging.info(f'Stopping {worker.name}.')
                 worker.terminate()
+            logging.info(f'Stopped {len(self.workers)} workers.')
         self.workers = []
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
@@ -236,8 +236,6 @@ class _MultiModalMultiTaskWorker:
         self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
 
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
-        logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
-
         self.all_cacheable = all((tm.cacheable for tm in input_maps + output_maps))
 
         self.dependents = {}
@@ -365,7 +363,6 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
 
     input_tensors, output_tensors = list(first_batch[0]), list(first_batch[1])
     for i in range(1, minibatches):
-        logging.info(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
@@ -376,7 +373,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
             paths.extend(next_batch[2])
 
     for key, array in saved_tensors.items():
-        logging.info(f"Tensor '{key}' has shape {array.shape}.")
+        logging.info(f"Made a big batch of tensors with key:{key} and shape:{array.shape}.")
     inputs = {key: saved_tensors[key] for key in input_tensors}
     outputs = {key: saved_tensors[key] for key in output_tensors}
     if keep_paths:
