@@ -282,7 +282,19 @@ def partners_gender(tm, hd5, dependents={}):
     raise ValueError(f'Gender {gender} not found in channel map.')
 
 
-TMAPS['partners_gender'] = TensorMap('partners_gender', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_gender, channel_map={'female': 0, 'male': 1})
+TMAPS['partners_gender'] = TensorMap('partners_gender', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_gender,
+                                     channel_map={'female': 0, 'male': 1})
+
+
+def partners_bmi(tm, hd5, dependents={}):
+    weight_lbs = _decompress_data(data_compressed=hd5['weightlbs'][()], dtype=hd5['weightlbs'].attrs['dtype'])
+    weight_kg = 0.453592 * weight_lbs
+    height_in = _decompress_data(data_compressed=hd5['heightin'][()], dtype=hd5['heightin'].attrs['dtype'])
+    height_m = 0.0254 * height_in
+    return np.array([weight_kg / (height_m*height_m)])
+
+
+TMAPS['partners_bmi'] = TensorMap('partners_bmi', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_bmi)
 
 '''
 task = "partners_ecg_rate_norm"
