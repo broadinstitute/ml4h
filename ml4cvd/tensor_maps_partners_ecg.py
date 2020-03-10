@@ -3,7 +3,7 @@ import logging
 import datetime
 import numcodecs
 import numpy as np
-from typing import Dict
+from typing import Dict, List
 from ml4cvd.TensorMap import (TensorMap, no_nans, str2date,
         make_range_validator, Interpretation)
 from ml4cvd.defines import ECG_REST_AMP_LEADS
@@ -102,6 +102,21 @@ def make_partners_ecg_label(key: str = "read_md_clean",
                 if string in read:
                     label_array[tm.channel_map[cm]] = 1
                     return label_array
+        label_array[tm.channel_map[not_found_key]] = 1
+        return label_array
+    return get_partners_ecg_label
+
+
+def partners_ecg_label_from_list(keys: List[str] = ["read_md_clean"], dict_of_list: Dict = dict(), not_found_key: str = "unspecified"):
+    def get_partners_ecg_label(tm, hd5, dependents={}):
+        label_array = np.zeros(tm.shape, dtype=np.float32)
+        for key in keys:
+            read = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
+            for cm in dict_of_list:
+                for string in dict_of_list[cm]:
+                    if string in read:
+                        label_array[tm.channel_map[cm]] = 1
+                        return label_array
         label_array[tm.channel_map[not_found_key]] = 1
         return label_array
     return get_partners_ecg_label
