@@ -72,6 +72,8 @@ TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         tensor_from_file=make_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
+TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+
 
 def make_voltage_attr(volt_attr: str = ""):
     def get_voltage_attr_from_file(tm, hd5, dependents={}):
@@ -199,6 +201,9 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
                         shape=(1,),
                         validator=make_range_validator(10, 200))
+
+TMAPS['partners_ventricular_rate'] = TensorMap('VentricularRate', loss='logcosh', tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"), shape=(1,),
+                                               validator=make_range_validator(10, 200))
 
 task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(task,
