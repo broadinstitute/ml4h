@@ -715,7 +715,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.model_file = model_file
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(MODEL_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
 
         # We can feed 'model.predict()' the entire input data because it knows what subset to use
         y_pred = model.predict(input_data, batch_size=args.batch_size)
@@ -759,7 +759,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
         models[model_name] = model
         scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 
