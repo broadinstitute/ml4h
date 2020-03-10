@@ -418,7 +418,7 @@ def _make_ecg_rest(population_normalize: float = None, random_roll: bool = False
                         f, t, short_time_ft = scipy.signal.stft(data, nperseg=short_time_nperseg, noverlap=short_time_noverlap)
                         tensor[..., tm.channel_map[k]] = short_time_ft
                     elif downsample_steps > 1:
-                        tensor[:, tm.channel_map[k]] = data[::downsample_steps]
+                        tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
                     elif random_roll:
                         tensor[:, tm.channel_map[k]] = np.roll(data, roll)
                     else:
