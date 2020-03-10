@@ -271,6 +271,15 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=get_partners_ecg_age,
                         shape=(1,))
 
+
+def partners_gender(tm, hd5, dependents={}):
+    gender = _decompress_data(data_compressed=hd5['gender'][()], dtype=hd5['gender'].attrs['dtype'])
+    logging.info(f'gender is: {gender}')
+    return np.array([gender])
+
+
+TMAPS['partners_gender'] = TensorMap('partners_gender', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_gender, channel_map={'female': 0, 'male': 1})
+
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
