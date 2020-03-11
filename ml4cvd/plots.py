@@ -655,7 +655,7 @@ def plot_partners_ecgs(args):
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
                         for cm in tm.channel_map:
-                            ecg_dict[cm] = tensor
+                            ecg_dict[cm] = tensor[tm.channel_map[cm]]
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                         logging.exception(e)
                 plot_ecg(ecg_dict, tp.replace(TENSOR_EXT, ''), os.path.join(args.output_folder, args.id, 'ecg_plots/'))
