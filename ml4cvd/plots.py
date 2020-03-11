@@ -646,41 +646,23 @@ def plot_partners_ecgs(args):
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
     tensor_maps_in = args.tensor_maps_in
 
-    # Initialize dict that stores tensors
-    tdict = defaultdict(dict)
-    for tm in tensor_maps_in:
-        if tm.channel_map:
-            for cm in tm.channel_map:
-                tdict[tm.name].update({(tm.name, cm): list()})
-        else:
-            tdict[tm.name].update({tm.name: list()})
-
     # Get tensors for all hd5
     for tp in tensor_paths:
         try:
             with h5py.File(tp, 'r') as hd5:
+                ecg_dict = {}
                 for tm in tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
-                        # Append tensor to dict
-                        if tm.channel_map:
-                            for cm in tm.channel_map:
-                                tdict[tm.name][(tm.name, cm)].append(
-                                    tensor[tm.channel_map[cm]])
-                        else:
-                            tdict[tm.name][tm.name].append(tensor)
+                        for cm in tm.channel_map:
+                            ecg_dict[cm] = tensor
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                        # Could not obtain tensor, append nan
-                        if tm.channel_map:
-                            for cm in tm.channel_map:
-                                tdict[tm.name][(tm.name, cm)].append(np.nan)
-                        else:
-                            tdict[tm.name][tm.name].append(np.nan)
                         logging.exception(e)
-        except:
+                plot_ecg(ecg_dict, tp.replace(TENSOR_EXT, ''), os.path.join(args.output_folder, args.id, 'ecg_plots/'))
+        except OSError:
             logging.exception(f"Broken tensor at: {tp}")
 
-    plot_ecg(tdict, os.path.join(args.output_folder, args.id, 'partners_plot_'))
+
 
 
 def _ecg_rest_traces(hd5):
