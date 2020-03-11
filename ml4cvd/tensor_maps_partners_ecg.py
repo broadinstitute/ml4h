@@ -91,17 +91,16 @@ TMAPS["voltage_len"] = TensorMap("voltage_len",
                                  channel_map=ECG_REST_AMP_LEADS)
 
 
-def make_partners_ecg_label(key: str = "read_md_clean",
-                            dict_of_list: Dict = dict(),
-                            not_found_key: str = "unspecified"):
+def make_partners_ecg_label(key: str = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified"):
     def get_partners_ecg_label(tm, hd5, dependents={}):
         read = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
         label_array = np.zeros(tm.shape, dtype=np.float32)
-        for cm in dict_of_list:
-            for string in dict_of_list[cm]:
-                if string in read:
-                    label_array[tm.channel_map[cm]] = 1
-                    return label_array
+        for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
+            if channel in dict_of_list:
+                for string in dict_of_list[channel]:
+                    if string in read:
+                        label_array[idx] = 1
+                        return label_array
         label_array[tm.channel_map[not_found_key]] = 1
         return label_array
     return get_partners_ecg_label
@@ -112,11 +111,12 @@ def partners_ecg_label_from_list(keys: List[str] = ["read_md_clean"], dict_of_li
         label_array = np.zeros(tm.shape, dtype=np.float32)
         for key in keys:
             read = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
-            for cm in dict_of_list:
-                for string in dict_of_list[cm]:
-                    if string in read:
-                        label_array[tm.channel_map[cm]] = 1
-                        return label_array
+            for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
+                if channel in dict_of_list:
+                    for string in dict_of_list[channel]:
+                        if string in read:
+                            label_array[idx] = 1
+                            return label_array
         label_array[tm.channel_map[not_found_key]] = 1
         return label_array
     return get_partners_ecg_label
