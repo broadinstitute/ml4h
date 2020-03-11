@@ -680,11 +680,7 @@ def plot_partners_ecgs(args):
         except:
             logging.exception(f"Broken tensor at: {tp}")
 
-    # TODO plot ecgs w/ data in tdict and save to output folder / run_id
-
-    plt.figure(figsize=(5, 5))
-    plt.title('THIS IS A PLACEHOLDER')
-    plt.savefig(os.path.join(args.output_folder, args.id, 'placeholder'+IMAGE_EXT))
+    plot_ecg(tdict, os.path.join(args.output_folder, args.id, 'partners_plot_'))
 
 
 def _ecg_rest_traces(hd5):
