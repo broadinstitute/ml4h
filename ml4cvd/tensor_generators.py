@@ -29,7 +29,7 @@ np.set_printoptions(threshold=np.inf)
 
 
 TENSOR_GENERATOR_TIMEOUT = 64
-TENSOR_GENERATOR_MAX_Q_SIZE = 4
+TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
 Path = str
 PathIterator = Iterator[Path]
@@ -129,7 +129,6 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
-        logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
