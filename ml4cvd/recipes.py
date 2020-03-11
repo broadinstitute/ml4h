@@ -123,6 +123,19 @@ def _init_dict_of_tensors(tmaps: list) -> dict:
     return dict_of_tensors
 
 
+def stats_from_folder(folder, include_keys):
+    stats = Counter()
+    for p in os.listdir(folder):
+        with h5py.File(folder + p, "r") as hd5:
+            for k in hd5:
+                if k not in include_keys:
+                    continue
+                d = _decompress_data(data_compressed=hd5[k][()], dtype=hd5[k].attrs['dtype'])
+                stats[k + '_' + d] += 1
+    for k, v in sorted(stats.items(), key=lambda x: x[0]):
+        print(f'{k} has {v}')
+
+
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
