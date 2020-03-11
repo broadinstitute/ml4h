@@ -644,15 +644,14 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 def plot_partners_ecgs(args):
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    tensor_maps_in = args.tensor_maps_in
-
+    logging.info(f'tensor_paths:{len(tensor_paths)} tensor maps: {tensor_maps_in}')
     # Get tensors for all hd5
     for tp in tensor_paths:
         logging.info(f'At path:{tp}')
         try:
-            with h5py.File(args.tensors + tp, 'r') as hd5:
+            with h5py.File(tp, 'r') as hd5:
                 ecg_dict = {}
-                for tm in tensor_maps_in:
+                for tm in args.tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
                         for cm in tm.channel_map:
