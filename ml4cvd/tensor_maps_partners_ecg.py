@@ -110,6 +110,8 @@ def partners_ecg_label_from_list(keys: List[str] = ["read_md_clean"], dict_of_li
     def get_partners_ecg_label(tm, hd5, dependents={}):
         label_array = np.zeros(tm.shape, dtype=np.float32)
         for key in keys:
+            if key not in hd5:
+                continue
             read = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
             for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
                 if channel in dict_of_list:
