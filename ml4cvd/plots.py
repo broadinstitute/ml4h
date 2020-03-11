@@ -644,7 +644,7 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 def plot_partners_ecgs(args):
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    logging.info(f'tensor_paths:{len(tensor_paths)} tensor maps: {tensor_maps_in}')
+    logging.info(f'tensor_paths:{len(tensor_paths)} tensor maps: {len(args.tensor_maps_in)}')
     # Get tensors for all hd5
     for tp in tensor_paths:
         logging.info(f'At path:{tp}')
