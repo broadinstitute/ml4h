@@ -159,7 +159,6 @@ def plot_metric_history(history, title, prefix='./figures/'):
                 if col >= cols:
                     break
 
-    plt.title(title)
     plt.tight_layout()
     figure_path = os.path.join(prefix, 'metric_history_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
