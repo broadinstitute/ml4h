@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple, Iterable, Union, Optional
 
 # Keras imports
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
@@ -1046,17 +1047,21 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-def _activation_layer(activation):
-    if activation == 'leaky':
-        return LeakyReLU()
-    elif activation == 'prelu':
-        return PReLU()
-    elif activation == 'elu':
-        return ELU()
-    elif activation == 'thresh_relu':
-        return ThresholdedReLU()
-    else:
-        return Activation(activation)
+def _activation_layer(activation: str) -> Activation:
+    activation_classes = {
+        'leaky': LeakyReLU(),
+        'prelu': PReLU(),
+        'elu': ELU(),
+        'thresh_relu': ThresholdedReLU,
+    }
+    activation_functions = {
+        'swish': tf.nn.swish,
+        'gelu': tfa.activations.gelu,
+        'lisht': tfa.activations.lisht,
+        'mish': tfa.activations.mish,
+    }
+    return (activation_classes.get(activation, None)
+            or Activation(activation_functions.get(activation, None) or activation))
 
 
 def _normalization_layer(norm):
