@@ -117,4 +117,5 @@ ${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v /data/:/data/ \
+-v /media/erisone_snf13/:/media/erisone_snf13/ \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"

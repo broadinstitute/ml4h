@@ -1,6 +1,8 @@
 import csv
 import logging
 import datetime
+
+import h5py
 import numcodecs
 import numpy as np
 from typing import Dict, List
@@ -370,6 +372,54 @@ def voltage_zeros(tm, hd5, dependents={}):
 
 TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(1,), tensor_from_file=voltage_zeros, channel_map={'I': 0})
 TMAPS["lead_v6_zeros"] = TensorMap("lead_v6_zeros", shape=(1,), tensor_from_file=voltage_zeros, channel_map={'V6': 0})
+
+
+def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', date_column: str='datetime', incident_column: str='incident', delimiter: str = ','):
+    """
+    Build a tensor_from_file function from a column and date in a file.
+    Only works for continuous values.
+    """
+    error = None
+    try:
+        with open(file_name, 'r') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            patient_index = header.index(patient_column)
+            incident_index = header.index(incident_column)
+            date_index = header.index(date_column)
+            date_table = {}
+            incident_table = {}
+            for row in reader:
+                patient_key = int(row[patient_index])
+                incident_table[patient_key] = [int(row[incident_index])]
+                if row[date_index] != 'NULL':
+                    date_table[patient_key] = str2date(row[date_index])
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        mrn = hd5.filename.split('-')[0]
+        mrn_int = int(mrn)
+        if mrn_int not in incident_table:
+            raise KeyError(f'{tm.name} mrn not in incidence csv')
+        if mrn_int in date_table:
+            index = 0
+        else:
+            disease_date = date_table[mrn_int]
+            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+            index = 1 if disease_date < assess_date else 2
+        categorical_data[index] = 1.0
+        return categorical_data
+    return tensor_from_file
+
+
+TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
+                                            channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2})
 
 '''
 task = "partners_ecg_rate_norm"
