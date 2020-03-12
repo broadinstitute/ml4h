@@ -318,20 +318,6 @@ TMAPS[task] = TensorMap(task,
                         shape=(1,))
 
 
-def partners_gender(tm, hd5, dependents={}):
-    gender = _decompress_data(data_compressed=hd5['gender'][()], dtype=hd5['gender'].attrs['dtype'])
-    tensor = np.zeros(tm.shape, dtype=np.float32)
-    for key in tm.channel_map:
-        if gender.lower() == key:
-            tensor[tm.channel_map[key]] = 1.0
-            return tensor
-    raise ValueError(f'Gender {gender} not found in channel map.')
-
-
-TMAPS['partners_gender'] = TensorMap('partners_gender', interpretation=Interpretation.CATEGORICAL, tensor_from_file=partners_gender,
-                                     channel_map={'female': 0, 'male': 1})
-
-
 def partners_bmi(tm, hd5, dependents={}):
     weight_lbs = _decompress_data(data_compressed=hd5['weightlbs'][()], dtype=hd5['weightlbs'].attrs['dtype'])
     weight_kg = 0.453592 * float(weight_lbs)
@@ -365,9 +351,12 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
 
 
 race_synonyms = {'asian': ['oriental'], 'hispanic': ['latino'], 'white': ['caucasian']}
-TMAPS['partners_race'] = TensorMap('race', channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+TMAPS['partners_race'] = TensorMap('race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
                                    tensor_from_file=partners_channel_string('race', race_synonyms))
-TMAPS['partners_gender'] = TensorMap('gender', channel_map={'female': 0, 'male': 1}, tensor_from_file=partners_channel_string('gender'))
+TMAPS['partners_gender'] = TensorMap('gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
+                                     tensor_from_file=partners_channel_string('gender'))
+
+
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
