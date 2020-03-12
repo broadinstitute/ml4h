@@ -93,6 +93,8 @@ def uniform_voltage(population_normalize: float = None, desired_sample_rate=500)
     def get_voltage_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         sample_rate = int(_decompress_data(data_compressed=hd5['ecgsamplebase'][()], dtype=hd5['ecgsamplebase'].attrs['dtype']))
+        if sample_rate == 0:
+            raise ValueError('Sample rate was 0, skipping.')
         for cm in tm.channel_map:
             voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
             voltage = _resample_voltage_with_rate(voltage, tm.shape[0], sample_rate, desired_sample_rate)
