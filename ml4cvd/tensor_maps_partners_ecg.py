@@ -344,7 +344,7 @@ def partners_bmi(tm, hd5, dependents={}):
 TMAPS['partners_bmi'] = TensorMap('bmi', channel_map={'bmi': 0}, tensor_from_file=partners_bmi)
 
 
-def partners_channel_string(hd5_key, unspecified_key=None):
+def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
     def tensor_from_string(tm, hd5, dependents={}):
         hd5_string = _decompress_data(data_compressed=hd5[hd5_key][()], dtype=hd5[hd5_key].attrs['dtype'])
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -352,6 +352,11 @@ def partners_channel_string(hd5_key, unspecified_key=None):
             if hd5_string.lower() == key.lower():
                 tensor[tm.channel_map[key]] = 1.0
                 return tensor
+            if key in race_synonyms:
+                for synonym in race_synonyms[key]:
+                    if hd5_string.lower() == synonym.lower():
+                        tensor[tm.channel_map[key]] = 1.0
+                        return tensor
         if unspecified_key is None:
             raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
         tensor[tm.channel_map[unspecified_key]] = 1.0
@@ -359,7 +364,9 @@ def partners_channel_string(hd5_key, unspecified_key=None):
     return tensor_from_string
 
 
-TMAPS['partners_race'] = TensorMap('race', channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3}, tensor_from_file=partners_channel_string('race'))
+race_synonyms = {'asian': ['oriental'], 'hispanic': ['latino'], 'white': ['caucasian']}
+TMAPS['partners_race'] = TensorMap('race', channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+                                   tensor_from_file=partners_channel_string('race', race_synonyms))
 TMAPS['partners_gender'] = TensorMap('gender', channel_map={'female': 0, 'male': 1}, tensor_from_file=partners_channel_string('gender'))
 '''
 task = "partners_ecg_rate_norm"
