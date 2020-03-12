@@ -46,8 +46,8 @@ def _decompress_data(data_compressed, dtype):
 
 def _resample_voltage(voltage):
     if len(voltage) == 2500:
-        x = np.range(2500)
-        x_interp = np.linspace(0, 2500, 0.5)
+        x = np.arange(2500)
+        x_interp = np.linspace(0, 2500, 5000)
         voltage_interp = np.interp(x_interp, x, voltage)
         logging.info(f'Voltage interpolate has {voltage_interp.shape} x interpolate has {x_interp.shape}')
     else:
