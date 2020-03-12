@@ -57,6 +57,23 @@ def _resample_voltage(voltage, desired_samples):
         raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} and re-sampling method is unknown.')
 
 
+def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
+    if len(voltage) == desired_samples and rate == desired_rate:
+        return voltage
+    elif desired_samples / len(voltage) == 2 and desired_rate / rate == 2:
+        x = np.arange(len(voltage))
+        x_interp = np.linspace(0, len(voltage), desired_samples)
+        return np.interp(x_interp, x, voltage)
+    elif desired_samples / len(voltage) == 0.5 and desired_rate / rate == 0.5:
+        return voltage[::2]
+    elif desired_samples / len(voltage) == 2 and desired_rate == rate:
+        return np.pad(voltage, (0, len(voltage)))
+    elif desired_samples / len(voltage) == 0.5 and desired_rate == rate:
+        return voltage[:len(voltage)//2]
+    else:
+        raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} with desired rate {desired_rate} and rate {rate}.')
+
+
 def make_voltage(population_normalize: float = None):
     def get_voltage_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -72,14 +89,30 @@ def make_voltage(population_normalize: float = None):
     return get_voltage_from_file
 
 
+def uniform_voltage(population_normalize: float = None, desired_sample_rate=500):
+    def get_voltage_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        sample_rate = _decompress_data(data_compressed=hd5['ecgsamplebase'][()], dtype=hd5['ecgsamplebase'].attrs['dtype'])
+        for cm in tm.channel_map:
+            voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
+            voltage = _resample_voltage_with_rate(voltage, tm.shape[0], sample_rate, desired_sample_rate)
+            tensor[:, tm.channel_map[cm]] = voltage
+        if population_normalize is None:
+            tensor = tm.zero_mean_std1(tensor)
+        else:
+            tensor /= population_normalize
+        return tensor
+    return get_voltage_from_file
+
+
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         shape=(2500, 12),
                                         interpretation=Interpretation.CONTINUOUS,
                                         tensor_from_file=make_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
-TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
-TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=uniform_voltage(population_normalize=2000.0, desired_sample_rate=250), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=uniform_voltage(population_normalize=2000.0, desired_sample_rate=500), channel_map=ECG_REST_AMP_LEADS)
 
 
 def make_voltage_attr(volt_attr: str = ""):
