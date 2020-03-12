@@ -140,7 +140,7 @@ def make_partners_ecg_tensor(key: str):
         if tm.interpretation == Interpretation.LANGUAGE:
             return np.array(str(tensor))
         elif tm.interpretation == Interpretation.CONTINUOUS:
-            return np.array(float(tensor))
+            return np.array(tensor, dtype=np.float32)
         elif tm.interpretation == Interpretation.CATEGORICAL:
             return np.array(float(tensor))
     return get_partners_ecg_tensor
