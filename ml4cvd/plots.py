@@ -646,18 +646,21 @@ def plot_partners_ecgs(args):
     logging.info(f'tensor_paths:{len(tensor_paths)} tensor maps: {len(args.tensor_maps_in)}')
     # Get tensors for all hd5
     for tp in tensor_paths:
-        logging.info(f'At path:{tp}')
+        title = os.path.basename(tp).replace(TENSOR_EXT, '')
         try:
             with h5py.File(tp, 'r') as hd5:
                 ecg_dict = {}
                 for tm in args.tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
-                        for cm in tm.channel_map:
-                            ecg_dict[cm] = tensor[:, tm.channel_map[cm]]
+                        if tm.axes() > 1:
+                            for cm in tm.channel_map:
+                                ecg_dict[cm] = tensor[:, tm.channel_map[cm]]
+                        else:
+                            title += f'_{tm.name}_{tensor[0]:.2f}'
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                         logging.exception(e)
-                plot_ecg(ecg_dict, os.path.basename(tp).replace(TENSOR_EXT, ''), os.path.join(args.output_folder, args.id, 'ecg_plots/'))
+                plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
         except OSError:
             logging.exception(f"Broken tensor at: {tp}")
 
