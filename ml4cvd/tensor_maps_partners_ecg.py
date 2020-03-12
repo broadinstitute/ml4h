@@ -302,7 +302,7 @@ def _partners_str2date(d):
     return datetime.date(int(parts[2]), int(parts[0]), int(parts[1]))
 
 
-def get_partners_ecg_age(tm, hd5, dependents={}):
+def partners_ecg_age(tm, hd5, dependents={}):
     birthday = _decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype'])
     acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
     delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
@@ -310,12 +310,15 @@ def get_partners_ecg_age(tm, hd5, dependents={}):
     return np.array([years])
 
 
-task = "partners_ecg_age"
-TMAPS[task] = TensorMap(task,
-                        interpretation=Interpretation.CONTINUOUS,
-                        loss='logcosh',
-                        tensor_from_file=get_partners_ecg_age,
-                        shape=(1,))
+TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', loss='logcosh', tensor_from_file=partners_ecg_age, shape=(1,))
+
+
+def partners_ecg_acquisition_year(tm, hd5, dependents={}):
+    acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
+    return np.array([_partners_str2date(acquisition).year])
+
+
+TMAPS['partners_ecg_acquisition_year'] = TensorMap('partners_ecg_acquisition_year', loss='logcosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(1,))
 
 
 def partners_bmi(tm, hd5, dependents={}):
