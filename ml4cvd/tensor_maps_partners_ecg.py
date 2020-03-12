@@ -79,6 +79,7 @@ TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         channel_map=ECG_REST_AMP_LEADS)
 
 TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
 
 def make_voltage_attr(volt_attr: str = ""):
@@ -96,6 +97,8 @@ TMAPS["voltage_len"] = TensorMap("voltage_len",
                                  shape=(12,),
                                  channel_map=ECG_REST_AMP_LEADS)
 
+TMAPS["len_i"] = TensorMap("len_i", tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'I': 0})
+TMAPS["len_v6"] = TensorMap("len_v6", tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'V6': 0})
 
 def make_partners_ecg_label(key: str = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified"):
     def get_partners_ecg_label(tm, hd5, dependents={}):
