@@ -394,7 +394,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
                 incident_table[patient_key] = [int(str(row[incident_index]))]
                 if row[date_index] != 'NULL':
                     date_table[patient_key] = str2date(row[date_index].split(' ')[0])
-                if len(incident_table) % 1000 == 0:
+                if len(incident_table) % 50 == 0:
                     logging.info(f'Processed: {len(incident_table)} incidence rows.')
     except (FileNotFoundError, ValueError) as e:
         error = e
