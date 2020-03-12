@@ -392,7 +392,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             for row in reader:
                 logging.info(f'row is {row}')
                 try:
-                    patient_key = int(row[patient_index][6:])
+                    patient_key = int(row[patient_index])
                     incident_table[patient_key] = [int(str(row[incident_index]))]
                     if row[date_index] != 'NULL':
                         date_table[patient_key] = str2date(row[date_index].split(' ')[0])
