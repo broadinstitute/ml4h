@@ -82,7 +82,7 @@ def make_voltage(population_normalize: float = None):
             voltage = _resample_voltage(voltage, tm.shape[0])
             tensor[:, tm.channel_map[cm]] = voltage 
         if population_normalize is None:
-            tensor = tm.zero_mean_std1(tensor)
+            tm.normalization = {'zero_mean_std1': True}
         else:
             tensor /= population_normalize 
         return tensor
