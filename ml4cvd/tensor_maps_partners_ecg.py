@@ -89,32 +89,14 @@ def make_voltage(population_normalize: float = None):
     return get_voltage_from_file
 
 
-def uniform_voltage(population_normalize: float = None, desired_sample_rate=500):
-    def get_voltage_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        sample_rate = int(_decompress_data(data_compressed=hd5['ecgsamplebase'][()], dtype=hd5['ecgsamplebase'].attrs['dtype']))
-        if sample_rate == 0:
-            raise ValueError('Sample rate was 0, skipping.')
-        for cm in tm.channel_map:
-            voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
-            voltage = _resample_voltage_with_rate(voltage, tm.shape[0], sample_rate, desired_sample_rate)
-            tensor[:, tm.channel_map[cm]] = voltage
-        if population_normalize is None:
-            tensor = tm.zero_mean_std1(tensor)
-        else:
-            tensor /= population_normalize
-        return tensor
-    return get_voltage_from_file
-
-
 TMAPS['partners_ecg_voltage'] = TensorMap('partners_ecg_voltage',
                                         shape=(2500, 12),
                                         interpretation=Interpretation.CONTINUOUS,
                                         tensor_from_file=make_voltage(population_normalize=2000.0),
                                         channel_map=ECG_REST_AMP_LEADS)
 
-TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=uniform_voltage(population_normalize=2000.0, desired_sample_rate=250), channel_map=ECG_REST_AMP_LEADS)
-TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=uniform_voltage(population_normalize=2000.0, desired_sample_rate=500), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
 
 def make_voltage_attr(volt_attr: str = ""):
