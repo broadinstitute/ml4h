@@ -413,7 +413,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
         mrn_int = int(mrn)
         if mrn_int not in incident_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
-        if mrn_int in date_table:
+        if mrn_int not in date_table:
             index = 0
         else:
             disease_date = date_table[mrn_int]
