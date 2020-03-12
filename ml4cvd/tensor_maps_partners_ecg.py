@@ -44,14 +44,17 @@ def _decompress_data(data_compressed, dtype):
     return data
 
 
-def _resample_voltage(voltage):
-    if len(voltage) == 2500:
+def _resample_voltage(voltage, desired_samples):
+    if len(voltage) == desired_samples:
+        return voltage
+    elif len(voltage) == 2500 and desired_samples == 5000:
         x = np.arange(2500)
         x_interp = np.linspace(0, 2500, 5000)
-        voltage_interp = np.interp(x_interp, x, voltage)
-        logging.info(f'Voltage interpolate has {voltage_interp.shape} x interpolate has {x_interp.shape}')
+        return np.interp(x_interp, x, voltage)
+    elif len(voltage) == 5000 and desired_samples == 2500:
+        return voltage[::2]
     else:
-        return voltage
+        raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} and re-sampling method is unknown.')
 
 
 def make_voltage(population_normalize: float = None):
@@ -59,7 +62,7 @@ def make_voltage(population_normalize: float = None):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for cm in tm.channel_map:
             voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
-            voltage = _resample_voltage(voltage)
+            voltage = _resample_voltage(voltage, tm.shape[0])
             tensor[:, tm.channel_map[cm]] = voltage 
         if population_normalize is None:
             tensor = tm.zero_mean_std1(tensor)
