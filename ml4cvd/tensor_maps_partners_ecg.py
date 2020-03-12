@@ -390,15 +390,13 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             date_table = {}
             incident_table = {}
             for row in reader:
-                logging.info(f'row is {row}')
-                try:
-                    patient_key = int(row[patient_index])
-                    incident_table[patient_key] = [int(str(row[incident_index]))]
-                    if row[date_index] != 'NULL':
-                        date_table[patient_key] = str2date(row[date_index].split(' ')[0])
-                except ValueError as e:
-                    logging.warning(f'value error {e}')
-    except FileNotFoundError as e:
+                patient_key = int(row[patient_index])
+                incident_table[patient_key] = [int(str(row[incident_index]))]
+                if row[date_index] != 'NULL':
+                    date_table[patient_key] = str2date(row[date_index].split(' ')[0])
+                if len(incident_table) % 1000 == 0:
+                    logging.info(f'Processed: {len(incident_table)} incidence rows.')
+    except (FileNotFoundError, ValueError) as e:
         error = e
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
