@@ -299,8 +299,7 @@ def _partners_str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
         raise ValueError(f'Can not parse date: {d}')
-    logging.info(f'dob:{d}')
-    return datetime.date(int(parts[2]), int(parts[1]), int(parts[0]))
+    return datetime.date(int(parts[2]), int(parts[0]), int(parts[1]))
 
 
 def get_partners_ecg_age(tm, hd5, dependents={}):
@@ -344,6 +343,24 @@ def partners_bmi(tm, hd5, dependents={}):
 
 TMAPS['partners_bmi'] = TensorMap('bmi', channel_map={'bmi': 0}, tensor_from_file=partners_bmi)
 
+
+def partners_channel_string(hd5_key, unspecified_key=None):
+    def tensor_from_string(tm, hd5, dependents={}):
+        hd5_string = _decompress_data(data_compressed=hd5[hd5_key][()], dtype=hd5[hd5_key].attrs['dtype'])
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for key in tm.channel_map:
+            if hd5_string.lower() == key.lower():
+                tensor[tm.channel_map[key]] = 1.0
+                return tensor
+        if unspecified_key is None:
+            raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+        tensor[tm.channel_map[unspecified_key]] = 1.0
+        return tensor
+    return tensor_from_string
+
+
+TMAPS['partners_race'] = TensorMap('race', channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3}, tensor_from_file=partners_channel_string('race'))
+TMAPS['partners_gender'] = TensorMap('gender', channel_map={'female': 0, 'male': 1}, tensor_from_file=partners_channel_string('gender'))
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
