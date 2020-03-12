@@ -396,7 +396,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
                     incident_table[patient_key] = [int(str(row[incident_index]))]
                     if row[date_index] != 'NULL':
                         date_table[patient_key] = str2date(row[date_index].split(' ')[0])
-                    if len(incident_table) % 1000 == 0:
+                    if len(incident_table) % 2000 == 0:
                         logging.debug(f'Processing: {len(incident_table)} incidence rows.')
                 except ValueError as e:
                     logging.warning(f'val err {e}')
@@ -419,6 +419,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             disease_date = date_table[mrn_int]
             assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
             index = 1 if disease_date < assess_date else 2
+            logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
         categorical_data[index] = 1.0
         return categorical_data
     return tensor_from_file
