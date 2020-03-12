@@ -299,6 +299,7 @@ def _partners_str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
         raise ValueError(f'Can not parse date: {d}')
+    logging.info(f'dob:{d}')
     return datetime.date(int(parts[2]), int(parts[1]), int(parts[0]))
 
 
