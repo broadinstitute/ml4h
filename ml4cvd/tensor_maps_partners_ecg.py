@@ -390,10 +390,10 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             date_table = {}
             incident_table = {}
             for row in reader:
-                patient_key = int(row[patient_index])
-                incident_table[patient_key] = [int(row[incident_index])]
+                patient_key = int(row[patient_index].decode('utf-8'))
+                incident_table[patient_key] = [int(row[incident_index].decode('utf-8'))]
                 if row[date_index] != 'NULL':
-                    date_table[patient_key] = str2date(row[date_index])
+                    date_table[patient_key] = str2date(row[date_index].decode('utf-8'))
     except FileNotFoundError as e:
         error = e
 
