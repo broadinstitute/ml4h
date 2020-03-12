@@ -381,7 +381,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
     """
     error = None
     try:
-        with open(file_name, 'r', encoding='utf-8') as f:
+        with open(file_name, 'r', encoding='utf-8-sig') as f:
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             patient_index = header.index(patient_column)
