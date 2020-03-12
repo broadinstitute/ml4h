@@ -1,3 +1,4 @@
+import os
 import csv
 import logging
 import datetime
@@ -408,7 +409,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             raise error
 
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        mrn = hd5.filename.split('-')[0]
+        mrn = os.path.basename(hd5.filename).split('-')[0]
         mrn_int = int(mrn)
         if mrn_int not in incident_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
