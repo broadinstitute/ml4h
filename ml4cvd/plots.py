@@ -660,7 +660,8 @@ def plot_partners_ecgs(args):
                             title += f'_{tm.name}_{tensor}'
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                         logging.exception(e)
-                plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
+                if len(ecg_dict) > 0:
+                    plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
         except OSError:
             logging.exception(f"Broken tensor at: {tp}")
 
