@@ -381,7 +381,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
     """
     error = None
     try:
-        with open(file_name, 'r') as f:
+        with open(file_name, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             patient_index = header.index(patient_column)
@@ -396,7 +396,6 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
                     date_table[patient_key] = str2date(str(row[date_index]))
     except (FileNotFoundError, ValueError) as e:
         error = e
-
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
