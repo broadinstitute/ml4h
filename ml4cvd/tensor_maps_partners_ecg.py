@@ -381,7 +381,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
     """
     error = None
     try:
-        with open(file_name, 'r', encoding='utf-16') as f:
+        with open(file_name, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             patient_index = header.index(patient_column)
@@ -390,7 +390,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             date_table = {}
             incident_table = {}
             for row in reader:
-                patient_key = int(str(row[patient_index]))
+                patient_key = int(row[patient_index][6:])
                 incident_table[patient_key] = [int(str(row[incident_index]))]
                 if row[date_index] != 'NULL':
                     date_table[patient_key] = str2date(str(row[date_index]))
