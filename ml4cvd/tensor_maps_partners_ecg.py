@@ -390,6 +390,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             date_table = {}
             incident_table = {}
             for row in reader:
+                print(f'row is {row}')
                 patient_key = int(row[patient_index][6:])
                 incident_table[patient_key] = [int(str(row[incident_index]))]
                 if row[date_index] != 'NULL':
