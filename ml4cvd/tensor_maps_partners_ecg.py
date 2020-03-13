@@ -398,6 +398,12 @@ TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(1,), tensor_from_file=v
 TMAPS["lead_v6_zeros"] = TensorMap("lead_v6_zeros", shape=(1,), tensor_from_file=voltage_zeros, channel_map={'V6': 0})
 
 
+def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+    voltage = _decompress_data(data_compressed=hd5['V6'][()], dtype=hd5['V6'].attrs['dtype'])
+    if np.count_nonzero(voltage == 0) > 10:
+        raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
+
+
 def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', date_column: str='datetime', incident_column: str='incident', delimiter: str = ','):
     """
     Build a tensor_from_file function from a column and date in a file.
