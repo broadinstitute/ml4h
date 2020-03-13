@@ -668,7 +668,7 @@ def _plot_partners_ecg(data, args):
     ax0.set_xlim(0, 1)
     ax0.set_ylim(0, 1)
 
-    ax0.text(0.0, 0.9,   f"{data['lastname']}, {data['firstname']}".title(), weight='bold')
+    ax0.text(0.0, 0.9,   f"{data['lastname']}, {data['firstname']}", weight='bold')
     ax0.text(0.23, 0.9,  f"ID:{data['patientid']}", weight='bold')
     ax0.text(0.385, 0.9, f"{dt:%d-%b-%Y %H:%M:%S}".upper(), weight='bold')
     ax0.text(0.55, 0.9,  f"{data['sitename']}", weight='bold')
@@ -741,7 +741,7 @@ def _plot_partners_ecg(data, args):
         ax1.axvline(v, lw=0.5 if i % 5 == 0 else 0.2, color='r') # 25mm/s
 
     # Set horizontal gridlines
-    for i, v in enumerate(np.arange(0,len(all_leads) * max_range * 1.1, 0.1)): # TODO figure out scale
+    for i, v in enumerate(np.arange(0,len(all_leads) * max_range * 1.1, 0.07)): # TODO figure out scale
         ax1.axhline(v, lw=0.5 if i % 5 == 0 else 0.2, color='r') # 10mm/mV
 
     # Add text labels to ECG signal
@@ -799,8 +799,8 @@ def _plot_partners_ecg(data, args):
     plt.tight_layout()
     plt.subplots_adjust(left=0.02,
                         right=0.98,
-                        top=0.96,
-                        bottom=0.04,
+                        top=0.98,
+                        bottom=0.02,
                         hspace=0.01)
 
     plt.savefig(os.path.join(args.output_folder, args.id, f"{data['date']}-{data['patientid']}{IMAGE_EXT}"))
