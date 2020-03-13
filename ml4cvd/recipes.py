@@ -12,6 +12,7 @@ from functools import reduce
 from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
+import tensorflow.keras.backend as K
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
@@ -24,7 +25,7 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_find_learning_rate
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
@@ -98,6 +99,11 @@ def run(args):
             append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
+        elif 'find_learning_rate' == args.mode:
+            _find_lr(args)
+        elif 'find_learning_rate_and_train' == args.mode:
+            args.learning_rate = _find_lr(args)
+            train_multimodal_multitask(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -107,6 +113,35 @@ def run(args):
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+
+def _find_lr(args) -> float:
+    """
+    Recommended to set batch size as large as possible.
+    Based on https://sgugger.github.io/how-do-you-find-a-good-learning-rate.html
+    """
+    beta = .98
+    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
+    lrs = np.geomspace(1e-8, 10, args.training_steps)
+    avg_loss = 0
+    best_loss = np.inf
+    optimizer = model.optimizer
+    losses, smoothed_losses = [], []
+    for i, (lr, (x, y)) in enumerate(zip(lrs, generate_train)):
+        K.set_value(optimizer.learning_rate, lr)
+        history = model.fit([x], [y])
+        losses.append(history.history['loss'])
+        avg_loss = beta * history.history['loss'] + (1 - beta) * avg_loss
+        smoothed_loss = avg_loss / (1 - beta**(i + 1))
+        smoothed_losses.append(smoothed_loss)
+        best_loss = min(best_loss, smoothed_loss)
+        if smoothed_loss > 4 * best_loss:
+            break
+    best_lr = lrs[np.argmin(np.diff(smoothed_losses)) + 1]
+    plot_find_learning_rate(learning_rates=lrs, losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
+                            figure_path=os.path.join(args.output_folder, args.id))
+    return best_lr
 
 
 def _init_dict_of_tensors(tmaps: list) -> dict:
