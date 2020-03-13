@@ -491,7 +491,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '')
         models[model_name] = model
         scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 

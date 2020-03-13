@@ -363,6 +363,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
 
     input_tensors, output_tensors = list(first_batch[0]), list(first_batch[1])
     for i in range(1, minibatches):
+        logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:

@@ -437,11 +437,11 @@ TMAPS['ecg_rest_raw'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, sha
                                   channel_map=ECG_REST_LEADS)
 
 TMAPS['ecg_rest_raw_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
-                                  channel_map=ECG_REST_LEADS, cacheable=False)
+                                       channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_warp'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
-                                  channel_map=ECG_REST_LEADS, cacheable=False)
+                                       channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_warp_n_roll'] = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True, warp=True),
-                                  channel_map=ECG_REST_LEADS, cacheable=False)
+                                              channel_map=ECG_REST_LEADS, cacheable=False)
 TMAPS['ecg_rest_raw_100'] = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
                                       channel_map=ECG_REST_LEADS)
 
@@ -553,20 +553,20 @@ TMAPS['av_block'] = TensorMap('av_block', Interpretation.CATEGORICAL, tensor_fro
                               loss=weighted_crossentropy([0.1, 10.0], 'av_block'))
 
 TMAPS['incomplete_right_bundle_branch_block'] = TensorMap('incomplete_right_bundle_branch_block', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-                              channel_map={'no_incomplete_right_bundle_branch_block': 0, 'Incomplete right bundle branch block': 1},
-                              loss=weighted_crossentropy([0.1, 10.0], 'incomplete_right_bundle_branch_block'))
+                                                          channel_map={'no_incomplete_right_bundle_branch_block': 0, 'Incomplete right bundle branch block': 1},
+                                                          loss=weighted_crossentropy([0.1, 10.0], 'incomplete_right_bundle_branch_block'))
 
 TMAPS['infarcts'] = TensorMap('infarcts', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
                               channel_map={'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2, 'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5},
                               loss=weighted_crossentropy([0.1, 4.0, 6.0, 7.0, 6.0, 4.0], 'infarcts'))
 
 TMAPS['left_atrial_enlargement'] = TensorMap('left_atrial_enlargement', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-                              channel_map={'no_left_atrial_enlargement': 0, 'Left atrial enlargement': 1},
-                              loss=weighted_crossentropy([0.1, 10.0], 'left_atrial_enlargement'))
+                                             channel_map={'no_left_atrial_enlargement': 0, 'Left atrial enlargement': 1},
+                                             loss=weighted_crossentropy([0.1, 10.0], 'left_atrial_enlargement'))
 
 TMAPS['left_ventricular_hypertrophy'] = TensorMap('left_ventricular_hypertrophy', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-                              channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
-                              loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
+                                                  channel_map={'no_left_ventricular_hypertrophy': 0, 'Left ventricular hypertrophy': 1},
+                                                  loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'))
 
 TMAPS['lvh_fine'] = TensorMap('lvh_fine', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, loss=weighted_crossentropy([0.5, 12.0, 16.0, 30.0, 36.0], 'lvh_fine'),
                               channel_map={'no_lvh_fine': 0, 'Minimal voltage criteria for LVH may be normal variant': 1,
@@ -581,12 +581,12 @@ TMAPS['premature_atrial_complexes'] = TensorMap('premature_atrial_complexes', In
                                                 loss=weighted_crossentropy([0.1, 10.0], 'premature_atrial_complexes'))
 
 TMAPS['premature_supraventricular_complexes'] = TensorMap('premature_supraventricular_complexes', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-                                                channel_map={'no_premature_supraventricular_complexes': 0, 'premature supraventricular complexes': 1},
-                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_supraventricular_complexes'))
+                                                          channel_map={'no_premature_supraventricular_complexes': 0, 'premature supraventricular complexes': 1},
+                                                          loss=weighted_crossentropy([0.1, 10.0], 'premature_supraventricular_complexes'))
 
 TMAPS['premature_ventricular_complexes'] = TensorMap('premature_ventricular_complexes', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-                                                channel_map={'no_premature_ventricular_complexes': 0, 'premature ventricular complexes': 1},
-                                                loss=weighted_crossentropy([0.1, 10.0], 'premature_ventricular_complexes'))
+                                                     channel_map={'no_premature_ventricular_complexes': 0, 'premature ventricular complexes': 1},
+                                                     loss=weighted_crossentropy([0.1, 10.0], 'premature_ventricular_complexes'))
 
 TMAPS['prolonged_qt'] = TensorMap('prolonged_qt', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, channel_map={'no_prolonged_qt': 0, 'Prolonged QT': 1},
                                   loss=weighted_crossentropy([0.1, 10.0], 'prolonged_qt'))
@@ -1189,17 +1189,17 @@ def _slice_tensor(tensor_key, slice_index):
 
 
 TMAPS['lax_4ch_diastole_slice0_3d'] = TensorMap('lax_4ch_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(200, 160, 1), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
+                                                normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
 TMAPS['lax_3ch_diastole_slice0_3d'] = TensorMap('lax_3ch_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(200, 160, 1), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
+                                                normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
 TMAPS['cine_segmented_ao_dist_slice0_3d'] = TensorMap('cine_segmented_ao_dist_slice0_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0))
+                                                      normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0))
 TMAPS['lax_4ch_diastole_slice0'] = TensorMap('lax_4ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
+                                             normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0))
 TMAPS['lax_3ch_diastole_slice0'] = TensorMap('lax_3ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
+                                             normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0))
 TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap('cine_segmented_ao_dist_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
-                                            normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0))
+                                                   normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0))
 
 
 def _pad_crop_tensor(tm, hd5, dependents={}):
@@ -1213,7 +1213,7 @@ TMAPS['cine_lax_3ch_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation
 TMAPS['cine_lax_3ch_192_160_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 50, 1), path_prefix='ukb_cardiac_mri',
                                             tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_ao_dist_4d'] = TensorMap('cine_segmented_ao_dist', Interpretation.CONTINUOUS, shape=(160, 192, 100, 1), path_prefix='ukb_cardiac_mri',
-                                            tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
+                                     tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
                                       tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True})
 TMAPS['cine_lax_4ch_192_1'] = TensorMap('cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50, 1), path_prefix='ukb_cardiac_mri',
@@ -1239,17 +1239,17 @@ TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented',  Interpretation.CATE
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
                                        channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
 TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 6),
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
-                                       channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
+                                           tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                           channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
 TMAPS['lax_3ch_segmented_192_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
-                                       channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
+                                               tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+                                               channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
 TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 50, 14),
                                        tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
                                        channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)
 TMAPS['lax_4ch_segmented_192'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
-                                       channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)
+                                           tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+                                           channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)
 TMAPS['lax_4ch_segmented_192_w'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
                                              tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
                                              channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
@@ -1258,8 +1258,8 @@ TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', Interpretation.CATEGOR
                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
                                       channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
 TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CATEGORICAL, shape=(192, 192, 50, 11),
-                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
-                                      channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
+                                          tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
+                                          channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
 TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
 
@@ -1297,8 +1297,8 @@ def preprocess_with_function(fxn, hd5_key=None):
 
 
 TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0', loss='logcosh', path_prefix='continuous',
-                             normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
-                             channel_map={'white-matter-hyper-intensities': 0})
+                                 normalization={'mean': 7, 'std': 8}, tensor_from_file=preprocess_with_function(np.log),
+                                 channel_map={'white-matter-hyper-intensities': 0})
 TMAPS['weight_lbs_2'] = TensorMap('weight_lbs',  Interpretation.CONTINUOUS, normalization={'mean': 168.74, 'std': 34.1}, loss='logcosh',
                                   channel_map={'weight_lbs': 0}, tensor_from_file=preprocess_with_function(lambda x: x*2.20462, 'continuous/21002_Weight_2_0'))
 
@@ -1335,15 +1335,15 @@ TMAPS['sax_all_diastole_weighted'] = TensorMap('sax_all_diastole', shape=(256, 2
                                                dependent_map=TMAPS['sax_all_diastole_segmented_weighted'])
 
 TMAPS['sax_all_systole_segmented'] = TensorMap('sax_all_systole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-                                                channel_map=MRI_SEGMENTED_CHANNEL_MAP)
+                                               channel_map=MRI_SEGMENTED_CHANNEL_MAP)
 TMAPS['sax_all_systole_segmented_weighted'] = TensorMap('sax_all_systole_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-                                                         channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-                                                         loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'))
+                                                        channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+                                                        loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'))
 
 TMAPS['sax_all_systole'] = TensorMap('sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
-                                      dependent_map=TMAPS['sax_all_systole_segmented'])
+                                     dependent_map=TMAPS['sax_all_systole_segmented'])
 TMAPS['sax_all_systole_weighted'] = TensorMap('sax_all_systole_weighted', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
-                                               dependent_map=TMAPS['sax_all_systole_segmented_weighted'])
+                                              dependent_map=TMAPS['sax_all_systole_segmented_weighted'])
 
 
 def all_sax_tensor(total_b_slices=13):
@@ -1378,7 +1378,8 @@ TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_fil
 TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])
 
 
-def _segmented_index_slices(key_prefix, shape, path_prefix='ukb_cardiac_mri'):
+def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str='ukb_cardiac_mri') -> Callable:
+    """Get semantic segmentation with label index as pixel values for an MRI slice"""
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(shape, dtype=np.float32)
         for i in range(shape[-1]):
@@ -1389,6 +1390,14 @@ def _segmented_index_slices(key_prefix, shape, path_prefix='ukb_cardiac_mri'):
 
 
 def _bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: str, class_index: int) -> Callable:
+    """Given an hd5 key of a semantic segmentation return a bounding box that covers the extent of a given class
+    :param segmented_shape: The shape of each segmentation
+    :param segmented_key: The key for the HD5 file where the segmentation is stored
+    :param class_index: The index in the segmentation asssociated with the class we will find the bounding box for
+    :return: A np.ndarray encoding a bounding box with min coordinates followed by max coordinates
+            For example, a 2D bounding box will be returned as a 1D tensor of 4 numbers: [min_x, min_y, max_x, max_y]
+            for a 3d bounding box we would get 6 numbers: [min_x, min_y, min_z max_x, max_y, max_z]
+    """
     def bbox_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         index_tensor = _pad_or_crop_array_to_shape(segmented_shape, np.array(hd5[segmented_key], dtype=np.float32))
@@ -1402,6 +1411,14 @@ def _bounding_box_from_categorical(segmented_shape: Tuple[int], segmented_key: s
 
 
 def _bounding_box_from_callable(class_index: int, tensor_from_file_fxn: Callable) -> Callable:
+    """Given a tensor_from_file function that returns a semantic segmentation find the bounding box that covers the extent of a given class
+    :param class_index: The index in the segmentation asssociated with the class we will find the bounding box for
+    :param tensor_from_file_fxn: A tensor from file function that returns a class index tensor.
+            This tensor should NOT be one hot, ie the segmentation before `to_categorical` has been applied.
+    :return: A np.ndarray encoding a bounding box with min coordinates followed by max coordinates
+            For example, a 2D bounding box will be returned as a 1D tensor of 4 numbers: [min_x, min_y, max_x, max_y]
+            for a 3d bounding box we would get 6 numbers: [min_x, min_y, min_z max_x, max_y, max_z]
+    """
     def bbox_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         index_tensor = tensor_from_file_fxn(None, hd5)
