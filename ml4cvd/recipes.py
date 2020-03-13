@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 from functools import reduce
 from operator import itemgetter
+import tensorflow.keras.backend as K
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-import tensorflow.keras.backend as K
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
@@ -123,23 +123,27 @@ def _find_lr(args) -> float:
     beta = .98
     generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
-    lrs = np.geomspace(1e-8, 10, args.training_steps)
+    lrs = np.geomspace(1e-7, 1e2, args.training_steps)
     avg_loss = 0
     best_loss = np.inf
     optimizer = model.optimizer
     losses, smoothed_losses = [], []
-    for i, (lr, (x, y)) in enumerate(zip(lrs, generate_train)):
+    for i, (lr, batch) in enumerate(zip(lrs, generate_train)):
         K.set_value(optimizer.learning_rate, lr)
-        history = model.fit([x], [y])
-        losses.append(history.history['loss'])
-        avg_loss = beta * history.history['loss'] + (1 - beta) * avg_loss
+        batch_gen = (_ for _ in [batch])  # allows use of dictionaries in fit
+        history = model.fit(batch_gen, verbose=0)
+        loss = history.history['loss'][0]
+        losses.append(loss)
+        avg_loss = beta * avg_loss + (1 - beta) * loss
         smoothed_loss = avg_loss / (1 - beta**(i + 1))
         smoothed_losses.append(smoothed_loss)
         best_loss = min(best_loss, smoothed_loss)
-        if smoothed_loss > 4 * best_loss:
+        if smoothed_loss > 2 * best_loss:
             break
-    best_lr = lrs[np.argmin(np.diff(smoothed_losses)) + 1]
-    plot_find_learning_rate(learning_rates=lrs, losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
+    burn_in = args.training_steps // 10
+    best_lr = lrs[np.argmin(np.diff(smoothed_losses[burn_in:])) + 1 + burn_in]
+    pd.DataFrame({'loss': losses, 'learning_rate': lrs[:len(losses)], 'smoothed_loss': smoothed_losses, 'picked_lr': best_lr}).to_csv(os.path.join(args.output_folder, args.id, 'find_learning_rate.csv'), index=False)
+    plot_find_learning_rate(learning_rates=lrs[:len(losses)], losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
                             figure_path=os.path.join(args.output_folder, args.id))
     return best_lr
 
