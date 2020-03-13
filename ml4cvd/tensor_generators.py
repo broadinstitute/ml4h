@@ -29,7 +29,7 @@ np.set_printoptions(threshold=np.inf)
 
 
 TENSOR_GENERATOR_TIMEOUT = 64
-TENSOR_GENERATOR_MAX_Q_SIZE = 4
+TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
 Path = str
 PathIterator = Iterator[Path]
@@ -105,7 +105,7 @@ class TensorGenerator:
             self.batch_function = _identity_batch
 
     def _init_workers(self):
-        self.q = Queue(TENSOR_GENERATOR_MAX_Q_SIZE)
+        self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
         self._started = True
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
