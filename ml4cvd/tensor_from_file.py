@@ -1302,6 +1302,26 @@ TMAPS['log_25781_2'] = TensorMap('25781_Total-volume-of-white-matter-hyperintens
 TMAPS['weight_lbs_2'] = TensorMap('weight_lbs',  Interpretation.CONTINUOUS, normalization={'mean': 168.74, 'std': 34.1}, loss='logcosh',
                                   channel_map={'weight_lbs': 0}, tensor_from_file=preprocess_with_function(lambda x: x*2.20462, 'continuous/21002_Weight_2_0'))
 
+
+def _weekly_alcohol(instance):
+    alcohol_keys = [f'1568_Average-weekly-red-wine-intake_{instance}_0', f'1578_Average-weekly-champagne-plus-white-wine-intake_{instance}_0',
+                    f'1588_Average-weekly-beer-plus-cider-intake_{instance}_0', f'1598_Average-weekly-spirits-intake_{instance}_0',
+                    f'1608_Average-weekly-fortified-wine-intake_{instance}_0']
+
+    def alcohol_from_file(tm, hd5, dependents={}):
+        drinks = 0
+        for k in alcohol_keys:
+            data = tm.hd5_first_dataset_in_group(hd5, key_prefix=f'{tm.path_prefix}/{k}')
+            drinks += float(data[0])
+        return np.array([drinks], dtype=np.float32)
+    return alcohol_from_file
+
+
+TMAPS['weekly_alcohol_0'] = TensorMap('weekly_alcohol_0', loss='logcosh', channel_map={'weekly_alcohol_0': 0}, tensor_from_file=_weekly_alcohol(0))
+TMAPS['weekly_alcohol_1'] = TensorMap('weekly_alcohol_1', loss='logcosh', channel_map={'weekly_alcohol_1': 0}, tensor_from_file=_weekly_alcohol(1))
+TMAPS['weekly_alcohol_2'] = TensorMap('weekly_alcohol_2', loss='logcosh', channel_map={'weekly_alcohol_2': 0}, tensor_from_file=_weekly_alcohol(2))
+
+
 def sax_tensor(b_series_prefix):
     def sax_tensor_from_file(tm, hd5, dependents={}):
         missing = 0
