@@ -434,8 +434,8 @@ TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CAT
                                             channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2})
 TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
                                                      tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
-                                                     channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2}
-                                                     loss=weighted_crossentropy([1.0, 10.0, 10.0]))
+                                                     channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2},
+                                                     loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
