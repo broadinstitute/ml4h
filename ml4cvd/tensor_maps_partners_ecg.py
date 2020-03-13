@@ -364,6 +364,28 @@ TMAPS['partners_gender'] = TensorMap('gender', interpretation=Interpretation.CAT
                                      tensor_from_file=partners_channel_string('gender'))
 
 
+def _partners_adult(hd5_key, minimum_age=18):
+    def tensor_from_string(tm, hd5, dependents={}):
+        birthday = _decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype'])
+        acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
+        delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
+        years = delta.days / 365.0
+        if years < minimum_age:
+            raise ValueError(f'ECG taken on patient below age cutoff.')
+        hd5_string = _decompress_data(data_compressed=hd5[hd5_key][()], dtype=hd5[hd5_key].attrs['dtype'])
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for key in tm.channel_map:
+            if hd5_string.lower() == key.lower():
+                tensor[tm.channel_map[key]] = 1.0
+                return tensor
+        raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+    return tensor_from_string
+
+
+TMAPS['partners_adult_gender'] = TensorMap('adult_gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
+                                           tensor_from_file=_partners_adult('gender'))
+
+
 def voltage_zeros(tm, hd5, dependents={}):
     tensor = np.zeros(tm.shape, dtype=np.float32)
     for cm in tm.channel_map:
