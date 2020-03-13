@@ -7,8 +7,9 @@ import h5py
 import numcodecs
 import numpy as np
 from typing import Dict, List
-from ml4cvd.TensorMap import (TensorMap, no_nans, str2date,
-        make_range_validator, Interpretation)
+
+from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.TensorMap import (TensorMap, no_nans, str2date, make_range_validator, Interpretation)
 from ml4cvd.defines import ECG_REST_AMP_LEADS
 from ml4cvd.tensor_maps_by_hand import TMAPS
 
@@ -431,7 +432,10 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
 TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
                                             tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
                                             channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2})
-
+TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
+                                                     tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
+                                                     channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2}
+                                                     loss=weighted_crossentropy([1.0, 10.0, 10.0]))
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
