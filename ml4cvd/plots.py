@@ -52,6 +52,9 @@ ECG_REST_PLOT_MAX_YRANGE = 10.0
 ECG_REST_PLOT_LEADS = [['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
                        ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
                        ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']]
+ECG_REST_PARTNERS_LEADS = [['I','aVR', 'V1', 'V4'],
+                           ['II','aVL', 'V2', 'V5'],
+                           ['III','aVF', 'V3', 'V6']]
 ECG_REST_PLOT_MEDIAN_LEADS = [['median_I','median_aVR', 'median_V1', 'median_V4'],
                               ['median_II','median_aVL', 'median_V2', 'median_V5'],
                               ['median_III','median_aVF', 'median_V3', 'median_V6']]
@@ -661,7 +664,15 @@ def plot_partners_ecgs(args):
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                         logging.exception(e)
                 if len(ecg_dict) > 0:
-                    plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
+                    out_folder = os.path.join(args.output_folder, args.id, 'ecg_plots/')
+                    plot_ecg(ecg_dict, title, out_folder)
+                    raw_scale = 0.005  # Conversion from raw to mV
+                    time_interval = 2.5  # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
+                    matplotlib.rcParams.update({'font.size': 20})
+                    fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24, 18), tight_layout=True)
+                    _subplot_ecg_rest(ecg_dict, raw_scale, time_interval, ECG_REST_PARTNERS_LEADS, fig, ax,
+                                      ECG_REST_PLOT_DEFAULT_YRANGE, offset=0, pat_df=None, is_median=False, is_blind=True)
+                    fig.savefig(os.path.join(out_folder, title + '.pdf'), bbox_inches="tight")
         except OSError:
             logging.exception(f"Broken tensor at: {tp}")
 
