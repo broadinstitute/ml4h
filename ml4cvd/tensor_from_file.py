@@ -1317,9 +1317,9 @@ def _weekly_alcohol(instance):
     return alcohol_from_file
 
 
-TMAPS['weekly_alcohol_0'] = TensorMap('weekly_alcohol_0', loss='logcosh', channel_map={'weekly_alcohol_0': 0}, tensor_from_file=_weekly_alcohol(0))
-TMAPS['weekly_alcohol_1'] = TensorMap('weekly_alcohol_1', loss='logcosh', channel_map={'weekly_alcohol_1': 0}, tensor_from_file=_weekly_alcohol(1))
-TMAPS['weekly_alcohol_2'] = TensorMap('weekly_alcohol_2', loss='logcosh', channel_map={'weekly_alcohol_2': 0}, tensor_from_file=_weekly_alcohol(2))
+TMAPS['weekly_alcohol_0'] = TensorMap('weekly_alcohol_0', loss='logcosh', path_prefix='continuous', channel_map={'weekly_alcohol_0': 0}, tensor_from_file=_weekly_alcohol(0))
+TMAPS['weekly_alcohol_1'] = TensorMap('weekly_alcohol_1', loss='logcosh', path_prefix='continuous', channel_map={'weekly_alcohol_1': 0}, tensor_from_file=_weekly_alcohol(1))
+TMAPS['weekly_alcohol_2'] = TensorMap('weekly_alcohol_2', loss='logcosh', path_prefix='continuous', channel_map={'weekly_alcohol_2': 0}, tensor_from_file=_weekly_alcohol(2))
 
 
 def sax_tensor(b_series_prefix):
