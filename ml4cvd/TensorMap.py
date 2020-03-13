@@ -179,7 +179,7 @@ class TensorMap(object):
             self.tensor_from_file = _default_tensor_from_file
 
         if self.validator is None:
-            self.validator = lambda x: None
+            self.validator = lambda tm, x, hd5: None
 
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
