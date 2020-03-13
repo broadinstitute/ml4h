@@ -664,15 +664,7 @@ def plot_partners_ecgs(args):
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                         logging.exception(e)
                 if len(ecg_dict) > 0:
-                    out_folder = os.path.join(args.output_folder, args.id, 'ecg_plots/')
-                    plot_ecg(ecg_dict, title, out_folder)
-                    raw_scale = 0.005  # Conversion from raw to mV
-                    time_interval = 2.5  # time-interval per plot in seconds. ts_Reference data is in s, voltage measurement is 5 uv per lsb
-                    matplotlib.rcParams.update({'font.size': 20})
-                    fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24, 18), tight_layout=True)
-                    _subplot_ecg_rest(ecg_dict, raw_scale, time_interval, ECG_REST_PARTNERS_LEADS, fig, ax,
-                                      ECG_REST_PLOT_DEFAULT_YRANGE, offset=0, pat_df=None, is_median=False, is_blind=True)
-                    fig.savefig(os.path.join(out_folder, title + '.pdf'), bbox_inches="tight")
+                    plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
         except OSError:
             logging.exception(f"Broken tensor at: {tp}")
 
