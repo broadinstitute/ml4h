@@ -752,12 +752,14 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
             lead_name = lead_mapping[i-offset][j]
             lead = twelve_leads[lead_name]
             # Convert units to mV
-            yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            if isinstance(lead, dict):
+                yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            else:
+                yy = lead
             if not is_median:
                 ax[i,j].set_xlim(j*time_interval,(j+1)*time_interval)
                 # extract portion of waveform that is included in the actual plots 
-                yplot = yy[np.logical_and(lead['ts_reference']>j*time_interval,
-                                lead['ts_reference']<(j+1)*time_interval)]
+                yplot = yy[j*time_interval: (j+1)*time_interval]
             else:
                 yplot = yy                       
             ylim_min, ylim_max = _ecg_rest_ylims(yrange, yplot)            
