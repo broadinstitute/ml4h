@@ -645,7 +645,6 @@ def plot_ecg(data, label, prefix='./figures/'):
 
 
 def _plot_partners_ecg(data, args):
-    # print(f"DATA KEYS: {data.keys()}")
 
     # Set up plot
     fig = plt.figure('ECG plot',
@@ -704,7 +703,6 @@ def _plot_partners_ecg(data, args):
     ax0.text(0.4, 0,    f"Referred by: {'placeholder'}", weight='bold')
     ax0.text(0.7, 0,    f"Electronically Signed By: {'placeholder'}", weight='bold')
 
-
     # middle signal panel
     ecg_signal = data['voltage']
 
@@ -730,26 +728,40 @@ def _plot_partners_ecg(data, args):
     all_leads[4] = ecg_signal['II']
     all_leads[5] = ecg_signal['V5']
 
-    max_range = max([np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in all_leads]) * 2
-    ax1.set_xlim(-50, len(all_leads[0]) + 50)
-    ax1.set_ylim(0, len(all_leads) * max_range * 1.1)
-    offset = max_range
+    voltage_scale = 0.2  # 0.1 / 5 -> 0.2 ... divide voltages by 5?
+    all_leads *= voltage_scale
+    # max_range = max([np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in all_leads]) * 2
+    x_lo, x_hi = -50, len(all_leads[0]) + 50
+    y_lo, y_hi = -0.05, 2.55 # match x range to make grid square
+    ax1.set_xlim(x_lo, x_hi)
+    ax1.set_ylim(y_lo, y_hi)
+    offset = (y_hi - y_lo) / len(all_leads)
     fs = 250 # TODO sampling frequency
+    mm_s = 25
+    mm_mv = 10
 
-    # Set vertical gridlines
-    for i, v in enumerate(np.arange(-50,len(all_leads[0]) + 50, 1./25*fs)):
-        ax1.axvline(v, lw=0.5 if i % 5 == 0 else 0.2, color='r') # 25mm/s
+    x_tick = 1. / mm_s * fs
+    y_tick = 1. / mm_mv * voltage_scale
+    x_major_ticks = np.arange(x_lo, x_hi, x_tick * 5)
+    x_minor_ticks = np.arange(x_lo, x_hi, x_tick)
+    y_major_ticks = np.arange(y_lo, y_hi, y_tick * 5)
+    y_minor_ticks = np.arange(y_lo, y_hi, y_tick)
 
-    # Set horizontal gridlines
-    for i, v in enumerate(np.arange(0,len(all_leads) * max_range * 1.1, 0.07)): # TODO figure out scale
-        ax1.axhline(v, lw=0.5 if i % 5 == 0 else 0.2, color='r') # 10mm/mV
+    ax1.set_xticks(x_major_ticks)
+    ax1.set_xticks(x_minor_ticks, minor=True)
+    ax1.set_yticks(y_major_ticks)
+    ax1.set_yticks(y_minor_ticks, minor=True)
+
+    ax1.tick_params(which="both", left=False, bottom=False, labelleft=False, labelbottom=False)
+    ax1.grid(b=True, color="r", which="major", lw=0.5)
+    ax1.grid(b=True, color="r", which="minor", lw=0.2)
 
     # Add text labels to ECG signal
     text_xoffset = 5
-    text_yoffset = -max_range / 10
+    text_yoffset = -0.1
 
     for i in range(len(all_leads)):
-        this_offset = (len(all_leads) - 0.375 - i) * offset
+        this_offset = (len(all_leads) - i - 0.5) * offset
         ax1.plot(all_leads[i] + this_offset, color='black', linewidth = 0.375)
         if i == 0:
             ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'I',
@@ -788,13 +800,11 @@ def _plot_partners_ecg(data, args):
             ax1.text(0 + text_xoffset, this_offset + text_yoffset, 'V5',
                      ha='left', va='top', weight='bold', fontsize=10)
 
-    ax1.tick_params(labelleft=False, labelbottom=False)
-
     # lower left information panel
     ax2.axis('off')
     ax2.set_xlim(0, 1)
     ax2.set_ylim(0, 1)
-    ax2.text(0, 0.5, f"25mm/s    10mm/mV    {fs}Hz", ha='left', va='center') # TODO actually pull this data
+    ax2.text(0, 0.5, f"{mm_s}mm/s    {mm_mv}mm/mV    {fs}Hz", ha='left', va='center') # TODO actually pull this data
 
     plt.tight_layout()
     plt.subplots_adjust(left=0.02,
@@ -807,29 +817,6 @@ def _plot_partners_ecg(data, args):
 
 
 def plot_partners_ecgs(args):
-    '''
-    Required tensors:
-        partners_ecg_patientid
-        partners_ecg_firstname
-        partners_ecg_lastname
-        partners_ecg_gender
-        partners_ecg_dob
-        partners_ecg_age
-        partners_ecg_date
-        partners_ecg_time
-        partners_ecg_sitename
-        partners_ecg_location
-        partners_ecg_read_md_raw
-        partners_ecg_voltage
-        partners_ecg_rate
-        partners_ecg_pr
-        partners_ecg_qrs
-        partners_ecg_qt
-        partners_ecg_qtc
-        partners_ecg_paxis
-        partners_ecg_raxis
-        partners_ecg_taxis
-    '''
 
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
     tensor_maps_in = args.tensor_maps_in
@@ -847,7 +834,6 @@ def plot_partners_ecgs(args):
     for tp in tensor_paths:
         try:
             with h5py.File(tp, 'r') as hd5:
-                # print(f"HD5 Keys: {list(hd5.keys)}")
                 for tm in tensor_maps_in:
                     try:
                         tensor = tm.tensor_from_file(tm, hd5)
