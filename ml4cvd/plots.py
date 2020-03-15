@@ -17,6 +17,7 @@ from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
+from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -131,7 +132,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     return performance_metrics
 
 
-def plot_metric_history(history, title, prefix='./figures/'):
+def plot_metric_history(history, training_steps: int, title: str, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
@@ -140,6 +141,8 @@ def plot_metric_history(history, title, prefix='./figures/'):
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
+            if isinstance(history.history[k][0], LearningRateSchedule):
+                history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace('output_', '').split('_')
             k_title = " ".join(OrderedDict.fromkeys(k_split))

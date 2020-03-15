@@ -883,7 +883,7 @@ def train_model_from_generators(model: Model,
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
-        plot_metric_history(history, run_id, os.path.dirname(model_file))
+        plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
         return model, history
     return model
