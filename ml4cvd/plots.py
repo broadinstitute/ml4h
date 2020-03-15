@@ -36,7 +36,7 @@ from scipy.ndimage.filters import gaussian_filter
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
-from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS
+from ml4cvd.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, PLOT_PARTNERS_ECG_TENSORS
 
 RECALL_LABEL = 'Recall | Sensitivity | True Positive Rate | TP/(TP+FN)'
 FALLOUT_LABEL = 'Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)'
@@ -817,9 +817,9 @@ def _plot_partners_ecg(data, args):
 
 
 def plot_partners_ecgs(args):
-
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as PARTNERS_TMAPS
+    tensor_maps_in = [PARTNERS_TMAPS[it] for it in PLOT_PARTNERS_ECG_TENSORS]
     tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
-    tensor_maps_in = args.tensor_maps_in
 
     # Initialize dict that stores tensors
     tdict = defaultdict(dict)
