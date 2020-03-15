@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
-from ml4cvd.TensorMap import Interpretation
+from ml4cvd.TensorMap import Interpretation, TensorMap
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
@@ -232,8 +232,33 @@ def explore(args):
     if any([len(tm.shape) != 1 for tm in tmaps]):
         raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
-    # Iterate through tensors, get tmaps, and save to dataframe
-    df = _tensors_to_df(args)
+    df = None
+    if args.tensors:
+        # Iterate through tensors, get tmaps, and save to dataframe
+        df = _tensors_to_df(args)
+    elif args.metadata_csv:
+        # Load csv files containing metadata, compute intersect, and build cross-ref dataframe
+        src_path, src_col, dst_path, dst_col = args.metadata_csv
+
+        df_src = pd.read_csv(src_path, keep_default_na=False, low_memory=False)
+        df_dst = pd.read_csv(dst_path, keep_default_na=False, low_memory=False)
+
+        src = df_src[src_col]
+        dst = df_dst[dst_col]
+
+        src_w_dst_col = f"src_{src_col}_with_dst_{dst_col}"
+        src_col = f"src_{src_col}"
+
+        df = pd.DataFrame({src_col: src,
+                           src_w_dst_col: src})
+
+        df[src_w_dst_col][~np.isin(src, dst)] = np.NaN
+
+        tmaps = [TensorMap(src_col, interpretation=Interpretation.LANGUAGE, shape=(1,)),
+                 TensorMap(src_w_dst_col, interpretation=Interpretation.LANGUAGE, shape=(1,))]
+    else:
+        # TODO error message?
+        pass
     
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
