@@ -647,8 +647,7 @@ def plot_ecg(data, label, prefix='./figures/'):
 def _plot_partners_ecg(data, args):
 
     # Set up plot
-    fig = plt.figure('ECG plot',
-                     constrained_layout=True,
+    fig = plt.figure(constrained_layout=True,
                      figsize=(13, 10))
     gs = GridSpec(ncols=1, nrows=3, figure=fig,
                   height_ratios=[8, 20, 1])
@@ -858,6 +857,7 @@ def plot_partners_ecgs(args):
                                 tdict[tm.name][cm].append(np.nan)
                         else:
                             tdict[tm.name][tm.name].append(np.nan)
+                        logging.exception(f"Could not obtain tensor at {tp}")
                         logging.exception(e)
         except:
             logging.exception(f"Broken tensor at: {tp}")
