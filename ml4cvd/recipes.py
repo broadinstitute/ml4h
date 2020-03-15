@@ -140,6 +140,7 @@ def _find_lr(args) -> float:
         best_loss = min(best_loss, smoothed_loss)
         if smoothed_loss > 2 * best_loss:
             break
+    generate_train.kill_workers()
     best_lr = _choose_best_lr(np.array(smoothed_losses), lrs)
     pd.DataFrame({'loss': losses, 'learning_rate': lrs[:len(losses)], 'smoothed_loss': smoothed_losses, 'picked_lr': best_lr}).to_csv(os.path.join(args.output_folder, args.id, 'find_learning_rate.csv'), index=False)
     plot_find_learning_rate(learning_rates=lrs[:len(losses)], losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
@@ -151,10 +152,11 @@ def _choose_best_lr(smoothed_loss: np.ndarray, lr: np.ndarray) -> float:
     burn_in = len(lr) // 10
     best_delta = -np.inf
     best_lr = None
+    mean_width = 4
     for i in range(burn_in, len(smoothed_loss)):
         if smoothed_loss[i - 1] > smoothed_loss[0]:
             continue  # loss delta from previously high loss should be ignored
-        delta = smoothed_loss[i - 1] - smoothed_loss[i]  # positive is good, means loss decreased a lot
+        delta = smoothed_loss[i - mean_width - 1: i - 1].mean() - smoothed_loss[i - mean_width: i].mean()  # positive is good, means loss decreased a lot
         if delta > best_delta:
             best_delta = delta
             best_lr = lr[i]
