@@ -83,13 +83,6 @@ ECG_IDX_2_CHAR = {0: '!', 1: ' ', 2: "'", 3: '(', 4: ')', 5: '-', 6: '/', 7: '1'
                   45: 'm', 46: 'n', 47: 'o', 48: 'p', 49: 'q', 50: 'r', 51: 's', 52: 't', 53: 'u', 54: 'v', 55: 'w',
                   56: 'x', 57: 'y', 58: 'z'}
 
-PLOT_PARTNERS_ECG_TENSORS = ['partners_ecg_patientid', 'partners_ecg_firstname', 'partners_ecg_lastname',
-                             'partners_ecg_gender', 'partners_ecg_dob', 'partners_ecg_age', 'partners_ecg_date',
-                             'partners_ecg_time', 'partners_ecg_sitename', 'partners_ecg_location',
-                             'partners_ecg_read_md_raw', 'partners_ecg_voltage', 'partners_ecg_rate',
-                             'partners_ecg_pr', 'partners_ecg_qrs', 'partners_ecg_qt', 'partners_ecg_qtc',
-                             'partners_ecg_paxis', 'partners_ecg_raxis', 'partners_ecg_taxis']
-
 TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
 
 #BigQuery tables
