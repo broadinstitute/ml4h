@@ -23,10 +23,10 @@ def _get_learning_rate_schedule(lr: float, lr_schedule: str = None, steps_per_ep
         return lr
     if lr_schedule == 'triangular':
         return TriangularCyclicalLearningRate(initial_learning_rate=lr / 5, maximal_learning_rate=lr,
-                                              step_size=steps_per_epoch)
+                                              step_size=steps_per_epoch * 5)
     if lr_schedule == 'triangular2':
         return Triangular2CyclicalLearningRate(initial_learning_rate=lr / 5, maximal_learning_rate=lr,
-                                               step_size=steps_per_epoch)
+                                               step_size=steps_per_epoch * 5)
     else:
         raise ValueError(f'Learning rate schedule {lr_schedule} unknown.')
 
