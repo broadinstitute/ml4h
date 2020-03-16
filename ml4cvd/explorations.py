@@ -6,6 +6,7 @@ import csv
 import math
 import operator
 import datetime
+import traceback
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter
@@ -33,7 +34,7 @@ CSV_EXT = '.tsv'
 def sort_csv(tensors, tensor_maps_in):
     stats = Counter()
     for folder in sorted(os.listdir(tensors)):
-        logging.info(f'In folder {folder}')
+
         for name in sorted(os.listdir(os.path.join(tensors, folder))):
             try:
                 with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
@@ -42,7 +43,9 @@ def sort_csv(tensors, tensor_maps_in):
                         stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
                         stats[f'Total_{tm.name}_{tensor[0]}'] += 1
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                logging.info(f'Got error at {name} error:\n {e}')
+                logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
+        logging.info(f'In folder {folder} ECGs:{len(os.listdir(os.path.join(tensors, folder)))}')
+        logging.info(f'{stats[f"{folder}_{tm.name}_{tensor[0]}"]} is ')
         for k, v in sorted(stats.items(), key=lambda x: x[0]):
             logging.info(f'{k} has {v}')
     for k, v in sorted(stats.items(), key=lambda x: x[0]):
