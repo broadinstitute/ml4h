@@ -45,7 +45,7 @@ def sort_csv(tensors, tensor_maps_in):
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                 logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
         logging.info(f'In folder {folder} ECGs:{len(os.listdir(os.path.join(tensors, folder)))}')
-        logging.info(f'{stats[f"{folder}_{tm.name}_{tensor[0]}"]} is ')
+        logging.info(f'{stats[f"{folder}_{tm.name}_{tensor}"]} is ')
         for k, v in sorted(stats.items(), key=lambda x: x[0]):
             logging.info(f'{k} has {v}')
     for k, v in sorted(stats.items(), key=lambda x: x[0]):
