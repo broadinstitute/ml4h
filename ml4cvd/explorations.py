@@ -31,15 +31,22 @@ CSV_EXT = '.tsv'
 
 
 def sort_csv(tensors, tensor_maps_in):
-    for root, dirs, files in os.walk(tensors):
-        for name in sorted(files):
+    stats = Counter()
+    for folder in sorted(os.listdir(tensors)):
+        logging.info(f'In folder {folder}')
+        for name in sorted(os.listdir(folder)):
             try:
-                with h5py.File(os.path.join(root, name), "r") as hd5:
-                    logging.info(f'name is {name}')
+                with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
                     for tm in tensor_maps_in:
                         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
+                        stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
+                        stats[f'Total_{tm.name}_{tensor[0]}'] += 1
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                 logging.info(f'Got error at {name} error:\n {e}')
+        for k, v in sorted(stats.items(), key=lambda x: x[0]):
+            logging.info(f'{k} has {v}')
+    for k, v in sorted(stats.items(), key=lambda x: x[0]):
+        logging.info(f'{k} has {v}')
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
