@@ -113,8 +113,8 @@ LAUNCH_MESSAGE
 
 
 #-v /media/erisone_snf13/:/media/erisone_snf13/ \
-
-${DOCKER_COMMAND} run ${INTERACTIVE} --gpus all \
+#--gpus all \
+${DOCKER_COMMAND} run ${INTERACTIVE} \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
