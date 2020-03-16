@@ -471,10 +471,28 @@ TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGOR
                                             tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_af'),
                                             channel_map={'no_afib': 0, 'prevalent_afib': 1, 'incident_afib': 2})
 
+TMAPS["loyalty_lvh_wrt_ecg"] = TensorMap('lvh_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_lvh'),
+                                            channel_map={'no_lvh': 0, 'prevalent_lvh': 1, 'incident_lvh': 2})
 TMAPS["loyalty_cad_wrt_ecg"] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_af'),
-                                            channel_map={'no_afib': 0, 'prevalent_afib': 1, 'incident_afib': 2})
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_cad'),
+                                            channel_map={'no_cad': 0, 'prevalent_cad': 1, 'incident_cad': 2})
+TMAPS["loyalty_cvd_wrt_ecg"] = TensorMap('cvd_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_cvd'),
+                                            channel_map={'no_cvd': 0, 'prevalent_cvd': 1, 'incident_cvd': 2})
+TMAPS["loyalty_bpmed_wrt_ecg"] = TensorMap('bpmed_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_bpmed'),
+                                            channel_map={'no_bpmed': 0, 'prevalent_bpmed': 1, 'incident_bpmed': 2})
+TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_htn'),
+                                            channel_map={'no_htn': 0, 'prevalent_htn': 1, 'incident_htn': 2})
+TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_hf'),
+                                            channel_map={'no_hf': 0, 'prevalent_hf': 1, 'incident_hf': 2})
 
+# DEFINE ALL DISEASES!!
+
+# ALSO Make COx Proportional Hazard,
 
 '''
 task = "partners_ecg_rate_norm"
