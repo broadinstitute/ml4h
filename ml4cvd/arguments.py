@@ -52,7 +52,6 @@ def parse_args():
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
-    parser.add_argument('--metadata_csv', nargs=4, metavar=('SRC_PATH', 'SRC_COL', 'DST_PATH', 'DST_COL'), help='Paths and keys for metadata csv files to cross reference')
     parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
@@ -158,7 +157,7 @@ def parse_args():
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
-    parser.add_argument('--write_pngs', default=False, action='store_true', help='Write pngs of slices.')
+    parser.add_argument('--write_pngs', default=False, action='store_true',  help='Write pngs of slices.')
     parser.add_argument('--debug', default=False, action='store_true', help='Run in debug mode.')
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
@@ -167,6 +166,12 @@ def parse_args():
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
     parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
+
+    # Arguments for cross referencing via explore
+    parser.add_argument('--metadata_src')
+    parser.add_argument('--join_tensor_src')
+    parser.add_argument('--metadata_dst')
+    parser.add_argument('--join_tensor_dst')
 
     args = parser.parse_args()
     _process_args(args)

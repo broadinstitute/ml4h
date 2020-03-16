@@ -232,13 +232,40 @@ def explore(args):
     if any([len(tm.shape) != 1 for tm in tmaps]):
         raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
+    # acceptable combinations of args
+    # --tensors => no cross ref, just explore
+    # --tensors --join_tensor_src --metadata_dst --join_tensor_dst => cross ref tensors as src and csv at metadata_dst
+    # --metadata_src --join_tensor_src --metadata_dst --join_tensor_dst => cross ref csv at metadata_src and csv at metadata_dst
+
     df = None
     if args.tensors:
         # Iterate through tensors, get tmaps, and save to dataframe
         df = _tensors_to_df(args)
-    elif args.metadata_csv:
-        # Load csv files containing metadata, compute intersect, and build cross-ref dataframe
-        src_path, src_col, dst_path, dst_col = args.metadata_csv
+
+        if args.metadata_dst:
+            # append tensors from csv at metadata_dst to dataframe
+            src_col  = args.join_tensor_src
+            dst_path = args.metadata_dst
+            dst_col  = args.join_tensor_dst
+
+            df_dst = pd.read_csv(dst_path, keep_default_na=False, low_memory=False)
+
+            src = df[src_col]
+            dst = df_dst[dst_col]
+
+            src_col = f"src_{src_col}"
+            dst_col = f"dst_{dst_col}"
+
+            df[dst_col] = src
+            df[dst_col][~np.isin(src, dst)] = np.NaN
+
+    elif args.metadata_src and args.metadata_dst:
+        # Cross ref csv at metadata_src and csv at metadata_dst
+
+        src_path = args.metadata_src
+        src_col  = args.join_tensor_src
+        dst_path = args.metadata_dst
+        dst_col  = args.join_tensor_dst
 
         df_src = pd.read_csv(src_path, keep_default_na=False, low_memory=False)
         df_dst = pd.read_csv(dst_path, keep_default_na=False, low_memory=False)
