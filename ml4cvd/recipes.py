@@ -123,6 +123,8 @@ def _find_lr(args) -> float:
     """
     beta = .98
     generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+    schedule = args.learning_rate_schedule
+    args.learning_rate_schedule = None
     model = make_multimodal_multitask_model(**args.__dict__)
     lrs = np.geomspace(1e-7, 1e2, args.training_steps)
     avg_loss = 0
@@ -145,6 +147,7 @@ def _find_lr(args) -> float:
     pd.DataFrame({'loss': losses, 'learning_rate': lrs[:len(losses)], 'smoothed_loss': smoothed_losses, 'picked_lr': best_lr}).to_csv(os.path.join(args.output_folder, args.id, 'find_learning_rate.csv'), index=False)
     plot_find_learning_rate(learning_rates=lrs[:len(losses)], losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
                             figure_path=os.path.join(args.output_folder, args.id))
+    args.learning_rate_schedule = schedule
     return best_lr
 
 
@@ -162,7 +165,7 @@ def _choose_best_lr(smoothed_loss: np.ndarray, lr: np.ndarray) -> float:
             best_lr = lr[i]
     if not best_lr:
         raise ValueError('Best learning rate could not be found.')
-    return best_lr
+    return float(best_lr)
 
 
 def _init_dict_of_tensors(tmaps: list) -> dict:
