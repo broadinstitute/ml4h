@@ -34,7 +34,7 @@ def sort_csv(tensors, tensor_maps_in):
     stats = Counter()
     for folder in sorted(os.listdir(tensors)):
         logging.info(f'In folder {folder}')
-        for name in sorted(os.listdir(folder)):
+        for name in sorted(os.listdir(os.path.join(tensors, folder))):
             try:
                 with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
                     for tm in tensor_maps_in:
