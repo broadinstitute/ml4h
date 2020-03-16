@@ -111,12 +111,11 @@ Attempting to run Docker with
         ${DOCKER_IMAGE} ${PYTHON_COMMAND} ${PYTHON_ARGS}
 LAUNCH_MESSAGE
 
-
-#-v /media/erisone_snf13/:/media/erisone_snf13/ \
-#--gpus all \
 ${DOCKER_COMMAND} run ${INTERACTIVE} \
+--gpus all \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v /data/:/data/ \
+-v /media/erisone_snf13/:/media/erisone_snf13/ \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
