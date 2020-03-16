@@ -41,15 +41,15 @@ def sort_csv(tensors, tensor_maps_in):
                     for tm in tensor_maps_in:
                         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
 
-                        if tm.name == 'lead_v6_zeros' and tensor[0] > 1000:
+                        if tm.name == 'lead_v6_zeros' and tensor[0] > 1874:
                             stats[f'Total_{tm.name}_zero_padded'] += 1
                             stats[f'{folder}_{tm.name}_zero_padded'] += 1
-                        elif tm.name == 'lead_i_zeros' and tensor[0] > 500:
+                        elif tm.name == 'lead_i_zeros' and tensor[0] > 1249:
                             stats[f'Total_{tm.name}_zero_padded'] += 1
                             stats[f'{folder}_{tm.name}_zero_padded'] += 1
                         else:
                             stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
-                            stats[f'Total_{tm.name}_zero_padded'] += 1
+                            stats[f'Total_{tm.name}_{tensor[0]}'] += 1
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                 logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
 
