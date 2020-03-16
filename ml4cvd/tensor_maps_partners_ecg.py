@@ -428,7 +428,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
                     logging.warning(f'val err {e}')
-            logging.info(f'Done processing: {len(patient_table)} patient rows.')
+            logging.info(f'Done processing {date_column} Got {len(patient_table)} patient rows and {len(date_table)} events.')
     except FileNotFoundError as e:
         error = e
 
@@ -465,6 +465,10 @@ TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpret
                                                      loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
 
 TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_af'),
+                                            channel_map={'no_afib': 0, 'prevalent_afib': 1, 'incident_afib': 2})
+
+TMAPS["loyalty_cad_wrt_ecg"] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
                                             tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_af'),
                                             channel_map={'no_afib': 0, 'prevalent_afib': 1, 'incident_afib': 2})
 
