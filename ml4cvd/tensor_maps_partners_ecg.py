@@ -457,10 +457,10 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
 
 
 TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv'),
                                             channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2})
 TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                                     tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv', ),
+                                                     tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', ),
                                                      channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2},
                                                      loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
 
