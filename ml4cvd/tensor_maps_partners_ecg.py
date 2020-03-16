@@ -404,7 +404,7 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', date_column: str='datetime', incident_column: str='incident', delimiter: str = ','):
+def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke', delimiter: str = ','):
     """
     Build a tensor_from_file function from a column and date in a file.
     Only works for continuous values.
@@ -415,21 +415,20 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             patient_index = header.index(patient_column)
-            incident_index = header.index(incident_column)
             date_index = header.index(date_column)
             date_table = {}
-            incident_table = {}
+            patient_table = {}
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
-                    incident_table[patient_key] = [int(str(row[incident_index]))]
-                    if row[date_index] != 'NULL':
+                    patient_table[patient_key] = True
+                    if row[date_index] == '' or row[date_index] == 'NULL':
                         date_table[patient_key] = str2date(row[date_index].split(' ')[0])
-                    if len(incident_table) % 2000 == 0:
-                        logging.debug(f'Processing: {len(incident_table)} incidence rows.')
+                    if len(patient_table) % 2000 == 0:
+                        logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
                     logging.warning(f'val err {e}')
-            logging.info(f'Done processing: {len(incident_table)} incidence rows.')
+            logging.info(f'Done processing: {len(patient_table)} patient rows.')
     except FileNotFoundError as e:
         error = e
 
@@ -443,7 +442,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='mrn', 
         mrn_int = int(mrn)
         if int(file_split[1]) < 2000:
             raise ValueError(f'Asssessed earlier than enrollment.')
-        if mrn_int not in incident_table:
+        if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
         if mrn_int not in date_table:
             index = 0
@@ -461,9 +460,15 @@ TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CAT
                                             tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
                                             channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2})
 TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                                     tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv'),
+                                                     tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_incd_stroke.csv', ),
                                                      channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2},
                                                      loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
+
+TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_af'),
+                                            channel_map={'no_afib': 0, 'prevalent_afib': 1, 'incident_afib': 2})
+
+
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
