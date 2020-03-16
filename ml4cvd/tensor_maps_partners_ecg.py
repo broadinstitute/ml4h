@@ -424,9 +424,9 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
                     patient_key = int(row[patient_index])
                     patient_table[patient_key] = True
                     if row[date_index] == '' or row[date_index] == 'NULL':
-                        disease_date = str2date(row[date_index].split(' ')[0])
-                        #if disease_date < censor_date:
-                        date_table[patient_key] = disease_date
+                        continue
+                    disease_date = str2date(row[date_index].split(' ')[0])
+                    date_table[patient_key] = disease_date
                     if len(patient_table) % 2000 == 0:
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
