@@ -110,7 +110,7 @@ def make_voltage_attr(volt_attr: str = ""):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for cm in tm.channel_map:
             tensor[tm.channel_map[cm]] = hd5[cm].attrs[volt_attr]
-        return [tensor]
+        return np.array([tensor])
     return get_voltage_attr_from_file
 
 
