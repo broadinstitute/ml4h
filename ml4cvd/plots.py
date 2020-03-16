@@ -727,7 +727,7 @@ def _plot_partners_ecg(data, args):
     all_leads[4] = ecg_signal['II']
     all_leads[5] = ecg_signal['V5']
 
-    voltage_scale = 0.2  # 0.1 / 5 -> 0.2 ... divide voltages by 5?
+    voltage_scale = 0.4
     all_leads *= voltage_scale
     # max_range = max([np.nanpercentile(row, 99) - np.nanpercentile(row, 1) for row in all_leads]) * 2
     x_lo, x_hi = -50, len(all_leads[0]) + 50
@@ -740,7 +740,7 @@ def _plot_partners_ecg(data, args):
     mm_mv = 10
 
     x_tick = 1. / mm_s * fs
-    y_tick = 1. / mm_mv * voltage_scale
+    y_tick = 1. / mm_mv * voltage_scale / 2
     x_major_ticks = np.arange(x_lo, x_hi, x_tick * 5)
     x_minor_ticks = np.arange(x_lo, x_hi, x_tick)
     y_major_ticks = np.arange(y_lo, y_hi, y_tick * 5)
@@ -812,7 +812,7 @@ def _plot_partners_ecg(data, args):
                         bottom=0.02,
                         hspace=0.01)
 
-    plt.savefig(os.path.join(args.output_folder, args.id, f"{data['date']}-{data['patientid']}{IMAGE_EXT}"))
+    plt.savefig(os.path.join(args.output_folder, args.id, f"{data['date']}-{data['patientid']}{PDF_EXT}"))
 
 
 def plot_partners_ecgs(args):
