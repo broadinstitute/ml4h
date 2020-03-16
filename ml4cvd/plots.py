@@ -740,7 +740,7 @@ def _plot_partners_ecg(data, args):
     mm_mv = 10
 
     x_tick = 1. / mm_s * fs
-    y_tick = 1. / mm_mv * voltage_scale
+    y_tick = 1. / mm_mv * voltage_scale / 2
     x_major_ticks = np.arange(x_lo, x_hi, x_tick * 5)
     x_minor_ticks = np.arange(x_lo, x_hi, x_tick)
     y_major_ticks = np.arange(y_lo, y_hi, y_tick * 5)
