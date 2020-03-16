@@ -40,8 +40,8 @@ def sort_csv(tensors, tensor_maps_in):
                 with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
                     for tm in tensor_maps_in:
                         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
-                        stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
-                        stats[f'Total_{tm.name}_{tensor[0]}'] += 1
+                        stats[f'{folder}_{tm.name}_{tensor}'] += 1
+                        stats[f'Total_{tm.name}_{tensor}'] += 1
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                 logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
         logging.info(f'In folder {folder} ECGs:{len(os.listdir(os.path.join(tensors, folder)))}')
