@@ -30,24 +30,16 @@ from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
 CSV_EXT = '.tsv'
 
 
-def sort_csv(input_csv_file, value_csv):
-    lvef = {}
-    with open(value_csv, 'r') as value_file:
-        lol = list(csv.reader(value_file, delimiter='\t'))
-        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
-        for row in lol[1:]:
-            sample_id = row[0]
-            if row[5] != 'NA':
-                lvef[sample_id] = float(row[5])
-
-    print('try:', input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT))
-    with open(input_csv_file, mode='r') as input_csv:
-        with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
-            csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_reader = csv.reader(input_csv, delimiter='\t')
-            csv_writer.writerow(next(csv_reader)+['discrepancy'])
-            csv_sorted = sorted(csv_reader, key=lambda row: abs(float(lvef[row[0]])-float(row[5])), reverse=True)
-            [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
+def sort_csv(tensors, tensor_maps_in):
+    for root, dirs, files in os.walk(tensors):
+        for name in sorted(files):
+            try:
+                with h5py.File(os.path.join(root, name), "r") as hd5:
+                    logging.info(f'name is {name}')
+                    for tm in tensor_maps_in:
+                        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
+            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                logging.info(f'Got error at {name} error:\n {e}')
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],

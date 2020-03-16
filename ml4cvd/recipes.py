@@ -86,7 +86,7 @@ def run(args):
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'sort_csv' == args.mode:
-            sort_csv(args.app_csv, args.app_csv)
+            sort_csv(args.tensors, args.tensor_maps_in)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
