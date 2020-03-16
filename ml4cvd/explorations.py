@@ -47,7 +47,7 @@ def sort_csv(tensors, tensor_maps_in):
                         elif tm.name == 'lead_i_zeros' and tensor[0] > 1249:
                             stats[f'Total_{tm.name}_zero_padded'] += 1
                             stats[f'{folder}_{tm.name}_zero_padded'] += 1
-                        else:
+                        elif tm.name not in ['lead_i_zeros', 'lead_v6_zeros']:
                             stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
                             stats[f'Total_{tm.name}_{tensor[0]}'] += 1
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:

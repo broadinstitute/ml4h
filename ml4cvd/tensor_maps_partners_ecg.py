@@ -161,11 +161,11 @@ def make_partners_ecg_tensor(key: str):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         tensor = _decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype'])
         if tm.interpretation == Interpretation.LANGUAGE:
-            return np.array(str(tensor))
+            return np.array([str(tensor)])
         elif tm.interpretation == Interpretation.CONTINUOUS:
             return np.array([tensor], dtype=np.float32)
         elif tm.interpretation == Interpretation.CATEGORICAL:
-            return np.array(float(tensor))
+            return np.array([float(tensor)])
     return get_partners_ecg_tensor
 
 
