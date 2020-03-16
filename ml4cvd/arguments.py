@@ -157,7 +157,7 @@ def parse_args():
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
-    parser.add_argument('--write_pngs', default=False, action='store_true',  help='Write pngs of slices.')
+    parser.add_argument('--write_pngs', default=False, action='store_true', help='Write pngs of slices.')
     parser.add_argument('--debug', default=False, action='store_true', help='Run in debug mode.')
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
