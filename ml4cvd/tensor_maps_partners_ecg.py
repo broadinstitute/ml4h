@@ -404,12 +404,13 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke', delimiter: str = ','):
+def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke', censor_date_str: str = '2020-03-16', delimiter: str = ','):
     """
     Build a tensor_from_file function from a column and date in a file.
     Only works for continuous values.
     """
     error = None
+    censor_date = str2date(censor_date_str)
     try:
         with open(file_name, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=delimiter)
@@ -423,7 +424,9 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
                     patient_key = int(row[patient_index])
                     patient_table[patient_key] = True
                     if row[date_index] == '' or row[date_index] == 'NULL':
-                        date_table[patient_key] = str2date(row[date_index].split(' ')[0])
+                        disease_date = str2date(row[date_index].split(' ')[0])
+                        if disease_date < censor_date:
+                            date_table[patient_key] = disease_date
                     if len(patient_table) % 2000 == 0:
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
