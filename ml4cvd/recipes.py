@@ -141,7 +141,7 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.postprocess_tensor(tensor, augment=False)
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
                             
                             # If tensor is a scaler, isolate the value in the array;
                             # otherwise, retain the value as array
