@@ -143,16 +143,17 @@ def _tensors_to_df(args):
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
                             tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
                             
-                            # If tensor is a scaler, isolate the value in the array;
-                            # otherwise, retain the value as array
-                            if tm.shape[0] == 1:
-                                tensor = tensor.item()
+
                            
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
                                     tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
                             else:
+                                # If tensor is a scaler, isolate the value in the array;
+                                # otherwise, retain the value as array
+                                if tm.shape[0] == 1:
+                                    tensor = tensor.item()
                                 tensor_dict[tm.name][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so append nans
