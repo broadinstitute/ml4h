@@ -49,11 +49,14 @@ def sort_csv(tensors, tensor_maps_in):
                             stats[f'{folder}_{tm.name}_zero_padded'] += 1
                         else:
                             stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
+                            stats[f'Total_{tm.name}_zero_padded'] += 1
             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                 logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
-        logging.info(f'In folder {folder} ECGs:{len(os.listdir(os.path.join(tensors, folder)))}')
-        logging.info(f'{stats[f"{folder}_lead_v6_zeros_zero_padded"]} is {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%')
-        logging.info(f'{stats[f"{folder}_lead_i_zeros_zero_padded"]} is {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%')
+
+        logging.info(f'In folder {folder} with {len(os.listdir(os.path.join(tensors, folder)))} ECGs')
+        if len(os.listdir(os.path.join(tensors, folder))) > 0:
+            logging.info(f'I Zero padded has:{stats[f"{folder}_lead_i_zeros_zero_padded"]}, {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%')
+            logging.info(f'V6 Zero padded has:{stats[f"{folder}_lead_v6_zeros_zero_padded"]}, {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%')
     for k, v in sorted(stats.items(), key=lambda x: x[0]):
         logging.info(f'{k} has {v}')
 
