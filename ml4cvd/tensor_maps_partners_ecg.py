@@ -583,8 +583,8 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
     return tensor_from_file
 
 
-TMAPS["survival_afib"] = TensorMap('survival_afib', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_afib'))
+TMAPS["survival_af"] = TensorMap('survival_af', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_af'))
 TMAPS["survival_bpmed"] = TensorMap('survival_bpmed', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_bpmed'))
 TMAPS["survival_cad"] = TensorMap('survival_cad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
