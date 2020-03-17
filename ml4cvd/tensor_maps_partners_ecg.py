@@ -583,7 +583,27 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
     return tensor_from_file
 
 
+TMAPS["survival_afib"] = TensorMap('survival_afib', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_afib'))
+TMAPS["survival_bpmed"] = TensorMap('survival_bpmed', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                    tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_bpmed'))
+TMAPS["survival_cad"] = TensorMap('survival_cad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_cad'))
+TMAPS["survival_cvd"] = TensorMap('survival_cvd', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_cvd'))
+TMAPS["survival_death"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                    tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='death_date'))
 TMAPS["survival_hf"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_hf'))
-# TMAPS["survival_htn"] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-#                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_htn'))
+TMAPS["survival_htn"] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_htn'))
+TMAPS["survival_lvh"] = TensorMap('survival_lvh', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_lvh'))
+TMAPS["survival_mi"] = TensorMap('survival_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                 tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_mi'))
+TMAPS["survival_pad"] = TensorMap('survival_pad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_pad'))
+TMAPS["survival_stroke"] = TensorMap('survival_stroke', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_stroke'))
+TMAPS["survival_valvular_disease"] = TensorMap('survival_valvular_disease', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                               tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_valvular_disease'))
