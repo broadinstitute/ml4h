@@ -512,36 +512,8 @@ TMAPS["loyalty_valvular_disease_wrt_ecg"] = TensorMap('valvular_disease_wrt_ecg'
                                                       tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_valvular_disease'),
                                                       channel_map=_diagnosis_channels('valvular_disease'))
 
-# ALSO Make COx Proportional Hazard,
-def _survival_tensor(start_date_key, day_window):
-    def _survival_tensor_partners(tm: TensorMap, hd5: h5py.File, dependents=None):
-        assess_date = str2date(str(hd5[start_date_key][0]))
-        has_disease = 0   # Assume no disease if the tensor does not have the dataset
-        if tm.name in hd5['categorical']:
-            has_disease = int(hd5['categorical'][tm.name][0])
 
-        if tm.name + '_date' in hd5['dates']:
-            censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
-        elif 'phenotype_censor' in hd5['dates']:
-            censor_date = str2date(str(hd5['dates/phenotype_censor']))
-        else:
-            raise ValueError(f'No date found for survival {tm.name}')
-
-        intervals = int(tm.shape[0] / 2)
-        days_per_interval = day_window / intervals
-        survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
-        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
-            cur_date = assess_date + datetime.timedelta(days=day_delta)
-            survival_then_censor[i] = float(cur_date < censor_date)
-            survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
-            if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                survival_then_censor[intervals] = has_disease
-        return survival_then_censor
-
-    return _survival_tensor_partners
-
-
-def build_survival_tensor_from_file(day_window: int, file_name: str, patient_column: str='Mrn',
+def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mrn',
                                     follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
                                     date_column: str='first_stroke', delimiter: str = ','):
     """
@@ -591,18 +563,28 @@ def build_survival_tensor_from_file(day_window: int, file_name: str, patient_col
 
         if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
             has_disease = 0
+            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(years=disease_dicts['follow_up_total'][patient_key_from_ecg])
         else:
             has_disease = 1
+            censor_date = disease_dicts['diagnosis_dates']
 
         intervals = int(tm.shape[0] / 2)
         days_per_interval = day_window / intervals
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
-        censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(years=disease_dicts['follow_up_total'][patient_key_from_ecg])
+
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
             if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
                 survival_then_censor[intervals] = has_disease
+        logging.debug(f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
+                      f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} ")
         return categorical_data
     return tensor_from_file
+
+
+TMAPS["survival_hf"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                 tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_hf'))
+TMAPS["survival_htn"] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_htn'))
