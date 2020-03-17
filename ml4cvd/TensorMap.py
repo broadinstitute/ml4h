@@ -150,7 +150,6 @@ class TensorMap(object):
         elif self.loss is None and self.is_cox_proportional_hazard():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
             self.activation = 'sigmoid'
-            logging.info(f' set cox loss....')
         elif self.loss is None and self.is_language():
             self.loss = 'categorical_crossentropy'
             self.activation = 'softmax'
