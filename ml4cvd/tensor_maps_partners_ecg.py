@@ -591,7 +591,7 @@ TMAPS["survival_cad"] = TensorMap('survival_cad', Interpretation.COX_PROPORTIONA
                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_cad'))
 TMAPS["survival_cvd"] = TensorMap('survival_cvd', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_cvd'))
-TMAPS["survival_death"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS["survival_death"] = TensorMap('survival_death', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='death_date'))
 TMAPS["survival_hf"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_hf'))
