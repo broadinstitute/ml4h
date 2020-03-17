@@ -550,7 +550,6 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
         if error:
             raise error
 
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
         file_split = os.path.basename(hd5.filename).split('-')
         patient_key_from_ecg = int(file_split[0])
 
@@ -580,7 +579,7 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
                 survival_then_censor[intervals] = has_disease
         logging.debug(f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
                       f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ")
-        return categorical_data
+        return survival_then_censor
     return tensor_from_file
 
 
