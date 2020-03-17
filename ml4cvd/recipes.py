@@ -216,10 +216,10 @@ def _tensors_to_df(args):
             if tm.channel_map:
                 for cm in tm.channel_map:
                     key = (tm.name, cm)
-                    df[key] = df[key].astype("string")
+                    df[key] = df[key].astype(str)
             else:
                 key = tm.name
-                df[key] = df[key].astype("string")
+                df[key] = df[key].astype(str)
     logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} hd5 files into DataFrame")
     return df
 
