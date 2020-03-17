@@ -14,6 +14,9 @@ from ml4cvd.defines import ECG_REST_AMP_LEADS
 from ml4cvd.tensor_maps_by_hand import TMAPS
 
 
+INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
+
+
 def _compress_data(hf, name, data, dtype, method='zstd', compression_opts=19):
     # Define codec
     codec = numcodecs.zstd.Zstd(level=compression_opts)
@@ -459,95 +462,50 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
     return tensor_from_file
 
 
-TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv'),
-                                            channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2})
-TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                                     tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', ),
-                                                     channel_map={'no_stroke': 0, 'prevalent_stroke': 1, 'incident_stroke': 2},
-                                                     loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
+def _diagnosis_channels(disease: str):
+    return {f'no_{disease}': 0, f'prevalent_{disease}': 1, f'incident_{disease}': 2}
+
 
 TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_af'),
-                                            channel_map={'no_afib': 0, 'prevalent_afib': 1, 'incident_afib': 2})
+                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_af'),
+                                          channel_map=_diagnosis_channels('atrial_fibrillation'))
 
-TMAPS["loyalty_lvh_wrt_ecg"] = TensorMap('lvh_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_lvh'),
-                                            channel_map={'no_lvh': 0, 'prevalent_lvh': 1, 'incident_lvh': 2})
-TMAPS["loyalty_cad_wrt_ecg"] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_cad'),
-                                            channel_map={'no_cad': 0, 'prevalent_cad': 1, 'incident_cad': 2})
-# TMAPS["loyalty_cvd_wrt_ecg"] = TensorMap('cvd_wrt_ecg', Interpretation.CATEGORICAL,
-#                                             tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_cvd'),
-#                                             channel_map={'no_cvd': 0, 'prevalent_cvd': 1, 'incident_cvd': 2})
 TMAPS["loyalty_bpmed_wrt_ecg"] = TensorMap('bpmed_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_bpmed'),
-                                            channel_map={'no_bpmed': 0, 'prevalent_bpmed': 1, 'incident_bpmed': 2})
-TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_htn'),
-                                            channel_map={'no_htn': 0, 'prevalent_htn': 1, 'incident_htn': 2})
+                                           tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_bpmed'),
+                                           channel_map=_diagnosis_channels('blood_pressure_medication'))
+TMAPS["loyalty_cad_wrt_ecg"] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
+                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_cad'),
+                                         channel_map=_diagnosis_channels('coronary_artery_disease'))
+TMAPS["loyalty_cvd_wrt_ecg"] = TensorMap('cvd_wrt_ecg', Interpretation.CATEGORICAL,
+                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_cvd'),
+                                         channel_map=_diagnosis_channels('cardiovascular_disease'))
+TMAPS["loyalty_death_wrt_ecg"] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
+                                           tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='death_date'),
+                                           channel_map=_diagnosis_channels('death'))
 TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file('/media/erisone_snf13/lc_outcomes.csv', date_column='first_hf'),
-                                            channel_map={'no_hf': 0, 'prevalent_hf': 1, 'incident_hf': 2})
-
-# DEFINE ALL DISEASES!!
+                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
+                                        channel_map=_diagnosis_channels('heart_failure'))
+TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
+                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_htn'),
+                                         channel_map=_diagnosis_channels('hypertension'))
+TMAPS["loyalty_lvh_wrt_ecg"] = TensorMap('lvh_wrt_ecg', Interpretation.CATEGORICAL,
+                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_lvh'),
+                                         channel_map=_diagnosis_channels('left_ventricular_hypertrophy'))
+TMAPS["loyalty_mi_wrt_ecg"] = TensorMap('mi_wrt_ecg', Interpretation.CATEGORICAL,
+                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi'),
+                                        channel_map=_diagnosis_channels('myocardial_infarction'))
+TMAPS["loyalty_pad_wrt_ecg"] = TensorMap('pad_wrt_ecg', Interpretation.CATEGORICAL,
+                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_pad'),
+                                         channel_map=_diagnosis_channels('pulmonary_artery_disease'))
+TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
+                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV),
+                                            channel_map=_diagnosis_channels('stroke'))
+TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
+                                                     tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, ),
+                                                     channel_map=_diagnosis_channels('stroke'),
+                                                     loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
+TMAPS["loyalty_valvular_disease_wrt_ecg"] = TensorMap('valvular_disease_wrt_ecg', Interpretation.CATEGORICAL,
+                                                      tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_valvular_disease'),
+                                                      channel_map=_diagnosis_channels('valvular_disease'))
 
 # ALSO Make COx Proportional Hazard,
-
-'''
-task = "partners_ecg_rate_norm"
-TMAPS[task] = TensorMap(task,
-                        interpretation=interpretation,
-                        dtype=DataSetType.CONTINUOUS,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        normalization={'mean': 81.620467, 'std': 20.352292},
-                        tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"),
-                        shape=(1,),
-                        validator=make_range_validator(10, 200))
-
-task = "partners_ecg_qrs_norm"
-TMAPS[task] = TensorMap(task,
-                        interpretation=interpretation,
-                        dtype=DataSetType.CONTINUOUS,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        normalization={'mean': 94.709106, 'std': 22.610711},
-                        tensor_from_file=make_partners_ecg_tensor(key="qrsduration"),
-                        shape=(1,),
-                        validator=make_range_validator(20, 400))
-
-task = "partners_ecg_pr_norm"
-TMAPS[task] = TensorMap(task,
-                        interpretation=interpretation,
-                        dtype=DataSetType.CONTINUOUS,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        normalization={'std': 35.003017, 'mean': 161.040738},
-                        tensor_from_file=make_partners_ecg_tensor(key="printerval"),
-                        shape=(1,),
-                        validator=make_range_validator(50, 500))
-
-task = "partners_ecg_qt_norm"
-TMAPS[task] = TensorMap(task,
-                        interpretation=interpretation,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        normalization={'mean': 390.995792, 'std': 50.923113},
-                        dtype=DataSetType.CONTINUOUS,
-                        tensor_from_file=make_partners_ecg_tensor(key="qtinterval"),
-                        shape=(1,),
-                        validator=make_range_validator(100, 800))
-
-task = "partners_ecg_qtc_norm"
-TMAPS[task] = TensorMap(task,
-                        interpretation=interpretation,
-                        loss='logcosh',
-                        metrics=['mse'],
-                        normalization={'std': 39.762255, 'mean': 446.505327},
-                        dtype=DataSetType.CONTINUOUS,
-                        tensor_from_file=make_partners_ecg_tensor(key="qtcorrected"),
-                        shape=(1,),
-                        validator=make_range_validator(100, 800))
-'''
-
