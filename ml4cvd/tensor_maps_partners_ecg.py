@@ -579,12 +579,12 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
             if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
                 survival_then_censor[intervals] = has_disease
         logging.debug(f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                      f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} ")
+                      f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ")
         return categorical_data
     return tensor_from_file
 
 
 TMAPS["survival_hf"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_hf'))
-TMAPS["survival_htn"] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_htn'))
+# TMAPS["survival_htn"] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+#                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_htn'))
