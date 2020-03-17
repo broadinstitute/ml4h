@@ -563,10 +563,10 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
 
         if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
             has_disease = 0
-            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(years=disease_dicts['follow_up_total'][patient_key_from_ecg])
+            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(days=365.26*disease_dicts['follow_up_total'][patient_key_from_ecg])
         else:
             has_disease = 1
-            censor_date = disease_dicts['diagnosis_dates']
+            censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
 
         intervals = int(tm.shape[0] / 2)
         days_per_interval = day_window / intervals
