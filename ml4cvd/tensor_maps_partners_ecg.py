@@ -486,9 +486,9 @@ def _diagnosis_channels(disease: str):
 # TMAPS["loyalty_death_wrt_ecg"] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
 #                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='death_date'),
 #                                            channel_map=_diagnosis_channels('death'))
-# TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
-#                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
-#                                         channel_map=_diagnosis_channels('heart_failure'))
+TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
+                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
+                                        channel_map=_diagnosis_channels('heart_failure'))
 # TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
 #                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_htn'),
 #                                          channel_map=_diagnosis_channels('hypertension'))
