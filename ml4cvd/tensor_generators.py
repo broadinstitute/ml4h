@@ -45,9 +45,9 @@ class _ShufflePaths(Iterator):
         self.idx = 0
 
     def __next__(self):
-        path = self.paths[self.idx]
         if self.idx >= len(self.paths):
             self.idx = 0
+        path = self.paths[self.idx]
         if self.idx == 0:
             np.random.shuffle(self.paths)
         self.idx += 1
