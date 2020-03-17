@@ -172,18 +172,20 @@ def parse_args():
     return args
 
 
-# TODO fix this
 def _get_tmap(name: str) -> TensorMap:
     """
     This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
     """
     if name in TMAPS:
         return TMAPS[name]
-    from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
-    TMAPS.update(SCRIPT_TMAPS)
-    
-    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as PARTNERS_TMAPS
-    TMAPS.update(PARTNERS_TMAPS)
+
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_tmaps
+    TMAPS.update(partners_tmaps)
 
     return TMAPS[name]
 
