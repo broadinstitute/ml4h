@@ -470,47 +470,47 @@ def _diagnosis_channels(disease: str):
     return {f'no_{disease}': 0, f'prevalent_{disease}': 1, f'incident_{disease}': 2}
 
 
-TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
-                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_af'),
-                                          channel_map=_diagnosis_channels('atrial_fibrillation'))
-
-TMAPS["loyalty_bpmed_wrt_ecg"] = TensorMap('bpmed_wrt_ecg', Interpretation.CATEGORICAL,
-                                           tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_bpmed'),
-                                           channel_map=_diagnosis_channels('blood_pressure_medication'))
-TMAPS["loyalty_cad_wrt_ecg"] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
-                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_cad'),
-                                         channel_map=_diagnosis_channels('coronary_artery_disease'))
-TMAPS["loyalty_cvd_wrt_ecg"] = TensorMap('cvd_wrt_ecg', Interpretation.CATEGORICAL,
-                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_cvd'),
-                                         channel_map=_diagnosis_channels('cardiovascular_disease'))
-TMAPS["loyalty_death_wrt_ecg"] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
-                                           tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='death_date'),
-                                           channel_map=_diagnosis_channels('death'))
-TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
-                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
-                                        channel_map=_diagnosis_channels('heart_failure'))
-TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
-                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_htn'),
-                                         channel_map=_diagnosis_channels('hypertension'))
-TMAPS["loyalty_lvh_wrt_ecg"] = TensorMap('lvh_wrt_ecg', Interpretation.CATEGORICAL,
-                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_lvh'),
-                                         channel_map=_diagnosis_channels('left_ventricular_hypertrophy'))
-TMAPS["loyalty_mi_wrt_ecg"] = TensorMap('mi_wrt_ecg', Interpretation.CATEGORICAL,
-                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi'),
-                                        channel_map=_diagnosis_channels('myocardial_infarction'))
-TMAPS["loyalty_pad_wrt_ecg"] = TensorMap('pad_wrt_ecg', Interpretation.CATEGORICAL,
-                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_pad'),
-                                         channel_map=_diagnosis_channels('pulmonary_artery_disease'))
-TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV),
-                                            channel_map=_diagnosis_channels('stroke'))
-TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                                     tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, ),
-                                                     channel_map=_diagnosis_channels('stroke'),
-                                                     loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
-TMAPS["loyalty_valvular_disease_wrt_ecg"] = TensorMap('valvular_disease_wrt_ecg', Interpretation.CATEGORICAL,
-                                                      tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_valvular_disease'),
-                                                      channel_map=_diagnosis_channels('valvular_disease'))
+# TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
+#                                           tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_af'),
+#                                           channel_map=_diagnosis_channels('atrial_fibrillation'))
+#
+# TMAPS["loyalty_bpmed_wrt_ecg"] = TensorMap('bpmed_wrt_ecg', Interpretation.CATEGORICAL,
+#                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_bpmed'),
+#                                            channel_map=_diagnosis_channels('blood_pressure_medication'))
+# TMAPS["loyalty_cad_wrt_ecg"] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
+#                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_cad'),
+#                                          channel_map=_diagnosis_channels('coronary_artery_disease'))
+# TMAPS["loyalty_cvd_wrt_ecg"] = TensorMap('cvd_wrt_ecg', Interpretation.CATEGORICAL,
+#                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_cvd'),
+#                                          channel_map=_diagnosis_channels('cardiovascular_disease'))
+# TMAPS["loyalty_death_wrt_ecg"] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
+#                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='death_date'),
+#                                            channel_map=_diagnosis_channels('death'))
+# TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
+#                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
+#                                         channel_map=_diagnosis_channels('heart_failure'))
+# TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
+#                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_htn'),
+#                                          channel_map=_diagnosis_channels('hypertension'))
+# TMAPS["loyalty_lvh_wrt_ecg"] = TensorMap('lvh_wrt_ecg', Interpretation.CATEGORICAL,
+#                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_lvh'),
+#                                          channel_map=_diagnosis_channels('left_ventricular_hypertrophy'))
+# TMAPS["loyalty_mi_wrt_ecg"] = TensorMap('mi_wrt_ecg', Interpretation.CATEGORICAL,
+#                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi'),
+#                                         channel_map=_diagnosis_channels('myocardial_infarction'))
+# TMAPS["loyalty_pad_wrt_ecg"] = TensorMap('pad_wrt_ecg', Interpretation.CATEGORICAL,
+#                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_pad'),
+#                                          channel_map=_diagnosis_channels('pulmonary_artery_disease'))
+# TMAPS["loyalty_stroke_wrt_ecg"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
+#                                             tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV),
+#                                             channel_map=_diagnosis_channels('stroke'))
+# TMAPS["loyalty_stroke_wrt_ecg_weighted"] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
+#                                                      tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, ),
+#                                                      channel_map=_diagnosis_channels('stroke'),
+#                                                      loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
+# TMAPS["loyalty_valvular_disease_wrt_ecg"] = TensorMap('valvular_disease_wrt_ecg', Interpretation.CATEGORICAL,
+#                                                       tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_valvular_disease'),
+#                                                       channel_map=_diagnosis_channels('valvular_disease'))
 
 
 def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mrn',
@@ -534,7 +534,7 @@ def _survival_from_file(day_window: int, file_name: str, patient_column: str='Mr
                 try:
                     patient_key = int(row[patient_index])
                     disease_dicts['follow_up_start'][patient_key] = _loyalty_str2date(row[follow_up_start_index])
-                    disease_dicts['follow_up_total'][patient_key] = _loyalty_str2date(row[follow_up_total_index])
+                    disease_dicts['follow_up_total'][patient_key] = float(row[follow_up_total_index])
                     if row[date_index] == '' or row[date_index] == 'NULL':
                         continue
                     disease_dicts['diagnosis_dates'][patient_key] = _loyalty_str2date(row[date_index])
