@@ -2,6 +2,7 @@ import os
 import csv
 import logging
 import datetime
+from collections import defaultdict
 
 import h5py
 import numcodecs
@@ -407,13 +408,16 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke', censor_date_str: str = '2020-03-16', delimiter: str = ','):
+
+def _loyalty_str2date(date_string: str):
+    return str2date(date_string.split(' ')[0])
+
+def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke', delimiter: str = ','):
     """
     Build a tensor_from_file function from a column and date in a file.
     Only works for continuous values.
     """
     error = None
-    censor_date = str2date(censor_date_str)
     try:
         with open(file_name, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=delimiter)
@@ -428,7 +432,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
                     patient_table[patient_key] = True
                     if row[date_index] == '' or row[date_index] == 'NULL':
                         continue
-                    disease_date = str2date(row[date_index].split(' ')[0])
+                    disease_date = _loyalty_str2date(row[date_index])
                     date_table[patient_key] = disease_date
                     if len(patient_table) % 2000 == 0:
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
@@ -509,3 +513,96 @@ TMAPS["loyalty_valvular_disease_wrt_ecg"] = TensorMap('valvular_disease_wrt_ecg'
                                                       channel_map=_diagnosis_channels('valvular_disease'))
 
 # ALSO Make COx Proportional Hazard,
+def _survival_tensor(start_date_key, day_window):
+    def _survival_tensor_partners(tm: TensorMap, hd5: h5py.File, dependents=None):
+        assess_date = str2date(str(hd5[start_date_key][0]))
+        has_disease = 0   # Assume no disease if the tensor does not have the dataset
+        if tm.name in hd5['categorical']:
+            has_disease = int(hd5['categorical'][tm.name][0])
+
+        if tm.name + '_date' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+        elif 'phenotype_censor' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates/phenotype_censor']))
+        else:
+            raise ValueError(f'No date found for survival {tm.name}')
+
+        intervals = int(tm.shape[0] / 2)
+        days_per_interval = day_window / intervals
+        survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
+        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
+            cur_date = assess_date + datetime.timedelta(days=day_delta)
+            survival_then_censor[i] = float(cur_date < censor_date)
+            survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+            if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
+                survival_then_censor[intervals] = has_disease
+        return survival_then_censor
+
+    return _survival_tensor_partners
+
+
+def build_survival_tensor_from_file(day_window: int, file_name: str, patient_column: str='Mrn',
+                                    follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+                                    date_column: str='first_stroke', delimiter: str = ','):
+    """
+    Build a tensor_from_file function from a column and date in a file.
+    Only works for continuous values.
+    """
+    error = None
+    disease_dicts = defaultdict(dict)
+    try:
+        with open(file_name, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            follow_up_start_index = header.index(follow_up_start_column)
+            follow_up_total_index = header.index(follow_up_total_column)
+            patient_index = header.index(patient_column)
+            date_index = header.index(date_column)
+            for row in reader:
+                try:
+                    patient_key = int(row[patient_index])
+                    disease_dicts['follow_up_start'][patient_key] = _loyalty_str2date(row[follow_up_start_index])
+                    disease_dicts['follow_up_total'][patient_key] = _loyalty_str2date(row[follow_up_total_index])
+                    if row[date_index] == '' or row[date_index] == 'NULL':
+                        continue
+                    disease_dicts['diagnosis_dates'][patient_key] = _loyalty_str2date(row[date_index])
+                    if len(disease_dicts['follow_up_start']) % 2000 == 0:
+                        logging.debug(f"Processed: {len(disease_dicts['follow_up_start'])} patient rows.")
+                except ValueError as e:
+                    logging.warning(f'val err {e}')
+            logging.info(f"Done processing {date_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.")
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        file_split = os.path.basename(hd5.filename).split('-')
+        patient_key_from_ecg = int(file_split[0])
+
+        if patient_key_from_ecg not in disease_dicts['follow_up_start']:
+            raise KeyError(f'{tm.name} mrn not in incidence csv')
+
+        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+        if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
+            raise ValueError(f'Assessed earlier than enrollment.')
+
+        if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
+            has_disease = 0
+        else:
+            has_disease = 1
+
+        intervals = int(tm.shape[0] / 2)
+        days_per_interval = day_window / intervals
+        survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
+        censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(years=disease_dicts['follow_up_total'][patient_key_from_ecg])
+        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
+            cur_date = assess_date + datetime.timedelta(days=day_delta)
+            survival_then_censor[i] = float(cur_date < censor_date)
+            survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+            if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
+                survival_then_censor[intervals] = has_disease
+        return categorical_data
+    return tensor_from_file
