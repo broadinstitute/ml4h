@@ -106,18 +106,25 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
             vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                if input_map.axes() == 3 and input_map.shape[-1] == 1:
-                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
-                elif input_map.axes() == 2:
-                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
-                elif input_map.axes() == 3:
-                    for j in range(data[input_map.input_name()].shape[-1]):
-                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
-                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
-                elif input_map.axes() == 4:
-                    for j in range(data[input_map.input_name()].shape[-2]):
-                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
-                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                if input_map.axes() == 4 and input_map.shape[-1] == 1:
+                    sample_data = data[input_map.input_name()][i, ..., 0]
+                    cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
+                    rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
+                    path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
+                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
+                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
+                else:
+                    fig, ax = plt.subplots(1)
+                    if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                        ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                    elif input_map.axes() == 2:
+                        ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                    corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
+                    ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                    y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
+                    ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
+                    logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
+                plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')

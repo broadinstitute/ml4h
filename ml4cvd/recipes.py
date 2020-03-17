@@ -3,14 +3,12 @@
 # Imports
 import os
 import csv
-import pdb
 import h5py
 import copy
 import logging
 import numpy as np
 import pandas as pd
 from functools import reduce
-from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -21,12 +19,12 @@ from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
-from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
+from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
 
@@ -41,6 +39,8 @@ def run(args):
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
+        elif 'tensorize_ecg_pngs' == args.mode:
+            write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'explore' == args.mode:
             explore(args)
         elif 'train' == args.mode:
@@ -142,15 +142,13 @@ def _tensors_to_df(args):
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
                             tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
-                            
-
                            
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
                                     tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
                             else:
-                                # If tensor is a scaler, isolate the value in the array;
+                                # If tensor is a scalar, isolate the value in the array;
                                 # otherwise, retain the value as array
                                 if tm.shape[0] == 1:
                                     tensor = tensor.item()
@@ -760,7 +758,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '')
         models[model_name] = model
         scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 
