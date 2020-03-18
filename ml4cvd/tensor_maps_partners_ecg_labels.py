@@ -78,8 +78,6 @@ TMAPS['partners_ecg_supranodal_6_v6_valid'] = TensorMap('partners_ecg_supranodal
                                                                                                                       'supraventricular_tachycardia': ['sinus arrhythmia accelerated atrioventricular junctional rhythm', 'supraventricular tachycardia', 'accelerated atrioventricular nodal rhythm', 'accelerated nodal rhythm', 'atrial tachycardia', 'av nodal reentry tachycardia', 'atrioventricular nodal reentry tachycardia', 'avnrt', 'atrioventricular reentrant tachycardia ', 'av reentrant tachycardia ', 'avrt'], 'unspecified': ['junctional tachycardia', 'atrial arrhythmia', 'technically poor tracing ', 'accelerated idioventricular rhythm', 'atrial activity is indistinct', 'rhythm uncertain', 'rhythm unclear', 'uncertain rhythm', 'undetermined rhythm', 'supraventricular rhythm']}))
 
 
-
-
 TMAPS['partners_ecg_supranodal_6_weighted'] = TensorMap('partners_ecg_supranodal_6', interpretation=Interpretation.CATEGORICAL,
                                                         channel_map={'supraventricular_tachycardia': 0, 'ectopic_atrial_rhythm': 1, 'atrial_flutter': 2, 'atrial_fibrillation': 3, 'sinus_rhythm': 4, 'unspecified': 5},
                                                         loss=weighted_crossentropy([10.0, 4.0, 4.0, 2.0, 1.0, 1.0], 'partners_supranodal_6'),

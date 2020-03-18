@@ -412,7 +412,8 @@ def _loyalty_str2date(date_string: str):
     return str2date(date_string.split(' ')[0])
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke', delimiter: str = ','):
+def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke',
+                                     delimiter: str = ',', incidence_only: bool=False):
     """
     Build a tensor_from_file function from a column and date in a file.
     Only works for continuous values.
@@ -432,8 +433,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
                     patient_table[patient_key] = True
                     if row[date_index] == '' or row[date_index] == 'NULL':
                         continue
-                    disease_date = _loyalty_str2date(row[date_index])
-                    date_table[patient_key] = disease_date
+                    date_table[patient_key] = _loyalty_str2date(row[date_index])
                     if len(patient_table) % 2000 == 0:
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
@@ -451,7 +451,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
         mrn = file_split[0]
         mrn_int = int(mrn)
         if int(file_split[1]) < 2000:
-            raise ValueError(f'Asssessed earlier than enrollment.')
+            raise ValueError(f'Assessed earlier than enrollment.')
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
         if mrn_int not in date_table:
@@ -459,7 +459,12 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
         else:
             disease_date = date_table[mrn_int]
             assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
-            index = 1 if disease_date < assess_date else 2
+            if incidence_only and disease_date < assess_date:
+                raise ValueError(f'{tm.name} is skipping prevalent cases.')
+            elif incidence_only and disease_date >= assess_date:
+                index = 1
+            else:
+                index = 1 if disease_date < assess_date else 2
             logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
         categorical_data[index] = 1.0
         return categorical_data
@@ -469,11 +474,10 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
 def _diagnosis_channels(disease: str):
     return {f'no_{disease}': 0, f'prevalent_{disease}': 1, f'incident_{disease}': 2}
 
-#
+
 # TMAPS["loyalty_afib_wrt_ecg"] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
 #                                           tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_af'),
 #                                           channel_map=_diagnosis_channels('atrial_fibrillation'))
-#
 # TMAPS["loyalty_bpmed_wrt_ecg"] = TensorMap('bpmed_wrt_ecg', Interpretation.CATEGORICAL,
 #                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_bpmed'),
 #                                            channel_map=_diagnosis_channels('blood_pressure_medication'))
@@ -486,9 +490,12 @@ def _diagnosis_channels(disease: str):
 # TMAPS["loyalty_death_wrt_ecg"] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
 #                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='death_date'),
 #                                            channel_map=_diagnosis_channels('death'))
-TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
-                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
-                                        channel_map=_diagnosis_channels('heart_failure'))
+# TMAPS["loyalty_dm_wrt_ecg"] = TensorMap('dm_wrt_ecg', Interpretation.CATEGORICAL,
+#                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_dm'),
+#                                         channel_map=_diagnosis_channels('diabetes_mellitus'))
+# TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
+#                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
+#                                         channel_map=_diagnosis_channels('heart_failure'))
 # TMAPS["loyalty_htn_wrt_ecg"] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
 #                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_htn'),
 #                                          channel_map=_diagnosis_channels('hypertension'))
@@ -498,6 +505,9 @@ TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL
 # TMAPS["loyalty_mi_wrt_ecg"] = TensorMap('mi_wrt_ecg', Interpretation.CATEGORICAL,
 #                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi'),
 #                                         channel_map=_diagnosis_channels('myocardial_infarction'))
+TMAPS["loyalty_mi_incident_wrt_ecg"] = TensorMap('mi_incident_wrt_ecg', Interpretation.CATEGORICAL,
+                                                 tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi'),
+                                                 channel_map={'no_myocardial_infarction': 0, 'incident_myocardial_infarction': 1})
 # TMAPS["loyalty_pad_wrt_ecg"] = TensorMap('pad_wrt_ecg', Interpretation.CATEGORICAL,
 #                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_pad'),
 #                                          channel_map=_diagnosis_channels('pulmonary_artery_disease'))
@@ -593,6 +603,8 @@ TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL
 #                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_cvd'))
 # TMAPS["survival_death"] = TensorMap('survival_death', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
 #                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='death_date'))
+# TMAPS["survival_dm"] = TensorMap('survival_diabetes', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+#                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_dm'))
 # TMAPS["survival_hf"] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
 #                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_hf'))
 # TMAPS["survival_htn"] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
