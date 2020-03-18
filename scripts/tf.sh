@@ -97,12 +97,12 @@ if ! docker pull ${DOCKER_IMAGE}; then
     echo "Could not pull the image ${DOCKER_IMAGE}. Will try anyway..."
 fi
 
-if ls /data ; then
+if [ -d "/data" ] ; then
     echo "Found /data folder will try to mount it."
     MOUNTS="${MOUNTS} -v /data/:/data/"
 fi
 
-if ls /mnt ; then
+if [ -d "/mnt" ] ; then
     echo "Found /mnt folder will try to mount it."
     MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
 fi
