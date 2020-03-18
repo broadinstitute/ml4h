@@ -57,10 +57,10 @@ while getopts ":idm:cthT" opt ; do
             DOCKER_IMAGE=$OPTARG
             ;;
         d)
-            GPU_DEVICE="device="$OPTARG
+            GPU_DEVICE="device=${OPTARG}"
             ;;
         m)
-            MOUNTS="-v "$OPTARG":"$OPTARG
+            MOUNTS="-v ${OPTARG}:${OPTARG}"
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
@@ -112,20 +112,20 @@ PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
     docker run ${INTERACTIVE} \
-    --gpus "${GPU_DEVICE}" \
+    --gpus ${GPU_DEVICE} \
     --rm \
     --ipc=host \
-    -v "${WORKDIR}"/:"${WORKDIR}"/ \
+    -v ${WORKDIR}/:${WORKDIR}/ \
     -v /data/:/data/ \
-    -v /media/erisone_snf13/:/media/erisone_snf13/ "${MOUNTS}" \
+    -v /media/erisone_snf13/:/media/erisone_snf13/ ${MOUNTS} \
     ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
 docker run ${INTERACTIVE} \
---gpus "${GPU_DEVICE}" \
+--gpus ${GPU_DEVICE} \
 --rm \
 --ipc=host \
--v "${WORKDIR}"/:"${WORKDIR}"/ \
+-v ${WORKDIR}/:${WORKDIR}/ \
 -v /data/:/data/ \
--v /media/erisone_snf13/:/media/erisone_snf13/ "${MOUNTS}" \
+-v /media/erisone_snf13/:/media/erisone_snf13/ ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
