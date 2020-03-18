@@ -52,9 +52,6 @@ ECG_REST_PLOT_MAX_YRANGE = 10.0
 ECG_REST_PLOT_LEADS = [['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
                        ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
                        ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']]
-ECG_REST_PARTNERS_LEADS = [['I','aVR', 'V1', 'V4'],
-                           ['II','aVL', 'V2', 'V5'],
-                           ['III','aVF', 'V3', 'V6']]
 ECG_REST_PLOT_MEDIAN_LEADS = [['median_I','median_aVR', 'median_V1', 'median_V4'],
                               ['median_II','median_aVL', 'median_V2', 'median_V5'],
                               ['median_III','median_aVF', 'median_V3', 'median_V6']]
