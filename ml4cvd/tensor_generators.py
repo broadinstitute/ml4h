@@ -249,8 +249,6 @@ class _MultiModalMultiTaskWorker:
         self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
 
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
-        logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
-
         self.dependents = {}
         self.idx = 0
 
