@@ -746,7 +746,6 @@ def create_tensor_in_hd5(hd5: h5py.File, path_prefix: str, name: str, value, sta
             d.attrs[k] = attributes[k]
 
 
-
 def tensor_path(path_prefix: str, name: str) -> str:
     """
     In the future, TMAPs should be generated using this same function
