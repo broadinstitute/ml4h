@@ -413,7 +413,7 @@ def _loyalty_str2date(date_string: str):
 
 
 def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke',
-                                     delimiter: str = ',', incidence_only: bool=False):
+                                     start_column: str='start_fu', delimiter: str = ',', incidence_only: bool=False):
     """
     Build a tensor_from_file function from a column and date in a file.
     Only works for continuous values.
@@ -424,13 +424,14 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             patient_index = header.index(patient_column)
+            start_index = header.index(start_column)
             date_index = header.index(date_column)
             date_table = {}
             patient_table = {}
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
-                    patient_table[patient_key] = True
+                    patient_table[patient_key] = _loyalty_str2date(row[start_index])
                     if row[date_index] == '' or row[date_index] == 'NULL':
                         continue
                     date_table[patient_key] = _loyalty_str2date(row[date_index])
@@ -450,15 +451,18 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
         file_split = os.path.basename(hd5.filename).split('-')
         mrn = file_split[0]
         mrn_int = int(mrn)
-        if int(file_split[1]) < 2000:
-            raise ValueError(f'Assessed earlier than enrollment.')
+
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
+
+        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+        if assess_date < patient_table[mrn_int]:
+            raise ValueError(f'{tm.name} Assessed earlier than enrollment')
         if mrn_int not in date_table:
             index = 0
         else:
             disease_date = date_table[mrn_int]
-            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+
             if incidence_only and disease_date < assess_date:
                 raise ValueError(f'{tm.name} is skipping prevalent cases.')
             elif incidence_only and disease_date >= assess_date:
