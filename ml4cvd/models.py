@@ -897,7 +897,7 @@ def _get_callbacks(patience: int, model_file: str,
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
     ]
-    if anneal_max and anneal_rate and anneal_shift:
+    if anneal_max is not None and anneal_rate is not None and anneal_shift is not None:
         callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
 
