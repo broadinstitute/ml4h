@@ -650,8 +650,8 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
 #                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_lvh'))
 # TMAPS["survival_mi"] = TensorMap('survival_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
 #                                  tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_mi'))
-# TMAPS["survival_incident_mi"] = TensorMap('survival_incident_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-#                                           tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, incidence_only=True, diagnosis_column='first_mi'))
+TMAPS["survival_incident_mi"] = TensorMap('survival_incident_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+                                          tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, incidence_only=True, diagnosis_column='first_mi'))
 # TMAPS["survival_pad"] = TensorMap('survival_pad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
 #                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_pad'))
 # TMAPS["survival_stroke"] = TensorMap('survival_stroke', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
