@@ -11,13 +11,13 @@ import pandas as pd
 from typing import List, Dict
 from functools import reduce
 from operator import itemgetter
-import tensorflow.keras.backend as K
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
+from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
@@ -26,16 +26,14 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_find_learning_rate
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
 
 def run(args):
+    start_time = timer()  # Keep track of elapsed execution time
     try:
-        # Keep track of elapsed execution time
-        start_time = timer()
-
         if 'tensorize' == args.mode:
             write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
                           args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
@@ -101,9 +99,9 @@ def run(args):
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
         elif 'find_learning_rate' == args.mode:
-            _find_lr(args)
+            find_learning_rate(args)
         elif 'find_learning_rate_and_train' == args.mode:
-            args.learning_rate = _find_lr(args)
+            args.learning_rate = find_learning_rate(args)
             train_multimodal_multitask(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
@@ -116,56 +114,17 @@ def run(args):
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
 
 
-def _find_lr(args) -> float:
-    """
-    Recommended to set batch size as large as possible.
-    Based on https://sgugger.github.io/how-do-you-find-a-good-learning-rate.html
-    """
-    beta = .98
-    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+def _find_learning_rate(args) -> float:
     schedule = args.learning_rate_schedule
-    args.learning_rate_schedule = None
+    args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
+    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
-    lrs = np.geomspace(1e-7, 1e2, args.training_steps)
-    avg_loss = 0
-    best_loss = np.inf
-    optimizer = model.optimizer
-    losses, smoothed_losses = [], []
-    for i, lr in enumerate(lrs):
-        K.set_value(optimizer.learning_rate, lr)
-        history = model.fit(generate_train, verbose=0, steps_per_epoch=1, epochs=1)
-        loss = history.history['loss'][0]
-        losses.append(loss)
-        avg_loss = beta * avg_loss + (1 - beta) * loss
-        smoothed_loss = avg_loss / (1 - beta**(i + 1))
-        smoothed_losses.append(smoothed_loss)
-        best_loss = min(best_loss, smoothed_loss)
-        if smoothed_loss > 2 * best_loss:
-            break
-    generate_train.kill_workers()
-    best_lr = _choose_best_lr(np.array(smoothed_losses), lrs)
-    pd.DataFrame({'loss': losses, 'learning_rate': lrs[:len(losses)], 'smoothed_loss': smoothed_losses, 'picked_lr': best_lr}).to_csv(os.path.join(args.output_folder, args.id, 'find_learning_rate.csv'), index=False)
-    plot_find_learning_rate(learning_rates=lrs[:len(losses)], losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
-                            figure_path=os.path.join(args.output_folder, args.id))
+    try:
+        lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
+    finally:
+        generate_train.kill_workers()
     args.learning_rate_schedule = schedule
-    return best_lr
-
-
-def _choose_best_lr(smoothed_loss: np.ndarray, lr: np.ndarray) -> float:
-    burn_in = len(lr) // 10
-    best_delta = -np.inf
-    best_lr = None
-    mean_width = 4
-    for i in range(burn_in, len(smoothed_loss)):
-        if smoothed_loss[i - 1] > smoothed_loss[0]:
-            continue  # loss delta from previously high loss should be ignored
-        delta = smoothed_loss[i - mean_width - 1: i - 1].mean() - smoothed_loss[i - mean_width: i].mean()  # positive is good, means loss decreased a lot
-        if delta > best_delta:
-            best_delta = delta
-            best_lr = lr[i]
-    if not best_lr:
-        raise ValueError('Best learning rate could not be found.')
-    return float(best_lr)
+    return lr
 
 
 def _init_dict_of_tensors(tmaps: list) -> dict:

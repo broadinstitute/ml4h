@@ -207,6 +207,9 @@ def _process_args(args):
                                                                              args.continuous_file_discretization_bounds))
     args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
 
+    if args.learning_rate_schedule is not None and args.patience < args.epochs:
+        raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
+
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was:{command_line}")
