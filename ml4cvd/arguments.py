@@ -219,7 +219,7 @@ def _process_args(args):
                                                                              args.output_tensors.pop(0),
                                                                              args.continuous_file_normalize,
                                                                              args.continuous_file_discretization_bounds))
-    args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+    args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
 
     np.random.seed(args.random_seed)
 
