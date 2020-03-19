@@ -99,9 +99,9 @@ def run(args):
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
         elif 'find_learning_rate' == args.mode:
-            find_learning_rate(args)
+            _find_learning_rate(args)
         elif 'find_learning_rate_and_train' == args.mode:
-            args.learning_rate = find_learning_rate(args)
+            args.learning_rate = _find_learning_rate(args)
             train_multimodal_multitask(args)
         else:
             raise ValueError('Unknown mode:', args.mode)

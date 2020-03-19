@@ -1208,7 +1208,7 @@ def plot_find_learning_rate(learning_rates: List[float], losses: List[float], sm
     plt.title('Learning rate finder')
     cutoff = smoothed_losses[0]
     plt.ylim(min(smoothed_losses), cutoff * 1.05)
-    plt.axhline(cutoff, linestyle='--', color='k', label=f'Deltas ignored above {cutoff:.2f}.')
+    plt.axhline(cutoff, linestyle='--', color='k', label=f'Deltas ignored above {cutoff:.2f}')
     learning_rates = np.log(learning_rates) / np.log(10)
     plt.plot(learning_rates, losses, label='Loss', c='r')
     plt.plot(learning_rates, smoothed_losses, label='Smoothed loss', c='b')
