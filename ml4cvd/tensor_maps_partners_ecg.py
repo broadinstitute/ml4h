@@ -1,18 +1,17 @@
 import os
-import csv
 import logging
 import datetime
 from collections import defaultdict
+from typing import Dict, List, Callable
 
+import csv
 import h5py
 import numcodecs
 import numpy as np
-from typing import Dict, List
 
-from ml4cvd.metrics import weighted_crossentropy
-from ml4cvd.TensorMap import (TensorMap, no_nans, str2date, make_range_validator, Interpretation)
-from ml4cvd.defines import ECG_REST_AMP_LEADS
 from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.defines import ECG_REST_AMP_LEADS
+from ml4cvd.TensorMap import TensorMap, str2date, make_range_validator, Interpretation
 
 
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
@@ -412,11 +411,21 @@ def _loyalty_str2date(date_string: str):
     return str2date(date_string.split(' ')[0])
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', date_column: str='first_stroke',
-                                     start_column: str='start_fu', delimiter: str = ',', incidence_only: bool=False):
-    """
-    Build a tensor_from_file function from a column and date in a file.
-    Only works for continuous values.
+def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
+                                     diagnosis_date_column: str = 'first_stroke', start_column: str = 'start_fu',
+                                     delimiter: str = ',', incidence_only: bool = False) -> Callable:
+    """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
+
+    The tensor_from_file function returned here should be used
+    with CATEGORICAL TensorMaps to classify patients by disease state.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param diagnosis_date_column: The header name of the column of disease diagnosis dates
+    :param start_column: The header name of the column of enrollment dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
+    :return: The tensor_from_file function to provide to TensorMap constructors
     """
     error = None
     try:
@@ -424,14 +433,17 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             patient_index = header.index(patient_column)
+            birth_index = header.index(birth_column)
             start_index = header.index(start_column)
-            date_index = header.index(date_column)
+            date_index = header.index(diagnosis_date_column)
             date_table = {}
+            birth_table = {}
             patient_table = {}
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
                     patient_table[patient_key] = _loyalty_str2date(row[start_index])
+                    birth_table[patient_key] = _loyalty_str2date(row[birth_index])
                     if row[date_index] == '' or row[date_index] == 'NULL':
                         continue
                     date_table[patient_key] = _loyalty_str2date(row[date_index])
@@ -439,7 +451,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
                     logging.warning(f'val err {e}')
-            logging.info(f'Done processing {date_column} Got {len(patient_table)} patient rows and {len(date_table)} events.')
+            logging.info(f'Done processing {diagnosis_date_column} Got {len(patient_table)} patient rows and {len(date_table)} events.')
     except FileNotFoundError as e:
         error = e
 
@@ -454,6 +466,10 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str='Mrn', 
 
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
+
+        birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
+        if birth_date != birth_table[patient_key]:
+            raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
 
         assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
         if assess_date < patient_table[mrn_int]:
@@ -494,12 +510,12 @@ def _diagnosis_channels(disease: str):
 # TMAPS["loyalty_death_wrt_ecg"] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
 #                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='death_date'),
 #                                            channel_map=_diagnosis_channels('death'))
-# TMAPS["loyalty_dm_wrt_ecg"] = TensorMap('dm_wrt_ecg', Interpretation.CATEGORICAL,
-#                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_dm'),
-#                                         channel_map=_diagnosis_channels('diabetes_mellitus'))
-TMAPS["loyalty_dm_incident_wrt_ecg"] = TensorMap('dm_incident_wrt_ecg', Interpretation.CATEGORICAL,
-                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_dm', incidence_only=True),
-                                        channel_map={'no_diabetes': 0, 'incident_diabetes': 1})
+TMAPS["loyalty_dm_wrt_ecg"] = TensorMap('dm_wrt_ecg', Interpretation.CATEGORICAL,
+                                        tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_dm'),
+                                        channel_map=_diagnosis_channels('diabetes_mellitus'))
+# TMAPS["loyalty_dm_incident_wrt_ecg"] = TensorMap('dm_incident_wrt_ecg', Interpretation.CATEGORICAL,
+#                                                  tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_date_column='first_dm', incidence_only=True),
+#                                                  channel_map={'no_diabetes': 0, 'incident_diabetes': 1})
 # TMAPS["loyalty_hf_wrt_ecg"] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
 #                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_hf'),
 #                                         channel_map=_diagnosis_channels('heart_failure'))
@@ -513,7 +529,7 @@ TMAPS["loyalty_dm_incident_wrt_ecg"] = TensorMap('dm_incident_wrt_ecg', Interpre
 #                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi'),
 #                                         channel_map=_diagnosis_channels('myocardial_infarction'))
 TMAPS["loyalty_mi_incident_wrt_ecg"] = TensorMap('mi_incident_wrt_ecg', Interpretation.CATEGORICAL,
-                                                 tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_mi', incidence_only=True),
+                                                 tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_date_column='first_mi', incidence_only=True),
                                                  channel_map={'no_myocardial_infarction': 0, 'incident_myocardial_infarction': 1})
 # TMAPS["loyalty_pad_wrt_ecg"] = TensorMap('pad_wrt_ecg', Interpretation.CATEGORICAL,
 #                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, date_column='first_pad'),
@@ -532,10 +548,21 @@ TMAPS["loyalty_mi_incident_wrt_ecg"] = TensorMap('mi_incident_wrt_ecg', Interpre
 
 def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
                         follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-                        date_column: str = 'first_stroke', delimiter: str = ','):
-    """
-    Build a tensor_from_file function from a column and date in a file.
-    Only works for continuous values.
+                        diagnosis_column: str = 'first_stroke', delimiter: str = ',') -> Callable:
+    """Build a tensor_from_file function for modeling survival curves of diagnoses given a TSV of patients and dates.
+
+    The tensor_from_file function returned here should be used
+    with COX_PROPORTIONAL_HAZARDS TensorMaps to model survival curves of patients for a given disease.
+
+    :param day_window: Total number of days of follow up the length of the survival curves to learn.
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
+    :param patient_column: The header name of the column of patient ids
+    :param follow_up_start_column: The header name of the column of enrollment dates
+    :param follow_up_total_column: The header name of the column with total enrollment time (in years)
+    :param diagnosis_column: The header name of the column of disease diagnosis dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
     """
     error = None
     disease_dicts = defaultdict(dict)
@@ -546,7 +573,7 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
             follow_up_start_index = header.index(follow_up_start_column)
             follow_up_total_index = header.index(follow_up_total_column)
             patient_index = header.index(patient_column)
-            date_index = header.index(date_column)
+            date_index = header.index(diagnosis_column)
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
@@ -559,7 +586,7 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
                         logging.debug(f"Processed: {len(disease_dicts['follow_up_start'])} patient rows.")
                 except ValueError as e:
                     logging.warning(f'val err {e}')
-            logging.info(f"Done processing {date_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.")
+            logging.info(f"Done processing {diagnosis_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.")
     except FileNotFoundError as e:
         error = e
 
@@ -621,9 +648,9 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
 # TMAPS["survival_lvh"] = TensorMap('survival_lvh', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
 #                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_lvh'))
 TMAPS["survival_mi"] = TensorMap('survival_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                 tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_mi'))
+                                 tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_mi'))
 TMAPS["survival_incident_mi"] = TensorMap('survival_incident_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                          tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, incidence_only=True, date_column='first_mi'))
+                                          tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, incidence_only=True, diagnosis_column='first_mi'))
 # TMAPS["survival_pad"] = TensorMap('survival_pad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
 #                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, date_column='first_pad'))
 # TMAPS["survival_stroke"] = TensorMap('survival_stroke', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
