@@ -916,7 +916,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 2
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
