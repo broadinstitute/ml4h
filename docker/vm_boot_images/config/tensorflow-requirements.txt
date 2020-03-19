@@ -16,3 +16,7 @@ Pillow==7.0.0
 keras-rectified-adam==0.15.0
 notebook
 pytest
+altair
+facets-overview
+plotnine
+vega
