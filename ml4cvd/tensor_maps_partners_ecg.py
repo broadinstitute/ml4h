@@ -469,7 +469,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn'
             raise KeyError(f'{tm.name} mrn not in incidence csv')
 
         birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
-        if birth_date != birth_table[patient_key]:
+        if birth_date != birth_table[mrn_int]:
             raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
 
         assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
