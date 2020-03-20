@@ -326,12 +326,12 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
     logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
     logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
-    predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
+    predicted_proportion = np.cumsum(np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0)) / truth.shape[0]
     true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
