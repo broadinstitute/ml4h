@@ -167,6 +167,21 @@ def parse_args():
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
     parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
+    # Cohort cross referencing arguments
+    parser.add_argument('--src_tensors', help='Tensors to cross reference.')
+    parser.add_argument('--src_key_join', help='Key to cross reference source tensors on.')
+    parser.add_argument('--src_key_time', nargs=2, metavar=('SRC_KEY_TIME', 'SRC_KEY_TIME_FORMAT'), help='Key and format (python strftime format) to time in source tensors.')
+    parser.add_argument('--src_tensor_maps', default=[], help='Do not set this directly. This is automatically set.')
+
+    parser.add_argument('--dst_tensors', help='Tensors to use as a cross reference.')
+    parser.add_argument('--dst_key_join', help='Key to cross reference destination tensors on.')
+    parser.add_argument('--dst_key_time', nargs=2, metavar=('DST_KEY_TIME', 'DST_KEY_TIME_FORMAT'), help='Key and format (python strftime format) to time in destination tensors.')
+    parser.add_argument('--dst_key_outcome', help='Key to outcome in destination tensors.')
+    parser.add_argument('--dst_tensor_maps', default=[], help='Do not set this directly. This is automatically set.')
+
+    parser.add_argument('--days_before_outcome', type=int, help='Days before an outcome in destination.')
+    parser.add_argument('--numeric_join', action='store_true', help='Parse join keys as numeric fields.')
+
     args = parser.parse_args()
     _process_args(args)
     return args
@@ -210,6 +225,18 @@ def _process_args(args):
                                                                              args.continuous_file_normalize,
                                                                              args.continuous_file_discretization_bounds))
     args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+
+    if args.src_tensors and os.path.isdir(args.src_tensors):
+        args.src_tensor_maps = [
+            _get_tmap(args.src_key_join),
+            _get_tmap(args.src_key_time[0])
+        ]
+    if args.dst_tensors and os.path.isdir(args.dst_tensors):
+        args.dst_tensor_maps = [
+            _get_tmap(args.dst_key_join),
+            _get_tmap(args.dst_key_time[0]),
+            _get_tmap(args.dst_key_outcome)
+        ]
 
     np.random.seed(args.random_seed)
 

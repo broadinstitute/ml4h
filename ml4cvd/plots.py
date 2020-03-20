@@ -877,6 +877,29 @@ def plot_partners_ecgs(args):
         _plot_partners_ecg(data, args)
 
 
+def plot_cross_reference(df_x, src_time, dst_time, days_before_outcome, args, title):
+
+    # compute day diffs
+    day_diffs = list(df_x.apply(lambda row: (row[src_time] - row[dst_time]).days, axis=1))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.hist(day_diffs, bins=range(-days_before_outcome, 1, 1))
+    ax.set_xlabel("Days relative to outcome")
+    ax.set_ylabel("Number of patients")
+    ax.set_title(f"Distribution of ECGs within {days_before_outcome} days of outcome: N={len(day_diffs)}")
+
+    # day diffs contains negative numbers
+    ax.text(0.05, 0.90, f"Min: {np.max(day_diffs)}", transform=ax.transAxes)
+    ax.text(0.05, 0.85, f"Max: {np.min(day_diffs)}", transform=ax.transAxes)
+    ax.text(0.05, 0.80, f"Median: {-np.median(day_diffs):.0f}", transform=ax.transAxes)
+    plt.tight_layout()
+
+    fpath = os.path.join(args.output_folder, args.id, f"{title}{PDF_EXT}")
+    fig.savefig(fpath)
+    logging.info(f"Saved histogram of days pre-outcome to {fpath}")
+
+
 def _ecg_rest_traces(hd5):
     """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
     leads = {}

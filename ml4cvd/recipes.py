@@ -4,6 +4,7 @@
 import os
 import csv
 import pdb
+
 import h5py
 import copy
 import logging
@@ -13,6 +14,7 @@ from functools import reduce
 from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
+from datetime import timedelta
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
@@ -26,7 +28,7 @@ from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_ge
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_cross_reference
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
 
@@ -43,6 +45,8 @@ def run(args):
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
         elif 'explore' == args.mode:
             explore(args)
+        elif 'cross_reference' == args.mode:
+            cross_reference(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'test' == args.mode:
@@ -207,8 +211,8 @@ def _tensors_to_df(args):
     # df (or pd.series) of floats will have the type "float", a df of strings
     # assumes a dtype of "object". Casting to dtype "string" will confer performnace
     # improvements in future versions of Pandas
-    df["fpath"] = df["fpath"].astype("string")
-    df["generator"] = df["generator"].astype("string")
+    df["fpath"] = df["fpath"].astype(str)
+    df["generator"] = df["generator"].astype(str)
 
     # Iterate through tensor (and channel) maps and cast Pandas dtype to string
     if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
@@ -216,10 +220,10 @@ def _tensors_to_df(args):
             if tm.channel_map:
                 for cm in tm.channel_map:
                     key = (tm.name, cm)
-                    df[key] = df[key].astype("string")
+                    df[key] = df[key].astype(str)
             else:
                 key = tm.name
-                df[key] = df[key].astype("string")
+                df[key] = df[key].astype(str)
     logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} hd5 files into DataFrame")
     return df
 
@@ -365,6 +369,127 @@ def explore(args):
                             f"{fpath_prefix}_{Interpretation.LANGUAGE}_{df_str}.csv")
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
+
+
+def _report_cross_reference(df_x, outcome_field, args, title):
+    outcomes, counts = np.unique(df_x[outcome_field], return_counts=True)
+    outcomes = np.append(outcomes, ["Total"])
+    counts = np.append(counts, [sum(counts)])
+
+    # save outcome distribution to csv
+    df_out = pd.DataFrame({ "counts": counts, outcome_field: outcomes }).set_index(outcome_field, drop=True)
+    fpath = os.path.join(args.output_folder, args.id, f"{title}.csv")
+    df_out.to_csv(fpath)
+    logging.info(f"Saved summary stats of cross reference to {fpath}")
+
+
+# TODO make these modular
+def _extract_numeric(df, field):
+    field_orig = field
+    field = f"clean_{field}"
+    df[field] = df[field_orig]
+    df[field] = pd.to_numeric(df[field], errors="coerce")
+    df = df.dropna()
+    return df, field, field_orig
+
+
+def _extract_time(df, time_field, time_format):
+    time_field_orig = time_field
+    time_field = f"clean_{time_field}"
+    df[time_field] = df[time_field_orig]
+    df[time_field] = df[time_field].apply(lambda x: x.title())
+    df[time_field] = pd.to_datetime(df[time_field], format=time_format, errors="coerce")
+    df = df.dropna()
+    return df, time_field, time_field_orig
+
+
+def cross_reference(args):
+    args.num_workers = 0
+    src_path = args.src_tensors
+    src_join = args.src_key_join
+    src_time, src_time_format = args.src_key_time
+
+    dst_path = args.dst_tensors
+    dst_join = args.dst_key_join
+    dst_time, dst_time_format = args.dst_key_time
+    dst_outcome = args.dst_key_outcome
+
+    days_before_outcome = args.days_before_outcome
+
+    # load data into dataframes
+    if os.path.isdir(src_path):
+        args.tensors = src_path
+        args.tensor_maps_in = args.src_tensor_maps
+        df_src = _tensors_to_df(args)
+        df_src = df_src[[src_join, src_time, "fpath"]]
+    else:
+        # src is assumed to be a csv
+        df_src = pd.read_csv(src_path, keep_default_na=False, low_memory=False)
+        df_src = df_src[[src_join, src_time]]
+
+    if os.path.isdir(dst_path):
+        args.tensors = dst_path
+        args.tensor_maps_in = args.dst_tensor_maps
+        df_dst = _tensors_to_df(args)
+        df_dst = df_dst[[dst_join, dst_time, dst_outcome, "fpath"]]
+    else:
+        # dst is assumed to be a csv
+        df_dst = pd.read_csv(dst_path, keep_default_na=False, low_memory=False)
+        df_dst = df_dst[[dst_join, dst_time, dst_outcome]]
+
+    # parse join column to numeric field
+    if args.numeric_join:
+        df_src, src_join, src_join_orig = _extract_numeric(df_src, src_join)
+        df_dst, dst_join, dst_join_orig = _extract_numeric(df_dst, dst_join)
+
+    # parse time column to time field
+    df_src, src_time, src_time_orig = _extract_time(df_src, src_time, src_time_format)
+    df_dst, dst_time, dst_time_orig = _extract_time(df_dst, dst_time, dst_time_format)
+
+    # filter to only occurrences that appear in the other
+    df_src = df_src[np.isin(df_src[src_join], df_dst[dst_join])]
+    df_dst = df_dst[np.isin(df_dst[dst_join], df_src[src_join])]
+
+    # TODO report stats here: how many occur in the other
+
+    # sort outcomes in dst by date in descending order so that earlier outcomes are used for earlier src rows
+    df_dst = df_dst.sort_values(by=[dst_join, dst_time], ascending=[True, False])
+
+    # append dst info to src
+    df_src[dst_time] = pd.NaT
+    df_src[dst_time_orig] = ''
+    df_src[dst_outcome] = np.NaN
+
+    for i, row in df_dst.iterrows():
+        dst_join_val, dst_time_val, dst_time_orig_val, dst_outcome_val = row[dst_join], row[dst_time], row[dst_time_orig], row[dst_outcome]
+
+        # compute mask for which src matches criteria
+        start_time = dst_time_val - timedelta(days=days_before_outcome)
+        end_time = dst_time_val
+
+        join_mask  = df_src[src_join] == dst_join_val
+        start_mask = df_src[src_time] >= start_time
+        end_mask   = df_src[src_time] < end_time
+
+        mask = join_mask & start_mask & end_mask
+
+        # update src rows with dst info
+        if mask.any():
+            df_src.loc[mask, [dst_time, dst_time_orig, dst_outcome]] = [dst_time_val, dst_time_orig_val, dst_outcome_val]
+    df_src = df_src.dropna()
+
+    # generate reports
+    _report_cross_reference(df_src, dst_outcome, args, f"summary_all_src_{days_before_outcome}_before_outcome")
+    plot_cross_reference(df_src, src_time, dst_time, days_before_outcome, args, f"distribution_all_src_{days_before_outcome}_before_outcome")
+
+    # get only most recent row in src relative to row in dst
+    # src must be sorted in ascending order to use last() on groupby
+    df_src = df_src.sort_values(by=[src_join, dst_time, dst_outcome, src_time])
+    df_src = df_src.groupby(by=[src_join, dst_time, dst_outcome], as_index=False).last()
+
+    # generate reports
+    _report_cross_reference(df_src, dst_outcome, args, f"summary_most_recent_src_{days_before_outcome}_before_outcome")
+    plot_cross_reference(df_src, src_time, dst_time, days_before_outcome, args, f"distribution_most_recent_src_{days_before_outcome}_before_outcome")
 
 
 def train_multimodal_multitask(args):
