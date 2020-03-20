@@ -178,7 +178,7 @@ def survival_likelihood_loss(n_intervals):
         """
         survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss only for intervals that were survived
         survival_likelihood += 1. - y_true[:, 0:n_intervals]
-        failure_likelihood = K.maximum(y_true[:, n_intervals:2 * n_intervals], axis=-1) * (1-y_true[:, 0:n_intervals]) * (1-y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
+        failure_likelihood = K.max(y_true[:, n_intervals:2 * n_intervals], axis=-1) * (1-y_true[:, 0:n_intervals]) * (1-y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
         failure_likelihood += y_true[:, 0:n_intervals]
         return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
 
