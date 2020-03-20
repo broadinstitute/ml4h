@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
-from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, LayerNormalization
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
@@ -30,7 +30,7 @@ from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX
 
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
@@ -298,7 +298,7 @@ class KLDivergenceLayer(Layer):
     """
     def __init__(self, *args, **kwargs):
         self.is_placeholder = True
-        self.kl_weight = K.variable(1e-5)
+        self.kl_weight = tf.Variable(1e-5, trainable=False)
         super(KLDivergenceLayer, self).__init__(**kwargs)
 
     def call(self, inputs, **kwargs):
@@ -868,7 +868,7 @@ def train_model_from_generators(model: Model,
     :param return_history: If true return history from training and don't plot the training history
     :return: The optimized model.
     """
-    model_file = os.path.join(output_folder, run_id, run_id + '.h5')
+    model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
@@ -876,8 +876,9 @@ def train_model_from_generators(model: Model,
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1, validation_steps=validation_steps,
-                        validation_data=generate_valid, callbacks=_get_callbacks(patience, model_file))
+    history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
+                        validation_steps=validation_steps, validation_data=generate_valid,
+                        callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate))
     generate_train.kill_workers()
     generate_valid.kill_workers()
 
@@ -899,7 +900,7 @@ def _get_callbacks(patience: int, model_file: str,
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
     ]
-    if anneal_max and anneal_rate and anneal_shift:
+    if anneal_max is not None and anneal_rate is not None and anneal_shift is not None:
         callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
 
