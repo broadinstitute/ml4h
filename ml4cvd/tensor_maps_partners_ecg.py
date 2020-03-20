@@ -495,6 +495,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn'
 def _diagnosis_channels(disease: str):
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
 
+
 def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
                         follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
                         diagnosis_column: str = 'first_stroke', delimiter: str = ',') -> Callable:
@@ -578,145 +579,33 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
     return tensor_from_file
 
 
-def build_partners_tmaps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
-    TMAPS = {}
-    task = "loyalty_afib_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('afib_wrt_ecg', Interpretation.CATEGORICAL,
-                                                  tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_af'),
-                                                  channel_map=_diagnosis_channels('atrial_fibrillation'))
-    task = "loyalty_bpmed_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('bpmed_wrt_ecg', Interpretation.CATEGORICAL,
-                                               tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_bpmed'),
-                                               channel_map=_diagnosis_channels('blood_pressure_medication'))
-    task = "loyalty_cad_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('cad_wrt_ecg', Interpretation.CATEGORICAL,
-                                             tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_cad'),
-                                             channel_map=_diagnosis_channels('coronary_artery_disease'))
+def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
+    name2tensormap: Dict[str: TensorMap] = {}
+    diagnosis2column = {'atrial_fibrillation': 'first_af', 'blood_pressure_medication': 'first_bpmed',
+                        'coronary_artery_disease': 'first_cad', 'cardiovascular_disease': 'first_cvd',
+                        'death': 'death_date', 'diabetes_mellitus': 'first_dm', 'heart_failure': 'first_hf',
+                        'hypertension': 'first_htn', 'left_ventricular_hypertrophy': 'first_lvh',
+                        'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
+                        'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease'}
 
-    task = "loyalty_cvd_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('cvd_wrt_ecg', Interpretation.CATEGORICAL,
-                                             tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_cvd'),
-                                             channel_map=_diagnosis_channels('cardiovascular_disease'))
-    task = "loyalty_death_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('death_wrt_ecg', Interpretation.CATEGORICAL,
-                                               tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='death_date'),
-                                               channel_map=_diagnosis_channels('death'))
-    task = "loyalty_dm_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('dm_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_dm'),
-                                            channel_map=_diagnosis_channels('diabetes_mellitus'))
-    task = "loyalty_dm_incident_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('dm_incident_wrt_ecg', Interpretation.CATEGORICAL,
-                                                     tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_dm', incidence_only=True),
-                                                     channel_map={'no_diabetes': 0, 'incident_diabetes': 1})
-    task = "loyalty_hf_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('hf_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_hf'),
-                                            channel_map=_diagnosis_channels('heart_failure'))
-    task = "loyalty_htn_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('htn_wrt_ecg', Interpretation.CATEGORICAL,
-                                             tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_htn'),
-                                             channel_map=_diagnosis_channels('hypertension'))
-    task = "loyalty_lvh_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('lvh_wrt_ecg', Interpretation.CATEGORICAL,
-                                             tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_lvh'),
-                                             channel_map=_diagnosis_channels('left_ventricular_hypertrophy'))
-    task = "loyalty_mi_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('mi_wrt_ecg', Interpretation.CATEGORICAL,
-                                            tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_mi'),
-                                            channel_map=_diagnosis_channels('myocardial_infarction'))
-    task = "loyalty_mi_incident_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('mi_incident_wrt_ecg', Interpretation.CATEGORICAL,
-                                                     tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_mi', incidence_only=True),
-                                                     channel_map={'no_myocardial_infarction': 0, 'incident_myocardial_infarction': 1})
-    task = "loyalty_pad_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('pad_wrt_ecg', Interpretation.CATEGORICAL,
-                                             tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_pad'),
-                                             channel_map=_diagnosis_channels('pulmonary_artery_disease'))
-    task = "loyalty_stroke_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                                tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV),
-                                                channel_map=_diagnosis_channels('stroke'))
-    task = "loyalty_cad_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('stroke_wrt_ecg', Interpretation.CATEGORICAL,
-                                                         tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, ),
-                                                         channel_map=_diagnosis_channels('stroke'),
-                                                         loss=weighted_crossentropy([1.0, 10.0, 10.0], 'loyal_stroke'))
-    task = "loyalty_valvular_disease_wrt_ecg"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('valvular_disease_wrt_ecg', Interpretation.CATEGORICAL,
-                                                          tensor_from_file=build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column='first_valvular_disease'),
-                                                          channel_map=_diagnosis_channels('valvular_disease'))
+    for diagnosis in diagnosis2column:
+        # Build diagnosis classification TensorMaps
+        name = f'diagnosis_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
+        name = f'incident_diagnosis_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
 
-    task = "survival_af"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_af', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_af'))
-    task = "survival_bpmed"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_bpmed', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                        tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_bpmed'))
-    task = "survival_cad"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_cad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                      tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_cad'))
-    task = "survival_cvd"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_cvd', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                      tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_cvd'))
-    task = "survival_death"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_death', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                        tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='death_date'))
-    task = "survival_dm"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_diabetes', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_dm'))
-    task = "survival_hf"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_hf', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_hf'))
-    task = "survival_htn"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_htn', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                      tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_htn'))
-    task = "survival_lvh"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_lvh', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                      tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_lvh'))
-    task = "survival_mi"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                     tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_mi'))
-    task = "survival_incident_mi"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_incident_mi', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                              tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, incidence_only=True, diagnosis_column='first_mi'))
-    task = "survival_pad"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_pad', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                      tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_pad'))
-    task = "survival_stroke"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_stroke', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                         tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_stroke'))
-    task = "survival_valvular_disease"
-    if task in needed_tensor_maps:
-        TMAPS[task] = TensorMap('survival_valvular_disease', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
-                                                   tensor_from_file=_survival_from_file(3650, INCIDENCE_CSV, diagnosis_column='first_valvular_disease'))
-    return TMAPS
+        # Build survival curve TensorMaps
+        name = f'survival_{diagnosis}'
+        if name in needed_tensor_maps:
+            tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,), tensor_from_file=tff)
+        name = f'incident_survival_{diagnosis}'
+        if name in needed_tensor_maps:
+            tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
+            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,), tensor_from_file=tff)
+    return name2tensormap
