@@ -371,16 +371,21 @@ def explore(args):
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
 
 
-def _report_cross_reference(df_x, outcome_field, args, title):
+def _report_cross_reference(df_x, index_field, outcome_field, args, title):
     outcomes, counts = np.unique(df_x[outcome_field], return_counts=True)
     outcomes = np.append(outcomes, ["Total"])
     counts = np.append(counts, [sum(counts)])
 
     # save outcome distribution to csv
     df_out = pd.DataFrame({ "counts": counts, outcome_field: outcomes }).set_index(outcome_field, drop=True)
-    fpath = os.path.join(args.output_folder, args.id, f"{title}.csv")
+    fpath = os.path.join(args.output_folder, args.id, f"summary_{title}.csv")
     df_out.to_csv(fpath)
     logging.info(f"Saved summary stats of cross reference to {fpath}")
+
+    # save cross reference to csv
+    fpath = os.path.join(args.output_folder, args.id, f"{title}.csv")
+    df_x.set_index(index_field, drop=True).to_csv(fpath)
+    logging.info(f"Saved cross reference to {fpath}")
 
 
 # TODO make these modular
@@ -437,6 +442,9 @@ def cross_reference(args):
         df_dst = pd.read_csv(dst_path, keep_default_na=False, low_memory=False)
         df_dst = df_dst[[dst_join, dst_time, dst_outcome]]
 
+    len_src = len(df_src[src_join])
+    len_dst = len(df_dst[dst_join])
+
     # parse join column to numeric field
     if args.numeric_join:
         df_src, src_join, src_join_orig = _extract_numeric(df_src, src_join)
@@ -450,7 +458,14 @@ def cross_reference(args):
     df_src = df_src[np.isin(df_src[src_join], df_dst[dst_join])]
     df_dst = df_dst[np.isin(df_dst[dst_join], df_src[src_join])]
 
-    # TODO report stats here: how many occur in the other
+    len_src_x = len(df_src[src_join])
+    len_dst_x = len(df_dst[dst_join])
+
+    # report some high level counts
+    stats = pd.DataFrame({'data': ['src', 'src_in_dst', 'dst', 'dst_in_src'], 'counts': [len_src, len_src_x, len_dst, len_dst_x]}).set_index('data')
+    fpath = os.path.join(args.output_folder, args.id, "summary_cohort_counts.csv")
+    stats.to_csv(fpath)
+    logging.info(f"Saved cohort counts to {fpath}")
 
     # sort outcomes in dst by date in descending order so that earlier outcomes are used for earlier src rows
     df_dst = df_dst.sort_values(by=[dst_join, dst_time], ascending=[True, False])
@@ -479,7 +494,7 @@ def cross_reference(args):
     df_src = df_src.dropna()
 
     # generate reports
-    _report_cross_reference(df_src, dst_outcome, args, f"summary_all_src_{days_before_outcome}_before_outcome")
+    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"all_src_{days_before_outcome}_before_outcome")
     plot_cross_reference(df_src, src_time, dst_time, days_before_outcome, args, f"distribution_all_src_{days_before_outcome}_before_outcome")
 
     # get only most recent row in src relative to row in dst
@@ -488,7 +503,7 @@ def cross_reference(args):
     df_src = df_src.groupby(by=[src_join, dst_time, dst_outcome], as_index=False).last()
 
     # generate reports
-    _report_cross_reference(df_src, dst_outcome, args, f"summary_most_recent_src_{days_before_outcome}_before_outcome")
+    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"most_recent_src_{days_before_outcome}_before_outcome")
     plot_cross_reference(df_src, src_time, dst_time, days_before_outcome, args, f"distribution_most_recent_src_{days_before_outcome}_before_outcome")
 
 
