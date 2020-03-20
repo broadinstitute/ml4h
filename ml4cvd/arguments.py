@@ -191,6 +191,15 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     if name in TMAPS:
         return TMAPS[name]
 
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
+    TMAPS.update(partners_label_tmaps)
+
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+
     from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
     TMAPS.update(script_tmaps)
 
