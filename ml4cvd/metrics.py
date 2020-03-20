@@ -176,10 +176,11 @@ def survival_likelihood_loss(n_intervals):
         Returns
             Vector of losses for this minibatch.
         """
-        all_individuals = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # component for all individuals
-        all_individuals += 1. - y_true[:, 0:n_intervals]  # component for all individuals
-        uncensored = 1. - (y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals])  # component for only individuals who failed
-        return K.sum(-K.log(K.clip(K.concatenate((all_individuals, uncensored)), K.epsilon(), None)), axis=-1)  # return -log likelihood
+        survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss only for intervals that were survived
+        survival_likelihood += (1. - y_true[:, 0:n_intervals]) * (1. - K.cumprod(y_pred[:, 0:n_intervals], axis=1))
+        return K.sum(-K.log(K.clip(survival_likelihood, K.epsilon(), None)), axis=-1)  # return -log likelihood
+        #failure_likelihood = 1. - (y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
+        #return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
 
     return loss
 
