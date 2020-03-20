@@ -895,7 +895,7 @@ def plot_cross_reference(df_x, src_time, dst_time, days_before_outcome, args, ti
     ax.text(0.05, 0.80, f"Median: {-np.median(day_diffs):.0f}", transform=ax.transAxes)
     plt.tight_layout()
 
-    fpath = os.path.join(args.output_folder, args.id, f"{title}{PDF_EXT}")
+    fpath = os.path.join(args.output_folder, args.id, f"{title}{IMAGE_EXT}")
     fig.savefig(fpath)
     logging.info(f"Saved histogram of days pre-outcome to {fpath}")
 
