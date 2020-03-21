@@ -5,7 +5,9 @@ Extracting and tensorizing MUSE 12-lead ECGs
 1. [Extracting ECGs to XML](#extracting-ecgs-to-xml)
 2. [Organizing XMLs and Removing Duplicates](#organizing-xmls-and-removing-duplicates)
 3. [Tensorizing XMLs to HDF5](#tensorizing-xmls-to-hdf5)
-4. [MUSE Virtual Machine Setup](#muse-virtual-machine-setup)
+4. [ECG Data Structure](#ecg-data-structure)
+5. [Extracting ECG Metadata](#extracting-ecg-metadata)
+6. [MUSE Virtual Machine Setup](#muse-virtual-machine-setup)
 
 ## Extracting ECGs to XML
 ### 1. Open the MUSE Editor
@@ -74,9 +76,66 @@ Double-click any search to open "Template search setup".
 ## Tensorizing XMLs to HDF5
 `python 3_convert_xml_to_hd5.py` extracts data from all XML files and saves as [HDF5 files](https://www.hdfgroup.org). 
 
-One ECG from one XML is stored as one HDF5 file. This will soon be updated so that all the ECGs for one patient are stored as one HDF5 file.
-
 This script is called with the `-p` or `--parallel` argument to parallelize conversion across all available CPUs.  
+
+One ECG from one XML is stored as one HDF5 file.  
+
+**This will soon be updated so that all the ECGs for one patient are stored as one HDF5 file.**
+
+## ECG Data Structure
+Voltage is saved from XMLs as a dictionary of numpy arrays indexed by leads in the set `("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")`, e.g.:
+
+```
+voltage = {'I': array([0, -4, -2, ..., 7]),
+          {'II': array([2, -9, 0, ..., 5]),
+          ...
+          {'V6': array([1, -4, -3, ..., 4]),
+```
+
+Every other element extracted from the XML is returned as a string, even if the underlying primitive type is a number (e.g. age). Here are some of the more important elements:
+
+```
+acquisitiondate
+atrialrate
+dateofbirth
+diagnosis_computer
+diagnosis_md
+ecgsamplebase
+ecgsampleexponent
+gender
+heightin
+location
+locationname
+overreaderfirstname
+overreaderid
+overreaderlastname
+patientid
+paxis
+poffset
+ponset
+printerval
+qoffset
+qonset
+qrscount
+qrsduration
+qtcfrederica
+qtcorrected
+qtinterval
+race
+raxis
+taxis
+toffset
+ventricularrate
+weightlbs
+```
+
+## Extracting ECG metadata
+
+`4_extract_metadata_to_csv.py` iterates through every HDF5 file, identifies relevant data (e.g. MRN, diagnostic read, axes, intervals, age, gender, and race), and saves these data in a large CSV file:  
+
+This CSV file will be used to construct a performant, queryable database to identify future cohorts for research projects.
+
+**Metadata extraction will soon change along with new tensorization**
 
 ## MUSE Virtual Machine Setup
 > Some of these steps will already be complete in the `.ova` image file from `mad3`.  
