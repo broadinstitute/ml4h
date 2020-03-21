@@ -1,42 +1,92 @@
 # Partners ECG
-Code to work with MUSE 12-lead ECG files in XML and HD5 format.
+Extracting and tensorizing MUSE 12-lead ECGs
 
-## Table of contents
-1. [Setup](https://github.com/mghcdac/partners-ecg#setup)  
-2. [Extracting ECGs to XML](https://github.com/mghcdac/partners-ecg#extracting-ecgs-to-xml)  
-3. [Data access](https://github.com/mghcdac/partners-ecg#data-access)
-4. [ECG data fields](https://github.com/mghcdac/partners-ecg#ecg-data-fields)
-5. [Source XMLs on `MAD3`](https://github.com/mghcdac/partners-ecg#source-xmls-on-mad3)
-6. [Organizing XMLs and removing duplicates](https://github.com/mghcdac/partners-ecg#organizing-xmls-and-removing-duplicates)
-7. [Converting files from XML to HDF5](https://github.com/mghcdac/partners-ecg#organizing-xmls-and-removing-duplicates)
-8. [Extracting ECG metadata](https://github.com/mghcdac/partners-ecg#extracting-ecg-metadata)
-9. [Other scripts](https://github.com/mghcdac/partners-ecg#other-scripts)
-
-## Setup
-```
-$ git clone https://github.com/mghcdac/partners-ecg.git
-$ cd partners-ecg
-$ conda env create -f py37.yml
-$ python script_to_run.py
-```
+## Table of Contents
+1. [Extracting ECGs to XML](#extracting-ecgs-to-xml)
+2. [Organizing XMLs and Removing Duplicates](#organizing-xmls-and-removing-duplicates)
+3. [Tensorizing XMLs to HDF5](#tensorizing-xmls-to-hdf5)
+4. [ECG Data Structure](#ecg-data-structure)
+5. [Extracting ECG Metadata](#extracting-ecg-metadata)
+6. [MUSE Virtual Machine Setup](#muse-virtual-machine-setup)
 
 ## Extracting ECGs to XML
-Extraction is the process of converting ECGs from the proprietary MUSE format and from within the MUSE database on a virtual machine into XML files that can be moved to a different compute environment for analysis.    
+### 1. Open the MUSE Editor
+1. Connect to a Virtual Machine with MUSE using [chrome remote desktop](https://remotedesktop.google.com/access).
+2. Log in to user account.
+   1. MGH: `MuseAdmin` with password `Muse!Admin`.
+   2. BWH: `musebkgnd` with password `Muse!Bkgnd`.
+3. If your VM's trial of Windows is expired, see [MUSE Virtual Machine Setup](#muse-virtual-machine-setup).
+4. Once logged in, go to the Desktop and open Services.
+5. Select `MUSE` in the list that appears, click on "Start" in the left panel, and then close "Services".
+6. Go to the Desktop and open "MUSE Editor".
 
-Instructions for the process are documented [here](https://github.com/mghcdac/MUSE-ECG/blob/master/other-documentation/how-to-extract-muse-ecg-data.md). 
+### 2. Set up the export folder in MUSE Editor
+1. Open File Explorer and go to `C:\`. Create a new folder (Ctrl + Shift + N) and name it `export`.
+2. Go to MUSE Editor and go to Device Setup: System -> Setup (Ctrl + Shift + P). The MUSE software will close and a new window will open.
+3. Add a new folder by clicking the "New" icon in the top bar and selecting "Folder".  
+![MUSE New Export Folder](images/MUSE-new-export-folder.png)  
+Alternatively, from the top horizontal navigation bar: Action -> New -> Folder. A new window will appear called "Device Properties - Folder".
+4. Fill in the "Device Name" field with the name `00export`. (`00` helps put the folder at the top of the print list).
+5. Fill in the "Destination" field with the full path to the folder `C:\export`. Make sure you capitalize the `C`!
+6. Enter `xml` for "File Extension" and select `XML` for "Output Type".  
+7. Check all three boxes under "Output Options" including `Convert Statement Codes to Text`, `Include Measurement Matrix`, and `Include Waveforms`.  
+8. Click "OK".
 
-## Data access
-Access is obtained via the following steps:
+### 3. Search for ECGs in MUSE Editor
+There are two ways of searching for ECGs: [by MRN](#a-search-by-mrnpatientid) or [by Date Range](#b-search-by-date-range)
 
-1. Be added to the correct IRB.  
-2. Obtain Partners Healthcare credentials.  
-3. Request access to `MAD3` by contacting Brandon Westover (PI).  
-3. On macOS, open Finder.app, connect to server (`⌘K`), and enter `smb://MAD3/MGH-NEURO-CDACS`.  
-4. Enter your Partners Healthcare credentials and log in. 
-5. Navigate to the path described above.   
+#### a. Search by MRN/PatientID
+1. Go to MUSE Editor and go to Edit/Retrieve: System -> Edit/Retrieve (Ctrl + Shift + E). The MUSE software will close and a new window will open.
+2. Enter a MRN in the "Patient ID" field of the Test/Order box in the bottom left hand corner. Click "Search".  
+![MUSE Editor Test Search Box](images/MUSE-test-search-field.png)
+3. A list of ECGs should populate in the box at the bottom of the screen. Highlight this entire list (click the first row, hold Shift, click the last row). 
+4. Once the entire list is selected, click the "Print Test" button in the top menu bar.  
+![MUSE Editor Print Test Button](images/MUSE-print-test-button.png)  
+A new window will appear called "Select Device and Formatting Options".
 
-## ECG data fields
+#### b. Search by Date Range
+1. Go to MUSE Editor and go to Database Search: System -> Database Search (Ctrl + Shift + D). The MUSE software will close and a new window will open.
+2. In the left vertical navigation bar called "Searches and results", click on "Scheduled searches". Double-click any search to open "Template search setup".  
+![MUSE Editor Database Search](images/MUSE-database-search.png) 
+3. Change the "Report Title" to the date range of interest e.g. `2005-03` for the entire month of March 2005.
+4. Under "Date Field", select `Acquisition Date`.  
+5. Under "Scheduling", select `Run Once Now`.  
+6. Select the appropriate date range (arrow keys move between month/day/year, tab moves between start and end dates).  
+7. Click "Ok" (or "Apply" then "Close").
+8. In the left vertical navigation bar called "Searches and results", click on "Search results".
+9. Wait for the search result to show up. Refresh the view by clicking refresh in the top menu bar.  
+![MUSE Editor Search Results Refresh](images/MUSE-search-results-refresh.png)
+10. Double click your search result. A new window will appear called "Search Results".
+11. If there are `> 5000` records, check the box "Display full result set".
+12. Click "Print all tests" and then "Yes". A new window will appear called "Select Device and Formatting Options".
 
+### 4. Export ECGs from MUSE Editor
+1. From "Select Device and Formatting Options", select the device you set up in section 2 as the output folder, it will probably be the first item in that list and already highlighted.
+2. Set "Number of Copies" to `1`.
+3. Set "Priority" to `Normal`
+4. Set "Formatting" to `Use the default...`
+5. Uncheck "Temporary Device"
+6. Leave "Recipient Name" blank.
+7. Click "OK". This should now export the ECG as XML to the folder from section 2.
+8. If exporting `> 100` ECGs, MUSE Editor will likely freeze. This is normal.
+9. Wait for ECGs to finish exporting. If the "Date modified" column in File Explorer for the folder shows the folder was last modified `> 1 hour` ago, the ECGs are likely done exporting.
+10. Move the XML files to a data store, like MAD3 (`\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\`) or a Partners DropBox (it is easier to download DropBox Desktop on the VM than to upload via the web browser to DropBox).
+
+## Organizing XMLs and Removing Duplicates
+`1_organize_xml_into_yyyymm.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
+
+`2_remove_xml_duplicates.py` finds and removes exact duplicate XML files, as defined by every bit of two files being identical, determined via SHA-256 hashing. 
+
+## Tensorizing XMLs to HDF5
+`python 3_convert_xml_to_hd5.py` extracts data from all XML files and saves as [HDF5 files](https://www.hdfgroup.org). 
+
+This script is called with the `-p` or `--parallel` argument to parallelize conversion across all available CPUs.  
+
+One ECG from one XML is stored as one HDF5 file.  
+
+**This will soon be updated so that all the ECGs for one patient are stored as one HDF5 file.**
+
+## ECG Data Structure
 Voltage is saved from XMLs as a dictionary of numpy arrays indexed by leads in the set `("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")`, e.g.:
 
 ```
@@ -46,7 +96,7 @@ voltage = {'I': array([0, -4, -2, ..., 7]),
           {'V6': array([1, -4, -3, ..., 4]),
 ```
 
-Every other element extracted from the XML by [utils/text_from_xml](https://github.com/mghcdac/partners-ecg/blob/master/utils.py) is returned as a string, even if the underlying primitive type is a number (e.g. age). Here are some of the more important elements:
+Every other element extracted from the XML is returned as a string, even if the underlying primitive type is a number (e.g. age). Here are some of the more important elements:
 
 ```
 acquisitiondate
@@ -83,57 +133,24 @@ ventricularrate
 weightlbs
 ```
 
-## Source XMLs on `MAD3`
-
-3,382,146 ECGs are stored as XML files in `yyyy-mm` directories on `MAD3`, a [Partners storage server](https://rc.partners.org/it-services/storage-backup/mad3-faq):
-
-```
-MAD3/MGH-NEURO-CDAC/Projects/partners_ecgs/
-.
-├── brigham
-│   ├── 1993-01
-│   ├── ...
-│   └── 2019-04
-└── mgh
-    ├── 1993-01
-    ├── ...
-    └── 2019-04
-```
-
-XML files are between 80-200 KB. The total size of `partners_ecg/mgh` is 405GB.  
-
-The XMLs on `MAD3` are considered "source", or original copies, and should *not* be edited or manipulated. Users should only download a copy of these data onto their own compute resources for subsequent research.  
-
-
-## Organizing XMLs and removing duplicates 
-
-`1_organize_xml_into_yyyymm.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
-
-
-`2_remove_xml_duplicates.py` finds and removes exact duplicate XML files, as defined by every bit of two files being identical, determined via SHA-256 hashing. 
-
-
-## Converting files from XML to HDF5
-
-`python 3_convert_xml_to_hd5.py` extracts data from all XML files and saves as [HDF5 files](https://www.hdfgroup.org). 
-
-One ECG from one XML is stored as one HDF5 file. 
-
-This script is called with the `-p` or `--parallel` argument to parallelize conversion across all available CPUs.  
-
-
 ## Extracting ECG metadata
 
 `4_extract_metadata_to_csv.py` iterates through every HDF5 file, identifies relevant data (e.g. MRN, diagnostic read, axes, intervals, age, gender, and race), and saves these data in a large CSV file:  
 
 This CSV file will be used to construct a performant, queryable database to identify future cohorts for research projects.
 
-## Other scripts
+**Metadata extraction will soon change along with new tensorization**
 
-`utils.py` contains various utilities required for extracting text and voltage from XML files, processing strings, etc.
-
-`query_cohort.py` loads a provided CSV file of MRNs, cross-references it against every HDF5 file, returns matching MRN matches and all accompanying ECG data, and saves specified metadata in a CSV file. This is extremely slow and will be sunset after the aformentioned database is created. 
-
-`dataviz.py` contains data visualization scripts for plotting clinical-like 12-lead ECGs (in progress). 
-
-Other scripts related to data labeling and training a deep learning model will be integrated into the [ml4cvd](https://github.com/broadinstitute/ml) codebase.  
+## MUSE Virtual Machine Setup
+> Some of these steps will already be complete in the `.ova` image file from `mad3`.  
+1. [Download and install VirtualBox](https://www.virtualbox.org/wiki/Downloads).
+2. Open File Explorer, click on the navigation bar, type `\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\`, and click enter.
+3. Log in using your `mgh.harvard.edu` email address and MGH / Partners password.
+4. Copy the virtual appliance `muse_mgh.ova` from this directory to your desktop. It will take 4-8 hours.
+5. Open VirtualBox, click "Import" (yellow curved arrow icon at the top), select the `.ova` file, and click "next".
+6. Modify the "base folder which will host all the virtual machines". You must select a place on your computer with at least 600 GB of storage. **The performance of MUSE Editor within the VM is disk bound, save the VM to a SSD if possible.**  
+8. Click Import. It will take 1-2 hours.  
+9. After the VM is imported, go back to the Oracle VM VirtualBox Manager home menu. Take a snapshot of the VM and name it `base`. If the VM is corrupted, no need to wait for the VM to reimport, simply restore the snapshot.
+10. Configure the VM if desired. Also take a snapshot of the configured VM, name it `configured`. Possible configuration steps:
+    1. Enable window resizing and clipboard: Attach an optical drive to the VM. Start the VM and insert "Guest Additions". Follow steps to install "Guest Additions". 
+    2. Enable remote desktop: Start the VM and install chrome remote desktop or anydesk to the virtual machine. Use Google Chrome, it should be on the disk image.
