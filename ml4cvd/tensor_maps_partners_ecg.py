@@ -314,6 +314,17 @@ TMAPS[task] = TensorMap(task,
                         shape=(1,),
                         validator=make_range_validator(-180, 180))
 
+def voltage_zeros(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    for cm in tm.channel_map:
+        voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
+        tensor[tm.channel_map[cm]] = np.count_nonzero(voltage == 0)
+    return tensor
+
+
+TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(1,), tensor_from_file=voltage_zeros, channel_map={'I': 0})
+TMAPS["lead_v6_zeros"] = TensorMap("lead_v6_zeros", shape=(1,), tensor_from_file=voltage_zeros, channel_map={'V6': 0})
+
 '''
 task = "partners_ecg_rate_norm"
 TMAPS[task] = TensorMap(task,
