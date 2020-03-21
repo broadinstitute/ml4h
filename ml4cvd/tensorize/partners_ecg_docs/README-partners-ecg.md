@@ -58,16 +58,36 @@ Double-click any search to open "Template search setup".
 1. From "Select Device and Formatting Options", select the device you set up in section 2 as the output folder, it will probably be the first item in that list and already highlighted.
 2. Set "Number of Copies" to `1`.
 3. Set "Priority" to `Normal`
-4. Uncheck "Temporary Device"
-5. Set "Formatting" to `Use the default...`
+4. Set "Formatting" to `Use the default...`
+5. Uncheck "Temporary Device"
 6. Leave "Recipient Name" blank.
 7. Click "OK". This should now export the ECG as XML to the folder from section 2.
 8. If exporting `> 100` ECGs, MUSE Editor will likely freeze. This is normal.
 9. Wait for ECGs to finish exporting. If the "Date modified" column in File Explorer for the folder shows the folder was last modified `> 1 hour` ago, the ECGs are likely done exporting.
-10. Move the XML files to a data store, like MAD3 (\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\) or a Partners DropBox (it is easier to download DropBox Desktop on the VM than to upload via the web browser to DropBox).
+10. Move the XML files to a data store, like MAD3 (`\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\`) or a Partners DropBox (it is easier to download DropBox Desktop on the VM than to upload via the web browser to DropBox).
 
 ## Organizing XMLs and Removing Duplicates
+`1_organize_xml_into_yyyymm.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
+
+`2_remove_xml_duplicates.py` finds and removes exact duplicate XML files, as defined by every bit of two files being identical, determined via SHA-256 hashing. 
 
 ## Tensorizing XMLs to HDF5
+`python 3_convert_xml_to_hd5.py` extracts data from all XML files and saves as [HDF5 files](https://www.hdfgroup.org). 
+
+One ECG from one XML is stored as one HDF5 file. This will soon be updated so that all the ECGs for one patient are stored as one HDF5 file.
+
+This script is called with the `-p` or `--parallel` argument to parallelize conversion across all available CPUs.  
 
 ## MUSE Virtual Machine Setup
+> Some of these steps will already be complete in the `.ova` image file from `mad3`.  
+1. [Download and install VirtualBox](https://www.virtualbox.org/wiki/Downloads).
+2. Open File Explorer, click on the navigation bar, type `\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\`, and click enter.
+3. Log in using your `mgh.harvard.edu` email address and MGH / Partners password.
+4. Copy the virtual appliance `muse_mgh.ova` from this directory to your desktop. It will take 4-8 hours.
+5. Open VirtualBox, click "Import" (yellow curved arrow icon at the top), select the `.ova` file, and click "next".
+6. Modify the "base folder which will host all the virtual machines". You must select a place on your computer with at least 600 GB of storage. **The performance of MUSE Editor within the VM is disk bound, save the VM to a SSD if possible.**  
+8. Click Import. It will take 1-2 hours.  
+9. After the VM is imported, go back to the Oracle VM VirtualBox Manager home menu. Take a snapshot of the VM and name it `base`. If the VM is corrupted, no need to wait for the VM to reimport, simply restore the snapshot.
+10. Configure the VM if desired. Also take a snapshot of the configured VM, name it `configured`. Possible configuration steps:
+    1. Enable window resizing and clipboard: Attach an optical drive to the VM. Start the VM and insert "Guest Additions". Follow steps to install "Guest Additions". 
+    2. Enable remote desktop: Start the VM and install chrome remote desktop or anydesk to the virtual machine. Use Google Chrome, it should be on the disk image.
