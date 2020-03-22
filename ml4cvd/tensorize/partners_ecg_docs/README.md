@@ -3,11 +3,12 @@ Extracting and tensorizing MUSE 12-lead ECGs
 
 ## Table of Contents
 1. [Extracting ECGs to XML](#extracting-ecgs-to-xml)
-2. [Organizing XMLs and Removing Duplicates](#organizing-xmls-and-removing-duplicates)
-3. [Tensorizing XMLs to HDF5](#tensorizing-xmls-to-hdf5)
-4. [ECG Data Structure](#ecg-data-structure)
-5. [Extracting ECG Metadata](#extracting-ecg-metadata)
-6. [MUSE Virtual Machine Setup](#muse-virtual-machine-setup)
+2. [Automating ECG Extraction by MRN Search](#automating-ecg-extraction-by-mrn-search)
+3. [Organizing XMLs and Removing Duplicates](#organizing-xmls-and-removing-duplicates)
+4. [Tensorizing XMLs to HDF5](#tensorizing-xmls-to-hdf5)
+5. [ECG Data Structure](#ecg-data-structure)
+6. [Extracting ECG Metadata](#extracting-ecg-metadata)
+7. [MUSE Virtual Machine Setup](#muse-virtual-machine-setup)
 
 ## Extracting ECGs to XML
 ### 1. Open the MUSE Editor
@@ -20,7 +21,7 @@ Extracting and tensorizing MUSE 12-lead ECGs
 5. Select `MUSE` in the list that appears, click on "Start" in the left panel, and then close "Services".
 6. Go to the Desktop and open "MUSE Editor".
 
-### 2. Set up the export folder in MUSE Editor
+### 2. Configure MUSE Editor
 1. Open File Explorer and go to `C:\`. Create a new folder (Ctrl + Shift + N) and name it `export`.
 2. Go to MUSE Editor and go to Device Setup: System -> Setup (Ctrl + Shift + P). The MUSE software will close and a new window will open.
 3. Add a new folder by clicking the "New" icon in the top bar and selecting "Folder".  
@@ -29,8 +30,11 @@ Alternatively, from the top horizontal navigation bar: Action -> New -> Folder. 
 4. Fill in the "Device Name" field with the name `00export`. (`00` helps put the folder at the top of the print list).
 5. Fill in the "Destination" field with the full path to the folder `C:\export`. Make sure you capitalize the `C`!
 6. Enter `xml` for "File Extension" and select `XML` for "Output Type".  
-7. Check all three boxes under "Output Options" including `Convert Statement Codes to Text`, `Include Measurement Matrix`, and `Include Waveforms`.  
+7. Check all three boxes under "Output Options" including `Convert Statement Codes to Text`, `Include Measurement Matrix`, and `Include Waveforms`.
 8. Click "OK".
+9. Set up keyboard shortcuts. From the top menu bar -> Tools -> Options -> Shortcut Keys.
+   1. Set "List > Select All Items" to `Ctrl + A`
+   2. Set "Test > Print" to `Ctrl + P`
 
 ### 3. Search for ECGs in MUSE Editor
 There are two ways of searching for ECGs: [by MRN](#a-search-by-mrnpatientid) or [by Date Range](#b-search-by-date-range)
@@ -71,6 +75,54 @@ A new window will appear called "Select Device and Formatting Options".
 8. If exporting `> 100` ECGs, MUSE Editor will likely freeze. This is normal.
 9. Wait for ECGs to finish exporting. If the "Date modified" column in File Explorer for the folder shows the folder was last modified `> 1 hour` ago, the ECGs are likely done exporting.
 10. Move the XML files to a data store, like MAD3 (`\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\`) or a Partners DropBox (it is easier to download DropBox Desktop on the VM than to upload via the web browser to DropBox).
+
+## Automating ECG Extraction by MRN Search
+It is possible to automate the extraction of ECGs from MUSE Editor using [AutoHotKey](https://www.autohotkey.com/), a macro software. There are steps to setup the environment such that the macro can run and caveats to its use.
+
+At a high level, the macro uses key bindings and window focus to accomplish its automation. The macro can queue ECG extractions at a rate of 600 MRNs/hour. The actual time it takes for the ECGs to finish exporting to XML will be longer and is dependent on the number of ECGs.
+
+**To use the macro:**
+1. [Download and install AutoHotKey](https://www.autohotkey.com/).
+2. [Download and install Sublime Text](https://www.sublimetext.com/).
+3. [Download the macro script](MUSE_search_mrn.ahk).
+   1. Double click the script to enable the macro (this does not trigger the macro yet).
+   2. Optionally, compile the script into a `.exe` file using AutoHotKey. This makes the macro portable without the need for AutoHotKey to be installed. Double click the executable file to enable the macro.
+4. Do step: [Configure MUSE Editor](#2_configure_muse_editor)
+5. Maximize the MUSE Editor window.
+6. In MUSE Editor, go to the Edit/Retrieve screen (Ctrl + Shift + E). In the bottom left panel, set the ECG type (e.g. `Resting ECG`).
+7. Close all other windows except for MUSE Editor.
+8. Open Sublime Text. Open a list of MRNs. For example, `mrn.csv` might look like:
+```
+mrn
+000000001
+000000002
+000000003
+```
+9. Place the cursor before the first MRN. If the pipe character `|` is the cursor:
+```
+mrn
+|000000001
+000000002
+000000003
+```
+10. Make sure Sublime Text is the window in focus and MUSE Editor is the window directly underneath.
+11. Start the macro with `Alt + R`.
+12. The macro ends when there are no more items in the MRN list:
+```
+mrn
+|
+```
+
+**Caveats:**
+1. This only runs in Windows. However, MUSE also exists in a Windows VM so this is likely fine.
+2. The slowest and most unpredictable part of the search process is waiting for the print screen of MUSE Editor to unfreeze. The macro detects pixel changes on the screen to tell when the window unfreezes. However, the pixel area is hard coded to a maximized MUSE Editor window. This feature is open to discussion and change.
+3. Additionally, waiting for MUSE Editor to return all the ECGs for a given MRN also takes an unpredictable amount of time. Currently, the macro is hard coded to wait 1 second. A patient is not likely to have `> 200` ECGs which MUSE Editor can find in less than 1 second. However, there are potential edge cases which may break the macro here.
+4. Other windows may be open on the virtual machine, however at the start of the macro, Sublime Text must be focused and MUSE Editor must be the window directly below Sublime Text. This is because the macro uses `Alt + Tab` to switch between windows.
+5. Because the window focus must be Sublime Text and MUSE Editor, it is not safe to connect directly to the virtual machine running the macro, as the connection will likely pop up a new window and window focus will be lost.
+6. A recommendation is to remote to the host machine and access the virtual machines through the host connection.
+7. If editing the script to use mouse movements, disable "Mouse Integration" for the virtual machine and the remote connection. "Mouse Integration" prevents the macro from controlling the mouse, however it does not necessarily disable mouse clicks.
+8. The macro will finish queueing MRNs to be exported from MUSE before the XMLs are actually written to disk. This is because MUSE takes longer to format and write XMLs than it does for the macro to search for MRNs. Simply wait for the exports to finish before moving the extracted XMLs.
+9. The macro may break on very large MRN lists when MUSE Editor crashes or the print queue fails for some reason. It is recommended to batch the MRN extraction.
 
 ## Organizing XMLs and Removing Duplicates
 `1_organize_xml_into_yyyymm.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
