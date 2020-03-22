@@ -122,7 +122,9 @@ mrn
 6. A recommendation is to remote to the host machine and access the virtual machines through the host connection.
 7. If editing the script to use mouse movements, disable "Mouse Integration" for the virtual machine and the remote connection. "Mouse Integration" prevents the macro from controlling the mouse, however it does not necessarily disable mouse clicks.
 8. The macro will finish queueing MRNs to be exported from MUSE before the XMLs are actually written to disk. This is because MUSE takes longer to format and write XMLs than it does for the macro to search for MRNs. Simply wait for the exports to finish before moving the extracted XMLs.
-9. The macro may break on very large MRN lists when MUSE Editor crashes or the print queue fails for some reason. It is recommended to batch the MRN extraction.
+9. Sublime Text is the editor chosen because it can cut lines using `Ctrl + X`. Any other editor that supports this capability would also be supported.
+10. The macro ends when the cut from Sublime Text is just a Windows style newline. If this feature is not working, the clipboard "empty" detection is a place to start debugging.
+11. The macro may break on very large MRN lists when MUSE Editor crashes or the print queue fails for some reason. It is recommended to batch the MRN extraction.
 
 ## Organizing XMLs and Removing Duplicates
 `1_organize_xml_into_yyyymm.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
