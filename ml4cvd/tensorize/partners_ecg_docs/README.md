@@ -203,8 +203,9 @@ This CSV file will be used to construct a performant, queryable database to iden
 4. Copy the virtual appliance `muse_mgh.ova` from this directory to your desktop. It will take 4-8 hours.
 5. Open VirtualBox, click "Import" (yellow curved arrow icon at the top), select the `.ova` file, and click "next".
 6. Modify the "base folder which will host all the virtual machines". You must select a place on your computer with at least 600 GB of storage. **The performance of MUSE Editor within the VM is disk bound, save the VM to a SSD if possible.**  
-8. Click Import. It will take 1-2 hours.  
-9. After the VM is imported, go back to the Oracle VM VirtualBox Manager home menu. Take a snapshot of the VM and name it `base`. If the VM is corrupted, no need to wait for the VM to reimport, simply restore the snapshot.
-10. Configure the VM if desired. Also take a snapshot of the configured VM, name it `configured`. Possible configuration steps:
+7. Click Import. It will take 1-2 hours.  
+8. After the VM is imported, go back to the Oracle VM VirtualBox Manager home menu. Take a snapshot of the VM and name it `base`. If the VM is corrupted, no need to wait for the VM to reimport, simply restore the snapshot.
+9. Configure the VM if desired. Also take a snapshot of the configured VM, name it `configured`. Possible configuration steps:
     1. Enable window resizing and clipboard: Attach an optical drive to the VM. Start the VM and insert "Guest Additions". Follow steps to install "Guest Additions". 
     2. Enable remote desktop: Start the VM and install chrome remote desktop or anydesk to the virtual machine. Use Google Chrome, it should be on the disk image.
+10. If your trial of Windows is expired, try to reset by opening Command Prompt with Administrator Privileges in the virtual machine and enter: `slmgr /rearm`. This only works so many times, at that point, reset from snapshot or reimport from image.
