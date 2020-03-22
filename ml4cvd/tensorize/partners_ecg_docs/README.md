@@ -87,7 +87,7 @@ At a high level, the macro uses key bindings and window focus to accomplish its 
 3. [Download the macro script](MUSE_search_mrn.ahk).
    1. Double click the script to enable the macro (this does not trigger the macro yet).
    2. Optionally, compile the script into a `.exe` file using AutoHotKey. This makes the macro portable without the need for AutoHotKey to be installed. Double click the executable file to enable the macro.
-4. Do step: [Configure MUSE Editor](#2_configure_muse_editor)
+4. Do step: [Configure MUSE Editor](#2-configure-muse-editor)
 5. Maximize the MUSE Editor window.
 6. In MUSE Editor, go to the Edit/Retrieve screen (Ctrl + Shift + E). In the bottom left panel, set the ECG type (e.g. `Resting ECG`).
 7. Close all other windows except for MUSE Editor.
