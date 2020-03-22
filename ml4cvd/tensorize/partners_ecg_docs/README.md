@@ -19,6 +19,9 @@ Extracting and tensorizing MUSE 12-lead ECGs
 4. Once logged in, go to the Desktop and open Services.
 5. Select `MUSE` in the list that appears, click on "Start" in the left panel, and then close "Services".
 6. Go to the Desktop and open "MUSE Editor".
+7. **Optional**: Set up keyboard shortcuts. From the top menu bar -> Tools -> Options -> Shortcut Keys.
+   1. Set "List > Select All Items" to Ctrl + A
+   2. Set "Test > Print" to Ctrl + P
 
 ### 2. Set up the export folder in MUSE Editor
 1. Open File Explorer and go to `C:\`. Create a new folder (Ctrl + Shift + N) and name it `export`.
