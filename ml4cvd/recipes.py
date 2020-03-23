@@ -382,7 +382,7 @@ def _report_cross_reference(df_x, index_field, outcome_field, args, title):
     logging.info(f"Saved summary stats of cross reference to {fpath}")
 
     # save cross reference to csv
-    fpath = os.path.join(args.output_folder, args.id, f"{title}.csv")
+    fpath = os.path.join(args.output_folder, args.id, f"list_{title}.csv")
     df_x.set_index(index_field, drop=True).to_csv(fpath)
     logging.info(f"Saved cross reference to {fpath}")
 
@@ -516,7 +516,7 @@ def cross_reference(args):
 
     # generate reports
     title = "during_outcome_encounter" if dst_before_outcome_time else f"{days_before_outcome}_before_outcome"
-    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"list_all_src_{title}")
+    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"all_src_{title}")
     plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_all_src_{title}")
 
     # get only most recent row in src relative to row in dst
@@ -525,7 +525,7 @@ def cross_reference(args):
     df_src = df_src.groupby(by=[src_join, dst_time, dst_outcome], as_index=False).last()
 
     # generate reports
-    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"list_most_recent_src_{title}")
+    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"most_recent_src_{title}")
     plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_most_recent_src_{title}")
 
 
