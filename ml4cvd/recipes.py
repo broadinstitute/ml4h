@@ -3,6 +3,9 @@
 # Imports
 import os
 import csv
+from typing import Dict, List
+from operator import itemgetter
+
 import h5py
 import copy
 import logging
@@ -10,7 +13,6 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict
 from functools import reduce
-from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -87,7 +89,7 @@ def run(args):
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'sort_csv' == args.mode:
-            sort_csv(args.app_csv, args.app_csv)
+            sort_csv(args.tensors, args.tensor_maps_in)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
@@ -160,18 +162,17 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.postprocess_tensor(tensor, augment=False)
-                            
-                            # If tensor is a scaler, isolate the value in the array;
-                            # otherwise, retain the value as array
-                            if tm.shape[0] == 1:
-                                tensor = tensor.item()
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
                            
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
                                     tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
                             else:
+                                # If tensor is a scalar, isolate the value in the array;
+                                # otherwise, retain the value as array
+                                if tm.shape[0] == 1:
+                                    tensor = tensor.item()
                                 tensor_dict[tm.name][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so append nans
@@ -443,6 +444,7 @@ def _make_tmap_nan_on_fail(tmap):
     Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
     """
     new_tmap = copy.deepcopy(tmap)
+    new_tmap.validator = lambda _, x: x  # prevent failure caused by validator
 
     def _tff(tm, hd5, dependents=None):
         try:
@@ -527,9 +529,9 @@ def infer_hidden_layer_multimodal_multitask(args):
     else:
         full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
-    latent_dimensions = np.prod(dummy_out.shape[1:])
+    latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)

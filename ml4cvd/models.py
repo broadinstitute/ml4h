@@ -40,8 +40,8 @@ def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[Te
                        learning_rate: float, model_file: str = None, model_layers: str = None) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -512,7 +512,7 @@ def make_variational_multimodal_multitask_model(
     encoder = Model(inputs=input_tensors, outputs=multimodal_activation, name='encoder')
     decoder = Model(inputs=latent_inputs, outputs=out_list, name='decoder')
     outputs = decoder(encoder(input_tensors))
-    m = Model(inputs=input_tensors, outputs=outputs)
+    m = Model(inputs=input_tensors, outputs=outputs, compile=False)
     m.output_names = list(output_predictions.keys())
     decoder.output_names = list(output_predictions.keys())
     encoder.summary(print_fn=logging.info)
@@ -525,7 +525,7 @@ def make_variational_multimodal_multitask_model(
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
@@ -749,7 +749,8 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
-        m = load_model(kwargs['model_file'], custom_objects=custom_dict)
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -809,7 +810,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
@@ -1280,8 +1281,8 @@ def get_model_inputs_outputs(model_files: List[str],
 
     for model_file in model_files:
         custom = get_metric_dict(tensor_maps_out)
-        logging.info(f'custom keysssss: {list(custom.keys())}')
-        m = load_model(model_file, custom_objects=custom)
+        logging.info(f'custom keys: {list(custom.keys())}')
+        m = load_model(model_file, custom_objects=custom, compile=False)
         model_inputs_outputs = defaultdict(list)
         for input_tensor_map in tensor_maps_in:
             try:
