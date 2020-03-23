@@ -419,6 +419,9 @@ def cross_reference(args):
     dst_outcome = args.dst_key_outcome
 
     days_before_outcome = args.days_before_outcome
+    dst_before_outcome_time, dst_before_outcome_time_format = args.dst_key_before_outcome_time
+    if days_before_outcome and dst_before_outcome_time:
+        raise RuntimeError("Cannot specify both days_before_outcome and dst_key_before_outcome_time for cross referencing.")
 
     # load data into dataframes
     if os.path.isdir(src_path):
@@ -435,11 +438,17 @@ def cross_reference(args):
         args.tensors = dst_path
         args.tensor_maps_in = args.dst_tensor_maps
         df_dst = _tensors_to_df(args)
-        df_dst = df_dst[[dst_join, dst_time, dst_outcome, "fpath"]]
+        cols = [dst_join, dst_time, dst_outcome, "fpath"]
+        if dst_before_outcome_time:
+            cols.append(dst_before_outcome_time)
+        df_dst = df_dst[cols]
     else:
         # dst is assumed to be a csv
         df_dst = pd.read_csv(dst_path, keep_default_na=False, low_memory=False)
-        df_dst = df_dst[[dst_join, dst_time, dst_outcome]]
+        cols = [dst_join, dst_time, dst_outcome]
+        if dst_before_outcome_time:
+            cols.append(dst_before_outcome_time)
+        df_dst = df_dst[cols]
 
     len_src = len(df_src[src_join])
     len_dst = len(df_dst[dst_join])
@@ -452,6 +461,8 @@ def cross_reference(args):
     # parse time column to time field
     df_src, src_time, src_time_orig = _extract_time(df_src, src_time, src_time_format)
     df_dst, dst_time, dst_time_orig = _extract_time(df_dst, dst_time, dst_time_format)
+    if dst_before_outcome_time:
+        df_dst, dst_before_outcome_time, dst_before_outcome_time_orig = _extract_time(df_dst, dst_before_outcome_time, dst_before_outcome_time_format)
 
     # filter to only occurrences that appear in the other
     df_src = df_src[np.isin(df_src[src_join], df_dst[dst_join])]
@@ -473,15 +484,21 @@ def cross_reference(args):
     df_src[dst_time] = pd.NaT
     df_src[dst_time_orig] = ''
     df_src[dst_outcome] = np.NaN
+    if dst_before_outcome_time:
+        df_src[dst_before_outcome_time] = pd.NaT
+        df_src[dst_before_outcome_time_orig] = ''
 
     for i, row in df_dst.iterrows():
         dst_join_val, dst_time_val, dst_time_orig_val, dst_outcome_val = row[dst_join], row[dst_time], row[dst_time_orig], row[dst_outcome]
 
         # compute mask for which src matches criteria
-        start_time = dst_time_val - timedelta(days=days_before_outcome)
-        end_time = dst_time_val
+        if dst_before_outcome_time:
+            start_time = row[dst_before_outcome_time]
+        else:
+            start_time = row[dst_time] - timedelta(days=days_before_outcome)
+        end_time = row[dst_time]
 
-        join_mask  = df_src[src_join] == dst_join_val
+        join_mask  = df_src[src_join] == row[dst_join]
         start_mask = df_src[src_time] >= start_time
         end_mask   = df_src[src_time] < end_time
 
@@ -489,12 +506,18 @@ def cross_reference(args):
 
         # update src rows with dst info
         if mask.any():
-            df_src.loc[mask, [dst_time, dst_time_orig, dst_outcome]] = [dst_time_val, dst_time_orig_val, dst_outcome_val]
+            cols = [dst_time, dst_time_orig, dst_outcome]
+            vals = [row[dst_time], row[dst_time_orig], row[dst_outcome]]
+            if dst_before_outcome_time:
+                cols.extend([dst_before_outcome_time, dst_before_outcome_time_orig])
+                vals.extend([row[dst_before_outcome_time], row[dst_before_outcome_time_orig]])
+            df_src.loc[mask, cols] = vals
     df_src = df_src.dropna()
 
     # generate reports
-    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"all_src_{days_before_outcome}_before_outcome")
-    plot_cross_reference(df_src, src_time, dst_time, days_before_outcome, args, f"distribution_all_src_{days_before_outcome}_before_outcome")
+    title = "during_outcome_encounter" if dst_before_outcome_time else f"{days_before_outcome}_before_outcome"
+    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"list_all_src_{title}")
+    plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_all_src_{title}")
 
     # get only most recent row in src relative to row in dst
     # src must be sorted in ascending order to use last() on groupby
@@ -502,8 +525,8 @@ def cross_reference(args):
     df_src = df_src.groupby(by=[src_join, dst_time, dst_outcome], as_index=False).last()
 
     # generate reports
-    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"most_recent_src_{days_before_outcome}_before_outcome")
-    plot_cross_reference(df_src, src_time, dst_time, days_before_outcome, args, f"distribution_most_recent_src_{days_before_outcome}_before_outcome")
+    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"list_most_recent_src_{title}")
+    plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_most_recent_src_{title}")
 
 
 def train_multimodal_multitask(args):
