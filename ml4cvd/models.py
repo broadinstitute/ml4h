@@ -747,7 +747,7 @@ def make_multimodal_multitask_model(tensor_maps_in: List[TensorMap] = None,
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt)
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m

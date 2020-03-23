@@ -15,8 +15,8 @@ MODELS = '/mnt/ml4cvd/projects/models/for_testing/'
 
 def _run_tests():
     suites = []
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTensorMaps))
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTrainingModels))
+    #suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTensorMaps))
+    #suites.append(unittest.TestLoader().loadTestsFromTestCase(TestTrainingModels))
     suites.append(unittest.TestLoader().loadTestsFromTestCase(TestPretrainedModels))
     unittest.TextTestRunner(verbosity=3).run(unittest.TestSuite(suites))
 
