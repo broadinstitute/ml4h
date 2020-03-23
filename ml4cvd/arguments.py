@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
-    parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
+    parser.add_argument('--tensors', help='Path to folder containing tensors, path to csv containing paths to tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
