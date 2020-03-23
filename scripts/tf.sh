@@ -108,7 +108,7 @@ if [[ -d "/mnt" ]] ; then
 fi
 
 if [[ -d "/media/erisone_${USER}" ]] ; then
-    echo "Found /mnt folder will try to mount it."
+    echo "Found /media/erisone_${USER} folder will try to mount it."
     MOUNTS="${MOUNTS} -v /media/erisone_${USER}/:/media/erisone_${USER}/"
 fi
 
@@ -140,5 +140,5 @@ docker run ${INTERACTIVE} \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
--v ${MOUNTS} \
+${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
