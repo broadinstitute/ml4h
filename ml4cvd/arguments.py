@@ -180,6 +180,7 @@ def parse_args():
     parser.add_argument('--dst_tensor_maps', default=[], help='Do not set this directly. This is automatically set.')
 
     parser.add_argument('--days_before_outcome', type=int, help='Days before an outcome in destination.')
+    parser.add_argument('--dst_key_before_outcome_time', nargs=2, metavar=('DST_KEY_BEFORE_OUTCOME_TIME', 'DST_KEY_BEFORE_OUTCOME_TIME_FORMAT'), help='Key and format (python strftime format) to time before outcome in destination tensors.')
     parser.add_argument('--numeric_join', action='store_true', help='Parse join keys as numeric fields.')
 
     args = parser.parse_args()
