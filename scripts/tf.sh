@@ -107,11 +107,6 @@ if [[ -d "/mnt" ]] ; then
     MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
 fi
 
-if [[ -r "/media/erisone_${USER}" ]] ; then
-    echo "Found /media/erisone_${USER} folder will try to mount it."
-    MOUNTS="${MOUNTS} -v /media/erisone_${USER}/:/media/erisone_${USER}/"
-fi
-
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
 
