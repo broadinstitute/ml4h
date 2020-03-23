@@ -107,7 +107,7 @@ if [[ -d "/mnt" ]] ; then
     MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
 fi
 
-if [[ -d "/media/erisone_${USER}" ]] ; then
+if [[ -r "/media/erisone_${USER}" ]] ; then
     echo "Found /media/erisone_${USER} folder will try to mount it."
     MOUNTS="${MOUNTS} -v /media/erisone_${USER}/:/media/erisone_${USER}/"
 fi
