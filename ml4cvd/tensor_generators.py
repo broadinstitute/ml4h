@@ -392,7 +392,7 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
     apportioned according to valid_ratio and test_ratio
 
     Arguments:
-        tensors: directory containing tensors
+        tensors: directory containing tensors or csv containing paths to tensors
         valid_ratio: rate of tensors in validation list
         test_ratio: rate of tensors in testing list
         test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
@@ -413,22 +413,22 @@ def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, te
         test_ratio = 0.0
         test_modulo = 0
 
-    for root, dirs, files in os.walk(tensors):
-        for name in files:
-            if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
-                continue
+    for fpath in _get_tensor_paths(tensors):
+        root, name = os.path.split(fpath)
+        if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
+            continue
 
-            if test_csv is not None and os.path.splitext(name)[0] in test_dict:
-                test_paths.append(os.path.join(root, name))
-                continue
+        if test_csv is not None and os.path.splitext(name)[0] in test_dict:
+            test_paths.append(fpath)
+            continue
 
-            dice = np.random.rand()
-            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
-                test_paths.append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
-                valid_paths.append(os.path.join(root, name))
-            else:
-                train_paths.append(os.path.join(root, name))
+        dice = np.random.rand()
+        if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
+            test_paths.append(fpath)
+        elif dice < (valid_ratio+test_ratio):
+            valid_paths.append(fpath)
+        else:
+            train_paths.append(fpath)
 
     logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
     if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
@@ -452,24 +452,24 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
     test_paths = [[] for _ in range(len(balance_csvs)+1)]
     train_paths = [[] for _ in range(len(balance_csvs)+1)]
     valid_paths = [[] for _ in range(len(balance_csvs)+1)]
-    for root, dirs, files in os.walk(tensors):
-        for name in files:
-            splits = os.path.splitext(name)
-            if splits[-1].lower() != TENSOR_EXT:
-                continue
+    for fpath in _get_tensor_paths(tensors):
+        root, name = os.path.split(fpath)
+        splits = os.path.splitext(name)
+        if splits[-1].lower() != TENSOR_EXT:
+            continue
 
-            group = 0
-            sample_id = os.path.basename(splits[0])
-            if sample_id in sample2group:
-                group = sample2group[sample_id]
+        group = 0
+        sample_id = os.path.basename(splits[0])
+        if sample_id in sample2group:
+            group = sample2group[sample_id]
 
-            dice = np.random.rand()
-            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
-                test_paths[group].append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
-                valid_paths[group].append(os.path.join(root, name))
-            else:
-                train_paths[group].append(os.path.join(root, name))
+        dice = np.random.rand()
+        if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
+            test_paths[group].append(fpath)
+        elif dice < (valid_ratio+test_ratio):
+            valid_paths[group].append(fpath)
+        else:
+            train_paths[group].append(fpath)
 
     for i in range(len(train_paths)):
         if len(train_paths[i]) == 0 or len(valid_paths[i]) == 0 or len(test_paths[i]) == 0:
@@ -480,6 +480,28 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
         else:
             logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
     return train_paths, valid_paths, test_paths
+
+
+def _get_tensor_paths(tensors: str):
+    """ Get tensor paths from a given tensor source
+
+    :param tensors: directory containing tensors or csv containing paths to tensors
+    :return: A list paths to tensors.
+    """
+    tensor_paths = []
+    if os.path.isfile(tensors):
+        tensor_csv = list(csv.reader(open(tensors, 'r')))
+        for i, col in enumerate(tensor_csv[-1]):
+            if os.path.isfile(col):
+                path_idx = i
+                break
+        for row in tensor_csv:
+            tensor_paths.append(row[path_idx])
+    elif os.path.isdir(tensors):
+        for root, dirs, files in os.walk(tensors):
+            for fname in files:
+                tensor_paths.append(os.path.join(root, fname))
+    return tensor_paths
 
 
 def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
