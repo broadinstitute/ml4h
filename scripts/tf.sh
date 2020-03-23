@@ -97,14 +97,19 @@ if ! docker pull ${DOCKER_IMAGE}; then
     echo "Could not pull the image ${DOCKER_IMAGE}. Will try anyway..."
 fi
 
-if [ -d "/data" ] ; then
+if [[ -d "/data" ]] ; then
     echo "Found /data folder will try to mount it."
     MOUNTS="${MOUNTS} -v /data/:/data/"
 fi
 
-if [ -d "/mnt" ] ; then
+if [[ -d "/mnt" ]] ; then
     echo "Found /mnt folder will try to mount it."
     MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
+fi
+
+if [[ -d "/media/erisone_${USER}" ]] ; then
+    echo "Found /mnt folder will try to mount it."
+    MOUNTS="${MOUNTS} -v /media/erisone_${USER}/:/media/erisone_${USER}/"
 fi
 
 # Get your external IP directly from a DNS provider
@@ -126,8 +131,7 @@ Attempting to run Docker with
     --rm \
     --ipc=host \
     -v ${WORKDIR}/:${WORKDIR}/ \
-    -v /data/:/data/ \
-    -v /media/erisone_snf13/:/media/erisone_snf13/ ${MOUNTS} \
+    ${MOUNTS} \
     ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
@@ -136,6 +140,5 @@ docker run ${INTERACTIVE} \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
--v /data/:/data/ \
--v /media/erisone_snf13/:/media/erisone_snf13/ ${MOUNTS} \
+-v ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
