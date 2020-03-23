@@ -471,12 +471,6 @@ def cross_reference(args):
     len_src_x = len(df_src[src_join])
     len_dst_x = len(df_dst[dst_join])
 
-    # report some high level counts
-    stats = pd.DataFrame({'data': ['src', 'src_in_dst', 'dst', 'dst_in_src'], 'counts': [len_src, len_src_x, len_dst, len_dst_x]}).set_index('data')
-    fpath = os.path.join(args.output_folder, args.id, "summary_cohort_counts.csv")
-    stats.to_csv(fpath)
-    logging.info(f"Saved cohort counts to {fpath}")
-
     # sort outcomes in dst by date in descending order so that earlier outcomes are used for earlier src rows
     df_dst = df_dst.sort_values(by=[dst_join, dst_time], ascending=[True, False])
 
@@ -519,6 +513,8 @@ def cross_reference(args):
     _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"all_src_{title}")
     plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_all_src_{title}")
 
+    len_src_in_dst_in_time = len(df_src[src_join])
+
     # get only most recent row in src relative to row in dst
     # src must be sorted in ascending order to use last() on groupby
     df_src = df_src.sort_values(by=[src_join, dst_time, dst_outcome, src_time])
@@ -527,6 +523,15 @@ def cross_reference(args):
     # generate reports
     _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"most_recent_src_{title}")
     plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_most_recent_src_{title}")
+
+    len_most_recent_src_in_dst_in_time = len(df_src[src_join])
+
+    # report some high level counts
+    stats = pd.DataFrame({'data': ['src', 'src_in_dst', 'src_in_dst_in_time', 'most_recent_src_in_dst_in_time', 'dst', 'dst_in_src'],
+                          'counts': [len_src, len_src_x, len_src_in_dst_in_time, len_most_recent_src_in_dst_in_time, len_dst, len_dst_x]}).set_index('data')
+    fpath = os.path.join(args.output_folder, args.id, "summary_cohort_counts.csv")
+    stats.to_csv(fpath)
+    logging.info(f"Saved cohort counts to {fpath}")
 
 
 def train_multimodal_multitask(args):
