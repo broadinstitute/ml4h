@@ -27,7 +27,6 @@ def write_tensor_maps(args) -> None:
         _write_disease_tensor_maps(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
-        _write_partners_csv(f, partners_csv_folder)
         _write_continuous_tensor_maps(f, db_client)
 
         f.write('\n')
