@@ -575,7 +575,7 @@ def train_char_model(args):
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                                         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
     test_batch, _, test_paths = next(generate_test)
-    sample_from_char_model(char_model, test_batch, test_paths)
+    sample_from_char_model(args.tensor_maps_in, char_model, test_batch, test_paths)
 
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)

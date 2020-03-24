@@ -22,7 +22,7 @@ import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
-from ml4cvd.TensorMap import TensorMap
+from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.tensor_generators import TensorGenerator
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
@@ -328,25 +328,30 @@ def str2date(d):
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
-    window_size = test_batch['input_ecg_rest_text_ecg_text'].shape[1]
-    alphabet_size = test_batch['input_ecg_rest_text_ecg_text'].shape[2]
-    for i in range(test_batch['input_embed_hidden_layer'].shape[0]):
+def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
+    for tm in tensor_maps_in:
+        if tm.interpretation == Interpretation.LANGUAGE:
+            language_map = tm
+        elif tm.interpretation == Interpretation.EMBEDDING:
+            embed_map = tm
+    window_size = test_batch[language_map.input_name()].shape[1]
+    alphabet_size = test_batch[language_map.input_name()].shape[2]
+    for i in range(test_batch[embed_map.input_name()].shape[0]):
         count = 0
         sentence = ''
         next_char = ''
-        embed_in = test_batch['input_embed_hidden_layer'][i:i+1, :]
+        embed_in = test_batch[embed_map.input_name()][i:i+1, :]
         burn_in = np.zeros((1, window_size, alphabet_size), dtype=np.float32)
         window_size = burn_in.shape[1]
         with h5py.File(test_paths[i], 'r') as hd5:
             logging.info(f"\n")
-            logging.info(f"Real text: {str(hd5['ecg_rest_text'][0]).strip()}")
+            logging.info(f"Real text: {str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()}")
         while next_char != '!' and count < 400:
-            cur_test = {'input_embed_hidden_layer': embed_in, 'input_ecg_rest_text_ecg_text': burn_in}
+            cur_test = {embed_map.input_name(): embed_in, language_map.input_name(): burn_in}
             y_pred = char_model.predict(cur_test)
             next_char = ECG_IDX_2_CHAR[_sample_with_heat(y_pred[0, :], 0.7)]
             sentence += next_char
-            burn_in = np.zeros((1,) + test_batch['input_ecg_rest_text_ecg_text'].shape[1:], dtype=np.float32)
+            burn_in = np.zeros((1,) + test_batch[language_map.input_name()].shape[1:], dtype=np.float32)
             for j, c in enumerate(reversed(sentence)):
                 if j == window_size:
                     break
