@@ -3,46 +3,49 @@
 # Imports
 import os
 import csv
-import pdb
+from typing import Dict, List
+from operator import itemgetter
 
 import h5py
 import copy
 import logging
 import numpy as np
 import pandas as pd
+from typing import List, Dict
 from functools import reduce
 from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 from datetime import timedelta
 
-from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
+from ml4cvd.optimizers import find_learning_rate
+from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
-from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_cross_reference
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecg, plot_cross_reference
+from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_variational_multimodal_multitask_model
 
 
 def run(args):
+    start_time = timer()  # Keep track of elapsed execution time
     try:
-        # Keep track of elapsed execution time
-        start_time = timer()
-
         if 'tensorize' == args.mode:
             write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
                           args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
                           args.max_sample_id, args.min_values)
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
+        elif 'tensorize_ecg_pngs' == args.mode:
+            write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'explore' == args.mode:
             explore(args)
         elif 'cross_reference' == args.mode:
@@ -77,8 +80,8 @@ def run(args):
             plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'plot_heatmap' == args.mode:
             plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
-        elif 'plot_partners_ecgs' == args.mode:
-            plot_partners_ecgs(args)
+        elif 'plot_partners_ecg' == args.mode:
+            plot_partners_ecg(args)
         elif 'tabulate_correlations' == args.mode:
             tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
@@ -90,7 +93,7 @@ def run(args):
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'sort_csv' == args.mode:
-            sort_csv(args.app_csv, args.app_csv)
+            sort_csv(args.tensors, args.tensor_maps_in)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
@@ -101,6 +104,11 @@ def run(args):
             append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
+        elif 'find_learning_rate' == args.mode:
+            _find_learning_rate(args)
+        elif 'find_learning_rate_and_train' == args.mode:
+            args.learning_rate = _find_learning_rate(args)
+            train_multimodal_multitask(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -110,6 +118,19 @@ def run(args):
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+
+def _find_learning_rate(args) -> float:
+    schedule = args.learning_rate_schedule
+    args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
+    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
+    try:
+        lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
+    finally:
+        generate_train.kill_workers()
+    args.learning_rate_schedule = schedule
+    return lr
 
 
 def _init_dict_of_tensors(tmaps: list) -> dict:
@@ -145,7 +166,8 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.postprocess_tensor(tensor, augment=False)
+
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
 
                             # Append tensor to dict
                             if tm.channel_map:
@@ -591,6 +613,7 @@ def _make_tmap_nan_on_fail(tmap):
     Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
     """
     new_tmap = copy.deepcopy(tmap)
+    new_tmap.validator = lambda _, x: x  # prevent failure caused by validator
 
     def _tff(tm, hd5, dependents=None):
         try:
@@ -675,9 +698,9 @@ def infer_hidden_layer_multimodal_multitask(args):
     else:
         full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
-    latent_dimensions = np.prod(dummy_out.shape[1:])
+    latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -761,6 +784,8 @@ def plot_while_training(args):
 
 
 def saliency_maps(args):
+    import tensorflow as tf
+    tf.compat.v1.disable_eager_execution()
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -880,7 +905,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.model_file = model_file
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
 
         # We can feed 'model.predict()' the entire input data because it knows what subset to use
         y_pred = model.predict(input_data, batch_size=args.batch_size)
@@ -924,7 +949,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         model = make_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(TENSOR_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, '')
         models[model_name] = model
         scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
 

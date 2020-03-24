@@ -6,6 +6,7 @@ import csv
 import math
 import operator
 import datetime
+import traceback
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter
@@ -30,28 +31,40 @@ from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR
 CSV_EXT = '.tsv'
 
 
-def sort_csv(input_csv_file, value_csv):
-    lvef = {}
-    with open(value_csv, 'r') as value_file:
-        lol = list(csv.reader(value_file, delimiter='\t'))
-        logging.info('CSV of MRI volumes header:{}'.format(list(enumerate(lol[0]))))
-        for row in lol[1:]:
-            sample_id = row[0]
-            if row[5] != 'NA':
-                lvef[sample_id] = float(row[5])
+def sort_csv(tensors, tensor_maps_in):
+    stats = Counter()
+    for folder in sorted(os.listdir(tensors)):
 
-    print('try:', input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT))
-    with open(input_csv_file, mode='r') as input_csv:
-        with open(input_csv_file.replace(CSV_EXT, '_diff_sorted'+CSV_EXT), mode='w') as output_csv:
-            csv_writer = csv.writer(output_csv, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_reader = csv.reader(input_csv, delimiter='\t')
-            csv_writer.writerow(next(csv_reader)+['discrepancy'])
-            csv_sorted = sorted(csv_reader, key=lambda row: abs(float(lvef[row[0]])-float(row[5])), reverse=True)
-            [csv_writer.writerow(row + [float(lvef[row[0]])-float(row[5])]) for row in csv_sorted]
+        for name in sorted(os.listdir(os.path.join(tensors, folder))):
+            try:
+                with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
+                    for tm in tensor_maps_in:
+                        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
+
+                        if tm.name == 'lead_v6_zeros' and tensor[0] > 1874:
+                            stats[f'Total_{tm.name}_zero_padded'] += 1
+                            stats[f'{folder}_{tm.name}_zero_padded'] += 1
+                        elif tm.name == 'lead_i_zeros' and tensor[0] > 1249:
+                            stats[f'Total_{tm.name}_zero_padded'] += 1
+                            stats[f'{folder}_{tm.name}_zero_padded'] += 1
+                        elif tm.name not in ['lead_i_zeros', 'lead_v6_zeros']:
+                            stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
+                            stats[f'Total_{tm.name}_{tensor[0]}'] += 1
+            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                pass
+                #logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
+
+        logging.info(f'In folder {folder} with {len(os.listdir(os.path.join(tensors, folder)))} ECGs')
+        if len(os.listdir(os.path.join(tensors, folder))) > 0:
+            logging.info(f'I Zero padded has:{stats[f"{folder}_lead_i_zeros_zero_padded"]}, {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%')
+            logging.info(f'V6 Zero padded has:{stats[f"{folder}_lead_v6_zeros_zero_padded"]}, {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%')
+    for k, v in sorted(stats.items(), key=lambda x: x[0]):
+        logging.info(f'{k} has {v}')
 
 
 def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], data: Dict[str, np.ndarray],
                         labels: Dict[str, np.ndarray], paths: List[str], folder: str) -> None:
+    # TODO Remove this command line order dependency
     input_map = tensor_maps_in[0]
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -63,22 +76,55 @@ def predictions_to_pngs(predictions: np.ndarray, tensor_maps_in: List[TensorMap]
                 input_map = im
             elif len(tm.shape) == len(im.shape):
                 input_map = im
-        logging.info(f"Write segmented MRI y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
-        if len(tm.shape) in [1, 2]:
+        logging.info(f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
+        if tm.is_mesh():
             vmin = np.min(data[input_map.input_name()])
             vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                if len(data[input_map.input_name()].shape) == 3:
-                    plt.imsave(f"{folder}{sample_id}_batch_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
-                elif len(data[input_map.input_name()].shape) == 4:
-                    for j in range(data[input_map.input_name()].shape[-1]):
-                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
-                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
-                elif len(data[input_map.input_name()].shape) == 5:
-                    for j in range(data[input_map.input_name()].shape[-1]):
-                        image_file = f"{folder}{sample_id}_batch_{i:02d}_slice_{j:02d}{IMAGE_EXT}"
-                        plt.imsave(image_file, data[input_map.input_name()][i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                if input_map.axes() == 4 and input_map.shape[-1] == 1:
+                    sample_data = data[input_map.input_name()][i, ..., 0]
+                    cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
+                    rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
+                    path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
+                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
+                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
+                else:
+                    fig, ax = plt.subplots(1)
+                    if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                        ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                    elif input_map.axes() == 2:
+                        ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                    corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
+                    ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                    y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
+                    ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
+                    logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
+                plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
+        elif len(tm.shape) in [1, 2]:
+            vmin = np.min(data[input_map.input_name()])
+            vmax = np.max(data[input_map.input_name()])
+            for i in range(y.shape[0]):
+                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                if input_map.axes() == 4 and input_map.shape[-1] == 1:
+                    sample_data = data[input_map.input_name()][i, ..., 0]
+                    cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
+                    rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
+                    path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
+                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
+                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
+                else:
+                    fig, ax = plt.subplots(1)
+                    if input_map.axes() == 3 and input_map.shape[-1] == 1:
+                        ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
+                    elif input_map.axes() == 2:
+                        ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
+                    corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
+                    ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                    y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
+                    ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
+                    logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
+                plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
@@ -340,10 +386,10 @@ def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples:
 
     for tm in test_labels:
         for i in range(examples):
-            if tm.is_continuous():
+            if tm.is_continuous() and tm.axes() == 1:
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            elif tm.is_categorical():
+            elif tm.is_categorical() and tm.axes() == 1:
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 
@@ -428,6 +474,32 @@ def _sample_with_heat(preds, temperature=1.0):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
+
+
+def _2d_bbox_to_corner_and_size(bbox):
+    total_axes = bbox.shape[-1] // 2
+    lower_left_corner = (bbox[1], bbox[0])
+    height = bbox[total_axes] - bbox[0]
+    width = bbox[total_axes+1] - bbox[1]
+    return lower_left_corner, width, height
+
+
+def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10, bboxes=[]):
+    colors = ['blue', 'red', 'green', 'yellow']
+    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    vmin = np.min(tensor)
+    vmax = np.max(tensor)
+    for i in range(tensor.shape[-1]):
+        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
+        axes[i // cols, i % cols].set_yticklabels([])
+        axes[i // cols, i % cols].set_xticklabels([])
+        for c, bbox in enumerate(bboxes):
+            corner, width, height = _2d_bbox_to_corner_and_size(bbox)
+            axes[i // cols, i % cols].add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor=colors[c], facecolor='none'))
+
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
 
 
 def _tabulate_correlations(stats: Dict[str, Dict[str, List[float]]],

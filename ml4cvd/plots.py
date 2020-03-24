@@ -18,6 +18,7 @@ from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
+from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -88,7 +89,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
-        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -96,7 +97,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
-        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -104,7 +105,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
-        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -113,7 +114,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     elif tm.is_cox_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
-    elif len(tm.shape) > 1:
+    elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
@@ -133,7 +134,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     return performance_metrics
 
 
-def plot_metric_history(history, title, prefix='./figures/'):
+def plot_metric_history(history, training_steps: int, title: str, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
@@ -142,6 +143,8 @@ def plot_metric_history(history, title, prefix='./figures/'):
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
+            if isinstance(history.history[k][0], LearningRateSchedule):
+                history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace('output_', '').split('_')
             k_title = " ".join(OrderedDict.fromkeys(k_split))
@@ -161,7 +164,6 @@ def plot_metric_history(history, title, prefix='./figures/'):
                 if col >= cols:
                     break
 
-    plt.title(title)
     plt.tight_layout()
     figure_path = os.path.join(prefix, 'metric_history_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -327,13 +329,14 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
+    logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
     logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
     true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
@@ -644,7 +647,7 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
-def _plot_partners_ecg(data, args):
+def _draw_partners_ecg(data, args):
 
     # Set up plot
     fig = plt.figure(constrained_layout=True,
@@ -815,7 +818,7 @@ def _plot_partners_ecg(data, args):
     plt.savefig(os.path.join(args.output_folder, args.id, f"{data['date']}-{data['patientid']}{PDF_EXT}"))
 
 
-def plot_partners_ecgs(args):
+def plot_partners_ecg(args):
     plot_tensors = ['partners_ecg_patientid', 'partners_ecg_firstname', 'partners_ecg_lastname',
                     'partners_ecg_gender', 'partners_ecg_dob', 'partners_ecg_age', 'partners_ecg_date',
                     'partners_ecg_time', 'partners_ecg_sitename', 'partners_ecg_location',
@@ -874,7 +877,7 @@ def plot_partners_ecgs(args):
             else:
                 data.update({key: tdict[tm.name][tm.name][i]})
 
-        _plot_partners_ecg(data, args)
+        _draw_partners_ecg(data, args)
 
 
 def plot_cross_reference(df_x, src_time, dst_time, args, title):
@@ -976,12 +979,14 @@ def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, a
             lead_name = lead_mapping[i-offset][j]
             lead = twelve_leads[lead_name]
             # Convert units to mV
-            yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            if isinstance(lead, dict):
+                yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            else:
+                yy = lead
             if not is_median:
                 ax[i,j].set_xlim(j*time_interval,(j+1)*time_interval)
                 # extract portion of waveform that is included in the actual plots 
-                yplot = yy[np.logical_and(lead['ts_reference']>j*time_interval,
-                                lead['ts_reference']<(j+1)*time_interval)]
+                yplot = yy[j*time_interval: (j+1)*time_interval]
             else:
                 yplot = yy                       
             ylim_min, ylim_max = _ecg_rest_ylims(yrange, yplot)            
@@ -1149,7 +1154,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 2
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -1295,7 +1300,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
     # Compute Precision-Recall and plot curve for each model
     lw = 2.0
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         for k in labels:
@@ -1414,6 +1419,22 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
+def plot_find_learning_rate(learning_rates: List[float], losses: List[float], smoothed_losses: List[float], picked_learning_rate: float, figure_path: str):
+    plt.figure(figsize=(2 * SUBPLOT_SIZE, SUBPLOT_SIZE))
+    plt.title('Learning rate finder')
+    cutoff = smoothed_losses[0]
+    plt.ylim(min(smoothed_losses), cutoff * 1.05)
+    plt.axhline(cutoff, linestyle='--', color='k', label=f'Deltas ignored above {cutoff:.2f}')
+    learning_rates = np.log(learning_rates) / np.log(10)
+    plt.plot(learning_rates, losses, label='Loss', c='r')
+    plt.plot(learning_rates, smoothed_losses, label='Smoothed loss', c='b')
+    plt.axvline(np.log(picked_learning_rate) / np.log(10), label=f'Learning rate found {picked_learning_rate:.2E}', color='g', linestyle='--')
+    plt.xlabel('Log_10 learning rate')
+    plt.legend()
+    plt.savefig(os.path.join(figure_path, f'find_learning_rate{IMAGE_EXT}'))
+    plt.clf()
+
+
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
     """Plot saliency maps of a batch of input tensors.
 
@@ -1430,7 +1451,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         data = data[..., 0]
         gradients = gradients[..., 0]
 
-    mean_saliency = np.zeros(data.shape[1:] + (3,))
+    mean_saliency = np.zeros(data.shape[1:4] + (3,))
     for batch_i in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
@@ -1439,9 +1460,18 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), f'{prefix}_saliency_{batch_i}{IMAGE_EXT}', cols, rows)
-            saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=0.0, max_value=1.0/data.shape[0])
+            saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=5.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
+        elif len(data.shape) == 5:
+            for j in range(data.shape[-1]):
+                cols = max(2, int(math.ceil(math.sqrt(data.shape[-2]))))
+                rows = max(2, int(math.ceil(data.shape[-2] / cols)))
+                name = f'{prefix}_saliency_{batch_i}_channel_{j}{IMAGE_EXT}'
+                _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i, ..., j], gradients[batch_i, ..., j]), name, cols, rows)
+                saliency = _saliency_blurred_and_scaled(gradients[batch_i, ..., j], blur_radius=5.0, max_value=1.0 / data.shape[0])
+                mean_saliency[..., 0] -= saliency
+                mean_saliency[..., 1] += saliency
         else:
             logging.warning(f'No method to plot saliency for data shape: {data.shape}')
 
@@ -1500,21 +1530,6 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     for i in range(tensor.shape[-2]):
         axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
-        axes[i // cols, i % cols].set_yticklabels([])
-        axes[i // cols, i % cols].set_xticklabels([])
-
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
-    plt.clf()
-
-
-def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10):
-    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
-    vmin = np.min(tensor)
-    vmax = np.max(tensor)
-    for i in range(tensor.shape[-1]):
-        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
         axes[i // cols, i % cols].set_yticklabels([])
         axes[i // cols, i % cols].set_xticklabels([])
 
