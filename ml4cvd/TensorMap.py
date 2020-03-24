@@ -425,7 +425,10 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tm.model.predict(input_dict)
     elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
+        if 'read_' in tm.name:
+            caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
+        else:
+            caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
         char_idx = np.random.randint(len(caption) + 1)
         if char_idx == len(caption):
             next_char = STOP_CHAR
@@ -441,3 +444,13 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tensor
     else:
         raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
+
+
+def _decompress_data(data_compressed, dtype):
+    codec = numcodecs.zstd.Zstd()
+    data_decompressed = codec.decode(data_compressed)
+    if dtype == 'str':
+        data = data_decompressed.decode()
+    else:
+        data = np.frombuffer(data_decompressed, dtype)
+    return data
