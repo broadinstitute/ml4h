@@ -34,6 +34,7 @@ from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX
 
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
+LANGUAGE_MODEL_SUFFIX = '_next_character'
 
 
 def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
@@ -136,8 +137,8 @@ def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: L
     return m
 
 
-def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                              base_model: Model, model_layers: str = None) -> Tuple[Model, Model]:
+def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float, base_model: Model, language_layer: str,
+                              language_prefix: str, model_layers: str = None) -> Tuple[Model, Model]:
     """Make a ECG captioning model from an ECG embedding model
 
     The base_model must have an embedding layer, but besides that can have any number of other predicition TensorMaps.
@@ -149,10 +150,12 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     :param tensor_maps_out: List of output TensorMaps
     :param learning_rate: Size of learning steps in SGD optimization
     :param base_model: The model the computes the ECG embedding
+    :param language_layer: The name of TensorMap for the language string to learn
+    :param language_prefix: The path prefix of the TensorMap of the language to learn
     :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
     :return: a tuple of the compiled keras model and the character emitting sub-model
     """
-    char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, base_model)
+    char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, base_model, language_layer, language_prefix)
     tensor_maps_in.extend(char_maps_in)
     tensor_maps_out.extend(char_maps_out)
     char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate)
@@ -164,7 +167,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
         losses.append(tm.loss)
         loss_weights.append(tm.loss_weight)
         my_metrics[tm.output_name()] = tm.metrics
-        if tm.name == 'ecg_rest_next_char':
+        if tm.name == f'{language_layer}{LANGUAGE_MODEL_SUFFIX}':
             output_layers.append(char_model.get_layer(tm.output_name()))
         else:
             output_layers.append(base_model.get_layer(tm.output_name()))
@@ -182,7 +185,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
 
 
 def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                         model_file: str = None, model_layers: str = None) -> Model:
+                         language_name: str, model_file: str = None, model_layers: str = None) -> Model:
     """Make a ECG captioning model
 
 	Input and output tensor maps are set from the command line.
@@ -221,7 +224,7 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
 
     output_layers = []
     for ot in tensor_maps_out:
-        if ot.name == 'ecg_rest_next_char':
+        if ot.name == f'{language_name}{LANGUAGE_MODEL_SUFFIX}':
             output_layers.append(Dense(ot.shape[-1], activation=ot.activation, name=ot.output_name())(lstm_out))
 
     m = Model(inputs=input_layers, outputs=output_layers)
@@ -1240,11 +1243,12 @@ def _gradients_from_output(model, output_layer, output_index):
     return iterate
 
 
-def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model, embed_name='embed', embed_size=64, burn_in=100):
+def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model, language_layer: str, language_prefix: str,
+                                    embed_name='embed', embed_size=64, burn_in=100):
     embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
     tm_embed = TensorMap(embed_name, shape=(embed_size,), interpretation=Interpretation.EMBEDDING, parents=tensor_maps_in.copy(), model=embed_model)
-    tm_char = TensorMap('ecg_rest_next_char', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, cacheable=False)
-    tm_burn_in = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix='ukb_ecg_rest',
+    tm_char = TensorMap(f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, cacheable=False)
+    tm_burn_in = TensorMap(language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix=language_prefix,
                            channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
     return [tm_embed, tm_burn_in], [tm_char]
 

@@ -130,6 +130,8 @@ def parse_args():
     parser.add_argument('--max_parameters', default=9000000, type=int,
                         help='Maximum number of trainable parameters in a model during hyperparameter optimization.')
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
+    parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
+    parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
     parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
     # Training and Hyper-Parameter Optimization Parameters

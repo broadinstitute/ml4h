@@ -568,7 +568,8 @@ def train_shallow_model(args):
 
 def train_char_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
+    model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
+                                                  args.language_prefix, args.model_layers)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
     model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
