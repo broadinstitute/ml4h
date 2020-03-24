@@ -46,9 +46,9 @@ Loop, Read, C:\Users\MuseAdmin\Desktop\blake08_mrns_to_extract.csv
     Click, 86, 96
 
     ; Print list
-    MouseClick, Left, 415, 55
+    Click, 415, 55
     Sleep, 750
-    MouseClick, Left, 1185, 800
+    Click, 1185, 800
     extracted++
 
     ; Wait for MUSE Editor to unfreeze
