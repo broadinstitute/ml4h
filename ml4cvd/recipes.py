@@ -644,7 +644,7 @@ def tokenize_tensor_maps(args):
                         characters.add(c)
     print(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
-    index2char = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
     print(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
