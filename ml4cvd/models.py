@@ -158,7 +158,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, base_model, language_layer, language_prefix)
     tensor_maps_in.extend(char_maps_in)
     tensor_maps_out.extend(char_maps_out)
-    char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate)
+    char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate, language_layer)
     losses = []
     my_metrics = {}
     loss_weights = []
@@ -185,7 +185,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
 
 
 def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                         language_name: str, model_file: str = None, model_layers: str = None) -> Model:
+                         language_layer: str, model_file: str = None, model_layers: str = None) -> Model:
     """Make a ECG captioning model
 
 	Input and output tensor maps are set from the command line.
@@ -195,6 +195,7 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
                             otherwise there are layer name collisions.
     :param tensor_maps_out: List of output TensorMaps
     :param learning_rate: Size of learning steps in SGD optimization
+    :param language_layer: The name of TensorMap for the language string to learn
     :param model_file: Optional HD5 model file to load and return.
     :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
     :return: a compiled keras model
@@ -202,7 +203,7 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     if model_file is not None:
         m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
         m.summary()
-        logging.info("Loaded model file from: {}".format(model_file))
+        logging.info(f'Loaded model file from: {model_file}')
         return m
 
     input_layers = []
@@ -224,7 +225,7 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
 
     output_layers = []
     for ot in tensor_maps_out:
-        if ot.name == f'{language_name}{LANGUAGE_MODEL_SUFFIX}':
+        if ot.name == f'{language_layer}{LANGUAGE_MODEL_SUFFIX}':
             output_layers.append(Dense(ot.shape[-1], activation=ot.activation, name=ot.output_name())(lstm_out))
 
     m = Model(inputs=input_layers, outputs=output_layers)
@@ -234,7 +235,7 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
 
     if model_layers is not None:
         m.load_weights(model_layers, by_name=True)
-        logging.info('Loaded model weights from:{}'.format(model_layers))
+        logging.info(f'Loaded model weights from:{model_layers}')
 
     return m
 
