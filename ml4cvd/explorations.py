@@ -26,7 +26,8 @@ from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.tensor_generators import TensorGenerator
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR
 
 CSV_EXT = '.tsv'
 
@@ -332,6 +333,12 @@ def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, t
     for tm in tensor_maps_in:
         if tm.interpretation == Interpretation.LANGUAGE:
             language_map = tm
+            if 'read_' in tm.name:
+                index_map = PARTNERS_IDX_2_CHAR
+                char_map = PARTNERS_CHAR_2_IDX
+            else:
+                index_map = ECG_IDX_2_CHAR
+                char_map = PARTNERS_CHAR_2_IDX
         elif tm.interpretation == Interpretation.EMBEDDING:
             embed_map = tm
     window_size = test_batch[language_map.input_name()].shape[1]
@@ -349,13 +356,13 @@ def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, t
         while next_char != '!' and count < 400:
             cur_test = {embed_map.input_name(): embed_in, language_map.input_name(): burn_in}
             y_pred = char_model.predict(cur_test)
-            next_char = ECG_IDX_2_CHAR[_sample_with_heat(y_pred[0, :], 0.7)]
+            next_char = index_map[_sample_with_heat(y_pred[0, :], 0.7)]
             sentence += next_char
             burn_in = np.zeros((1,) + test_batch[language_map.input_name()].shape[1:], dtype=np.float32)
             for j, c in enumerate(reversed(sentence)):
                 if j == window_size:
                     break
-                burn_in[0, window_size-j-1, ECG_CHAR_2_IDX[c]] = 1.0
+                burn_in[0, window_size-j-1, char_map[c]] = 1.0
             count += 1
         logging.info(f"Model text:{sentence}")
 
