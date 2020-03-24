@@ -178,7 +178,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
 
     if model_layers is not None:
         m.load_weights(model_layers, by_name=True)
-        _plot_dot_model_in_color(model_to_dot(m, show_shapes=True, expand_nested=True), model_layers.replace(TENSOR_EXT, IMAGE_EXT), True)
+        _plot_dot_model_in_color(model_to_dot(m, show_shapes=True, expand_nested=True), model_layers.replace(MODEL_EXT, IMAGE_EXT), True)
         logging.info(f'Loaded and plotted model weights from:{model_layers}')
 
     return m, char_model
