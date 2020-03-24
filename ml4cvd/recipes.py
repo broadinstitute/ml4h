@@ -645,7 +645,7 @@ def tokenize_tensor_maps(args):
     print(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((c, i) for i, c in enumerate(sorted(list(characters))))
-    print(f'char2index:\n\n {len(characters)}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
+    print(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
