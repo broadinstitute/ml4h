@@ -77,54 +77,27 @@ A new window will appear called "Select Device and Formatting Options".
 10. Move the XML files to a data store, like MAD3 (`\\MAD3\MGH-NEURO-CDAC\Projects\partners_ecg\`) or a Partners DropBox (it is easier to download DropBox Desktop on the VM than to upload via the web browser to DropBox).
 
 ## Automating ECG Extraction by MRN Search
-It is possible to automate the extraction of ECGs from MUSE Editor using [AutoHotKey](https://www.autohotkey.com/), a macro software. There are steps to setup the environment such that the macro can run and caveats to its use.
-
-At a high level, the macro uses key bindings and window focus to accomplish its automation. The macro can queue ECG extractions at a rate of 600 MRNs/hour. The actual time it takes for the ECGs to finish exporting to XML will be longer and is dependent on the number of ECGs.
+It is possible to automate the extraction of ECGs from MUSE Editor using [AutoHotKey](https://www.autohotkey.com/), a macro software. The macro can queue ECG extractions at a rate of 1000 MRNs/hour. This varies depending on the number of ECGs associated with each MRN. The actual time it takes for the ECGs to finish exporting to XML will be longer and is dependent on the total number of ECGs exported.
 
 **To use the macro:**
 1. [Download and install AutoHotKey](https://www.autohotkey.com/).
-2. [Download and install Sublime Text](https://www.sublimetext.com/).
-3. [Download the macro script](MUSE_search_mrn.ahk).
-   1. Double click the script to enable the macro (this does not trigger the macro yet).
-   2. Optionally, compile the script into a `.exe` file using AutoHotKey. This makes the macro portable without the need for AutoHotKey to be installed. Double click the executable file to enable the macro.
-4. Do step: [Configure MUSE Editor](#2-configure-muse-editor)
-5. Maximize the MUSE Editor window.
-6. In MUSE Editor, go to the Edit/Retrieve screen (Ctrl + Shift + E). In the bottom left panel, set the ECG type (e.g. `Resting ECG`).
-7. Close all other windows except for MUSE Editor.
-8. Open Sublime Text. Open a list of MRNs. For example, `mrn.csv` might look like:
-```
-mrn
-000000001
-000000002
-000000003
-```
-9. Place the cursor before the first MRN. If the pipe character `|` is the cursor:
-```
-mrn
-|000000001
-000000002
-000000003
-```
-10. Make sure Sublime Text is the window in focus and MUSE Editor is the window directly underneath.
-11. Start the macro with `Alt + R`.
-12. The macro ends when there are no more items in the MRN list:
-```
-mrn
-|
-```
+2. [Download the macro script](MUSE_search_mrn.ahk).
+3. Edit and save the macro to use the path to the file with the list of MRNs to search for. The list must have only a single column of MRNs and the first MRN must be on the first line of the file.
+4. Double click the macro file to start the macro.
+5. Do step: [Configure MUSE Editor](#2-configure-muse-editor)
+6. In MUSE Editor, go to the Edit/Retrieve screen (`Ctrl + Shift + E`). In the bottom left panel, set the ECG type (e.g. `Resting ECG`).
+7. Start the macro with `Alt + J`.
+8. The macro ends when it has searched for all the MRNs from the list.
 
-**Caveats:**
-1. This only runs in Windows. However, MUSE also exists in a Windows VM so this is likely fine.
-2. The slowest and most unpredictable part of the search process is waiting for the print screen of MUSE Editor to unfreeze. The macro detects pixel changes on the screen to tell when the window unfreezes. However, the pixel area is hard coded to a maximized MUSE Editor window. This feature is open to discussion and change.
-3. Additionally, waiting for MUSE Editor to return all the ECGs for a given MRN also takes an unpredictable amount of time. Currently, the macro is hard coded to wait 1 second. A patient is not likely to have `> 200` ECGs which MUSE Editor can find in less than 1 second. However, there are potential edge cases which may break the macro here.
-4. Other windows may be open on the virtual machine, however at the start of the macro, Sublime Text must be focused and MUSE Editor must be the window directly below Sublime Text. This is because the macro uses `Alt + Tab` to switch between windows.
-5. Because the window focus must be Sublime Text and MUSE Editor, it is not safe to connect directly to the virtual machine running the macro, as the connection will likely pop up a new window and window focus will be lost.
-6. A recommendation is to remote to the host machine and access the virtual machines through the host connection.
-7. If editing the script to use mouse movements, disable "Mouse Integration" for the virtual machine and the remote connection. "Mouse Integration" prevents the macro from controlling the mouse, however it does not necessarily disable mouse clicks.
-8. The macro will finish queueing MRNs to be exported from MUSE before the XMLs are actually written to disk. This is because MUSE takes longer to format and write XMLs than it does for the macro to search for MRNs. Simply wait for the exports to finish before moving the extracted XMLs.
-9. Sublime Text is the editor chosen because it can cut lines using `Ctrl + X`. Any other editor that supports this capability would also be supported.
-10. The macro ends when the cut from Sublime Text is just a Windows style newline. If this feature is not working, the clipboard "empty" detection is a place to start debugging.
-11. The macro may break on very large MRN lists when MUSE Editor crashes or the print queue fails for some reason. It is recommended to batch the MRN extraction.
+Other uses:
+1. If you edit and save the macro while it was already enabled, simply reload the changes with `Alt + R`.
+2. If you need to abort the macro while it is running, use `Alt + Esc`. Note this does not necessarily mean the MUSE Editor stops exporting XMLs. To clear the print and format queue in MUSE Editor, use MUSE Status (`Ctrl + Shift + S`) to clear the queues.
+
+**Notes:**
+1. It is safe to disconnect and reconnect to the virtual machine using remote desktop while the macro is running. However, try to avoid key presses as they may introduce unknown behavior in MUSE Editor. If you need to exit the macro, use `Alt + Esc`.
+2. If editing the script to use mouse movements, disable "Mouse Integration" for the virtual machine and the remote connection. "Mouse Integration" prevents the macro from controlling the mouse, however it does not disable mouse clicks.
+3. The macro will finish queueing MRNs to be exported from MUSE before the XMLs are actually written to disk. This is because MUSE takes longer to format and write XMLs than it does for the macro to search for MRNs. Simply wait for the exports to finish before moving the extracted XMLs.
+4. The macro may break on very large MRN lists when MUSE Editor crashes or the print queue fails for some reason. It is recommended to batch the MRN extraction.
 
 ## Organizing XMLs and Removing Duplicates
 `1_organize_xml_into_yyyymm.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
