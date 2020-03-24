@@ -22,7 +22,7 @@ import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
-from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.TensorMap import TensorMap, Interpretation, _decompress_data
 from ml4cvd.tensor_generators import TensorGenerator
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
@@ -352,7 +352,11 @@ def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, t
         window_size = burn_in.shape[1]
         with h5py.File(test_paths[i], 'r') as hd5:
             logging.info(f"\n")
-            logging.info(f"Real text: {str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()}")
+            if 'read_' in language_map.name:
+                caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
+            else:
+                caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
+            logging.info(f"Real text: {caption}")
         while next_char != '!' and count < 400:
             cur_test = {embed_map.input_name(): embed_in, language_map.input_name(): burn_in}
             y_pred = char_model.predict(cur_test)
