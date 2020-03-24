@@ -669,7 +669,7 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
         y_predictions = model.predict(batch_data)
         test_paths.extend(batch_paths)
         if hidden_layer in layer_names:
-            x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer, batch_data, 2)
+            x_embed = embed_model_predict(model, arguments.tensor_maps_in, hidden_layer, batch_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
         for tm_output_name in test_labels:
@@ -890,5 +890,5 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    run(args)  # back to the top
+    arguments = parse_args()
+    run(arguments)  # back to the top
