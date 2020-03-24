@@ -2,15 +2,15 @@
 import logging
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
-from keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_proximity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
-    'mean_squared_error', 'mse', 'cosine_proximity', 'logcosh',
+    'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh',
 ]
 
 
@@ -18,7 +18,7 @@ STRING_METRICS = [
 # ~~~~~~~~ Metrics ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def weighted_crossentropy(weights, name='anonymous'):
-    """A weighted version of keras.objectives.categorical_crossentropy
+    """A weighted version of tensorflow.keras.objectives.categorical_crossentropy
 
     Arguments:
         weights = np.array([0.5,2,10]) # Class one at 0.5, class 2 twice the normal weights, class 3 10x.
@@ -30,11 +30,11 @@ def weighted_crossentropy(weights, name='anonymous'):
     """
     string_globe = 'global ' + name + '_weights\n'
     string_globe += 'global ' + name + '_kweights\n'
-    string_globe += name + '_weights = weights\n'
+    string_globe += name + '_weights = np.array(weights)\n'
     string_globe += name + '_kweights = K.variable('+name+'_weights)\n'
     exec(string_globe, globals(), locals())
     fxn_postfix = '_weighted_loss'
-    string_fxn = 'def '+ name + fxn_postfix + '(y_true, y_pred):\n'
+    string_fxn = 'def ' + name + fxn_postfix + '(y_true, y_pred):\n'
     string_fxn += '\ty_pred /= K.sum(y_pred, axis=-1, keepdims=True)\n'
     string_fxn += '\ty_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())\n'
     string_fxn += '\tloss = y_true * K.log(y_pred) * ' + name + '_kweights\n'
@@ -178,9 +178,12 @@ def survival_likelihood_loss(n_intervals):
         Returns
             Vector of losses for this minibatch.
         """
-        all_individuals = 1. + y_true[:, 0:n_intervals] * (y_pred[:, 0:n_intervals] - 1.)  # component for all individuals
-        uncensored = 1. - y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals]  # component for only individuals who failed
-        return K.sum(-K.log(K.clip(K.concatenate((all_individuals, uncensored)), K.epsilon(), None)), axis=-1)  # return -log likelihood
+        survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss only for intervals that were survived
+        survival_likelihood += 1. - y_true[:, 0:n_intervals]
+        failure_likelihood = K.maximum(y_true[:, n_intervals:2 * n_intervals], 0) * (1.-y_true[:, 0:n_intervals]) * (1.-y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
+        failure_likelihood += y_true[:, 0:n_intervals]  # No failure loss if interval was survived
+        failure_likelihood += (1-K.maximum(y_true[:, n_intervals:2 * n_intervals], 0)) * (1. - y_true[:, 0:n_intervals])  # No failure loss if censored before failure
+        return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
 
     return loss
 
@@ -343,6 +346,7 @@ def get_metric_dict(output_tensor_maps):
                 metrics[m] = m
             else:
                 metrics[m.__name__] = m
+
         if tm.loss == 'categorical_crossentropy':
             losses.append(categorical_crossentropy)
         elif tm.loss == 'binary_crossentropy':
@@ -351,8 +355,8 @@ def get_metric_dict(output_tensor_maps):
             losses.append(mean_absolute_error)
         elif tm.loss == 'mean_squared_error' or tm.loss == 'mse':
             losses.append(mean_squared_error)
-        elif tm.loss == 'cosine_proximity':
-            losses.append(cosine_proximity)
+        elif tm.loss == 'cosine_similarity':
+            losses.append(cosine_similarity)
         elif tm.loss == 'logcosh':
             losses.append(logcosh)
         elif tm.loss == 'mape':

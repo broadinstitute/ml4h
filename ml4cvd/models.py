@@ -4,7 +4,6 @@
 
 # Imports
 import os
-import h5py
 import time
 import logging
 import numpy as np
@@ -12,24 +11,26 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Iterable, Union, Optional
 
 # Keras imports
-import keras.backend as K
-from keras.optimizers import Adam
-from keras.models import Model, load_model
-from keras.callbacks import History, Callback
-from keras.utils.vis_utils import model_to_dot
-from keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
-from keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
-from keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
-from keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
-from keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+import tensorflow as tf
+import tensorflow_addons as tfa
+import tensorflow.keras.backend as K
+from tensorflow.keras.callbacks import History
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.utils import model_to_dot
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
+from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
+from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
+from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D
 
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX
 
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
@@ -294,7 +295,7 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     else:
         target_layer = parent_model.get_layer(output_layer_name)
     parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[1:]) for tm in tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input)
@@ -307,7 +308,7 @@ class KLDivergenceLayer(Layer):
     """
     def __init__(self, *args, **kwargs):
         self.is_placeholder = True
-        self.kl_weight = K.variable(1e-5)
+        self.kl_weight = tf.Variable(1e-5, trainable=False)
         super(KLDivergenceLayer, self).__init__(**kwargs)
 
     def call(self, inputs, **kwargs):
@@ -533,7 +534,7 @@ def make_variational_multimodal_multitask_model(
     encoder = Model(inputs=input_tensors, outputs=multimodal_activation, name='encoder')
     decoder = Model(inputs=latent_inputs, outputs=out_list, name='decoder')
     outputs = decoder(encoder(input_tensors))
-    m = Model(inputs=input_tensors, outputs=outputs)
+    m = Model(inputs=input_tensors, outputs=outputs, compile=False)
     m.output_names = list(output_predictions.keys())
     decoder.output_names = list(output_predictions.keys())
     encoder.summary(print_fn=logging.info)
@@ -546,7 +547,7 @@ def make_variational_multimodal_multitask_model(
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
@@ -731,6 +732,8 @@ def make_multimodal_multitask_model(
     padding: str = None,
     learning_rate: float = None,
     optimizer: str = 'adam',
+    training_steps: int = None,
+    learning_rate_schedule: str = None,
     **kwargs
 ) -> Model:
     """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
@@ -771,12 +774,13 @@ def make_multimodal_multitask_model(
     :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
     """
-    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    opt = get_optimizer(optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule, optimizer_kwargs=kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
-        m = load_model(kwargs['model_file'], custom_objects=custom_dict)
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -836,7 +840,7 @@ def make_multimodal_multitask_model(
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
@@ -897,7 +901,7 @@ def train_model_from_generators(
     :param return_history: If true return history from training and don't plot the training history
     :return: The optimized model.
     """
-    model_file = os.path.join(output_folder, run_id, run_id + TENSOR_EXT)
+    model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
@@ -905,14 +909,17 @@ def train_model_from_generators(
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit_generator(
+    history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
         validation_steps=validation_steps, validation_data=generate_valid,
-        callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate), )
+        callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate),
+    )
+    generate_train.kill_workers()
+    generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
-        plot_metric_history(history, run_id, os.path.dirname(model_file))
+        plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
         return model, history
     return model
@@ -929,7 +936,7 @@ def _get_callbacks(
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
-    if anneal_max and anneal_rate and anneal_shift:
+    if anneal_max is not None and anneal_rate is not None and anneal_shift is not None:
         callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
 
@@ -971,11 +978,11 @@ def _conv_block_new(
                 residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
         if residual_convolution_layer is not None:
             if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
-                x = layers[f"add_{str(len(layers))}"] = add([x, residual])
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
             else:
                 residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
-                x = layers[f"add_{str(len(layers))}"] = add([x, residual])
-    return _get_last_layer(layers)
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
+    return x
 
 
 def _dense_block(
@@ -993,16 +1000,16 @@ def _dense_block(
 ):
     name_prefix = "{tm.input_name()}_" if tm else ""
     for i, conv_layer in enumerate(conv_layers):
-        x = layers[f"{name_prefix}Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"{name_prefix}Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
-        x = layers[f"{name_prefix}Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-        x = layers[f"{name_prefix}Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
+        layers[f"{name_prefix}Conv_{str(len(layers))}"] = conv_layer(x)
+        layers[f"{name_prefix}Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
+        layers[f"{name_prefix}Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(_get_last_layer(layers))
+        layers[f"{name_prefix}Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(_get_last_layer(layers))
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
-            x = layers[f"{name_prefix}Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](x)
-            dense_connections = [x]
+            x = layers[f"{name_prefix}Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](_get_last_layer(layers))
+            dense_connections = [_get_last_layer(layers)]
         else:
-            dense_connections += [x]
-            x = layers[f"{name_prefix}concatenate{JOIN_CHAR}{str(len(layers))}"] = concatenate(dense_connections, axis=CHANNEL_AXIS)
+            dense_connections += [_get_last_layer(layers)]
+            x = layers[f"{name_prefix}concatenate{JOIN_CHAR}{str(len(layers))}"] = tf.keras.layers.Concatenate(axis=CHANNEL_AXIS)(dense_connections[:])
     return _get_last_layer(layers)
 
 
@@ -1083,27 +1090,36 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-def _activation_layer(activation):
-    if activation == 'leaky':
-        return LeakyReLU()
-    elif activation == 'prelu':
-        return PReLU()
-    elif activation == 'elu':
-        return ELU()
-    elif activation == 'thresh_relu':
-        return ThresholdedReLU()
-    else:
-        return Activation(activation)
+def _activation_layer(activation: str) -> Activation:
+    activation_classes = {
+        'leaky': LeakyReLU(),
+        'prelu': PReLU(),
+        'elu': ELU(),
+        'thresh_relu': ThresholdedReLU,
+    }
+    activation_functions = {
+        'swish': tf.nn.swish,
+        'gelu': tfa.activations.gelu,
+        'lisht': tfa.activations.lisht,
+        'mish': tfa.activations.mish,
+    }
+    return (
+        activation_classes.get(activation, None)
+        or Activation(activation_functions.get(activation, None) or activation)
+    )
 
 
-def _normalization_layer(norm):
-    if norm == 'batch_norm':
-        return BatchNormalization(axis=CHANNEL_AXIS)
-    else:
-        return lambda x: x
+def _normalization_layer(norm: str) -> Layer:
+    normalization_classes = {
+        'batch_norm': BatchNormalization(axis=CHANNEL_AXIS),
+        'layer_norm': LayerNormalization(),
+        'instance_norm': tfa.layers.InstanceNormalization(),
+        'poincare_norm': tfa.layers.PoincareNormalize(),
+    }
+    return normalization_classes.get(norm, lambda x: x)
 
 
-def _regularization_layer(dimension, regularization_type, rate):
+def _regularization_layer(dimension: int, regularization_type: str, rate: float):
     if dimension == 4 and regularization_type == 'spatial_dropout':
         return SpatialDropout3D(rate)
     elif dimension == 3 and regularization_type == 'spatial_dropout':
@@ -1170,13 +1186,13 @@ def _inspect_model(
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
+    _ = model.fit(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     n = batch_size*training_steps
     train_speed = (t1 - t0) / n
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample training speed:{train_speed:0.3f} seconds.')
     t0 = time.time()
-    _ = model.predict_generator(generate_valid, steps=training_steps, verbose=1)
+    _ = model.predict(generate_valid, steps=training_steps, verbose=1)
     t1 = time.time()
     inference_speed = (t1 - t0) / n
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample inference speed:{inference_speed:0.4f} seconds.')
@@ -1311,16 +1327,25 @@ def get_model_inputs_outputs(
     models_inputs_outputs = dict()
 
     for model_file in model_files:
-        with h5py.File(model_file, 'r') as hd5:
-            model_inputs_outputs = defaultdict(list)
-            for input_tensor_map in tensor_maps_in:
-                if input_tensor_map.input_name() in hd5["model_weights"]:
-                    model_inputs_outputs[input_prefix].append(input_tensor_map)
-            for output_tensor_map in tensor_maps_out:
-                if output_tensor_map.output_name() in hd5["model_weights"]:
-                    model_inputs_outputs[output_prefix].append(output_tensor_map)
-            if not got_tensor_maps_for_characters and 'input_ecg_rest_text_ecg_text' in hd5["model_weights"]:
-                m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
+        custom = get_metric_dict(tensor_maps_out)
+        logging.info(f'custom keys: {list(custom.keys())}')
+        m = load_model(model_file, custom_objects=custom, compile=False)
+        model_inputs_outputs = defaultdict(list)
+        for input_tensor_map in tensor_maps_in:
+            try:
+                m.get_layer(input_tensor_map.input_name())
+                model_inputs_outputs[input_prefix].append(input_tensor_map)
+            except ValueError:
+                pass
+        for output_tensor_map in tensor_maps_out:
+            try:
+                m.get_layer(output_tensor_map.output_name())
+                model_inputs_outputs[output_prefix].append(output_tensor_map)
+            except ValueError:
+                pass
+        if not got_tensor_maps_for_characters:
+            try:
+                m.get_layer('input_ecg_rest_text_ecg_text')
                 char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, m)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)
@@ -1329,7 +1354,8 @@ def get_model_inputs_outputs(
                 got_tensor_maps_for_characters = True
                 logging.info(f"Doing char model dance:{[tm.input_name() for tm in tensor_maps_in]}")
                 logging.info(f"Doing char model dance out:{[tm.output_name() for tm in tensor_maps_out]}")
-
+            except ValueError:
+                pass
         models_inputs_outputs[model_file] = model_inputs_outputs
 
     return models_inputs_outputs

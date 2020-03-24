@@ -18,11 +18,13 @@ import operator
 import datetime
 import numpy as np
 import multiprocessing
+from typing import List
 
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
@@ -71,6 +73,10 @@ def parse_args():
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
+    parser.add_argument(
+        '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
+        help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
+    )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -154,7 +160,7 @@ def parse_args():
     parser.add_argument('--valid_ratio', default=0.2, type=float, help='Rate of training tensors to save for validation must be in [0.0, 1.0].')
     parser.add_argument('--test_ratio', default=0.1, type=float, help='Rate of training tensors to save for testing [0.0, 1.0].')
     parser.add_argument(
-        '--test_modulo', default=10, type=int,
+        '--test_modulo', default=0, type=int,
         help='Sample IDs modulo this number will be reserved for testing. Set to 1 to only reserve test_ratio for testing.',
     )
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
@@ -175,10 +181,11 @@ def parse_args():
         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
     )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
-    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
-    parser.add_argument('--anneal_rate', default=1.0, type=float, help='Annealing rate in epochs of loss terms during training')
-    parser.add_argument('--anneal_shift', default=10, type=float, help='Annealing offset in epochs of loss terms during training')
-    parser.add_argument('--anneal_max', default=1.0, type=float, help='Annealing maximum value')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
+    parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2'], help='Adjusts learning rate during training.')
+    parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
+    parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
+    parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -198,21 +205,42 @@ def parse_args():
     return args
 
 
-def _get_tmap(name: str) -> TensorMap:
+def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     """
     This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
     """
     if name in TMAPS:
         return TMAPS[name]
-    from ml4cvd.tensor_maps_by_script import TMAPS as SCRIPT_TMAPS
-    TMAPS.update(SCRIPT_TMAPS)
+
+    TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_partners_ecg import TMAPS as partners_tmaps
+    TMAPS.update(partners_tmaps)
+
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
+    TMAPS.update(partners_label_tmaps)
+
+    if name in TMAPS:
+        return TMAPS[name]
+
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+
     return TMAPS[name]
 
 
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
-    command_line = f"\n\n./scripts/tf.sh {' '.join(sys.argv)}\n\n\n"
+    command_line = f"\n./scripts/tf.sh {' '.join(sys.argv)}\n"
     if not os.path.exists(os.path.dirname(args_file)):
         os.makedirs(os.path.dirname(args_file))
     with open(args_file, 'w') as f:
@@ -220,20 +248,27 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    args.tensor_maps_in = [_get_tmap(it) for it in args.input_tensors]
+    needed_tensor_maps = args.input_tensors + args.output_tensors
+    args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
 
     args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
         args.tensor_maps_out.append(
             generate_continuous_tensor_map_from_file(
-                args.continuous_file, args.continuous_file_column,
-                args.output_tensors.pop(0), args.continuous_file_normalize,
+                args.continuous_file,
+                args.continuous_file_column,
+                args.output_tensors.pop(0),
+                args.continuous_file_normalize,
+                args.continuous_file_discretization_bounds,
             ),
         )
-    args.tensor_maps_out.extend([_get_tmap(ot) for ot in args.output_tensors])
+    args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
+
+    if args.learning_rate_schedule is not None and args.patience < args.epochs:
+        raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
 
     np.random.seed(args.random_seed)
 
-    logging.info(f"Command Line was:{command_line}")
-    logging.info(f"Total TensorMaps:{len(TMAPS)} Arguments are {args}")
+    logging.info(f"Command Line was: {command_line}")
+    logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")

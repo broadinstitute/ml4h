@@ -1,6 +1,6 @@
 import unittest
 
-from keras.losses import logcosh
+from tensorflow.keras.losses import logcosh
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.arguments import parse_args
@@ -9,7 +9,7 @@ from ml4cvd.recipes import test_multimodal_multitask, train_multimodal_multitask
 
 
 ALL_TENSORS = '/mnt/ml4cvd/projects/tensors/sax-lax-ecg-rest-brain-1k/2019-11-06/'
-ALL_TENSORS = '/mnt/disks/sax-lax-40k/2019-11-08/'
+ALL_TENSORS = '/mnt/disks/sax-lax-40k-lvm/2020-01-29/'
 MODELS = '/mnt/ml4cvd/projects/models/for_testing/'
 
 
@@ -58,6 +58,7 @@ class TestTrainingModels(unittest.TestCase):
             'hypertension', 'myocardial_infarction',
         ]
         args.epochs = 2
+        args.optimizer = 'radam'
         args.batch_size = 64
         args.training_steps = 60
         args.validation_steps = 1
@@ -81,6 +82,7 @@ class TestPretrainedModels(unittest.TestCase):
         delta = 15e-2
         args = parse_args()
         args.tensors = ALL_TENSORS
+        args.optimizer = 'radam'
         args.model_file = MODELS + 'ecg_rest_regress.hd5'
         args.input_tensors = ['ecg_rest']
         args.output_tensors = [
@@ -108,6 +110,7 @@ class TestPretrainedModels(unittest.TestCase):
     def test_ecg_rhythm(self):
         delta = 1e-1
         args = parse_args()
+        args.optimizer = 'radam'
         args.tensors = ALL_TENSORS
         args.model_file = MODELS + 'ecg_rest_rhythm.hd5'
         args.input_tensors = ['ecg_rest']
