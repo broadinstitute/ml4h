@@ -105,6 +105,8 @@ def run(args):
         elif 'find_learning_rate_and_train' == args.mode:
             args.learning_rate = _find_learning_rate(args)
             train_multimodal_multitask(args)
+        elif 'tokenize' == args.mode:
+            tokenize_tensor_maps(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -628,6 +630,25 @@ def saliency_maps(args):
         for channel in tm.channel_map:
             gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
             plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
+
+
+def tokenize_tensor_maps(args):
+    tensor_paths_tokenized = {}
+    characters = set()
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0, cache_size=0, keep_paths=True, mixup=args.mixup_alpha)
+    while True:
+        input_data, true_label, tensor_path = next(generate_test)
+        if tensor_path[0] in tensor_paths_tokenized:
+            break
+        for tm in args.tensor_maps_out:
+            if tm.is_language():
+                for c in str(true_label[tm.output_name()][0][0]):
+                    characters.add(c)
+    print(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    print(f'char2index:\n\n {len(characters)}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
