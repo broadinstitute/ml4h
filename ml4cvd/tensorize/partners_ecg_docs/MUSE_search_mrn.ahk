@@ -1,72 +1,87 @@
-﻿!r::
+#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
+; #Warn  ; Enable warnings to assist with detecting common errors.
+SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
+SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
-; Start this script with sublime text on top of MUSE Editor
-; MUSE Editor must be configured for Ctrl + A to select test list
-; MUSE Editor must be configured for Ctrl + P to print selected tests
-; MUSE Editor should be on print retrieve screen
-; MUSE Editor export folder should be first in list
-; In retrieve vie of MUSE Editor, select ECG type for search
-; Place the cursor at the first line of the list of MRNs in Sublime Text
 
-SetKeyDelay, 250
+!j::
 
-Loop {
 
-; Cut the MRN from the list
-Send, ^x
+; Script setup
+; Set coordinates relative to screen
+; This may allow the script to continue if small windows pop up
+CoordMode, Mouse, Screen
+CoordMode, Pixel, Screen
+WinMaximize, ahk_exe MUSEEditor.exe
+count := 0
+extracted := 0
 
-; Check if anything aside from newline was cut
-If InStr(Clipboard, "`r`n") == 1
-	Break
 
-; Switch to MUSE Editor (Alt Tab)
-Send, !`t
+; Open file to read input from, line by line
+Loop, Read, C:\Users\MuseAdmin\Desktop\blake08_mrns_to_extract.csv
+{
+    ; Switch to MUSE Editor
+    WinActivate, ahk_exe MUSEEditor.exe
 
-; Select retrieve search
-Send, ^r
+    ; Remove previous input from search box
+    Loop, 20 {
+       Click, 135, 830
+       Send, {Delete}
+       Send, {Backspace}
+    }
 
-; Delete the previous search
-SetKeyDelay, 10
-Send, {Right 10}
-Send, {BackSpace 10}
-SetKeyDelay, 250
+    ; Enter new input to search box
+    Click, 135, 830
+    Send, %A_LoopReadLine%
 
-; Paste in new search
-Send, ^v
 
-; Search for MRN (Enter)
-Send, `n
+    ; SCRIPT OTHER SEARCH CRITERIA HERE
 
-; Wait for search to return
-; TODO make this detect change in pixel
-Sleep, 1000
 
-; Select all search results
-Send, ^a
+    ; Click search button
+    Click, 70, 1010
 
-; Print search results
-Send, ^p
+    ; Select all items in search result list
+    Click, 86, 26
+    Click, 86, 96
 
-; Wait for screen to popup
-Sleep, 500
+    ; Print list
+    MouseClick, Left, 415, 55
+    Sleep, 750
+    MouseClick, Left, 1185, 800
+    extracted++
 
-; Print using default options (Enter)
-Send, `n
+    ; Wait for MUSE Editor to unfreeze
+    Loop {
+        ; Search for a black pixel in the space where window goes blank/freezes
+        PixelSearch, Px, Py, 515, 265, 1290, 660, 0x000000, Fast
+        If Not ErrorLevel {
+            Break
+        }
+        Sleep, 100
+    }
 
-; Wait for MUSE Editor to unfreeze
-Loop {
-	; Search for a black pixel in the space where window goes blank/freezes
-	PixelSearch, Px, Py, 503, 265, 1351, 741, 0x000000, Fast
-	If Not ErrorLevel {
-		Break
-	}
-
-	Sleep, 250
+    ; Reset MUSE Editor after 1000 searches
+    count++
+    If (count > 1000)
+    {
+        Sleep, 20000
+        WinClose, ahk_exe MUSEEditor.exe
+        Run "C:\Program Files (x86)\MUSE\MUSEEditor.exe", C:\Program Files (x86)\MUSE
+        Sleep, 1000
+        count := 0
+        Sleep, 20000
+    }
 }
 
-; Go back to Sublime to repeat (Alt Tab)
-Send, !`t
+MsgBox, Extracted %extracted% MRNs
+Return
 
-}
 
-return
+!r::
+MsgBox, Script Reloaded
+Reload
+Return
+
+
+!Esc::ExitApp
