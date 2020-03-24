@@ -633,18 +633,15 @@ def saliency_maps(args):
 
 
 def tokenize_tensor_maps(args):
-    tensor_paths_tokenized = {}
     characters = set()
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0, cache_size=0, keep_paths=True, mixup=args.mixup_alpha)
-    while True:
-        input_data, true_label, tensor_path = next(generate_test)
-        if tensor_path[0] in tensor_paths_tokenized:
-            break
-        for tm in args.tensor_maps_out:
-            if tm.is_language():
-                for c in str(true_label[tm.output_name()][0][0]):
-                    characters.add(c)
+    for path in tensor_paths:
+        with h5py.File(path, "r") as hd5:
+            for tm in args.tensor_maps_out:
+                if tm.is_language():
+                    text = str(tm.tensor_from_file(tm, hd5, dependents={}))
+                    for c in text:
+                        characters.add(c)
     print(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((c, i) for i, c in enumerate(sorted(list(characters))))
