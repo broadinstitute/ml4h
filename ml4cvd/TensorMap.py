@@ -425,7 +425,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tm.model.predict(input_dict)
     elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        caption = str(hd5[tm.name][0]).strip()
+        caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
         char_idx = np.random.randint(len(caption) + 1)
         if char_idx == len(caption):
             next_char = STOP_CHAR

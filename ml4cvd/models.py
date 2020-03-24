@@ -1244,7 +1244,7 @@ def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model:
     embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
     tm_embed = TensorMap(embed_name, shape=(embed_size,), interpretation=Interpretation.EMBEDDING, parents=tensor_maps_in.copy(), model=embed_model)
     tm_char = TensorMap('ecg_rest_next_char', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, cacheable=False)
-    tm_burn_in = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)),
+    tm_burn_in = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix='ukb_ecg_rest',
                            channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
     return [tm_embed, tm_burn_in], [tm_char]
 
