@@ -13,6 +13,7 @@ from enum import Enum, auto
 from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
 import h5py
+import numcodecs
 import numpy as np
 from tensorflow.keras import Model
 from tensorflow.keras.utils import to_categorical
