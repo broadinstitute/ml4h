@@ -30,8 +30,7 @@ from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX
-
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, TENSOR_EXT
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
@@ -179,7 +178,8 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
 
     if model_layers is not None:
         m.load_weights(model_layers, by_name=True)
-        logging.info('Loaded model weights from:{}'.format(model_layers))
+        _plot_dot_model_in_color(model_to_dot(m, show_shapes=True, expand_nested=True), model_layers.replace(TENSOR_EXT, IMAGE_EXT), True)
+        logging.info(f'Loaded and plotted model weights from:{model_layers}')
 
     return m, char_model
 
@@ -221,7 +221,7 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     logging.info(f"inputs: {[il.name for il in input_layers]}")
     wave_embeds = repeater(embed_in)
     lstm_in = concatenate([burn_in, wave_embeds], name='concat_embed_and_text')
-    lstm_out = LSTM(128)(lstm_in)
+    lstm_out = LSTM(128)(lstm_in)  # TODO this should be argument
 
     output_layers = []
     for ot in tensor_maps_out:
