@@ -1,29 +1,27 @@
 import os
-import utils
-import shutil
 import hashlib
 import logging
+import argparse
 from timeit import default_timer as timer
 
 
-def parse_args():
+def _parse_args():
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument("--src",
                         default="/data/partners_ecg/xml",
                         help="Path to directory containing organized source XMLs")
 
     args = parser.parse_args()
-    _process_args(args)
     return args
 
 
-def _sha256sum_of_xml(fname: str) -> str: 
+def _sha256sum_of_xml(fname: str) -> str:
     with open(fname, 'rb', buffering=0) as f:
         h = hashlib.sha256()
         b = bytearray(128*1024)
         mv = memoryview(b)
-        for n in iter(lambda : f.readinto(mv), 0):
+        for n in iter(lambda: f.readinto(mv), 0):
             h.update(mv[:n])
     return h.hexdigest()
 
@@ -44,8 +42,8 @@ if __name__ == "__main__":
     # TODO replace print with logging.info
     # TODO make logging.info display output to console
 
-    start = timer() 
-    args = parse_args()
+    start = timer()
+    args = _parse_args()
     fpath_xml = args.src
 
     # Identify list of date directories within xml/
@@ -62,16 +60,16 @@ if __name__ == "__main__":
         # hash: SHA-256 of the XML file contents; duplicate XMLs have same hash
         xml_fpaths_hashes_yyyy_mm = _hash_xmls(fpath_dir)
         xml_fpaths_hashes += xml_fpaths_hashes_yyyy_mm
-        print(f"Computed hashes for {len(xml_fpaths_hashes_yyyy_mm)} XMLs in {fpath_dir}")
+        logging.info(f"Computed hashes for {len(xml_fpaths_hashes_yyyy_mm)} XMLs in {fpath_dir}")
 
     end = timer()
-    print(f"Hashing {len(xml_fpaths_hashes)} XML files took {end-start:.2f} sec")
+    logging.info(f"Hashing {len(xml_fpaths_hashes)} XML files took {end-start:.2f} sec")
 
     # Sort list of tuples by the hash
     start = timer()
-    xml_fpaths_hashes = sorted(xml_fpaths_hashes, key = lambda x: x[1])
+    xml_fpaths_hashes = sorted(xml_fpaths_hashes, key=lambda x: x[1])
     end = timer()
-    print(f"Sorting list of (fpath_xml, xml_hash) by hash took {(end-start):.2f} sec")
+    logging.info(f"Sorting list of (fpath_xml, xml_hash) by hash took {(end-start):.2f} sec")
 
     # Find all duplicate hashes
 
@@ -94,7 +92,7 @@ if __name__ == "__main__":
 
             # Delete duplicate XMLs
             os.remove(xml_and_hash[0])
-            print(f"{xml_and_hash[0]} is a duplicate")
+            logging.info(f"{xml_and_hash[0]} is a duplicate")
 
         # If not, update previous hash
         else:
@@ -102,5 +100,5 @@ if __name__ == "__main__":
             prev_hash = xml_and_hash[1]
 
     end = timer()
-    print(f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs \
+    logging.info(f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs \
                    ({dup_count / len(xml_fpaths_hashes) * 100:.2f}%) took {end-start:.2f} sec")

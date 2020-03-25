@@ -6,7 +6,6 @@ import datetime
 import argparse
 import xmltodict
 from timeit import default_timer as timer
-#from ml4cvd.logger import load_config # need help figuring out import paths
 
 
 # This func is also in tensorize_partners_ecg.py so we should move it to
@@ -32,7 +31,7 @@ def _process_args(args):
 
     # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
     logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s", 
+                        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
                         handlers=[
                             logging.FileHandler(f"{now_str}_organize_xmls_log.txt"),
                             logging.StreamHandler()
@@ -41,7 +40,7 @@ def _process_args(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument("--src",
                         default="/data/partners_ecg/xml",
                         help="Path to directory containing source XMLs")
@@ -49,7 +48,7 @@ def parse_args():
     parser.add_argument("--dst",
                         default="/data/partners_ecg/dst",
                         help="Path to dir to organize XMLs in yyyy-mm dirs")
-    
+
     parser.add_argument("--bad",
                         default="/data/partners_ecg/xml_bad",
                         help="Path to directory in which to store malformed XMLs")
@@ -77,7 +76,7 @@ def run(args):
     logging.info(f"Source XML location: {args.src}")
     logging.info(f"Destination XML location: {args.dst}")
     logging.info(f"Bad XML location: {args.bad}")
-   
+
     num_bad_encodings = 0
     num_parsing_err = 0
     num_processed = 0
@@ -88,7 +87,7 @@ def run(args):
 
     # Loop through XML files in the directory
     for filename in os.listdir(args.src):
-    
+
         # Skip non-XML files
         if not filename.endswith(".xml"):
             continue
@@ -120,8 +119,8 @@ def run(args):
             #    Here, our encoding value is right-bound by ""?>"
 
             verbosePattern = re.compile("""
-                (?<=encoding\=\") 
-                (.*?) 
+                (?<=encoding\=\")
+                (.*?)
                 (?=\"\?\>)
                 """, re.VERBOSE)
 
