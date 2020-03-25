@@ -9,6 +9,7 @@ Extracting and tensorizing MUSE 12-lead ECGs
 5. [ECG Data Structure](#ecg-data-structure)
 6. [Extracting ECG Metadata](#extracting-ecg-metadata)
 7. [MUSE Virtual Machine Setup](#muse-virtual-machine-setup)
+8. [Other documentation](#other-documentation)
 
 ## Extracting ECGs to XML
 ### 1. Open the MUSE Editor
@@ -182,3 +183,6 @@ This CSV file will be used to construct a performant, queryable database to iden
     1. Enable window resizing and clipboard: Attach an optical drive to the VM. Start the VM and insert "Guest Additions". Follow steps to install "Guest Additions". 
     2. Enable remote desktop: Start the VM and install chrome remote desktop or anydesk to the virtual machine. Use Google Chrome, it should be on the disk image.
 10. If your trial of Windows is expired, try to reset by opening Command Prompt with Administrator Privileges in the virtual machine and enter: `slmgr /rearm`. This only works so many times, at that point, reset from snapshot or reimport from image.
+
+## Other documentation
+GE documentation is stored in a shared Partners Dropbox folder ([link](https://www.dropbox.com/sh/c5tgm0lory72ge0/AADqKvUicDdyWzHYhtad0lU4a?dl=0)), including 1. physician's guide to the Marquette 12SL ECG analysis program, 2. guide to MuseDB search, and 3. Muse v9 XML developer's guide.
