@@ -3,7 +3,7 @@
 # On-the-fly data generation of tensors for training or prediction.
 #
 # October 2018
-# Sam Friedman 
+# Sam Friedman
 # sam@broadinstitute.org
 
 # Python 2/3 friendly
@@ -45,11 +45,12 @@ class _ShufflePaths(Iterator):
         self.idx = 0
 
     def __next__(self):
-        path = self.paths[self.idx]
-        self.idx += 1
         if self.idx >= len(self.paths):
             self.idx = 0
+        path = self.paths[self.idx]
+        if self.idx == 0:
             np.random.shuffle(self.paths)
+        self.idx += 1
         return path
 
 
@@ -66,8 +67,10 @@ class _WeightedPaths(Iterator):
 
 
 class TensorGenerator:
-    def __init__(self, batch_size, input_maps, output_maps, paths, num_workers, cache_size,
-                 weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False, augment=False):
+    def __init__(
+        self, batch_size, input_maps, output_maps, paths, num_workers, cache_size,
+        weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False, augment=False,
+    ):
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
@@ -120,8 +123,10 @@ class TensorGenerator:
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
-                process = Process(target=worker_instance.multiprocessing_worker, name=name,
-                                  args=())
+                process = Process(
+                    target=worker_instance.multiprocessing_worker, name=name,
+                    args=(),
+                )
                 process.start()
                 self.workers.append(process)
         logging.info(f"Started {i} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB.")
@@ -129,7 +134,6 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
-        logging.debug(f'Currently there are {self.q.qsize()} queued batches.')
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
@@ -219,15 +223,16 @@ class TensorMapArrayCache:
 
 class _MultiModalMultiTaskWorker:
 
-    def __init__(self,
-                 q: Queue,
-                 input_maps: List[TensorMap], output_maps: List[TensorMap],
-                 path_iter: PathIterator, true_epoch_len: int,
-                 batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
-                 cache_size: float,
-                 name: str,
-                 augment: bool,
-                 ):
+    def __init__(
+        self,
+        q: Queue,
+        input_maps: List[TensorMap], output_maps: List[TensorMap],
+        path_iter: PathIterator, true_epoch_len: int,
+        batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
+        cache_size: float,
+        name: str,
+        augment: bool,
+    ):
         self.q = q
         self.input_maps = input_maps
         self.output_maps = output_maps
@@ -249,8 +254,6 @@ class _MultiModalMultiTaskWorker:
         self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
 
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
-        logging.info(f'{name} initialized cache of size {self.cache.row_size * self.cache.nrows / 1e9:.3f} GB.')
-
         self.dependents = {}
         self.idx = 0
 
@@ -268,7 +271,7 @@ class _MultiModalMultiTaskWorker:
             return self.hd5
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
-        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment)
+        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
@@ -303,8 +306,10 @@ class _MultiModalMultiTaskWorker:
         self.stats['epochs'] += 1
         for k in self.stats:
             logging.debug(f"{k}: {self.stats[k]}")
-        error_info = '\n\t\t'.join([f'[{error}] - {count}'
-                                    for error, count in sorted(self.epoch_stats.items(), key=lambda x: x[1], reverse=True)])
+        error_info = '\n\t\t'.join([
+            f'[{error}] - {count}'
+            for error, count in sorted(self.epoch_stats.items(), key=lambda x: x[1], reverse=True)
+        ])
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {self.true_epoch_len} paths.",
@@ -492,22 +497,24 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
     return train_paths, valid_paths, test_paths
 
 
-def test_train_valid_tensor_generators(tensor_maps_in: List[TensorMap],
-                                       tensor_maps_out: List[TensorMap],
-                                       tensors: str,
-                                       batch_size: int,
-                                       valid_ratio: float,
-                                       test_ratio: float,
-                                       test_modulo: int,
-                                       num_workers: int,
-                                       cache_size: float,
-                                       balance_csvs: List[str],
-                                       keep_paths: bool = False,
-                                       keep_paths_test: bool = True,
-                                       mixup_alpha: float = -1.0,
-                                       test_csv: str = None,
-                                       siamese: bool = False,
-                                       **kwargs) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
+def test_train_valid_tensor_generators(
+    tensor_maps_in: List[TensorMap],
+    tensor_maps_out: List[TensorMap],
+    tensors: str,
+    batch_size: int,
+    valid_ratio: float,
+    test_ratio: float,
+    test_modulo: int,
+    num_workers: int,
+    cache_size: float,
+    balance_csvs: List[str],
+    keep_paths: bool = False,
+    keep_paths_test: bool = True,
+    mixup_alpha: float = -1.0,
+    test_csv: str = None,
+    siamese: bool = False,
+    **kwargs
+) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
     """ Get 3 tensor generator functions for training, validation and testing data.
 
     :param tensor_maps_in: list of TensorMaps that are input names to a model

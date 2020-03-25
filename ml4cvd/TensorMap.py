@@ -15,6 +15,7 @@ from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 import h5py
 import numpy as np
 from tensorflow.keras import Model
+from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
@@ -71,29 +72,30 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
-    def __init__(self,
-                 name: str,
-                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
-                 loss: Optional[Union[str, Callable]] = None,
-                 shape: Optional[Tuple[int, ...]] = None,
-                 model: Optional[Model] = None,
-                 metrics: Optional[List[Union[str, Callable]]] = None,
-                 parents: Optional[List["TensorMap"]] = None,
-                 sentinel: Optional[float] = None,
-                 validator: Optional[Callable] = None,
-                 cacheable: Optional[bool] = True,
-                 activation: Optional[Union[str, Callable]] = None,
-                 path_prefix: Optional[str] = None,
-                 loss_weight: Optional[float] = 1.0,
-                 channel_map: Optional[Dict[str, int]] = None,
-                 storage_type: Optional[StorageType] = None,
-                 dependent_map: Optional[str] = None,
-                 augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
-                 normalization: Optional[Normalizer] = None,
-                 annotation_units: Optional[int] = 32,
-                 tensor_from_file: Optional[Callable] = None,
-                 discretization_bounds: Optional[List[float]] = None,
-                 ):
+    def __init__(
+        self,
+        name: str,
+        interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
+        loss: Optional[Union[str, Callable]] = None,
+        shape: Optional[Tuple[int, ...]] = None,
+        model: Optional[Model] = None,
+        metrics: Optional[List[Union[str, Callable]]] = None,
+        parents: Optional[List["TensorMap"]] = None,
+        sentinel: Optional[float] = None,
+        validator: Optional[Callable] = None,
+        cacheable: Optional[bool] = True,
+        activation: Optional[Union[str, Callable]] = None,
+        path_prefix: Optional[str] = None,
+        loss_weight: Optional[float] = 1.0,
+        channel_map: Optional[Dict[str, int]] = None,
+        storage_type: Optional[StorageType] = None,
+        dependent_map: Optional[str] = None,
+        augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
+        normalization: Optional[Normalizer] = None,
+        annotation_units: Optional[int] = 32,
+        tensor_from_file: Optional[Callable] = None,
+        discretization_bounds: Optional[List[float]] = None,
+    ):
         """TensorMap constructor
 
 
@@ -194,7 +196,7 @@ class TensorMap(object):
             self.tensor_from_file = _default_tensor_from_file
 
         if self.validator is None:
-            self.validator = lambda tm, x: x
+            self.validator = lambda tm, x, hd5: None
 
     def __hash__(self):
         return hash((self.name, self.shape, self.interpretation))
@@ -272,11 +274,13 @@ class TensorMap(object):
     def discretize(self, np_tensor):
         if not self.is_discretized():
             return np_tensor
-        return keras.utils.to_categorical(np.digitize(np_tensor, bins=self.discretization_bounds),
-                                          num_classes=len(self.discretization_bounds) + 1)
+        return to_categorical(
+            np.digitize(np_tensor, bins=self.discretization_bounds),
+            num_classes=len(self.discretization_bounds) + 1,
+        )
 
-    def postprocess_tensor(self, np_tensor, augment: bool):
-        self.validator(self, np_tensor)
+    def postprocess_tensor(self, np_tensor, augment: bool, hd5: h5py.File):
+        self.validator(self, np_tensor, hd5=hd5)
         np_tensor = self.apply_augmentations(np_tensor, augment)
         np_tensor = self.normalize(np_tensor)
         return self.discretize(np_tensor)
@@ -294,13 +298,13 @@ class TensorMap(object):
 
 
 def make_range_validator(minimum: float, maximum: float):
-    def _range_validator(tm: TensorMap, tensor: np.ndarray):
+    def _range_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         if not ((tensor > minimum).all() and (tensor < maximum).all()):
             raise ValueError(f'TensorMap {tm.name} failed range check.')
     return _range_validator
 
 
-def no_nans(tm: TensorMap, tensor: np.ndarray):
+def no_nans(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if np.isnan(tensor).any():
         raise ValueError(f'Skipping TensorMap {tm.name} with NaNs.')
 
@@ -316,7 +320,7 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
 def str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
-        return datetime.datetime.now().date()
+        raise ValueError(f'cant make date from {d}')
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
