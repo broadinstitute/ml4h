@@ -236,6 +236,24 @@ TMAPS[task] = TensorMap(task,
                         tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
                         shape=(1,))
 
+task = "partners_ecg_time"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="acquisitiontime"),
+                        shape=(1,))
+
+task = "partners_ecg_sitename"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="sitename"),
+                        shape=(1,))
+
+task = "partners_ecg_location"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.LANGUAGE,
+                        tensor_from_file=make_partners_ecg_tensor(key="location"),
+                        shape=(1,))
+
 task = "partners_ecg_dob"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.LANGUAGE,
@@ -256,6 +274,7 @@ TMAPS[task] = TensorMap(task,
                         shape=(1,),
                         validator=make_range_validator(10, 200))
 
+# TODO is this a duplicate?
 TMAPS['partners_ventricular_rate'] = TensorMap('VentricularRate', loss='logcosh', tensor_from_file=make_partners_ecg_tensor(key="ventricularrate"), shape=(1,),
                                                validator=make_range_validator(10, 200), normalization={'mean': 59.3, 'std': 10.6})
 
@@ -293,8 +312,34 @@ TMAPS[task] = TensorMap(task,
                         shape=(1,),
                         validator=make_range_validator(100, 800))
 
+task = "partners_ecg_paxis"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(key="paxis"),
+                        shape=(1,),
+                        validator=make_range_validator(-180, 180))
 
-task = "partners_weight_lbs"
+task = "partners_ecg_raxis"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(key="raxis"),
+                        shape=(1,),
+                        validator=make_range_validator(-180, 180))
+
+task = "partners_ecg_taxis"
+TMAPS[task] = TensorMap(task,
+                        interpretation=Interpretation.CONTINUOUS,
+                        loss='logcosh',
+                        metrics=['mse'],
+                        tensor_from_file=make_partners_ecg_tensor(key="taxis"),
+                        shape=(1,),
+                        validator=make_range_validator(-180, 180))
+
+task = "partners_ecg_weight_lbs"
 TMAPS[task] = TensorMap(task,
                         interpretation=Interpretation.CONTINUOUS,
                         loss='logcosh',
@@ -338,7 +383,7 @@ def partners_bmi(tm, hd5, dependents={}):
     return np.array([weight_kg / (height_m*height_m)])
 
 
-TMAPS['partners_bmi'] = TensorMap('bmi', channel_map={'bmi': 0}, tensor_from_file=partners_bmi)
+TMAPS['partners_ecg_bmi'] = TensorMap('partners_ecg_bmi', channel_map={'bmi': 0}, tensor_from_file=partners_bmi)
 
 
 def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
@@ -362,9 +407,9 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
 
 
 race_synonyms = {'asian': ['oriental'], 'hispanic': ['latino'], 'white': ['caucasian']}
-TMAPS['partners_race'] = TensorMap('race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+TMAPS['partners_ecg_race'] = TensorMap('partners_ecg_race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
                                    tensor_from_file=partners_channel_string('race', race_synonyms))
-TMAPS['partners_gender'] = TensorMap('gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
+TMAPS['partners_ecg_gender'] = TensorMap('partners_ecg_gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
                                      tensor_from_file=partners_channel_string('gender'))
 
 
@@ -386,7 +431,7 @@ def _partners_adult(hd5_key, minimum_age=18):
     return tensor_from_string
 
 
-TMAPS['partners_adult_gender'] = TensorMap('adult_gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
+TMAPS['partners_ecg_adult_gender'] = TensorMap('partners_ecg_adult_gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
                                            tensor_from_file=_partners_adult('gender'))
 
 

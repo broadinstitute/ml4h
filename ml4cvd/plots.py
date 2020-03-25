@@ -674,8 +674,9 @@ def _draw_partners_ecg(data, args):
     ax0.text(0.385, 0.9, f"{dt:%d-%b-%Y %H:%M:%S}".upper(), weight='bold')
     ax0.text(0.55, 0.9,  f"{data['sitename']}", weight='bold')
 
-    ax0.text(0.0, 0.75, f"{dob} ({data['age']} yr)", weight='bold') # TODO age units
-    ax0.text(0.0, 0.67, f"{data['gender']}".title(), weight='bold')
+    ax0.text(0.0, 0.75, f"{dob} ({int(data['age'])} yr)", weight='bold') # TODO age units
+    gender = {value: key for key, value in data['gender'].items()}
+    ax0.text(0.0, 0.67, f"{gender[1]}".title(), weight='bold')
     ax0.text(0.0, 0.51, f"Room: ", weight='bold') # TODO room?
     ax0.text(0.0, 0.43, f"Loc: {data['location']}", weight='bold')
 
@@ -850,7 +851,7 @@ def plot_partners_ecg(args):
                         if tm.channel_map:
                             for cm in tm.channel_map:
                                 tdict[tm.name][cm].append(
-                                    tensor[:, tm.channel_map[cm]])
+                                    tensor[:, tm.channel_map[cm]] if tm.name == 'partners_ecg_voltage' else tensor[tm.channel_map[cm]])
                         else:
                             tdict[tm.name][tm.name].append(tensor)
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
@@ -875,7 +876,10 @@ def plot_partners_ecg(args):
                 for cm in tm.channel_map:
                     data[key].update({cm: tdict[tm.name][cm][i]})
             else:
-                data.update({key: tdict[tm.name][tm.name][i]})
+                val = tdict[tm.name][tm.name][i]
+                if tm.shape[0] == 1:
+                    val = val[0]
+                data.update({key: val})
 
         _draw_partners_ecg(data, args)
 

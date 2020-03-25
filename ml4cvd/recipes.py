@@ -232,8 +232,8 @@ def _tensors_to_df(args):
     # df (or pd.series) of floats will have the type "float", a df of strings
     # assumes a dtype of "object". Casting to dtype "string" will confer performnace
     # improvements in future versions of Pandas
-    df["fpath"] = df["fpath"].astype(str)
-    df["generator"] = df["generator"].astype(str)
+    df["fpath"] = df["fpath"].astype("string")
+    df["generator"] = df["generator"].astype("string")
 
     # Iterate through tensor (and channel) maps and cast Pandas dtype to string
     if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
@@ -241,10 +241,10 @@ def _tensors_to_df(args):
             if tm.channel_map:
                 for cm in tm.channel_map:
                     key = (tm.name, cm)
-                    df[key] = df[key].astype(str)
+                    df[key] = df[key].astype("string")
             else:
                 key = tm.name
-                df[key] = df[key].astype(str)
+                df[key] = df[key].astype("string")
     logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} hd5 files into DataFrame")
     return df
 
