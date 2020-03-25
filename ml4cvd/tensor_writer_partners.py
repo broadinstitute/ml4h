@@ -53,6 +53,8 @@ def write_tensors_partners(a_id: str,
         # Convert all XMLs inside the dir into hd5 files
         _convert_xml_to_hd5_wrapper(fpath_xml_dir, tensors, n_jobs, stats)
 
+    logging.info('Converted {stats[ECG]} XMLs to HD5')
+
     # Get all hd5 directories
     fpath_hd5_dirs = _get_dirs_in_dir(tensors)
 
@@ -663,7 +665,7 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5):
         # However, ExpatError should be impossible to throw, since earlier
         # we catch XMLs filled with gibberish.
         except (IndexError, ExpatError):
-            logging.info('Conversion failed! Voltage is empty or badly formatted.')
+            logging.warning('Conversion failed! Voltage is empty or badly formatted.')
             convert = False
 
     # If convert is still true up to here, make the hd5
