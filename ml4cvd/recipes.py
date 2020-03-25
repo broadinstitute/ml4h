@@ -569,6 +569,8 @@ def train_shallow_model(args):
 
 
 def train_char_model(args):
+    args.num_workers = 0
+    logging.info(f'Number of workers forced to 0 for character emitting LSTM model.')
     base_model = make_multimodal_multitask_model(**args.__dict__)
     model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
                                                   args.language_prefix, args.model_layers)
