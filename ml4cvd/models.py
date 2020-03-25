@@ -157,7 +157,7 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, base_model, language_layer, language_prefix)
     tensor_maps_in.extend(char_maps_in)
     tensor_maps_out.extend(char_maps_out)
-    char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate, language_layer)
+    char_model = make_character_model(tensor_maps_in, tensor_maps_out, learning_rate, language_layer, model_layers=model_layers)
     losses = []
     my_metrics = {}
     loss_weights = []
