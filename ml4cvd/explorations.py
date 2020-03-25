@@ -338,7 +338,7 @@ def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, t
                 char_map = PARTNERS_CHAR_2_IDX
             else:
                 index_map = ECG_IDX_2_CHAR
-                char_map = PARTNERS_CHAR_2_IDX
+                char_map = ECG_CHAR_2_IDX
         elif tm.interpretation == Interpretation.EMBEDDING:
             embed_map = tm
     window_size = test_batch[language_map.input_name()].shape[1]
