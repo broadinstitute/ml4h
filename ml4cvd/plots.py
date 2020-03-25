@@ -906,7 +906,18 @@ def plot_partners_ecg(args):
         _draw_partners_ecg(data, args)
 
 
-def plot_cross_reference(df_x, src_time, dst_time, args, title):
+def plot_cross_reference(args, df_x, title):
+    if df_x.empty:
+        logging.info(f'No cross reference found for "{title}"')
+        return
+
+    title = title.replace(' ', '_')
+    src_time = f"clean_{args.src_key_time[0]}"
+    dst_time = f"clean_{args.dst_key_time[0]}"
+    if args.dst_key_before_outcome_time:
+        time_frame = f"between {args.dst_name} {args.dst_key_before_outcome_time[0]} and {args.dst_key_time[0]}"
+    else:
+        time_frame = f"within {args.days_before_outcome} days of outcome"
 
     # compute day diffs
     day_diffs = list(df_x.apply(lambda row: (row[src_time] - row[dst_time]).days, axis=1))
@@ -917,15 +928,15 @@ def plot_cross_reference(df_x, src_time, dst_time, args, title):
     ax.hist(day_diffs, bins=range(max_day, 1, 1))
     ax.set_xlabel("Days relative to outcome")
     ax.set_ylabel("Number of patients")
-    ax.set_title(f"Distribution of ECGs within {max_day} days of outcome: N={len(day_diffs)}")
+    ax.set_title(f"Distribution of {args.src_name} {time_frame}: N={len(day_diffs)}")
 
     # day diffs contains negative numbers
     ax.text(0.05, 0.90, f"Min: {np.max(day_diffs)}", transform=ax.transAxes)
     ax.text(0.05, 0.85, f"Max: {max_day}", transform=ax.transAxes)
-    ax.text(0.05, 0.80, f"Median: {-np.median(day_diffs):.0f}", transform=ax.transAxes)
+    ax.text(0.05, 0.80, f"Median: {np.median(day_diffs):.0f}", transform=ax.transAxes)
     plt.tight_layout()
 
-    fpath = os.path.join(args.output_folder, args.id, f"{title}{IMAGE_EXT}")
+    fpath = os.path.join(args.output_folder, args.id, f"distribution_{title}{IMAGE_EXT}")
     fig.savefig(fpath)
     logging.info(f"Saved histogram of days pre-outcome to {fpath}")
 

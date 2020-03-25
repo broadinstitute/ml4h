@@ -8,9 +8,11 @@ pip install ${HOME_DIR}/repos/ml/.
 
 python ${HOME}/repos/ml/ml4cvd/recipes.py \
     --mode cross_reference \
+    --src_name ECG \
     --src_tensors /data/partners_ecg/mgh_muse_rest_ecg_metadata.csv \
     --src_key_join mrn \
     --src_key_time acquisition_date '%Y-%m-%d %H:%M:%S.%f' \
+    --dst_name 'Blake 08' \
     --dst_tensors /data/icu/blake_8_metadata.csv \
     --dst_key_join MRN \
     --dst_key_time tDischarge '%Y-%m-%d %H:%M:%S' \

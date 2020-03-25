@@ -202,11 +202,13 @@ def parse_args():
 
     # Cohort cross referencing arguments
     parser.add_argument('--src_tensors', help='Tensors to cross reference.')
+    parser.add_argument('--src_name', default='src', help='Name of the source cohort.')
     parser.add_argument('--src_key_join', help='Key to cross reference source tensors on.')
     parser.add_argument('--src_key_time', nargs=2, metavar=('SRC_KEY_TIME', 'SRC_KEY_TIME_FORMAT'), help='Key and format (python strftime format) to time in source tensors.')
     parser.add_argument('--src_tensor_maps', default=[], help='Do not set this directly. This is automatically set.')
 
     parser.add_argument('--dst_tensors', help='Tensors to use as a cross reference.')
+    parser.add_argument('--dst_name', default='dst', help='Name of the destination cohort.')
     parser.add_argument('--dst_key_join', help='Key to cross reference destination tensors on.')
     parser.add_argument('--dst_key_time', nargs=2, metavar=('DST_KEY_TIME', 'DST_KEY_TIME_FORMAT'), help='Key and format (python strftime format) to time in destination tensors.')
     parser.add_argument('--dst_key_outcome', help='Key to outcome in destination tensors.')
@@ -285,16 +287,13 @@ def _process_args(args):
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
 
     if args.src_tensors and os.path.isdir(args.src_tensors):
-        args.src_tensor_maps = [
-            _get_tmap(args.src_key_join),
-            _get_tmap(args.src_key_time[0])
-        ]
+        needed_tensor_maps = [args.src_key_join, args.src_key_time[0]]
+        args.src_tensor_maps = [_get_tmap(tm, needed_tensor_maps) for tm in needed_tensor_maps]
     if args.dst_tensors and os.path.isdir(args.dst_tensors):
-        args.dst_tensor_maps = [
-            _get_tmap(args.dst_key_join),
-            _get_tmap(args.dst_key_time[0]),
-            _get_tmap(args.dst_key_outcome)
-        ]
+        needed_tensor_maps = [args.dst_key_join, args.dst_key_time[0], args.dst_key_outcome]
+        if args.dst_key_before_outcome_time:
+            needed_tensor_maps.append(args.dst_key_before_outcome_time)
+        args.dst_tensor_maps = [_get_tmap(tm, needed_tensor_maps) for tm in needed_tensor_maps]
 
     np.random.seed(args.random_seed)
 

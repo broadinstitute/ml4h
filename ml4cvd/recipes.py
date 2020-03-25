@@ -15,7 +15,7 @@ from typing import List, Dict
 from functools import reduce
 from operator import itemgetter
 from timeit import default_timer as timer
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, OrderedDict
 from datetime import timedelta
 
 from ml4cvd.arguments import parse_args
@@ -402,37 +402,39 @@ def explore(args):
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
 
 
-def _report_cross_reference(df_x, index_field, outcome_field, args, title):
-    outcomes, counts = np.unique(df_x[outcome_field], return_counts=True)
+def _report_cross_reference(args, df_x, title):
+    title = title.replace(' ', '_')
+    outcomes, counts = np.unique(df_x[args.dst_key_outcome], return_counts=True)
     outcomes = np.append(outcomes, ["Total"])
     counts = np.append(counts, [sum(counts)])
 
     # save outcome distribution to csv
-    df_out = pd.DataFrame({ "counts": counts, outcome_field: outcomes }).set_index(outcome_field, drop=True)
+    df_out = pd.DataFrame({ "counts": counts, args.dst_key_outcome: outcomes }).set_index(args.dst_key_outcome, drop=True)
     fpath = os.path.join(args.output_folder, args.id, f"summary_{title}.csv")
     df_out.to_csv(fpath)
     logging.info(f"Saved summary stats of cross reference to {fpath}")
 
     # save cross reference to csv
     fpath = os.path.join(args.output_folder, args.id, f"list_{title}.csv")
-    df_x.set_index(index_field, drop=True).to_csv(fpath)
+    df_x.set_index(args.src_key_join, drop=True).to_csv(fpath)
     logging.info(f"Saved cross reference to {fpath}")
 
 
-# TODO make these modular
-def _extract_numeric(df, field):
+def _extract_field(df, field):
     field_orig = field
     field = f"clean_{field}"
     df[field] = df[field_orig]
+    return df, field, field_orig
+
+def _extract_numeric(df, field):
+    df, field, field_orig = _extract_field(df, field)
     df[field] = pd.to_numeric(df[field], errors="coerce")
     df = df.dropna()
     return df, field, field_orig
 
 
 def _extract_time(df, time_field, time_format):
-    time_field_orig = time_field
-    time_field = f"clean_{time_field}"
-    df[time_field] = df[time_field_orig]
+    df, time_field, time_field_orig = _extract_field(df, time_field)
     df[time_field] = df[time_field].apply(lambda x: x.title())
     df[time_field] = pd.to_datetime(df[time_field], format=time_format, errors="coerce")
     df = df.dropna()
@@ -440,20 +442,32 @@ def _extract_time(df, time_field, time_format):
 
 
 def cross_reference(args):
+    cohort_counts = OrderedDict()
     args.num_workers = 0
     src_path = args.src_tensors
+    src_name = args.src_name
     src_join = args.src_key_join
+    src_join_orig = src_join
     src_time, src_time_format = args.src_key_time
+    src_time = src_time
 
     dst_path = args.dst_tensors
+    dst_name = args.dst_name
     dst_join = args.dst_key_join
+    dst_join_orig = dst_join
     dst_time, dst_time_format = args.dst_key_time
+    dst_time_orig = dst_time
     dst_outcome = args.dst_key_outcome
 
-    days_before_outcome = args.days_before_outcome
-    dst_before_outcome_time, dst_before_outcome_time_format = args.dst_key_before_outcome_time
-    if days_before_outcome and dst_before_outcome_time:
-        raise RuntimeError("Cannot specify both days_before_outcome and dst_key_before_outcome_time for cross referencing.")
+    days_before_outcome = None
+    dst_before_outcome_time = None
+    if args.dst_key_before_outcome_time:
+        dst_before_outcome_time, dst_before_outcome_time_format = args.dst_key_before_outcome_time
+        dst_before_outcome_time_orig = dst_before_outcome_time
+        time_description = f"between {dst_name} {dst_before_outcome_time_orig} and {dst_time_orig}"
+    else:
+        days_before_outcome = args.days_before_outcome
+        time_description = f"{days_before_outcome} days before {dst_name} {dst_time_orig}"
 
     # load data into dataframes
     if os.path.isdir(src_path):
@@ -482,9 +496,6 @@ def cross_reference(args):
             cols.append(dst_before_outcome_time)
         df_dst = df_dst[cols]
 
-    len_src = len(df_src[src_join])
-    len_dst = len(df_dst[dst_join])
-
     # parse join column to numeric field
     if args.numeric_join:
         df_src, src_join, src_join_orig = _extract_numeric(df_src, src_join)
@@ -496,12 +507,19 @@ def cross_reference(args):
     if dst_before_outcome_time:
         df_dst, dst_before_outcome_time, dst_before_outcome_time_orig = _extract_time(df_dst, dst_before_outcome_time, dst_before_outcome_time_format)
 
+    cohort_counts[f"{src_name} {src_join_orig}"] = len(df_src[src_join])
+    cohort_counts[f"unique {src_name} {src_join_orig}"] = len(np.unique(df_src[src_join]))
+    cohort_counts[f"{dst_name} {dst_join_orig}"] = len(df_dst[dst_join])
+    cohort_counts[f"unique {dst_name} {dst_join_orig}"] = len(np.unique(df_dst[dst_join]))
+
     # filter to only occurrences that appear in the other
     df_src = df_src[np.isin(df_src[src_join], df_dst[dst_join])]
     df_dst = df_dst[np.isin(df_dst[dst_join], df_src[src_join])]
 
-    len_src_x = len(df_src[src_join])
-    len_dst_x = len(df_dst[dst_join])
+    cohort_counts[f"{src_name} {src_join_orig} in {dst_name}"] = len(df_src[src_join])
+    cohort_counts[f"unique {src_name} {src_join_orig} in {dst_name}"] = len(np.unique(df_src[src_join]))
+    cohort_counts[f"{dst_name} {dst_join_orig} in {src_name}"] = len(df_dst[dst_join])
+    cohort_counts[f"unique {dst_name} {dst_join_orig} in {src_name}"] = len(np.unique(df_dst[dst_join]))
 
     # sort outcomes in dst by date in descending order so that earlier outcomes are used for earlier src rows
     df_dst = df_dst.sort_values(by=[dst_join, dst_time], ascending=[True, False])
@@ -515,7 +533,6 @@ def cross_reference(args):
         df_src[dst_before_outcome_time_orig] = ''
 
     for i, row in df_dst.iterrows():
-        dst_join_val, dst_time_val, dst_time_orig_val, dst_outcome_val = row[dst_join], row[dst_time], row[dst_time_orig], row[dst_outcome]
 
         # compute mask for which src matches criteria
         if dst_before_outcome_time:
@@ -541,11 +558,12 @@ def cross_reference(args):
     df_src = df_src.dropna()
 
     # generate reports
-    title = "during_outcome_encounter" if dst_before_outcome_time else f"{days_before_outcome}_before_outcome"
-    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"all_src_{title}")
-    plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_all_src_{title}")
+    title = f"all {src_name} {time_description}"
+    _report_cross_reference(args, df_src, title)
+    plot_cross_reference(args, df_src, title)
 
-    len_src_in_dst_in_time = len(df_src[src_join])
+    cohort_counts[f"{src_name} in {dst_name} {time_description}"] = len(df_src[src_join])
+    cohort_counts[f"unique {src_name} in {dst_name} {time_description}"] = len(np.unique(df_src[src_join]))
 
     # get only most recent row in src relative to row in dst
     # src must be sorted in ascending order to use last() on groupby
@@ -553,16 +571,16 @@ def cross_reference(args):
     df_src = df_src.groupby(by=[src_join, dst_time, dst_outcome], as_index=False).last()
 
     # generate reports
-    _report_cross_reference(df_src, src_join_orig, dst_outcome, args, f"most_recent_src_{title}")
-    plot_cross_reference(df_src, src_time, dst_time, args, f"distribution_most_recent_src_{title}")
+    title = f"most recent {src_name} {time_description}"
+    _report_cross_reference(args, df_src, title)
+    plot_cross_reference(args, df_src, title)
 
-    len_most_recent_src_in_dst_in_time = len(df_src[src_join])
+    cohort_counts[f"most recent {src_name} in {dst_name} {time_description}"] = len(df_src[src_join])
+    cohort_counts[f"unique and most recent {src_name} in {dst_name} {time_description}"] = len(np.unique(df_src[src_join]))
 
     # report some high level counts
-    stats = pd.DataFrame({'data': ['src', 'src_in_dst', 'src_in_dst_in_time', 'most_recent_src_in_dst_in_time', 'dst', 'dst_in_src'],
-                          'counts': [len_src, len_src_x, len_src_in_dst_in_time, len_most_recent_src_in_dst_in_time, len_dst, len_dst_x]}).set_index('data')
     fpath = os.path.join(args.output_folder, args.id, "summary_cohort_counts.csv")
-    stats.to_csv(fpath)
+    pd.DataFrame.from_dict(cohort_counts, orient='index', columns=['count']).to_csv(fpath)
     logging.info(f"Saved cohort counts to {fpath}")
 
 
