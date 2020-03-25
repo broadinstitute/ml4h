@@ -39,7 +39,7 @@ def write_tensors_partners(a_id: str,
     :return: None
     """
 
-    n_jobs = 4
+    n_jobs = -1
 
     # Get all XML directories
     fpath_xml_dirs = _get_dirs_in_dir(xml_folder)
