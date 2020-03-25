@@ -15,8 +15,10 @@ from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 import h5py
 import numpy as np
 from tensorflow.keras import Model
+from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.defines import StorageType, EPS, JOIN_CHAR, STOP_CHAR
+from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR
+from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
@@ -39,10 +41,25 @@ class Interpretation(Enum):
     LANGUAGE = auto()
     COX_PROPORTIONAL_HAZARDS = auto()
     DISCRETIZED = auto()
+    MESH = auto()
 
     def __str__(self):
         """class Interpretation.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split('.')[1])
+
+
+def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
+    """
+    For backward compatibility. New TensorMaps should use a Normalizer.
+    """
+    if normalization is None:
+        return
+    if 'mean' in normalization and 'std' in normalization:
+        return Standardize(mean=normalization['mean'], std=normalization['std'])
+    if 'zero_mean_std1' in normalization:
+        return ZeroMeanStd1()
+    else:
+        raise NotImplementedError(f'Cannot convert {normalization}')
 
 
 class TensorMap(object):
@@ -55,29 +72,30 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
-    def __init__(self,
-                 name: str,
-                 interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
-                 loss: Optional[Union[str, Callable]] = None,
-                 shape: Optional[Tuple[int]] = None,
-                 model: Optional[Model] = None,
-                 metrics: Optional[List[Union[str, Callable]]] = None,
-                 parents: Optional[List["TensorMap"]] = None,
-                 sentinel: Optional[float] = None,
-                 validator: Optional[Callable] = None,
-                 cacheable: Optional[bool] = True,
-                 activation: Optional[Union[str, Callable]] = None,
-                 path_prefix: Optional[str] = None,
-                 loss_weight: Optional[float] = 1.0,
-                 channel_map: Optional[Dict[str, int]] = None,
-                 storage_type: Optional[StorageType] = None,
-                 dependent_map: Optional[str] = None,
-                 augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
-                 normalization: Optional[Dict[str, Any]] = None,  # TODO what type is this really?
-                 annotation_units: Optional[int] = 32,
-                 tensor_from_file: Optional[Callable] = None,
-                 discretization_bounds: Optional[List[float]] = None,
-                 ):
+    def __init__(
+        self,
+        name: str,
+        interpretation: Optional[Interpretation] = Interpretation.CONTINUOUS,
+        loss: Optional[Union[str, Callable]] = None,
+        shape: Optional[Tuple[int, ...]] = None,
+        model: Optional[Model] = None,
+        metrics: Optional[List[Union[str, Callable]]] = None,
+        parents: Optional[List["TensorMap"]] = None,
+        sentinel: Optional[float] = None,
+        validator: Optional[Callable] = None,
+        cacheable: Optional[bool] = True,
+        activation: Optional[Union[str, Callable]] = None,
+        path_prefix: Optional[str] = None,
+        loss_weight: Optional[float] = 1.0,
+        channel_map: Optional[Dict[str, int]] = None,
+        storage_type: Optional[StorageType] = None,
+        dependent_map: Optional[str] = None,
+        augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
+        normalization: Optional[Normalizer] = None,
+        annotation_units: Optional[int] = 32,
+        tensor_from_file: Optional[Callable] = None,
+        discretization_bounds: Optional[List[float]] = None,
+    ):
         """TensorMap constructor
 
 
@@ -120,7 +138,7 @@ class TensorMap(object):
         self.channel_map = channel_map
         self.storage_type = storage_type
         self.augmentations = augmentations
-        self.normalization = normalization
+        self.normalization = normalization if isinstance(normalization, Normalizer) else _convert_old_normalization(normalization)
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
@@ -178,7 +196,7 @@ class TensorMap(object):
             self.tensor_from_file = _default_tensor_from_file
 
         if self.validator is None:
-            self.validator = lambda tm, x: x
+            self.validator = lambda tm, x, hd5: None
 
     def __repr__(self):
         return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
@@ -224,6 +242,9 @@ class TensorMap(object):
     def is_language(self):
         return self.interpretation == Interpretation.LANGUAGE
 
+    def is_mesh(self):
+        return self.interpretation == Interpretation.MESH
+
     def is_cox_proportional_hazard(self):
         return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
 
@@ -251,25 +272,18 @@ class TensorMap(object):
     def normalize(self, np_tensor):
         if self.normalization is None:
             return np_tensor
-        elif 'zero_mean_std1' in self.normalization:
-            np_tensor -= np.mean(np_tensor)
-            np_tensor /= np.std(np_tensor) + EPS
-            return np_tensor
-        elif 'mean' in self.normalization and 'std' in self.normalization:
-            np_tensor -= self.normalization['mean']
-            np_tensor /= (self.normalization['std'] + EPS)
-            return np_tensor
-        else:
-            raise ValueError(f'No way to normalize Tensor Map named:{self.name}')
+        return self.normalization.normalize(np_tensor)
 
     def discretize(self, np_tensor):
         if not self.is_discretized():
             return np_tensor
-        return keras.utils.to_categorical(np.digitize(np_tensor, bins=self.discretization_bounds),
-                                          num_classes=len(self.discretization_bounds) + 1)
+        return to_categorical(
+            np.digitize(np_tensor, bins=self.discretization_bounds),
+            num_classes=len(self.discretization_bounds) + 1,
+        )
 
-    def postprocess_tensor(self, np_tensor, augment: bool):
-        self.validator(self, np_tensor)
+    def postprocess_tensor(self, np_tensor, augment: bool, hd5: h5py.File):
+        self.validator(self, np_tensor, hd5=hd5)
         np_tensor = self.apply_augmentations(np_tensor, augment)
         np_tensor = self.normalize(np_tensor)
         return self.discretize(np_tensor)
@@ -277,14 +291,7 @@ class TensorMap(object):
     def rescale(self, np_tensor):
         if self.normalization is None:
             return np_tensor
-        elif 'mean' in self.normalization and 'std' in self.normalization:
-            np_tensor = np.array(np_tensor) * self.normalization['std']
-            np_tensor = np.array(np_tensor) + self.normalization['mean']
-            return np_tensor
-        elif 'zero_mean_std1' in self.normalization:
-            return self.zero_mean_std1(np_tensor)
-        else:
-            return np_tensor
+        return self.normalization.un_normalize(np_tensor)
 
     def apply_augmentations(self, tensor: np.ndarray, augment: bool) -> np.ndarray:
         if augment and self.augmentations is not None:
@@ -294,13 +301,13 @@ class TensorMap(object):
 
 
 def make_range_validator(minimum: float, maximum: float):
-    def _range_validator(tm: TensorMap, tensor: np.ndarray):
+    def _range_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         if not ((tensor > minimum).all() and (tensor < maximum).all()):
             raise ValueError(f'TensorMap {tm.name} failed range check.')
     return _range_validator
 
 
-def no_nans(tm: TensorMap, tensor: np.ndarray):
+def no_nans(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if np.isnan(tensor).any():
         raise ValueError(f'Skipping TensorMap {tm.name} with NaNs.')
 
@@ -316,7 +323,7 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
 def str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
-        return datetime.datetime.now().date()
+        raise ValueError(f'cant make date from {d}')
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
@@ -391,6 +398,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
     """
     if tm.is_categorical() and not tm.is_discretized():
         index = 0
+        missing = True
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
             data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
@@ -399,13 +407,17 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 categorical_data[index] = 1.0
             else:
                 categorical_data = np.array(data)
+            missing = False
         elif tm.storage_type == StorageType.CATEGORICAL_FLAG:
             categorical_data[index] = 1.0
+            missing = False
         elif tm.path_prefix in hd5 and tm.channel_map is not None:
             for k in tm.channel_map:
                 if k in hd5[tm.path_prefix]:
-                    categorical_data[tm.channel_map[k]] = hd5[tm.path_prefix][k][0]
-        else:
+                    categorical_data[tm.channel_map[k]] = 1.0
+                    missing = False
+                    break
+        if missing:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
     elif tm.is_continuous():

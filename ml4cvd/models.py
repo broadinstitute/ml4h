@@ -12,35 +12,38 @@ from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, 
 
 # Keras imports
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
-from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Reshape, Add
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, TENSOR_EXT, ECG_CHAR_2_IDX
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX
 
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 
 
-def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
-                       learning_rate: float, model_file: str = None, model_layers: str = None) -> Model:
+def make_shallow_model(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
+    learning_rate: float, model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -82,12 +85,14 @@ def make_shallow_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[Te
     return m
 
 
-def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                             model_file: str = None, model_layers: str = None) -> Model:
+def make_waveform_model_unet(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a waveform predicting model
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -135,8 +140,10 @@ def make_waveform_model_unet(tensor_maps_in: List[TensorMap], tensor_maps_out: L
     return m
 
 
-def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                              base_model: Model, model_layers: str = None) -> Tuple[Model, Model]:
+def make_character_model_plus(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    base_model: Model, model_layers: str = None,
+) -> Tuple[Model, Model]:
     """Make a ECG captioning model from an ECG embedding model
 
     The base_model must have an embedding layer, but besides that can have any number of other predicition TensorMaps.
@@ -180,12 +187,14 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     return m, char_model
 
 
-def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                         model_file: str = None, model_layers: str = None) -> Model:
+def make_character_model(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a ECG captioning model
 
-	Input and output tensor maps are set from the command line.
-	Model summary printed to output
+    Input and output tensor maps are set from the command line.
+    Model summary printed to output
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
                             otherwise there are layer name collisions.
@@ -235,12 +244,14 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
     return m
 
 
-def make_siamese_model(base_model: Model,
-                       tensor_maps_in: List[TensorMap],
-                       hidden_layer: str,
-                       learning_rate: float = None,
-                       optimizer: str = 'adam',
-                       **kwargs) -> Model:
+def make_siamese_model(
+    base_model: Model,
+    tensor_maps_in: List[TensorMap],
+    hidden_layer: str,
+    learning_rate: float = None,
+    optimizer: str = 'adam',
+    **kwargs
+) -> Model:
     in_left = [Input(shape=tm.shape, name=tm.input_name() + '_left') for tm in tensor_maps_in]
     in_right = [Input(shape=tm.shape, name=tm.input_name() + '_right') for tm in tensor_maps_in]
     encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
@@ -297,7 +308,7 @@ class KLDivergenceLayer(Layer):
     """
     def __init__(self, *args, **kwargs):
         self.is_placeholder = True
-        self.kl_weight = K.variable(1e-5)
+        self.kl_weight = tf.Variable(1e-5, trainable=False)
         super(KLDivergenceLayer, self).__init__(**kwargs)
 
     def call(self, inputs, **kwargs):
@@ -366,106 +377,13 @@ def sampling(args):
     return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
 
-def _get_last_layer(named_layers):
-    max_index = -1
-    max_layer = ''
-    for k in named_layers:
-        cur_index = int(k.split('_')[-1])
-        if max_index < cur_index:
-            max_index = cur_index
-            max_layer = k
-    return named_layers[max_layer]
-
-
-def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
-    conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
-    dilation_rate = 1
-    conv_layer_functions = []
-    for i, c in enumerate(conv_layers):
-        for _ in range(inner_loop):
-            if dilate:
-                dilation_rate = 1 << i
-            conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
-
-    return conv_layer_functions
-
-
-def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
-    if name is not None:
-        x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
-    else:
-        x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
-    x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
-    x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-    return _get_last_layer(layers)
-
-
-def _conv_block(x: K.placeholder,
-                layers: Dict[str, K.placeholder],
-                conv_layers: List[Layer],
-                pool_layers: List[Layer],
-                dimension: int,
-                activation: str,
-                normalization: str,
-                regularization: str,
-                regularization_rate: float,
-                residual_convolution_layer: Layer):
-    pool_diff = len(conv_layers) - len(pool_layers)
-
-    for i, conv_layer in enumerate(conv_layers):
-        residual = x
-        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
-        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
-        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
-        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
-        if i >= pool_diff:
-            x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](x)
-            if residual_convolution_layer is not None:
-                residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
-        if residual_convolution_layer is not None:
-            if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
-                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
-            else:
-                residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
-                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
-    return x
-
-
-def _dense_block(x: K.placeholder,
-                 layers: Dict[str, K.placeholder],
-                 block_size: int,
-                 conv_layers: List[Layer],
-                 pool_layers: List[Layer],
-                 dimension: int,
-                 activation: str,
-                 normalization: str,
-                 regularization: str,
-                 regularization_rate: float,
-                 tm: Optional[TensorMap] = None):
-    name_prefix = "{tm.input_name()}_" if tm else ""
-    for i, conv_layer in enumerate(conv_layers):
-        layers[f"{name_prefix}Conv_{str(len(layers))}"] = conv_layer(x)
-        layers[f"{name_prefix}Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
-        layers[f"{name_prefix}Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(_get_last_layer(layers))
-        layers[f"{name_prefix}Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(_get_last_layer(layers))
-        if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
-            x = layers[f"{name_prefix}Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](_get_last_layer(layers))
-            dense_connections = [_get_last_layer(layers)]
-        else:
-            dense_connections += [_get_last_layer(layers)]
-            x = layers[f"{name_prefix}concatenate{JOIN_CHAR}{str(len(layers))}"] = tf.keras.layers.Concatenate(axis=CHANNEL_AXIS)(dense_connections[:])
-    return _get_last_layer(layers)
-
-
-def _get_layer_kind_sorted(named_layers, kind):
-    return [k for k in sorted(list(named_layers.keys()), key=lambda x: int(x.split('_')[-1])) if kind in k]
-
-
-def _variational_dense_layer(x: K.placeholder,
-                             layers: Dict[str, K.placeholder],
-                             units: int,
-                             activation: str, normalization: str,
-                             name=None):
+def _variational_dense_layer(
+    x: K.placeholder,
+    layers: Dict[str, K.placeholder],
+    units: int,
+    activation: str, normalization: str,
+    name=None,
+):
     if name:
         mu = layers[f"{name}_mu_{str(len(layers))}"] = Dense(units=units, name=name + '_mu')(x)
         log_var = layers[f"{name}_log_var_{str(len(layers))}"] = Dense(units=units, name=name + '_log_var')(x)
@@ -495,6 +413,7 @@ def make_variational_multimodal_multitask_model(
         conv_y: int = None,
         conv_z: int = None,
         conv_dropout: float = None,
+        conv_width: int = None,
         conv_dilate: bool = None,
         pool_x: int = None,
         pool_y: int = None,
@@ -503,7 +422,8 @@ def make_variational_multimodal_multitask_model(
         padding: str = None,
         learning_rate: float = None,
         optimizer: str = 'radam',
-        **kwargs) -> Tuple[Model, Model, Model]:
+        **kwargs
+) -> Tuple[Model, Model, Model]:
     """
     variational version of make_multimodal_multitask_model
     """
@@ -529,15 +449,21 @@ def make_variational_multimodal_multitask_model(
 
     for j, tm in enumerate(tensor_maps_in):
         if len(tm.shape) > 1:
-            conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_x, conv_y, conv_z, padding, conv_dilate)
+            conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, conv_dilate)
             pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(max_pools), pool_x, pool_y, pool_z)
-            last_conv = _conv_block(input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
-                                    conv_dropout, None)
-            dense_conv_fxns = _conv_layers_from_kind_and_dimension(len(tm.shape), conv_type, dense_blocks, conv_x, conv_y, conv_z, padding, False,
-                                                                   block_size)
+            last_conv = _conv_block_new(
+                input_tensors[j], layers, conv_fxns, pool_layers, len(tm.shape), activation, conv_normalize, conv_regularize,
+                conv_dropout, None,
+            )
+            dense_conv_fxns = _conv_layers_from_kind_and_dimension(
+                len(tm.shape), conv_type, dense_blocks, conv_width, conv_x, conv_y, conv_z, padding, False,
+                block_size,
+            )
             dense_pool_layers = _pool_layers_from_kind_and_dimension(len(tm.shape), pool_type, len(dense_blocks), pool_x, pool_y, pool_z)
-            last_conv = _dense_block(last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
-                                     conv_regularize, conv_dropout, tm)
+            last_conv = _dense_block(
+                last_conv, layers, block_size, dense_conv_fxns, dense_pool_layers, len(tm.shape), activation, conv_normalize,
+                conv_regularize, conv_dropout, tm,
+            )
             input_multimodal.append(Flatten()(last_conv))
         else:
             mlp_input = input_tensors[j]
@@ -580,9 +506,11 @@ def make_variational_multimodal_multitask_model(
 
         if len(tm.shape) > 1:
             all_filters = conv_layers + dense_blocks
-            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_x, conv_y, conv_z)
-            num_upsamples = len([pool for pool in reversed(_get_layer_kind_sorted(layers, 'Pooling'))
-                             if tm.input_name() in pool]) or 3  # TODO: arbitrary 3 upsamples if no matching input
+            conv_layer, kernel = _conv_layer_from_kind_and_dimension(len(tm.shape), conv_type, conv_width, conv_x, conv_y, conv_z)
+            num_upsamples = len([
+                pool for pool in reversed(_get_layer_kind_sorted(layers, 'Pooling'))
+                if tm.input_name() in pool
+            ]) or 3  # TODO: arbitrary 3 upsamples if no matching input
             dense, reshape = _build_embed_adapters(tm, num_upsamples, pool_x, pool_y, pool_z)
             to_upsample = reshape(dense(latent_inputs))
             for i in range(num_upsamples):
@@ -590,23 +518,23 @@ def make_variational_multimodal_multitask_model(
                 to_upsample = _upsampler(len(tm.shape), pool_x, pool_y, pool_z)(conv_embed(to_upsample))
 
             conv_label = conv_layer(tm.shape[channel_axis], _one_by_n_kernel(len(tm.shape)), activation="linear")(
-                to_upsample)
+                to_upsample,
+            )
             output_predictions[tm.output_name()] = Activation(tm.activation, name=tm.output_name())(conv_label)
         elif tm.parents is not None:
             parented_activation = concatenate([latent_inputs] + [output_predictions[p.output_name()] for p in tm.parents])
             parented_activation = _dense_layer(parented_activation, layers, tm.annotation_units, activation, conv_normalize)
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(parented_activation)
-        elif tm.is_categorical():
+        elif tm.is_categorical_any():
             output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation='softmax', name=tm.output_name())(latent_inputs)
         else:
-            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation,
-                                                         name=tm.output_name())(latent_inputs)
+            output_predictions[tm.output_name()] = Dense(units=tm.shape[0], activation=tm.activation, name=tm.output_name())(latent_inputs)
 
     out_list = list(output_predictions.values())
     encoder = Model(inputs=input_tensors, outputs=multimodal_activation, name='encoder')
     decoder = Model(inputs=latent_inputs, outputs=out_list, name='decoder')
     outputs = decoder(encoder(input_tensors))
-    m = Model(inputs=input_tensors, outputs=outputs)
+    m = Model(inputs=input_tensors, outputs=outputs, compile=False)
     m.output_names = list(output_predictions.keys())
     decoder.output_names = list(output_predictions.keys())
     encoder.summary(print_fn=logging.info)
@@ -619,7 +547,7 @@ def make_variational_multimodal_multitask_model(
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
@@ -628,8 +556,7 @@ def make_variational_multimodal_multitask_model(
                     if freeze:
                         target_layer.trainable = False
                 except (ValueError, KeyError):
-                    logging.warning(
-                        f'Error loading layer {other_layer.name} from model: {model_layers}. Will still try to load other layers.')
+                    logging.warning(f'Error loading layer {other_layer.name} from model: {model_layers}. Will still try to load other layers.')
         except ValueError as e:
             logging.info(f'Loaded model weights, but got ValueError in model loading: {str(e)}')
         logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
@@ -949,18 +876,19 @@ def make_multimodal_multitask_model(
         pool_type: str = None,
         learning_rate: float = None,
         optimizer: str = 'adam',
+        training_steps: int = None,
+        learning_rate_schedule: str = None,
         **kwargs
 ) -> Model:
     tensor_maps_out = parent_sort(tensor_maps_out)
     u_connect = u_connect or defaultdict(set)
-    opt = get_optimizer(optimizer, learning_rate, kwargs.get('optimizer_kwargs'))
+    opt = get_optimizer(optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule, optimizer_kwargs=kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
-                  metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -1015,7 +943,7 @@ def make_multimodal_multitask_model(
     )
 
     decoders: Dict[TensorMap, Layer] = {}
-    for tm in tensor_maps_out:  # TODO: topologically sort tensor_maps_out
+    for tm in tensor_maps_out:
         if tm.axes() > 1:
             decoders[tm] = ConvDecoder(
                 tensor_map_out=tm,
@@ -1095,28 +1023,30 @@ def _make_multimodal_multitask_model(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Training ~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def train_model_from_generators(model: Model,
-                                generate_train: Iterable,
-                                generate_valid: Iterable,
-                                training_steps: int,
-                                validation_steps: int,
-                                batch_size: int,
-                                epochs: int,
-                                patience: int,
-                                output_folder: str,
-                                run_id: str,
-                                inspect_model: bool,
-                                inspect_show_labels: bool,
-                                return_history: bool = False,
-                                plot: bool = True,
-                                anneal_max: Optional[float] = None,
-                                anneal_shift: Optional[float] = None,
-                                anneal_rate: Optional[float] = None) -> Union[Model, Tuple[Model, History]]:
+def train_model_from_generators(
+    model: Model,
+    generate_train: Iterable,
+    generate_valid: Iterable,
+    training_steps: int,
+    validation_steps: int,
+    batch_size: int,
+    epochs: int,
+    patience: int,
+    output_folder: str,
+    run_id: str,
+    inspect_model: bool,
+    inspect_show_labels: bool,
+    return_history: bool = False,
+    plot: bool = True,
+    anneal_max: Optional[float] = None,
+    anneal_shift: Optional[float] = None,
+    anneal_rate: Optional[float] = None,
+) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
-	Training data lives on disk, it will be loaded by generator functions.
-	Plots the metric history after training. Creates a directory to save weights, if necessary.
-	Measures runtime and plots architecture diagram if inspect_model is True.
+    Training data lives on disk, it will be loaded by generator functions.
+    Plots the metric history after training. Creates a directory to save weights, if necessary.
+    Measures runtime and plots architecture diagram if inspect_model is True.
 
     :param model: The model to optimize
     :param generate_train: Generator function that yields mini-batches of training data.
@@ -1133,7 +1063,7 @@ def train_model_from_generators(model: Model,
     :param return_history: If true return history from training and don't plot the training history
     :return: The optimized model.
     """
-    model_file = os.path.join(output_folder, run_id, run_id + '.h5')
+    model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
@@ -1141,30 +1071,34 @@ def train_model_from_generators(model: Model,
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit(generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1, validation_steps=validation_steps,
-                        validation_data=generate_valid, callbacks=_get_callbacks(patience, model_file))
+    history = model.fit(
+        generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
+        validation_steps=validation_steps, validation_data=generate_valid,
+        callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate),
+    )
     generate_train.kill_workers()
     generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
-        plot_metric_history(history, run_id, os.path.dirname(model_file))
+        plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
         return model, history
     return model
 
 
-def _get_callbacks(patience: int, model_file: str,
-                   anneal_max: Optional[float] = None,
-                   anneal_shift: Optional[float] = None,
-                   anneal_rate: Optional[float] = None,
-                   ) -> List[Callback]:
+def _get_callbacks(
+    patience: int, model_file: str,
+    anneal_max: Optional[float] = None,
+    anneal_shift: Optional[float] = None,
+    anneal_rate: Optional[float] = None,
+) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
-    if anneal_max and anneal_rate and anneal_shift:
+    if anneal_max is not None and anneal_rate is not None and anneal_shift is not None:
         callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
 
@@ -1175,6 +1109,70 @@ def _get_callbacks(patience: int, model_file: str,
 def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
     embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
     return embed_model.predict(test_data, batch_size=batch_size)
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~ Model Builders ~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def _conv_block_new(
+    x: K.placeholder,
+    layers: Dict[str, K.placeholder],
+    conv_layers: List[Layer],
+    pool_layers: List[Layer],
+    dimension: int,
+    activation: str,
+    normalization: str,
+    regularization: str,
+    regularization_rate: float,
+    residual_convolution_layer: Layer,
+):
+    pool_diff = len(conv_layers) - len(pool_layers)
+
+    for i, conv_layer in enumerate(conv_layers):
+        residual = x
+        x = layers[f"Conv_{str(len(layers))}"] = conv_layer(x)
+        x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+        x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+        x = layers[f"Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(x)
+        if i >= pool_diff:
+            x = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](x)
+            if residual_convolution_layer is not None:
+                residual = layers[f"Pooling_{str(len(layers))}"] = pool_layers[i - pool_diff](residual)
+        if residual_convolution_layer is not None:
+            if K.int_shape(x)[CHANNEL_AXIS] == K.int_shape(residual)[CHANNEL_AXIS]:
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
+            else:
+                residual = layers[f"Conv_{str(len(layers))}"] = residual_convolution_layer(filters=K.int_shape(x)[CHANNEL_AXIS], kernel_size=(1, 1))(residual)
+                x = layers[f"add_{str(len(layers))}"] = tf.keras.layers.Add()([x, residual])
+    return x
+
+
+def _dense_block(
+    x: K.placeholder,
+    layers: Dict[str, K.placeholder],
+    block_size: int,
+    conv_layers: List[Layer],
+    pool_layers: List[Layer],
+    dimension: int,
+    activation: str,
+    normalization: str,
+    regularization: str,
+    regularization_rate: float,
+    tm: Optional[TensorMap] = None,
+):
+    name_prefix = "{tm.input_name()}_" if tm else ""
+    for i, conv_layer in enumerate(conv_layers):
+        layers[f"{name_prefix}Conv_{str(len(layers))}"] = conv_layer(x)
+        layers[f"{name_prefix}Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
+        layers[f"{name_prefix}Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(_get_last_layer(layers))
+        layers[f"{name_prefix}Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(_get_last_layer(layers))
+        if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
+            x = layers[f"{name_prefix}Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](_get_last_layer(layers))
+            dense_connections = [_get_last_layer(layers)]
+        else:
+            dense_connections += [_get_last_layer(layers)]
+            x = layers[f"{name_prefix}concatenate{JOIN_CHAR}{str(len(layers))}"] = tf.keras.layers.Concatenate(axis=CHANNEL_AXIS)(dense_connections[:])
+    return _get_last_layer(layers)
 
 
 def _one_by_n_kernel(dimension):
@@ -1205,6 +1203,19 @@ def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv
     return conv_layer, kernel
 
 
+def _conv_layers_from_kind_and_dimension(dimension, conv_layer_type, conv_layers, conv_width, conv_x, conv_y, conv_z, padding, dilate, inner_loop=1):
+    conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_width, conv_x, conv_y, conv_z)
+    dilation_rate = 1
+    conv_layer_functions = []
+    for i, c in enumerate(conv_layers):
+        for _ in range(inner_loop):
+            if dilate:
+                dilation_rate = 1 << i
+            conv_layer_functions.append(conv_layer(filters=c, kernel_size=kernel, padding=padding, dilation_rate=dilation_rate))
+
+    return conv_layer_functions
+
+
 def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool_x, pool_y, pool_z):
     if dimension == 4 and pool_type == 'max':
         return [MaxPooling3D(pool_size=(pool_x, pool_y, pool_z)) for _ in range(pool_number)]
@@ -1222,6 +1233,16 @@ def _pool_layers_from_kind_and_dimension(dimension, pool_type, pool_number, pool
         raise ValueError(f'Unknown pooling type: {pool_type} for dimension: {dimension}')
 
 
+def _dense_layer(x: K.placeholder, layers: Dict[str, K.placeholder], units: int, activation: str, normalization: str, name=None):
+    if name is not None:
+        x = layers[f"{name}_{str(len(layers))}"] = Dense(units=units, name=name)(x)
+    else:
+        x = layers[f"Dense_{str(len(layers))}"] = Dense(units=units)(x)
+    x = layers[f"Activation_{str(len(layers))}"] = _activation_layer(activation)(x)
+    x = layers[f"Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(x)
+    return _get_last_layer(layers)
+
+
 def _upsampler(dimension, pool_x, pool_y, pool_z):
     if dimension == 4:
         return UpSampling3D(size=(pool_x, pool_y, pool_z))
@@ -1231,27 +1252,36 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
-def _activation_layer(activation):
-    if activation == 'leaky':
-        return LeakyReLU()
-    elif activation == 'prelu':
-        return PReLU()
-    elif activation == 'elu':
-        return ELU()
-    elif activation == 'thresh_relu':
-        return ThresholdedReLU()
-    else:
-        return Activation(activation)
+def _activation_layer(activation: str) -> Activation:
+    activation_classes = {
+        'leaky': LeakyReLU(),
+        'prelu': PReLU(),
+        'elu': ELU(),
+        'thresh_relu': ThresholdedReLU,
+    }
+    activation_functions = {
+        'swish': tf.nn.swish,
+        'gelu': tfa.activations.gelu,
+        'lisht': tfa.activations.lisht,
+        'mish': tfa.activations.mish,
+    }
+    return (
+        activation_classes.get(activation, None)
+        or Activation(activation_functions.get(activation, None) or activation)
+    )
 
 
-def _normalization_layer(norm):
-    if norm == 'batch_norm':
-        return BatchNormalization(axis=CHANNEL_AXIS)
-    else:
-        return lambda x: x
+def _normalization_layer(norm: str) -> Layer:
+    normalization_classes = {
+        'batch_norm': BatchNormalization(axis=CHANNEL_AXIS),
+        'layer_norm': LayerNormalization(),
+        'instance_norm': tfa.layers.InstanceNormalization(),
+        'poincare_norm': tfa.layers.PoincareNormalize(),
+    }
+    return normalization_classes.get(norm, lambda x: x)
 
 
-def _regularization_layer(dimension, regularization_type, rate):
+def _regularization_layer(dimension: int, regularization_type: str, rate: float):
     if dimension == 4 and regularization_type == 'spatial_dropout':
         return SpatialDropout3D(rate)
     elif dimension == 3 and regularization_type == 'spatial_dropout':
@@ -1264,16 +1294,43 @@ def _regularization_layer(dimension, regularization_type, rate):
         return lambda x: x
 
 
+def _get_last_layer(named_layers):
+    max_index = -1
+    max_layer = ''
+    for k in named_layers:
+        cur_index = int(k.split('_')[-1])
+        if max_index < cur_index:
+            max_index = cur_index
+            max_layer = k
+    return named_layers[max_layer]
+
+
+def _get_last_layer_by_kind(named_layers, kind, mask_after=9e9):
+    max_index = -1
+    for k in named_layers:
+        if kind in k:
+            val = int(k.split('_')[-1])
+            if val < mask_after:
+                max_index = max(max_index, val)
+    return named_layers[kind + JOIN_CHAR + str(max_index)]
+
+
+def _get_layer_kind_sorted(named_layers, kind):
+    return [k for k in sorted(list(named_layers.keys()), key=lambda x: int(x.split('_')[-1])) if kind in k]
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Inspections ~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _inspect_model(model: Model,
-                   generate_train: Iterable,
-                   generate_valid: Iterable,
-                   batch_size: int,
-                   training_steps: int,
-                   inspect_show_labels: bool,
-                   image_path: str) -> Model:
+def _inspect_model(
+    model: Model,
+    generate_train: Iterable,
+    generate_valid: Iterable,
+    batch_size: int,
+    training_steps: int,
+    inspect_show_labels: bool,
+    image_path: str,
+) -> Model:
     """Collect statistics on model inference and training times.
 
     Arguments:
@@ -1392,14 +1449,18 @@ def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model:
     embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
     tm_embed = TensorMap(embed_name, shape=(embed_size,), interpretation=Interpretation.EMBEDDING, parents=tensor_maps_in.copy(), model=embed_model)
     tm_char = TensorMap('ecg_rest_next_char', shape=(len(ECG_CHAR_2_IDX),), Interpretation=Interpretation.LANGUAGE, channel_map=ECG_CHAR_2_IDX, cacheable=False)
-    tm_burn_in = TensorMap('ecg_rest_text', shape=(burn_in, len(ECG_CHAR_2_IDX)), Interpretation=Interpretation.LANGUAGE,
-                           channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False)
+    tm_burn_in = TensorMap(
+        'ecg_rest_text', shape=(burn_in, len(ECG_CHAR_2_IDX)), Interpretation=Interpretation.LANGUAGE,
+        channel_map={'context': 0, 'alphabet': 1}, dependent_map=tm_char, cacheable=False,
+    )
     return [tm_embed, tm_burn_in], [tm_char]
 
 
-def get_model_inputs_outputs(model_files: List[str],
-                             tensor_maps_in: List[TensorMap],
-                             tensor_maps_out: List[TensorMap]) -> Dict[str, Dict[str, TensorMap]]:
+def get_model_inputs_outputs(
+    model_files: List[str],
+    tensor_maps_in: List[TensorMap],
+    tensor_maps_out: List[TensorMap],
+) -> Dict[str, Dict[str, TensorMap]]:
     """Organizes given input and output tensors as nested dictionary.
 
     Returns:
@@ -1419,7 +1480,7 @@ def get_model_inputs_outputs(model_files: List[str],
                         'output': [tensor4, tensor6]
                     }
             }
-                        
+
     """
 
     input_prefix = "input"
@@ -1429,8 +1490,8 @@ def get_model_inputs_outputs(model_files: List[str],
 
     for model_file in model_files:
         custom = get_metric_dict(tensor_maps_out)
-        logging.info(f'custom keysssss: {list(custom.keys())}')
-        m = load_model(model_file, custom_objects=custom)
+        logging.info(f'custom keys: {list(custom.keys())}')
+        m = load_model(model_file, custom_objects=custom, compile=False)
         model_inputs_outputs = defaultdict(list)
         for input_tensor_map in tensor_maps_in:
             try:

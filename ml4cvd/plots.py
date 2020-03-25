@@ -17,6 +17,7 @@ from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
+from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
@@ -42,27 +43,37 @@ PRECISION_LABEL = 'Precision | Positive Predictive Value | TP/(TP+FP)'
 
 SUBPLOT_SIZE = 8
 
-COLOR_ARRAY = ['tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'red',
-               'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
-               'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
-               'teal', 'peru', 'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered']
+COLOR_ARRAY = [
+    'tan', 'indigo', 'cyan', 'pink', 'purple', 'blue', 'chartreuse', 'deepskyblue', 'green', 'salmon', 'aqua', 'magenta', 'aquamarine', 'red',
+    'coral', 'tomato', 'grey', 'black', 'maroon', 'hotpink', 'steelblue', 'orange', 'papayawhip', 'wheat', 'chocolate', 'darkkhaki', 'gold',
+    'orange', 'crimson', 'slategray', 'violet', 'cadetblue', 'midnightblue', 'darkorchid', 'paleturquoise', 'plum', 'lime',
+    'teal', 'peru', 'silver', 'darkgreen', 'rosybrown', 'firebrick', 'saddlebrown', 'dodgerblue', 'orangered',
+]
 
 ECG_REST_PLOT_DEFAULT_YRANGE = 3.0
 ECG_REST_PLOT_MAX_YRANGE = 10.0
-ECG_REST_PLOT_LEADS = [['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
-                       ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
-                       ['strip_III','strip_aVF', 'strip_V3', 'strip_V6']]
-ECG_REST_PLOT_MEDIAN_LEADS = [['median_I','median_aVR', 'median_V1', 'median_V4'],
-                              ['median_II','median_aVL', 'median_V2', 'median_V5'],
-                              ['median_III','median_aVF', 'median_V3', 'median_V6']]
-ECG_REST_PLOT_AMP_LEADS = [[0, 3, 6, 9],
-                           [1, 4, 7, 10],
-                           [2, 5, 8, 11]]
+ECG_REST_PLOT_LEADS = [
+    ['strip_I','strip_aVR', 'strip_V1', 'strip_V4'],
+    ['strip_II','strip_aVL', 'strip_V2', 'strip_V5'],
+    ['strip_III','strip_aVF', 'strip_V3', 'strip_V6'],
+]
+ECG_REST_PLOT_MEDIAN_LEADS = [
+    ['median_I','median_aVR', 'median_V1', 'median_V4'],
+    ['median_II','median_aVL', 'median_V2', 'median_V5'],
+    ['median_III','median_aVF', 'median_V3', 'median_V6'],
+]
+ECG_REST_PLOT_AMP_LEADS = [
+    [0, 3, 6, 9],
+    [1, 4, 7, 10],
+    [2, 5, 8, 11],
+]
 
 
-def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-                         max_melt: int = 15000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
-                         scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = []) -> Dict[str, float]:
+def evaluate_predictions(
+    tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
+    max_melt: int = 15000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+    scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
+) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
 
@@ -86,7 +97,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
-        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -94,7 +105,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
-        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -102,7 +113,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
-        idx = np.random.choice(np.arange(melt_shape[0]), max_melt, replace=False)
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -111,7 +122,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     elif tm.is_cox_proportional_hazard():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
-    elif len(tm.shape) > 1:
+    elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
@@ -131,7 +142,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     return performance_metrics
 
 
-def plot_metric_history(history, title, prefix='./figures/'):
+def plot_metric_history(history, training_steps: int, title: str, prefix='./figures/'):
     row = 0
     col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
@@ -140,6 +151,8 @@ def plot_metric_history(history, title, prefix='./figures/'):
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     for k in sorted(history.history.keys()):
         if 'val_' not in k:
+            if isinstance(history.history[k][0], LearningRateSchedule):
+                history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace('output_', '').split('_')
             k_title = " ".join(OrderedDict.fromkeys(k_split))
@@ -159,7 +172,6 @@ def plot_metric_history(history, title, prefix='./figures/'):
                 if col >= cols:
                     break
 
-    plt.title(title)
     plt.tight_layout()
     figure_path = os.path.join(prefix, 'metric_history_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -276,8 +288,10 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
     logging.info(f"Saved scatters together at: {figure_path}")
 
 
-def subplot_comparison_scatters(scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
-                                alpha: float = 0.5):
+def subplot_comparison_scatters(
+    scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
+    alpha: float = 0.5,
+):
     row = 0
     col = 0
     total_plots = len(scatters)
@@ -325,13 +339,14 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
+    logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
     logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
     true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
-    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.2f}')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), 1 - true_proportion, marker='o', label='True Proportion')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
@@ -468,14 +483,16 @@ def plot_histograms(continuous_stats, title, prefix='./figures/', num_bins=50):
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
-                           all_samples_count: int,
-                           output_file_name: str,
-                           output_folder_path: str = './figures',
-                           num_rows: int = 4,
-                           num_cols: int = 6,
-                           num_bins: int = 50,
-                           title_line_width: int = 50) -> None:
+def plot_histograms_in_pdf(
+    stats: Dict[str, Dict[str, List[float]]],
+    all_samples_count: int,
+    output_file_name: str,
+    output_folder_path: str = './figures',
+    num_rows: int = 4,
+    num_cols: int = 6,
+    num_bins: int = 50,
+    title_line_width: int = 50,
+) -> None:
     """
     Plots histograms of field values given in 'stats' in pdf
     :param stats: field names extracted from hd5 dataset names to list of values, one per sample_instance_arrayidx
@@ -521,10 +538,12 @@ def plot_histograms_in_pdf(stats: Dict[str, Dict[str, List[float]]],
     logging.info(f"Saved histograms plot at: {figure_path}")
 
 
-def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
-                 output_file_name: str,
-                 min_samples: int,
-                 output_folder_path: str) -> None:
+def plot_heatmap(
+    stats: Dict[str, Dict[str, List[float]]],
+    output_file_name: str,
+    min_samples: int,
+    output_folder_path: str,
+) -> None:
 
     """
     Plot heatmap of correlations between field pairs derived from 'stats'
@@ -572,8 +591,10 @@ def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
 
                     if len(field1_values) == len(field2_values):
                         if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
-                            logging.debug(f"Not calculating correlation for fields {field1} and {field2} because at least one of "
-                                          f"the fields has all the same values for the {num_common_samples} common samples.")
+                            logging.debug(
+                                f"Not calculating correlation for fields {field1} and {field2} because at least one of "
+                                f"the fields has all the same values for the {num_common_samples} common samples.",
+                            )
                             continue
                         corr = np.corrcoef(field1_values, field2_values)[1, 0]
                         if not math.isnan(corr):
@@ -581,8 +602,10 @@ def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
                         else:
                             logging.warning(f"Pearson correlation for fields {field1} and {field2} is NaN.")
                     else:
-                        logging.debug(f"Not calculating correlation for fields '{field1}' and '{field2}' "
-                                      f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).")
+                        logging.debug(
+                            f"Not calculating correlation for fields '{field1}' and '{field2}' "
+                            f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).",
+                        )
         else:
             continue
 
@@ -593,8 +616,10 @@ def plot_heatmap(stats: Dict[str, Dict[str, List[float]]],
         logging.warning(f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.")
 
     # correlations_by_field_pairs = dict(random.sample(correlations_by_field_pairs.items(), 15))
-    ser = pd.Series(list(correlations_by_field_pairs.values()),
-                    index=pd.MultiIndex.from_tuples(correlations_by_field_pairs.keys()))
+    ser = pd.Series(
+        list(correlations_by_field_pairs.values()),
+        index=pd.MultiIndex.from_tuples(correlations_by_field_pairs.keys()),
+    )
     df = ser.unstack()
 
     # Scale the figure size with the number of fields
@@ -642,6 +667,31 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
+def plot_partners_ecgs(args):
+    tensor_paths = [args.tensors + tp for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    logging.info(f'tensor_paths:{len(tensor_paths)} tensor maps: {len(args.tensor_maps_in)}')
+    # Get tensors for all hd5
+    for tp in tensor_paths:
+        title = os.path.basename(tp).replace(TENSOR_EXT, '')
+        try:
+            with h5py.File(tp, 'r') as hd5:
+                ecg_dict = {}
+                for tm in args.tensor_maps_in:
+                    try:
+                        tensor = tm.tensor_from_file(tm, hd5)
+                        if tm.axes() > 1:
+                            for cm in tm.channel_map:
+                                ecg_dict[cm] = tensor[:, tm.channel_map[cm]]
+                        else:
+                            title += f'_{tm.name}_{tensor}'
+                    except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                        logging.exception(e)
+                if len(ecg_dict) > 0:
+                    plot_ecg(ecg_dict, title, os.path.join(args.output_folder, args.id, 'ecg_plots/'))
+        except OSError:
+            logging.exception(f"Broken tensor at: {tp}")
+
+
 def _ecg_rest_traces(hd5):
     """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
     leads = {}
@@ -650,14 +700,16 @@ def _ecg_rest_traces(hd5):
     for field in hd5['ecg_rest']:
         leads[field] = list(hd5['ecg_rest'][field])
     twelve_leads = defaultdict(dict)
-    for key, data in leads.items(): 
+    for key, data in leads.items():
         twelve_leads[key]['raw'] = leads[key]
         if len(data) == 5000:
             try:
                 # Attempt analysis by biosppy, which may fail if not enough beats
-                (twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'], 
-                 twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'], 
-                 twelve_leads[key]['heart_rate']) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)
+                (
+                    twelve_leads[key]['ts_reference'], twelve_leads[key]['filtered'], twelve_leads[key]['rpeaks'],
+                    twelve_leads[key]['template_ts'], twelve_leads[key]['templates'], twelve_leads[key]['heart_rate_ts'],
+                    twelve_leads[key]['heart_rate'],
+                ) = ecg.ecg(signal=leads[key], sampling_rate = 500., show=False)
             except:
                 twelve_leads[key]['ts_reference'] = np.linspace(0, len(data)/500., len(data))
     return twelve_leads
@@ -672,12 +724,12 @@ def _ecg_rest_ylims(yrange, yplot):
     ylim_min = -yrange/2.0
     ylim_max = yrange/2.0
     if ((extremes[0] - ylim_min) < yrange*0.2) or \
-       ((ylim_max-extremes[1]) < yrange*0.2) : 
+       ((ylim_max-extremes[1]) < yrange*0.2) :
         ylim_min = extremes[0] - (yrange-delta_ext)/2.0
-        ylim_max = extremes[1] + (yrange-delta_ext)/2.0       
+        ylim_max = extremes[1] + (yrange-delta_ext)/2.0
     return ylim_min, ylim_max
 
-    
+
 def _ecg_rest_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
     """Returns y-range necessary not to cut any of the plotted ECG waveforms"""
     yrange = default_yrange
@@ -687,63 +739,69 @@ def _ecg_rest_yrange(twelve_leads, default_yrange, raw_scale, time_interval):
                 lead_name = ECG_REST_PLOT_LEADS[i-offset][j]
                 lead = twelve_leads[lead_name]
                 y_plot = np.array([elem_ * raw_scale for elem_ in lead['raw']])
-                if not is_median:        
-                    y_plot = y_plot[np.logical_and(lead['ts_reference']>j*time_interval,
-                                    lead['ts_reference']<(j+1)*time_interval)]
+                if not is_median:
+                    y_plot = y_plot[
+                        np.logical_and(
+                            lead['ts_reference']>j*time_interval,
+                            lead['ts_reference']<(j+1)*time_interval,
+                        )
+                    ]
                 ylim_min, ylim_max = _ecg_rest_ylims(yrange, y_plot)
                 yrange = ylim_max - ylim_min
     return min(yrange, ECG_REST_PLOT_MAX_YRANGE)
 
-    
+
 def _subplot_ecg_rest(twelve_leads, raw_scale, time_interval, lead_mapping, f, ax, yrange, offset, pat_df, is_median, is_blind):
     """Fills subplots with either median or raw resting ECG waveforms"""
     # plot will be in seconds vs mV, boxes are
     sec_per_box = 0.04
     mv_per_box = .1
     median_interval = 1.2  # 600 samples at 500Hz
-    # if available, extract patient metadata and ECG interpretation 
+    # if available, extract patient metadata and ECG interpretation
     if pat_df is not None:
         avl_yn = 'Y' if pat_df['aVL']>0.5 else 'N'
         sl_yn  = 'Y' if pat_df['Sokolow_Lyon']>0.5 else 'N'
         cor_yn = 'Y' if pat_df['Cornell']>0.5 else 'N'
         sex_fm = 'F' if ((pat_df['sex'] == 'F') or (pat_df['sex'] == 'female')) else 'M'
-        text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"        
+        text   = f"ID: {pat_df['patient_id']}, sex: {sex_fm}\n"
         if not is_blind:
             text  += f"{pat_df['ecg_text']}\n"
-            text  += f"LVH criteria - aVL: {avl_yn}, Sokolow-Lyon: {sl_yn}, Cornell: {cor_yn}"            
-        st=f.suptitle(text, x=0.0, y=1.05, ha='left', bbox=dict(facecolor='black', alpha=0.1))   
+            text  += f"LVH criteria - aVL: {avl_yn}, Sokolow-Lyon: {sl_yn}, Cornell: {cor_yn}"
+        st=f.suptitle(text, x=0.0, y=1.05, ha='left', bbox=dict(facecolor='black', alpha=0.1))
     for i in range(offset, offset+3):
         for j in range(0, 4):
             lead_name = lead_mapping[i-offset][j]
             lead = twelve_leads[lead_name]
             # Convert units to mV
-            yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            if isinstance(lead, dict):
+                yy = np.array([elem_ * raw_scale for elem_ in lead['raw']])
+            else:
+                yy = lead
             if not is_median:
                 ax[i,j].set_xlim(j*time_interval,(j+1)*time_interval)
-                # extract portion of waveform that is included in the actual plots 
-                yplot = yy[np.logical_and(lead['ts_reference']>j*time_interval,
-                                lead['ts_reference']<(j+1)*time_interval)]
+                # extract portion of waveform that is included in the actual plots
+                yplot = yy[j*time_interval: (j+1)*time_interval]
             else:
-                yplot = yy                       
-            ylim_min, ylim_max = _ecg_rest_ylims(yrange, yplot)            
+                yplot = yy
+            ylim_min, ylim_max = _ecg_rest_ylims(yrange, yplot)
             ax[i,j].set_ylim(ylim_min, ylim_max) # 3.0 mV range
             ax[i,j].xaxis.set_major_locator(MultipleLocator(0.2)) # major grids at every .2sec = 5 * 0.04 sec
-            ax[i,j].yaxis.set_major_locator(MultipleLocator(0.5)) # major grids at every .5mV 
+            ax[i,j].yaxis.set_major_locator(MultipleLocator(0.5)) # major grids at every .5mV
             ax[i,j].xaxis.set_minor_locator(AutoMinorLocator(5))
             ax[i,j].yaxis.set_minor_locator(AutoMinorLocator(5))
             ax[i,j].grid(which='major', color='#CCCCCC', linestyle='--')
-            ax[i,j].grid(which='minor', color='#CCCCCC', linestyle=':')            
+            ax[i,j].grid(which='minor', color='#CCCCCC', linestyle=':')
             for label in ax[i,j].xaxis.get_ticklabels()[::2]:
                 label.set_visible(False)
             if len(ax[i,j].yaxis.get_ticklabels()) > 10:
                 for label in ax[i,j].yaxis.get_ticklabels()[::2]:
-                    label.set_visible(False)        
+                    label.set_visible(False)
             #normalize data in muv
             if 'ts_reference' in lead:
                 ax[i,j].plot(lead['ts_reference'], yy, label='raw')
             else:
-                ax[i,j].plot(np.arange(0.0, median_interval, median_interval/len(lead['raw'])), yy, label='raw')                
-            ax[i,j].set_title(lead_name)           
+                ax[i,j].plot(np.arange(0.0, median_interval, median_interval/len(lead['raw'])), yy, label='raw')
+            ax[i,j].set_title(lead_name)
             if is_median and (pat_df is not None):
                 # Find where to put the R and S amp text based on ECG baseline position
                 dy_ecg = (yy[-1] - ylim_min) / yrange
@@ -759,12 +817,12 @@ def _str_to_list_float(str_list: str) -> List[int]:
     """'[ 3. 4. nan 3 ]' --> [ 3.0, 4.0, nan, 3.0 ]"""
     tmp_str = str_list[1:-1].split()
     return list(map(float, tmp_str))
-                
+
 
 def _ecg_rest_csv_to_df(csv):
     df = pd.read_csv(csv)
     df['ramp'] = df['ramp'].apply(_str_to_list_float)
-    df['samp'] = df['samp'].apply(_str_to_list_float)    
+    df['samp'] = df['samp'].apply(_str_to_list_float)
     df['patient_id'] = df['patient_id'].apply(str)
     df['Sokolow_Lyon'] = df['Sokolow_Lyon'].apply(float)
     df['Cornell'] = df['Cornell'].apply(float)
@@ -775,7 +833,7 @@ def _ecg_rest_csv_to_df(csv):
 def _remove_duplicate_rows(df, out_folder):
     arr_list = []
     pdfs = glob.glob(out_folder+'/*.pdf')
-    for i, row in df.iterrows():      
+    for i, row in df.iterrows():
         if os.path.join(out_folder, row['patient_id']+'.pdf') not in pdfs:
             arr_list.append(i)
     arr = np.array(arr_list, dtype=np.int)
@@ -794,43 +852,49 @@ def plot_ecg_rest(df, rows, out_folder, is_blind):
         matplotlib.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(nrows=6, ncols=4, figsize=(24,18), tight_layout=True)
         yrange = _ecg_rest_yrange(traces, default_yrange, raw_scale, time_interval)
-        _subplot_ecg_rest(traces, raw_scale, time_interval, ECG_REST_PLOT_LEADS, fig, ax, yrange,
-                             offset=3, pat_df=None, is_median=False, is_blind=is_blind)
-        _subplot_ecg_rest(traces, raw_scale, time_interval, ECG_REST_PLOT_MEDIAN_LEADS, fig, ax, yrange,
-                             offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind)
-        fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")    
-        
+        _subplot_ecg_rest(
+            traces, raw_scale, time_interval, ECG_REST_PLOT_LEADS, fig, ax, yrange,
+            offset=3, pat_df=None, is_median=False, is_blind=is_blind,
+        )
+        _subplot_ecg_rest(
+            traces, raw_scale, time_interval, ECG_REST_PLOT_MEDIAN_LEADS, fig, ax, yrange,
+            offset=0, pat_df=pat_df, is_median=True, is_blind=is_blind,
+        )
+        fig.savefig(os.path.join(out_folder, pat_df['patient_id']+'.pdf'), bbox_inches = "tight")
 
-def plot_ecg_rest_mp(ecg_csv_file_name: str,
-                        row_min: int,
-                        row_max: int,
-                        output_folder_path: str,
-                        ncpus: int = 1,
-                        is_blind: bool = False,
-                        overwrite: bool = False) -> None:    
+
+def plot_ecg_rest_mp(
+    ecg_csv_file_name: str,
+    row_min: int,
+    row_max: int,
+    output_folder_path: str,
+    ncpus: int = 1,
+    is_blind: bool = False,
+    overwrite: bool = False,
+) -> None:
     """
-    Generates (in parallel) plots for 12-lead resting ECGs given a CSV file pointing to the tensor HDF5s 
+    Generates (in parallel) plots for 12-lead resting ECGs given a CSV file pointing to the tensor HDF5s
     :param ecg_csv: name of the CSV file listing the HD5s to plot
-    :param row_min: low end of range of entries to be plotted 
-    :param row_max: high end of range of entries to be plotted 
+    :param row_min: low end of range of entries to be plotted
+    :param row_max: high end of range of entries to be plotted
     :param output_folder_path: directory where output PDFs will be written to
     :param ncpus: number of parallel cores to be used
     :param is_blind: whether ECG interpretation should be included in the plot
     :param overwrite: if False, it avoids replotting PDFs that are already found in the output folder
     :return: None
-    """    
+    """
     df = _ecg_rest_csv_to_df(ecg_csv_file_name)
     if overwrite:
         row_arr = np.arange(row_min, row_max+1, dtype=np.int64)
     else:
-        row_arr = _remove_duplicate_rows(df.iloc[row_min:row_max+1], output_folder_path)    
+        row_arr = _remove_duplicate_rows(df.iloc[row_min:row_max+1], output_folder_path)
     row_split = np.array_split(row_arr, ncpus)
     pool = Pool(ncpus)
     pool.starmap(plot_ecg_rest, zip([df]*ncpus, row_split, [output_folder_path]*ncpus, [is_blind]*ncpus))
     pool.close()
     pool.join()
 
-    
+
 def plot_counter(counts, title, prefix='./figures/'):
     plt.figure(figsize=(28, 32))
     matplotlib.rcParams.update({'font.size': 12})
@@ -890,7 +954,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
 def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     lw = 2
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -907,7 +971,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc='lower right')
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)                        
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
@@ -1036,7 +1100,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
     # Compute Precision-Recall and plot curve for each model
     lw = 2.0
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         for k in labels:
@@ -1155,6 +1219,22 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
+def plot_find_learning_rate(learning_rates: List[float], losses: List[float], smoothed_losses: List[float], picked_learning_rate: float, figure_path: str):
+    plt.figure(figsize=(2 * SUBPLOT_SIZE, SUBPLOT_SIZE))
+    plt.title('Learning rate finder')
+    cutoff = smoothed_losses[0]
+    plt.ylim(min(smoothed_losses), cutoff * 1.05)
+    plt.axhline(cutoff, linestyle='--', color='k', label=f'Deltas ignored above {cutoff:.2f}')
+    learning_rates = np.log(learning_rates) / np.log(10)
+    plt.plot(learning_rates, losses, label='Loss', c='r')
+    plt.plot(learning_rates, smoothed_losses, label='Smoothed loss', c='b')
+    plt.axvline(np.log(picked_learning_rate) / np.log(10), label=f'Learning rate found {picked_learning_rate:.2E}', color='g', linestyle='--')
+    plt.xlabel('Log_10 learning rate')
+    plt.legend()
+    plt.savefig(os.path.join(figure_path, f'find_learning_rate{IMAGE_EXT}'))
+    plt.clf()
+
+
 def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
     """Plot saliency maps of a batch of input tensors.
 
@@ -1171,7 +1251,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         data = data[..., 0]
         gradients = gradients[..., 0]
 
-    mean_saliency = np.zeros(data.shape[1:] + (3,))
+    mean_saliency = np.zeros(data.shape[1:4] + (3,))
     for batch_i in range(data.shape[0]):
         if len(data.shape) == 3:
             ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
@@ -1180,9 +1260,18 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
             _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), f'{prefix}_saliency_{batch_i}{IMAGE_EXT}', cols, rows)
-            saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=0.0, max_value=1.0/data.shape[0])
+            saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=5.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
+        elif len(data.shape) == 5:
+            for j in range(data.shape[-1]):
+                cols = max(2, int(math.ceil(math.sqrt(data.shape[-2]))))
+                rows = max(2, int(math.ceil(data.shape[-2] / cols)))
+                name = f'{prefix}_saliency_{batch_i}_channel_{j}{IMAGE_EXT}'
+                _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i, ..., j], gradients[batch_i, ..., j]), name, cols, rows)
+                saliency = _saliency_blurred_and_scaled(gradients[batch_i, ..., j], blur_radius=5.0, max_value=1.0 / data.shape[0])
+                mean_saliency[..., 0] -= saliency
+                mean_saliency[..., 1] += saliency
         else:
             logging.warning(f'No method to plot saliency for data shape: {data.shape}')
 
@@ -1241,21 +1330,6 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     for i in range(tensor.shape[-2]):
         axes[i // cols, i % cols].imshow(tensor[:, :, i, :])
-        axes[i // cols, i % cols].set_yticklabels([])
-        axes[i // cols, i % cols].set_xticklabels([])
-
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
-    plt.clf()
-
-
-def _plot_3d_tensor_slices_as_gray(tensor, figure_path, cols=3, rows=10):
-    _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
-    vmin = np.min(tensor)
-    vmax = np.max(tensor)
-    for i in range(tensor.shape[-1]):
-        axes[i // cols, i % cols].imshow(tensor[:, :, i], cmap='gray', vmin=vmin, vmax=vmax)
         axes[i // cols, i % cols].set_yticklabels([])
         axes[i // cols, i % cols].set_xticklabels([])
 
