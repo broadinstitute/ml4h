@@ -1,10 +1,10 @@
-import xmltodict
 import os
 import re
 import shutil
 import logging
 import datetime
 import argparse
+import xmltodict
 from timeit import default_timer as timer
 #from ml4cvd.logger import load_config # need help figuring out import paths
 
