@@ -233,8 +233,9 @@ def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[
 
     if model_layers is not None:
         m.load_weights(model_layers, by_name=True)
-        _plot_dot_model_in_color(model_to_dot(m, show_shapes=True, expand_nested=True), model_layers.replace(MODEL_EXT, f'_char{IMAGE_EXT}'), True)
-        logging.info(f'Loaded model weights from:{model_layers}')
+        model_plot = model_layers.replace(MODEL_EXT, f'_char_lstm{IMAGE_EXT}')
+        _plot_dot_model_in_color(model_to_dot(m, show_shapes=True, expand_nested=True), model_plot, True)
+        logging.info(f'Loaded model weights from:{model_layers} and saved architecture diagram to: ')
 
     return m
 
