@@ -1309,7 +1309,8 @@ TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CAT
 TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
 TMAPS['liver_shmolli_segmented'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
-                                             tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_'), channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
+                                             tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
+                                             channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
 
 
 def _make_fallback_tensor_from_file(tensor_keys):

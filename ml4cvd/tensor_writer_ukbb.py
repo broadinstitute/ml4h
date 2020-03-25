@@ -165,7 +165,7 @@ def write_tensors(a_id: str,
 def write_tensors_from_dicom_pngs(tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
                                   sample_header='sample_id', dicom_header='dicom_file',
                                   instance_header='instance_number', png_postfix='.png.mask.png',
-                                  path_prefix='ukb_cardiac_mri'):
+                                  path_prefix='ukb_liver_mri'):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
     header = next(reader)
