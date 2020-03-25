@@ -591,7 +591,8 @@ class ResidualBlock:
         conv_layer, kernel = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
         self.conv_layers = [
             conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
-            for i, num_filters in enumerate(filters_per_conv)]
+            for i, num_filters in enumerate(filters_per_conv)
+        ]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
@@ -601,7 +602,7 @@ class ResidualBlock:
     def __call__(self, x: Tensor) -> Tensor:
         previous = x
         for convolve, activate, normalize, regularize, one_by_n_convolve in zip(
-                self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.residual_convs
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.residual_convs,
         ):
             x = regularize(normalize(activate(convolve(x))))
             if one_by_n_convolve is not None:  # Do not residual add the input
@@ -636,7 +637,8 @@ class DenseBlock:
     def __call__(self, x: Tensor) -> Tensor:
         dense_connections = [x]
         for convolve, activate, normalize, regularize, concat in zip(
-                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.concatenations):
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.concatenations,
+        ):
             x = normalize(regularize(activate(convolve(x))))
             dense_connections.append(x)
             x = concat(dense_connections[:])  # [:] is necessary because of tf weirdness
@@ -673,8 +675,10 @@ class FullyConnectedBlock:
         return x
 
 
-class FlattenAll:
-
+class FlattenDenseRestructure:
+    """
+    Flattens and concatenates all inputs, applies a dense layer, then restructures to provided shapes
+    """
     def __init__(
             self,
             pre_decoder_shapes: Dict[TensorMap, Tuple[int, ...]],
@@ -690,10 +694,12 @@ class FlattenAll:
             normalization=normalization,
             regularization=regularization,
             regularization_rate=regularization_rate,
-            name='embed'
+            name='embed',
         )
-        self.restructures = {tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
-                             for tm, shape in pre_decoder_shapes.items()}
+        self.restructures = {
+            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
+            for tm, shape in pre_decoder_shapes.items()
+        }
 
     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
         y = [Flatten()(x) for x in encoder_outputs.values()]
@@ -706,7 +712,7 @@ class FlattenAll:
 
 
 class FlatToStructure:
-
+    """Takes a flat input, applies a dense layer, then restructures to output_shape"""
     def __init__(
             self,
             output_shape: Tuple[int, ...],
@@ -751,11 +757,13 @@ class ConvEncoder:
             conv_y=conv_y, conv_z=conv_z, activation=activation, normalization=normalization,
             regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
         )
-        self.dense_blocks = [DenseBlock(
-            dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x, conv_y=conv_y,
-            conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
-            regularization=regularization, regularization_rate=regularization_rate
-        ) for filters in filters_per_dense_block]
+        self.dense_blocks = [
+            DenseBlock(
+                dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x, conv_y=conv_y,
+                conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
+                regularization=regularization, regularization_rate=regularization_rate,
+            ) for filters in filters_per_dense_block
+        ]
         self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(filters_per_dense_block) + 1, pool_x, pool_y, pool_z)
 
     def __call__(self, x: Tensor) -> Tuple[Tensor, List[Tensor]]:
@@ -810,11 +818,14 @@ class ConvDecoder:
             u_connect_parents: List[TensorMap] = None,
     ):
         dimension = tensor_map_out.axes()
-        self.dense_blocks = [DenseBlock(
-            dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x,
-            conv_y=conv_y, conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
-            regularization=regularization, regularization_rate=regularization_rate)
-            for filters in filters_per_dense_block]
+        self.dense_blocks = [
+            DenseBlock(
+                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x,
+                conv_y=conv_y, conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
+                regularization=regularization, regularization_rate=regularization_rate,
+            )
+            for filters in filters_per_dense_block
+        ]
         final_activation = 'softmax' if tensor_map_out.is_categorical() else 'linear'
         conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=final_activation, name=tensor_map_out.output_name())
@@ -927,19 +938,22 @@ def make_multimodal_multitask_model(
                 normalization=normalization,
                 regularization=dense_regularize,
                 regularization_rate=dense_regularize_rate,
-                is_encoder=True
+                is_encoder=True,
             )
 
-    bottle_neck = FlattenAll(
+    bottle_neck = FlattenDenseRestructure(
         widths=dense_layers,
         activation=activation,
         regularization=dense_regularize,
         regularization_rate=dense_regularize_rate,
         normalization=normalization,
         pre_decoder_shapes={
-            tm: (_calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z]) if tm.axes() > 1
-                 else (tm.annotation_units,))
-            for tm in tensor_maps_out}
+            tm: (
+                _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z]) if tm.axes() > 1
+                else (tm.annotation_units,)
+            )
+            for tm in tensor_maps_out
+        },
     )
 
     decoders: Dict[TensorMap, Layer] = {}
@@ -990,8 +1004,10 @@ def make_multimodal_multitask_model(
         except ValueError as e:
             logging.info(f'Loaded model weights, but got ValueError in model loading: {str(e)}')
         logging.info(f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.')
-    m.compile(optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
-              metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+    m.compile(
+        optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
+        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+    )
     m.summary()
     return m
 
