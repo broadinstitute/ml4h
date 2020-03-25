@@ -46,14 +46,15 @@ def write_tensors_partners(a_id: str,
 
     # Initialize counter to track total number of converted hd5 files
     stats = Counter()
-
+    
+    logging.info('Converting XMLs into HD5s')
     # Iterate through directories containing XML files
     for fpath_xml_dir in fpath_xml_dirs:
 
         # Convert all XMLs inside the dir into hd5 files
         _convert_xml_to_hd5_wrapper(fpath_xml_dir, tensors, n_jobs, stats)
 
-    logging.info('Converted {stats[ECG]} XMLs to HD5')
+    logging.info(f"Converted {stats['ECG']} XMLs to HD5")
 
     # Get all hd5 directories
     fpath_hd5_dirs = _get_dirs_in_dir(tensors)
@@ -650,7 +651,7 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5):
     if (os.stat(fpath_xml).st_size == 0 or not text_data):
         os.remove(fpath_xml)
         convert = False
-        logging.info('Conversion failed! XML is empty.')
+        logging.info(f'Conversion of {fpath_xml} failed! XML is empty.')
     else:
         # Extract voltage from XML
         try:
@@ -665,7 +666,7 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5):
         # However, ExpatError should be impossible to throw, since earlier
         # we catch XMLs filled with gibberish.
         except (IndexError, ExpatError):
-            logging.warning('Conversion failed! Voltage is empty or badly formatted.')
+            logging.warning(f'Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.')
             convert = False
 
     # If convert is still true up to here, make the hd5
