@@ -1329,7 +1329,7 @@ def _make_fallback_tensor_from_file(tensor_keys):
 
 TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                        tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
-TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1, 1),
+TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
                                                  tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
 TMAPS['shmolli_192i_liver_only'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                              tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']))
