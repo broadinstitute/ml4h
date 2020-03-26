@@ -1269,10 +1269,15 @@ TMAPS['cine_sax_b6_192_1'] = TensorMap('cine_segmented_sax_b6', Interpretation.C
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i in range(tm.shape[-2]):
-            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
+        if tm.axes() == 4:
+            for i in range(tm.shape[-2]):
+                categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
+                categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+                tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
+        elif tm.axes() == 3:
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(1))
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-            tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
+            tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         return tensor
     return _segmented_dicom_tensor_from_file
 
@@ -1324,7 +1329,7 @@ def _make_fallback_tensor_from_file(tensor_keys):
 
 TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                        tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
-TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
+TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1, 1),
                                                  tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
 TMAPS['shmolli_192i_liver_only'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                              tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']))
