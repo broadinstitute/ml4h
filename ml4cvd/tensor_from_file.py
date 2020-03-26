@@ -1308,7 +1308,7 @@ TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CAT
 
 TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
-TMAPS['liver_shmolli_segmented'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
+TMAPS['liver_shmolli_segmented'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
                                              tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
                                              channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
 
@@ -1317,14 +1317,15 @@ def _make_fallback_tensor_from_file(tensor_keys):
     def fallback_tensor_from_file(tm, hd5, dependents={}):
         for k in tensor_keys:
             if k in hd5:
-                tensor = np.array(hd5[k], dtype=np.float32)
-                return tensor
+                return _pad_or_crop_array_to_shape(tm.shape, np.array(hd5[k], dtype=np.float32))
         raise ValueError(f'No fallback tensor found from keys: {tensor_keys}')
     return fallback_tensor_from_file
 
 
 TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                        tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
+TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
+                                                 tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
 TMAPS['shmolli_192i_liver_only'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
                                              tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']))
 
