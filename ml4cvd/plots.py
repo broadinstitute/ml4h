@@ -325,12 +325,14 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+
+    cumulative_sick = np.cumsum(np.sum(truth[:, intervals:], axis=0))
     logging.info(f"Prediction shape is: {prediction.shape} truth shape is: {truth.shape}")
     logging.info(f"Sick per step is: {np.sum(truth[:, intervals:], axis=0)} out of {truth.shape[0]}")
     logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
-    logging.info(f"Cumulative sick at each step is: {np.cumsum(np.sum(truth[:, intervals:], axis=0))} out of {truth.shape[0]}")
+    logging.info(f"Cumulative sick at each step is: {cumulative_sick} out of {truth.shape[0]}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
-    true_proportion = np.cumsum(np.sum(truth[:, intervals:], axis=0)) / truth.shape[0]
+    true_proportion = cumulative_sick / (cumulative_sick + np.sum(truth[:, :intervals], axis=0))
     logging.info(f"proportion shape is: {predicted_proportion.shape} truth shape is: {true_proportion.shape} begin")
     if paths is not None:
         pass
