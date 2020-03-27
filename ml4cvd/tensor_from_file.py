@@ -1269,15 +1269,17 @@ TMAPS['cine_sax_b6_192_1'] = TensorMap('cine_segmented_sax_b6', Interpretation.C
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.axes() == 4:
+        if path_prefix == 'ukb_liver_mri':
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(1))
+            categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+            tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+        elif tm.axes() == 4:
             for i in range(tm.shape[-2]):
                 categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
                 categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
                 tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
-        elif tm.axes() == 3:
-            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(1))
-            categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-            tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+        else:
+            raise ValueError(f'No method to get segmented slices for TensorMap: {tm}')
         return tensor
     return _segmented_dicom_tensor_from_file
 
@@ -1316,6 +1318,9 @@ TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpreta
 TMAPS['liver_shmolli_segmented'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
                                              tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
                                              channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
+TMAPS['liver_shmolli_segmented_7'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, 7, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
+                                             tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
+                                             channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
 
 
 def _make_fallback_tensor_from_file(tensor_keys):
@@ -1328,6 +1333,8 @@ def _make_fallback_tensor_from_file(tensor_keys):
 
 
 TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
+                                       tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
+TMAPS['shmolli_192i_both_4d'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7, 1),
                                        tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
 TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
                                                  tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
