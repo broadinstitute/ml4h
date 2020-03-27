@@ -344,7 +344,7 @@ def plot_survival(prediction, truth, title, days_window=3650, prefix='./figures/
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info("Try to save survival plot at: {}".format(figure_path))
+    logging.info(f'Try to save survival plot at: {figure_path}')
     plt.savefig(figure_path)
     return {}
 
