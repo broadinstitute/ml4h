@@ -116,7 +116,7 @@ def _survival_tensor(start_date_key, day_window):
         if tm.name + '_date' in hd5['dates']:
             censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
         elif 'phenotype_censor' in hd5['dates']:
-            censor_date = str2date(str(hd5['dates/phenotype_censor']))
+            censor_date = str2date(str(hd5['dates/phenotype_censor'][0]))
         else:
             raise ValueError(f'No date found for survival {tm.name}')
 
