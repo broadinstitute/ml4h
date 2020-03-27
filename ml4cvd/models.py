@@ -611,7 +611,7 @@ class ResidualBlock:
         return x
 
 
-class DenseBlock:
+class DenseConvolutionalBlock:
     def __init__(
             self,
             *,
@@ -681,7 +681,7 @@ class FlattenDenseRestructure:
     """
     def __init__(
             self,
-            pre_decoder_shapes: Dict[TensorMap, Tuple[int, ...]],
+            pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]],
             activation: str,
             normalization: str,
             widths: List[int],
@@ -698,8 +698,9 @@ class FlattenDenseRestructure:
         )
         self.restructures = {
             tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
-            for tm, shape in pre_decoder_shapes.items()
+            for tm, shape in pre_decoder_shapes.items() if shape is not None
         }
+        self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
 
     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
         y = [Flatten()(x) for x in encoder_outputs.values()]
@@ -708,7 +709,10 @@ class FlattenDenseRestructure:
         else:
             y = y[0]
         y = self.fully_connected(y)
-        return {tm: restructure(y) for tm, restructure in self.restructures.items()}
+        return {
+            **{tm: restructure(y) for tm, restructure in self.restructures.items()},
+            **{tm: y for tm in self.no_restructures},
+        }
 
 
 class FlatToStructure:
@@ -758,7 +762,7 @@ class ConvEncoder:
             regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
         )
         self.dense_blocks = [
-            DenseBlock(
+            DenseConvolutionalBlock(
                 dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x, conv_y=conv_y,
                 conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
@@ -819,7 +823,7 @@ class ConvDecoder:
     ):
         dimension = tensor_map_out.axes()
         self.dense_blocks = [
-            DenseBlock(
+            DenseConvolutionalBlock(
                 dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=conv_x,
                 conv_y=conv_y, conv_z=conv_z, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
@@ -904,7 +908,7 @@ def make_multimodal_multitask_model(
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
 
-    normalization = 'batch_norm'  # TODO: should be more flexible
+    dense_normalize = conv_normalize  # TODO: should come from own argument
     dense_regularize = 'dropout'
     dense_regularize_rate = dropout
     conv_regularize_rate = conv_dropout
@@ -935,7 +939,7 @@ def make_multimodal_multitask_model(
             encoders[tm] = FullyConnectedBlock(
                 widths=[tm.annotation_units],
                 activation=activation,
-                normalization=normalization,
+                normalization=dense_normalize,
                 regularization=dense_regularize,
                 regularization_rate=dense_regularize_rate,
                 is_encoder=True,
@@ -946,11 +950,11 @@ def make_multimodal_multitask_model(
         activation=activation,
         regularization=dense_regularize,
         regularization_rate=dense_regularize_rate,
-        normalization=normalization,
+        normalization=dense_normalize,
         pre_decoder_shapes={
             tm: (
                 _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z]) if tm.axes() > 1
-                else (tm.annotation_units,)
+                else None
             )
             for tm in tensor_maps_out
         },
@@ -991,7 +995,7 @@ def make_multimodal_multitask_model(
         freeze = kwargs.get('freeze_model_layers', False)
         m.load_weights(model_layers, by_name=True)
         try:
-            m_other = load_model(model_layers, custom_objects=custom_dict)
+            m_other = load_model(model_layers, custom_objects=custom_dict, compile=False)
             for other_layer in m_other.layers:
                 try:
                     target_layer = m.get_layer(other_layer.name)
