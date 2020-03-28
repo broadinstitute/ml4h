@@ -1,28 +1,20 @@
+import array
+import base64
+import logging
 import os
 import re
+import struct
 import sys
+from collections import defaultdict
 from datetime import datetime
+from xml.parsers.expat import ExpatError, ParserCreate
 
 import h5py
-import errno
-import array
-import shutil
-import struct
-import base64
-import struct
-import hashlib
-import logging
-import argparse
-import optparse
 import numcodecs
 import numpy as np
-import pandas as pd
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup, SoupStrainer
-from collections import Counter, defaultdict
-from dateutil.parser import parse
 from joblib import Parallel, delayed
-from xml.parsers.expat import ExpatError, ParserCreate
 from ml4cvd.defines import ECG_REST_STD_LEADS
 
 
@@ -47,12 +39,14 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs)
 
 
-MRN_FILTER = SoupStrainer('patientid')
 def _map_mrn_to_xml(fpath_xml: str) -> str:
     with open(fpath_xml, 'r') as f:
-        soup = BeautifulSoup(f, 'lxml', parse_only=MRN_FILTER)
-    mrn = soup.find('patientid').get_text()
-    return (mrn, fpath_xml)
+        for line in f:
+            match = re.match(r'.*<PatientID>(.*)</PatientID>.*', line)
+            if match:
+                return (match.group(1), fpath_xml)
+    logging.warning(f'No PatientID found at {fpath_xml}')
+    return ('', '')
 
 
 def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> None:
@@ -72,6 +66,7 @@ def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> None:
     # Collate lists of paths for each MRN
     mrn_xmls = defaultdict(list)
     [mrn_xmls[mrn].append(fpath_xml) for mrn, fpath_xml in tuples]
+    if '' in mrn_xmls: del mrn_xmls['']
     logging.info(f'Found {len(mrn_xmls)} distinct MRNs')
 
     return mrn_xmls
@@ -94,64 +89,6 @@ def _clean_read_text(text):
     text = text.strip()
 
     return text
-
-
-def _get_dirs_in_dir(fpath_dir):
-    fpath_dirs = [f.path for f in os.scandir(fpath_dir) if f.is_dir()]
-    fpath_dirs.sort()
-    if not fpath_dirs:
-        fpath_dirs = [fpath_dir]
-    return fpath_dirs
-
-
-def _get_files_from_dir(fpath_dir, extension):
-    # Ensure extension starts with period
-    if extension[0] != '.':
-        extension = '.' + extension
-
-    # Within directory (input string), find all XML files
-    files = filter(lambda x: x.endswith(extension), os.listdir(fpath_dir))
-
-    # Covert filter iterable to list
-    files_list = list(files)
-
-    # If list of XML files is empty, return None
-    if not files_list:
-        return None
-
-    # Sort list of XML files
-    files_list.sort()
-
-    # Prepend every XML file name with full path
-    return [os.path.join(fpath_dir, fname) for fname in files_list]
-
-
-def _hash_xml_fname(fpath_xml):
-    with open(fpath_xml, 'rb') as f:
-        bytes = f.read()  # read entire file as bytes
-        readable_hash = hashlib.sha256(bytes).hexdigest()
-        return fpath_xml, readable_hash
-
-
-def _hash_xml_fname_dir(fpath_dir):
-
-    # Within directory (input string), find all XML files
-    xml_files = filter(lambda x: x.endswith('.xml'), os.listdir(fpath_dir))
-
-    # Covert filter iterable to list of XML files
-    xml_files_list = list(xml_files)
-
-    # Sort list of XML files
-    xml_files_list.sort()
-
-    # Prepend every XML file name with full path
-    fpath_xmls = [os.path.join(fpath_dir, xml_fname)
-                  for xml_fname in xml_files_list]
-
-    # Compute hashes in parallel
-    hashes = Parallel(n_jobs=-1)(delayed(_hash_xml_fname)(fpath_xml) for fpath_xml in fpath_xmls)
-
-    return hashes
 
 
 def _get_voltage_from_xml(fpath_xml):
@@ -181,38 +118,44 @@ def _get_voltage_from_xml(fpath_xml):
     g_parser.makeZcg()
 
     # Return voltage data as a dict of arrays
-    voltage = g_parser.get_voltage()
+    voltage, units = g_parser.get_voltage()
 
     # Return voltage
-    return voltage
+    return voltage, units
 
 
 def _text_from_xml(xml_fpath):
     # Initialize empty dictionary in which to store text from the XML.
     ecg_data = dict()
 
+    # Define tags that we want to find and use SoupStrainer to speed up search
+    tags = ['patientdemographics',
+            'testdemographics',
+            'order',
+            'restingecgmeasurements',
+            'originalrestingecgmeasurements',
+            'intervalmeasurementtimeresolution',
+            'intervalmeasurementamplituderesolution']
+    strainer = SoupStrainer(tags)
+
     # Use lxml parser, which makes all tags lower case.
     with open(xml_fpath, 'r') as f:
-        soup = BeautifulSoup(f, 'lxml')
+        soup = BeautifulSoup(f, 'lxml', parse_only=strainer)
 
     # If the XML is gibberish and un-parseable,
-    # then soup.prettify() will return '' or False,
-    # which is equivalent to "if not soup.prettify().
-    # then we should not parse the contents, and return an empty dict()
+    # then soup.prettify() will return '' or False
+    # and we should return an empty dict().
 
     # If the XML is not gibberish, parse the contents.
     if soup.prettify():
-        # Text is inside <RestingECG> tags, so ovewrite soup with that text.
-        soup = soup.find('restingecg')
 
-        # Define major tags.
-        major_tags = ['patientdemographics',
-                      'testdemographics',
-                      'restingecgmeasurements',
-                      'originalrestingecgmeasurements']
-
-        # Loop through the major tags we want to extract.
-        for tag in major_tags:
+        # Loop through the tags we want to extract.
+        for tag in tags:
+            append_tag = ''
+            if tag == 'restingecgmeasurements':
+                append_tag = '_md'
+            elif tag == 'originalrestingecgmeasurements':
+                append_tag = '_pc'
 
             # Ovewrite soup with contents in major tag.
             soup_of_tag = soup.find(tag)
@@ -223,15 +166,19 @@ def _text_from_xml(xml_fpath):
                 # Find all child elements in subset.
                 elements = soup_of_tag.find_all()
 
+                # If there are no child elements, get the text of the tag
+                if not elements:
+                    elements = [soup_of_tag]
+
                 # Iterate through child elements via list comprehension
                 # and save the element key-value (name-text) to dict.
-                [ecg_data.update({el.name: el.get_text()}) for el in elements]
+                [ecg_data.update({el.name + append_tag: el.get_text()}) for el in elements]
 
         # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict.
         ecg_data.update({'diagnosis_md': _parse_soup_diagnosis(soup.find('diagnosis'))})
 
         # Parse text of computer read within <OriginalDiagnosis> tag and save to ecg_data dict
-        ecg_data['diagnosis_computer'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
+        ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
 
     # Return dict
     return ecg_data
@@ -285,19 +232,6 @@ def _parse_soup_diagnosis(input_from_soup):
                 parsed_text = parsed_text[:-1]
 
         return parsed_text
-
-
-# Format input date from `mm-dd-yyyy` into `yyyy-mm`, or `yyyy-mm-dd`
-# This is the ISO 8601 standard for date
-def _format_date(input_date, day_flag, sep_char='-'):
-
-    date_iso = input_date[6:10] + sep_char \
-                + input_date[0:2]
-
-    if day_flag:
-        date_iso = date_iso + sep_char + input_date[3:5]
-
-    return date_iso
 
 
 class XmlElementParser(ABC):
@@ -542,7 +476,7 @@ class MuseXmlParser:
         voltage['aVL'] = voltage['I'] - voltage['II'] / 2
         voltage['aVF'] = voltage['II'] - voltage['I'] / 2
 
-        return voltage
+        return voltage, self.units
 
 
 def _compress_data_to_hd5(hf, name, data, dtype, method='zstd', compression_opts=19):
@@ -587,27 +521,6 @@ def _get_max_voltage(voltage):
     return max_voltage
 
 
-def _remove_hd5_in_date_dir(fpath_xml_dir, fpath_hd5):
-    # Isolate date dir name
-    yyyymm = os.path.split(fpath_xml_dir)[1]
-
-    # Determine path to associated hd5 directory
-    fpath_hd5_dir = os.path.join(fpath_hd5, yyyymm)
-
-    # If this directory exists, parse it
-    if os.path.exists(fpath_hd5_dir):
-
-        # Get list of hd5 files inside dir
-        fpath_hd5_list = _get_files_from_dir(fpath_hd5_dir, 'hd5')
-
-        # Check if hd5 files exist in the directory
-        if fpath_hd5_list:
-
-            # Iterate through hd5 files and delete them
-            for fpath_hd5 in fpath_hd5_list:
-                os.remove(fpath_hd5)
-
-
 def _convert_mrn_xmls_to_hd5(mrn, fpath_xmls, dir_hd5):
     fpath_hd5 = os.path.join(dir_hd5, f'{mrn}.hd5')
     num_hd5, num_xml = 1, 0
@@ -633,16 +546,22 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
 
     # Extract text data from XML into dict
     text_data = _text_from_xml(fpath_xml)
+    dt = datetime.strptime(f"{text_data['acquisitiondate']} {text_data['acquisitiontime']}", '%m-%d-%Y %H:%M:%S')
+    ecg_dt = f'{dt:%Y-%m-%d %H:%M:%S}' # ISO
 
     # If XML is empty, remove the XML file and set convert to false
     if (os.stat(fpath_xml).st_size == 0 or not text_data):
         os.remove(fpath_xml)
         convert = False
-        logging.info(f'Conversion of {fpath_xml} failed! XML is empty.')
+        logging.warning(f'Conversion of {fpath_xml} failed! XML is empty.')
     else:
+        # Check if patient already has an ECG at given date and time
+        if ecg_dt in hf.keys():
+            convert = False
+
         # Extract voltage from XML
         try:
-            voltage = _get_voltage_from_xml(fpath_xml)
+            voltage, voltage_units = _get_voltage_from_xml(fpath_xml)
 
             # If the max voltage value is 0, do not convert
             if _get_max_voltage(voltage) == 0:
@@ -661,7 +580,7 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
 
         # Define keys for cleaned reads
         key_read_md = 'diagnosis_md'
-        key_read_pc = 'diagnosis_computer'
+        key_read_pc = 'diagnosis_pc'
         key_read_md_clean = 'read_md_clean'
         key_read_pc_clean = 'read_pc_clean'
 
@@ -675,120 +594,26 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
         if key_read_pc in text_data.keys():
             read_pc_clean = _clean_read_text(text=text_data[key_read_pc])
 
-        # Create new hd5 directory from acquisition date
-        fpath_hd5_dir = _create_hd5_dir(fpath_hd5=fpath_hd5,
-                                        yyyymm_str=text_data['acquisitiondate'])
+        # Clean Patient MRN to only numeric characters
+        key_mrn_clean = 'patientid_clean'
+        mrn_clean = None
+        if 'patientid' in text_data.keys():
+            mrn_clean = re.sub(r'[^0-9]', '', text_data['patientid'])
 
-        # Create full path to new hd5 file based on acquisition date and time
-        # e.g. /hd5/2004-05/mrn-date-time.hd5
-        fname_hd5_new = _create_fname_hd5(text_data=text_data,
-                                          fpath_xml=fpath_xml,
-                                          sep_char='-')
+        gp = hf.create_group(ecg_dt)
 
-        # Determine full path to new hd5 file
-        fpath_hd5_new = os.path.join(fpath_hd5_dir, fname_hd5_new)
-
-        # Create new hd5 file
-        with h5py.File(fpath_hd5_new, 'w') as hf:
-
-            # Iterate through each lead and save voltage array to hd5
-            for lead in voltage.keys():
-                _compress_data(hf=hf,
-                               name=lead,
-                               data=voltage[lead].astype('int16'),
-                               dtype='int16',
-                               method='zstd')
-
-            # Iterate through keys in extracted text data and save to hd5
-            for key in text_data.keys():
-                _compress_data(hf=hf,
-                               name=key,
-                               data=text_data[key],
-                               dtype='str',
-                               method='zstd')
-
-            # Save cleaned reads to hd5
-            if read_md_clean:
-                _compress_data(hf=hf,
-                               name=key_read_md_clean,
-                               data=read_md_clean,
-                               dtype='str',
-                               method='zstd')
-
-            if read_pc_clean:
-                _compress_data(hf=hf,
-                               name=key_read_pc_clean,
-                               data=read_pc_clean,
-                               dtype='str',
-                               method='zstd')
-
-        logging.info(f'Converted {fpath_xml} to {fpath_hd5_new}')
-    return convert
-
-
-def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
-    # Set flag to check if we wrote to HD5
-    convert = True
-
-    # Extract text data from XML into dict
-    text_data = _text_from_xml(fpath_xml)
-
-    # If XML is empty, remove the XML file
-    if (os.stat(fpath_xml).st_size == 0 or not text_data):
-        logging.warning(f'Empty XML at {fpath_xml}')
-        try:
-            os.remove(fpath_xml)
-        except:
-            logging.warning(f'Could not delete empty XML at {fpath_xml}')
-    else:
-        #
-        # Extract voltage from XML
-        try:
-            voltage = _get_voltage_from_xml(fpath_xml)
-
-            # If the max voltage value is not 0, convert XML to HD5
-            if _get_max_voltage(voltage) != 0:
-                convert = True
-
-        # If there is no voltage, or the XML is poorly formed,
-        # the function will throw an exception and convert is False.
-        # However, ExpatError should be impossible to throw, since earlier
-        # we catch XMLs filled with gibberish.
-        except (IndexError, ExpatError):
-            logging.warning(f'Empty voltage or badly formed XML at {fpath_xml}')
-
-    # If convert is true, write to HD5
-    if convert:
-
-        # Define keys for cleaned reads
-        key_read_md = 'diagnosis_md'
-        key_read_pc = 'diagnosis_computer'
-        key_read_md_clean = 'read_md_clean'
-        key_read_pc_clean = 'read_pc_clean'
-
-        # Clean cardiologist read
-        read_md_clean = None
-        if key_read_md in text_data.keys():
-            read_md_clean = _clean_read_text(text=text_data[key_read_md])
-
-        # Clean MUSE read
-        read_pc_clean = None
-        if key_read_pc in text_data.keys():
-            read_pc_clean = _clean_read_text(text=text_data[key_read_pc])
-
-        # Create new group for ECG in XML based on acquisition time
-        dt = datetime.strptime(f"{text_data['acquisitiondate']} {text_data['acquisitiontime']}", '%m-%d-%Y %H:%M:%S')
-
-        try:
-            gp = hf.create_group(f'{dt:%Y-%m-%d %H:%M:%S}')
-        except ValueError as e:
-            # ECG for this patient on this date and time already exists, skip
-            return
-        # TODO if group with exact acqusition time exists for this patient, skip this one
+        # Save cleaned MRN to hd5
+        if mrn_clean:
+            _compress_data_to_hd5(hf=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
 
         # Iterate through each lead and save voltage array to hd5
         for lead in voltage.keys():
             _compress_data_to_hd5(hf=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
+
+        # Save voltage units to hd5
+        key_voltage_units = 'voltageunits'
+        if voltage_units != '':
+            _compress_data_to_hd5(hf=gp, name=key_voltage_units, data=voltage_units, dtype='str')
 
         # Iterate through keys in extracted text data and save to hd5
         for key in text_data.keys():
@@ -806,66 +631,7 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
 
 
 def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map, dir_hd5, n_jobs):
-    converted = Parallel(n_jobs=n_jobs)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5) for mrn, fpath_xmls in mrn_xml_map.items())
+    converted = Parallel(n_jobs=n_jobs, verbose=3)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5) for mrn, fpath_xmls in mrn_xml_map.items())
     num_hd5 = sum([x[0] for x in converted])
     num_xml = sum([x[1] for x in converted])
     logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s")
-
-
-def _get_mrn_date_time_from_fname(fname, sep_char):
-    # Remove the path up until the file name
-    mrn_date_time_hash = os.path.split(fname)[1]
-
-    # Remove the hash from the end
-    mrn_date_time = mrn_date_time_hash.rsplit(sep_char, 1)[0]
-
-    return mrn_date_time
-
-
-def _process_hd5(fpath_hd5_dir, sep_char):
-
-    # Initialize counter to track duplicates
-    num_duplicates = 0
-
-    # Get list of full path to all hd5s in directory
-    fpath_hd5_list = _get_files_from_dir(fpath_hd5_dir, 'hd5')
-
-    # If list is empty, return
-    if not fpath_hd5_list:
-        return num_duplicates
-
-    # Sort the list
-    fpath_hd5_list = sorted(fpath_hd5_list)
-
-    # Isolate yyyy-mm-dd-hh-mm-ss from first hd5 file in list
-    mrn_date_time_ref = _get_mrn_date_time_from_fname(fpath_hd5_list[0], sep_char)
-
-    # Rename this first file
-    fpath_hd5_new = os.path.join(os.path.split(fpath_hd5_list[0])[0],
-                                 mrn_date_time_ref + '.hd5')
-    os.rename(fpath_hd5_list[0], fpath_hd5_new)
-
-    # Loop through remaining hd5 file names
-    for fpath_hd5_this in fpath_hd5_list[1:]:
-        mrn_date_time = _get_mrn_date_time_from_fname(fpath_hd5_this, sep_char)
-
-        # If this mrn_date_time matches previous, we have a duplicate; delete it
-        if mrn_date_time_ref == mrn_date_time:
-            os.remove(fpath_hd5_this)
-            num_duplicates += 1
-        # If not, no duplicate, so rename file and update priors
-        else:
-            fpath_hd5_new = os.path.join(os.path.split(fpath_hd5_this)[0],
-                                         mrn_date_time + '.hd5')
-            os.rename(fpath_hd5_this, fpath_hd5_new)
-            mrn_date_time_ref = mrn_date_time
-
-    return num_duplicates
-
-
-def _process_hd5_wrapper(fpath_hd5_dirs, n_jobs):
-    duplicates = Parallel(n_jobs=n_jobs)(delayed(_process_hd5)(fpath_hd5_dir, sep_char='-') for fpath_hd5_dir in fpath_hd5_dirs)
-
-    logging.info(f'Removed {sum(duplicates)} duplicate hd5 files that escaped hash detection')
-
-    return duplicates
