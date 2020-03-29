@@ -4,4 +4,3 @@ TFSCRIPT="tf.sh"
     --mode tensorize_partners \
     --tensors /home/${USER}/data/hd5 \
     --xml_folder /data/partners_ecg/xml/xml_not_tensorized/
-#    --xml_folder /home/sn69/data/xml/temp/

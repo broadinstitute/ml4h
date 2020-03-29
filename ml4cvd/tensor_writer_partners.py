@@ -523,19 +523,23 @@ def _get_max_voltage(voltage):
 
 def _convert_mrn_xmls_to_hd5(mrn, fpath_xmls, dir_hd5):
     fpath_hd5 = os.path.join(dir_hd5, f'{mrn}.hd5')
-    num_hd5, num_xml = 1, 0
-    with h5py.File(fpath_hd5, 'w') as hf:
+    num_xml = 0
+    ecg_dts = None
+    with h5py.File(fpath_hd5, 'a') as hf:
         for fpath_xml in fpath_xmls:
             if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
                 num_xml += 1
+        ecg_dts = list(hf.keys())
 
-    if not num_xml:
-        # No XMLs for MRN were written, delete HD5
+    if not ecg_dts:
+        # There are no ECGs in HD5, delete empty HD5
+        # Not sufficient just to check num_xml as HD5 might have ECGs from previous runs
         try:
             os.remove(fpath_hd5)
-            num_hd5 = 0
         except:
             logging.warning(f'Could not delete empty HD5 at {fpath_hd5}')
+
+    num_hd5 = 1 if num_xml else 0
 
     return (num_hd5, num_xml)
 
@@ -557,6 +561,7 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
     else:
         # Check if patient already has an ECG at given date and time
         if ecg_dt in hf.keys():
+            logging.warning(f'Conversion of {fpath_xml} skipped. Converted XML already exists in HD5.')
             convert = False
 
         # Extract voltage from XML
