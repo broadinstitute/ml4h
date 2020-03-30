@@ -632,21 +632,22 @@ class DenseConvolutionalBlock:
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
-        self.concatenations = [Concatenate() for _ in range(block_size)]
 
     def __call__(self, x: Tensor) -> Tensor:
         dense_connections = [x]
-        for convolve, activate, normalize, regularize, concat in zip(
-                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.concatenations,
+        for i, (convolve, activate, normalize, regularize) in enumerate(
+            zip(
+                    self.conv_layers, self.activations, self.normalizations, self.regularizations,
+            ),
         ):
             x = normalize(regularize(activate(convolve(x))))
-            dense_connections.append(x)
-            x = concat(dense_connections[:])  # [:] is necessary because of tf weirdness
+            if i < len(self.conv_layers) - 1:  # output of block does not get concatenated to
+                dense_connections.append(x)
+                x = Concatenate()(dense_connections[:])  # [:] is necessary because of tf weirdness
         return x
 
 
 class FullyConnectedBlock:
-
     def __init__(
             self,
             *,
