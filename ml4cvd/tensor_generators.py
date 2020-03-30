@@ -68,8 +68,8 @@ class _WeightedPaths(Iterator):
 
 class TensorGenerator:
     def __init__(
-        self, batch_size, input_maps, output_maps, paths, num_workers, cache_size,
-        weights=None, keep_paths=False, mixup=0.0, name='worker', siamese=False, augment=False,
+        self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False,
+        mixup=0.0, name='worker', siamese=False, augment=False, sample_weight: TensorMap = None,
     ):
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
@@ -104,6 +104,10 @@ class TensorGenerator:
             self.batch_function_kwargs = {'alpha': mixup}
         elif siamese:
             self.batch_function = _make_batch_siamese
+        elif sample_weight:
+            self.input_maps.append(sample_weight)
+            self.batch_function = _weighted_batch
+            self.batch_function_kwargs = {'sample_weight': sample_weight}
         else:
             self.batch_function = _identity_batch
 
@@ -513,6 +517,7 @@ def test_train_valid_tensor_generators(
     mixup_alpha: float = -1.0,
     test_csv: str = None,
     siamese: bool = False,
+    sample_weight: TensorMap = None,
     **kwargs
 ) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
     """ Get 3 tensor generator functions for training, validation and testing data.
@@ -532,6 +537,7 @@ def test_train_valid_tensor_generators(
     :param mixup_alpha: If positive, mixup batches and use this value as shape parameter alpha
     :param test_csv: CSV file of sample ids to use for testing if set will ignore test_ration and test_modulo
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
+    :param sample_weight: TensorMap that outputs a sample weight for the other tensors
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
@@ -541,7 +547,7 @@ def test_train_valid_tensor_generators(
     else:
         train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = None
-    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True)
+    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
     generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese, augment=False)
     generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False)
     return generate_train, generate_valid, generate_test
@@ -599,3 +605,8 @@ def _make_batch_siamese(in_batch: Batch, out_batch: Batch, return_paths: bool, p
         siamese_out['output_siamese'][i] = 0 if np.array_equal(out_batch[random_task_key][i], out_batch[random_task_key][i+half_batch]) else 1
 
     return _identity_batch(siamese_in, siamese_out, return_paths, paths)
+
+
+def _weighted_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], sample_weight: TensorMap):
+    sample_weights = in_batch.pop(sample_weight.input_name())
+    return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weight)
