@@ -17,3 +17,4 @@ notebook
 pytest
 tensorflow-addons
 numcodecs
+jupyter_contrib_nbextensions
