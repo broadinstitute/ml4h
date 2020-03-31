@@ -105,7 +105,7 @@ class TensorGenerator:
         elif siamese:
             self.batch_function = _make_batch_siamese
         elif sample_weight:
-            self.input_maps.append(sample_weight)
+            self.input_maps += [sample_weight]
             self.batch_function = _weighted_batch
             self.batch_function_kwargs = {'sample_weight': sample_weight}
         else:
@@ -608,5 +608,5 @@ def _make_batch_siamese(in_batch: Batch, out_batch: Batch, return_paths: bool, p
 
 
 def _weighted_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], sample_weight: TensorMap):
-    sample_weights = in_batch.pop(sample_weight.input_name())
-    return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weight)
+    sample_weights = in_batch.pop(sample_weight.input_name()).flatten()
+    return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weights)
