@@ -20,7 +20,7 @@ import numpy as np
 from collections import Counter
 from multiprocessing import Process, Queue
 from itertools import chain
-from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any
+from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
@@ -68,8 +68,10 @@ class _WeightedPaths(Iterator):
 
 class TensorGenerator:
     def __init__(
-        self, batch_size, input_maps, output_maps, paths, num_workers, cache_size, weights=None, keep_paths=False,
-        mixup=0.0, name='worker', siamese=False, augment=False, sample_weight: TensorMap = None,
+        self, batch_size: int, input_maps: List[TensorMap], output_maps: List[TensorMap],
+        paths: Union[List[str], List[List[str]]], num_workers: int, cache_size: float, weights: List[float] = None,
+        keep_paths: bool = False, mixup: float = 0.0, name: str = 'worker', siamese: bool = False,
+        augment: bool = False, sample_weight: TensorMap = None,
     ):
         """
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
