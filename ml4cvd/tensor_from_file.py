@@ -1272,7 +1272,7 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
         if path_prefix == 'ukb_liver_mri':
             categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(1))
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-            tensor[..., :, :] = _pad_or_crop_array_to_shape(tensor[..., :, :].shape, categorical_one_hot)
+            tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         elif tm.axes() == 4:
             for i in range(tm.shape[-2]):
                 categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
@@ -1316,9 +1316,6 @@ TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CAT
 TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
 TMAPS['liver_shmolli_segmented'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
-                                             tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
-                                             channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
-TMAPS['liver_shmolli_segmented_7'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, 7, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
                                              tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
                                              channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
 
