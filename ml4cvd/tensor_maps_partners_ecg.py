@@ -602,10 +602,10 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         # Build survival curve TensorMaps
         name = f'survival_{diagnosis}'
         if name in needed_tensor_maps:
-            tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            tff = _survival_from_file(1825, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
             name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
         name = f'incident_survival_{diagnosis}'
         if name in needed_tensor_maps:
-            tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
+            tff = _survival_from_file(1825, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
             name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
     return name2tensormap
