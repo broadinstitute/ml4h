@@ -31,6 +31,9 @@ np.set_printoptions(threshold=np.inf)
 TENSOR_GENERATOR_TIMEOUT = 64
 TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
+# TensorGenerator batch indices
+BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_SAMPLE_WEIGHTS_INDEX, BATCH_PATHS_INDEX = 0, 1, 2, 3
+
 Path = str
 PathIterator = Iterator[Path]
 Batch = Dict[Path, np.ndarray]
@@ -374,7 +377,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     first_batch = next(generator)
     saved_tensors = {}
     batch_size = None
-    for key, batch_array in chain(first_batch[0].items(), first_batch[1].items()):
+    for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
         shape = (batch_array.shape[0] * minibatches,) + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
         batch_size = batch_array.shape[0]
@@ -384,17 +387,17 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     if keep_paths:
         paths = first_batch[2]
 
-    input_tensors, output_tensors = list(first_batch[0]), list(first_batch[1])
+    input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
         logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
         next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
-            saved_tensors[key][s:t] = next_batch[0][key]
+            saved_tensors[key][s:t] = next_batch[BATCH_INPUT_INDEX][key]
         for key in output_tensors:
-            saved_tensors[key][s:t] = next_batch[1][key]
+            saved_tensors[key][s:t] = next_batch[BATCH_OUTPUT_INDEX][key]
         if keep_paths:
-            paths.extend(next_batch[2])
+            paths.extend(next_batch[BATCH_PATHS_INDEX])
 
     for key, array in saved_tensors.items():
         logging.info(f"Made a big batch of tensors with key:{key} and shape:{array.shape}.")
@@ -564,7 +567,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
 
 
 def _identity_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
-    return (in_batch, out_batch, paths) if return_paths else (in_batch, out_batch)
+    return (in_batch, out_batch, None, paths) if return_paths else (in_batch, out_batch, None)
 
 
 def _mixup_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], alpha: float = 1.0, permute_first: bool = False):
