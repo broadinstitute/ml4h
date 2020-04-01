@@ -399,6 +399,10 @@ TMAPS['enroll_cad_hazard_5_incident'] = TensorMap('coronary_artery_disease_soft'
                                                   tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
 TMAPS['enroll_cad_hazard_5'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
                                          tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
+TMAPS['enroll_mi_hazard_5'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
+TMAPS['enroll_mi_hazard_5_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+                                                 tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
 
 
 def _warp_ecg(ecg):
