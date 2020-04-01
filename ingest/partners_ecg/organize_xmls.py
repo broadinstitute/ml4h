@@ -8,8 +8,6 @@ import xmltodict
 from timeit import default_timer as timer
 
 
-# This func is also in tensorize_partners_ecg.py so we should move it to
-# an ml4cvd utils script and import it into both
 def _format_date(input_date, day_flag, sep_char='-'):
     '''Format input date from `mm-dd-yyyy` into `yyyy-mm`, or `yyyy-mm-dd`
     This is the ISO 8601 standard for date'''
@@ -30,7 +28,7 @@ def _process_args(args):
     now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
     # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
                         handlers=[
                             logging.FileHandler(f"{now_str}_organize_xmls_log.txt"),
@@ -94,8 +92,7 @@ def run(args):
 
         fpath = os.path.join(args.src, filename)
 
-        if args.verbose:
-            logging.info(f"Parsing {fpath}")
+        logging.debug(f"Parsing {fpath}")
 
         # Declare logical flag to indicate valid XML
         valid_xml = True
@@ -134,9 +131,7 @@ def run(args):
 
             # If xml_encoding is not among the accepted XML encodings, fix it
             if xml_encoding not in valid_encodings or not valid_xml:
-                if args.verbose:
-                    logging.info(f"Bad XML encoding found: {xml_encoding}.\
-                                   Replacing with ISO-8859-1.")
+                logging.debug(f"Bad XML encoding found: {xml_encoding}. Replacing with ISO-8859-1.")
 
                 # Replace the bad encoding in xml_as_string with ISO-8859-1
                 xml_as_string = re.sub(verbosePattern, "ISO-8859-1", xml_as_string, count=1)
@@ -145,9 +140,8 @@ def run(args):
                 num_bad_encodings += 1
 
                 # Overwrite XML file with corrected encoding
-                f = open(fpath, "w")
-                f.write(xml_as_string)
-                f.close()
+                with open(fpath, "w") as f:
+                    f.write(xml_as_string)
 
             try:
                 # Parse XMl-as-string into a dict
@@ -156,8 +150,7 @@ def run(args):
                 # Isolate acquisition date of test and save as mm-dd-yyyy format
                 ecg_date = doc["RestingECG"]["TestDemographics"]["AcquisitionDate"]
 
-                if args.verbose:
-                    logging.info("Acquisition date found! " + ecg_date)
+                logging.debug("Acquisition date found! " + ecg_date)
 
                 # Check if the date
                 # 1) has ten digits
@@ -181,8 +174,7 @@ def run(args):
                     # If directory does not exist, create it
                     if not os.path.exists(args.dst_yyyymm):
                         os.makedirs(args.dst_yyyymm)
-                        if args.verbose:
-                            logging.info(f"No valid yyyy-mm directory exists. Creating: {args.dst_yyyymm}")
+                        logging.debug(f"No valid yyyy-mm directory exists. Creating: {args.dst_yyyymm}")
             
             # If there is any parsing error, set flag to False
             except xmltodict.expat.ExpatError:
@@ -192,8 +184,7 @@ def run(args):
         # If the XML is not valid, set the final path to bad xml path
         if not valid_xml:
             args.dst_yyyymm = args.bad
-            if args.verbose:
-                logging.info("Missing or invalid acquisition date, or other XML error.")
+            logging.debug("Missing or invalid acquisition date, or other XML error.")
 
         # If new directory does not exist, create it
         if not os.path.exists(args.dst_yyyymm):
@@ -203,12 +194,10 @@ def run(args):
         fpath_xml_newdir = args.dst_yyyymm + "/" + filename
         if args.copy:
             shutil.copy(fpath, fpath_xml_newdir)
-            if args.verbose:
-                logging.info(f"XML copied to {args.dst_yyyymm}")
+            logging.debug(f"XML copied to {args.dst_yyyymm}")
         if args.move:
             shutil.move(fpath, fpath_xml_newdir)
-            if args.verbose:
-                logging.info(f"XML moved to {args.dst_yyyymm}")
+            logging.debug(f"XML moved to {args.dst_yyyymm}")
 
         num_processed += 1
 

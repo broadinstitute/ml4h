@@ -15,11 +15,13 @@ import optparse
 import numcodecs
 import numpy as np
 import pandas as pd
+from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 from collections import Counter
 from dateutil.parser import parse
 from joblib import Parallel, delayed
 from xml.parsers.expat import ExpatError, ParserCreate
+from ml4cvd.defines import ECG_REST_STD_LEADS
 
 
 def write_tensors_partners(a_id: str,
@@ -62,7 +64,7 @@ def write_tensors_partners(a_id: str,
     logging.info('Removing duplicate hd5 files, and removing hash from file names')
 
     # Iterate through directories containing hd5s in parallel
-    _process_new_hd5_wrapper(fpath_hd5_dirs, n_jobs)
+    _process_hd5_wrapper(fpath_hd5_dirs, n_jobs)
 
 
 def _clean_read_text(text):
@@ -103,7 +105,7 @@ def _get_files_from_dir(fpath_dir, extension):
     # Covert filter iterable to list
     files_list = list(files)
 
-    # If list of XML files is empty, return 0
+    # If list of XML files is empty, return None
     if not files_list:
         return None
 
@@ -111,9 +113,7 @@ def _get_files_from_dir(fpath_dir, extension):
     files_list.sort()
 
     # Prepend every XML file name with full path
-    files_list[:] = [os.path.join(fpath_dir, fname) for fname in files_list]
-
-    return files_list
+    return [os.path.join(fpath_dir, fname) for fname in files_list]
 
 
 def _hash_xml_fname(fpath_xml):
@@ -290,16 +290,14 @@ def _format_date(input_date, day_flag, sep_char='-'):
     return date_iso
 
 
-std_leads = ("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
-
-
-class XmlElementParser:
+class XmlElementParser(ABC):
     """Abstract base class for a XML Parsing State. It contains methods for
     restoring the previous state and for tracking the character data between
     tags."""
     def __init__(self, old_State=None):
         self.__old_State = old_State
         self.__data_Text = ""
+        super().__init__()
 
     def restoreState(self, context):
         """This method restores the previous state in the XML parser."""
@@ -315,13 +313,13 @@ class XmlElementParser:
         parsing and it strips any leading or trailing whitespace"""
         return str.strip(self.__data_Text)
 
+    @abstractmethod
     def start_element(self, name, attrs, context):
-        print("""abstract method, called at the start of an XML element""")
-        sys.exit(0)
+        pass
 
+    @abstractmethod
     def end_element(self, name, context):
-        print("""abstract method, called at the end of an XML element""")
-        sys.exit(0)
+        pass
 
     def char_data(self, data, context):
         """This method accumulates any character data"""
@@ -523,7 +521,7 @@ class MuseXmlParser:
                 k = k + 1
 
         # Overwrite voltage dict with only standard 8 leads
-        voltage = {lead: voltage[lead] for lead in std_leads}
+        voltage = {lead: voltage[lead] for lead in ECG_REST_STD_LEADS}
 
         # Convert dict of lists into dict of arrays to enable vector math
         voltage = {key: np.array(val) for key, val in voltage.items()}
@@ -537,8 +535,7 @@ class MuseXmlParser:
         return voltage
 
 
-def _compress_data(hf, name, data, dtype, method='zstd',
-                   compression_opts=19):
+def _compress_data_to_hd5(hf, name, data, dtype, method='zstd', compression_opts=19):
     # Define codec
     codec = numcodecs.zstd.Zstd(level=compression_opts)
 
@@ -706,34 +703,18 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5):
 
             # Iterate through each lead and save voltage array to hd5
             for lead in voltage.keys():
-                _compress_data(hf=hf,
-                               name=lead,
-                               data=voltage[lead].astype('int16'),
-                               dtype='int16',
-                               method='zstd')
+                _compress_data_to_hd5(hf=hf, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
 
             # Iterate through keys in extracted text data and save to hd5
             for key in text_data.keys():
-                _compress_data(hf=hf,
-                               name=key,
-                               data=text_data[key],
-                               dtype='str',
-                               method='zstd')
+                _compress_data_to_hd5(hf=hf, name=key, data=text_data[key], dtype='str')
 
             # Save cleaned reads to hd5
             if read_md_clean:
-                _compress_data(hf=hf,
-                               name=key_read_md_clean,
-                               data=read_md_clean,
-                               dtype='str',
-                               method='zstd')
+                _compress_data_to_hd5(hf=hf, name=key_read_md_clean, data=read_md_clean, dtype='str')
 
             if read_pc_clean:
-                _compress_data(hf=hf,
-                               name=key_read_pc_clean,
-                               data=read_pc_clean,
-                               dtype='str',
-                               method='zstd')
+                _compress_data_to_hd5(hf=hf, name=key_read_pc_clean, data=read_pc_clean, dtype='str')
 
         logging.info(f'Converted {fpath_xml} to {fpath_hd5_new}')
     return convert
@@ -763,7 +744,7 @@ def _get_mrn_date_time_from_fname(fname, sep_char):
     return mrn_date_time
 
 
-def _process_new_hd5(fpath_hd5_dir, sep_char):
+def _process_hd5(fpath_hd5_dir, sep_char):
 
     # Initialize counter to track duplicates
     num_duplicates = 0
@@ -804,8 +785,8 @@ def _process_new_hd5(fpath_hd5_dir, sep_char):
     return num_duplicates
 
 
-def _process_new_hd5_wrapper(fpath_hd5_dirs, n_jobs):
-    duplicates = Parallel(n_jobs=n_jobs)(delayed(_process_new_hd5)(fpath_hd5_dir, sep_char='-') for fpath_hd5_dir in fpath_hd5_dirs)
+def _process_hd5_wrapper(fpath_hd5_dirs, n_jobs):
+    duplicates = Parallel(n_jobs=n_jobs)(delayed(_process_hd5)(fpath_hd5_dir, sep_char='-') for fpath_hd5_dir in fpath_hd5_dirs)
 
     logging.info(f'Removed {sum(duplicates)} duplicate hd5 files that escaped hash detection')
 
