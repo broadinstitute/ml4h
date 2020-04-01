@@ -385,7 +385,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
 
     keep_paths = generator.keep_paths
     if keep_paths:
-        paths = first_batch[2]
+        paths = first_batch[BATCH_PATHS_INDEX]
 
     input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
