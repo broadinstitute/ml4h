@@ -123,8 +123,8 @@ def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool 
         intervals = int(tm.shape[0] / 2)
         days_per_interval = day_window / intervals
 
-        if not has_disease:  # Adjust for downward bias of censored individuals, see Brown 1997
-            censor_date += datetime.timedelta(days=days_per_interval/2)
+        # if not has_disease:  # Adjust for downward bias of censored individuals, see Brown 1997
+        #     censor_date += datetime.timedelta(days=days_per_interval/2)
 
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
         for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
