@@ -106,7 +106,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
-def _survival_tensor(start_date_key, day_window):
+def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool=False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
@@ -132,6 +132,8 @@ def _survival_tensor(start_date_key, day_window):
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
             if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
+                if incidence_only:
+                    raise ValueError(f'{tm} ignores prior diagnoses.')
                 survival_then_censor[intervals] = has_disease
         return survival_then_censor
 

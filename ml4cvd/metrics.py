@@ -184,7 +184,7 @@ def survival_likelihood_loss(n_intervals):
         # #return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
         # return K.sum(-K.log(K.clip(failure_likelihood, K.epsilon(), None)), axis=-1)  # return -log likelihood
 
-        all_individuals = 1. + y_true[:, 0:n_intervals] * (y_pred[:, 0:n_intervals] - 1.)  # component for all individuals
+        all_individuals = 1. + y_true[:, 0:n_intervals] * (1. - y_pred[:, 0:n_intervals])  # component for all individuals
         uncensored = 1. - y_true[:, n_intervals:2 * n_intervals] * y_pred[:, 0:n_intervals]  # component for only individuals who failed
         return K.sum(-K.log(K.clip(K.concatenate((all_individuals, uncensored)), K.epsilon(), None)), axis=-1)  # return -log likelihood
 
