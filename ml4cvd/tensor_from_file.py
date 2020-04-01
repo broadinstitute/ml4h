@@ -133,7 +133,7 @@ def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool 
             survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
             if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
                 if incidence_only:
-                    raise ValueError(f'{tm} ignores prior diagnoses.')
+                    raise ValueError(f'{tm.name} ignores prior diagnoses.')
                 survival_then_censor[intervals] = has_disease
         return survival_then_censor
 
