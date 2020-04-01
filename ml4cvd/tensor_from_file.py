@@ -106,7 +106,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
-def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool=False):
+def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool = False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
@@ -391,6 +391,14 @@ TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia',  Interpretation.
                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
 TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
                                              tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
+TMAPS['enroll_hyp_hazard_5'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
+TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+                                                  tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
+TMAPS['enroll_cad_hazard_5_incident'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+                                                  tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
+TMAPS['enroll_cad_hazard_5'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
 
 
 def _warp_ecg(ecg):
