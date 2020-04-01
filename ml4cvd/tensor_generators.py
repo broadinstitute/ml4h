@@ -567,7 +567,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
 
 
 def _identity_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
-    return (in_batch, out_batch, None, paths) if return_paths else (in_batch, out_batch, None)
+    return (in_batch, out_batch, [None], paths) if return_paths else (in_batch, out_batch, [None])
 
 
 def _mixup_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], alpha: float = 1.0, permute_first: bool = False):
@@ -614,4 +614,4 @@ def _make_batch_siamese(in_batch: Batch, out_batch: Batch, return_paths: bool, p
 
 def _weighted_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], sample_weight: TensorMap):
     sample_weights = in_batch.pop(sample_weight.input_name()).flatten()
-    return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weights)
+    return (in_batch, out_batch, [sample_weights], paths) if return_paths else (in_batch, out_batch, [sample_weights])
