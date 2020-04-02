@@ -337,7 +337,7 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
     logging.info(f"Censored at each step is: {(truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick} out of {truth.shape[0]}")
     logging.info(f"Survivorship: {survivorship}")
-    predicted_proportion = np.sum(truth[:, :intervals]*np.cumprod(prediction[:, :intervals], axis=1), axis=0) / alive_per_step
+    predicted_proportion = np.sum(truth[:, :intervals]*np.cumprod(prediction[:, :intervals], axis=1), axis=0) / (alive_per_step + sick_per_step)
     logging.info(f"proportion shape is: {predicted_proportion.shape} survivorship shape is: {survivorship.shape} begin")
     if paths is not None:
         pass
@@ -371,7 +371,7 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
-            plt.plot(x_days[:sick_period+1], predicted_survivals[i, :sick_period+1], label=f'Failed:{p} p:{predicted_survivals[i, sick_period]:0.2f}', color='red')
+            plt.plot(x_days[:sick_period+2], predicted_survivals[i, :sick_period+2], label=f'Failed:{p} p:{predicted_survivals[i, sick_period]:0.2f}', color='red')
             plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} id:{p}')
             cur_sick += 1
             if cur_sick >= min_sick and i >= num_curves:
