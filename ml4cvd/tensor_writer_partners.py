@@ -34,12 +34,12 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     n_jobs = -1
 
     logging.info('Mapping XMLs to MRNs')
-    mrn_xmls_map = _get_mrn_xmls_map(xml_folder, n_jobs)
+    mrn_xmls_map = _get_mrn_xmls_map(xml_folder, n_jobs=n_jobs)
 
     if not os.path.exists(tensors): os.makedirs(tensors)
 
     logging.info('Converting XMLs into HD5s')
-    _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs)
+    _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
 
 
 def _map_mrn_to_xml(fpath_xml: str) -> Tuple[str, str]:
@@ -372,13 +372,13 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
     return convert
 
 
-def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str) -> Tuple[int, int]:
+def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int]:
     fpath_hd5 = os.path.join(dir_hd5, f'{mrn}{TENSOR_EXT}')
     num_xml_converted = 0
     num_src_in_hd5 = 0
     num_ecg_in_hd5 = 0
     with h5py.File(fpath_hd5, 'a') as hd5:
-        hd5_ecg = hd5['ECG'] if 'ECG' in hd5.keys() else hd5.create_group('ECG')
+        hd5_ecg = hd5[hd5_prefix] if hd5_prefix in hd5.keys() else hd5.create_group(hd5_prefix)
         for fpath_xml in fpath_xmls:
             if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hd5_ecg):
                 num_xml_converted += 1
@@ -387,7 +387,7 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str) -> T
         # If there are no ECGs in HD5, delete ECG group
         # There may be prior ECGs in HD5
         # num_xml_converted != num_ecg_in_hd5
-        if not num_ecg_in_hd5: del hd5['ECG']
+        if not num_ecg_in_hd5: del hd5[hd5_prefix]
 
         num_src_in_hd5 = len(hd5.keys())
 
@@ -403,8 +403,9 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str) -> T
     return (num_hd5_written, num_xml_converted)
 
 
-def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[str, List[str]], dir_hd5: str, n_jobs: int) -> None:
-    converted = Parallel(n_jobs=n_jobs, verbose=3)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5) for mrn, fpath_xmls in mrn_xml_map.items())
+def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[str, List[str]], dir_hd5: str,
+                                     hd5_prefix: str = 'partners_ecg_rest', n_jobs: int = -1) -> None:
+    converted = Parallel(n_jobs=n_jobs, verbose=3)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xml_map.items())
     num_hd5 = sum([x[0] for x in converted])
     num_xml = sum([x[1] for x in converted])
     logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s")
