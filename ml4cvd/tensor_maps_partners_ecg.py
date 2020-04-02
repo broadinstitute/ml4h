@@ -485,13 +485,13 @@ def build_sts_outcome_tensor_from_file(
             patient_index = header.index(patient_column)
             date_index = header.index(start_column)
             outcome_index = header.index(outcome_column)
-            dx_table = {}
+            date_surg_table = {}
             patient_table = {}
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
                     patient_table[patient_key] = int(row[outcome_index])
-                    dx_table[patient_key] = _sts_str2date(row[date_index])
+                    date_surg_table[patient_key] = _sts_str2date(row[date_index])
                     if len(patient_table) % 1000 == 0:
                         logging.debug(f'Processed: {len(patient_table)} patient rows.')
                 except ValueError as e:
@@ -512,14 +512,15 @@ def build_sts_outcome_tensor_from_file(
         mrn_int = int(mrn)
 
         if mrn_int not in patient_table:
-            raise KeyError(f'{tm.name} MRN not in STS outcomes CSV')
+            raise KeyError(f'MRN not in STS outcomes CSV')
 
-        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+        ecg_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
 
-        # Convert assess_date from datetime.date to datetime.datetime
-        assess_date = datetime.datetime.combine(assess_date, datetime.time.min)
+        # Convert ecg_date from datetime.date to datetime.datetime
+        ecg_date = datetime.datetime.combine(ecg_date, datetime.time.min)
 
-        if not dx_table[mrn_int] - datetime.timedelta(days=day_window/2) < assess_date < dx_table[mrn_int] + datetime.timedelta(days=day_window/2):
+        # If the date of surgery - date of ECG is > time window, skip it
+        if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
             raise ValueError(f"ECG out of time window")
 
         categorical_data[patient_table[mrn_int]] = 1.0
