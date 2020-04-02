@@ -432,7 +432,7 @@ def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_in, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
@@ -457,7 +457,7 @@ def _make_tmap_nan_on_fail(tmap):
     Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
     """
     new_tmap = copy.deepcopy(tmap)
-    new_tmap.validator = lambda _, x: x  # prevent failure caused by validator
+    new_tmap.validator = lambda _, x, hd5: x  # prevent failure caused by validator
 
     def _tff(tm, hd5, dependents=None):
         try:
@@ -473,7 +473,7 @@ def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     if args.variational:
         model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
@@ -536,7 +536,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
@@ -683,7 +683,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
     return performance_metrics
 
 
-def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
+def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_maps_in, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
     layer_names = [layer.name for layer in model.layers]
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
@@ -698,7 +698,7 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
         y_predictions = model.predict(input_data)
         test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
-            x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer, input_data, 2)
+            x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
         for tm_output_name in test_labels:
