@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import struct
-import sys
 from collections import defaultdict
 from datetime import datetime
 from xml.parsers.expat import ExpatError, ParserCreate
@@ -13,9 +12,9 @@ import h5py
 import numcodecs
 import numpy as np
 from abc import ABC, abstractmethod
-from bs4 import BeautifulSoup, SoupStrainer
+from bs4 import BeautifulSoup, SoupStrainer, PageElement
 from joblib import Parallel, delayed
-from ml4cvd.defines import ECG_REST_STD_LEADS
+from ml4cvd.defines import TENSOR_EXT, ECG_REST_STD_LEADS
 
 
 def write_tensors_partners(xml_folder: str, tensors: str) -> None:
@@ -39,17 +38,17 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs)
 
 
-def _map_mrn_to_xml(fpath_xml: str) -> str:
+def _map_mrn_to_xml(fpath_xml: str) -> (str, str):
     with open(fpath_xml, 'r') as f:
         for line in f:
             match = re.match(r'.*<PatientID>(.*)</PatientID>.*', line)
             if match:
                 return (match.group(1), fpath_xml)
     logging.warning(f'No PatientID found at {fpath_xml}')
-    return ('', '')
+    return None
 
 
-def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> None:
+def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> dict:
 
     # Get all xml paths
     fpath_xmls = []
@@ -61,18 +60,19 @@ def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> None:
     logging.info(f'Found {len(fpath_xmls)} XMLs at {xml_folder}')
 
     # Read through xmls to get MRN in parallel
-    tuples = Parallel(n_jobs=n_jobs)(delayed(_map_mrn_to_xml)(fpath_xml) for fpath_xml in fpath_xmls)
+    mrn_xml_list = Parallel(n_jobs=n_jobs)(delayed(_map_mrn_to_xml)(fpath_xml) for fpath_xml in fpath_xmls)
 
-    # Collate lists of paths for each MRN
-    mrn_xmls = defaultdict(list)
-    [mrn_xmls[mrn].append(fpath_xml) for mrn, fpath_xml in tuples]
-    if '' in mrn_xmls: del mrn_xmls['']
-    logging.info(f'Found {len(mrn_xmls)} distinct MRNs')
+    # Build dict of MRN to XML files with that MRN
+    mrn_xml_dict = defaultdict(list)
+    for mrn_xml in mrn_xml_list:
+        if mrn_xml:
+            mrn_xml_dict[mrn_xml[0]].append(mrn_xml[1])
+    logging.info(f'Found {len(mrn_xml_dict)} distinct MRNs')
 
-    return mrn_xmls
+    return mrn_xml_dict
 
 
-def _clean_read_text(text):
+def _clean_read_text(text: str) -> str:
     # Convert to lowercase
     text = text.lower()
 
@@ -91,7 +91,7 @@ def _clean_read_text(text):
     return text
 
 
-def _get_voltage_from_xml(fpath_xml):
+def _get_voltage_from_xml(fpath_xml: str) -> (dict, str):
     MuseXmlParser.start_element
 
     # Initialize parser object
@@ -124,7 +124,7 @@ def _get_voltage_from_xml(fpath_xml):
     return voltage, units
 
 
-def _text_from_xml(xml_fpath):
+def _text_from_xml(fpath_xml: str) -> dict:
     # Initialize empty dictionary in which to store text from the XML.
     ecg_data = dict()
 
@@ -139,7 +139,7 @@ def _text_from_xml(xml_fpath):
     strainer = SoupStrainer(tags)
 
     # Use lxml parser, which makes all tags lower case.
-    with open(xml_fpath, 'r') as f:
+    with open(fpath_xml, 'r') as f:
         soup = BeautifulSoup(f, 'lxml', parse_only=strainer)
 
     # If the XML is gibberish and un-parseable,
@@ -175,7 +175,7 @@ def _text_from_xml(xml_fpath):
                 [ecg_data.update({el.name + append_tag: el.get_text()}) for el in elements]
 
         # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict.
-        ecg_data.update({'diagnosis_md': _parse_soup_diagnosis(soup.find('diagnosis'))})
+        ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find('diagnosis'))
 
         # Parse text of computer read within <OriginalDiagnosis> tag and save to ecg_data dict
         ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
@@ -184,7 +184,7 @@ def _text_from_xml(xml_fpath):
     return ecg_data
 
 
-def _parse_soup_diagnosis(input_from_soup):
+def _parse_soup_diagnosis(input_from_soup: PageElement) -> str:
 
     parsed_text = ''
 
@@ -232,6 +232,169 @@ def _parse_soup_diagnosis(input_from_soup):
                 parsed_text = parsed_text[:-1]
 
         return parsed_text
+
+
+def _compress_data_to_hd5(hf, name, data, dtype, method='zstd', compression_opts=19):
+    # Define codec
+    codec = numcodecs.zstd.Zstd(level=compression_opts)
+
+    # If data is string, encode to bytes
+    if dtype == 'str':
+        data_compressed = codec.encode(data.encode())
+        dsize = len(data.encode())
+    else:
+        data_compressed = codec.encode(data)
+        dsize = len(data) * data.itemsize
+
+    # Save data to hdf5
+    dat = hf.create_dataset(name=name, data=np.void(data_compressed))
+
+    # Set attributes
+    dat.attrs['method'] = method
+    dat.attrs['compression_level'] = compression_opts
+    dat.attrs['len'] = len(data)
+    dat.attrs['uncompressed_length'] = dsize
+    dat.attrs['compressed_length'] = len(data_compressed)
+    dat.attrs['dtype'] = dtype
+
+
+def _decompress_data(data_compressed, dtype):
+    codec = numcodecs.zstd.Zstd()
+    data_decompressed = codec.decode(data_compressed)
+    if dtype == 'str':
+        data = data_decompressed.decode()
+    else:
+        data = np.frombuffer(data_decompressed, dtype)
+    return data
+
+
+def _get_max_voltage(voltage):
+    max_voltage = 0
+    for lead in voltage:
+        if max(voltage[lead]) > max_voltage:
+            max_voltage = max(voltage[lead])
+    return max_voltage
+
+
+def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
+    # Set flag to check if we should convert to hd5
+    convert = True
+
+    # Extract text data from XML into dict
+    text_data = _text_from_xml(fpath_xml)
+    dt = datetime.strptime(f"{text_data['acquisitiondate']} {text_data['acquisitiontime']}", '%m-%d-%Y %H:%M:%S')
+    ecg_dt = f'{dt:%Y-%m-%d %H:%M:%S}' # ISO
+
+    # If XML is empty, remove the XML file and set convert to false
+    if (os.stat(fpath_xml).st_size == 0 or not text_data):
+        os.remove(fpath_xml)
+        convert = False
+        logging.warning(f'Conversion of {fpath_xml} failed! XML is empty.')
+    else:
+        # Check if patient already has an ECG at given date and time
+        if ecg_dt in hf.keys():
+            logging.warning(f'Conversion of {fpath_xml} skipped. Converted XML already exists in HD5.')
+            convert = False
+
+        # Extract voltage from XML
+        try:
+            voltage, voltage_units = _get_voltage_from_xml(fpath_xml)
+
+            # If the max voltage value is 0, do not convert
+            if _get_max_voltage(voltage) == 0:
+                convert = False
+
+        # If there is no voltage, or the XML is poorly formed,
+        # the function will throw an exception, and we mark 'convert' to False.
+        # However, ExpatError should be impossible to throw, since earlier
+        # we catch XMLs filled with gibberish.
+        except (IndexError, ExpatError):
+            logging.warning(f'Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.')
+            convert = False
+
+    # If convert is still true up to here, make the hd5
+    if convert:
+
+        # Define keys for cleaned reads
+        key_read_md = 'diagnosis_md'
+        key_read_pc = 'diagnosis_pc'
+        key_read_md_clean = 'read_md_clean'
+        key_read_pc_clean = 'read_pc_clean'
+
+        # Clean cardiologist read
+        read_md_clean = None
+        if key_read_md in text_data.keys():
+            read_md_clean = _clean_read_text(text=text_data[key_read_md])
+
+        # Clean MUSE read
+        read_pc_clean = None
+        if key_read_pc in text_data.keys():
+            read_pc_clean = _clean_read_text(text=text_data[key_read_pc])
+
+        # Clean Patient MRN to only numeric characters
+        key_mrn_clean = 'patientid_clean'
+        mrn_clean = None
+        if 'patientid' in text_data.keys():
+            mrn_clean = re.sub(r'[^0-9]', '', text_data['patientid'])
+
+        gp = hf.create_group(ecg_dt)
+
+        # Save cleaned MRN to hd5
+        if mrn_clean:
+            _compress_data_to_hd5(hf=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
+
+        # Iterate through each lead and save voltage array to hd5
+        for lead in voltage.keys():
+            _compress_data_to_hd5(hf=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
+
+        # Save voltage units to hd5
+        key_voltage_units = 'voltageunits'
+        if voltage_units != '':
+            _compress_data_to_hd5(hf=gp, name=key_voltage_units, data=voltage_units, dtype='str')
+
+        # Iterate through keys in extracted text data and save to hd5
+        for key in text_data.keys():
+            _compress_data_to_hd5(hf=gp, name=key, data=text_data[key], dtype='str')
+
+        # Save cleaned reads to hd5
+        if read_md_clean:
+            _compress_data_to_hd5(hf=gp, name=key_read_md_clean, data=read_md_clean, dtype='str')
+
+        if read_pc_clean:
+            _compress_data_to_hd5(hf=gp, name=key_read_pc_clean, data=read_pc_clean, dtype='str')
+
+        logging.info(f'Wrote {fpath_xml} to {fpath_hd5}')
+    return convert
+
+
+def _convert_mrn_xmls_to_hd5(mrn, fpath_xmls, dir_hd5):
+    fpath_hd5 = os.path.join(dir_hd5, f'{mrn}{TENSOR_EXT}')
+    num_xml_converted = 0
+    num_ecg_in_hd5 = 0
+    with h5py.File(fpath_hd5, 'a') as hf:
+        for fpath_xml in fpath_xmls:
+            if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
+                num_xml_converted += 1
+        num_ecg_in_hd5 = len(hf.keys())
+
+    if not num_ecg_in_hd5:
+        # There are no ECGs in HD5, delete empty HD5
+        # Not sufficient just to check num_xml_converted as HD5 might have ECGs from previous runs
+        try:
+            os.remove(fpath_hd5)
+        except:
+            logging.warning(f'Could not delete empty HD5 at {fpath_hd5}')
+
+    num_hd5_written = 1 if num_xml_converted else 0
+
+    return (num_hd5_written, num_xml_converted)
+
+
+def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map, dir_hd5, n_jobs):
+    converted = Parallel(n_jobs=n_jobs, verbose=3)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5) for mrn, fpath_xmls in mrn_xml_map.items())
+    num_hd5 = sum([x[0] for x in converted])
+    num_xml = sum([x[1] for x in converted])
+    logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s")
 
 
 class XmlElementParser(ABC):
@@ -477,166 +640,3 @@ class MuseXmlParser:
         voltage['aVF'] = voltage['II'] - voltage['I'] / 2
 
         return voltage, self.units
-
-
-def _compress_data_to_hd5(hf, name, data, dtype, method='zstd', compression_opts=19):
-    # Define codec
-    codec = numcodecs.zstd.Zstd(level=compression_opts)
-
-    # If data is string, encode to bytes
-    if dtype == 'str':
-        data_compressed = codec.encode(data.encode())
-        dsize = len(data.encode())
-    else:
-        data_compressed = codec.encode(data)
-        dsize = len(data) * data.itemsize
-
-    # Save data to hdf5
-    dat = hf.create_dataset(name=name, data=np.void(data_compressed))
-
-    # Set attributes
-    dat.attrs['method'] = method
-    dat.attrs['compression_level'] = compression_opts
-    dat.attrs['len'] = len(data)
-    dat.attrs['uncompressed_length'] = dsize
-    dat.attrs['compressed_length'] = len(data_compressed)
-    dat.attrs['dtype'] = dtype
-
-
-def _decompress_data(data_compressed, dtype):
-    codec = numcodecs.zstd.Zstd()
-    data_decompressed = codec.decode(data_compressed)
-    if dtype == 'str':
-        data = data_decompressed.decode()
-    else:
-        data = np.frombuffer(data_decompressed, dtype)
-    return data
-
-
-def _get_max_voltage(voltage):
-    max_voltage = 0
-    for lead in voltage:
-        if max(voltage[lead]) > max_voltage:
-            max_voltage = max(voltage[lead])
-    return max_voltage
-
-
-def _convert_mrn_xmls_to_hd5(mrn, fpath_xmls, dir_hd5):
-    fpath_hd5 = os.path.join(dir_hd5, f'{mrn}.hd5')
-    num_xml = 0
-    ecg_dts = None
-    with h5py.File(fpath_hd5, 'a') as hf:
-        for fpath_xml in fpath_xmls:
-            if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
-                num_xml += 1
-        ecg_dts = list(hf.keys())
-
-    if not ecg_dts:
-        # There are no ECGs in HD5, delete empty HD5
-        # Not sufficient just to check num_xml as HD5 might have ECGs from previous runs
-        try:
-            os.remove(fpath_hd5)
-        except:
-            logging.warning(f'Could not delete empty HD5 at {fpath_hd5}')
-
-    num_hd5 = 1 if num_xml else 0
-
-    return (num_hd5, num_xml)
-
-
-def _convert_xml_to_hd5(fpath_xml, fpath_hd5, hf):
-    # Set flag to check if we should convert to hd5
-    convert = True
-
-    # Extract text data from XML into dict
-    text_data = _text_from_xml(fpath_xml)
-    dt = datetime.strptime(f"{text_data['acquisitiondate']} {text_data['acquisitiontime']}", '%m-%d-%Y %H:%M:%S')
-    ecg_dt = f'{dt:%Y-%m-%d %H:%M:%S}' # ISO
-
-    # If XML is empty, remove the XML file and set convert to false
-    if (os.stat(fpath_xml).st_size == 0 or not text_data):
-        os.remove(fpath_xml)
-        convert = False
-        logging.warning(f'Conversion of {fpath_xml} failed! XML is empty.')
-    else:
-        # Check if patient already has an ECG at given date and time
-        if ecg_dt in hf.keys():
-            logging.warning(f'Conversion of {fpath_xml} skipped. Converted XML already exists in HD5.')
-            convert = False
-
-        # Extract voltage from XML
-        try:
-            voltage, voltage_units = _get_voltage_from_xml(fpath_xml)
-
-            # If the max voltage value is 0, do not convert
-            if _get_max_voltage(voltage) == 0:
-                convert = False
-
-        # If there is no voltage, or the XML is poorly formed,
-        # the function will throw an exception, and we mark 'convert' to Fals.
-        # However, ExpatError should be impossible to throw, since earlier
-        # we catch XMLs filled with gibberish.
-        except (IndexError, ExpatError):
-            logging.warning(f'Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.')
-            convert = False
-
-    # If convert is still true up to here, make the hd5
-    if convert:
-
-        # Define keys for cleaned reads
-        key_read_md = 'diagnosis_md'
-        key_read_pc = 'diagnosis_pc'
-        key_read_md_clean = 'read_md_clean'
-        key_read_pc_clean = 'read_pc_clean'
-
-        # Clean cardiologist read
-        read_md_clean = None
-        if key_read_md in text_data.keys():
-            read_md_clean = _clean_read_text(text=text_data[key_read_md])
-
-        # Clean MUSE read
-        read_pc_clean = None
-        if key_read_pc in text_data.keys():
-            read_pc_clean = _clean_read_text(text=text_data[key_read_pc])
-
-        # Clean Patient MRN to only numeric characters
-        key_mrn_clean = 'patientid_clean'
-        mrn_clean = None
-        if 'patientid' in text_data.keys():
-            mrn_clean = re.sub(r'[^0-9]', '', text_data['patientid'])
-
-        gp = hf.create_group(ecg_dt)
-
-        # Save cleaned MRN to hd5
-        if mrn_clean:
-            _compress_data_to_hd5(hf=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
-
-        # Iterate through each lead and save voltage array to hd5
-        for lead in voltage.keys():
-            _compress_data_to_hd5(hf=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
-
-        # Save voltage units to hd5
-        key_voltage_units = 'voltageunits'
-        if voltage_units != '':
-            _compress_data_to_hd5(hf=gp, name=key_voltage_units, data=voltage_units, dtype='str')
-
-        # Iterate through keys in extracted text data and save to hd5
-        for key in text_data.keys():
-            _compress_data_to_hd5(hf=gp, name=key, data=text_data[key], dtype='str')
-
-        # Save cleaned reads to hd5
-        if read_md_clean:
-            _compress_data_to_hd5(hf=gp, name=key_read_md_clean, data=read_md_clean, dtype='str')
-
-        if read_pc_clean:
-            _compress_data_to_hd5(hf=gp, name=key_read_pc_clean, data=read_pc_clean, dtype='str')
-
-        logging.info(f'Wrote {fpath_xml} to {fpath_hd5}')
-    return convert
-
-
-def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map, dir_hd5, n_jobs):
-    converted = Parallel(n_jobs=n_jobs, verbose=3)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5) for mrn, fpath_xmls in mrn_xml_map.items())
-    num_hd5 = sum([x[0] for x in converted])
-    num_xml = sum([x[1] for x in converted])
-    logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s")
