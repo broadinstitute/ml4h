@@ -337,12 +337,12 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
     logging.info(f"Censored at each step is: {(truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick} out of {truth.shape[0]}")
     logging.info(f"Survivorship: {survivorship}")
-    predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / (alive_per_step + cumulative_sick)
+    predicted_proportion = np.sum((truth[:, intervals:]+truth[:, :intervals])*np.cumprod(prediction[:, :intervals], axis=1), axis=0) / (alive_per_step + cumulative_sick)
     logging.info(f"proportion shape is: {predicted_proportion.shape} survivorship shape is: {survivorship.shape} begin")
     if paths is not None:
         pass
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
-    plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='True Proportion')
+    plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.title(title + '\n')
