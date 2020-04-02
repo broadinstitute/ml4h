@@ -339,7 +339,7 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     logging.info(f"Censored at each step is: {(truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick} out of {truth.shape[0]}")
     logging.info(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
     logging.info(f"Survivorship: {survivorship}")
-    predicted_proportion = np.sum((truth[:, :intervals]+truth[:, intervals:])*np.cumprod(prediction[:, :intervals], axis=1), axis=0) / (truth.shape[0]-cumulative_censored)
+    predicted_proportion = np.sum(truth[:, :intervals]*np.cumprod(prediction[:, :intervals], axis=1), axis=0) / alive_per_step
     logging.info(f"proportion shape is: {predicted_proportion.shape} survivorship shape is: {survivorship.shape} begin")
     if paths is not None:
         pass
