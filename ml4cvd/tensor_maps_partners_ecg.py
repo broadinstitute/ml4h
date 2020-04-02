@@ -16,7 +16,7 @@ from ml4cvd.TensorMap import TensorMap, str2date, make_range_validator, Interpre
 
 
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
-
+STS_CSV = '/data/sts/all-features-labels.csv'
 
 def _compress_data(hf, name, data, dtype, method='zstd', compression_opts=19):
     # Define codec
@@ -454,6 +454,79 @@ def _loyalty_str2date(date_string: str):
     return str2date(date_string.split(' ')[0])
 
 
+def _sts_str2date(input_date: str) -> datetime.datetime:
+    return datetime.datetime.strptime(input_date, "%d%b%Y")
+
+
+def build_sts_outcome_tensor_from_file(
+        file_name: str,
+        patient_column: str = 'medrecn',
+        outcome_column: str = 'mtopd',
+        start_column: str = 'surgdt',
+        delimiter: str = ',',
+        day_window: int = 30) -> Callable:
+    """Build a tensor_from_file function for outcomes given CSV of patients.
+
+    The tensor_from_file function returned here should be used
+    with CATEGORICAL TensorMaps to classify patients by disease state.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param diagnosis_date_column: The header name of the column of disease diagnosis dates
+    :param start_column: The header name of the column of surgery dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    error = None
+    try:
+        with open(file_name, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            patient_index = header.index(patient_column)
+            date_index = header.index(start_column)
+            outcome_index = header.index(outcome_column)
+            dx_table = {}
+            patient_table = {}
+            for row in reader:
+                try:
+                    patient_key = int(row[patient_index])
+                    patient_table[patient_key] = int(row[outcome_index])
+                    dx_table[patient_key] = _sts_str2date(row[date_index])
+                    if len(patient_table) % 1000 == 0:
+                        logging.debug(f'Processed: {len(patient_table)} patient rows.')
+                except ValueError as e:
+                    logging.warning(f'val err {e}')
+
+    except FileNotFoundError as e:
+        error = e
+
+    logging.info(f'Done processing {outcome_column}. Got {len(patient_table)} patient rows.')
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        file_split = os.path.basename(hd5.filename).split('-')
+        mrn = file_split[0]
+        mrn_int = int(mrn)
+
+        if mrn_int not in patient_table:
+            raise KeyError(f'{tm.name} MRN not in STS outcomes CSV')
+
+        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+
+        # Convert assess_date from datetime.date to datetime.datetime
+        assess_date = datetime.datetime.combine(assess_date, datetime.time.min)
+
+        if not dx_table[mrn_int] - datetime.timedelta(days=day_window/2) < assess_date < dx_table[mrn_int] + datetime.timedelta(days=day_window/2):
+            raise ValueError(f"ECG out of time window")
+
+        categorical_data[patient_table[mrn_int]] = 1.0
+        return categorical_data
+    return tensor_from_file
+
+
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
@@ -538,6 +611,9 @@ def build_incidence_tensor_from_file(
 
 def _diagnosis_channels(disease: str):
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
+
+def _outcome_channels(outcome: str):
+    return {f'no_{outcome}': 0, f'yes_{outcome}': 1}
 
 
 def _survival_from_file(
@@ -658,4 +734,32 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         if name in needed_tensor_maps:
             tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
             name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
+    return name2tensormap
+
+
+def build_sts_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
+    name2tensormap: Dict[str: TensorMap] = {}
+    outcome2column = {
+        'death': 'mtopd',
+        'stroke': 'cnstrokp',
+        'renal_failure': 'crenfail',
+        'prolonged_ventilation': 'crenfail',
+        'dsw_infection': 'deepsterninf',
+        'reoperation': 'reop',
+        'any_morbidity': 'anymorbidity',
+        'long_stay': 'llos',
+    }
+
+    for outcome in outcome2column:
+        name = f'outcome_{outcome}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = build_sts_outcome_tensor_from_file(
+                    file_name=STS_CSV,
+                    outcome_column=outcome2column[outcome],
+                    day_window=30)
+            name2tensormap[name] = TensorMap(
+                    name,
+                    Interpretation.CATEGORICAL,
+                    channel_map=_outcome_channels(outcome),
+                    tensor_from_file=tensor_from_file_fxn)
     return name2tensormap
