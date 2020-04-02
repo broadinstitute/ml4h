@@ -361,23 +361,23 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
+    censor_periods = np.argmin(truth[:, :intervals], axis=-1)
     x_days = range(0, days_window, 1 + days_window // intervals)
     cur_sick = 0
     cur_healthy = 0
     min_sick = num_curves * 0.1
     for i in range(truth.shape[0]):
         p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
-        last_prob = predicted_survivals[i, -1]
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period*(days_window // intervals)
-            plt.plot(x_days, predicted_survivals[i], label=f'sick:{p} p:{last_prob:0.2f}', color='red')
+            plt.plot(x_days, predicted_survivals[i, :sick_period], label=f'sick:{p} p:{predicted_survivals[i, sick_period]:0.2f}', color='red')
             plt.text(sick_day, predicted_survivals[i, sick_period], f'Diagnosed day:{sick_day} id:{p}')
             cur_sick += 1
             if cur_sick >= min_sick and i >= num_curves:
                 break
         elif cur_healthy < num_curves:
-            plt.plot(x_days, predicted_survivals[i], label=f'id:{p} p:{last_prob:0.2f}', color='green')
+            plt.plot(x_days, predicted_survivals[i, :censor_periods[i]], label=f'id:{p} p:{predicted_survivals[i, censor_periods[i]]:0.2f}', color='green')
             cur_healthy += 1
     plt.title(title + '\n')
     plt.legend(loc="upper right")
