@@ -38,12 +38,11 @@ def _hash_xmls(fpath_dir: str) -> list:
     return xml_fpaths_hashes
 
 
-if __name__ == "__main__":
+def run(args):
     # TODO replace print with logging.info
     # TODO make logging.info display output to console
 
     start = timer()
-    args = _parse_args()
     fpath_xml = args.src
 
     # Identify list of date directories within xml/
@@ -102,3 +101,8 @@ if __name__ == "__main__":
     end = timer()
     logging.info(f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs \
                    ({dup_count / len(xml_fpaths_hashes) * 100:.2f}%) took {end-start:.2f} sec")
+
+
+if __name__ == "__main__":
+    args = _parse_args()
+    run(args)
