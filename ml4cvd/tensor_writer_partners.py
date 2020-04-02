@@ -36,6 +36,8 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     logging.info('Mapping XMLs to MRNs')
     mrn_xmls_map = _get_mrn_xmls_map(xml_folder, n_jobs)
 
+    if not os.path.exists(tensors): os.makedirs(tensors)
+
     logging.info('Converting XMLs into HD5s')
     _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs)
 
@@ -378,7 +380,7 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str) -> T
     with h5py.File(fpath_hd5, 'a') as hd5:
         hd5_ecg = hd5['ECG'] if 'ECG' in hd5.keys() else hd5.create_group('ECG')
         for fpath_xml in fpath_xmls:
-            if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hd5):
+            if _convert_xml_to_hd5(fpath_xml, fpath_hd5, hd5_ecg):
                 num_xml_converted += 1
         num_ecg_in_hd5 = len(hd5_ecg.keys())
 
