@@ -362,6 +362,7 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
     censor_periods = np.argmin(truth[:, :intervals], axis=-1)
+    logging.info(f'Try to save survival plot at: {censor_periods}')
     x_days = range(0, days_window, 1 + days_window // intervals)
     cur_sick = 0
     cur_healthy = 0
@@ -377,7 +378,7 @@ def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./f
             if cur_sick >= min_sick and i >= num_curves:
                 break
         elif cur_healthy < num_curves:
-            plt.plot(x_days, predicted_survivals[i, :censor_periods[i]], label=f'id:{p} p:{predicted_survivals[i, censor_periods[i]]:0.2f}', color='green')
+            #plt.plot(x_days, predicted_survivals[i, :censor_periods[i]], label=f'id:{p} p:{predicted_survivals[i, censor_periods[i]]:0.2f}', color='green')
             cur_healthy += 1
     plt.title(title + '\n')
     plt.legend(loc="upper right")
