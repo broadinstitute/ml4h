@@ -337,7 +337,7 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
     logging.info(f"Censored at each step is: {(truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick} out of {truth.shape[0]}")
     logging.info(f"Survivorship: {survivorship}")
-    predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / alive_per_step
+    predicted_proportion = np.sum(truth[:, :intervals]*np.cumprod(prediction[:, :intervals], axis=1), axis=0) / alive_per_step
     logging.info(f"proportion shape is: {predicted_proportion.shape} survivorship shape is: {survivorship.shape} begin")
     if paths is not None:
         pass
@@ -356,13 +356,12 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=50, paths=None):
+def plot_survival_curves(prediction, truth, title, days_window=3650, prefix='./figures/', num_curves=40, paths=None):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
     censor_periods = np.argmin(truth[:, :intervals], axis=-1)
-    logging.info(f'Try to save survival plot at: {censor_periods}')
     x_days = range(0, days_window, 1 + days_window // intervals)
     cur_sick = 0
     cur_healthy = 0
