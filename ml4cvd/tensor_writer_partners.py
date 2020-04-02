@@ -288,7 +288,7 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
     # Extract text data from XML into dict
     text_data = _text_from_xml(fpath_xml)
     dt = datetime.strptime(f"{text_data['acquisitiondate']} {text_data['acquisitiontime']}", '%m-%d-%Y %H:%M:%S')
-    ecg_dt = f'{dt:%Y-%m-%d %H:%M:%S}' # ISO
+    ecg_dt = dt.isoformat()
 
     # If XML is empty, remove the XML file and set convert to false
     if (os.stat(fpath_xml).st_size == 0 or not text_data):
