@@ -21,7 +21,9 @@ from collections import Counter
 from dateutil.parser import parse
 from joblib import Parallel, delayed
 from xml.parsers.expat import ExpatError, ParserCreate
-from ml4cvd.defines import ECG_REST_STD_LEADS
+
+
+ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
 
 
 def write_tensors_partners(a_id: str,
@@ -521,7 +523,7 @@ class MuseXmlParser:
                 k = k + 1
 
         # Overwrite voltage dict with only standard 8 leads
-        voltage = {lead: voltage[lead] for lead in ECG_REST_STD_LEADS}
+        voltage = {lead: voltage[lead] for lead in ECG_REST_INDEPENDENT_LEADS}
 
         # Convert dict of lists into dict of arrays to enable vector math
         voltage = {key: np.array(val) for key, val in voltage.items()}

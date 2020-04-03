@@ -70,7 +70,6 @@ CAD_ICDS = [
 CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
 CODING_VALUES_MISSING = [-3, -1, -2, -11, -818, -121, -313, -906]
 
-ECG_REST_STD_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
 ECG_REST_LEADS = {
     'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 9, 'strip_aVL': 10, 'strip_aVR': 11,

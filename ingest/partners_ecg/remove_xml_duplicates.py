@@ -39,8 +39,6 @@ def _hash_xmls(fpath_dir: str) -> list:
 
 
 def run(args):
-    # TODO replace print with logging.info
-    # TODO make logging.info display output to console
 
     start = timer()
     fpath_xml = args.src
