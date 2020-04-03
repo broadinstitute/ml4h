@@ -393,6 +393,7 @@ TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2',  Interpretation.
                                              tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
 TMAPS['enroll_hyp_hazard_5'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
                                          tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
+
 TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
                                                   tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
 TMAPS['enroll_cad_hazard_5_incident'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),

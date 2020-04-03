@@ -492,7 +492,9 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn'
     return tensor_from_file
 
 
-def _diagnosis_channels(disease: str):
+def _diagnosis_channels(disease: str, incidence_only: bool = False):
+    if incidence_only:
+        return {f'no_{disease}': 0,  f'future_{disease}': 1}
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
 
 
@@ -597,7 +599,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'incident_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn)
 
         # Build survival curve TensorMaps
         name = f'survival_{diagnosis}'
