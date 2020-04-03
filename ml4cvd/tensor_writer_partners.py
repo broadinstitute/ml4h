@@ -16,7 +16,9 @@ import numpy as np
 from bs4 import BeautifulSoup, SoupStrainer, PageElement
 from joblib import Parallel, delayed
 
-from ml4cvd.defines import TENSOR_EXT, ECG_REST_STD_LEADS
+from ml4cvd.defines import TENSOR_EXT
+
+ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
 
 
 def write_tensors_partners(xml_folder: str, tensors: str) -> None:
@@ -642,7 +644,7 @@ class MuseXmlParser:
                 k = k + 1
 
         # Overwrite voltage dict with only standard 8 leads
-        voltage = {lead: voltage[lead] for lead in ECG_REST_STD_LEADS}
+        voltage = {lead: voltage[lead] for lead in ECG_REST_INDEPENDENT_LEADS}
 
         # Convert dict of lists into dict of arrays to enable vector math
         voltage = {key: np.array(val) for key, val in voltage.items()}

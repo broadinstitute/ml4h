@@ -39,11 +39,11 @@ def _process_args(args):
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--src",
+    parser.add_argument("--source_xml_folder",
                         default="/data/partners_ecg/xml",
                         help="Path to directory containing source XMLs")
 
-    parser.add_argument("--dst",
+    parser.add_argument("--destination_xml_folder",
                         default="/data/partners_ecg/dst",
                         help="Path to dir to organize XMLs in yyyy-mm dirs")
 
@@ -51,15 +51,15 @@ def parse_args():
                         default="/data/partners_ecg/xml_bad",
                         help="Path to directory in which to store malformed XMLs")
 
-    parser.add_argument("--copy",
+    parser.add_argument("--copy", default=True, type=bool,
                         action="store_false",
                         help="Copies files from src to dst/yyyy-mm. Default: True")
 
-    parser.add_argument("--move",
+    parser.add_argument("--move", default=False, type=bool,
                         action="store_true",
                         help="Moves files from src to dst/yyyy-mm. Default: False")
 
-    parser.add_argument("--verbose",
+    parser.add_argument("--verbose", default=False, type=bool,
                         action="store_true",
                         help="Print more information as each file is procssed. Default: False")
 
