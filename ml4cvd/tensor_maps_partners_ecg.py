@@ -414,7 +414,7 @@ def _loyalty_str2date(date_string: str):
 
 def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
                                      diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
-                                     delimiter: str = ',', incidence_only: bool = False) -> Callable:
+                                     delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = False) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
     The tensor_from_file function returned here should be used
@@ -422,7 +422,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn'
 
     :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
     :param patient_column: The header name of the column of patient ids
-    :param diagnosis_date_column: The header name of the column of disease diagnosis dates
+    :param diagnosis_column: The header name of the column of disease diagnosis dates
     :param start_column: The header name of the column of enrollment dates
     :param delimiter: The delimiter separating columns of the TSV or CSV
     :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
@@ -467,10 +467,11 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn'
 
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
-
-        birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
-        if birth_date != birth_table[mrn_int]:
-            raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
+        
+        if check_birthday:
+            birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
+            if birth_date != birth_table[mrn_int]:
+                raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
 
         assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
         if assess_date < patient_table[mrn_int]:
