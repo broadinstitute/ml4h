@@ -414,7 +414,7 @@ def _loyalty_str2date(date_string: str):
 
 def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
                                      diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
-                                     delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = False) -> Callable:
+                                     delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
     The tensor_from_file function returned here should be used
@@ -467,7 +467,7 @@ def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn'
 
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
-        
+
         if check_birthday:
             birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
             if birth_date != birth_table[mrn_int]:
