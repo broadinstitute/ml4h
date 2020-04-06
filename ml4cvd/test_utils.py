@@ -1,15 +1,20 @@
+import os
+import h5py
+import numpy as np
+from typing import List
 from itertools import product
 
+from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap, Interpretation
 
 
 CONTINUOUS_TMAPS = [
-    TensorMap(f'{n}d_cont', shape=tuple(range(1, n + 1)), interpretation=Interpretation.CONTINUOUS)
+    TensorMap(f'{n}d_cont', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CONTINUOUS)
     for n in range(1, 6)
 ]
 CATEGORICAL_TMAPS = [
     TensorMap(
-        f'{n}d_cat', shape=tuple(range(1, n + 1)),
+        f'{n}d_cat', shape=tuple(range(2, n + 2)),
         interpretation=Interpretation.CATEGORICAL,
         channel_map={f'c_{i}': i for i in range(n)},
     )
@@ -38,3 +43,20 @@ CYCLE_PARENTS = [
 ]
 for i in range(len(CYCLE_PARENTS)):
     CYCLE_PARENTS[i].parents = [CYCLE_PARENTS[i - 1]]  # 0th tmap will be child of last
+
+
+def build_hdf5s(path: str, tensor_maps: List[TensorMap], n=5):
+    """
+    Builds hdf5s at path given TensorMaps. Only works for Continuous and Categorical TensorMaps.
+    """
+    for i in range(n):
+        with h5py.File(os.path.join(path, f'{i}{TENSOR_EXT}'), 'w') as hd5:
+            for tm in tensor_maps:
+                if tm.is_continuous():
+                    value = np.full(tm.shape, fill_value=i, dtype=np.float32)
+                elif tm.is_categorical():
+                    value = np.zeros(tm.shape, dtype=np.float32)
+                    value[..., i % tm.shape[-1]] = 1
+                else:
+                    raise NotImplementedError(f'Cannot automatically build hdf5 from interpretation "{tm.interpretation}"')
+                hd5.create_dataset(tm.hd5_key_guess(), data=value)
