@@ -149,7 +149,7 @@ def pearson(y_true, y_pred):
     pearson_correlation = K.sum(y_true * y_pred, axis=-1)
     return pearson_correlation
 
-@tf.function
+
 def _make_riskset(follow_up_times):
     # sort in descending order
     import sys
@@ -163,15 +163,11 @@ def _make_riskset(follow_up_times):
     n_samples = tf.shape(follow_up_times)[0]
     risk_set = tf.zeros_like(z1tz1)
     tf.print(' risk_set shape: ', tf.shape(risk_set), output_stream=sys.stdout)
-    for i_start, i_sort in enumerate(o):
-        time_i_start = follow_up_times[i_sort]
-        k = i_start
-        while k < n_samples and time_i_start >= follow_up_times[o[k]]:
-            k += 1
-        risk_set[i_sort, o[:k]] = True
+    risk_set[:o] = True
+    tf.print(' risk_set is: ', risk_set, output_stream=sys.stdout)
     return risk_set
 
-@tf.function
+
 def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
     """Compute logsumexp across `axis` for entries where `mask` is true."""
     mask_f = K.cast(mask, risk_scores.dtype)
@@ -188,7 +184,7 @@ def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
         output = K.squeeze(output, axis=axis)
     return output
 
-@tf.function
+
 def coxph_loss(y_true, y_pred):
     # move batch dimension to the end so predictions get broadcast
     # row-wise when multiplying by riskset
