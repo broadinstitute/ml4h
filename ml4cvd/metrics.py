@@ -171,7 +171,7 @@ def _make_riskset(follow_up_times):
         risk_set[i_sort, o[:k]] = True
     return risk_set
 
-
+@tf.function
 def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
     """Compute logsumexp across `axis` for entries where `mask` is true."""
     mask_f = K.cast(mask, risk_scores.dtype)
@@ -188,7 +188,7 @@ def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
         output = K.squeeze(output, axis=axis)
     return output
 
-
+@tf.function
 def coxph_loss(y_true, y_pred):
     # move batch dimension to the end so predictions get broadcast
     # row-wise when multiplying by riskset
