@@ -151,10 +151,8 @@ def pearson(y_true, y_pred):
 
 
 def _make_riskset(follow_up_times):
-    assert follow_up_times.ndim == 1, "expected 1D array"
-
     # sort in descending order
-    o = np.argsort(-follow_up_times, kind="mergesort")
+    o = tf.argsort(-follow_up_times)
     n_samples = len(follow_up_times)
     risk_set = np.zeros((n_samples, n_samples), dtype=np.bool_)
     for i_start, i_sort in enumerate(o):
@@ -168,32 +166,32 @@ def _make_riskset(follow_up_times):
 
 def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
     """Compute logsumexp across `axis` for entries where `mask` is true."""
-    mask_f = tf.cast(mask, risk_scores.dtype)
-    risk_scores_masked = tf.multiply(risk_scores, mask_f)
+    mask_f = K.cast(mask, risk_scores.dtype)
+    risk_scores_masked = risk_scores * mask_f
     # for numerical stability, substract the maximum value
     # before taking the exponential
-    amax = tf.reduce_max(risk_scores_masked, axis=axis, keepdims=True)
+    amax = K.max(risk_scores_masked, axis=axis, keepdims=True)
     risk_scores_shift = risk_scores_masked - amax
 
-    exp_masked = tf.multiply(tf.exp(risk_scores_shift), mask_f)
-    exp_sum = tf.reduce_sum(exp_masked, axis=axis, keepdims=True)
-    output = amax + tf.log(exp_sum)
+    exp_masked = K.exp(risk_scores_shift) * mask_f
+    exp_sum = K.sum(exp_masked, axis=axis, keepdims=True)
+    output = amax + K.log(exp_sum)
     if not keepdims:
-        output = tf.squeeze(output, axis=axis)
+        output = K.squeeze(output, axis=axis)
     return output
 
 
 def coxph_loss(y_true, y_pred):
     # move batch dimension to the end so predictions get broadcast
     # row-wise when multiplying by riskset
-    pred_t = tf.transpose(y_pred[:, 0])
+    pred_t = K.transpose(y_pred[:, 0])
     events = y_true[:, 0]
     follow_up_times = y_true[:, 1]
     # compute log of sum over risk set for each row
     rr = _softmax_masked(pred_t, _make_riskset(follow_up_times), axis=1, keepdims=True)
 
-    losses = tf.multiply(events, rr - y_pred[:, 0])
-    loss = tf.reduce_mean(losses)
+    losses = events * (rr - y_pred[:, 0])
+    loss = K.mean(losses)
     return loss
 
 
