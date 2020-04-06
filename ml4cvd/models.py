@@ -8,7 +8,7 @@ import time
 import logging
 import numpy as np
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable
+from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict
 
 # Keras imports
 import tensorflow as tf
@@ -676,9 +676,27 @@ class FullyConnectedBlock:
         return x
 
 
+def adaptive_normalize_from_tensor(tensor: Tensor, target: Tensor) -> Tensor:
+    """Uses Dense layers to convert `tensor` to a mean and standard deviation to normalize `target`"""
+    return adaptive_normalization(mu=Dense(target.shape[-1])(tensor), log_sigma=Dense(target.shape[-1])(tensor), target=target)
+
+
+def adaptive_normalization(mu: Tensor, log_sigma: Tensor, target: Tensor, epsilon=1e-5) -> Tensor:
+    normalizer_shape = (1,) * (len(target.shape) - 2) + (target.shape[-1],)
+    mu = Reshape(normalizer_shape)(mu)
+    log_sigma = Reshape(normalizer_shape)(log_sigma)
+    target -= mu
+    target /= (tf.math.exp(log_sigma) + epsilon)
+    return target
+
+
+def global_average_pool(x: Tensor) -> Tensor:
+    return K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+
+
 class FlattenDenseRestructure:
     """
-    Flattens and concatenates all inputs, applies a dense layer, then restructures to provided shapes
+    Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
     """
     def __init__(
             self,
@@ -688,6 +706,8 @@ class FlattenDenseRestructure:
             widths: List[int],
             regularization: str,
             regularization_rate: float,
+            u_connect: DefaultDict[TensorMap, Set[TensorMap]],
+            bottleneck_type: str,
     ):
         self.fully_connected = FullyConnectedBlock(
             widths=widths,
@@ -702,17 +722,30 @@ class FlattenDenseRestructure:
             for tm, shape in pre_decoder_shapes.items() if shape is not None
         }
         self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
+        self.u_connect = u_connect
+        self.bottleneck_type = bottleneck_type
 
     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
-        y = [Flatten()(x) for x in encoder_outputs.values()]
+        if self.bottleneck_type == 'flatten_restructure':
+            y = [Flatten()(x) for x in encoder_outputs.values()]
+        elif self.bottleneck_type == 'squeeze_excitation':
+            y = [Flatten()(x) for tm, x in encoder_outputs.items() if len(x.shape) == 2]  # Flat tensors
+            y += [global_average_pool(x) for tm, x in encoder_outputs.items() if len(x.shape) > 2]  # Structured tensors
+        else:
+            raise NotImplementedError(f'bottleneck_type {self.bottleneck_type} does not exist.')
         if len(y) > 1:
             y = concatenate(y)
         else:
             y = y[0]
         y = self.fully_connected(y)
+        outputs: Dict[TensorMap, Tensor] = {}
+        for input_tm, output_tms in self.u_connect.items():
+            for output_tm in output_tms:
+                outputs[output_tm] = adaptive_normalize_from_tensor(y, encoder_outputs[input_tm])
         return {
             **{tm: restructure(y) for tm, restructure in self.restructures.items()},
-            **{tm: y for tm in self.no_restructures},
+            **{tm: y for tm in self.no_restructures if tm not in outputs},
+            **outputs,
         }
 
 
@@ -834,16 +867,17 @@ class ConvDecoder:
         final_activation = 'softmax' if tensor_map_out.is_categorical() else 'linear'
         conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=final_activation, name=tensor_map_out.output_name())
-        self.upsamples = [_upsampler(dimension, upsample_x, upsample_y, upsample_z) for _ in filters_per_dense_block]
+        self.upsamples = [_upsampler(dimension, upsample_x, upsample_y, upsample_z) for _ in range(len(filters_per_dense_block) + 1)]
         self.u_connect_parents = u_connect_parents or []
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]], _) -> Tensor:
         for i, (dense_block, upsample) in enumerate(zip(self.dense_blocks, self.upsamples)):
             intermediate = [intermediates[tm][-(i + 1)] for tm in self.u_connect_parents]
+            x = upsample(x)
             x = concatenate(intermediate + [x]) if intermediate else x
             x = dense_block(x)
-            x = upsample(x)
         intermediate = [intermediates[tm][0] for tm in self.u_connect_parents]
+        x = self.upsamples[-1](x)
         x = concatenate(intermediate + [x]) if intermediate else x
         return self.conv_label(x)
 
@@ -868,12 +902,14 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
 
 
 def make_multimodal_multitask_model(
-        tensor_maps_in: List[TensorMap] = None,
-        tensor_maps_out: List[TensorMap] = None,
-        activation: str = None,
+        tensor_maps_in: List[TensorMap],
+        tensor_maps_out: List[TensorMap],
+        activation: str,
+        learning_rate: float,
+        bottleneck_type: str,
+        optimizer: str,
         dense_layers: List[int] = None,
-        dropout: float = None,  # TODO: should be dense_regularization rate for flexiblility
-        mlp_concat: bool = None,
+        dropout: float = None,  # TODO: should be dense_regularization rate for flexibilility
         conv_layers: List[int] = None,
         dense_blocks: List[int] = None,
         block_size: int = None,
@@ -885,19 +921,17 @@ def make_multimodal_multitask_model(
         conv_z: int = None,
         conv_dropout: float = None,
         conv_dilate: bool = None,
-        u_connect: Dict[TensorMap, Set[TensorMap]] = None,
+        u_connect: DefaultDict[TensorMap, Set[TensorMap]] = None,
         pool_x: int = None,
         pool_y: int = None,
         pool_z: int = None,
         pool_type: str = None,
-        learning_rate: float = None,
-        optimizer: str = 'adam',
         training_steps: int = None,
         learning_rate_schedule: str = None,
         **kwargs
 ) -> Model:
     tensor_maps_out = parent_sort(tensor_maps_out)
-    u_connect = u_connect or defaultdict(set)
+    u_connect: DefaultDict[TensorMap, Set[TensorMap]] = u_connect or defaultdict(set)
     opt = get_optimizer(optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule, optimizer_kwargs=kwargs.get('optimizer_kwargs'))
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
@@ -946,19 +980,22 @@ def make_multimodal_multitask_model(
                 is_encoder=True,
             )
 
+    pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
+    for tm in tensor_maps_out:
+        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
+            pre_decoder_shapes[tm] = None
+        else:
+            pre_decoder_shapes[tm] = _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
+
     bottle_neck = FlattenDenseRestructure(
         widths=dense_layers,
         activation=activation,
         regularization=dense_regularize,
         regularization_rate=dense_regularize_rate,
         normalization=dense_normalize,
-        pre_decoder_shapes={
-            tm: (
-                _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z]) if tm.axes() > 1
-                else None
-            )
-            for tm in tensor_maps_out
-        },
+        pre_decoder_shapes=pre_decoder_shapes,
+        u_connect=u_connect,
+        bottleneck_type=bottleneck_type,
     )
 
     decoders: Dict[TensorMap, Layer] = {}
@@ -1200,7 +1237,9 @@ def _one_by_n_kernel(dimension):
     return tuple([1] * (dimension - 1))
 
 
-def _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z):
+def _conv_layer_from_kind_and_dimension(
+        dimension: int, conv_layer_type: str, conv_x: int, conv_y: int, conv_z: int,
+) -> Tuple[Layer, Tuple[int, ...]]:
     if dimension == 4 and conv_layer_type == 'conv':
         conv_layer = Conv3D
         kernel = (conv_x, conv_y, conv_z)
@@ -1324,16 +1363,6 @@ def _get_last_layer(named_layers):
             max_index = cur_index
             max_layer = k
     return named_layers[max_layer]
-
-
-def _get_last_layer_by_kind(named_layers, kind, mask_after=9e9):
-    max_index = -1
-    for k in named_layers:
-        if kind in k:
-            val = int(k.split('_')[-1])
-            if val < mask_after:
-                max_index = max(max_index, val)
-    return named_layers[kind + JOIN_CHAR + str(max_index)]
 
 
 def _get_layer_kind_sorted(named_layers, kind):

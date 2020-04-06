@@ -6,7 +6,7 @@ from typing import Dict, List, Callable
 
 import csv
 import h5py
-import numcodecs
+# import numcodecs
 import numpy as np
 
 from ml4cvd.metrics import weighted_crossentropy

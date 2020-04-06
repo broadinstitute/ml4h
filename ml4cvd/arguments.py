@@ -148,13 +148,14 @@ def parse_args():
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
     parser.add_argument(
         '--u_connect', nargs=2, action='append',
-        help='U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.'
+        help='U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.',
     )
     parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument(
         '--max_parameters', default=9000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
+    parser.add_argument('--bottleneck_type', type=str, default='flatten_restructure', choices=['flatten_restructure', 'squeeze_excitation'])
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
@@ -185,7 +186,7 @@ def parse_args():
         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
     )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
-    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
+    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
     parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2'], help='Adjusts learning rate during training.')
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
