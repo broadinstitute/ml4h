@@ -6,8 +6,8 @@ from itertools import cycle
 from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
-from ml4cvd.models import make_multimodal_multitask_model, parent_sort
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType
 from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
@@ -31,7 +31,7 @@ DEFAULT_PARAMS = {
     'pool_y': 1,
     'pool_z': 1,
     'dropout': 0,
-    'bottleneck_type': 'flatten_restructure',
+    'bottleneck_type': BottleneckType.FlattenRestructure,
 }
 
 
@@ -186,7 +186,7 @@ class TestMakeMultimodalMultitaskModel:
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
-        params['bottleneck_type'] = 'squeeze_excitation'
+        params['bottleneck_type'] = BottleneckType.GlobalAveragePoolStructured
         m = make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
             [SEGMENT_OUT],

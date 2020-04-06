@@ -7,6 +7,7 @@ import os
 import time
 import logging
 import numpy as np
+from enum import Enum, auto
 from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict
 
@@ -34,6 +35,11 @@ from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX
 
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
+
+
+class BottleneckType(Enum):
+    FlattenRestructure = auto()  # All decoder outputs are flattened to put into embedding
+    GlobalAveragePoolStructured = auto()  # Structured (not flat) decoder outputs are global average pooled
 
 
 def make_shallow_model(
@@ -707,7 +713,7 @@ class FlattenDenseRestructure:
             regularization: str,
             regularization_rate: float,
             u_connect: DefaultDict[TensorMap, Set[TensorMap]],
-            bottleneck_type: str,
+            bottleneck_type: BottleneckType,
     ):
         self.fully_connected = FullyConnectedBlock(
             widths=widths,
@@ -726,9 +732,9 @@ class FlattenDenseRestructure:
         self.bottleneck_type = bottleneck_type
 
     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
-        if self.bottleneck_type == 'flatten_restructure':
+        if self.bottleneck_type == BottleneckType.FlattenRestructure:
             y = [Flatten()(x) for x in encoder_outputs.values()]
-        elif self.bottleneck_type == 'squeeze_excitation':
+        elif self.bottleneck_type == BottleneckType.GlobalAveragePoolStructured:
             y = [Flatten()(x) for tm, x in encoder_outputs.items() if len(x.shape) == 2]  # Flat tensors
             y += [global_average_pool(x) for tm, x in encoder_outputs.items() if len(x.shape) > 2]  # Structured tensors
         else:
@@ -911,7 +917,7 @@ def make_multimodal_multitask_model(
         tensor_maps_out: List[TensorMap],
         activation: str,
         learning_rate: float,
-        bottleneck_type: str,
+        bottleneck_type: BottleneckType,
         optimizer: str,
         dense_layers: List[int] = None,
         dropout: float = None,  # TODO: should be dense_regularization rate for flexibility
@@ -992,7 +998,7 @@ def make_multimodal_multitask_model(
         else:
             pre_decoder_shapes[tm] = _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
 
-    bottle_neck = FlattenDenseRestructure(
+    bottleneck = FlattenDenseRestructure(
         widths=dense_layers,
         activation=activation,
         regularization=dense_regularize,
@@ -1030,7 +1036,7 @@ def make_multimodal_multitask_model(
                 activation=activation,
             )
 
-    m = _make_multimodal_multitask_model(encoders, bottle_neck, decoders)
+    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders)
 
     # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)

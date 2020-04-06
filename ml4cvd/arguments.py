@@ -22,12 +22,18 @@ from typing import Set, Dict, List, Optional
 from collections import defaultdict
 
 from ml4cvd.logger import load_config
-from ml4cvd.models import parent_sort
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.models import parent_sort, BottleneckType
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
+
+
+BOTTLENECK_STR_TO_ENUM = {
+    'flatten_restructure': BottleneckType.FlattenRestructure,
+    'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
+}
 
 
 def parse_args():
@@ -155,7 +161,7 @@ def parse_args():
         '--max_parameters', default=9000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
-    parser.add_argument('--bottleneck_type', type=str, default='flatten_restructure', choices=['flatten_restructure', 'squeeze_excitation'])
+    parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
@@ -285,6 +291,8 @@ def _process_args(args):
         )
     args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
+
+    args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
