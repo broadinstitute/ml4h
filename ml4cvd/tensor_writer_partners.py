@@ -38,23 +38,24 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     logging.info('Mapping XMLs to MRNs')
     mrn_xmls_map = _get_mrn_xmls_map(xml_folder, n_jobs=n_jobs)
 
-    if not os.path.exists(tensors): os.makedirs(tensors)
-
     logging.info('Converting XMLs into HD5s')
-    _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
+    num_xml_converted, num_hd5_written = _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
+
+    logging.info(f'Removed {sum([len(v) for k, v in mrn_xmls_map.items()]) - num_xml_converted} duplicate XMLs')
 
 
-def _map_mrn_to_xml(fpath_xml: str) -> Tuple[str, str]:
+def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[int, str], None]:
     with open(fpath_xml, 'r') as f:
         for line in f:
             match = re.match(r'.*<PatientID>(.*)</PatientID>.*', line)
             if match:
-                return (match.group(1), fpath_xml)
+                mrn = _clean_mrn(match.group(1))
+                return (mrn, fpath_xml)
     logging.warning(f'No PatientID found at {fpath_xml}')
     return None
 
 
-def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[str, List[str]]:
+def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[int, List[str]]:
 
     # Get all xml paths
     fpath_xmls = []
@@ -77,6 +78,16 @@ def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[str, List[str]]:
 
     return mrn_xml_dict
 
+
+def _clean_mrn(mrn: str) -> int:
+    # TODO additional cleaning like o->0, |->1
+    try:
+        clean = re.sub(r'[^0-9]', '', mrn)
+        clean = int(clean)
+        return int(clean)
+    except ValueError:
+        logging.warning(f'Could not clean MRN {mrn} to an int. Returning 0.')
+        return 0
 
 def _clean_read_text(text: str) -> str:
     # Convert to lowercase
@@ -342,13 +353,13 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
         key_mrn_clean = 'patientid_clean'
         mrn_clean = None
         if 'patientid' in text_data.keys():
-            mrn_clean = re.sub(r'[^0-9]', '', text_data['patientid'])
+            mrn_clean = _clean_mrn(text_data['patientid'])
 
         gp = hd5.create_group(ecg_dt)
 
         # Save cleaned MRN to hd5
         if mrn_clean:
-            _compress_data_to_hd5(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
+            _compress_data_to_hd5(hd5=gp, name=key_mrn_clean, data=str(mrn_clean), dtype='str')
 
         # Iterate through each lead and save voltage array to hd5
         for lead in voltage.keys():
@@ -374,11 +385,12 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
     return convert
 
 
-def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int]:
+def _convert_mrn_xmls_to_hd5(mrn: int, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int]:
     fpath_hd5 = os.path.join(dir_hd5, f'{mrn}{TENSOR_EXT}')
     num_xml_converted = 0
     num_src_in_hd5 = 0
     num_ecg_in_hd5 = 0
+
     with h5py.File(fpath_hd5, 'a') as hd5:
         hd5_ecg = hd5[hd5_prefix] if hd5_prefix in hd5.keys() else hd5.create_group(hd5_prefix)
         for fpath_xml in fpath_xmls:
@@ -405,13 +417,15 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_
     return (num_hd5_written, num_xml_converted)
 
 
-def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[str, List[str]], dir_hd5: str,
-                                     hd5_prefix: str = 'partners_ecg_rest', n_jobs: int = -1) -> None:
-    converted = Parallel(n_jobs=n_jobs, verbose=3)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xml_map.items())
+def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[int, List[str]], dir_hd5: str,
+                                     hd5_prefix: str = 'partners_ecg_rest', n_jobs: int = -1) -> Tuple[int, int]:
+    os.makedirs(dir_hd5, exist_ok=True)
+    converted = Parallel(n_jobs=n_jobs)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xml_map.items())
     num_hd5 = sum([x[0] for x in converted])
     num_xml = sum([x[1] for x in converted])
-    logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s")
+    logging.info(f"Converted {num_xml} XMLs to {num_hd5} HD5s at {dir_hd5}")
 
+    return (num_xml, num_hd5)
 
 class XmlElementParser(ABC):
     """Abstract base class for a XML Parsing State. It contains methods for
