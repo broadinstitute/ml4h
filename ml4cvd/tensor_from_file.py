@@ -4,11 +4,11 @@ import logging
 import datetime
 from typing import List, Dict, Tuple, Callable
 
-# import vtk
+import vtk
 import h5py
 import scipy
 import numpy as np
-# import vtk.util.numpy_support
+import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.metrics import weighted_crossentropy

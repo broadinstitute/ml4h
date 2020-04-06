@@ -21,7 +21,7 @@ from collections import Counter, defaultdict
 from typing import Dict, List, Tuple, Optional, Any
 
 import h5py
-# import imageio
+import imageio
 import pydicom
 import sqlite3
 import zipfile
