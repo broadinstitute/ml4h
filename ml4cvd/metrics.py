@@ -165,7 +165,7 @@ def _make_riskset(follow_up_times):
     for i_start, i_sort in enumerate(o):
         time_i_start = follow_up_times_np[i_sort]
         k = i_start
-        while k < n_samples and time_i_start >= follow_up_times_np[o[k]]:
+        while k < n_samples and time_i_start <= follow_up_times_np[o[k]]:
             k += 1
         risk_set[i_sort, o[:k]] = True
     print(f' Risk set is: {risk_set}')
