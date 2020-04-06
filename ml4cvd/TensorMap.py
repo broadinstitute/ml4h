@@ -42,6 +42,7 @@ class Interpretation(Enum):
     EMBEDDING = auto()
     LANGUAGE = auto()
     COX_PROPORTIONAL_HAZARDS = auto()
+    SURVIVAL = auto()
     DISCRETIZED = auto()
     MESH = auto()
 
@@ -165,7 +166,7 @@ class TensorMap(object):
             self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
-        elif self.loss is None and self.is_cox_proportional_hazard():
+        elif self.loss is None and self.is_survival():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
             self.activation = 'sigmoid'
         elif self.loss is None and self.is_language():
@@ -245,6 +246,9 @@ class TensorMap(object):
 
     def is_cox_proportional_hazard(self):
         return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
+
+    def is_survival(self):
+        return self.interpretation == Interpretation.SURVIVAL
 
     def is_discretized(self):
         return self.interpretation == Interpretation.DISCRETIZED

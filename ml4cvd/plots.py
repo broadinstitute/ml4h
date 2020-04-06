@@ -28,6 +28,7 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+from sksurv.metrics import concordance_index_censored
 
 import seaborn as sns
 from biosppy.signals import ecg
@@ -109,9 +110,12 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_cox_proportional_hazard():
+    elif tm.is_survival():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
+    elif tm.is_cox_proportional_hazard():
+        c_index = concordance_index_censored(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0])
+        logging.info(f'C-Index is: {c_index}')
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]

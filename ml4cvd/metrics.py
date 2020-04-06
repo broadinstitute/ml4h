@@ -5,7 +5,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
-from sksurv.metrics import concordance_index_censored
+
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
