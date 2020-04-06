@@ -153,6 +153,8 @@ def pearson(y_true, y_pred):
 def _make_riskset(follow_up_times):
     # sort in descending order
     import sys
+    import pdb;
+    pdb.set_trace()
     follow_up_times_np = tf.make_ndarray(tf.make_tensor_proto(follow_up_times))
     o = np.argsort(-follow_up_times_np)
     #tf.print(' tf shape:', tf.shape(follow_up_times)[0], output_stream=sys.stdout)
@@ -189,10 +191,11 @@ def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
         output = K.squeeze(output, axis=axis)
     return output
 
-
+@tf.function
 def coxph_loss(y_true, y_pred):
     # move batch dimension to the end so predictions get broadcast
     # row-wise when multiplying by riskset
+    import pdb; pdb.set_trace()
     pred_t = K.transpose(y_pred[:, 0])
     events = y_true[:, 0]
     follow_up_times = y_true[:, 1]
