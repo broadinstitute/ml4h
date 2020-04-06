@@ -109,8 +109,6 @@ def _clean_read_text(text: str) -> str:
 
 
 def _get_voltage_from_xml(fpath_xml: str) -> Tuple[Dict[str, np.ndarray], str]:
-    MuseXmlParser.start_element
-
     # Initialize parser object
     g_parser = MuseXmlParser()
 
