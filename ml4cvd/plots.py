@@ -114,7 +114,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
     elif tm.is_cox_proportional_hazard():
-        c_index = concordance_index_censored(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0])
+        c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         logging.info(f'C-Index is: {c_index}')
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
