@@ -153,8 +153,15 @@ def pearson(y_true, y_pred):
 def _make_riskset(follow_up_times):
     # sort in descending order
     o = tf.argsort(-follow_up_times)
-    n_samples = tf.shape(follow_up_times).numpy()[0]
-    risk_set = tf.zeros((n_samples, n_samples))
+    print(f' tf shape: {tf.shape(follow_up_times)[0]}')
+    z1 = tf.zeros_like(follow_up_times)
+    z1z1t = z1 * tf.transpose(z1)
+    z1tz1 = tf.transpose(z1) * z1
+    print(f' z1z1t shape: {tf.shape(z1z1t)}')
+    print(f' z1tz1 shape: {tf.shape(z1tz1)}')
+    n_samples = tf.shape(follow_up_times)[0]
+    risk_set = tf.zeros_like(z1tz1)
+    print(f' risk_set shape: {tf.shape(risk_set)}')
     for i_start, i_sort in enumerate(o):
         time_i_start = follow_up_times[i_sort]
         k = i_start
