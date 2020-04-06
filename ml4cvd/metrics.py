@@ -153,19 +153,24 @@ def pearson(y_true, y_pred):
 def _make_riskset(follow_up_times):
     # sort in descending order
     import sys
-    o = tf.argsort(-follow_up_times)
-    tf.print(' tf shape:', tf.shape(follow_up_times)[0], output_stream=sys.stdout)
-    z1 = tf.zeros_like(follow_up_times)
-    z1z1t = z1 * tf.transpose(z1)
-    z1tz1 = tf.transpose(z1) * z1
-    tf.print(' z1z1t shape: ' , tf.shape(z1z1t), output_stream=sys.stdout)
-    tf.print(' z1tz1 shape: ' , tf.shape(z1tz1), output_stream=sys.stdout)
-    n_samples = tf.shape(follow_up_times)[0]
-    risk_set = tf.zeros_like(z1tz1)
-    tf.print(' risk_set shape: ', tf.shape(risk_set), output_stream=sys.stdout)
-    risk_set[:o] = True
-    tf.print(' risk_set is: ', risk_set, output_stream=sys.stdout)
-    return risk_set
+    follow_up_times_np = tf.make_ndarray(follow_up_times)
+    o = np.argsort(-follow_up_times_np)
+    #tf.print(' tf shape:', tf.shape(follow_up_times)[0], output_stream=sys.stdout)
+    n_samples = follow_up_times_np.shape[0]
+    risk_set = np.zeros((n_samples, n_samples))
+    #tf.print(' risk_set shape: ', tf.shape(risk_set), output_stream=sys.stdout)
+
+    for i_start, i_sort in enumerate(o):
+        time_i_start = follow_up_times_np[i_sort]
+        k = i_start
+        while k < n_samples and time_i_start >= follow_up_times_np[o[k]]:
+            k += 1
+        risk_set[i_sort, o[:k]] = True
+    print(f' Risk set is: {risk_set}')
+    risk_set_tf = tf.convert_to_tensor(risk_set)
+    tf.print(' risk_set shape: ', tf.shape(risk_set_tf), output_stream=sys.stdout)
+    tf.print(' risk_set : ', risk_set_tf, output_stream=sys.stdout)
+    return risk_set_tf
 
 
 def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
