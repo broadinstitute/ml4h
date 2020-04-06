@@ -153,7 +153,7 @@ def pearson(y_true, y_pred):
 def _make_riskset(follow_up_times):
     # sort in descending order
     import sys
-    follow_up_times_np = tf.make_ndarray(follow_up_times)
+    follow_up_times_np = tf.make_ndarray(tf.make_tensor_proto(follow_up_times))
     o = np.argsort(-follow_up_times_np)
     #tf.print(' tf shape:', tf.shape(follow_up_times)[0], output_stream=sys.stdout)
     n_samples = follow_up_times_np.shape[0]
