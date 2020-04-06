@@ -158,7 +158,7 @@ def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
         if incidence_only and censor_date <= assess_date:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-        delta = relativedelta.relativedelta(assess_date, censor_date)
+        delta = relativedelta.relativedelta(censor_date, assess_date)
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
         tensor[1] = delta.years * 12 + delta.months
