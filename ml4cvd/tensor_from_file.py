@@ -11,7 +11,7 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.metrics import weighted_crossentropy, coxph_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
 from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
@@ -138,6 +138,30 @@ def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool 
         return survival_then_censor
 
     return _survival_tensor_from_file
+
+
+def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
+    def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        assess_date = str2date(str(hd5[start_date_key][0]))
+        has_disease = 0   # Assume no disease if the tensor does not have the dataset
+        if tm.name in hd5['categorical']:
+            has_disease = int(hd5['categorical'][tm.name][0])
+
+        if tm.name + '_date' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+        elif 'phenotype_censor' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates/phenotype_censor'][0]))
+        else:
+            raise ValueError(f'No date found for survival {tm.name}')
+
+        if incidence_only and censor_date <= assess_date:
+            raise ValueError(f'{tm.name} only considers incident diagnoses')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[0] = has_disease
+        tensor[1] = censor_date - assess_date
+        return tensor
+    return _cox_tensor_from_file
 
 
 def _age_in_years_tensor(date_key, birth_key='continuous/34_Year-of-birth_0_0'):
@@ -404,6 +428,15 @@ TMAPS['enroll_mi_hazard_5'] = TensorMap('myocardial_infarction',  Interpretation
                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
 TMAPS['enroll_mi_hazard_5_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
                                                  tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
+
+TMAPS['cox_mi'] = TensorMap('myocardial_infarction',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+                            tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+                                     tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_hyp'] = TensorMap('hypertension',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+                            tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_hyp_incident'] = TensorMap('hypertension',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+                                     tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
 
 def _warp_ecg(ecg):
