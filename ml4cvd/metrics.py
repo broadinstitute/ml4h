@@ -149,7 +149,7 @@ def pearson(y_true, y_pred):
     pearson_correlation = K.sum(y_true * y_pred, axis=-1)
     return pearson_correlation
 
-
+@tf.function
 def _make_riskset(follow_up_times):
     # sort in descending order
     import sys
