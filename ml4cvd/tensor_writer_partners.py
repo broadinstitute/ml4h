@@ -150,7 +150,9 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
             'restingecgmeasurements',
             'originalrestingecgmeasurements',
             'intervalmeasurementtimeresolution',
-            'intervalmeasurementamplituderesolution']
+            'intervalmeasurementamplituderesolution',
+            'diagnosis',
+            'originaldiagnosis']
     strainer = SoupStrainer(tags)
 
     # Use lxml parser, which makes all tags lower case.
@@ -171,6 +173,14 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
                 append_tag = '_md'
             elif tag == 'originalrestingecgmeasurements':
                 append_tag = '_pc'
+            elif tag == 'diagnosis':
+                # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict.
+                ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find('diagnosis'))
+                continue
+            elif tag == 'originaldiagnosis':
+                # Parse text of computer read within <OriginalDiagnosis> tag and save to ecg_data dict
+                ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
+                continue
 
             # Ovewrite soup with contents in major tag.
             soup_of_tag = soup.find(tag)
@@ -188,12 +198,6 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
                 # Iterate through child elements via list comprehension
                 # and save the element key-value (name-text) to dict.
                 [ecg_data.update({el.name + append_tag: el.get_text()}) for el in elements]
-
-        # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict.
-        ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find('diagnosis'))
-
-        # Parse text of computer read within <OriginalDiagnosis> tag and save to ecg_data dict
-        ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
 
     # Return dict
     return ecg_data
