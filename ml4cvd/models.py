@@ -909,7 +909,7 @@ def make_multimodal_multitask_model(
         bottleneck_type: str,
         optimizer: str,
         dense_layers: List[int] = None,
-        dropout: float = None,  # TODO: should be dense_regularization rate for flexibilility
+        dropout: float = None,  # TODO: should be dense_regularization rate for flexibility
         conv_layers: List[int] = None,
         dense_blocks: List[int] = None,
         block_size: int = None,
@@ -944,7 +944,7 @@ def make_multimodal_multitask_model(
         return m
 
     dense_normalize = conv_normalize  # TODO: should come from own argument
-    dense_regularize = 'dropout'
+    dense_regularize = 'dropout' if dropout else None
     dense_regularize_rate = dropout
     conv_regularize_rate = conv_dropout
 
