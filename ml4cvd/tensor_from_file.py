@@ -2,6 +2,7 @@ import os
 import csv
 import logging
 import datetime
+from dateutil import relativedelta
 from typing import List, Dict, Tuple, Callable
 
 import vtk
@@ -157,9 +158,10 @@ def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
         if incidence_only and censor_date <= assess_date:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
+        delta = relativedelta.relativedelta(assess_date, censor_date)
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
-        tensor[1] = censor_date - assess_date
+        tensor[1] = delta.years * 12 + delta.months
         return tensor
     return _cox_tensor_from_file
 
