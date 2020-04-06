@@ -431,13 +431,13 @@ TMAPS['enroll_mi_hazard_5'] = TensorMap('myocardial_infarction',  Interpretation
 TMAPS['enroll_mi_hazard_5_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
                                                  tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
 
-TMAPS['cox_mi'] = TensorMap('myocardial_infarction',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+TMAPS['cox_mi'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
                             tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
-TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
-TMAPS['cox_hyp'] = TensorMap('hypertension',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+TMAPS['cox_hyp'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
                             tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
-TMAPS['cox_hyp_incident'] = TensorMap('hypertension',  Interpretation.CONTINUOUS, shape=(2,), activation='sigmoid', loss=coxph_loss,
+TMAPS['cox_hyp_incident'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
 
