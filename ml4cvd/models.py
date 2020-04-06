@@ -825,13 +825,18 @@ class DenseDecoder:
     def __init__(
             self,
             tensor_map_out: TensorMap,
+            activation: str,
             parents: List[TensorMap] = None,
     ):
         self.parents = parents
+        self.activation = activation
         self.dense = Dense(units=tensor_map_out.shape[0], name=tensor_map_out.output_name(), activation=tensor_map_out.activation)
 
     def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
-        x = Concatenate()([x] + [decoder_outputs[parent] for parent in self.parents]) if self.parents else x
+        x = Concatenate()([x] + [
+            Dense(units=parent.annotation_units, activation=self.activation)(decoder_outputs[parent])
+            for parent in self.parents
+        ]) if self.parents else x
         return self.dense(x)
 
 
@@ -1022,6 +1027,7 @@ def make_multimodal_multitask_model(
             decoders[tm] = DenseDecoder(
                 tensor_map_out=tm,
                 parents=tm.parents,
+                activation=activation,
             )
 
     m = _make_multimodal_multitask_model(encoders, bottle_neck, decoders)
