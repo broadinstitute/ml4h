@@ -700,7 +700,7 @@ def global_average_pool(x: Tensor) -> Tensor:
     return K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
 
 
-class FlattenDenseRestructure:
+class ConcatenateRestructure:
     """
     Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
     """
@@ -998,7 +998,7 @@ def make_multimodal_multitask_model(
         else:
             pre_decoder_shapes[tm] = _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
 
-    bottleneck = FlattenDenseRestructure(
+    bottleneck = ConcatenateRestructure(
         widths=dense_layers,
         activation=activation,
         regularization=dense_regularize,
