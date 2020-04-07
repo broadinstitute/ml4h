@@ -729,11 +729,11 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff, activation='sigmoid')
         name = f'incident_cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff, activation='sigmoid')
 
         # Build survival curve TensorMaps
         for needed_name in needed_tensor_maps:
@@ -752,5 +752,5 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             if name in needed_name:
                 tff = _survival_from_file(day_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
                 name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), annotation_units=day_window, tensor_from_file=tff)
-    logging.info(f'Got temapzz {name2tensormap} needed: {needed_tensor_maps}')
+
     return name2tensormap
