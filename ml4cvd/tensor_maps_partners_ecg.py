@@ -571,6 +571,7 @@ def loyalty_time_to_event(file_name: str, incidence_only: bool = False, patient_
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
         tensor[1] = (censor_date - assess_date).days
+        logging.debug(f'{tm.name} tensor is {tensor}, censor_date {censor_date} assess_date {assess_date} has is {has_disease}')
         return tensor
     return _cox_tensor_from_file
 
