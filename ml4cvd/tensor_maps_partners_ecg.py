@@ -500,9 +500,9 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
 
 
-def cox_tensor_from_file(file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
-                        follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-                        diagnosis_column: str = 'first_stroke', delimiter: str = ','):
+def loyalty_time_to_event(file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
+                          follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+                          diagnosis_column: str = 'first_stroke', delimiter: str = ','):
     """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
 
     The tensor_from_file function returned here should be used
@@ -677,6 +677,16 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
             name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn)
+
+        # Build time to event TensorMaps
+        name = f'cox_{diagnosis}'
+        if name in needed_tensor_maps:
+            tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
+        name = f'incident_cox_{diagnosis}'
+        if name in needed_tensor_maps:
+            tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff, incidence_only=True)
 
         # Build survival curve TensorMaps
         name = f'survival_{diagnosis}'
