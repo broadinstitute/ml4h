@@ -700,9 +700,9 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name = f'survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(day_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-                name2tensormap[name] = TensorMap(name, Interpretation.SURVIVAL_CURVE, shape=(50,), annotation_units=day_window, tensor_from_file=tff)
+                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), annotation_units=day_window, tensor_from_file=tff)
             name = f'incident_survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(day_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-                name2tensormap[name] = TensorMap(name, Interpretation.SURVIVAL_CURVE, shape=(50,), annotation_units=day_window, tensor_from_file=tff)
+                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), annotation_units=day_window, tensor_from_file=tff)
     return name2tensormap
