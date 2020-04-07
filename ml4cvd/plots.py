@@ -116,6 +116,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
     elif tm.is_cox_proportional_hazard():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         logging.info(f'C-Index is: {c_index}')
+        performance_metrics.update(plot_roc_per_class([y_predictions[:, 0]], [y_truth[:, 0]], {'event': 0}, f'{title}_C_Index_{c_index:0.3f}', folder))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
@@ -1114,7 +1115,7 @@ def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
     tpr = dict()
     roc_auc = dict()
 
-    for k in labels.keys():
+    for k in labels:
         cur_idx = labels[k]
         aser = roc_curve(test_truth[:, cur_idx], y_pred[:, cur_idx])
         fpr[labels[k]], tpr[labels[k]], _ = aser
