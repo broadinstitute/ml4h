@@ -146,11 +146,7 @@ class TensorMap(object):
         self.tensor_from_file = tensor_from_file
         self.discretization_bounds = discretization_bounds
 
-        if self.activation is None and self.is_categorical():
-            self.activation = 'softmax'
-        elif self.activation is None and self.is_continuous():
-            self.activation = 'linear'
-
+        # Infer loss from interpretation
         if self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
@@ -159,16 +155,22 @@ class TensorMap(object):
             self.loss = 'mse'
         elif self.loss is None and self.is_survival_curve():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
-            self.activation = 'sigmoid'
         elif self.loss is None and self.is_time_to_event():
             self.loss = cox_hazard_loss
-            self.activation = 'sigmoid'
         elif self.loss is None and self.is_language():
             self.loss = 'categorical_crossentropy'
-            self.activation = 'softmax'
         elif self.loss is None:
             self.loss = 'mse'
 
+        # Infer activation from interpretation
+        if self.activation is None and (self.is_categorical() or self.is_language()):
+            self.activation = 'softmax'
+        elif self.activation is None and self.is_continuous():
+            self.activation = 'linear'
+        elif self.activation is None and (self.is_survival_curve() or self.is_time_to_event()):
+            self.activation = 'sigmoid'
+
+        # Infer shape from channel map or interpretation
         if self.shape is None and self.is_time_to_event():
             self.shape = (2,)
         elif self.shape is None:
