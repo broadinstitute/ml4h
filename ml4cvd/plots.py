@@ -121,8 +121,8 @@ def evaluate_predictions(
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
-        plot_survival(y_predictions, y_truth, title, days_window=tm.annotation_units, prefix=folder)
-        plot_survival_curves(y_predictions, y_truth, title, days_window=tm.annotation_units, prefix=folder, paths=test_paths)
+        plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder)
+        plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
@@ -340,7 +340,7 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/', paths=None):
+def plot_survival(prediction, truth, title, days_window, prefix='./figures/', paths=None):
     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
     logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
@@ -373,7 +373,7 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     return {}
 
 
-def plot_survival_curves(prediction, truth, title, days_window=1825, prefix='./figures/', num_curves=30, paths=None):
+def plot_survival_curves(prediction, truth, title, days_window, prefix='./figures/', num_curves=30, paths=None):
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE*2, SUBPLOT_SIZE*2))
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)

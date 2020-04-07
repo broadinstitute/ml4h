@@ -75,6 +75,9 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
+    def __hash__(self):
+        return hash((self.name, self.shape, self.interpretation))
+
     def __init__(
         self,
         name: str,
@@ -88,6 +91,7 @@ class TensorMap(object):
         validator: Optional[Callable] = None,
         cacheable: Optional[bool] = True,
         activation: Optional[Union[str, Callable]] = None,
+        days_window: int = 1825,
         path_prefix: Optional[str] = None,
         loss_weight: Optional[float] = 1.0,
         channel_map: Optional[Dict[str, int]] = None,
@@ -111,7 +115,9 @@ class TensorMap(object):
         :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
+        :param cacheable: boolean true if tensors made by this TensorMap can be cached.  Avoid this if there is randomness in tensor construction.
         :param activation: String specifying activation function
+        :param days_window: Number of days to consider for survival curve TensorMaps, the longest possible follow up.
         :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
@@ -137,6 +143,7 @@ class TensorMap(object):
         self.validator = validator
         self.cacheable = cacheable
         self.activation = activation
+        self.days_window = days_window
         self.loss_weight = loss_weight
         self.channel_map = channel_map
         self.storage_type = storage_type
@@ -207,9 +214,6 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x, hd5: None
-
-    def __hash__(self):
-        return hash((self.name, self.shape, self.interpretation))
 
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
