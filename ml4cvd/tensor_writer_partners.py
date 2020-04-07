@@ -256,8 +256,8 @@ def _parse_soup_diagnosis(input_from_soup: PageElement) -> str:
         return parsed_text
 
 
-def _compress_data_to_hd5(hd5: h5py.Group, name: str, data: Union[str, np.ndarray],
-                          dtype: str, method: str = 'zstd', compression_opts: int = 19) -> None:
+def _compress_and_save_data(hd5: h5py.Group, name: str, data: Union[str, np.ndarray],
+                            dtype: str, method: str = 'zstd', compression_opts: int = 19) -> None:
     # Define codec
     codec = numcodecs.zstd.Zstd(level=compression_opts)
 
@@ -279,16 +279,6 @@ def _compress_data_to_hd5(hd5: h5py.Group, name: str, data: Union[str, np.ndarra
     dat.attrs['uncompressed_length'] = dsize
     dat.attrs['compressed_length'] = len(data_compressed)
     dat.attrs['dtype'] = dtype
-
-
-def _decompress_data(data_compressed: object, dtype: str) -> object:
-    codec = numcodecs.zstd.Zstd()
-    data_decompressed = codec.decode(data_compressed)
-    if dtype == 'str':
-        data = data_decompressed.decode()
-    else:
-        data = np.frombuffer(data_decompressed, dtype)
-    return data
 
 
 def _get_max_voltage(voltage: Dict[str, np.ndarray]) -> float:
@@ -364,27 +354,27 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
 
         # Save cleaned MRN to hd5
         if mrn_clean:
-            _compress_data_to_hd5(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
+            _compress_and_save_data(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
 
         # Iterate through each lead and save voltage array to hd5
         for lead in voltage.keys():
-            _compress_data_to_hd5(hd5=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
+            _compress_and_save_data(hd5=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
 
         # Save voltage units to hd5
         key_voltage_units = 'voltageunits'
         if voltage_units != '':
-            _compress_data_to_hd5(hd5=gp, name=key_voltage_units, data=voltage_units, dtype='str')
+            _compress_and_save_data(hd5=gp, name=key_voltage_units, data=voltage_units, dtype='str')
 
         # Iterate through keys in extracted text data and save to hd5
         for key in text_data.keys():
-            _compress_data_to_hd5(hd5=gp, name=key, data=text_data[key], dtype='str')
+            _compress_and_save_data(hd5=gp, name=key, data=text_data[key], dtype='str')
 
         # Save cleaned reads to hd5
         if read_md_clean:
-            _compress_data_to_hd5(hd5=gp, name=key_read_md_clean, data=read_md_clean, dtype='str')
+            _compress_and_save_data(hd5=gp, name=key_read_md_clean, data=read_md_clean, dtype='str')
 
         if read_pc_clean:
-            _compress_data_to_hd5(hd5=gp, name=key_read_pc_clean, data=read_pc_clean, dtype='str')
+            _compress_and_save_data(hd5=gp, name=key_read_pc_clean, data=read_pc_clean, dtype='str')
 
         logging.info(f'Wrote {fpath_xml} to {fpath_hd5}')
     return convert
