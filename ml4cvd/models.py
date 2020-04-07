@@ -835,14 +835,15 @@ class DenseDecoder:
             parents: List[TensorMap] = None,
     ):
         self.parents = parents
-        self.activation = activation
+        self.activation = _activation_layer(activation)
         self.dense = Dense(units=tensor_map_out.shape[0], name=tensor_map_out.output_name(), activation=tensor_map_out.activation)
+        self.units = tensor_map_out.annotation_units
 
     def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
-        x = Concatenate()([x] + [
-            Dense(units=parent.annotation_units, activation=self.activation)(decoder_outputs[parent])
-            for parent in self.parents
-        ]) if self.parents else x
+        if self.parents:
+            x = Concatenate()([x] + [decoder_outputs[parent] for parent in self.parents])
+            x = Dense(units=self.units)(x)
+            x = self.activation(x)
         return self.dense(x)
 
 
@@ -875,9 +876,8 @@ class ConvDecoder:
             )
             for filters in filters_per_dense_block
         ]
-        final_activation = 'softmax' if tensor_map_out.is_categorical() else 'linear'
         conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
-        self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=final_activation, name=tensor_map_out.output_name())
+        self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map_out.activation, name=tensor_map_out.output_name())
         self.upsamples = [_upsampler(dimension, upsample_x, upsample_y, upsample_z) for _ in range(len(filters_per_dense_block) + 1)]
         self.u_connect_parents = u_connect_parents or []
 
