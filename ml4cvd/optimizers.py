@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from typing import Optional
 from tensorflow.keras import optimizers
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Model
@@ -30,11 +31,15 @@ def _get_learning_rate_schedule(learning_rate: float, learning_rate_schedule: st
     if learning_rate_schedule is None:
         return learning_rate
     if learning_rate_schedule == 'triangular':
-        return TriangularCyclicalLearningRate(initial_learning_rate=learning_rate / 5, maximal_learning_rate=learning_rate,
-                                              step_size=steps_per_epoch * 5)
+        return TriangularCyclicalLearningRate(
+            initial_learning_rate=learning_rate / 5, maximal_learning_rate=learning_rate,
+            step_size=steps_per_epoch * 5,
+        )
     if learning_rate_schedule == 'triangular2':
-        return Triangular2CyclicalLearningRate(initial_learning_rate=learning_rate / 5, maximal_learning_rate=learning_rate,
-                                               step_size=steps_per_epoch * 5)
+        return Triangular2CyclicalLearningRate(
+            initial_learning_rate=learning_rate / 5, maximal_learning_rate=learning_rate,
+            step_size=steps_per_epoch * 5,
+        )
     else:
         raise ValueError(f'Learning rate schedule "{learning_rate_schedule}" unknown.')
 
@@ -44,7 +49,7 @@ NON_KERAS_OPTIMIZERS = {
 }
 
 
-def find_learning_rate(model: Model, generate_train: TensorGenerator, steps: int, output_folder: str = None) -> float:
+def find_learning_rate(model: Model, generate_train: TensorGenerator, steps: int, output_folder: str = None) -> Optional[float]:
     """
     Finds the learning rate for the model that will decrease the loss most quickly.
     Recommended to set batch size as large as possible.
@@ -71,8 +76,10 @@ def find_learning_rate(model: Model, generate_train: TensorGenerator, steps: int
     best_lr = _choose_best_learning_rate(np.array(smoothed_losses), lrs)
     if output_folder:
         pd.DataFrame({'loss': losses, 'learning_rate': lrs[:len(losses)], 'smoothed_loss': smoothed_losses, 'picked_lr': best_lr}).to_csv(os.path.join(output_folder, 'find_learning_rate.csv'), index=False)
-        plot_find_learning_rate(learning_rates=lrs[:len(losses)], losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
-                                figure_path=output_folder)
+        plot_find_learning_rate(
+            learning_rates=lrs[:len(losses)], losses=losses, smoothed_losses=smoothed_losses, picked_learning_rate=best_lr,
+            figure_path=output_folder,
+        )
     return best_lr
 
 
@@ -88,6 +95,4 @@ def _choose_best_learning_rate(smoothed_loss: np.ndarray, lr: np.ndarray) -> flo
         if delta > best_delta:
             best_delta = delta
             best_lr = lr[i]
-    if not best_lr:
-        raise ValueError('Best learning rate could not be found.')
-    return float(best_lr)
+    return float(best_lr) if best_lr else None
