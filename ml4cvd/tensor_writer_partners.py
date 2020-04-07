@@ -1,22 +1,23 @@
-import array
-import base64
-import logging
 import os
 import re
+import array
+import base64
 import struct
+import logging
+from datetime import datetime
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from datetime import datetime
 from typing import List, Dict, Tuple, Union
 from xml.parsers.expat import ExpatError, ParserCreate
 
 import h5py
 import numcodecs
 import numpy as np
-from bs4 import BeautifulSoup, SoupStrainer, PageElement
 from joblib import Parallel, delayed
+from bs4 import BeautifulSoup, SoupStrainer, PageElement
 
-from ml4cvd.defines import TENSOR_EXT
+from ml4cvd.defines import TENSOR_EXT, XML_EXT
+
 
 ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
 
@@ -41,10 +42,10 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     logging.info('Converting XMLs into HD5s')
     num_xml_converted, num_hd5_written = _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
 
-    logging.info(f'Removed {sum([len(v) for k, v in mrn_xmls_map.items()]) - num_xml_converted} duplicate XMLs')
+    logging.info(f'Skipped {sum([len(v) for k, v in mrn_xmls_map.items()]) - num_xml_converted} duplicate XMLs')
 
 
-def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[int, str], None]:
+def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[str, str], None]:
     with open(fpath_xml, 'r') as f:
         for line in f:
             match = re.match(r'.*<PatientID>(.*)</PatientID>.*', line)
@@ -55,13 +56,13 @@ def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[int, str], None]:
     return None
 
 
-def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[int, List[str]]:
+def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[str, List[str]]:
 
     # Get all xml paths
     fpath_xmls = []
     for root, dirs, files in os.walk(xml_folder):
         for file in files:
-            if os.path.splitext(file)[-1].lower() != '.xml':
+            if os.path.splitext(file)[-1].lower() != XML_EXT:
                 continue
             fpath_xmls.append(os.path.join(root, file))
     logging.info(f'Found {len(fpath_xmls)} XMLs at {xml_folder}')
@@ -79,15 +80,18 @@ def _get_mrn_xmls_map(xml_folder: str, n_jobs: int) -> Dict[int, List[str]]:
     return mrn_xml_dict
 
 
-def _clean_mrn(mrn: str) -> int:
+def _clean_mrn(mrn: str) -> str:
     # TODO additional cleaning like o->0, |->1
     try:
         clean = re.sub(r'[^0-9]', '', mrn)
         clean = int(clean)
-        return int(clean)
+        if not clean:
+            raise ValueError()
+        return str(clean)
     except ValueError:
-        logging.warning(f'Could not clean MRN {mrn} to an int. Returning 0.')
-        return 0
+        logging.warning(f'Could not clean MRN "{mrn}" to an int. Using "bad_mrn".')
+        return 'bad_mrn'
+
 
 def _clean_read_text(text: str) -> str:
     # Convert to lowercase
@@ -109,7 +113,6 @@ def _clean_read_text(text: str) -> str:
 
 
 def _get_voltage_from_xml(fpath_xml: str) -> Tuple[Dict[str, np.ndarray], str]:
-    # Initialize parser object
     g_parser = MuseXmlParser()
 
     def start_element(name, attrs):
@@ -140,7 +143,7 @@ def _get_voltage_from_xml(fpath_xml: str) -> Tuple[Dict[str, np.ndarray], str]:
 
 
 def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
-    # Initialize empty dictionary in which to store text from the XML.
+    # Initialize empty dictionary in which to store text from the XML
     ecg_data = dict()
 
     # Define tags that we want to find and use SoupStrainer to speed up search
@@ -155,18 +158,18 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
             'originaldiagnosis']
     strainer = SoupStrainer(tags)
 
-    # Use lxml parser, which makes all tags lower case.
+    # Use lxml parser, which makes all tags lower case
     with open(fpath_xml, 'r') as f:
         soup = BeautifulSoup(f, 'lxml', parse_only=strainer)
 
     # If the XML is gibberish and un-parseable,
     # then soup.prettify() will return '' or False
-    # and we should return an empty dict().
+    # and we should return an empty dict()
 
-    # If the XML is not gibberish, parse the contents.
+    # If the XML is not gibberish, parse the contents
     if soup.prettify():
 
-        # Loop through the tags we want to extract.
+        # Loop through the tags we want to extract
         for tag in tags:
             append_tag = ''
             if tag == 'restingecgmeasurements':
@@ -174,7 +177,7 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
             elif tag == 'originalrestingecgmeasurements':
                 append_tag = '_pc'
             elif tag == 'diagnosis':
-                # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict.
+                # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict
                 ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find('diagnosis'))
                 continue
             elif tag == 'originaldiagnosis':
@@ -182,13 +185,13 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
                 ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
                 continue
 
-            # Ovewrite soup with contents in major tag.
+            # Ovewrite soup with contents in major tag
             soup_of_tag = soup.find(tag)
 
             # Check if soup_of_tag is not None, otherwise find_all() throws an
-            # error if called on a 'NoneType' object.
+            # error if called on a 'NoneType' object
             if soup_of_tag is not None:
-                # Find all child elements in subset.
+                # Find all child elements in subset
                 elements = soup_of_tag.find_all()
 
                 # If there are no child elements, get the text of the tag
@@ -196,7 +199,7 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
                     elements = [soup_of_tag]
 
                 # Iterate through child elements via list comprehension
-                # and save the element key-value (name-text) to dict.
+                # and save the element key-value (name-text) to dict
                 [ecg_data.update({el.name + append_tag: el.get_text()}) for el in elements]
 
     # Return dict
@@ -325,9 +328,9 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
                 convert = False
 
         # If there is no voltage, or the XML is poorly formed,
-        # the function will throw an exception, and we mark 'convert' to False.
+        # the function will throw an exception, and we mark 'convert' to False
         # However, ExpatError should be impossible to throw, since earlier
-        # we catch XMLs filled with gibberish.
+        # we catch XMLs filled with gibberish
         except (IndexError, ExpatError):
             logging.warning(f'Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.')
             convert = False
@@ -361,7 +364,7 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
 
         # Save cleaned MRN to hd5
         if mrn_clean:
-            _compress_data_to_hd5(hd5=gp, name=key_mrn_clean, data=str(mrn_clean), dtype='str')
+            _compress_data_to_hd5(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
 
         # Iterate through each lead and save voltage array to hd5
         for lead in voltage.keys():
@@ -387,7 +390,7 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
     return convert
 
 
-def _convert_mrn_xmls_to_hd5(mrn: int, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int]:
+def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int]:
     fpath_hd5 = os.path.join(dir_hd5, f'{mrn}{TENSOR_EXT}')
     num_xml_converted = 0
     num_src_in_hd5 = 0
@@ -419,7 +422,7 @@ def _convert_mrn_xmls_to_hd5(mrn: int, fpath_xmls: List[str], dir_hd5: str, hd5_
     return (num_hd5_written, num_xml_converted)
 
 
-def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[int, List[str]], dir_hd5: str,
+def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[str, List[str]], dir_hd5: str,
                                      hd5_prefix: str = 'partners_ecg_rest', n_jobs: int = -1) -> Tuple[int, int]:
     os.makedirs(dir_hd5, exist_ok=True)
     converted = Parallel(n_jobs=n_jobs)(delayed(_convert_mrn_xmls_to_hd5)(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xml_map.items())
@@ -429,17 +432,18 @@ def _convert_mrn_xmls_to_hd5_wrapper(mrn_xml_map: Dict[int, List[str]], dir_hd5:
 
     return (num_xml, num_hd5)
 
+
 class XmlElementParser(ABC):
     """Abstract base class for a XML Parsing State. It contains methods for
     restoring the previous state and for tracking the character data between
-    tags."""
+    tags"""
     def __init__(self, old_State=None):
         self.__old_State = old_State
         self.__data_Text = ""
         super().__init__()
 
     def restoreState(self, context):
-        """This method restores the previous state in the XML parser."""
+        """This method restores the previous state in the XML parser"""
         if self.__old_State:
             context.setState(self.__old_State)
 
@@ -563,7 +567,7 @@ class ElementParser(XmlElementParser):
 
 
 class MuseXmlParser:
-    """This class is the parsing context in the object-oriented State pattern."""
+    """This class is the parsing context in the object-oriented State pattern"""
     def __init__(self):
         self.ecg_Data = dict()
         self.ecg_leads = list()
@@ -612,7 +616,7 @@ class MuseXmlParser:
 
     def makeZcg(self):
         """This function converts the data read from the XML file into a ZCG buffer
-        suitable for storage in binary format."""
+        suitable for storage in binary format"""
 
         # All of the leads should have the same number of voltage
         total_byte_chars = len(self.ecg_Data[self.ecg_leads[0]])
@@ -630,12 +634,12 @@ class MuseXmlParser:
         # Multiply base voltage by the gain
         self.zcg = [x * self.adu_Gain for x in self.zcg]
 
-        # Initialize dict of lists where L keys are ECG leads.
-        # L is not always 8; sometimes you have right-sided leads (e.g. V3R).
+        # Initialize dict of lists where L keys are ECG leads
+        # L is not always 8; sometimes you have right-sided leads (e.g. V3R)
         voltage = {new_list: [] for new_list in self.ecg_leads}
 
-        # Loop through all indices in 1D voltage array, L leads at a time.
-        # Correctly parsing the 1D array requires we parse all L leads.
+        # Loop through all indices in 1D voltage array, L leads at a time
+        # Correctly parsing the 1D array requires we parse all L leads
         for i in range(0, len(self.zcg), len(self.ecg_leads)):
             # Initialize lead counter; this is necessary to increment through
             # the 1D representation of a 2D array. For example, we start at
