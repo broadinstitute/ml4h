@@ -818,13 +818,16 @@ class ConvEncoder:
         for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools[1:])):
             x = dense_block(x)
             intermediates.append(x)
-            x = pool(x) if i < len(self.dense_blocks) else x  # don't pool after final dense block
+            x = pool(x) if i < len(self.dense_blocks) - 1 else x  # don't pool after final dense block
         return x, intermediates
 
 
-def _calc_start_shape(num_blocks: int, output_shape: Tuple[int, ...], upsample_rates: Sequence[int]) -> Tuple[int, ...]:
+def _calc_start_shape(num_upsamples: int, output_shape: Tuple[int, ...], upsample_rates: Sequence[int]) -> Tuple[int, ...]:
+    """
+    Given the number of blocks in the decoder and the upsample rates, return required input shape to get to output shape
+    """
     upsample_rates = list(upsample_rates) + [1] * len(output_shape)
-    return tuple((shape // rate**num_blocks for shape, rate in zip(output_shape, upsample_rates)))
+    return tuple((shape // rate**num_upsamples for shape, rate in zip(output_shape, upsample_rates)))
 
 
 class DenseDecoder:
@@ -884,11 +887,10 @@ class ConvDecoder:
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]], _) -> Tensor:
         for i, (dense_block, upsample) in enumerate(zip(self.dense_blocks, self.upsamples)):
             intermediate = [intermediates[tm][-(i + 1)] for tm in self.u_connect_parents]
-            x = upsample(x)
             x = concatenate(intermediate + [x]) if intermediate else x
             x = dense_block(x)
+            x = upsample(x)
         intermediate = [intermediates[tm][0] for tm in self.u_connect_parents]
-        x = self.upsamples[-1](x)
         x = concatenate(intermediate + [x]) if intermediate else x
         return self.conv_label(x)
 
@@ -996,7 +998,7 @@ def make_multimodal_multitask_model(
         if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
             pre_decoder_shapes[tm] = None
         else:
-            pre_decoder_shapes[tm] = _calc_start_shape(num_blocks=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
+            pre_decoder_shapes[tm] = _calc_start_shape(num_upsamples=len(dense_blocks) - 1, output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
 
     bottleneck = ConcatenateRestructure(
         widths=dense_layers,
