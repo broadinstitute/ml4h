@@ -252,7 +252,7 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else []
+    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
     args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     if args.sample_weight:
