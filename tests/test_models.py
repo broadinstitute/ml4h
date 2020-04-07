@@ -8,7 +8,7 @@ from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
+from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
 DEFAULT_PARAMS = {
@@ -194,6 +194,17 @@ class TestMakeMultimodalMultitaskModel:
             **params,
         )
         assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
+
+    def test_no_dense_layers(self):
+        params = DEFAULT_PARAMS.copy()
+        params['dense_layers'] = []
+        inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
+        m = make_multimodal_multitask_model(
+            inp,
+            out,
+            **DEFAULT_PARAMS,
+        )
+        assert_model_trains(inp, out, m)
 
     @pytest.mark.parametrize(
         'output_tmaps',

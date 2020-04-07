@@ -722,7 +722,7 @@ class ConcatenateRestructure:
             regularization=regularization,
             regularization_rate=regularization_rate,
             name='embed',
-        )
+        ) if widths else None
         self.restructures = {
             tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
             for tm, shape in pre_decoder_shapes.items() if shape is not None
@@ -743,7 +743,7 @@ class ConcatenateRestructure:
             y = concatenate(y)
         else:
             y = y[0]
-        y = self.fully_connected(y)
+        y = self.fully_connected(y) if self.fully_connected else y
         outputs: Dict[TensorMap, Tensor] = {}
         for input_tm, output_tms in self.u_connect.items():
             for output_tm in output_tms:
