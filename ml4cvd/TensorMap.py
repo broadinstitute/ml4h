@@ -146,12 +146,6 @@ class TensorMap(object):
         self.tensor_from_file = tensor_from_file
         self.discretization_bounds = discretization_bounds
 
-        if self.discretization_bounds is not None:
-            self.input_shape = self.shape
-            self.input_channel_map = self.channel_map
-            self.shape = self.input_shape[:-1] + (len(self.discretization_bounds)+1,)
-            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
-
         if self.activation is None and self.is_categorical():
             self.activation = 'softmax'
         elif self.activation is None and self.is_continuous():
@@ -179,6 +173,12 @@ class TensorMap(object):
             self.shape = (2,)
         elif self.shape is None:
             self.shape = (len(channel_map),)
+
+        if self.discretization_bounds is not None:
+            self.input_shape = self.shape
+            self.input_channel_map = self.channel_map
+            self.shape = self.input_shape[:-1] + (len(self.discretization_bounds)+1,)
+            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
 
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
