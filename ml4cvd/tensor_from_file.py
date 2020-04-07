@@ -436,9 +436,13 @@ TMAPS['cox_mi'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORT
 TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 TMAPS['cox_hyp'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                            tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+                             tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
 TMAPS['cox_hyp_incident'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                                     tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
+                             tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
+                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
 
 def _warp_ecg(ecg):

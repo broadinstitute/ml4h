@@ -117,7 +117,7 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, {f'event_C_Index_{c_index[0]:0.3f}': 0}, f'{title}_C_Index_{c_index[0]:0.3f}', folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, {f'{tm.name}_C_Index_{c_index[0]:0.3f}_vs_ROC': 0}, f'{title}_C_Index_{c_index[0]:0.3f}', folder))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
