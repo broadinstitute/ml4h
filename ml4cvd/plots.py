@@ -351,11 +351,10 @@ def plot_survival(prediction, truth, title, days_window=1825, prefix='./figures/
     if paths is not None:
         pass
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
-    plt.plot(range(0, days_window, 1 + days_window // intervals), alive_per_step/truth.shape[0], marker='o', label=f'Proportion of Enrolled Surviving')
     plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    plt.title(title + '\n')
+    plt.title(f'{title} Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]}, Failed: {sick_per_step[-1]}\n')
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
