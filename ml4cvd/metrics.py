@@ -186,7 +186,7 @@ def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
 
 
 @tf.function
-def coxph_loss(y_true, y_pred):
+def cox_hazard_loss(y_true, y_pred):
     # move batch dimension to the end so predictions get broadcast
     # row-wise when multiplying by riskset
     pred_t = K.transpose(y_pred[:, 0])

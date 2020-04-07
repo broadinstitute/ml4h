@@ -110,10 +110,10 @@ def evaluate_predictions(tm: TensorMap, y_predictions: np.ndarray, y_truth: np.n
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_survival():
+    elif tm.is_survival_curve():
         plot_survival(y_predictions, y_truth, title, prefix=folder)
         plot_survival_curves(y_predictions, y_truth, title, prefix=folder, paths=test_paths)
-    elif tm.is_cox_proportional_hazard():
+    elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")

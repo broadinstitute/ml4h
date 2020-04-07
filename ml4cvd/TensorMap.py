@@ -21,7 +21,7 @@ from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
-from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
+from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, cox_hazard_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -41,8 +41,8 @@ class Interpretation(Enum):
     CATEGORICAL = auto()
     EMBEDDING = auto()
     LANGUAGE = auto()
-    COX_PROPORTIONAL_HAZARDS = auto()
-    SURVIVAL = auto()
+    TIME_TO_EVENT = auto()
+    SURVIVAL_CURVE = auto()
     DISCRETIZED = auto()
     MESH = auto()
 
@@ -146,9 +146,6 @@ class TensorMap(object):
         self.tensor_from_file = tensor_from_file
         self.discretization_bounds = discretization_bounds
 
-        if self.shape is None:
-            self.shape = (len(channel_map),)
-
         if self.discretization_bounds is not None:
             self.input_shape = self.shape
             self.input_channel_map = self.channel_map
@@ -166,14 +163,22 @@ class TensorMap(object):
             self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
-        elif self.loss is None and self.is_survival():
+        elif self.loss is None and self.is_survival_curve():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
+            self.activation = 'sigmoid'
+        elif self.loss is None and self.is_time_to_event():
+            self.loss = cox_hazard_loss
             self.activation = 'sigmoid'
         elif self.loss is None and self.is_language():
             self.loss = 'categorical_crossentropy'
             self.activation = 'softmax'
         elif self.loss is None:
             self.loss = 'mse'
+
+        if self.shape is None and self.is_time_to_event():
+            self.shape = (2,)
+        elif self.shape is None:
+            self.shape = (len(channel_map),)
 
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
@@ -244,11 +249,11 @@ class TensorMap(object):
     def is_mesh(self):
         return self.interpretation == Interpretation.MESH
 
-    def is_cox_proportional_hazard(self):
-        return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
+    def is_time_to_event(self):
+        return self.interpretation == Interpretation.TIME_TO_EVENT
 
-    def is_survival(self):
-        return self.interpretation == Interpretation.SURVIVAL
+    def is_survival_curve(self):
+        return self.interpretation == Interpretation.SURVIVAL_CURVE
 
     def is_discretized(self):
         return self.interpretation == Interpretation.DISCRETIZED

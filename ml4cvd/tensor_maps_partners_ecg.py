@@ -1,6 +1,7 @@
 import os
 import logging
 import datetime
+from dateutil import relativedelta
 from collections import defaultdict
 from typing import Dict, List, Callable
 
@@ -14,7 +15,7 @@ from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS
 from ml4cvd.TensorMap import TensorMap, str2date, make_range_validator, Interpretation
 
-
+YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 
 
@@ -314,7 +315,7 @@ def partners_ecg_age(tm, hd5, dependents={}):
     birthday = _decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype'])
     acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
     delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
-    years = delta.days / 365.0
+    years = delta.days / YEAR_DAYS
     return np.array([years])
 
 
@@ -373,7 +374,7 @@ def _partners_adult(hd5_key, minimum_age=18):
         birthday = _decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype'])
         acquisition = _decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype'])
         delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
-        years = delta.days / 365.0
+        years = delta.days / YEAR_DAYS
         if years < minimum_age:
             raise ValueError(f'ECG taken on patient below age cutoff.')
         hd5_string = _decompress_data(data_compressed=hd5[hd5_key][()], dtype=hd5[hd5_key].attrs['dtype'])
@@ -499,13 +500,88 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
 
 
+def cox_tensor_from_file(file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
+                        follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+                        diagnosis_column: str = 'first_stroke', delimiter: str = ','):
+    """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
+
+    The tensor_from_file function returned here should be used
+    with TIME_TO_EVENT TensorMaps to model relative time free from a diagnosis for a given disease.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
+    :param patient_column: The header name of the column of patient ids
+    :param follow_up_start_column: The header name of the column of enrollment dates
+    :param follow_up_total_column: The header name of the column with total enrollment time (in years)
+    :param diagnosis_column: The header name of the column of disease diagnosis dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    error = None
+    disease_dicts = defaultdict(dict)
+    try:
+        with open(file_name, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            follow_up_start_index = header.index(follow_up_start_column)
+            follow_up_total_index = header.index(follow_up_total_column)
+            patient_index = header.index(patient_column)
+            date_index = header.index(diagnosis_column)
+            for row in reader:
+                try:
+                    patient_key = int(row[patient_index])
+                    disease_dicts['follow_up_start'][patient_key] = _loyalty_str2date(row[follow_up_start_index])
+                    disease_dicts['follow_up_total'][patient_key] = float(row[follow_up_total_index])
+                    if row[date_index] == '' or row[date_index] == 'NULL':
+                        continue
+                    disease_dicts['diagnosis_dates'][patient_key] = _loyalty_str2date(row[date_index])
+                    if len(disease_dicts['follow_up_start']) % 2000 == 0:
+                        logging.debug(f"Processed: {len(disease_dicts['follow_up_start'])} patient rows.")
+                except ValueError as e:
+                    logging.warning(f'val err {e}')
+            logging.info(f"Done processing {diagnosis_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.")
+    except FileNotFoundError as e:
+        error = e
+
+    def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+
+        file_split = os.path.basename(hd5.filename).split('-')
+        patient_key_from_ecg = int(file_split[0])
+
+        if patient_key_from_ecg not in disease_dicts['follow_up_start']:
+            raise KeyError(f'{tm.name} mrn not in incidence csv')
+
+        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
+        if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
+            raise ValueError(f'Assessed earlier than enrollment.')
+
+        if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
+            has_disease = 0
+            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(
+                days=YEAR_DAYS * disease_dicts['follow_up_total'][patient_key_from_ecg])
+        else:
+            has_disease = 1
+            censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
+
+        if incidence_only and censor_date <= assess_date:
+            raise ValueError(f'{tm.name} only considers incident diagnoses')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[0] = has_disease
+        tensor[1] = (censor_date - assess_date).days
+        return tensor
+    return _cox_tensor_from_file
+
+
 def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
                         follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
                         diagnosis_column: str = 'first_stroke', delimiter: str = ',') -> Callable:
     """Build a tensor_from_file function for modeling survival curves of diagnoses given a TSV of patients and dates.
 
     The tensor_from_file function returned here should be used
-    with COX_PROPORTIONAL_HAZARDS TensorMaps to model survival curves of patients for a given disease.
+    with SURVIVAL_CURVE TensorMaps to model survival curves of patients for a given disease.
 
     :param day_window: Total number of days of follow up the length of the survival curves to learn.
     :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
@@ -559,7 +635,7 @@ def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = 
 
         if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
             has_disease = 0
-            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(days=365.26*disease_dicts['follow_up_total'][patient_key_from_ecg])
+            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(days=YEAR_DAYS*disease_dicts['follow_up_total'][patient_key_from_ecg])
         else:
             has_disease = 1
             censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
@@ -606,9 +682,9 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'survival_{diagnosis}'
         if name in needed_tensor_maps:
             tff = _survival_from_file(1825, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
+            name2tensormap[name] = TensorMap(name, Interpretation.SURVIVAL_CURVE, shape=(50,), tensor_from_file=tff)
         name = f'incident_survival_{diagnosis}'
         if name in needed_tensor_maps:
             tff = _survival_from_file(1825, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
+            name2tensormap[name] = TensorMap(name, Interpretation.SURVIVAL_CURVE, shape=(50,), tensor_from_file=tff)
     return name2tensormap

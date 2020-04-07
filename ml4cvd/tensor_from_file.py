@@ -2,7 +2,6 @@ import os
 import csv
 import logging
 import datetime
-from dateutil import relativedelta
 from typing import List, Dict, Tuple, Callable
 
 import vtk
@@ -12,7 +11,7 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.metrics import weighted_crossentropy, coxph_loss
+from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
 from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
@@ -158,10 +157,9 @@ def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
         if incidence_only and censor_date <= assess_date:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-        delta = relativedelta.relativedelta(censor_date, assess_date)
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
-        tensor[1] = delta.years * 12 + delta.months
+        tensor[1] = (censor_date - assess_date).days
         return tensor
     return _cox_tensor_from_file
 
@@ -399,50 +397,44 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap('hr_achieved', path_prefix='ecg_bike',
                                           normalization={'mean': .68, 'std': .1},
                                           tensor_from_file=_hr_achieved)
 
-TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['ecg_rest_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.TIME_TO_EVENT, shape=(100,),
                                           tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', Interpretation.TIME_TO_EVENT, shape=(100,),
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['ecg_rest_hyp_hazard'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, shape=(100,),
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['ecg_rest_cad_hazard'] = TensorMap('coronary_artery_disease', Interpretation.TIME_TO_EVENT, shape=(100,),
                                          tensor_from_file=_survival_tensor('ecg_rest_date', 365 * 5))
-TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', Interpretation.TIME_TO_EVENT, shape=(100,),
                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, shape=(100,),
                                        tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.TIME_TO_EVENT, shape=(100,),
                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia', Interpretation.TIME_TO_EVENT, shape=(100,),
                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(100,),
+TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2', Interpretation.TIME_TO_EVENT, shape=(100,),
                                              tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 10))
-TMAPS['enroll_hyp_hazard_5'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+TMAPS['enroll_hyp_hazard_5'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, shape=(50,),
                                          tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
 
-TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, shape=(50,),
                                                   tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
-TMAPS['enroll_cad_hazard_5_incident'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+TMAPS['enroll_cad_hazard_5_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, shape=(50,),
                                                   tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
-TMAPS['enroll_cad_hazard_5'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+TMAPS['enroll_cad_hazard_5'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, shape=(50,),
                                          tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
-TMAPS['enroll_mi_hazard_5'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+TMAPS['enroll_mi_hazard_5'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, shape=(50,),
                                         tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5))
-TMAPS['enroll_mi_hazard_5_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,),
+TMAPS['enroll_mi_hazard_5_incident'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, shape=(50,),
                                                  tensor_from_file=_survival_tensor('dates/enroll_date', 365 * 5, incidence_only=True))
 
-TMAPS['cox_mi'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                            tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
-TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                                     tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
-TMAPS['cox_hyp'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                             tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
-TMAPS['cox_hyp_incident'] = TensorMap('hypertension',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
-TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                             tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
-TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft',  Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(2,), activation='sigmoid', loss=coxph_loss, metrics=[],
-                                      tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_mi'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_hyp'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_hyp_incident'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
 
 def _warp_ecg(ecg):
