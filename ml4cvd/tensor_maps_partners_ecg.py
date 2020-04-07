@@ -752,4 +752,5 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             if name in needed_name:
                 tff = _survival_from_file(day_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
                 name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), annotation_units=day_window, tensor_from_file=tff)
+    logging.info(f'Got temapzz {name2tensormap}')
     return name2tensormap
