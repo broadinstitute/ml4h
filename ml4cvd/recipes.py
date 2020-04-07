@@ -405,7 +405,7 @@ def explore(args):
 
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    if args.variational:  # TODO: Save the encoders and decoders
+    if args.variational:
         model, _, _ = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
         model = make_multimodal_multitask_model(**args.__dict__)

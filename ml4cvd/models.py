@@ -815,10 +815,10 @@ class ConvEncoder:
         x = self.res_block(x)
         intermediates.append(x)
         x = self.pools[0](x)
-        for dense_block, pool in zip(self.dense_blocks, self.pools[1:]):
+        for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools[1:])):
             x = dense_block(x)
             intermediates.append(x)
-            x = pool(x)
+            x = pool(x) if i < len(self.dense_blocks) else x  # don't pool after final dense block
         return x, intermediates
 
 
@@ -895,9 +895,9 @@ class ConvDecoder:
 
 def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     """
-    Parents will always appear before their children after sorting
+    Parents will always appear before their children after sorting. Idempotent and slow.
     """
-    to_process = tms[:]
+    to_process = sorted(tms, key=lambda x: str(x))
     final: List[TensorMap] = []
     visited = Counter()
     while to_process:

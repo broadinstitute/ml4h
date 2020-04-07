@@ -229,3 +229,11 @@ def test_parent_sort(tmaps):
 def test_parent_sort_cycle(tmaps):
     with pytest.raises(ValueError):
         parent_sort(tmaps)
+
+
+@pytest.mark.parametrize(
+    'tmaps',
+    [_rotate(PARENT_TMAPS + TMAPS_UP_TO_4D, i) for i in range(len(PARENT_TMAPS))],
+)
+def test_parent_sort_idempotent(tmaps):
+    assert parent_sort(tmaps) == parent_sort(parent_sort(tmaps)) == parent_sort(parent_sort(parent_sort(tmaps)))
