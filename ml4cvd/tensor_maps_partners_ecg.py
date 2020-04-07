@@ -613,7 +613,6 @@ def loyalty_time_to_event(file_name: str, incidence_only: bool = False, patient_
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
         tensor[1] = (censor_date - assess_date).days
-        #logging.debug(f'{tm.name} tensor is {tensor}, censor_date {censor_date} assess_date {assess_date} has is {has_disease}')
         return tensor
     return _cox_tensor_from_file
 
@@ -729,11 +728,11 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff, activation='sigmoid')
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
         name = f'incident_cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff, activation='sigmoid')
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
 
         # Build survival curve TensorMaps
         for needed_name in needed_tensor_maps:
