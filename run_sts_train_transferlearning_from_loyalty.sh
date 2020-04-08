@@ -18,6 +18,6 @@ TFSCRIPT="tf.sh"
     --test_modulo 0 \
     --batch_size 32 \
     --epochs 100 \
-    --model_layers /home/er498/weights.hd5 \
+    --model_layers /home/er498/repos/ml/weights.h5 \
     --output_folder "/home/${USER}/repos/ml/results/" \
     --id sts_ecg_loyaltynet

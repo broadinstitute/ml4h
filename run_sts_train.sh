@@ -1,5 +1,5 @@
 TFSCRIPT="tf.sh"
-./scripts/${TFSCRIPT} -t -d 0 \
+./scripts/${TFSCRIPT} -t -d 1 \
     /home/${USER}/repos/ml/ml4cvd/recipes.py \
     --mode train \
     --logging_level INFO \
@@ -18,5 +18,7 @@ TFSCRIPT="tf.sh"
     --test_modulo 0 \
     --batch_size 32 \
     --epochs 100 \
+    --conv_width 71 \
+    --conv_normalize batch_norm \
     --output_folder "/home/${USER}/repos/ml/results/" \
-    --id sts_ecg
+    --id sts_ecg_convwidth71_batchnorm
