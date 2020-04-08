@@ -88,6 +88,7 @@ class TensorMap(object):
         path_prefix: Optional[str] = None,
         loss_weight: Optional[float] = 1.0,
         channel_map: Optional[Dict[str, int]] = None,
+        multi_tensor: Optional[bool] = None,
         storage_type: Optional[StorageType] = None,
         dependent_map: Optional[str] = None,
         augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
@@ -136,6 +137,7 @@ class TensorMap(object):
         self.activation = activation
         self.loss_weight = loss_weight
         self.channel_map = channel_map
+        self.multi_tensor = multi_tensor
         self.storage_type = storage_type
         self.augmentations = augmentations
         self.normalization = normalization if isinstance(normalization, Normalizer) else _convert_old_normalization(normalization)

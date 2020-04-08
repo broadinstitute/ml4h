@@ -153,12 +153,10 @@ def _init_dict_of_tensors(tmaps: list) -> dict:
 
 
 def _tensors_to_df(args):
-    multi_tensor_args = ()
-    tensors_per_file = 1
-    if args.tensors_per_file:
-        tensors_per_file = args.tensors_per_file
-        multi_tensor_args += (tensors_per_file,)
-    if args.which_tensor: multi_tensor_args += (args.which_tensor,)
+    multi_tensor_args = {}
+    tensors_per_file = args.tensors_per_file
+    if tensors_per_file > 1: multi_tensor_args['num_tensors'] = tensors_per_file
+    if args.which_tensors != 'NEWEST': multi_tensor_args['which_tensors'] = args.which_tensors
 
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
@@ -169,50 +167,54 @@ def _tensors_to_df(args):
         for i, path in enumerate(gen.path_iters[0].paths):
             if (i+1) % 500 == 0:
                 logging.info(f"{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done")
-            tensor_dict = _init_dict_of_tensors(tmaps)
             try:
                 with h5py.File(path, "r") as hd5:
+                    multi_tensor_tensor_dict = [_init_dict_of_tensors(tmaps) for i in range(tensors_per_file)]
+
                     # Iterate through each tmap
                     for tm in tmaps:
                         error_type = ""
                         try:
-                            tff_args = (tm, hd5, dependents) + multi_tensor_args
-                            tensor = tm.tensor_from_file(*tff_args)
+                            tensor = tm.tensor_from_file(tm, hd5, dependents, **multi_tensor_args)
                             tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
 
                             # flatten multi tensor tmaps
                             for i in range(tensors_per_file):
+                                curr_tensor = tensor[i] if tensors_per_file > 1 else tensor
+
                                 # Append tensor to dict
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                                        multi_tensor_tensor_dict[i][tm.name][(tm.name, cm)] = curr_tensor[tm.channel_map[cm]]
                                 else:
                                     # If tensor is a scalar, isolate the value in the array;
                                     # otherwise, retain the value as array
-                                    if tm.shape[0] == 1:
-                                        tensor = tensor.item()
-                                    tensor_dict[tm.name][tm.name] = tensor
+                                    if (tm.shape[1] if tensors_per_file > 1 else tm.shape[0]) == 1:
+                                        curr_tensor = curr_tensor.item()
+                                    multi_tensor_tensor_dict[i][tm.name][tm.name] = curr_tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so append nans
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    tensor_dict[tm.name][(tm.name, cm)] = np.nan
-                            else:
-                                # TODO figure out the np.full stuff
-                                tensor_dict[tm.name][tm.name] = np.full(tm.shape, np.nan)[0]
+                            for i in range(tensors_per_file):
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        multi_tensor_tensor_dict[i][tm.name][(tm.name, cm)] = np.nan
+                                else:
+                                    # TODO figure out the np.full stuff
+                                    multi_tensor_tensor_dict[i][tm.name][tm.name] = np.full(tm.shape[1:] if tensors_per_file > 1 else tm.shape, np.nan)[0]
 
                             # Save  error type to more readable string
                             error_type = type(e).__name__
+                        for i in range(tensors_per_file):
+                            # Save error type, fpath, and generator name (set)
+                            multi_tensor_tensor_dict[i][tm.name][f"error_type_{tm.name}"] = error_type
+                            multi_tensor_tensor_dict[i][tm.name]["fpath"] = path
+                            multi_tensor_tensor_dict[i][tm.name]["generator"] = gen.name
 
-                        # Save error type, fpath, and generator name (set)
-                        tensor_dict[tm.name][f"error_type_{tm.name}"] = error_type
-                        tensor_dict[tm.name]["fpath"] = path
-                        tensor_dict[tm.name]["generator"] = gen.name
+                    # Append list of dicts with tensor_dict
+                    list_of_tensor_dicts.extend(multi_tensor_tensor_dict)
             except OSError as e:
                 logging.info(f"OSError {e}")
 
-            # Append list of dicts with tensor_dict
-            list_of_tensor_dicts.append(tensor_dict)
 
     # Now we have a list of dicts where each dict has {tmaps:values} and
     # each HD5 -> one dict in the list
@@ -260,7 +262,7 @@ def _tensors_to_df(args):
             else:
                 key = tm.name
                 df[key] = df[key].astype("string")
-    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} hd5 files into DataFrame")
+    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors in {int(df.shape[0] / tensors_per_file)} hd5 files into DataFrame")
     return df
 
 
