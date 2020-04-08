@@ -45,10 +45,6 @@ def _resample_voltage(voltage, desired_samples):
         return np.interp(x_interp, x, voltage)
     elif len(voltage) == 5000 and desired_samples == 2500:
         return voltage[::2]
-    elif len(voltage) == 5000 and desired_samples == 5:
-        return voltage[::1000] # TODO remove me
-    elif len(voltage) == 2500 and desired_samples == 5:
-        return voltage[::500] # TODO remove me
     else:
         raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} and re-sampling method is unknown.')
 
@@ -95,6 +91,10 @@ def _slice_tensor(tensor, num_tensors, idx):
     return tensor[idx, ...] if num_tensors > 1 else tensor
 
 
+def _make_path(tm, dt, key):
+    return f'{tm.path_prefix}/{dt}/{key}'
+
+
 def tensor_from_file_wrapper(tm, hd5, num_tensors, which_tensors, f, fill=np.nan, dtype=np.float32):
     tm = _reshape_tmap(tm, num_tensors)
     dates = _get_dates(tm, hd5, num_tensors, which_tensors)
@@ -111,7 +111,7 @@ def make_voltage(population_normalize: float = None):
         def f(dt, tensor):
             for cm in tm.channel_map:
                 try:
-                    path = f'{tm.path_prefix}/{dt}/{cm}'
+                    path = _make_path(tm, dt, cm)
                     voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     voltage = _resample_voltage(voltage, tm.shape[1] if num_tensors > 1 else tm.shape[0])
                     tensor[:, tm.channel_map[cm]] = voltage
@@ -134,8 +134,6 @@ TMAPS['partners_ecg_voltage'] = TensorMap(
     channel_map=ECG_REST_AMP_LEADS,
 )
 
-# TODO remove me (voltage sampled at 5)
-TMAPS['partners_ecg_5'] = TensorMap('ecg_rest_5', path_prefix=PATH_PREFIX, shape=(5, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', path_prefix=PATH_PREFIX, shape=(2500, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', path_prefix=PATH_PREFIX, shape=(5000, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', path_prefix=PATH_PREFIX, shape=(2500, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
@@ -147,7 +145,7 @@ def make_voltage_attr(volt_attr: str = ""):
         def f(dt, tensor):
             for cm in tm.channel_map:
                 try:
-                    path = f'{tm.path_prefix}/{dt}/{cm}'
+                    path = _make_path(tm, dt, cm)
                     tensor[tm.channel_map[cm]] = hd5[path].attrs[volt_attr]
                 except KeyError:
                     pass
@@ -175,7 +173,7 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
         def f(dt, label_array):
             any_key_found = False
             for key in keys:
-                path = f'{tm.path_prefix}/{dt}/{key}'
+                path = _make_path(tm, dt, key)
                 if path not in hd5:
                     continue
                 any_key_found = True
@@ -209,7 +207,7 @@ def make_partners_ecg_tensor(key: str):
 
         def f(dt, tensor):
             try:
-                path = f'{tm.path_prefix}/{dt}/{key}'
+                path = _make_path(tm, dt, key)
                 data = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 tensor[:] = convert(data)
             except KeyError:
@@ -470,8 +468,8 @@ def _partners_str2date(d):
 
 
 def _partners_age(tm, hd5, dt):
-    dob_key = f'{tm.path_prefix}/{dt}/dateofbirth'
-    aqd_key = f'{tm.path_prefix}/{dt}/acquisitiondate'
+    dob_key = _make_path(tm, dt, 'dateofbirth')
+    aqd_key = _make_path(tm, dt, 'acquisitiondate')
     birthday = _decompress_data(data_compressed=hd5[dob_key][()], dtype=hd5[dob_key].attrs['dtype'])
     acquisition = _decompress_data(data_compressed=hd5[aqd_key][()], dtype=hd5[aqd_key].attrs['dtype'])
     delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
@@ -493,7 +491,7 @@ TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', path_prefix=PATH_PREFI
 def partners_ecg_acquisition_year(tm, hd5, dependents={}, num_tensors=1, which_tensors=None):
     def f(dt, tensor):
         try:
-            path = f'{tm.path_prefix}/{dt}/acquisitiondate'
+            path = _make_path(tm, dt, 'acquisitiondate')
             acquisition = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
             tensor[:] = _partners_str2date(acquisition).year
         except KeyError:
@@ -507,8 +505,8 @@ TMAPS['partners_ecg_acquisition_year'] = TensorMap('partners_ecg_acquisition_yea
 def partners_bmi(tm, hd5, dependents={}, num_tensors=1, which_tensors=None):
     def f(dt, tensor):
         try:
-            wt_key = f'{tm.path_prefix}/{dt}/weightlbs'
-            ht_key = f'{tm.path_prefix}/{dt}/heightin'
+            wt_key = _make_path(tm, dt, 'weightlbs')
+            ht_key = _make_path(tm, dt, 'heightin')
             weight_lbs = _decompress_data(data_compressed=hd5[wt_key][()], dtype=hd5[wt_key].attrs['dtype'])
             weight_kg = 0.453592 * float(weight_lbs)
             height_in = _decompress_data(data_compressed=hd5[ht_key][()], dtype=hd5[ht_key].attrs['dtype'])
@@ -528,7 +526,7 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
     def tensor_from_string(tm, hd5, dependents={}, num_tensors=1, which_tensors=None):
         def f(dt, tensor):
             try:
-                path = f'{tm.path_prefix}/{dt}/{hd5_key}'
+                path = _make_path(tm, dt, hd5_key)
                 hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 for key in tm.channel_map:
                     if hd5_string.lower() == key.lower():
@@ -567,7 +565,7 @@ def _partners_adult(hd5_key, minimum_age=18):
                 years = _partners_age(tm, hd5, dt)
                 if years < minimum_age:
                     raise ValueError(f'ECG taken on patient below age cutoff.')
-                path = f'{tm.path_prefix}/{dt}/{hd5_key}'
+                path = _make_path(tm, dt, hd5_key)
                 hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 for key in tm.channel_map:
                     if hd5_string.lower() == key.lower():
@@ -590,7 +588,7 @@ def voltage_zeros(tm, hd5, dependents={}, num_tensors=1, which_tensors=None):
     def f(dt, tensor):
         for cm in tm.channel_map:
             try:
-                path = f'{tm.path_prefix}/{dt}/{cm}'
+                path = _make_path(tm, dt, cm)
                 voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 tensor[tm.channel_map[cm]] = np.count_nonzero(voltage == 0)
             except KeyError:
@@ -658,39 +656,44 @@ def build_incidence_tensor_from_file(
     except FileNotFoundError as e:
         error = e
 
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None, num_tensors=1, which_tensors=None):
         if error:
             raise error
 
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        file_split = os.path.basename(hd5.filename).split('-')
-        mrn = file_split[0]
-        mrn_int = int(mrn)
+        def f(dt, categorical_data):
+            file_split = os.path.basename(hd5.filename).split('-')
+            mrn = file_split[0]
+            mrn_int = int(mrn)
 
-        if mrn_int not in patient_table:
-            raise KeyError(f'{tm.name} mrn not in incidence csv')
+            if mrn_int not in patient_table:
+                raise KeyError(f'{tm.name} mrn not in incidence csv')
 
-        birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
-        if birth_date != birth_table[mrn_int]:
-            raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
+            try:
+                dob_key = _make_path(tm, dt, 'dateofbirth')
+                birth_date = _partners_str2date(_decompress_data(data_compressed=hd5[dob_key][()], dtype=hd5[dob_key].attrs['dtype']))
+                if birth_date != birth_table[mrn_int]:
+                    raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
 
-        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
-        if assess_date < patient_table[mrn_int]:
-            raise ValueError(f'{tm.name} Assessed earlier than enrollment')
-        if mrn_int not in date_table:
-            index = 0
-        else:
-            disease_date = date_table[mrn_int]
+                aqd_key = _make_path(tm, dt, 'acquisitiondate')
+                assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[aqd_key][()], dtype=hd5[aqd_key].attrs['dtype']))
+                if assess_date < patient_table[mrn_int]:
+                    raise ValueError(f'{tm.name} Assessed earlier than enrollment')
+                if mrn_int not in date_table:
+                    index = 0
+                else:
+                    disease_date = date_table[mrn_int]
 
-            if incidence_only and disease_date < assess_date:
-                raise ValueError(f'{tm.name} is skipping prevalent cases.')
-            elif incidence_only and disease_date >= assess_date:
-                index = 1
-            else:
-                index = 1 if disease_date < assess_date else 2
-            logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
-        categorical_data[index] = 1.0
-        return categorical_data
+                    if incidence_only and disease_date < assess_date:
+                        raise ValueError(f'{tm.name} is skipping prevalent cases.')
+                    elif incidence_only and disease_date >= assess_date:
+                        index = 1
+                    else:
+                        index = 1 if disease_date < assess_date else 2
+                    logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
+                categorical_data[index] = 1.0
+            except KeyError:
+                categorical_data[:] = np.nan
+        return tensor_from_file_wrapper(tm, hd5, num_tensors, which_tensors, f, fill=0)
     return tensor_from_file
 
 
@@ -744,44 +747,48 @@ def _survival_from_file(
     except FileNotFoundError as e:
         error = e
 
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None, num_tensors=1, which_tensors=None):
         if error:
             raise error
 
-        file_split = os.path.basename(hd5.filename).split('-')
-        patient_key_from_ecg = int(file_split[0])
+        def f(dt, survival_then_censor):
+            file_split = os.path.basename(hd5.filename).split('-')
+            patient_key_from_ecg = int(file_split[0])
 
-        if patient_key_from_ecg not in disease_dicts['follow_up_start']:
-            raise KeyError(f'{tm.name} mrn not in incidence csv')
+            if patient_key_from_ecg not in disease_dicts['follow_up_start']:
+                raise KeyError(f'{tm.name} mrn not in incidence csv')
 
-        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
-        if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
-            raise ValueError(f'Assessed earlier than enrollment.')
+            try:
+                aqd_key = _make_path(tm, dt, 'acquisitiondate')
+                assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[aqd_key][()], dtype=hd5[aqd_key].attrs['dtype']))
+                if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
+                    raise ValueError(f'Assessed earlier than enrollment.')
 
-        if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
-            has_disease = 0
-            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(days=365.26*disease_dicts['follow_up_total'][patient_key_from_ecg])
-        else:
-            has_disease = 1
-            censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
+                if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
+                    has_disease = 0
+                    censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(days=365.26*disease_dicts['follow_up_total'][patient_key_from_ecg])
+                else:
+                    has_disease = 1
+                    censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
 
-        intervals = int(tm.shape[0] / 2)
-        days_per_interval = day_window / intervals
-        survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
+                intervals = int(tm.shape[0] / 2)
+                days_per_interval = day_window / intervals
 
-        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
-            cur_date = assess_date + datetime.timedelta(days=day_delta)
-            survival_then_censor[i] = float(cur_date < censor_date)
-            survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
-            if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                survival_then_censor[intervals] = has_disease
-                if has_disease and incidence_only:
-                    raise ValueError(f'{tm.name} is skipping prevalent cases.')
-        logging.debug(
-            f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-            f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ",
-        )
-        return survival_then_censor
+                for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
+                    cur_date = assess_date + datetime.timedelta(days=day_delta)
+                    survival_then_censor[i] = float(cur_date < censor_date)
+                    survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                    if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
+                        survival_then_censor[intervals] = has_disease
+                        if has_disease and incidence_only:
+                            raise ValueError(f'{tm.name} is skipping prevalent cases.')
+                logging.debug(
+                    f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
+                    f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ",
+                )
+            except KeyError:
+                survival_then_censor[:] = np.nan
+        return tensor_from_file_wrapper(tm, hd5, num_tensors, which_tensors, f, fill=0)
     return tensor_from_file
 
 
@@ -801,19 +808,19 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PATH_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
         name = f'incident_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PATH_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
 
         # Build survival curve TensorMaps
         name = f'survival_{diagnosis}'
         if name in needed_tensor_maps:
             tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
+            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, path_prefix=PATH_PREFIX, shape=(50,), tensor_from_file=tff)
         name = f'incident_survival_{diagnosis}'
         if name in needed_tensor_maps:
             tff = _survival_from_file(3650, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, shape=(50,), tensor_from_file=tff)
+            name2tensormap[name] = TensorMap(name, Interpretation.COX_PROPORTIONAL_HAZARDS, path_prefix=PATH_PREFIX, shape=(50,), tensor_from_file=tff)
     return name2tensormap
