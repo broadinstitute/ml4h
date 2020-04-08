@@ -45,6 +45,10 @@ def parse_args():
     parser.add_argument('--sample_weight', default=None,  help='TensorMap key for sample weight in training.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
+    parser.add_argument('--tensors_per_file', default=1, type=int,
+                        help='If there are multiple tensors per HD5, select how many tensors to use per HD5.')
+    parser.add_argument('--which_tensors', default='NEWEST', choices=['NEWEST', 'OLDEST', 'RANDOM'],
+                        help='If there are multiple tensors per HD5, select which tensor(s) to use per HD5.')
 
     # Input and Output files and directories
     parser.add_argument(
@@ -271,6 +275,9 @@ def _process_args(args):
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
+
+    if args.tensors_per_file < 1:
+        raise ValueError(f'expected tensors_per_file to be > 0 but got {args.tensors_per_file}.')
 
     np.random.seed(args.random_seed)
 
