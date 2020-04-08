@@ -153,6 +153,13 @@ def _init_dict_of_tensors(tmaps: list) -> dict:
 
 
 def _tensors_to_df(args):
+    multi_tensor_args = ()
+    tensors_per_file = 1
+    if args.tensors_per_file:
+        tensors_per_file = args.tensors_per_file
+        multi_tensor_args += (tensors_per_file,)
+    if args.which_tensor: multi_tensor_args += (args.which_tensor,)
+
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
     list_of_tensor_dicts: List[Dict] = []
@@ -169,19 +176,22 @@ def _tensors_to_df(args):
                     for tm in tmaps:
                         error_type = ""
                         try:
-                            tensor = tm.tensor_from_file(tm, hd5, dependents)
+                            tff_args = (tm, hd5, dependents) + multi_tensor_args
+                            tensor = tm.tensor_from_file(*tff_args)
                             tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
 
-                            # Append tensor to dict
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
-                            else:
-                                # If tensor is a scalar, isolate the value in the array;
-                                # otherwise, retain the value as array
-                                if tm.shape[0] == 1:
-                                    tensor = tensor.item()
-                                tensor_dict[tm.name][tm.name] = tensor
+                            # flatten multi tensor tmaps
+                            for i in range(tensors_per_file):
+                                # Append tensor to dict
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                                else:
+                                    # If tensor is a scalar, isolate the value in the array;
+                                    # otherwise, retain the value as array
+                                    if tm.shape[0] == 1:
+                                        tensor = tensor.item()
+                                    tensor_dict[tm.name][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so append nans
                             if tm.channel_map:
