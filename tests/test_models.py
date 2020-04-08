@@ -126,7 +126,7 @@ class TestMakeMultimodalMultitaskModel:
             [output_tmap],
             **DEFAULT_PARAMS,
         )
-        path = os.path.join(tmpdir, 'm')
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_multimodal_multitask_model(
             [input_tmap],
@@ -173,7 +173,7 @@ class TestMakeMultimodalMultitaskModel:
             output_tmaps,
             **DEFAULT_PARAMS,
         )
-        path = os.path.join(tmpdir, 'm')
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_multimodal_multitask_model(
             input_tmaps,
