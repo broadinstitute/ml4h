@@ -8,8 +8,9 @@ import time
 import logging
 import numpy as np
 from enum import Enum, auto
+from itertools import chain
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict
+from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
 
 # Keras imports
 import tensorflow as tf
@@ -28,9 +29,9 @@ from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 
 from ml4cvd.metrics import get_metric_dict
-from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
 from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX
 
 
@@ -914,6 +915,14 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     return final
 
 
+def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
+    custom_objects = {
+        obj.__name__: obj
+        for obj in chain(NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values())
+    }
+    return {**custom_objects, **get_metric_dict(tensor_maps_out)}
+
+
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
@@ -946,8 +955,7 @@ def make_multimodal_multitask_model(
     tensor_maps_out = parent_sort(tensor_maps_out)
     u_connect: DefaultDict[TensorMap, Set[TensorMap]] = u_connect or defaultdict(set)
     opt = get_optimizer(optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule, optimizer_kwargs=kwargs.get('optimizer_kwargs'))
-    metric_dict = get_metric_dict(tensor_maps_out)
-    custom_dict = {**metric_dict, type(opt).__name__: opt}
+    custom_dict = _get_custom_objects(tensor_maps_out)
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
@@ -1326,22 +1334,24 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling1D(size=pool_x)
 
 
+ACTIVATION_CLASSES = {
+    'leaky': LeakyReLU(),
+    'prelu': PReLU(),
+    'elu': ELU(),
+    'thresh_relu': ThresholdedReLU,
+}
+ACTIVATION_FUNCTIONS = {
+    'swish': tf.nn.swish,
+    'gelu': tfa.activations.gelu,
+    'lisht': tfa.activations.lisht,
+    'mish': tfa.activations.mish,
+}
+
+
 def _activation_layer(activation: str) -> Activation:
-    activation_classes = {
-        'leaky': LeakyReLU(),
-        'prelu': PReLU(),
-        'elu': ELU(),
-        'thresh_relu': ThresholdedReLU,
-    }
-    activation_functions = {
-        'swish': tf.nn.swish,
-        'gelu': tfa.activations.gelu,
-        'lisht': tfa.activations.lisht,
-        'mish': tfa.activations.mish,
-    }
     return (
-        activation_classes.get(activation, None)
-        or Activation(activation_functions.get(activation, None) or activation)
+        ACTIVATION_CLASSES.get(activation, None)
+        or Activation(ACTIVATION_FUNCTIONS.get(activation, None) or activation)
     )
 
 
@@ -1553,7 +1563,7 @@ def get_model_inputs_outputs(
     models_inputs_outputs = dict()
 
     for model_file in model_files:
-        custom = get_metric_dict(tensor_maps_out)
+        custom = _get_custom_objects(tensor_maps_out)
         logging.info(f'custom keys: {list(custom.keys())}')
         m = load_model(model_file, custom_objects=custom, compile=False)
         model_inputs_outputs = defaultdict(list)

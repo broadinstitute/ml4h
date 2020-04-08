@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType
+from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT
 from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
@@ -133,6 +133,29 @@ class TestMakeMultimodalMultitaskModel:
             [output_tmap],
             model_file=path,
             **DEFAULT_PARAMS,
+        )
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        'activation',
+        ACTIVATION_FUNCTIONS.keys(),
+    )
+    def test_load_custom_activations(self, tmpdir, activation):
+        inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
+        params = DEFAULT_PARAMS.copy()
+        params['activation'] = activation
+        m = make_multimodal_multitask_model(
+            inp,
+            out,
+            **params,
+        )
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_multimodal_multitask_model(
+            inp,
+            out,
+            model_file=path,
+            **params,
         )
 
     @pytest.mark.slow
