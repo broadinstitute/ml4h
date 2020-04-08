@@ -314,6 +314,7 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool
 
             # If the max voltage value is 0, do not convert
             if _get_max_voltage(voltage) == 0:
+                logging.warning(f'Conversion of {fpath_xml} failed! Maximum voltage is 0.')
                 convert = 0
 
         # If there is no voltage, or the XML is poorly formed,
