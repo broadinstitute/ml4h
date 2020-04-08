@@ -42,7 +42,7 @@ def write_tensors_partners(xml_folder: str, tensors: str) -> None:
     logging.info('Converting XMLs into HD5s')
     num_xml_converted, num_hd5_written = _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, n_jobs=n_jobs)
 
-    logging.info(f'Skipped {sum([len(v) for k, v in mrn_xmls_map.items()]) - num_xml_converted} duplicate XMLs')
+    logging.info(f'Skipped {sum([len(v) for k, v in mrn_xmls_map.items()]) - num_xml_converted} duplicate or malformed XMLs')
 
 
 def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[str, str], None]:
