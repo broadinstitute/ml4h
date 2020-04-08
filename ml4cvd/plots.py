@@ -128,7 +128,6 @@ def evaluate_predictions(
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
-        logging.info(f' y pred: {y_predictions[:36, 0]} y true: {y_truth[:36, 0]}')
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
@@ -362,7 +361,7 @@ def plot_survival(prediction, truth, title, days_window, prefix='./figures/', pa
     plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    plt.title(f'{title} Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]}, Failed: {sick_per_step[-1]}\n')
+    plt.title(f'{title} Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]}, Failed: {cumulative_sick[-1]}\n')
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
@@ -399,7 +398,7 @@ def plot_survival_curves(prediction, truth, title, days_window, prefix='./figure
             plt.plot(x_days, predicted_survivals[i], label=f'Survived:{p} p:{predicted_survivals[i, -1]:0.2f}', color='green')
             cur_healthy += 1
     plt.title(title + '\n')
-    plt.legend(loc="upper right")
+    plt.legend(loc="lower left")
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Survival Curve Prediction')
     figure_path = os.path.join(prefix, 'survival_curves_' + title + IMAGE_EXT)
