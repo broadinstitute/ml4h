@@ -67,8 +67,10 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
 
 
 def _reshape_tmap(tm: TensorMap, tensors_per_file: int) -> TensorMap:
-    if not tm.multi_tensor:
-        tm.multi_tensor = True
+    if 'multi_tensor' in tm.__dict__:
+        return tm
+
+    tm.multi_tensor = True
     if tensors_per_file > 1:
         tm.shape = (tensors_per_file,) + tm.shape
     return tm
