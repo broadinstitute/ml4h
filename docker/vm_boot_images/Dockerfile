@@ -34,4 +34,3 @@ RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
 # Requirements for the tensorflow project
 RUN pip3 install --upgrade pip
 RUN pip3 install -r tensorflow-requirements.txt
-RUN jupyter contrib nbextension install
