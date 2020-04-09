@@ -1629,12 +1629,12 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if path_prefix == 'ukb_liver_mri':
-            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(1))
+            categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}1')
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         elif tm.axes() == 4:
             for i in range(tm.shape[-2]):
-                categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, dicom_key_prefix + str(i+1))
+                categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}{i+1}')
                 categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
                 tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
         else:
