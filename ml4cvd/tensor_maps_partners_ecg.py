@@ -455,9 +455,11 @@ def _loyalty_str2date(date_string: str):
     return str2date(date_string.split(' ')[0])
 
 
-def build_incidence_tensor_from_file(file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
-                                     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
-                                     delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True) -> Callable:
+def build_incidence_tensor_from_file(
+    file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
+    diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
+    delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True,
+) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
     The tensor_from_file function returned here should be used
@@ -542,9 +544,11 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
     return {f'no_{disease}': 0, f'prior_{disease}': 1, f'future_{disease}': 2}
 
 
-def loyalty_time_to_event(file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
-                          follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-                          diagnosis_column: str = 'first_stroke', delimiter: str = ','):
+def loyalty_time_to_event(
+    file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
+    follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',',
+):
     """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
 
     The tensor_from_file function returned here should be used
@@ -602,7 +606,8 @@ def loyalty_time_to_event(file_name: str, incidence_only: bool = False, patient_
         if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
             has_disease = 0
             censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(
-                days=YEAR_DAYS * disease_dicts['follow_up_total'][patient_key_from_ecg])
+                days=YEAR_DAYS * disease_dicts['follow_up_total'][patient_key_from_ecg],
+            )
         else:
             has_disease = 1
             censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
@@ -617,9 +622,11 @@ def loyalty_time_to_event(file_name: str, incidence_only: bool = False, patient_
     return _cox_tensor_from_file
 
 
-def _survival_from_file(day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
-                        follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-                        diagnosis_column: str = 'first_stroke', delimiter: str = ',') -> Callable:
+def _survival_from_file(
+    day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
+    follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',',
+) -> Callable:
     """Build a tensor_from_file function for modeling survival curves of diagnoses given a TSV of patients and dates.
 
     The tensor_from_file function returned here should be used

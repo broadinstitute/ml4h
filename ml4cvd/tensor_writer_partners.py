@@ -26,10 +26,12 @@ from xml.parsers.expat import ExpatError, ParserCreate
 ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
 
 
-def write_tensors_partners(a_id: str,
-                           xml_folder: str,
-                           output_folder: str,
-                           tensors: str) -> None:
+def write_tensors_partners(
+    a_id: str,
+    xml_folder: str,
+    output_folder: str,
+    tensors: str,
+) -> None:
     """Write tensors as HD5 files containing data from Partners dataset
 
     One HD5 is generated per source file.
@@ -50,7 +52,7 @@ def write_tensors_partners(a_id: str,
 
     # Initialize counter to track total number of converted hd5 files
     stats = Counter()
-    
+
     logging.info('Converting XMLs into HD5s')
     # Iterate through directories containing XML files
     for fpath_xml_dir in fpath_xml_dirs:
@@ -137,8 +139,10 @@ def _hash_xml_fname_dir(fpath_dir):
     xml_files_list.sort()
 
     # Prepend every XML file name with full path
-    fpath_xmls = [os.path.join(fpath_dir, xml_fname)
-                  for xml_fname in xml_files_list]
+    fpath_xmls = [
+        os.path.join(fpath_dir, xml_fname)
+        for xml_fname in xml_files_list
+    ]
 
     # Compute hashes in parallel
     hashes = Parallel(n_jobs=-1)(delayed(_hash_xml_fname)(fpath_xml) for fpath_xml in fpath_xmls)
@@ -198,10 +202,12 @@ def _text_from_xml(xml_fpath):
         soup = soup.find('restingecg')
 
         # Define major tags.
-        major_tags = ['patientdemographics',
-                      'testdemographics',
-                      'restingecgmeasurements',
-                      'originalrestingecgmeasurements']
+        major_tags = [
+            'patientdemographics',
+            'testdemographics',
+            'restingecgmeasurements',
+            'originalrestingecgmeasurements',
+        ]
 
         # Loop through the major tags we want to extract.
         for tag in major_tags:
@@ -371,8 +377,10 @@ class LeadDataElementParser(XmlElementParser):
 
     def start_element(self, name, attrs, context):
         self.clearData()
-        if name in (ElementParser.lead_id_tag, ElementParser.unit_tag,
-                    ElementParser.bit_tag, ElementParser.waveform_data_tag):
+        if name in (
+            ElementParser.lead_id_tag, ElementParser.unit_tag,
+            ElementParser.bit_tag, ElementParser.waveform_data_tag,
+        ):
             context.setState(ElementParser(self))
 
     def end_element(self, name, context):
@@ -580,7 +588,8 @@ def _create_fname_hd5(text_data, fpath_xml, sep_char='-'):
             + _format_date(
                 text_data['acquisitiondate'],
                 sep_char=sep_char,
-                day_flag=True) \
+                day_flag=True,
+            ) \
             + sep_char \
             + text_data['acquisitiontime'].replace(':', sep_char) \
             + sep_char \
@@ -591,9 +600,11 @@ def _create_fname_hd5(text_data, fpath_xml, sep_char='-'):
 
 def _create_hd5_dir(fpath_hd5, yyyymm_str):
     # Determine yyyy-mm from acquisition date
-    yyyymm = _format_date(yyyymm_str,
-                          sep_char='-',
-                          day_flag=False)
+    yyyymm = _format_date(
+        yyyymm_str,
+        sep_char='-',
+        day_flag=False,
+    )
     # Determine full path to new hd5
     fpath_hd5_dir = os.path.join(fpath_hd5, yyyymm)
 
@@ -688,14 +699,18 @@ def _convert_xml_to_hd5(fpath_xml, fpath_hd5):
             read_pc_clean = _clean_read_text(text=text_data[key_read_pc])
 
         # Create new hd5 directory from acquisition date
-        fpath_hd5_dir = _create_hd5_dir(fpath_hd5=fpath_hd5,
-                                        yyyymm_str=text_data['acquisitiondate'])
+        fpath_hd5_dir = _create_hd5_dir(
+            fpath_hd5=fpath_hd5,
+            yyyymm_str=text_data['acquisitiondate'],
+        )
 
         # Create full path to new hd5 file based on acquisition date and time
         # e.g. /hd5/2004-05/mrn-date-time.hd5
-        fname_hd5_new = _create_fname_hd5(text_data=text_data,
-                                          fpath_xml=fpath_xml,
-                                          sep_char='-')
+        fname_hd5_new = _create_fname_hd5(
+            text_data=text_data,
+            fpath_xml=fpath_xml,
+            sep_char='-',
+        )
 
         # Determine full path to new hd5 file
         fpath_hd5_new = os.path.join(fpath_hd5_dir, fname_hd5_new)
@@ -726,7 +741,7 @@ def _convert_xml_to_hd5_wrapper(fpath_xml_dir, fpath_hd5, n_jobs, stats):
     # Get list of full path to all XMLs in directory
     dataset_name = 'ECG'
     fpath_xml_list = _get_files_from_dir(fpath_xml_dir, 'xml')
-    
+
     # If list of XML files is empty, return 0
     if not fpath_xml_list:
         logging.info(f'{fpath_xml_dir} does not contain any XMLs')
@@ -765,8 +780,10 @@ def _process_hd5(fpath_hd5_dir, sep_char):
     mrn_date_time_ref = _get_mrn_date_time_from_fname(fpath_hd5_list[0], sep_char)
 
     # Rename this first file
-    fpath_hd5_new = os.path.join(os.path.split(fpath_hd5_list[0])[0],
-                                 mrn_date_time_ref + '.hd5')
+    fpath_hd5_new = os.path.join(
+        os.path.split(fpath_hd5_list[0])[0],
+        mrn_date_time_ref + '.hd5',
+    )
     os.rename(fpath_hd5_list[0], fpath_hd5_new)
 
     # Loop through remaining hd5 file names
@@ -779,8 +796,10 @@ def _process_hd5(fpath_hd5_dir, sep_char):
             num_duplicates += 1
         # If not, no duplicate, so rename file and update priors
         else:
-            fpath_hd5_new = os.path.join(os.path.split(fpath_hd5_this)[0],
-                                         mrn_date_time + '.hd5')
+            fpath_hd5_new = os.path.join(
+                os.path.split(fpath_hd5_this)[0],
+                mrn_date_time + '.hd5',
+            )
             os.rename(fpath_hd5_this, fpath_hd5_new)
             mrn_date_time_ref = mrn_date_time
 

@@ -596,8 +596,10 @@ def train_char_model(args):
     args.num_workers = 0
     logging.info(f'Number of workers forced to 0 for character emitting LSTM model.')
     base_model = make_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
-                                                  args.language_prefix, args.model_layers)
+    model, char_model = make_character_model_plus(
+        args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
+        args.language_prefix, args.model_layers,
+    )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
     model = train_model_from_generators(
@@ -670,15 +672,13 @@ def tokenize_tensor_maps(args):
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     for path in tensor_paths:
         with h5py.File(path, "r") as hd5:
-            for tm in args.tensor_maps_out:
-                if tm.is_language():
-                    text = str(tm.tensor_from_file(tm, hd5, dependents={}))
-                    for c in text:
-                        characters.add(c)
-    print(f'Total characters: {len(characters)}')
+            for tm in filter(lambda tm: tm.is_language, args.tensor_maps_out):
+                text = str(tm.tensor_from_file(tm, hd5, dependents={}))
+                characters += set(text)
+    logging.info(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
-    print(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):

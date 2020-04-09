@@ -27,7 +27,7 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, _decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
 CSV_EXT = '.tsv'
 
@@ -343,7 +343,7 @@ def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, t
     for tm in tensor_maps_in:
         if tm.interpretation == Interpretation.LANGUAGE:
             language_map = tm
-            if 'read_' in tm.name:
+            if PARTNERS_READ_TEXT in tm.name:
                 index_map = PARTNERS_IDX_2_CHAR
                 char_map = PARTNERS_CHAR_2_IDX
             else:
@@ -351,6 +351,12 @@ def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, t
                 char_map = ECG_CHAR_2_IDX
         elif tm.interpretation == Interpretation.EMBEDDING:
             embed_map = tm
+
+    try:
+        embed_map
+    except NameError:
+        raise ValueError(f'Sampling from a character level model requires an embedding tmap.')
+
     window_size = test_batch[language_map.input_name()].shape[1]
     alphabet_size = test_batch[language_map.input_name()].shape[2]
     for i in range(test_batch[embed_map.input_name()].shape[0]):

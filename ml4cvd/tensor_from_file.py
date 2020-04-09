@@ -425,30 +425,54 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap(
 )
 
 DAYS_IN_5_YEARS = 365 * 5
-TMAPS['enroll_cad_hazard'] = TensorMap('coronary_artery_disease', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                       tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_hyp_hazard'] = TensorMap('hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                       tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_afib_hazard'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                        tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_chol_hazard'] = TensorMap('hypercholesterolemia', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                        tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_diabetes2_hazard'] = TensorMap('diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                             tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_diabetes2_hazard_incident'] = TensorMap('diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                                      tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True))
-TMAPS['enroll_hyp_hazard_5'] = TensorMap('hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
-                                         tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap('hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
-                                                  tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True))
-TMAPS['enroll_cad_hazard_5_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                                  tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True))
-TMAPS['enroll_cad_hazard_5'] = TensorMap('coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                         tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_mi_hazard_5'] = TensorMap('myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                        tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS))
-TMAPS['enroll_mi_hazard_5_incident'] = TensorMap('myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-                                                 tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True))
+TMAPS['enroll_cad_hazard'] = TensorMap(
+    'coronary_artery_disease', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_hyp_hazard'] = TensorMap(
+    'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_afib_hazard'] = TensorMap(
+    'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_chol_hazard'] = TensorMap(
+    'hypercholesterolemia', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_diabetes2_hazard'] = TensorMap(
+    'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_diabetes2_hazard_incident'] = TensorMap(
+    'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_hyp_hazard_5'] = TensorMap(
+    'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap(
+    'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_cad_hazard_5_incident'] = TensorMap(
+    'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_cad_hazard_5'] = TensorMap(
+    'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_mi_hazard_5'] = TensorMap(
+    'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+)
+TMAPS['enroll_mi_hazard_5_incident'] = TensorMap(
+    'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
 
 TMAPS['cox_mi'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
 TMAPS['cox_mi_incident'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
@@ -1619,40 +1643,62 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     return _segmented_dicom_tensor_from_file
 
 
-TMAPS['lax_3ch_segmented'] = TensorMap('lax_3ch_segmented',  Interpretation.CATEGORICAL, shape=(256, 256, 50, 6),
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
-                                       channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
-TMAPS['lax_3ch_segmented_192'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 6),
-                                           tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
-                                           channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
-TMAPS['lax_3ch_segmented_192_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
-                                               tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
-                                               channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
-TMAPS['lax_3ch_segmented_192_160'] = TensorMap('lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
-                                               tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
-                                               channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)
-TMAPS['lax_4ch_segmented'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 50, 14),
-                                       tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
-                                       channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)
-TMAPS['lax_4ch_segmented_192'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
-                                           tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
-                                           channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)
-TMAPS['lax_4ch_segmented_192_w'] = TensorMap('lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
-                                             tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
-                                             channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-                                             loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]))
-TMAPS['sax_segmented_b6'] = TensorMap('sax_segmented_b6', Interpretation.CATEGORICAL, shape=(256, 256, 50, 11),
-                                      tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
-                                      channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
-TMAPS['sax_segmented_b6_192'] = TensorMap('sax_segmented_b6', Interpretation.CATEGORICAL, shape=(192, 192, 50, 11),
-                                          tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
-                                          channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP)
+TMAPS['lax_3ch_segmented'] = TensorMap(
+    'lax_3ch_segmented',  Interpretation.CATEGORICAL, shape=(256, 256, 50, 6),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+    channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['lax_3ch_segmented_192'] = TensorMap(
+    'lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 6),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+    channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['lax_3ch_segmented_192_160'] = TensorMap(
+    'lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+    channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['lax_3ch_segmented_192_160'] = TensorMap(
+    'lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 50, 6),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
+    channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['lax_4ch_segmented'] = TensorMap(
+    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 50, 14),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['lax_4ch_segmented_192'] = TensorMap(
+    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['lax_4ch_segmented_192_w'] = TensorMap(
+    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
+)
+TMAPS['sax_segmented_b6'] = TensorMap(
+    'sax_segmented_b6', Interpretation.CATEGORICAL, shape=(256, 256, 50, 11),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
+    channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['sax_segmented_b6_192'] = TensorMap(
+    'sax_segmented_b6', Interpretation.CATEGORICAL, shape=(192, 192, 50, 11),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_sax_b6_annotated_'),
+    channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
 
-TMAPS['cine_segmented_ao_dist'] = TensorMap('cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
-                                            tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP)
-TMAPS['liver_shmolli_segmented'] = TensorMap('liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
-                                             tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
-                                             channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP)
+TMAPS['cine_segmented_ao_dist'] = TensorMap(
+    'cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['liver_shmolli_segmented'] = TensorMap(
+    'liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
+    channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP,
+)
 
 
 def _make_fallback_tensor_from_file(tensor_keys):
@@ -1664,14 +1710,22 @@ def _make_fallback_tensor_from_file(tensor_keys):
     return fallback_tensor_from_file
 
 
-TMAPS['shmolli_192i_both'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
-                                       tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
-TMAPS['shmolli_192i_both_4d'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7, 1),
-                                       tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
-TMAPS['shmolli_192i_both_instance1'] = TensorMap('shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
-                                                 tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']))
-TMAPS['shmolli_192i_liver_only'] = TensorMap('shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
-                                             tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']))
+TMAPS['shmolli_192i_both'] = TensorMap(
+    'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
+)
+TMAPS['shmolli_192i_both_4d'] = TensorMap(
+    'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7, 1),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
+)
+TMAPS['shmolli_192i_both_instance1'] = TensorMap(
+    'shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
+)
+TMAPS['shmolli_192i_liver_only'] = TensorMap(
+    'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']),
+)
 
 
 def preprocess_with_function(fxn, hd5_key=None):

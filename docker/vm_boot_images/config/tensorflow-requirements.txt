@@ -18,8 +18,6 @@ notebook
 pytest
 tensorflow-addons
 numcodecs
-autopep8
-jupyter_contrib_nbextensions
 beautifulsoup4
 lxml
 xmltodict

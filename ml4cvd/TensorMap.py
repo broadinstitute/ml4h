@@ -19,8 +19,8 @@ import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
+from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, cox_hazard_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
@@ -444,7 +444,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tm.model.predict(input_dict)
     elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if 'read_' in tm.name:
+        if PARTNERS_READ_TEXT in tm.name:
             caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
         else:
             caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()

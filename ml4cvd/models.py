@@ -30,7 +30,7 @@ from ml4cvd.metrics import get_metric_dict
 from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, TENSOR_EXT
+from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
@@ -141,8 +141,10 @@ def make_waveform_model_unet(
 
 
 
-def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float, base_model: Model, language_layer: str,
-                              language_prefix: str, model_layers: str = None) -> Tuple[Model, Model]:
+def make_character_model_plus(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float, base_model: Model, language_layer: str,
+    language_prefix: str, model_layers: str = None,
+) -> Tuple[Model, Model]:
     """Make a ECG captioning model from an ECG embedding model
 
     The base_model must have an embedding layer, but besides that can have any number of other predicition TensorMaps.
@@ -189,11 +191,13 @@ def make_character_model_plus(tensor_maps_in: List[TensorMap], tensor_maps_out: 
     return m, char_model
 
 
-def make_character_model(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
-                         language_layer: str, model_file: str = None, model_layers: str = None) -> Model:
+def make_character_model(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float,
+    language_layer: str, model_file: str = None, model_layers: str = None,
+) -> Model:
     """Make a ECG captioning model
 
-	Input and output tensor maps are set from the command line. Model summary is logged
+    Input and output tensor maps are set from the command line. Model summary is logged
 
     :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported, otherwise there are layer name collisions.
     :param tensor_maps_out: List of output TensorMaps
@@ -776,8 +780,10 @@ def make_multimodal_multitask_model(
     :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
     """
-    opt = get_optimizer(optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule,
-                        optimizer_kwargs=kwargs.get('optimizer_kwargs'))
+    opt = get_optimizer(
+        optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule,
+        optimizer_kwargs=kwargs.get('optimizer_kwargs'),
+    )
     metric_dict = get_metric_dict(tensor_maps_out)
     custom_dict = {**metric_dict, type(opt).__name__: opt}
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
@@ -1007,7 +1013,8 @@ def _dense_block(
         layers[f"{name_prefix}Activation_{str(len(layers))}"] = _activation_layer(activation)(_get_last_layer(layers))
         layers[f"{name_prefix}Normalization_{str(len(layers))}"] = _normalization_layer(normalization)(_get_last_layer(layers))
         layers[f"{name_prefix}Regularization_{str(len(layers))}"] = _regularization_layer(dimension, regularization, regularization_rate)(
-            _get_last_layer(layers))
+            _get_last_layer(layers),
+        )
         if i % block_size == 0:  # TODO: pools should come AFTER the dense conv block not before.
             x = layers[f"{name_prefix}Pooling{JOIN_CHAR}{str(len(layers))}"] = pool_layers[i // block_size](_get_last_layer(layers))
             dense_connections = [_get_last_layer(layers)]
@@ -1287,21 +1294,31 @@ def _gradients_from_output(model, output_layer, output_index):
     return iterate
 
 
-def _get_tensor_maps_for_characters(tensor_maps_in: List[TensorMap], base_model: Model, language_layer: str, language_prefix: str, embed_name='embed',
-                                    embed_size=64, burn_in=100):
+def _get_tensor_maps_for_characters(
+    tensor_maps_in: List[TensorMap], base_model: Model, language_layer: str, language_prefix: str, embed_name='embed',
+    embed_size=64, burn_in=100,
+):
     embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
     tm_embed = TensorMap(embed_name, shape=(embed_size,), interpretation=Interpretation.EMBEDDING, parents=tensor_maps_in.copy(), model=embed_model)
 
-    if 'read_' in language_layer:
-        tm_char = TensorMap(f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(PARTNERS_CHAR_2_IDX),),
-                            channel_map=PARTNERS_CHAR_2_IDX, cacheable=False)
-        tm_burn_in = TensorMap(language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(PARTNERS_CHAR_2_IDX)), path_prefix=language_prefix,
-                               dependent_map=tm_char, cacheable=False)
+    if PARTNERS_READ_TEXT in language_layer:
+        tm_char = TensorMap(
+            f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(PARTNERS_CHAR_2_IDX),),
+            channel_map=PARTNERS_CHAR_2_IDX, cacheable=False,
+        )
+        tm_burn_in = TensorMap(
+            language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(PARTNERS_CHAR_2_IDX)), path_prefix=language_prefix,
+            dependent_map=tm_char, cacheable=False,
+        )
     else:
-        tm_char = TensorMap(f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX,
-                            cacheable=False)
-        tm_burn_in = TensorMap(language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix=language_prefix,
-                               dependent_map=tm_char, cacheable=False)
+        tm_char = TensorMap(
+            f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX,
+            cacheable=False,
+        )
+        tm_burn_in = TensorMap(
+            language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix=language_prefix,
+            dependent_map=tm_char, cacheable=False,
+        )
 
     return [tm_embed, tm_burn_in], [tm_char]
 

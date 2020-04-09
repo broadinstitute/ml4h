@@ -174,8 +174,7 @@ def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
     """Compute logsumexp across `axis` for entries where `mask` is true."""
     mask_f = K.cast(mask, risk_scores.dtype)
     risk_scores_masked = risk_scores * mask_f
-    # for numerical stability, substract the maximum value
-    # before taking the exponential
+    # for numerical stability, subtract the maximum value before taking the exponential
     amax = K.max(risk_scores_masked, axis=axis, keepdims=True)
     risk_scores_shift = risk_scores_masked - amax
 
@@ -189,8 +188,7 @@ def _softmax_masked(risk_scores, mask, axis=0, keepdims=None):
 
 @tf.function
 def cox_hazard_loss(y_true, y_pred):
-    # move batch dimension to the end so predictions get broadcast
-    # row-wise when multiplying by riskset
+    # move batch dimension to the end so predictions get broadcast row-wise when multiplying by riskset
     pred_t = K.transpose(y_pred[:, 0])
     events = y_true[:, 0]
     follow_up_times = y_true[:, 1]
@@ -228,7 +226,7 @@ def survival_likelihood_loss(n_intervals):
         Returns
             Vector of losses for this minibatch.
         """
-        failure_likelihood = 1.-(y_true[:, n_intervals:] * y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
+        failure_likelihood = 1. - (y_true[:, n_intervals:] * y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
         survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss for intervals that were survived
         survival_likelihood += 1. - y_true[:, 0:n_intervals]  # No survival loss if interval was censored or failed
         return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
