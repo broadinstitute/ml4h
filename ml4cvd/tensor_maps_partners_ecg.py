@@ -612,7 +612,7 @@ def loyalty_time_to_event(
             has_disease = 1
             censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
 
-        if incidence_only and censor_date <= assess_date:
+        if incidence_only and censor_date <= assess_date and has_disease:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
