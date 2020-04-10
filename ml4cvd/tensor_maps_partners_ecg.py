@@ -407,6 +407,10 @@ TMAPS['partners_race_known'] = TensorMap(
     'race_known', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'indian': 3, 'white': 4},
     tensor_from_file=partners_channel_string('race', race_synonyms),
 )
+TMAPS['partners_race_known_weighted'] = TensorMap(
+    'race_known', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'indian': 3, 'white': 4},
+    tensor_from_file=partners_channel_string('race', race_synonyms), loss=weighted_crossentropy([100.0, 10.0, 10.0, 100.0, 1.0], 'race_weight')
+)
 TMAPS['partners_gender'] = TensorMap(
     'gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
     tensor_from_file=partners_channel_string('gender'),
