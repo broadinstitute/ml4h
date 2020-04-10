@@ -22,11 +22,12 @@ import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
-from ml4cvd.TensorMap import TensorMap
-from ml4cvd.tensor_generators import TensorGenerator
 from ml4cvd.models import make_multimodal_multitask_model
+from ml4cvd.TensorMap import TensorMap, Interpretation, _decompress_data
+from ml4cvd.tensor_generators import TensorGenerator, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE, JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
+from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
 CSV_EXT = '.tsv'
 
@@ -338,29 +339,50 @@ def str2date(d):
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def sample_from_char_model(char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
-    window_size = test_batch['input_ecg_rest_text_ecg_text'].shape[1]
-    alphabet_size = test_batch['input_ecg_rest_text_ecg_text'].shape[2]
-    for i in range(test_batch['input_embed_hidden_layer'].shape[0]):
+def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
+    for tm in tensor_maps_in:
+        if tm.interpretation == Interpretation.LANGUAGE:
+            language_map = tm
+            if PARTNERS_READ_TEXT in tm.name:
+                index_map = PARTNERS_IDX_2_CHAR
+                char_map = PARTNERS_CHAR_2_IDX
+            else:
+                index_map = ECG_IDX_2_CHAR
+                char_map = ECG_CHAR_2_IDX
+        elif tm.interpretation == Interpretation.EMBEDDING:
+            embed_map = tm
+
+    try:
+        embed_map
+    except NameError:
+        raise ValueError(f'Sampling from a character level model requires an embedding tmap.')
+
+    window_size = test_batch[language_map.input_name()].shape[1]
+    alphabet_size = test_batch[language_map.input_name()].shape[2]
+    for i in range(test_batch[embed_map.input_name()].shape[0]):
         count = 0
         sentence = ''
         next_char = ''
-        embed_in = test_batch['input_embed_hidden_layer'][i:i+1, :]
+        embed_in = test_batch[embed_map.input_name()][i:i+1, :]
         burn_in = np.zeros((1, window_size, alphabet_size), dtype=np.float32)
         window_size = burn_in.shape[1]
         with h5py.File(test_paths[i], 'r') as hd5:
             logging.info(f"\n")
-            logging.info(f"Real text: {str(hd5['ecg_rest_text'][0]).strip()}")
+            if 'read_' in language_map.name:
+                caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
+            else:
+                caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
+            logging.info(f"Real text: {caption}")
         while next_char != '!' and count < 400:
-            cur_test = {'input_embed_hidden_layer': embed_in, 'input_ecg_rest_text_ecg_text': burn_in}
+            cur_test = {embed_map.input_name(): embed_in, language_map.input_name(): burn_in}
             y_pred = char_model.predict(cur_test)
-            next_char = ECG_IDX_2_CHAR[_sample_with_heat(y_pred[0, :], 0.7)]
+            next_char = index_map[_sample_with_heat(y_pred[0, :], 0.7)]
             sentence += next_char
-            burn_in = np.zeros((1,) + test_batch['input_ecg_rest_text_ecg_text'].shape[1:], dtype=np.float32)
+            burn_in = np.zeros((1,) + test_batch[language_map.input_name()].shape[1:], dtype=np.float32)
             for j, c in enumerate(reversed(sentence)):
                 if j == window_size:
                     break
-                burn_in[0, window_size-j-1, ECG_CHAR_2_IDX[c]] = 1.0
+                burn_in[0, window_size-j-1, char_map[c]] = 1.0
             count += 1
         logging.info(f"Model text:{sentence}")
 
@@ -440,8 +462,9 @@ def infer_with_pixels(args):
         inference_writer.writerow(header)
 
         while True:
-            input_data, true_label, tensor_path = next(generate_test)
-            if tensor_path[0] in tensor_paths_inferred:
+            batch = next(generate_test)
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in tensor_paths_inferred:
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
@@ -449,35 +472,35 @@ def infer_with_pixels(args):
             if len(args.tensor_maps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0]:
+                    if tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0]:
                         csv_row.append("NA")
                     else:
-                        csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+                        csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and tm.is_categorical():
                     for k in tm.channel_map:
                         csv_row.append(str(y[0][tm.channel_map[k]]))
-                        csv_row.append(str(true_label[tm.output_name()][0][tm.channel_map[k]]))
+                        csv_row.append(str(output_data[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
                     csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
                     csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
                     csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
                     csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.2f}')
-                    csv_row.append(f'{np.sum(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
                     if tm.name == 'sax_all_diastole_segmented':
-                        background_counts = np.count_nonzero(true_label[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
+                        background_counts = np.count_nonzero(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
                         csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
 
             inference_writer.writerow(csv_row)
-            tensor_paths_inferred[tensor_path[0]] = True
+            tensor_paths_inferred[tensor_paths[0]] = True
             stats['count'] += 1
             if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
 def _sample_with_heat(preds, temperature=1.0):
