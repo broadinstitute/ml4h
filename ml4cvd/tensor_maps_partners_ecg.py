@@ -403,6 +403,10 @@ TMAPS['partners_race'] = TensorMap(
     'race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
     tensor_from_file=partners_channel_string('race', race_synonyms),
 )
+TMAPS['partners_race_known'] = TensorMap(
+    'race_known', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3},
+    tensor_from_file=partners_channel_string('race', race_synonyms),
+)
 TMAPS['partners_gender'] = TensorMap(
     'gender', interpretation=Interpretation.CATEGORICAL, channel_map={'female': 0, 'male': 1},
     tensor_from_file=partners_channel_string('gender'),
