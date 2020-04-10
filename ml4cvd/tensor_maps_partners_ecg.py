@@ -400,11 +400,11 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
 
 race_synonyms = {'asian': ['oriental'], 'hispanic': ['latino'], 'white': ['caucasian']}
 TMAPS['partners_race'] = TensorMap(
-    'race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+    'race', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'indian': 3, 'white': 4,  'unknown': 5},
     tensor_from_file=partners_channel_string('race', race_synonyms),
 )
 TMAPS['partners_race_known'] = TensorMap(
-    'race_known', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3},
+    'race_known', interpretation=Interpretation.CATEGORICAL, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'indian': 3, 'white': 4},
     tensor_from_file=partners_channel_string('race', race_synonyms),
 )
 TMAPS['partners_gender'] = TensorMap(
