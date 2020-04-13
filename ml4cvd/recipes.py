@@ -4,7 +4,6 @@
 import os
 import csv
 from typing import Dict, List
-from operator import itemgetter
 
 import h5py
 import copy
@@ -13,6 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict
 from functools import reduce
+from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -157,54 +157,66 @@ def _init_dict_of_tensors(tmaps: list) -> dict:
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    list_of_tensor_dicts: List[Dict] = []
+    list_of_dicts_of_dicts: List[Dict[Dict]] = []
     dependents = {}
+    num_hd5 = 0
     for gen in generators:
         data_len = len(gen.path_iters[0].paths)
         for i, path in enumerate(gen.path_iters[0].paths):
             if (i+1) % 500 == 0:
                 logging.info(f"{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done")
-            tensor_dict = _init_dict_of_tensors(tmaps)
             try:
+                num_hd5 += 1
                 with h5py.File(path, "r") as hd5:
+                    dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
+
                     # Iterate through each tmap
                     for tm in tmaps:
                         error_type = ""
                         try:
-                            tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                            tensors = tm.tensor_from_file(tm, hd5, dependents)
+                            tensors = tm.postprocess_tensor(tensors, augment=False, hd5=hd5)
 
-                            # Append tensor to dict
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
-                            else:
-                                # If tensor is a scalar, isolate the value in the array;
-                                # otherwise, retain the value as array
-                                if tm.shape[0] == 1:
-                                    tensor = tensor.item()
-                                tensor_dict[tm.name][tm.name] = tensor
+                            for i, tensor in enumerate(tensors):
+                                if tensor == None:
+                                    break
+
+                                # Append tensor to dict
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                                else:
+                                    # If tensor is a scalar, isolate the value in the array;
+                                    # otherwise, retain the value as array
+                                    if tm.shape[0] == 1:
+                                        if type(tensor) == np.ndarray:
+                                            tensor = tensor.item()
+                                    dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                            # Could not obtain tensor, so append nans
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    tensor_dict[tm.name][(tm.name, cm)] = np.nan
-                            else:
-                                # TODO figure out the np.full stuff
-                                tensor_dict[tm.name][tm.name] = np.full(tm.shape, np.nan)[0]
+                            for i in dict_of_tensor_dicts:
+                                # Could not obtain tensor, so append nans
+                                if tm.channel_map:
+                                    for cm in tm.channel_map:
+                                        dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
+                                else:
+                                    # TODO figure out the np.full stuff
+                                    dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(tm.shape, np.nan)[0]
 
                             # Save  error type to more readable string
                             error_type = type(e).__name__
 
                         # Save error type, fpath, and generator name (set)
-                        tensor_dict[tm.name][f"error_type_{tm.name}"] = error_type
-                        tensor_dict[tm.name]["fpath"] = path
-                        tensor_dict[tm.name]["generator"] = gen.name
+                        for i in dict_of_tensor_dicts:
+                            dict_of_tensor_dicts[i][tm.name][f"error_type_{tm.name}"] = error_type
+                            dict_of_tensor_dicts[i][tm.name]["fpath"] = path
+                            dict_of_tensor_dicts[i][tm.name]["generator"] = gen.name
+
+                    # Append list of dicts with tensor_dict
+                    list_of_dicts_of_dicts.append(dict_of_tensor_dicts)
             except OSError as e:
                 logging.info(f"OSError {e}")
 
-            # Append list of dicts with tensor_dict
-            list_of_tensor_dicts.append(tensor_dict)
+    list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd]
 
     # Now we have a list of dicts where each dict has {tmaps:values} and
     # each HD5 -> one dict in the list
@@ -252,7 +264,7 @@ def _tensors_to_df(args):
             else:
                 key = tm.name
                 df[key] = df[key].astype("string")
-    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} hd5 files into DataFrame")
+    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors across {num_hd5} hd5 files into DataFrame")
     return df
 
 

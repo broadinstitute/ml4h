@@ -465,6 +465,22 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
 
 
+def get_groups_from_hd5(hd5, path, num_tensors=0, which_tensors='NEWEST'):
+    # pass 0 to num_tensors to get all ecgs in hd5
+    dates = list(hd5[path])
+    if which_tensors == 'NEWEST' or which_tensors == None:
+        dates.sort()
+    elif which_tensors == 'OLDEST':
+        dates.sort(reverse=True)
+    elif which_tensors == 'RANDOM':
+        np.random.shuffle(dates)
+    else:
+        raise ValueError(f'Unknown option "{which_tensors}" passed for which tensors to use in multi tensor HD5')
+    dates = dates[-num_tensors:]
+    dates.sort(reverse=True)
+    return dates
+
+
 def _decompress_data(data_compressed, dtype):
     codec = numcodecs.zstd.Zstd()
     data_decompressed = codec.decode(data_compressed)
