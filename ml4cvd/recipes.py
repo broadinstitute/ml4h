@@ -4,6 +4,7 @@
 import os
 import csv
 from typing import Dict, List
+from operator import itemgetter
 
 import h5py
 import copy
@@ -12,7 +13,6 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict
 from functools import reduce
-from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
