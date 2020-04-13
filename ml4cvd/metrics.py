@@ -125,6 +125,20 @@ def y_true_squared_times_logcosh(y_true, y_pred):
     return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*logcosh(y_true, y_pred)
 
 
+def asymmetric_logcosh(y_true, y_pred):
+    return 10*K.maximum(y_true-y_pred, 0.0)*logcosh(y_true, y_pred) + K.maximum(y_pred-y_true, 0.0)*logcosh(y_true, y_pred)
+
+
+def asymmetric_mse(y_true, y_pred):
+    return 15*K.maximum(y_true-y_pred, 0.0)*mean_squared_error(y_true, y_pred) + K.maximum(y_pred-y_true, 0.0)*logcosh(y_true, y_pred)
+
+
+def asymmetric_outlier_mse(y_true, y_pred):
+    top_over = 10.0 * K.maximum(y_true - 2, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
+    top_under = 5.0 * K.maximum(y_true - 2, 0.0) * K.maximum(y_pred - y_true, 0.0) * mean_squared_error(y_true, y_pred)
+    return top_over + top_under + logcosh(y_true, y_pred)
+
+
 def two_batch_euclidean(tensors):
     return K.sqrt(K.sum(K.square(tensors[0] - tensors[1]), axis=-1, keepdims=True) + K.epsilon())
 
