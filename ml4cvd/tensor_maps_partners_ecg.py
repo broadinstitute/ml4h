@@ -26,14 +26,13 @@ def _make_hd5_path(tm, ecg_key, attr_key):
     return f'{tm.path_prefix}/{ecg_key}/{attr_key}'
 
 
-def tensor_from_file_wrapper(tm: TensorMap, hd5: h5py.File, extract_tensor: Callable[[Callable[[str], str]], np.ndarray]) -> np.ndarray:
+def tensor_from_file_wrapper(tm: TensorMap, hd5: h5py.File, extract_tensor: Callable[[Callable[[str], str]], np.ndarray]) -> List:
     num_tensors = tm.num_tensors if 'num_tensors' in tm.__dict__ else 0
     which_tensors = tm.which_tensors if 'which_tensors' in tm.__dict__ else 'NEWEST'
     ecg_keys = get_groups_from_hd5(hd5, tm.path_prefix, num_tensors, which_tensors)
 
     tensor_list = [None] * (num_tensors if num_tensors else len(ecg_keys))
     for idx, ecg_key in enumerate(ecg_keys):
-        tensor_list[idx] = 1
         try:
             tensor_list[idx] = extract_tensor(lambda attr_key: _make_hd5_path(tm, ecg_key, attr_key))
         except KeyError:
