@@ -45,6 +45,8 @@ def parse_args():
     parser.add_argument('--sample_weight', default=None,  help='TensorMap key for sample weight in training.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
+    parser.add_argument('--tensors_per_file', type=int, help='How many tensors to use per hd5. If 0, use all tensors available in hd5.')
+    parser.add_argument('--which_tensors', choices=['NEWEST', 'OLDEST', 'RANDOM'], help='Filter which tensors to use per hd5.')
 
     # Input and Output files and directories
     parser.add_argument(
@@ -283,3 +285,9 @@ def _process_args(args):
     if args.eager:
         import tensorflow as tf
         tf.config.experimental_run_functions_eagerly(True)
+
+    for tmap in args.tensor_maps_in + args.tensor_maps_out:
+        if args.tensors_per_file:
+            tmap.num_tensors = args.tensors_per_file
+        if args.which_tensors:
+            tmap.which_tensors = args.which_tensors
