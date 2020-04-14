@@ -287,7 +287,7 @@ def _get_max_voltage(voltage: Dict[str, np.ndarray]) -> float:
     return max_voltage
 
 
-def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> bool:
+def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
     # Return 1 if converted, 0 if ecg was bad or -1 if ecg was a duplicate
     # Set flag to check if we should convert to hd5
     convert = 1

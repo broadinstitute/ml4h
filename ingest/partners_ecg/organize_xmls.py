@@ -22,8 +22,8 @@ def _process_args(args):
         raise NameError(f"{args.source_xml_folder} does not exist")
     if not os.path.exists(args.destination_xml_folder):
         os.mkdir(args.destination_xml_folder)
-    if not os.path.exists(args.bad):
-        os.mkdir(args.bad)
+    if not os.path.exists(args.bad_xml_folder):
+        os.mkdir(args.bad_xml_folder)
 
     now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
@@ -47,7 +47,7 @@ def parse_args():
                         default="/data/partners_ecg/dst",
                         help="Path to dir to organize XMLs in yyyy-mm dirs")
 
-    parser.add_argument("--bad",
+    parser.add_argument("--bad_xml_folder",
                         default="/data/partners_ecg/xml_bad",
                         help="Path to directory in which to store malformed XMLs")
 
@@ -65,7 +65,7 @@ def run(args):
 
     logging.info(f"Source XML location: {args.source_xml_folder}")
     logging.info(f"Destination XML location: {args.destination_xml_folder}")
-    logging.info(f"Bad XML location: {args.bad}")
+    logging.info(f"Bad XML location: {args.bad_xml_folder}")
 
     num_bad_encodings = 0
     num_parsing_err = 0
@@ -180,7 +180,7 @@ def run(args):
 
             # If the XML is not valid, set the final path to bad xml path
             if not valid_xml:
-                args.dst_yyyymm = args.bad
+                args.dst_yyyymm = args.bad_xml_folder
                 logging.debug("Missing or invalid acquisition date, or other XML error.")
 
             # If new directory does not exist, create it
