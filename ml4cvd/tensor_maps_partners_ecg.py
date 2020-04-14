@@ -705,32 +705,34 @@ def loyalty_time_to_event(
         if error:
             raise error
 
-        file_split = os.path.basename(hd5.filename).split('-')
-        patient_key_from_ecg = int(file_split[0])
+        def extract_tensor(path):
+            file_split = os.path.basename(hd5.filename).split('-')
+            patient_key_from_ecg = int(file_split[0])
 
-        if patient_key_from_ecg not in disease_dicts['follow_up_start']:
-            raise KeyError(f'{tm.name} mrn not in incidence csv')
+            if patient_key_from_ecg not in disease_dicts['follow_up_start']:
+                raise KeyError(f'{tm.name} mrn not in incidence csv')
 
-        assess_date = _partners_str2date(_decompress_data(data_compressed=hd5['acquisitiondate'][()], dtype=hd5['acquisitiondate'].attrs['dtype']))
-        if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
-            raise ValueError(f'Assessed earlier than enrollment.')
+            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype']))
+            if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
+                raise ValueError(f'Assessed earlier than enrollment.')
 
-        if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
-            has_disease = 0
-            censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(
-                days=YEAR_DAYS * disease_dicts['follow_up_total'][patient_key_from_ecg],
-            )
-        else:
-            has_disease = 1
-            censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
+            if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
+                has_disease = 0
+                censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(
+                    days=YEAR_DAYS * disease_dicts['follow_up_total'][patient_key_from_ecg],
+                )
+            else:
+                has_disease = 1
+                censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
 
-        if incidence_only and censor_date <= assess_date:
-            raise ValueError(f'{tm.name} only considers incident diagnoses')
+            if incidence_only and censor_date <= assess_date:
+                raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        tensor[0] = has_disease
-        tensor[1] = (censor_date - assess_date).days
-        return tensor
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            tensor[0] = has_disease
+            tensor[1] = (censor_date - assess_date).days
+            return tensor
+        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
     return _cox_tensor_from_file
 
 
@@ -867,11 +869,11 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name = f'survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=days_window, tensor_from_file=tff)
+                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
             name = f'incident_survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=days_window, tensor_from_file=tff)
+                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
 
     return name2tensormap
 
@@ -933,31 +935,32 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         if error:
             raise error
 
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        file_split = os.path.basename(hd5.filename).split("-")
-        mrn = file_split[0]
-        mrn_int = int(mrn)
+        def extract_tensor(path):
+            categorical_data = np.zeros(tm.shape, dtype=np.float32)
+            file_split = os.path.basename(hd5.filename).split("-")
+            mrn = file_split[0]
+            mrn_int = int(mrn)
 
-        if mrn_int not in patient_table:
-            raise KeyError(f"MRN not in STS outcomes CSV")
+            if mrn_int not in patient_table:
+                raise KeyError(f"MRN not in STS outcomes CSV")
 
-        ecg_date = _partners_str2date(
-            _decompress_data(
-                data_compressed=hd5["acquisitiondate"][()],
-                dtype=hd5["acquisitiondate"].attrs["dtype"],
+            ecg_date = _partners_str2date(
+                _decompress_data(
+                    data_compressed=hd5[path("acquisitiondate")][()],
+                    dtype=hd5[path("acquisitiondate")].attrs["dtype"],
+                )
             )
-        )
 
-        # Convert ecg_date from datetime.date to datetime.datetime
-        ecg_date = datetime.datetime.combine(ecg_date, datetime.time.min)
+            # Convert ecg_date from datetime.date to datetime.datetime
+            ecg_date = datetime.datetime.combine(ecg_date, datetime.time.min)
 
-        # If the date of surgery - date of ECG is > time window, skip it
-        if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
-            raise ValueError(f"ECG out of time window")
+            # If the date of surgery - date of ECG is > time window, skip it
+            if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
+                raise ValueError(f"ECG out of time window")
 
-        categorical_data[patient_table[mrn_int]] = 1.0
-        return categorical_data
-
+            categorical_data[patient_table[mrn_int]] = 1.0
+            return categorical_data
+        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
     return tensor_from_file
 
 
@@ -987,6 +990,7 @@ def build_cardiac_surgery_tensor_maps(
             name2tensormap[name] = TensorMap(
                 name,
                 Interpretation.CATEGORICAL,
+                path_prefix=PARTNERS_PREFIX,
                 channel_map=_outcome_channels(outcome),
                 tensor_from_file=tensor_from_file_fxn,
             )
