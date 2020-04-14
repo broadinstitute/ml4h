@@ -356,6 +356,17 @@ TMAPS[task] = TensorMap(
     validator=make_range_validator(10, 200),
 )
 
+task = "partners_ecg_rate_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
+    shape=(1,),
+    validator=make_range_validator(10, 200),
+)
+
 TMAPS['partners_ventricular_rate'] = TensorMap(
     'VentricularRate', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"), shape=(1,),
     validator=make_range_validator(10, 200), normalization={'mean': 59.3, 'std': 10.6},
@@ -373,6 +384,18 @@ TMAPS[task] = TensorMap(
     validator=make_range_validator(20, 400),
 )
 
+task = "partners_ecg_qrs_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
+    shape=(1,),
+    validator=make_range_validator(20, 400),
+)
+
 task = "partners_ecg_pr"
 TMAPS[task] = TensorMap(
     task,
@@ -381,6 +404,18 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
+    shape=(1,),
+    validator=make_range_validator(50, 500),
+)
+
+task = "partners_ecg_pr_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
     shape=(1,),
     validator=make_range_validator(50, 500),
 )
@@ -396,6 +431,17 @@ TMAPS[task] = TensorMap(
     validator=make_range_validator(100, 800),
 )
 
+task = "partners_ecg_qt_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtinterval_md"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
 task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(
     task,
@@ -403,6 +449,17 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_pc"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
+task = "partners_ecg_qtc_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_md"),
     shape=(1,),
     validator=make_range_validator(100, 800),
 )
@@ -419,6 +476,18 @@ TMAPS[task] = TensorMap(
     validator=make_range_validator(-180, 180)
 )
 
+task = "partners_ecg_paxis_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_md"),
+    shape=(1,),
+    validator=make_range_validator(-180, 180)
+)
+
 task = "partners_ecg_raxis"
 TMAPS[task] = TensorMap(
     task,
@@ -431,6 +500,18 @@ TMAPS[task] = TensorMap(
     validator=make_range_validator(-180, 180)
 )
 
+task = "partners_ecg_raxis_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_md"),
+    shape=(1,),
+    validator=make_range_validator(-180, 180)
+)
+
 task = "partners_ecg_taxis"
 TMAPS[task] = TensorMap(
     task,
@@ -439,6 +520,18 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="taxis_pc"),
+    shape=(1,),
+    validator=make_range_validator(-180, 180)
+)
+
+task = "partners_ecg_taxis_md"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_md"),
     shape=(1,),
     validator=make_range_validator(-180, 180)
 )
