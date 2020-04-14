@@ -283,9 +283,3 @@ def _process_args(args):
     if args.eager:
         import tensorflow as tf
         tf.config.experimental_run_functions_eagerly(True)
-
-
-TMAPS['coronary_artery_disease'] = TensorMap('coronary_artery_disease', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
-                                            parents=[TMAPS['atrial_fibrillation_or_flutter']],
-                                             path_prefix='categorical', channel_map={'no_coronary_artery_disease': 0, 'coronary_artery_disease': 1},
-                                             loss=weighted_crossentropy([1.0, 10], 'coronary_artery_disease'))
