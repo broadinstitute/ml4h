@@ -31,7 +31,7 @@ def tensor_from_file_wrapper(tm: TensorMap, hd5: h5py.File, extract_tensor: Call
     which_tensors = tm.which_tensors if 'which_tensors' in tm.__dict__ else 'NEWEST'
     ecg_keys = get_groups_from_hd5(hd5, tm.path_prefix, num_tensors, which_tensors)
 
-    tensor_list = np.full((num_tensors if num_tensors else len(ecg_keys),), None, dtype=object)
+    tensor_list = [None] * (num_tensors if num_tensors else len(ecg_keys))
     for idx, ecg_key in enumerate(ecg_keys):
         tensor_list[idx] = 1
         try:
@@ -44,17 +44,9 @@ def tensor_from_file_wrapper(tm: TensorMap, hd5: h5py.File, extract_tensor: Call
 def make_partners_range_validator(minimum: float, maximum: float, nan_ok: bool = True):
     def _range_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         if nan_ok:
-            for t in tensor:
-                if type(t) == np.ndarray:
-                    t = t[~np.isnan(t)]
-                    if not ((t > minimum).all() and (t < maximum).all()):
-                        raise ValueError(f'TensorMap {tm.name} failed range check.')
-                else:
-                    if not (t > minimum and t < maximum):
-                        raise ValueError(f'TensorMap {tm.name} failed range check.')
-        else:
-            if not ((tensor > minimum).all() and (tensor < maximum).all()):
-                raise ValueError(f'TensorMap {tm.name} failed range check.')
+            tensor = tensor[~np.isnan(tensor)]
+        if not ((tensor > minimum).all() and (tensor < maximum).all()):
+            raise ValueError(f'TensorMap {tm.name} failed range check.')
     return _range_validator
 make_range_validator = make_partners_range_validator
 
