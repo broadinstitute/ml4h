@@ -13,13 +13,29 @@ import numpy as np
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS
-from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, get_groups_from_hd5, _decompress_data
+from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, _decompress_data
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 PARTNERS_DATE_FORMAT = '%m-%d-%Y'
 PARTNERS_TIME_FORMAT = '%H:%M:%S'
+
+
+def get_groups_from_hd5(hd5, path, num_tensors=0, which_tensors='NEWEST'):
+    # pass 0 to num_tensors to get all ecgs in hd5
+    dates = list(hd5[path])
+    if which_tensors == 'NEWEST' or which_tensors == None:
+        dates.sort()
+    elif which_tensors == 'OLDEST':
+        dates.sort(reverse=True)
+    elif which_tensors == 'RANDOM':
+        np.random.shuffle(dates)
+    else:
+        raise ValueError(f'Unknown option "{which_tensors}" passed for which tensors to use in multi tensor HD5')
+    dates = dates[-num_tensors:]
+    dates.sort(reverse=True)
+    return dates
 
 
 def _make_hd5_path(tm, ecg_key, attr_key):
