@@ -114,12 +114,14 @@ TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(None, 500
 
 def make_voltage_attr(volt_attr: str = ""):
     def get_voltage_attr_from_file(tm, hd5, dependents={}):
-        def extract_tensor(path):
-            tensor = np.zeros(tm.shape, dtype=np.float32)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
             for cm in tm.channel_map:
-                tensor[tm.channel_map[cm]] = hd5[path(cm)].attrs[volt_attr]
-            return tensor
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+                path = _make_hd5_path(tm, ecg_date, cm)
+                tensor[i, tm.channel_map[cm]] = hd5[path].attrs[volt_attr]
+        return tensor
     return get_voltage_attr_from_file
 
 
@@ -141,32 +143,43 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
     if type(keys) == str:
         keys = [keys]
     def get_partners_ecg_label(tm, hd5, dependents={}):
-        def extract_tensor(path):
-            label_array = np.zeros(tm.shape, dtype=np.float32)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        label_array = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
+            found = False
             for key in keys:
-                if key not in hd5:
+                path = _make_hd5_path(tm, ecg_date, key)
+                if path not in hd5:
                     continue
-                read = _decompress_data(data_compressed=hd5[path(key)][()], dtype=hd5[path(key)].attrs['dtype'])
+                read = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
                     if channel in dict_of_list:
                         for string in dict_of_list[channel]:
                             if string in read:
-                                label_array[idx] = 1
-                                return label_array
-            label_array[tm.channel_map[not_found_key]] = 1
-            return label_array
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+                                label_array[i, idx] = 1
+                                found = True
+                            if found: break
+                    if found: break
+                if found: break
+            if not found:
+                label_array[i, tm.channel_map[not_found_key]] = 1
+        return label_array
     return get_partners_ecg_label
 
 
 def partners_ecg_datetime(tm, hd5, dependents={}):
-    def extract_tensor(path):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    shape = _dynamic_shape(tm, len(ecg_dates))
+    tensor = np.full(shape, '', dtype=f'<U{len(PARTNERS_DATETIME_FORMAT)}')
+    for i, ecg_date in enumerate(ecg_dates):
+        path = lambda key: _make_hd5_path(tm, ecg_date, key)
         _date = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
         _time = _decompress_data(data_compressed=hd5[path('acquisitiontime')][()], dtype=hd5[path('acquisitiontime')].attrs['dtype'])
         dt = datetime.datetime.strptime(f'{_date} {_time}', PARTNERS_HD5_DATETIME_FORMAT)
         dt = dt.strftime(PARTNERS_DATETIME_FORMAT)
-        return np.array([dt])
-    return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+        tensor[i] = dt
+    return tensor
 
 
 task = "partners_ecg_datetime"
@@ -182,15 +195,22 @@ TMAPS[task] = TensorMap(
 
 def make_partners_ecg_tensor(key: str):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
-        def extract_tensor(path):
-            tensor = _decompress_data(data_compressed=hd5[path(key)][()], dtype=hd5[path(key)].attrs['dtype'])
-            if tm.interpretation == Interpretation.LANGUAGE:
-                return str(tensor)
-            elif tm.interpretation == Interpretation.CONTINUOUS:
-                return np.array([tensor], dtype=np.float32)
-            elif tm.interpretation == Interpretation.CATEGORICAL:
-                return np.array([float(tensor)])
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        if tm.interpretation == Interpretation.LANGUAGE:
+            tensor = np.full(shape, '', dtype=object) # defer object type until tensors are gathered
+        elif tm.interpretation == Interpretation.CONTINUOUS:
+            tensor = np.zeros(shape, dtype=np.float32)
+        elif tm.interpretation == Interpretation.CATEGORICAL:
+            tensor = np.zeros(shape, dtype=float)
+
+        for i, ecg_date in enumerate(ecg_dates):
+            path = _make_hd5_path(tm, ecg_date, key)
+            tensor[i] = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+
+        if tm.interpretation == Interpretation.LANGUAGE: # TODO is this optimization worth it?
+            tensor = tensor.astype(f'<U{len(max(tensor, key=len))}')
+        return tensor
     return get_partners_ecg_tensor
 
 
@@ -581,37 +601,50 @@ def _partners_str2date(d):
 
 
 def partners_ecg_age(tm, hd5, dependents={}):
-    def extract_tensor(path):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    shape = _dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=float)
+    for i, ecg_date in enumerate(ecg_dates):
+        path = lambda key: _make_hd5_path(tm, ecg_date, key)
         birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype'])
         acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
         delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
         years = delta.days / YEAR_DAYS
-        return np.array([years])
-    return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+        tensor[i] = years
+    return tensor
 
 
 TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(None, 1), num_tensors=0)
 
 
 def partners_ecg_acquisition_year(tm, hd5, dependents={}):
-    def extract_tensor(path):
-        acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
-        return np.array([_partners_str2date(acquisition).year])
-    return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    shape = _dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=int)
+    for i, ecg_date in enumerate(ecg_dates):
+        path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
+        acquisition = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+        tensor[i] = _partners_str2date(acquisition).year
+    return tensor
 
 
 TMAPS['partners_ecg_acquisition_year'] = TensorMap('partners_ecg_acquisition_year', path_prefix=PARTNERS_PREFIX, loss='logcosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(None, 1), num_tensors=0)
 
 
 def partners_bmi(tm, hd5, dependents={}):
-    def extract_tensor(path):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    shape = _dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=float)
+    for i, ecg_date in enumerate(ecg_dates):
+        path = lambda key: _make_hd5_path(tm, ecg_date, key)
         weight_lbs = _decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype=hd5[path('weightlbs')].attrs['dtype'])
         weight_kg = 0.453592 * float(weight_lbs)
         height_in = _decompress_data(data_compressed=hd5[path('heightin')][()], dtype=hd5[path('heightin')].attrs['dtype'])
         height_m = 0.0254 * float(height_in)
-        logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {weight_kg / (height_m*height_m)}')
-        return np.array([weight_kg / (height_m*height_m)])
-    return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+        bmi = weight_kg / (height_m*height_m)
+        logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
+        tensor[i] = bmi
+    return tensor
 
 
 TMAPS['partners_ecg_bmi'] = TensorMap('partners_ecg_bmi', path_prefix=PARTNERS_PREFIX, channel_map={'bmi': 0}, tensor_from_file=partners_bmi, num_tensors=0)
@@ -619,23 +652,31 @@ TMAPS['partners_ecg_bmi'] = TensorMap('partners_ecg_bmi', path_prefix=PARTNERS_P
 
 def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
     def tensor_from_string(tm, hd5, dependents={}):
-        def extract_tensor(path):
-            hd5_string = _decompress_data(data_compressed=hd5[path(hd5_key)][()], dtype=hd5[path(hd5_key)].attrs['dtype'])
-            tensor = np.zeros(tm.shape, dtype=np.float32)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
+            path = _make_hd5_path(tm, ecg_date,hd5_key)
+            hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            found = False
             for key in tm.channel_map:
                 if hd5_string.lower() == key.lower():
-                    tensor[tm.channel_map[key]] = 1.0
-                    return tensor
+                    tensor[i, tm.channel_map[key]] = 1.0
+                    found = True
+                    break
                 if key in race_synonyms:
                     for synonym in race_synonyms[key]:
                         if hd5_string.lower() == synonym.lower():
-                            tensor[tm.channel_map[key]] = 1.0
-                            return tensor
-            if unspecified_key is None:
-                raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
-            tensor[tm.channel_map[unspecified_key]] = 1.0
-            return tensor
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+                            tensor[i, tm.channel_map[key]] = 1.0
+                            found = True
+                        if found: break
+                    if found: break
+            if not found:
+                if unspecified_key is None:
+                    # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                    raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+                tensor[tm.channel_map[unspecified_key]] = 1.0
+        return tensor
     return tensor_from_string
 
 
@@ -653,7 +694,11 @@ TMAPS['partners_ecg_gender'] = TensorMap(
 
 def _partners_adult(hd5_key, minimum_age=18):
     def tensor_from_string(tm, hd5, dependents={}):
-        def extract_tensor(path):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
+            path = lambda key: _make_hd5_path(tm, ecg_date, key)
             birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype'])
             acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
             delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
@@ -661,13 +706,16 @@ def _partners_adult(hd5_key, minimum_age=18):
             if years < minimum_age:
                 raise ValueError(f'ECG taken on patient below age cutoff.')
             hd5_string = _decompress_data(data_compressed=hd5[path(hd5_key)][()], dtype=hd5[path(hd5_key)].attrs['dtype'])
-            tensor = np.zeros(tm.shape, dtype=np.float32)
+            found = False
             for key in tm.channel_map:
                 if hd5_string.lower() == key.lower():
-                    tensor[tm.channel_map[key]] = 1.0
-                    return tensor
-            raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+                    tensor[i, tm.channel_map[key]] = 1.0
+                    found = True
+                    break
+            if not found:
+                # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+        return tensor
     return tensor_from_string
 
 
@@ -678,13 +726,15 @@ TMAPS['partners_adult_gender'] = TensorMap(
 
 
 def voltage_zeros(tm, hd5, dependents={}):
-    def extract_tensor(path):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    shape = _dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=np.float32)
+    for i, ecg_date in enumerate(ecg_dates):
         for cm in tm.channel_map:
-            voltage = _decompress_data(data_compressed=hd5[path(cm)][()], dtype=hd5[path(cm)].attrs['dtype'])
-            tensor[tm.channel_map[cm]] = np.count_nonzero(voltage == 0)
-        return tensor
-    return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+            path = _make_hd5_path(tm, ecg_date, cm)
+            voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            tensor[i, tm.channel_map[cm]] = np.count_nonzero(voltage == 0)
+    return tensor
 
 
 TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'I': 0}, num_tensors=0)
@@ -751,8 +801,11 @@ def build_incidence_tensor_from_file(
         if error:
             raise error
 
-        def extract_tensor(path):
-            categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        categorical_data = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
+            path = lambda key: _make_hd5_path(tm, ecg_date, key)
             file_split = os.path.basename(hd5.filename).split('-')
             mrn = file_split[0]
             mrn_int = int(mrn)
@@ -761,7 +814,7 @@ def build_incidence_tensor_from_file(
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
             if check_birthday:
-                birth_date = _partners_str2date(_decompress_data(data_compressed=hd5['dateofbirth'][()], dtype=hd5['dateofbirth'].attrs['dtype']))
+                birth_date = _partners_str2date(_decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype']))
                 if birth_date != birth_table[mrn_int]:
                     raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
 
@@ -780,9 +833,8 @@ def build_incidence_tensor_from_file(
                 else:
                     index = 1 if disease_date < assess_date else 2
                 logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
-            categorical_data[index] = 1.0
-            return categorical_data
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+            categorical_data[i, index] = 1.0
+        return categorical_data
     return tensor_from_file
 
 
@@ -841,14 +893,18 @@ def loyalty_time_to_event(
         if error:
             raise error
 
-        def extract_tensor(path):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
             file_split = os.path.basename(hd5.filename).split('-')
             patient_key_from_ecg = int(file_split[0])
 
             if patient_key_from_ecg not in disease_dicts['follow_up_start']:
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
-            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype']))
+            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
+            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
             if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
                 raise ValueError(f'Assessed earlier than enrollment.')
 
@@ -864,11 +920,9 @@ def loyalty_time_to_event(
             if incidence_only and censor_date <= assess_date:
                 raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-            tensor = np.zeros(tm.shape, dtype=np.float32)
-            tensor[0] = has_disease
-            tensor[1] = (censor_date - assess_date).days
-            return tensor
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+            tensor[i, 0] = has_disease
+            tensor[i, 1] = (censor_date - assess_date).days
+        return tensor
     return _cox_tensor_from_file
 
 
@@ -922,14 +976,18 @@ def _survival_from_file(
         if error:
             raise error
 
-        def extract_tensor(path):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        survival_then_censor = np.zeros(shape, dtype=np.float32)
+        for ed, ecg_date in enumerate(ecg_dates):
             file_split = os.path.basename(hd5.filename).split('-')
             patient_key_from_ecg = int(file_split[0])
 
             if patient_key_from_ecg not in disease_dicts['follow_up_start']:
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
-            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype']))
+            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
+            assess_date = _partners_str2date(_decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
             if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
                 raise ValueError(f'Assessed earlier than enrollment.')
 
@@ -942,22 +1000,20 @@ def _survival_from_file(
 
             intervals = int(tm.shape[0] / 2)
             days_per_interval = day_window / intervals
-            survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
 
             for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
                 cur_date = assess_date + datetime.timedelta(days=day_delta)
-                survival_then_censor[i] = float(cur_date < censor_date)
-                survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                survival_then_censor[ed, i] = float(cur_date < censor_date)
+                survival_then_censor[ed, intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
                 if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                    survival_then_censor[intervals] = has_disease
+                    survival_then_censor[ed, intervals] = has_disease
                     if has_disease and incidence_only:
                         raise ValueError(f'{tm.name} is skipping prevalent cases.')
             logging.debug(
                 f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ",
+                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[ed][:4]} mid tense: {survival_then_censor[ed][intervals:intervals+4]} ",
             )
-            return survival_then_censor
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+        return survival_then_censor
     return tensor_from_file
 
 
@@ -1071,8 +1127,10 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         if error:
             raise error
 
-        def extract_tensor(path):
-            categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        shape = _dynamic_shape(tm, len(ecg_dates))
+        categorical_data = np.zeros(shape, dtype=np.float32)
+        for i, ecg_date in enumerate(ecg_dates):
             file_split = os.path.basename(hd5.filename).split("-")
             mrn = file_split[0]
             mrn_int = int(mrn)
@@ -1080,10 +1138,11 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             if mrn_int not in patient_table:
                 raise KeyError(f"MRN not in STS outcomes CSV")
 
+            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
             ecg_date = _partners_str2date(
                 _decompress_data(
-                    data_compressed=hd5[path("acquisitiondate")][()],
-                    dtype=hd5[path("acquisitiondate")].attrs["dtype"],
+                    data_compressed=hd5[path][()],
+                    dtype=hd5[path].attrs["dtype"],
                 )
             )
 
@@ -1094,9 +1153,8 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
                 raise ValueError(f"ECG out of time window")
 
-            categorical_data[patient_table[mrn_int]] = 1.0
-            return categorical_data
-        return tensor_from_file_wrapper(tm, hd5, extract_tensor)
+            categorical_data[i, patient_table[mrn_int]] = 1.0
+        return categorical_data
     return tensor_from_file
 
 
