@@ -392,7 +392,7 @@ def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map
                 missing = False
                 continuous_data[input_channel_map[k]] = hd5[tm.path_prefix][k][0]
     if missing and tm.sentinel is None:
-        raise ValueError(f'No value found for {tm.name}.')
+        raise ValueError(f'No value found for {tm.name} at file: {hd5.filename}.\n Channel map is {input_channel_map} tm.path_prefix {tm.path_prefix} tm.hd5_key_guess() {tm.hd5_key_guess()}')
     elif missing:
         continuous_data[:] = tm.sentinel
     return continuous_data
