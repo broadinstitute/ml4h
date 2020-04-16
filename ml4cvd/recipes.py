@@ -170,6 +170,7 @@ def _tensors_to_df(args):
                     dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
                     # Iterate through each tmap
                     for tm in tmaps:
+                        shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
                         try:
                             tensors = tm.tensor_from_file(tm, hd5, dependents)
                             if tm.shape[0] is not None:
@@ -189,7 +190,7 @@ def _tensors_to_df(args):
                                     else:
                                         # If tensor is a scalar, isolate the value in the array;
                                         # otherwise, retain the value as array
-                                        if tm.shape[0] == 1:
+                                        if shape[0] == 1:
                                             if type(tensor) == np.ndarray:
                                                 tensor = tensor.item()
                                         dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
@@ -198,7 +199,7 @@ def _tensors_to_df(args):
                                         for cm in tm.channel_map:
                                             dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
                                     else:
-                                        dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(tm.shape, np.nan)[0]
+                                        dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(shape, np.nan)[0]
                                     error_type = type(e).__name__
 
                                 # Save error type, fpath, and generator name (set)
@@ -212,7 +213,7 @@ def _tensors_to_df(args):
                                 for cm in tm.channel_map:
                                     dict_of_tensor_dicts[0][tm.name][(tm.name, cm)] = np.nan
                             else:
-                                dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(tm.shape, np.nan)[0]
+                                dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(shape, np.nan)[0]
                             dict_of_tensor_dicts[0][tm.name][f'error_type_{tm.name}'] = type(e).__name__
                             dict_of_tensor_dicts[0][tm.name]['fpath'] = path
                             dict_of_tensor_dicts[0][tm.name]['generator'] = gen.name
@@ -279,7 +280,7 @@ def explore(args):
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
 
-    if any([len(tm.shape) != 1 for tm in tmaps]):
+    if any([len(tm.shape) != 1 for tm in tmaps]) and any([(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps]):
         raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
     # Iterate through tensors, get tmaps, and save to dataframe
