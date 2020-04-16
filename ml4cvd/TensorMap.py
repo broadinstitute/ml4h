@@ -20,7 +20,7 @@ from tensorflow.keras import Model
 from tensorflow.keras.utils import to_categorical
 
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
-from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT
+from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT, SelectionOption
 from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, cox_hazard_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
@@ -95,7 +95,9 @@ class TensorMap(object):
         path_prefix: Optional[str] = None,
         loss_weight: Optional[float] = 1.0,
         channel_map: Optional[Dict[str, int]] = None,
+        num_tensors: Optional[int] = 1,
         storage_type: Optional[StorageType] = None,
+        which_tensors: Optional[SelectionOption] = SelectionOption.NEWEST,
         dependent_map: Optional[str] = None,
         augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
         normalization: Optional[Normalizer] = None,
@@ -121,7 +123,9 @@ class TensorMap(object):
         :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
+        :param num_tensors: Number of tensors to use per hd5. 0 indicates use all tensors.
         :param storage_type: StorageType of tensor map
+        :param which_tensors: SelectionOption to filter which tensors to use from hd5
         :param dependent_map: TensorMap that depends on or is determined by this one
         :param augmentations: Tensor shape preserving transformations not applied at validation or test time
         :param normalization: Dictionary specifying normalization values
@@ -146,7 +150,9 @@ class TensorMap(object):
         self.days_window = days_window
         self.loss_weight = loss_weight
         self.channel_map = channel_map
+        self.num_tensors = num_tensors
         self.storage_type = storage_type
+        self.which_tensors = which_tensors
         self.augmentations = augmentations
         self.normalization = normalization if isinstance(normalization, Normalizer) else _convert_old_normalization(normalization)
         self.dependent_map = dependent_map
@@ -179,10 +185,20 @@ class TensorMap(object):
             self.activation = 'sigmoid'
 
         # Infer shape from channel map or interpretation
+        inferred = True
         if self.shape is None and self.is_time_to_event():
             self.shape = (2,)
         elif self.shape is None:
             self.shape = (len(channel_map),)
+        else:
+            inferred = False
+
+        # If shape was inferred, adjust shape for num_tensors
+        if inferred:
+            if self.num_tensors == 0:
+                self.shape = (None,) + self.shape
+            elif self.num_tensors > 1:
+                self.shape = (self.num_tensors,) + self.shape
 
         if self.discretization_bounds is not None:
             self.input_shape = self.shape

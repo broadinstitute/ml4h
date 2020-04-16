@@ -15,6 +15,12 @@ class StorageType(Enum):
         return str.lower(super().__str__().split('.')[1])
 
 
+class SelectionOption(Enum):
+    NEWEST = 'NEWEST'
+    OLDEST = 'OLDEST'
+    RANDOM = 'RANDOM'
+
+
 DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 EPS = 1e-7
