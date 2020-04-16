@@ -172,9 +172,9 @@ def _tensors_to_df(args):
                     for tm in tmaps:
                         try:
                             tensors = tm.tensor_from_file(tm, hd5, dependents)
-                            if type(tensors) != list:
+                            if tm.shape[0] is not None:
                                 # If not a multi-tensor tensor, wrap in array to loop through
-                                tensors = [tensors]
+                                tensors = np.array([tensors])
                             for i, tensor in enumerate(tensors):
                                 if tensor == None:
                                     break
