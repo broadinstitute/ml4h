@@ -532,7 +532,7 @@ TMAPS['adjusted_myocardium_mass_asym_outlier'] = TensorMap(
 )
 
 
-def _ecg_poor_data_quality_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+def _ecg_poor_data_quality_validator(tm: TensorMap, tensor, hd5):
     ecg_interpretation = str(tm.hd5_first_dataset_in_group(hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
     if 'Poor data quality' in ecg_interpretation:
         raise ValueError(f'TensorMap {tm.name} skips poor data quality.')
