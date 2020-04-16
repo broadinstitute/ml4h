@@ -560,7 +560,7 @@ def test_train_valid_tensor_generators(
 
 def _log_first_error(stats: Counter, tensor_path: str):
     for k in stats:
-        if 'Error' in k and stats[k] == 1:
+        if 'Error' in k:  # HACK REMOVE THIS BEFORE MERGE and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
             logging.debug(f"At tensor path: {tensor_path}")
             logging.debug(f"Got first error: {k}")

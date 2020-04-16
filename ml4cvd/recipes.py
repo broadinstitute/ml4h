@@ -489,6 +489,7 @@ def infer_multimodal_multitask(args):
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
         cache_size=0, keep_paths=True, mixup=args.mixup_alpha,
     )
+    logging.info(f"Found {len(tensor_paths)} tensor paths.")
     with open(inference_tsv, mode='w') as inference_file:
         # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)

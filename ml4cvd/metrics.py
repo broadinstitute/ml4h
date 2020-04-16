@@ -134,9 +134,9 @@ def asymmetric_mse(y_true, y_pred):
 
 
 def asymmetric_outlier_mse(y_true, y_pred):
-    top_over = 30.0 * K.maximum(y_true - 2.25, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
-    top_over += 15.0 * K.maximum(y_true - 2.1, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
-    top_under = 10.0 * K.maximum(y_true - 2.1, 0.0) * K.maximum(y_pred - y_true, 0.0) * mean_squared_error(y_true, y_pred)
+    top_over = 40.0 * K.maximum(y_true - 2.25, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
+    top_over += 20.0 * K.maximum(y_true - 2.1, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
+    top_under = 5.0 * K.maximum(y_true - 2.1, 0.0) * K.maximum(y_pred - y_true, 0.0) * mean_squared_error(y_true, y_pred)
     return top_over + top_under + logcosh(y_true, y_pred)
 
 
