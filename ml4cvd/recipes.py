@@ -509,6 +509,7 @@ def infer_multimodal_multitask(args):
             batch = next(generate_test)
             input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
             if tensor_paths[0] in tensor_paths_inferred:
+                next(generate_test)  # Call next on the generator to trigger the stats for the epoch
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
