@@ -484,6 +484,7 @@ TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME
 TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 TMAPS['cox_death_incident'] = TensorMap('death', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
+
 def _warp_ecg(ecg):
     i = np.arange(ecg.shape[0])
     warped = i + (

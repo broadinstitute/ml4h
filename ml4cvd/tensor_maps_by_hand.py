@@ -532,6 +532,18 @@ TMAPS['adjusted_myocardium_mass_asym_outlier'] = TensorMap(
 )
 
 
+def _ecg_poor_data_quality_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+    ecg_interpretation = str(tm.hd5_first_dataset_in_group(hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
+    if 'Poor data quality' in ecg_interpretation:
+        raise ValueError(f'TensorMap {tm.name} skips poor data quality.')
+
+
+TMAPS['adjusted_myocardium_mass_asym_outlier_no_poor'] = TensorMap(
+    'adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=_ecg_poor_data_quality_validator,
+    loss=asymmetric_outlier_mse, channel_map={'adjusted_myocardium_mass': 0}, path_prefix='continuous',
+    normalization={'mean': 89.70, 'std': 24.80},
+)
+
 TMAPS['proton_fat'] = TensorMap(
     '22402_Proton-density-fat-fraction-PDFF_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
     activation='linear', loss='logcosh',  annotation_units=1, path_prefix='continuous',
