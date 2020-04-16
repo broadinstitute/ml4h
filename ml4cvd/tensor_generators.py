@@ -563,7 +563,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
         if 'Error' in k:  # HACK REMOVE THIS BEFORE MERGE and stats[k] == 1:
             stats[k] += 1  # Increment so we only see these messages once
             logging.debug(f"At tensor path: {tensor_path}")
-            logging.debug(f"Got first error: {k}")
+            logging.debug(f"Got first error: {k} COUNT REMOVE THIS TOO: {stats[k]}")
 
 
 def _identity_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
