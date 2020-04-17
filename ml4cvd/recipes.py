@@ -14,7 +14,6 @@ import pandas as pd
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-from multiprocessing import Manager, Pool
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
