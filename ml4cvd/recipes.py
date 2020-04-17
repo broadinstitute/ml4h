@@ -14,6 +14,7 @@ import pandas as pd
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
+from multiprocess import Manager, Pool
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
@@ -153,77 +154,81 @@ def _init_dict_of_tensors(tmaps: list) -> dict:
     return dict_of_tensors
 
 
+def _hd5_to_dict(tmaps, path, gen_name, cur, tot):
+    if (cur+1) % 500 == 0:
+        logging.info(f"{gen_name} - Parsing {cur}/{tot} ({cur/tot*100:.1f}%) done")
+    try:
+        with h5py.File(path, "r") as hd5:
+            dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
+            # Iterate through each tmap
+            for tm in tmaps:
+                shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
+                try:
+                    tensors = tm.tensor_from_file(tm, hd5)
+                    if tm.shape[0] is not None:
+                        # If not a multi-tensor tensor, wrap in array to loop through
+                        tensors = np.array([tensors])
+                    for i, tensor in enumerate(tensors):
+                        if tensor == None:
+                            break
+
+                        error_type = ''
+                        try:
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                            # Append tensor to dict
+                            if tm.channel_map:
+                                for cm in tm.channel_map:
+                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                            else:
+                                # If tensor is a scalar, isolate the value in the array;
+                                # otherwise, retain the value as array
+                                if shape[0] == 1:
+                                    if type(tensor) == np.ndarray:
+                                        tensor = tensor.item()
+                                dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
+                        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                            if tm.channel_map:
+                                for cm in tm.channel_map:
+                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
+                            else:
+                                dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(shape, np.nan)[0]
+                            error_type = type(e).__name__
+
+                        # Save error type, fpath, and generator name (set)
+                        dict_of_tensor_dicts[i][tm.name][f'error_type_{tm.name}'] = error_type
+                        dict_of_tensor_dicts[i][tm.name]['fpath'] = path
+                        dict_of_tensor_dicts[i][tm.name]['generator'] = gen_name
+
+                except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                    # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
+                    if tm.channel_map:
+                        for cm in tm.channel_map:
+                            dict_of_tensor_dicts[0][tm.name][(tm.name, cm)] = np.nan
+                    else:
+                        dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(shape, np.nan)[0]
+                    dict_of_tensor_dicts[0][tm.name][f'error_type_{tm.name}'] = type(e).__name__
+                    dict_of_tensor_dicts[0][tm.name]['fpath'] = path
+                    dict_of_tensor_dicts[0][tm.name]['generator'] = gen_name
+
+            # Append list of dicts with tensor_dict
+            return dict_of_tensor_dicts
+    except OSError as e:
+        logging.info(f"OSError {e}")
+        return None
+
+
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    list_of_dicts_of_dicts: List[Dict[Dict]] = []
     dependents = {}
     num_hd5 = 0
-    for gen in generators:
-        data_len = len(gen.path_iters[0].paths)
-        for i, path in enumerate(gen.path_iters[0].paths):
-            if (i+1) % 500 == 0:
-                logging.info(f"{gen.name} - Parsing {i}/{data_len} ({i/data_len*100:.1f}%) done")
-            try:
-                num_hd5 += 1
-                with h5py.File(path, "r") as hd5:
-                    dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
-                    # Iterate through each tmap
-                    for tm in tmaps:
-                        shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
-                        try:
-                            tensors = tm.tensor_from_file(tm, hd5, dependents)
-                            if tm.shape[0] is not None:
-                                # If not a multi-tensor tensor, wrap in array to loop through
-                                tensors = np.array([tensors])
-                            for i, tensor in enumerate(tensors):
-                                if tensor == None:
-                                    break
+    with Pool(processes=None) as pool:
+        list_of_dicts_of_dicts = pool.starmap(_hd5_to_dict,
+                                              [(tmaps, path, gen.name, i, len(gen.path_iters[0].paths))
+                                                  for gen in generators
+                                                      for i, path in enumerate(gen.path_iters[0].paths)])
 
-                                error_type = ''
-                                try:
-                                    tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
-                                    # Append tensor to dict
-                                    if tm.channel_map:
-                                        for cm in tm.channel_map:
-                                            dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
-                                    else:
-                                        # If tensor is a scalar, isolate the value in the array;
-                                        # otherwise, retain the value as array
-                                        if shape[0] == 1:
-                                            if type(tensor) == np.ndarray:
-                                                tensor = tensor.item()
-                                        dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
-                                except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                                    if tm.channel_map:
-                                        for cm in tm.channel_map:
-                                            dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
-                                    else:
-                                        dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(shape, np.nan)[0]
-                                    error_type = type(e).__name__
-
-                                # Save error type, fpath, and generator name (set)
-                                dict_of_tensor_dicts[i][tm.name][f'error_type_{tm.name}'] = error_type
-                                dict_of_tensor_dicts[i][tm.name]['fpath'] = path
-                                dict_of_tensor_dicts[i][tm.name]['generator'] = gen.name
-
-                        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                            # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[0][tm.name][(tm.name, cm)] = np.nan
-                            else:
-                                dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(shape, np.nan)[0]
-                            dict_of_tensor_dicts[0][tm.name][f'error_type_{tm.name}'] = type(e).__name__
-                            dict_of_tensor_dicts[0][tm.name]['fpath'] = path
-                            dict_of_tensor_dicts[0][tm.name]['generator'] = gen.name
-
-                    # Append list of dicts with tensor_dict
-                    list_of_dicts_of_dicts.append(dict_of_tensor_dicts)
-            except OSError as e:
-                logging.info(f"OSError {e}")
-
-    list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd]
+    list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
 
     # Now we have a list of dicts where each dict has {tmaps:values} and
     # each HD5 -> one dict in the list
