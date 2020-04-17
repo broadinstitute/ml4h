@@ -179,8 +179,8 @@ def partners_ecg_datetime(tm, hd5, dependents={}):
     tensor = np.full(shape, '', dtype=f'<U{len(PARTNERS_DATETIME_FORMAT)}')
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
-        _date = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
-        _time = _decompress_data(data_compressed=hd5[path('acquisitiontime')][()], dtype=hd5[path('acquisitiontime')].attrs['dtype'])
+        _date = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
+        _time = _decompress_data(data_compressed=hd5[path('acquisitiontime')][()], dtype='str')
         dt = datetime.datetime.strptime(f'{_date} {_time}', PARTNERS_HD5_DATETIME_FORMAT)
         dt = dt.strftime(PARTNERS_DATETIME_FORMAT)
         tensor[i] = dt
@@ -213,7 +213,7 @@ def make_partners_ecg_tensor(key: str):
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date, key)
             try:
-                tensor[i] = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                tensor[i] = _decompress_data(data_compressed=hd5[path][()], dtype='str')
             except KeyError:
                 logging.debug(f'Could not obtain tensor {tm.name} from ECG on {ecg_date} in {hd5.filename}')
 
