@@ -204,7 +204,7 @@ def make_partners_ecg_tensor(key: str):
         ecg_dates = _get_ecg_dates(tm, hd5)
         shape = _dynamic_shape(tm, len(ecg_dates))
         if tm.interpretation == Interpretation.LANGUAGE:
-            tensor = [''] * shape[0] # wrap in np array after to get dtype
+            tensor = np.full(shape, '', dtype=object)
         elif tm.interpretation == Interpretation.CONTINUOUS:
             tensor = np.zeros(shape, dtype=np.float32)
         elif tm.interpretation == Interpretation.CATEGORICAL:
@@ -218,7 +218,7 @@ def make_partners_ecg_tensor(key: str):
                 logging.debug(f'Could not obtain tensor {tm.name} from ECG on {ecg_date} in {hd5.filename}')
 
         if tm.interpretation == Interpretation.LANGUAGE: # TODO is this optimization worth it?
-            tensor = np.array(tensor)
+            tensor = tensor.astype(str)
         return tensor
     return get_partners_ecg_tensor
 
