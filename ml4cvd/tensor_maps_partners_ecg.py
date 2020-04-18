@@ -84,10 +84,10 @@ def make_voltage(population_normalize: float = None):
                     tensor[i, :, tm.channel_map[cm]] = voltage
                 except KeyError:
                     pass
-            if population_normalize is None:
-                tm.normalization = {'zero_mean_std1': True}
-            else:
-                tensor /= population_normalize
+        if population_normalize is None:
+            tm.normalization = {'zero_mean_std1': True}
+        else:
+            tensor /= population_normalize
         return tensor
     return get_voltage_from_file
 
