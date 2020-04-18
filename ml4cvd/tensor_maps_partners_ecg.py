@@ -20,8 +20,6 @@ INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 PARTNERS_HD5_DATE_FORMAT = '%m-%d-%Y'
 PARTNERS_HD5_TIME_FORMAT = '%H:%M:%S'
-PARTNERS_HD5_DATETIME_FORMAT = f'{PARTNERS_HD5_DATE_FORMAT} {PARTNERS_HD5_TIME_FORMAT}'
-PARTNERS_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 def _get_ecg_dates(tm, hd5):
@@ -176,14 +174,9 @@ def validator_not_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
 def partners_ecg_datetime(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     shape = _dynamic_shape(tm, len(ecg_dates))
-    tensor = np.full(shape, '', dtype=f'<U{len(PARTNERS_DATETIME_FORMAT)}')
+    tensor = np.full(shape, '', dtype=f'<U19')
     for i, ecg_date in enumerate(ecg_dates):
-        path = lambda key: _make_hd5_path(tm, ecg_date, key)
-        _date = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
-        _time = _decompress_data(data_compressed=hd5[path('acquisitiontime')][()], dtype='str')
-        dt = datetime.datetime.strptime(f'{_date} {_time}', PARTNERS_HD5_DATETIME_FORMAT)
-        dt = dt.strftime(PARTNERS_DATETIME_FORMAT)
-        tensor[i] = dt
+        tensor[i] = ecg_date
     return tensor
 
 
@@ -199,16 +192,16 @@ TMAPS[task] = TensorMap(
 )
 
 
-def make_partners_ecg_tensor(key: str):
+def make_partners_ecg_tensor(key: str, fill: object = 0):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         shape = _dynamic_shape(tm, len(ecg_dates))
         if tm.interpretation == Interpretation.LANGUAGE:
             tensor = np.full(shape, '', dtype=object)
         elif tm.interpretation == Interpretation.CONTINUOUS:
-            tensor = np.zeros(shape, dtype=np.float32)
+            tensor = np.zeros(shape, dtype=np.float32) if fill == 0 else np.full(shape, fill, dtype=np.float32)
         elif tm.interpretation == Interpretation.CATEGORICAL:
-            tensor = np.zeros(shape, dtype=float)
+            tensor = np.zeros(shape, dtype=float) if fill == 0 else np.full(shape, fill, dtype=float)
 
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date, key)
@@ -531,7 +524,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     metrics=['mse'],
-    tensor_from_file=make_partners_ecg_tensor(key="paxis_pc"),
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_pc", fill=999),
     shape=(None, 1),
     num_tensors=0,
     validator=make_range_validator(-180, 180)
@@ -544,7 +537,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     metrics=['mse'],
-    tensor_from_file=make_partners_ecg_tensor(key="paxis_md"),
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_md", fill=999),
     shape=(None, 1),
     num_tensors=0,
     validator=make_range_validator(-180, 180)
@@ -557,7 +550,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     metrics=['mse'],
-    tensor_from_file=make_partners_ecg_tensor(key="raxis_pc"),
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_pc", fill=999),
     shape=(None, 1),
     num_tensors=0,
     validator=make_range_validator(-180, 180)
@@ -570,7 +563,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     metrics=['mse'],
-    tensor_from_file=make_partners_ecg_tensor(key="raxis_md"),
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
     shape=(None, 1),
     num_tensors=0,
     validator=make_range_validator(-180, 180)
@@ -583,7 +576,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     metrics=['mse'],
-    tensor_from_file=make_partners_ecg_tensor(key="taxis_pc"),
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
     shape=(None, 1),
     num_tensors=0,
     validator=make_range_validator(-180, 180)
@@ -596,7 +589,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     metrics=['mse'],
-    tensor_from_file=make_partners_ecg_tensor(key="taxis_md"),
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_md", fill=999),
     shape=(None, 1),
     num_tensors=0,
     validator=make_range_validator(-180, 180)
