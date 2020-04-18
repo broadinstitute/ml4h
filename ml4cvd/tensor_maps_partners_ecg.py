@@ -85,7 +85,7 @@ def make_voltage(population_normalize: float = None):
                 try:
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                    voltage = _resample_voltage(voltage, tm.shape[0])
+                    voltage = _resample_voltage(voltage, shape[1])
                     tensor[i, :, tm.channel_map[cm]] = voltage
                 except KeyError:
                     pass
