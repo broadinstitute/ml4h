@@ -1,25 +1,20 @@
 import os
 import logging
 import datetime
-from dateutil import relativedelta
-from collections import defaultdict
 from typing import Dict, List, Callable, Union
+from collections import defaultdict
 
 import csv
 import h5py
-import numcodecs
 import numpy as np
 
-from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, SelectionOption
+from ml4cvd.defines import ECG_REST_AMP_LEADS, SelectionOption, PARTNERS_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, _decompress_data
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
-PARTNERS_HD5_DATE_FORMAT = '%m-%d-%Y'
-PARTNERS_HD5_TIME_FORMAT = '%H:%M:%S'
 
 
 def _get_ecg_dates(tm, hd5):
@@ -618,7 +613,7 @@ TMAPS[task] = TensorMap(
 
 
 def _partners_str2date(d):
-    return datetime.datetime.strptime(d, PARTNERS_HD5_DATE_FORMAT).date()
+    return datetime.datetime.strptime(d, PARTNERS_DATE_FORMAT).date()
 
 
 def partners_ecg_age(tm, hd5, dependents={}):
