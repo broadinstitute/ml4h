@@ -14,7 +14,7 @@ import pandas as pd
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-from multiprocess import Manager, Pool
+from multiprocess import Pool, Value
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
@@ -154,9 +154,12 @@ def _init_dict_of_tensors(tmaps: list) -> dict:
     return dict_of_tensors
 
 
-def _hd5_to_dict(tmaps, path, gen_name, cur, tot):
-    if (cur+1) % 500 == 0:
-        logging.info(f"{gen_name} - Parsing {cur}/{tot} ({cur/tot*100:.1f}%) done")
+def _hd5_to_dict(tmaps, path, gen_name, tot):
+    with count.get_lock():
+        i = count.value
+        if (i+1) % 500 == 0:
+            logging.info(f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
+        count.value += 1
     try:
         with h5py.File(path, "r") as hd5:
             dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
@@ -220,14 +223,14 @@ def _hd5_to_dict(tmaps, path, gen_name, cur, tot):
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    dependents = {}
-    num_hd5 = 0
+    global count # TODO figure out how to not use global
+    count = Value('l', 0)
+    paths = [(path, gen.name) for gen in generators for path in gen.path_iters[0].paths]
+    tot = len(paths)
     with Pool(processes=None) as pool:
-        list_of_dicts_of_dicts = pool.starmap(_hd5_to_dict,
-                                              [(tmaps, path, gen.name, i, len(gen.path_iters[0].paths))
-                                                  for gen in generators
-                                                      for i, path in enumerate(gen.path_iters[0].paths)])
+        list_of_dicts_of_dicts = pool.starmap(_hd5_to_dict, [(tmaps, path, gen_name, tot) for path, gen_name in paths])
 
+    num_hd5 = len(list_of_dicts_of_dicts)
     list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
 
     # Now we have a list of dicts where each dict has {tmaps:values} and
