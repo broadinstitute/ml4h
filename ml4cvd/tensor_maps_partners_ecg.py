@@ -82,10 +82,13 @@ def make_voltage(population_normalize: float = None):
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             for cm in tm.channel_map:
-                path = _make_hd5_path(tm, ecg_date, cm)
-                voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                voltage = _resample_voltage(voltage, tm.shape[0])
-                tensor[i, :, tm.channel_map[cm]] = voltage
+                try:
+                    path = _make_hd5_path(tm, ecg_date, cm)
+                    voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                    voltage = _resample_voltage(voltage, tm.shape[0])
+                    tensor[i, :, tm.channel_map[cm]] = voltage
+                except KeyError:
+                    pass
             if population_normalize is None:
                 tm.normalization = {'zero_mean_std1': True}
             else:
@@ -117,8 +120,11 @@ def make_voltage_attr(volt_attr: str = ""):
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             for cm in tm.channel_map:
-                path = _make_hd5_path(tm, ecg_date, cm)
-                tensor[i, tm.channel_map[cm]] = hd5[path].attrs[volt_attr]
+                try:
+                    path = _make_hd5_path(tm, ecg_date, cm)
+                    tensor[i, tm.channel_map[cm]] = hd5[path].attrs[volt_attr]
+                except KeyError:
+                    pass
         return tensor
     return get_voltage_attr_from_file
 
@@ -150,16 +156,19 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                 path = _make_hd5_path(tm, ecg_date, key)
                 if path not in hd5:
                     continue
-                read = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
-                    if channel in dict_of_list:
-                        for string in dict_of_list[channel]:
-                            if string in read:
-                                label_array[i, idx] = 1
-                                found = True
-                            if found: break
+                try:
+                    read = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                    for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
+                        if channel in dict_of_list:
+                            for string in dict_of_list[channel]:
+                                if string in read:
+                                    label_array[i, idx] = 1
+                                    found = True
+                                if found: break
+                        if found: break
                     if found: break
-                if found: break
+                except KeyError:
+                    pass
             if not found:
                 label_array[i, tm.channel_map[not_found_key]] = 1
         return label_array
@@ -618,11 +627,18 @@ def partners_ecg_age(tm, hd5, dependents={}):
     tensor = np.zeros(shape, dtype=float)
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
-        birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype'])
-        acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
-        delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
-        years = delta.days / YEAR_DAYS
-        tensor[i] = years
+        try:
+            birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype='str')
+            acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
+            delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
+            years = delta.days / YEAR_DAYS
+            tensor[i] = years
+        except KeyError:
+            logging.debug(f'Could not calculate patient age from birthday, defer to age in ECG on {ecg_date} in {hd5.filename}')
+            try:
+                tensor[i] = _decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
+            except KeyError:
+                logging.debug(f'Could not get patient age from ECG on {ecg_date} in {hd5.filename}')
     return tensor
 
 
@@ -635,8 +651,11 @@ def partners_ecg_acquisition_year(tm, hd5, dependents={}):
     tensor = np.zeros(shape, dtype=int)
     for i, ecg_date in enumerate(ecg_dates):
         path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-        acquisition = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-        tensor[i] = _partners_str2date(acquisition).year
+        try:
+            acquisition = _decompress_data(data_compressed=hd5[path][()], dtype='str')
+            tensor[i] = _partners_str2date(acquisition).year
+        except KeyError:
+            pass
     return tensor
 
 
@@ -649,13 +668,16 @@ def partners_bmi(tm, hd5, dependents={}):
     tensor = np.zeros(shape, dtype=float)
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
-        weight_lbs = _decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype=hd5[path('weightlbs')].attrs['dtype'])
-        weight_kg = 0.453592 * float(weight_lbs)
-        height_in = _decompress_data(data_compressed=hd5[path('heightin')][()], dtype=hd5[path('heightin')].attrs['dtype'])
-        height_m = 0.0254 * float(height_in)
-        bmi = weight_kg / (height_m*height_m)
-        logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
-        tensor[i] = bmi
+        try:
+            weight_lbs = _decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype='str')
+            weight_kg = 0.453592 * float(weight_lbs)
+            height_in = _decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
+            height_m = 0.0254 * float(height_in)
+            bmi = weight_kg / (height_m*height_m)
+            logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
+            tensor[i] = bmi
+        except KeyError:
+            pass
     return tensor
 
 
@@ -669,20 +691,23 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date,hd5_key)
-            hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
             found = False
-            for key in tm.channel_map:
-                if hd5_string.lower() == key.lower():
-                    tensor[i, tm.channel_map[key]] = 1.0
-                    found = True
-                    break
-                if key in race_synonyms:
-                    for synonym in race_synonyms[key]:
-                        if hd5_string.lower() == synonym.lower():
-                            tensor[i, tm.channel_map[key]] = 1.0
-                            found = True
+            try:
+                hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype='str')
+                for key in tm.channel_map:
+                    if hd5_string.lower() == key.lower():
+                        tensor[i, tm.channel_map[key]] = 1.0
+                        found = True
+                        break
+                    if key in race_synonyms:
+                        for synonym in race_synonyms[key]:
+                            if hd5_string.lower() == synonym.lower():
+                                tensor[i, tm.channel_map[key]] = 1.0
+                                found = True
+                            if found: break
                         if found: break
-                    if found: break
+            except KeyError:
+                pass
             if not found:
                 if unspecified_key is None:
                     # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
@@ -711,8 +736,8 @@ def _partners_adult(hd5_key, minimum_age=18):
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = lambda key: _make_hd5_path(tm, ecg_date, key)
-            birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype'])
-            acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype'])
+            birthday = _decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype='str')
+            acquisition = _decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype='str')
             delta = _partners_str2date(acquisition) - _partners_str2date(birthday)
             years = delta.days / YEAR_DAYS
             if years < minimum_age:
