@@ -6,7 +6,7 @@ from facets_overview.generic_feature_statistics_generator import GenericFeatureS
 
 FACETS_DEPENDENCIES = {
   'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',
-  'webcomponents_js': 'https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js'
+  'webcomponents_js': 'https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js',
 }
 
 if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
@@ -34,7 +34,9 @@ class FacetsOverview(object):
     # - categorical variables: num unique, counts per category for bar chart,
     #     top category, etc.
     gfsg = GenericFeatureStatisticsGenerator()
-    self._proto = gfsg.ProtoFromDataFrames([{'name': 'data', 'table': data}])
+    self._proto = gfsg.ProtoFromDataFrames(
+        [{'name': 'data', 'table': data}],
+    )
 
   def _repr_html_(self):
     """Html representation of Facets Overview for use in a Jupyter notebook."""
@@ -49,7 +51,8 @@ class FacetsOverview(object):
     html = html_template.format(
       facets_html=FACETS_DEPENDENCIES['facets_html'],
       webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
-      protostr=protostr)
+      protostr=protostr,
+    )
     return html
 
 
@@ -70,8 +73,9 @@ class FacetsDive(object):
           document.querySelector("#dive_elem").data = {data};
         </script>"""
     html = html_template.format(
-      facets_html=FACETS_DEPENDENCIES['facets_html'],
-      webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
-      data=self._data.to_json(orient='records'),
-      height=self.height)
+        facets_html=FACETS_DEPENDENCIES['facets_html'],
+        webcomponents_js=FACETS_DEPENDENCIES['webcomponents_js'],
+        data=self._data.to_json(orient='records'),
+        height=self.height,
+    )
     return html

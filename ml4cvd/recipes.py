@@ -3,24 +3,30 @@
 # Imports
 import os
 import csv
+from typing import Dict, List
+from operator import itemgetter
+
 import h5py
 import copy
 import logging
 import numpy as np
 import pandas as pd
+from typing import List, Dict
 from functools import reduce
-from operator import itemgetter
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import Interpretation
+from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
+from ml4cvd.tensor_writer_partners import write_tensors_partners
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
@@ -30,18 +36,20 @@ from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs,
 
 
 def run(args):
+    start_time = timer()  # Keep track of elapsed execution time
     try:
-        # Keep track of elapsed execution time
-        start_time = timer()
-
         if 'tensorize' == args.mode:
-            write_tensors(args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                          args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
-                          args.max_sample_id, args.min_values)
+            write_tensors(
+                args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
+                args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
+                args.max_sample_id, args.min_values,
+            )
         elif 'tensorize_pngs' == args.mode:
-            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
+            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id, args.x, args.y)
         elif 'tensorize_ecg_pngs' == args.mode:
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
+        elif 'tensorize_partners' == args.mode:
+            write_tensors_partners(args.xml_folder, args.tensors)
         elif 'explore' == args.mode:
             explore(args)
         elif 'train' == args.mode:
@@ -87,7 +95,7 @@ def run(args):
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'sort_csv' == args.mode:
-            sort_csv(args.app_csv, args.app_csv)
+            sort_csv(args.tensors, args.tensor_maps_in)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
@@ -98,6 +106,15 @@ def run(args):
             append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
+        elif 'find_learning_rate' == args.mode:
+            _find_learning_rate(args)
+        elif 'find_learning_rate_and_train' == args.mode:
+            args.learning_rate = _find_learning_rate(args)
+            if not args.learning_rate:
+                raise ValueError('Could not find learning rate.')
+            train_multimodal_multitask(args)
+        elif 'tokenize' == args.mode:
+            tokenize_tensor_maps(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -107,6 +124,19 @@ def run(args):
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+
+def _find_learning_rate(args) -> float:
+    schedule = args.learning_rate_schedule
+    args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
+    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+    model = make_multimodal_multitask_model(**args.__dict__)
+    try:
+        lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
+    finally:
+        generate_train.kill_workers()
+    args.learning_rate_schedule = schedule
+    return lr
 
 
 def _init_dict_of_tensors(tmaps: list) -> dict:
@@ -142,18 +172,17 @@ def _tensors_to_df(args):
                         error_type = ""
                         try:
                             tensor = tm.tensor_from_file(tm, hd5, dependents)
-                            tensor = tm.postprocess_tensor(tensor, augment=False)
-                            
-                            # If tensor is a scaler, isolate the value in the array;
-                            # otherwise, retain the value as array
-                            if tm.shape[0] == 1:
-                                tensor = tensor.item()
-                           
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
                                     tensor_dict[tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
                             else:
+                                # If tensor is a scalar, isolate the value in the array;
+                                # otherwise, retain the value as array
+                                if tm.shape[0] == 1:
+                                    tensor = tensor.item()
                                 tensor_dict[tm.name][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             # Could not obtain tensor, so append nans
@@ -187,8 +216,10 @@ def _tensors_to_df(args):
         list_of_tmap_dicts = list(map(itemgetter(tm.name), list_of_tensor_dicts))
 
         # Convert this tmap-specific list of dicts into dict of lists
-        dict_of_tmap_lists = {k: [d[k] for d in list_of_tmap_dicts]
-                                 for k in list_of_tmap_dicts[0]}
+        dict_of_tmap_lists = {
+            k: [d[k] for d in list_of_tmap_dicts]
+            for k in list_of_tmap_dicts[0]
+        }
 
         # Convert list of dicts into dataframe and concatenate to big df
         df = pd.concat([df, pd.DataFrame(dict_of_tmap_lists)], axis=1)
@@ -213,7 +244,7 @@ def _tensors_to_df(args):
 
     # Iterate through tensor (and channel) maps and cast Pandas dtype to string
     if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
-        for tm in [tm for tm in args.tensor_maps_in if tm.interpretation is Interpretation.LANGUAGE]: 
+        for tm in [tm for tm in args.tensor_maps_in if tm.interpretation is Interpretation.LANGUAGE]:
             if tm.channel_map:
                 for cm in tm.channel_map:
                     key = (tm.name, cm)
@@ -235,7 +266,7 @@ def explore(args):
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
-    
+
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
     df.to_csv(fpath, index=False)
@@ -282,8 +313,10 @@ def explore(args):
                 df_stats["fraction_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"]
 
                 # Save parent dataframe to CSV on disk
-                fpath = os.path.join(args.output_folder, args.id, 
-                            f"{fpath_prefix}_{Interpretation.CATEGORICAL}_{tm.name}_{df_str}.csv")
+                fpath = os.path.join(
+                    args.output_folder, args.id,
+                    f"{fpath_prefix}_{Interpretation.CATEGORICAL}_{tm.name}_{df_str}.csv",
+                )
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}")
 
@@ -326,10 +359,12 @@ def explore(args):
                         stats["total"] = len(df_cur[key])
                         stats["missing_fraction"] = stats["missing"] / stats["total"]
                         df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[key])])
-                
+
                 # Save parent dataframe to CSV on disk
-                fpath = os.path.join(args.output_folder, args.id,
-                            f"{fpath_prefix}_{Interpretation.CONTINUOUS}_{df_str}.csv")
+                fpath = os.path.join(
+                    args.output_folder, args.id,
+                    f"{fpath_prefix}_{Interpretation.CONTINUOUS}_{df_str}.csv",
+                )
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to {fpath}")
 
@@ -362,8 +397,10 @@ def explore(args):
                         df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
 
                 # Save parent dataframe to CSV on disk
-                fpath = os.path.join(args.output_folder, args.id,
-                            f"{fpath_prefix}_{Interpretation.LANGUAGE}_{df_str}.csv")
+                fpath = os.path.join(
+                    args.output_folder, args.id,
+                    f"{fpath_prefix}_{Interpretation.LANGUAGE}_{df_str}.csv",
+                )
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
 
@@ -400,7 +437,7 @@ def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
+    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_in, args.tensor_maps_out, args.test_steps, args.hidden_layer, p, args.alpha)
 
 
 def compare_multimodal_multitask_models(args):
@@ -425,6 +462,7 @@ def _make_tmap_nan_on_fail(tmap):
     Builds a copy TensorMap with a tensor_from_file that returns nans on errors instead of raising an error
     """
     new_tmap = copy.deepcopy(tmap)
+    new_tmap.validator = lambda _, x, hd5: x  # prevent failure caused by validator
 
     def _tff(tm, hd5, dependents=None):
         try:
@@ -440,15 +478,17 @@ def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = {}
     inference_tsv = os.path.join(args.output_folder, args.id, 'inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     if args.variational:
         model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
         model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
-                                    cache_size=0, keep_paths=True, mixup=args.mixup_alpha)
+    generate_test = TensorGenerator(
+        1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
+        cache_size=0, keep_paths=True, mixup=args.mixup_alpha,
+    )
     with open(inference_tsv, mode='w') as inference_file:
         # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -465,8 +505,9 @@ def infer_multimodal_multitask(args):
         inference_writer.writerow(header)
 
         while True:
-            input_data, true_label, tensor_path = next(generate_test)
-            if tensor_path[0] in tensor_paths_inferred:
+            batch = next(generate_test)
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in tensor_paths_inferred:
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
@@ -474,44 +515,46 @@ def infer_multimodal_multitask(args):
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
             for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if ((tm.sentinel is not None and tm.sentinel == true_label[tm.output_name()][0][0])
-                            or np.isnan(true_label[tm.output_name()][0][0])):
+                    if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
+                            or np.isnan(output_data[tm.output_name()][0][0])):
                         csv_row.append("NA")
                     else:
-                        csv_row.append(str(tm.rescale(true_label[tm.output_name()])[0][0]))
+                        csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and tm.is_categorical():
                     for k, i in tm.channel_map.items():
                         csv_row.append(str(y[0][tm.channel_map[k]]))
-                        actual = true_label[tm.output_name()][0][i]
+                        actual = output_data[tm.output_name()][0][i]
                         csv_row.append("NA" if np.isnan(actual) else str(actual))
 
             inference_writer.writerow(csv_row)
-            tensor_paths_inferred[tensor_path[0]] = True
+            tensor_paths_inferred[tensor_paths[0]] = True
             stats['count'] += 1
             if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_path[0]}")
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'hidden_inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-                                    cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha)
+    generate_test = TensorGenerator(
+        1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
+        cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+    )
     if args.variational:
         full_model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
     else:
         full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[1:]) for tm in args.tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
-    latent_dimensions = np.prod(dummy_out.shape[1:])
+    latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -519,27 +562,30 @@ def infer_hidden_layer_multimodal_multitask(args):
         inference_writer.writerow(header)
 
         while True:
-            input_data, _, tensor_path = next(generate_test)
-            if tensor_path[0] in stats:
+            batch = next(generate_test)
+            input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in stats:
                 logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
-            sample_id = os.path.basename(tensor_path[0]).replace(TENSOR_EXT, '')
+            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             prediction = embed_model.predict(input_data)
             prediction = np.reshape(prediction, (latent_dimensions,))
             csv_row = [sample_id] + [f'{prediction[i]}' for i in range(latent_dimensions)]
             inference_writer.writerow(csv_row)
-            stats[tensor_path[0]] += 1
+            stats[tensor_paths[0]] += 1
             stats['count'] += 1
             if stats['count'] % 500 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_path[0]}")
+                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
 
 
 def train_shallow_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
 
     p = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -547,14 +593,22 @@ def train_shallow_model(args):
 
 
 def train_char_model(args):
+    args.num_workers = 0
+    logging.info(f'Number of workers forced to 0 for character emitting LSTM model.')
     base_model = make_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.model_layers)
+    model, char_model = make_character_model_plus(
+        args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
+        args.language_prefix, args.model_layers,
+    )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
-    model = train_model_from_generators(model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
-    test_batch, _, test_paths = next(generate_test)
-    sample_from_char_model(char_model, test_batch, test_paths)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
+    batch = next(generate_test)
+    input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+    sample_from_char_model(char_model, input_data, tensor_paths)
 
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -565,8 +619,10 @@ def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, siamese=True)
-    siamese_model = train_model_from_generators(siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-                                                args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels)
+    siamese_model = train_model_from_generators(
+        siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
 
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     prediction = siamese_model.predict(data)
@@ -590,8 +646,10 @@ def plot_while_training(args):
     model = make_multimodal_multitask_model(**args.__dict__)
 
     plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
-    plot_while_learning(model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
-                        args.batch_size, args.training_steps, plot_folder, args.write_pngs)
+    plot_while_learning(
+        model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
+        args.batch_size, args.training_steps, plot_folder, args.write_pngs,
+    )
 
 
 def saliency_maps(args):
@@ -607,6 +665,20 @@ def saliency_maps(args):
         for channel in tm.channel_map:
             gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
             plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
+
+
+def tokenize_tensor_maps(args):
+    characters = set()
+    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    for path in tensor_paths:
+        with h5py.File(path, "r") as hd5:
+            for tm in filter(lambda tm: tm.is_language, args.tensor_maps_out):
+                text = str(tm.tensor_from_file(tm, hd5, dependents={}))
+                characters += set(text)
+    logging.info(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
@@ -635,7 +707,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
     return performance_metrics
 
 
-def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
+def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_maps_in, tensor_maps_out, steps, hidden_layer, plot_path, alpha):
     layer_names = [layer.name for layer in model.layers]
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
@@ -645,15 +717,16 @@ def _predict_scalars_and_evaluate_from_generator(model, test_generator, tensor_m
     embeddings = []
     test_paths = []
     for i in range(steps):
-        batch_data, batch_labels, batch_paths = next(test_generator)
-        y_predictions = model.predict(batch_data)
-        test_paths.extend(batch_paths)
+        batch = next(generate_test)
+        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        y_predictions = model.predict(input_data)
+        test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
-            x_embed = embed_model_predict(model, args.tensor_maps_in, hidden_layer, batch_data, 2)
+            x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
 
         for tm_output_name in test_labels:
-            test_labels[tm_output_name].extend(np.copy(batch_labels[tm_output_name]))
+            test_labels[tm_output_name].extend(np.copy(output_data[tm_output_name]))
 
         for y, tm_output_name in zip(y_predictions, model_predictions):
             if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
@@ -766,10 +839,11 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
     predictions = defaultdict(dict)
     for j in range(steps):
-        input_data, labels, paths = next(generator)
-        test_paths.extend(paths)
+        batch = next(generator)
+        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        test_paths.extend(tensor_paths)
         for tl in test_labels:
-            test_labels[tl].extend(np.copy(labels[tl]))
+            test_labels[tl].extend(np.copy(output_data[tl]))
 
         for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
@@ -870,5 +944,5 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    run(args)  # back to the top
+    arguments = parse_args()
+    run(arguments)  # back to the top
