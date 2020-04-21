@@ -621,7 +621,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
-    shape=(1),
+    shape=(1,),
     validator=make_range_validator(10, 200),
 )
 
