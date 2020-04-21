@@ -48,7 +48,8 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
         cm += '}'
 
         for key in keys_in_hd5:
-            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}'] = TensorMap('{PREFIX}_{key}_{label}', interpretation=Interpretation.CATEGORICAL, num_tensors=0, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
+            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}'] = TensorMap('{PREFIX}_{key}_{label}', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
+            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}_newest'] = TensorMap('{PREFIX}_{key}_{label}_newest', interpretation=Interpretation.CATEGORICAL, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
 
 
 def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
