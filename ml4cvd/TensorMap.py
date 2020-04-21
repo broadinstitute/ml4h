@@ -107,7 +107,7 @@ class TensorMap(object):
         normalization: Optional[Normalizer] = None,
         annotation_units: Optional[int] = 32,
         tensor_from_file: Optional[Callable] = None,
-        time_series_limit: Optional[int] = None,
+        time_series_limit: Optional[int] = 1,
         time_series_order: Optional[TimeSeriesOrder] = TimeSeriesOrder.NEWEST,
         discretization_bounds: Optional[List[float]] = None,
     ):
@@ -135,8 +135,8 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
-        :param time_series_limit: The maximum number of tensors in a time series to use per hd5 where 0 uses all tensors
-        :param time_series_order: TimeSeriesOrder to select which tensors in a time series to use from hd5
+        :param time_series_limit: The maximum number of tensors in a time series to use if shape is dynamic
+        :param time_series_order: When selecting tensors in a time series, use newest, oldest, or randomly ordered tensors
         :param discretization_bounds: List of floats that delineate the boundaries of the bins that will be used
                                           for producing categorical values from continuous values
         """
@@ -191,10 +191,10 @@ class TensorMap(object):
             self.activation = 'sigmoid'
 
         # Infer shape from channel map or interpretation
-        if self.shape is None and self.is_time_to_event():
-            self.shape = (2,)
-        elif self.shape is None:
-            self.shape = (len(channel_map),)
+        if self.shape is None:
+            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
+            if self.time_series_limit == 0:
+                self.shape = (None,) + self.shape
 
         if self.discretization_bounds is not None:
             self.input_shape = self.shape

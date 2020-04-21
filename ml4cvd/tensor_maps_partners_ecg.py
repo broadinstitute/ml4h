@@ -1,7 +1,7 @@
 import os
 import logging
 import datetime
-from typing import Dict, List, Callable, Union
+from typing import Dict, List, Callable, Union, Tuple
 from collections import defaultdict
 
 import csv
@@ -9,8 +9,8 @@ import h5py
 import numpy as np
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, SelectionOption, PARTNERS_DATE_FORMAT
-from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, _decompress_data
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT
+from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, _decompress_data, TimeSeriesOrder
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
@@ -19,22 +19,23 @@ PARTNERS_PREFIX = 'partners_ecg_rest'
 
 def _get_ecg_dates(tm, hd5):
     dates = list(hd5[tm.path_prefix])
-    if tm.which_tensors == SelectionOption.NEWEST:
+    if tm.time_series_order == TimeSeriesOrder.NEWEST:
         dates.sort()
-    elif tm.which_tensors == SelectionOption.OLDEST:
+    elif tm.time_series_order == TimeSeriesOrder.OLDEST:
         dates.sort(reverse=True)
-    elif tm.which_tensors == SelectionOption.RANDOM:
+    elif tm.time_series_order == TimeSeriesOrder.RANDOM:
         np.random.shuffle(dates)
     else:
-        raise ValueError(f'Unknown option "{tm.which_tensors}" passed for which tensors to use in multi tensor HD5')
-    dates = dates[-tm.num_tensors:] # If num_tensors is 0, get all tensors
+        raise ValueError(f'Unknown option "{tm.time_series_order}" passed for which tensors to use in multi tensor HD5')
+    dates = dates[-tm.time_series_limit:] # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
     return dates
 
 
-def _dynamic_shape(tm, num_ecgs):
-    return tuple([num_ecgs if n is None else n for n in tm.shape])
-
+def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ...]]:
+    if tm.shape[0] is None:
+        return True, (num_ecgs,) + tm.shape[1:]
+    return False, tm.shape
 
 def _make_hd5_path(tm, ecg_date, value_key):
     return f'{tm.path_prefix}/{ecg_date}/{value_key}'
@@ -73,15 +74,16 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
 def make_voltage(population_normalize: float = None):
     def get_voltage_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             for cm in tm.channel_map:
                 try:
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                    voltage = _resample_voltage(voltage, shape[1])
-                    tensor[i, :, tm.channel_map[cm]] = voltage
+                    voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
+                    arr_slice = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.tm.channel_map[cm])
+                    tensor[arr_slice] = voltage
                 except KeyError:
                     pass
         if population_normalize is None:
@@ -99,25 +101,41 @@ TMAPS['partners_ecg_voltage'] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_voltage(population_normalize=2000.0),
     channel_map=ECG_REST_AMP_LEADS,
-    num_tensors=0,
+    time_series_limit=0,
 )
 
-TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS, num_tensors=0)
-TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS, num_tensors=0)
-TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, num_tensors=0)
-TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, num_tensors=0)
+
+TMAPS['partners_ecg_voltage_newest'] = TensorMap(
+    'partners_ecg_voltage_newest',
+    shape=(2500, 12),
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(population_normalize=2000.0),
+    channel_map=ECG_REST_AMP_LEADS,
+)
+
+
+TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500_newest'] = TensorMap('ecg_rest_2500_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000_newest'] = TensorMap('ecg_rest_5000_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500_raw_newest'] = TensorMap('ecg_rest_2500_raw_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000_raw_newest'] = TensorMap('ecg_rest_5000_raw_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
 
 def make_voltage_attr(volt_attr: str = ""):
     def get_voltage_attr_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             for cm in tm.channel_map:
                 try:
                     path = _make_hd5_path(tm, ecg_date, cm)
-                    tensor[i, tm.channel_map[cm]] = hd5[path].attrs[volt_attr]
+                    arr_slice = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map,)
+                    tensor[arr_slice] = hd5[path].attrs[volt_attr]
                 except KeyError:
                     pass
         return tensor
@@ -131,11 +149,24 @@ TMAPS["voltage_len"] = TensorMap(
     tensor_from_file=make_voltage_attr(volt_attr="len"),
     shape=(None, 12),
     channel_map=ECG_REST_AMP_LEADS,
-    num_tensors=0,
+    time_series_limit=0,
 )
 
-TMAPS["len_i"] = TensorMap("len_i", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'I': 0}, num_tensors=0)
-TMAPS["len_v6"] = TensorMap("len_v6", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'V6': 0}, num_tensors=0)
+
+TMAPS["voltage_len_newest"] = TensorMap(
+    "voltage_len_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage_attr(volt_attr="len"),
+    shape=(12,),
+    channel_map=ECG_REST_AMP_LEADS,
+)
+
+
+TMAPS["len_i"] = TensorMap("len_i", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'I': 0}, time_series_limit=0)
+TMAPS["len_v6"] = TensorMap("len_v6", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'V6': 0}, time_series_limit=0)
+TMAPS["len_i_newest"] = TensorMap("len_i_newest", shape=(1,), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'I': 0})
+TMAPS["len_v6_newest"] = TensorMap("len_v6_newest", shape=(1,), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'V6': 0})
 
 
 def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified"):
@@ -143,7 +174,7 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
         keys = [keys]
     def get_partners_ecg_label(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         label_array = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             found = False
@@ -157,7 +188,8 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                         if channel in dict_of_list:
                             for string in dict_of_list[channel]:
                                 if string in read:
-                                    label_array[i, idx] = 1
+                                    arr_slice = (i, idx) if dynamic else (idx,)
+                                    label_array[arr_slice] = 1
                                     found = True
                                 if found: break
                         if found: break
@@ -165,7 +197,8 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                 except KeyError:
                     pass
             if not found:
-                label_array[i, tm.channel_map[not_found_key]] = 1
+                arr_slice = (i, tm.channel_map[not_found_key]) if dynamic else (tm.channel_map[not_found_key],)
+                label_array[arr_slice] = 1
         return label_array
     return get_partners_ecg_label
 
@@ -177,8 +210,8 @@ def validator_not_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
 
 def partners_ecg_datetime(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
-    shape = _dynamic_shape(tm, len(ecg_dates))
-    tensor = np.full(shape, '', dtype=f'<U19')
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+    tensor = np.full(shape , '', dtype=f'<U19')
     for i, ecg_date in enumerate(ecg_dates):
         tensor[i] = ecg_date
     return tensor
@@ -191,7 +224,18 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=partners_ecg_datetime,
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
+    validator=validator_not_empty,
+)
+
+
+task = "partners_ecg_datetime_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=partners_ecg_datetime,
+    shape=(1,),
     validator=validator_not_empty,
 )
 
@@ -199,7 +243,7 @@ TMAPS[task] = TensorMap(
 def make_partners_ecg_tensor(key: str, fill: float = 0):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         if tm.interpretation == Interpretation.LANGUAGE:
             tensor = np.full(shape, '', dtype=object)
         elif tm.interpretation == Interpretation.CONTINUOUS:
@@ -227,7 +271,18 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
+    validator=validator_not_empty,
+)
+
+
+task = "partners_ecg_read_md_raw_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
+    shape=(1,),
     validator=validator_not_empty,
 )
 
@@ -239,11 +294,23 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
 
 
+task = "partners_ecg_read_pc_raw_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
+
+# TODO do we still need the cross reference tmaps?
 def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
     if int(tensor) not in tm.cross_reference:
         raise ValueError(f"Skipping TensorMap {tm.name} not found in Apollo.")
@@ -267,11 +334,13 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="patientid"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_cross_reference,
 )
 
+
 TMAPS[task].cross_reference = create_cross_reference_dict()
+
 
 task = "partners_ecg_patientid"
 TMAPS[task] = TensorMap(
@@ -280,12 +349,25 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="patientid"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
 
+
+task = "partners_ecg_patientid_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="patientid"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
+
 def validator_clean_mrn(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     int(tensor)
+
 
 task = "partners_ecg_patientid_clean"
 TMAPS[task] = TensorMap(
@@ -294,9 +376,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="patientid_clean"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_clean_mrn,
 )
+
+
+task = "partners_ecg_patientid_clean_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="patientid_clean"),
+    shape=(1,),
+    validator=validator_clean_mrn,
+)
+
 
 task = "partners_ecg_firstname"
 TMAPS[task] = TensorMap(
@@ -305,9 +399,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_firstname_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_lastname"
 TMAPS[task] = TensorMap(
@@ -316,9 +422,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_lastname_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(
@@ -327,9 +445,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_date_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_time"
 TMAPS[task] = TensorMap(
@@ -338,9 +468,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="acquisitiontime"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_time_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiontime"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_sitename"
 TMAPS[task] = TensorMap(
@@ -349,9 +491,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="sitename"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_sitename_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="sitename"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_location"
 TMAPS[task] = TensorMap(
@@ -360,9 +514,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="location"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_location_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="location"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_dob"
 TMAPS[task] = TensorMap(
@@ -371,9 +537,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="dateofbirth"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_dob_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="dateofbirth"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_sampling_frequency"
 TMAPS[task] = TensorMap(
@@ -382,9 +560,21 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=validator_not_empty,
 )
+
+
+task = "partners_ecg_sampling_frequency_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc"),
+    shape=(1,),
+    validator=validator_not_empty,
+)
+
 
 task = "partners_ecg_rate"
 TMAPS[task] = TensorMap(
@@ -394,9 +584,22 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(10, 200),
 )
+
+
+task = "partners_ecg_rate_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
+    shape=(1,),
+    validator=make_range_validator(10, 200),
+)
+
 
 task = "partners_ecg_rate_md"
 TMAPS[task] = TensorMap(
@@ -406,9 +609,22 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(10, 200),
 )
+
+
+task = "partners_ecg_rate_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
+    shape=(1),
+    validator=make_range_validator(10, 200),
+)
+
 
 TMAPS['partners_ventricular_rate'] = TensorMap(
     'VentricularRate',
@@ -416,10 +632,22 @@ TMAPS['partners_ventricular_rate'] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(10, 200),
     normalization={'mean': 59.3, 'std': 10.6},
 )
+
+
+TMAPS['partners_ventricular_rate_newest'] = TensorMap(
+    'VentricularRate_newest',
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
+    shape=(1,),
+    validator=make_range_validator(10, 200),
+    normalization={'mean': 59.3, 'std': 10.6},
+)
+
 
 task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(
@@ -430,9 +658,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(20, 400),
 )
+
+
+task = "partners_ecg_qrs_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="qrsduration_pc"),
+    shape=(1,),
+    validator=make_range_validator(20, 400),
+)
+
 
 task = "partners_ecg_qrs_md"
 TMAPS[task] = TensorMap(
@@ -443,9 +685,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(20, 400),
 )
+
+
+task = "partners_ecg_qrs_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
+    shape=(1,),
+    validator=make_range_validator(20, 400),
+)
+
 
 task = "partners_ecg_pr"
 TMAPS[task] = TensorMap(
@@ -456,9 +712,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(50, 500),
 )
+
+
+task = "partners_ecg_pr_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
+    shape=(1,),
+    validator=make_range_validator(50, 500),
+)
+
 
 task = "partners_ecg_pr_md"
 TMAPS[task] = TensorMap(
@@ -469,9 +739,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(50, 500),
 )
+
+
+task = "partners_ecg_pr_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
+    shape=(1,),
+    validator=make_range_validator(50, 500),
+)
+
 
 task = "partners_ecg_qt"
 TMAPS[task] = TensorMap(
@@ -481,9 +765,22 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(100, 800),
 )
+
+
+task = "partners_ecg_qt_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtinterval_pc"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
 
 task = "partners_ecg_qt_md"
 TMAPS[task] = TensorMap(
@@ -493,9 +790,22 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_md"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(100, 800),
 )
+
+
+task = "partners_ecg_qt_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtinterval_md"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
 
 task = "partners_ecg_qtc"
 TMAPS[task] = TensorMap(
@@ -505,9 +815,22 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_pc"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(100, 800),
 )
+
+
+task = "partners_ecg_qtc_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_pc"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
 
 task = "partners_ecg_qtc_md"
 TMAPS[task] = TensorMap(
@@ -517,9 +840,22 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_md"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(100, 800),
 )
+
+
+task = "partners_ecg_qtc_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_md"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
 
 task = "partners_ecg_paxis"
 TMAPS[task] = TensorMap(
@@ -530,9 +866,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="paxis_pc", fill=999),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(-180, 180),
 )
+
+
+task = "partners_ecg_paxis_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_pc", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
 
 task = "partners_ecg_paxis_md"
 TMAPS[task] = TensorMap(
@@ -543,9 +893,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="paxis_md", fill=999),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(-180, 180),
 )
+
+
+task = "partners_ecg_paxis_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_md", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
 
 task = "partners_ecg_raxis"
 TMAPS[task] = TensorMap(
@@ -556,9 +920,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="raxis_pc", fill=999),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(-180, 180),
 )
+
+
+task = "partners_ecg_raxis_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_pc", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
 
 task = "partners_ecg_raxis_md"
 TMAPS[task] = TensorMap(
@@ -569,9 +947,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(-180, 180),
 )
+
+
+task = "partners_ecg_raxis_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
 
 task = "partners_ecg_taxis"
 TMAPS[task] = TensorMap(
@@ -582,9 +974,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(-180, 180),
 )
+
+
+task = "partners_ecg_taxis_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
 
 task = "partners_ecg_taxis_md"
 TMAPS[task] = TensorMap(
@@ -595,9 +1001,23 @@ TMAPS[task] = TensorMap(
     metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="taxis_md", fill=999),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
     validator=make_range_validator(-180, 180),
 )
+
+
+task = "partners_ecg_taxis_md_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    metrics=['mse'],
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_md", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
 
 task = "partners_ecg_weight_lbs"
 TMAPS[task] = TensorMap(
@@ -607,7 +1027,19 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
     shape=(None, 1),
-    num_tensors=0,
+    time_series_limit=0,
+    validator=make_range_validator(100, 800),
+)
+
+
+task = "partners_ecg_weight_lbs_newest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
+    shape=(1,),
     validator=make_range_validator(100, 800),
 )
 
@@ -618,7 +1050,7 @@ def _partners_str2date(d):
 
 def partners_ecg_age(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
-    shape = _dynamic_shape(tm, len(ecg_dates))
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=float)
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
@@ -637,12 +1069,13 @@ def partners_ecg_age(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(None, 1), num_tensors=0)
+TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(None, 1), time_series_limit=0)
+TMAPS['partners_ecg_age_newest'] = TensorMap('partners_ecg_age_newest', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(1,))
 
 
 def partners_ecg_acquisition_year(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
-    shape = _dynamic_shape(tm, len(ecg_dates))
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=int)
     for i, ecg_date in enumerate(ecg_dates):
         path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
@@ -654,12 +1087,13 @@ def partners_ecg_acquisition_year(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS['partners_ecg_acquisition_year'] = TensorMap('partners_ecg_acquisition_year', path_prefix=PARTNERS_PREFIX, loss='logcosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(None, 1), num_tensors=0)
+TMAPS['partners_ecg_acquisition_year'] = TensorMap('partners_ecg_acquisition_year', path_prefix=PARTNERS_PREFIX, loss='logcosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(None, 1), time_series_limit=0)
+TMAPS['partners_ecg_acquisition_year_newest'] = TensorMap('partners_ecg_acquisition_year_newest', path_prefix=PARTNERS_PREFIX, loss='logcosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(1,))
 
 
 def partners_bmi(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
-    shape = _dynamic_shape(tm, len(ecg_dates))
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=float)
     for i, ecg_date in enumerate(ecg_dates):
         path = lambda key: _make_hd5_path(tm, ecg_date, key)
@@ -676,13 +1110,14 @@ def partners_bmi(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS['partners_ecg_bmi'] = TensorMap('partners_ecg_bmi', path_prefix=PARTNERS_PREFIX, channel_map={'bmi': 0}, tensor_from_file=partners_bmi, num_tensors=0)
+TMAPS['partners_ecg_bmi'] = TensorMap('partners_ecg_bmi', path_prefix=PARTNERS_PREFIX, channel_map={'bmi': 0}, tensor_from_file=partners_bmi, time_series_limit=0)
+TMAPS['partners_ecg_bmi_newest'] = TensorMap('partners_ecg_bmi_newest', path_prefix=PARTNERS_PREFIX, channel_map={'bmi': 0}, tensor_from_file=partners_bmi)
 
 
 def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
     def tensor_from_string(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date,hd5_key)
@@ -690,14 +1125,15 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
             try:
                 hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype='str')
                 for key in tm.channel_map:
+                    arr_slice = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
                     if hd5_string.lower() == key.lower():
-                        tensor[i, tm.channel_map[key]] = 1.0
+                        tensor[arr_slice] = 1.0
                         found = True
                         break
                     if key in race_synonyms:
                         for synonym in race_synonyms[key]:
                             if hd5_string.lower() == synonym.lower():
-                                tensor[i, tm.channel_map[key]] = 1.0
+                                tensor[arr_slice] = 1.0
                                 found = True
                             if found: break
                         if found: break
@@ -707,7 +1143,8 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
                 if unspecified_key is None:
                     # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
                     raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
-                tensor[tm.channel_map[unspecified_key]] = 1.0
+                arr_slice = (i, tm.channel_map[unspecified_key]) if dynamic else (tm.channel_map[unspecified_key],)
+                tensor[arr_slice] = 1.0
         return tensor
     return tensor_from_string
 
@@ -715,19 +1152,32 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
 race_synonyms = {'asian': ['oriental'], 'hispanic': ['latino'], 'white': ['caucasian']}
 TMAPS['partners_ecg_race'] = TensorMap(
     'partners_ecg_race', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
-    tensor_from_file=partners_channel_string('race', race_synonyms), num_tensors=0,
+    tensor_from_file=partners_channel_string('race', race_synonyms), time_series_limit=0,
 )
+
+
+TMAPS['partners_ecg_race_newest'] = TensorMap(
+    'partners_ecg_race_newest', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+    tensor_from_file=partners_channel_string('race', race_synonyms),
+)
+
 
 TMAPS['partners_ecg_gender'] = TensorMap(
     'partners_ecg_gender', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
-    tensor_from_file=partners_channel_string('gender'), num_tensors=0,
+    tensor_from_file=partners_channel_string('gender'), time_series_limit=0,
+)
+
+
+TMAPS['partners_ecg_gender_newest'] = TensorMap(
+    'partners_ecg_gender_newest', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
+    tensor_from_file=partners_channel_string('gender'),
 )
 
 
 def _partners_adult(hd5_key, minimum_age=18):
     def tensor_from_string(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = lambda key: _make_hd5_path(tm, ecg_date, key)
@@ -741,7 +1191,8 @@ def _partners_adult(hd5_key, minimum_age=18):
             found = False
             for key in tm.channel_map:
                 if hd5_string.lower() == key.lower():
-                    tensor[i, tm.channel_map[key]] = 1.0
+                    arr_slice = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
+                    tensor[arr_slice] = 1.0
                     found = True
                     break
             if not found:
@@ -753,24 +1204,33 @@ def _partners_adult(hd5_key, minimum_age=18):
 
 TMAPS['partners_adult_gender'] = TensorMap(
     'adult_gender', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
-    tensor_from_file=_partners_adult('gender'), num_tensors=0,
+    tensor_from_file=_partners_adult('gender'), time_series_limit=0,
+)
+
+
+TMAPS['partners_adult_gender_newest'] = TensorMap(
+    'adult_gender_newest', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
+    tensor_from_file=_partners_adult('gender'),
 )
 
 
 def voltage_zeros(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
-    shape = _dynamic_shape(tm, len(ecg_dates))
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=np.float32)
     for i, ecg_date in enumerate(ecg_dates):
         for cm in tm.channel_map:
             path = _make_hd5_path(tm, ecg_date, cm)
             voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-            tensor[i, tm.channel_map[cm]] = np.count_nonzero(voltage == 0)
+            arr_slice = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
+            tensor[arr_slice] = np.count_nonzero(voltage == 0)
     return tensor
 
 
-TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'I': 0}, num_tensors=0)
-TMAPS["lead_v6_zeros"] = TensorMap("lead_v6_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'V6': 0}, num_tensors=0)
+TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'I': 0}, time_series_limit=0)
+TMAPS["lead_v6_zeros"] = TensorMap("lead_v6_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'V6': 0}, time_series_limit=0)
+TMAPS["lead_i_zeros_newest"] = TensorMap("lead_i_zeros_newest", shape=(1,), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'I': 0})
+TMAPS["lead_v6_zeros_newest"] = TensorMap("lead_v6_zeros_newest", shape=(1,), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'V6': 0})
 
 
 def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
@@ -834,7 +1294,7 @@ def build_incidence_tensor_from_file(
             raise error
 
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         categorical_data = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = lambda key: _make_hd5_path(tm, ecg_date, key)
@@ -865,7 +1325,8 @@ def build_incidence_tensor_from_file(
                 else:
                     index = 1 if disease_date < assess_date else 2
                 logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
-            categorical_data[i, index] = 1.0
+            arr_slice = (i, index) if dynamic else (index,)
+            categorical_data[arr_slice] = 1.0
         return categorical_data
     return tensor_from_file
 
@@ -926,7 +1387,7 @@ def loyalty_time_to_event(
             raise error
 
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             file_split = os.path.basename(hd5.filename).split('-')
@@ -952,8 +1413,8 @@ def loyalty_time_to_event(
             if incidence_only and censor_date <= assess_date:
                 raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-            tensor[i, 0] = has_disease
-            tensor[i, 1] = (censor_date - assess_date).days
+            tensor[(i, 0) if dynamic else (0,)] = has_disease
+            tensor[(i, 1) if dynamic else (1,)] = (censor_date - assess_date).days
         return tensor
     return _cox_tensor_from_file
 
@@ -1009,7 +1470,7 @@ def _survival_from_file(
             raise error
 
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         survival_then_censor = np.zeros(shape, dtype=np.float32)
         for ed, ecg_date in enumerate(ecg_dates):
             file_split = os.path.basename(hd5.filename).split('-')
@@ -1030,20 +1491,20 @@ def _survival_from_file(
                 has_disease = 1
                 censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
 
-            intervals = int(tm.shape[0] / 2)
+            intervals = int(shape[1] if dynamic else shape[0] / 2)
             days_per_interval = day_window / intervals
 
             for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
                 cur_date = assess_date + datetime.timedelta(days=day_delta)
-                survival_then_censor[ed, i] = float(cur_date < censor_date)
-                survival_then_censor[ed, intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                survival_then_censor[(ed, i) if dynamic else (i,)] = float(cur_date < censor_date)
+                survival_then_censor[(ed, intervals+i) if dynamic else (intervals+i,)] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
                 if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                    survival_then_censor[ed, intervals] = has_disease
+                    survival_then_censor[(ed, intervals) if dynamic else (intervals,)] = has_disease
                     if has_disease and incidence_only:
                         raise ValueError(f'{tm.name} is skipping prevalent cases.')
             logging.debug(
                 f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{survival_then_censor[ed][:4]} mid tense: {survival_then_censor[ed][intervals:intervals+4]} ",
+                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{(survival_then_censor[ed] if dynamic else survival_then_censor)[:4]} mid tense: {(survival_then_censor[ed] if dynamic else survival_then_censor)[intervals:intervals+4]} ",
             )
         return survival_then_censor
     return tensor_from_file
@@ -1065,21 +1526,25 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn, num_tensors=0)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn, time_series_limit=0)
+            name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
         name = f'incident_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn, num_tensors=0)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn, time_series_limit=0)
+            name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn)
 
         # Build time to event TensorMaps
         name = f'cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, num_tensors=0)
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, time_series_limit=0)
+            name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff)
         name = f'incident_cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, num_tensors=0)
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, time_series_limit=0)
+            name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff)
 
         # Build survival curve TensorMaps
         for needed_name in needed_tensor_maps:
@@ -1089,15 +1554,17 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             try:
                 days_window = int(potential_day_string)
             except ValueError:
-                day_swindow = 1825  # Default to 5 years of follow up
+                days_window = 1825  # Default to 5 years of follow up
             name = f'survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, num_tensors=0)
+                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
+                name2tensormap[f'{needed_name}_newest'] = TensorMap(f'{needed_name}_newest', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
             name = f'incident_survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, num_tensors=0)
+                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
+                name2tensormap[f'{needed_name}_newest'] = TensorMap(f'{needed_name}_newest', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
 
     return name2tensormap
 
@@ -1160,7 +1627,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             raise error
 
         ecg_dates = _get_ecg_dates(tm, hd5)
-        shape = _dynamic_shape(tm, len(ecg_dates))
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         categorical_data = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             file_split = os.path.basename(hd5.filename).split("-")
@@ -1185,7 +1652,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
                 raise ValueError(f"ECG out of time window")
 
-            categorical_data[i, patient_table[mrn_int]] = 1.0
+            categorical_data[(i, patient_table[mrn_int]) if dynamic else (patient_table[mrn_int],)] = 1.0
         return categorical_data
     return tensor_from_file
 
@@ -1219,6 +1686,13 @@ def build_cardiac_surgery_tensor_maps(
                 path_prefix=PARTNERS_PREFIX,
                 channel_map=_outcome_channels(outcome),
                 tensor_from_file=tensor_from_file_fxn,
-                num_tensors=0,
+                time_series_limit=0,
+            )
+            name2tensormap[f'{name}_newest'] = TensorMap(
+                f'{name}_newest',
+                Interpretation.CATEGORICAL,
+                path_prefix=PARTNERS_PREFIX,
+                channel_map=_outcome_channels(outcome),
+                tensor_from_file=tensor_from_file_fxn,
             )
     return name2tensormap
