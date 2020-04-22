@@ -183,7 +183,6 @@ def make_partners_language_tensor(key: str):
         for i, c in enumerate(words):
             tensor[i, tm.channel_map[c]] = 1.0
         tensor[min(tm.shape[0]-1, i+1), tm.channel_map[STOP_CHAR]] = 1.0
-        logging.debug(f'Words {words} became: {tensor}')
         return tensor
     return language_tensor
 
