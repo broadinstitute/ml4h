@@ -181,7 +181,7 @@ def make_partners_language_tensor(key: str):
         words = str(_decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype']))
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i, c in enumerate(words.lower()):  # TODO: remove this
-            if i > tm.shape[0]:
+            if i >= tm.shape[0]:
                 logging.warning(f'Text {words} is longer than {tm.name} can store in shape:{tm.shape}')
                 break
             tensor[i, tm.channel_map[c]] = 1.0
