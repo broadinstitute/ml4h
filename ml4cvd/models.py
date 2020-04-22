@@ -820,9 +820,12 @@ def make_multimodal_multitask_model(
             mlp_inputs.append(encoder_out)
         input_multimodal.append(encoder_out)
 
-    multimodal_activation = _build_bottleneck(
-        input_multimodal, layers, mlp_inputs, activation, dense_layers, dropout, mlp_concat, conv_normalize,
-    )
+    if tensor_maps_in[0].is_language():
+        multimodal_activation = encoder_out
+    else:
+        multimodal_activation = _build_bottleneck(
+            input_multimodal, layers, mlp_inputs, activation, dense_layers, dropout, mlp_concat, conv_normalize,
+        )
 
     # build decoders
     losses = []
