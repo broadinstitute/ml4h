@@ -821,7 +821,8 @@ def make_multimodal_multitask_model(
         input_multimodal.append(encoder_out)
 
     if tensor_maps_in[0].is_language():
-        multimodal_activation = encoder_out
+        multimodal_activation = input_multimodal
+        logging.info(f'ASSuming Language single input modality {tm.name}')
     else:
         multimodal_activation = _build_bottleneck(
             input_multimodal, layers, mlp_inputs, activation, dense_layers, dropout, mlp_concat, conv_normalize,
