@@ -689,6 +689,7 @@ def _build_decoder(
     if tm.is_language():
         repeat_embeds = RepeatVector(tm.shape[0])(multimodal_activation)
         lstm_out = LSTM(tm.annotation_units)(repeat_embeds)
+        lstm_out = RepeatVector(tm.shape[0])(lstm_out)
         return Dense(tm.shape[-1], activation=tm.activation, name=tm.output_name())(lstm_out)
     elif tm.axes() > 1:
         all_filters = conv_layers + dense_blocks
