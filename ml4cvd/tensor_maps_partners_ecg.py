@@ -12,7 +12,7 @@ import numpy as np
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_CHAR_2_IDX
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_CHAR_2_IDX, STOP_CHAR
 from ml4cvd.TensorMap import TensorMap, str2date, make_range_validator, Interpretation
 
 YEAR_DAYS = 365.26
@@ -176,21 +176,35 @@ def make_partners_ecg_tensor(key: str):
     return get_partners_ecg_tensor
 
 
+def make_partners_language_tensor(key: str):
+    def language_tensor(tm, hd5, dependents={}):
+        words = str(_decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype']))
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for i, c in enumerate(words):
+            tensor[i, tm.channel_map[c]] = 1.0
+        tensor[min(tm.shape[0]-1, i+1), tm.channel_map[STOP_CHAR]] = 1.0
+        logging.debug(f'Words {words} became: {tensor}')
+        return tensor
+    return language_tensor
+
+
 task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(
     task,
+    channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
-    tensor_from_file=make_partners_ecg_tensor(key="read_md_clean"),
-    shape=(1,),
+    tensor_from_file=make_partners_language_tensor(key="read_md_clean"),
+    shape=(128, len(PARTNERS_CHAR_2_IDX)),
 )
 
 
 task = "partners_ecg_read_pc_raw"
 TMAPS[task] = TensorMap(
     task,
+    channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
-    tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
-    shape=(1,),
+    tensor_from_file=make_partners_language_tensor(key="read_pc_clean"),
+    shape=(128, len(PARTNERS_CHAR_2_IDX)),
 )
 
 
@@ -232,9 +246,10 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_firstname"
 TMAPS[task] = TensorMap(
     task,
+    channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
-    tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
-    shape=(1,),
+    tensor_from_file=make_partners_language_tensor(key="patientfirstname"),
+    shape=(32, len(PARTNERS_CHAR_2_IDX)),
 )
 
 task = "partners_ecg_lastname"
@@ -242,8 +257,8 @@ TMAPS[task] = TensorMap(
     task,
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
-    tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
-    shape=(1,),
+    tensor_from_file=make_partners_language_tensor(key="patientlastname"),
+    shape=(64, len(PARTNERS_CHAR_2_IDX)),
 )
 
 task = "partners_ecg_date"

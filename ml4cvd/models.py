@@ -686,7 +686,10 @@ def _build_decoder(
     loss_weights.append(tm.loss_weight)
     my_metrics[tm.output_name()] = tm.metrics
 
-    if tm.axes() > 1:
+    if tm.is_language():
+        lstm_out = LSTM(tm.annotation_units)(multimodal_activation)
+        return Dense(tm.shape[-1], activation=tm.activation, name=tm.output_name())(lstm_out)
+    elif tm.axes() > 1:
         all_filters = conv_layers + dense_blocks
         conv_layer, kernel = _conv_layer_from_kind_and_dimension(tm.axes(), conv_type, conv_width, conv_x, conv_y, conv_z)
         for i, name in enumerate(reversed(_get_layer_kind_sorted(layers, 'Pooling'))):
@@ -801,7 +804,9 @@ def make_multimodal_multitask_model(
     # build encoders
     last_conv = None
     for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
-        if tm.axes() > 1:
+        if tm.is_language():
+            encoder_out = LSTM(tm.annotation_units)(input_tensor)
+        elif tm.axes() > 1:
             last_conv = _build_convolutional_encoder(
                 input_tensor, tm, layers, activation, conv_layers, max_pools, dense_blocks, block_size, conv_type,
                 conv_normalize, conv_regularize, conv_x, conv_y, conv_z, conv_dropout, conv_width, conv_dilate, pool_x,
