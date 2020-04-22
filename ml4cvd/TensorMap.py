@@ -193,8 +193,8 @@ class TensorMap(object):
         # Infer shape from channel map or interpretation
         if self.shape is None:
             self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
-            if self.time_series_limit:
-                self.shape = (self.time_series_limit if self.time_series_limit else None,) + self.shape
+            if self.time_series_limit is not None:
+                self.shape = (None,) + self.shape
 
         if self.discretization_bounds is not None:
             self.input_shape = self.shape
