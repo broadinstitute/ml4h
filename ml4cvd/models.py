@@ -1309,6 +1309,7 @@ def _get_tensor_maps_for_characters(
             language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(PARTNERS_CHAR_2_IDX)), path_prefix=language_prefix,
             dependent_map=tm_char, cacheable=False,
         )
+        logging.info(f'From language layer: {language_layer} created tensor maps for Partners language data.')
     else:
         tm_char = TensorMap(
             f'{language_layer}{LANGUAGE_MODEL_SUFFIX}', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX,
@@ -1318,6 +1319,7 @@ def _get_tensor_maps_for_characters(
             language_layer, Interpretation.LANGUAGE, shape=(burn_in, len(ECG_CHAR_2_IDX)), path_prefix=language_prefix,
             dependent_map=tm_char, cacheable=False,
         )
+        logging.info(f'From language layer: {language_layer} created tensor maps for UKB ECG language data.')
 
     return [tm_embed, tm_burn_in], [tm_char]
 
