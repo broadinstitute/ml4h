@@ -7,6 +7,7 @@ import pandas as pd
 from ml4cvd.arguments import parse_args, TMAPS
 from ml4cvd.test_utils import TMAPS as MOCK_TMAPS
 from ml4cvd.test_utils import build_hdf5s
+from ml4cvd.recipes import inference_file_name, hidden_inference_file_name
 from ml4cvd.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
 from ml4cvd.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
@@ -60,15 +61,15 @@ class TestRecipes:
 
     def test_infer(self, default_arguments):
         infer_multimodal_multitask(default_arguments)
-        tsv = os.path.join(default_arguments.output_folder, default_arguments.id, 'inference_' + default_arguments.id + '.tsv')
+        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
-        assert len(inferred) == N_TENSORS
+        assert len(set(inferred['sample_id'])) == N_TENSORS
 
     def test_infer_hidden(self, default_arguments):
         infer_hidden_layer_multimodal_multitask(default_arguments)
-        tsv = os.path.join(default_arguments.output_folder, default_arguments.id, 'hidden_inference_' + default_arguments.id + '.tsv')
+        tsv = hidden_inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
-        assert len(inferred) == N_TENSORS
+        assert len(set(inferred['sample_id'])) == N_TENSORS
 
     def test_find_learning_rate(self, default_arguments):
         _find_learning_rate(default_arguments)
