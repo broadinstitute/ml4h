@@ -687,7 +687,8 @@ def _build_decoder(
     my_metrics[tm.output_name()] = tm.metrics
 
     if tm.is_language():
-        lstm_out = LSTM(tm.annotation_units)(multimodal_activation)
+        repeat_embeds = RepeatVector(tm.shape[0])(multimodal_activation)
+        lstm_out = LSTM(tm.annotation_units)(repeat_embeds)
         return Dense(tm.shape[-1], activation=tm.activation, name=tm.output_name())(lstm_out)
     elif tm.axes() > 1:
         all_filters = conv_layers + dense_blocks
@@ -821,7 +822,7 @@ def make_multimodal_multitask_model(
         input_multimodal.append(encoder_out)
 
     if tensor_maps_in[0].is_language():
-        multimodal_activation = input_multimodal
+        multimodal_activation = encoder_out
         logging.info(f'ASSuming Language single input modality {tm.name}')
     else:
         multimodal_activation = _build_bottleneck(
