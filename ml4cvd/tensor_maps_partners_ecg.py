@@ -193,6 +193,7 @@ def make_partners_language_tensor(key: str):
 task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(
     task,
+    annotation_units=128,
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     tensor_from_file=make_partners_language_tensor(key="read_md_clean"),
@@ -203,6 +204,7 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_read_pc_raw"
 TMAPS[task] = TensorMap(
     task,
+    annotation_units=128,
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     tensor_from_file=make_partners_language_tensor(key="read_pc_clean"),
