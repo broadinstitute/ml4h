@@ -140,7 +140,6 @@ def make_waveform_model_unet(
     return m
 
 
-
 def make_character_model_plus(
     tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], learning_rate: float, base_model: Model, language_layer: str,
     language_prefix: str, model_layers: str = None,
