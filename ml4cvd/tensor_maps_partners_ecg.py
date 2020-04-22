@@ -196,7 +196,7 @@ TMAPS[task] = TensorMap(
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     tensor_from_file=make_partners_language_tensor(key="read_md_clean"),
-    shape=(128, len(PARTNERS_CHAR_2_IDX)),
+    shape=(256, len(PARTNERS_CHAR_2_IDX)),
 )
 
 
@@ -206,7 +206,7 @@ TMAPS[task] = TensorMap(
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     tensor_from_file=make_partners_language_tensor(key="read_pc_clean"),
-    shape=(128, len(PARTNERS_CHAR_2_IDX)),
+    shape=(396, len(PARTNERS_CHAR_2_IDX)),
 )
 
 
