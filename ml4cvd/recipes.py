@@ -676,7 +676,7 @@ def tokenize_tensor_maps(args):
         with h5py.File(path, "r") as hd5:
             for tm in filter(lambda tm: tm.is_language, args.tensor_maps_out):
                 text = str(tm.tensor_from_file(tm, hd5, dependents={}))
-                characters.add(text)
+                [characters.add(char) for char in text]
     logging.info(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
