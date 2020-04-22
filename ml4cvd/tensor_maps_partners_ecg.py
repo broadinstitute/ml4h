@@ -12,7 +12,7 @@ import numpy as np
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_CHAR_2_IDX
 from ml4cvd.TensorMap import TensorMap, str2date, make_range_validator, Interpretation
 
 YEAR_DAYS = 365.26
@@ -90,9 +90,7 @@ def make_voltage(population_normalize: float = None):
             voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
             voltage = _resample_voltage(voltage, tm.shape[0])
             tensor[:, tm.channel_map[cm]] = voltage
-        if population_normalize is None:
-            tm.normalization = {'zero_mean_std1': True}
-        else:
+        if population_normalize is not None:
             tensor /= population_normalize
         return tensor
     return get_voltage_from_file
@@ -106,8 +104,8 @@ TMAPS['partners_ecg_voltage'] = TensorMap(
     channel_map=ECG_REST_AMP_LEADS,
 )
 
-TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
-TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=make_voltage(), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(2500, 12), tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(5000, 12), tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(2500, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(5000, 12), tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
@@ -242,6 +240,7 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_lastname"
 TMAPS[task] = TensorMap(
     task,
+    channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     tensor_from_file=make_partners_ecg_tensor(key="patientlastname"),
     shape=(1,),
