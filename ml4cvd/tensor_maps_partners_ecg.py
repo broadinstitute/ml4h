@@ -182,7 +182,7 @@ def make_partners_language_tensor(key: str):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i, c in enumerate(words.lower()):  # TODO: remove this
             if i >= tm.shape[0]:
-                logging.warning(f'Text {words} is longer than {tm.name} can store in shape:{tm.shape}')
+                logging.debug(f'Text {words} is longer than {tm.name} can store in shape:{tm.shape}, truncating...')
                 break
             tensor[i, tm.channel_map[c]] = 1.0
         tensor[min(tm.shape[0]-1, i+1), tm.channel_map[STOP_CHAR]] = 1.0
@@ -196,7 +196,7 @@ TMAPS[task] = TensorMap(
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     tensor_from_file=make_partners_language_tensor(key="read_md_clean"),
-    shape=(256, len(PARTNERS_CHAR_2_IDX)),
+    shape=(512, len(PARTNERS_CHAR_2_IDX)),
 )
 
 
