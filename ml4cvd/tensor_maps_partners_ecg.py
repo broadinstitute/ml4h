@@ -180,7 +180,7 @@ def make_partners_language_tensor(key: str):
     def language_tensor(tm, hd5, dependents={}):
         words = str(_decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype']))
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i, c in enumerate(words):
+        for i, c in enumerate(words.lower()):  # TODO: remove this
             tensor[i, tm.channel_map[c]] = 1.0
         tensor[min(tm.shape[0]-1, i+1), tm.channel_map[STOP_CHAR]] = 1.0
         return tensor
