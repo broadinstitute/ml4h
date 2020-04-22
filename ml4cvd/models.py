@@ -687,9 +687,7 @@ def _build_decoder(
     my_metrics[tm.output_name()] = tm.metrics
 
     if tm.is_language():
-        repeat_embeds = RepeatVector(tm.shape[0])(multimodal_activation)
-        lstm_out = LSTM(tm.annotation_units)(repeat_embeds)
-        lstm_out = RepeatVector(tm.shape[0])(lstm_out)
+        lstm_out = LSTM(tm.annotation_units, return_sequences=True)(multimodal_activation)
         return Dense(tm.shape[-1], activation=tm.activation, name=tm.output_name())(lstm_out)
     elif tm.axes() > 1:
         all_filters = conv_layers + dense_blocks
@@ -807,7 +805,7 @@ def make_multimodal_multitask_model(
     last_conv = None
     for j, (tm, input_tensor) in enumerate(zip(tensor_maps_in, input_tensors)):
         if tm.is_language():
-            encoder_out = LSTM(tm.annotation_units)(input_tensor)
+            encoder_out = LSTM(tm.annotation_units, return_sequences=True)(input_tensor)
         elif tm.axes() > 1:
             last_conv = _build_convolutional_encoder(
                 input_tensor, tm, layers, activation, conv_layers, max_pools, dense_blocks, block_size, conv_type,
