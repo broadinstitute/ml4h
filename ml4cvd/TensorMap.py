@@ -458,6 +458,9 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
             window_offset = max(0, tm.shape[0] - char_idx)
             for k in range(max(0, char_idx - tm.shape[0]), char_idx):
+                if caption[k] not in tm.dependent_map.channel_map:
+                    logging.warning(f'Could not find character {caption[k]} in channel map: {tm.dependent_map.channel_map}')
+                    continue
                 tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
                 window_offset += 1
         return tensor
