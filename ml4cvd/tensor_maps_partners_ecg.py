@@ -82,8 +82,8 @@ def make_voltage(population_normalize: float = None):
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
-                    arr_slice = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.tm.channel_map[cm])
-                    tensor[arr_slice] = voltage
+                    slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.tm.channel_map[cm])
+                    tensor[slices] = voltage
                 except KeyError:
                     pass
         if population_normalize is None:
@@ -134,8 +134,8 @@ def make_voltage_attr(volt_attr: str = ""):
             for cm in tm.channel_map:
                 try:
                     path = _make_hd5_path(tm, ecg_date, cm)
-                    arr_slice = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map,)
-                    tensor[arr_slice] = hd5[path].attrs[volt_attr]
+                    slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map,)
+                    tensor[slices] = hd5[path].attrs[volt_attr]
                 except KeyError:
                     pass
         return tensor
@@ -188,8 +188,8 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                         if channel in dict_of_list:
                             for string in dict_of_list[channel]:
                                 if string in read:
-                                    arr_slice = (i, idx) if dynamic else (idx,)
-                                    label_array[arr_slice] = 1
+                                    slices = (i, idx) if dynamic else (idx,)
+                                    label_array[slices] = 1
                                     found = True
                                 if found: break
                         if found: break
@@ -197,8 +197,8 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                 except KeyError:
                     pass
             if not found:
-                arr_slice = (i, tm.channel_map[not_found_key]) if dynamic else (tm.channel_map[not_found_key],)
-                label_array[arr_slice] = 1
+                slices = (i, tm.channel_map[not_found_key]) if dynamic else (tm.channel_map[not_found_key],)
+                label_array[slices] = 1
         return label_array
     return get_partners_ecg_label
 
@@ -1125,15 +1125,15 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
             try:
                 hd5_string = _decompress_data(data_compressed=hd5[path][()], dtype='str')
                 for key in tm.channel_map:
-                    arr_slice = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
+                    slices = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
                     if hd5_string.lower() == key.lower():
-                        tensor[arr_slice] = 1.0
+                        tensor[slices] = 1.0
                         found = True
                         break
                     if key in race_synonyms:
                         for synonym in race_synonyms[key]:
                             if hd5_string.lower() == synonym.lower():
-                                tensor[arr_slice] = 1.0
+                                tensor[slices] = 1.0
                                 found = True
                             if found: break
                         if found: break
@@ -1143,8 +1143,8 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
                 if unspecified_key is None:
                     # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
                     raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
-                arr_slice = (i, tm.channel_map[unspecified_key]) if dynamic else (tm.channel_map[unspecified_key],)
-                tensor[arr_slice] = 1.0
+                slices = (i, tm.channel_map[unspecified_key]) if dynamic else (tm.channel_map[unspecified_key],)
+                tensor[slices] = 1.0
         return tensor
     return tensor_from_string
 
@@ -1191,8 +1191,8 @@ def _partners_adult(hd5_key, minimum_age=18):
             found = False
             for key in tm.channel_map:
                 if hd5_string.lower() == key.lower():
-                    arr_slice = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
-                    tensor[arr_slice] = 1.0
+                    slices = (i, tm.channel_map[key]) if dynamic else (tm.channel_map[key],)
+                    tensor[slices] = 1.0
                     found = True
                     break
             if not found:
@@ -1222,8 +1222,8 @@ def voltage_zeros(tm, hd5, dependents={}):
         for cm in tm.channel_map:
             path = _make_hd5_path(tm, ecg_date, cm)
             voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-            arr_slice = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
-            tensor[arr_slice] = np.count_nonzero(voltage == 0)
+            slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
+            tensor[slices] = np.count_nonzero(voltage == 0)
     return tensor
 
 
@@ -1325,8 +1325,8 @@ def build_incidence_tensor_from_file(
                 else:
                     index = 1 if disease_date < assess_date else 2
                 logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
-            arr_slice = (i, index) if dynamic else (index,)
-            categorical_data[arr_slice] = 1.0
+            slices = (i, index) if dynamic else (index,)
+            categorical_data[slices] = 1.0
         return categorical_data
     return tensor_from_file
 
