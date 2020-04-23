@@ -130,7 +130,7 @@ def evaluate_predictions(
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
     elif tm.is_language():
-        logging.debug(f'In language y_predictions {y_predictions.shape} y_truth {y_truth.shape} cm: {tm.channel_map}')
+        logging.info(f'In language y_predictions {y_predictions.shape} y_truth {y_truth.shape} cm: {tm.channel_map}')
         index_2_token = {v: k for k, v in tm.channel_map.items()}
         for i in range(y_predictions.shape[0]):
             true_text = ''
@@ -138,7 +138,7 @@ def evaluate_predictions(
             for j in range(tm.shape[0]):
                 true_text += index_2_token[np.argmax(y_truth[i, j])]
                 predict_text += index_2_token[np.argmax(y_predictions[i, j])]
-            logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{np.argmax(y_predictions[i, j])}')
+            logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{np.argmax(y_predictions[i, j])}\nargmax true{np.argmax(y_truth[i, j])}')
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
