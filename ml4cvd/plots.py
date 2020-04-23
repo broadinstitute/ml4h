@@ -138,7 +138,7 @@ def evaluate_predictions(
             for j in range(tm.shape[0]):
                 true_text += index_2_token[np.argmax(y_truth[i, j])]
                 predict_text += index_2_token[np.argmax(y_predictions[i, j])]
-            logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{np.argmax(y_predictions[i, j])}\nargmax true{np.argmax(y_truth[i, j])}')
+            logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{y_predictions[i, j].shape}\nargmax true{y_truth[i, j].shape}')
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
