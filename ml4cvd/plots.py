@@ -129,6 +129,8 @@ def evaluate_predictions(
         logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
+    elif tm.is_language():
+        logging.debug(f'In language y_predictions {y_predictions.shape} y_truth {y_truth.shape} cm: {tm.channel_map}')
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
