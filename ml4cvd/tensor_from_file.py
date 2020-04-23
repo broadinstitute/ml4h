@@ -2002,7 +2002,7 @@ def random_text_window_tensor(text_file: str, window_size: int):
         if error:
             raise error
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        random_index = np.random.randint(len(text)-(window_size+1))
+        random_index = np.random.randint(len(text)-(window_size*2))
         for i, c in enumerate(text[random_index:random_index+window_size]):
             tensor[i, tm.channel_map[c]] = 1.0
         if tm.dependent_map is not None:
@@ -2010,6 +2010,7 @@ def random_text_window_tensor(text_file: str, window_size: int):
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
                 dependents[tm.dependent_map][j, tm.channel_map[c]] = 1.0
+        logging.debug(f' {text[random_index:random_index+window_size]} became {tensor} and dep {text[start_next_window:start_next_window+tm.dependent_map.shape[0]]} became{dependents[tm.dependent_map]}')
         return tensor
     return text_from_file
 
