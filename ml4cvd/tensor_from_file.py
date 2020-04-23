@@ -15,7 +15,8 @@ from tensorflow.keras.utils import to_categorical
 from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, \
+    TESTIMONIAL_CHAR_2_IDX
 from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP
@@ -2013,7 +2014,13 @@ def random_text_window_tensor(text_file: str, window_size: int):
     return text_from_file
 
 
-# TMAPS['lsd_text_corpus'] = TensorMap(
-#     'lsd_text_corpus', Interpretation.LANGUAGE, shape=(6,), tensor_from_file=random_text_window_tensor('/home/sam/lsd_small.txt', 32),
-#     channel_map=TESTIMONIAL_DICTIONARY,
-# )
+TMAPS['lsd_text_next_2_char'] = TensorMap(
+    'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(2, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX,
+)
+
+TMAPS['lsd_text_32'] = TensorMap(
+    'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32, len(TESTIMONIAL_CHAR_2_IDX)),
+    tensor_from_file=random_text_window_tensor('/home/sam/lsd_small.txt', 32),
+    dependent_map=TMAPS['lsd_text_next_2_char'],
+    channel_map=TESTIMONIAL_CHAR_2_IDX,
+)
