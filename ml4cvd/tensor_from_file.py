@@ -1973,12 +1973,25 @@ TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap(
 )
 
 
+def _preprocess_sentence(sentence):
+    sentence = sentence.strip()
+    # creating a space between a word and the punctuation following it
+    # eg: "he is a boy." => "he is a boy ."
+    sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
+    sentence = re.sub(r'[" "]+', " ", sentence)
+    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+    sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+    sentence = sentence.strip()
+    # adding a start and an end token to the sentence
+    return sentence
+
+
 def _load_text(path_to_text):
     texts = ""
     with open(path_to_text) as file:
         lines = file.readlines()
     for line in lines:
-        texts += line.strip()
+        texts += _preprocess_sentence(line)
     return texts
 
 

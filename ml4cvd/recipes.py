@@ -3,6 +3,7 @@
 # Imports
 import os
 import csv
+import re
 from typing import Dict, List
 from operator import itemgetter
 
@@ -685,12 +686,25 @@ def tokenize_tensor_maps(args):
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
+def _preprocess_sentence(sentence):
+    sentence = sentence.strip()
+    # creating a space between a word and the punctuation following it
+    # eg: "he is a boy." => "he is a boy ."
+    sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
+    sentence = re.sub(r'[" "]+', " ", sentence)
+    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+    sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+    sentence = sentence.strip()
+    # adding a start and an end token to the sentence
+    return sentence
+
+
 def tokenize_text(text_file):
     characters = set()
     with open(text_file) as file:
         lines = file.readlines()
         for line in lines:
-            [characters.add(char) for char in line]
+            [characters.add(char) for char in _preprocess_sentence(line)]
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
