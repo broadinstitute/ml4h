@@ -139,6 +139,13 @@ def evaluate_predictions(
                 true_text += index_2_token[np.argmax(y_truth[i, j])]
                 predict_text += index_2_token[np.argmax(y_predictions[i, j])]
             logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{y_predictions[i, j, :8]}\nargmax true{y_truth[i, j].shape}')
+        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
+        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
+        y_predictions = y_predictions.reshape(melt_shape)[idx]
+        y_truth = y_truth.reshape(melt_shape)[idx]
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
