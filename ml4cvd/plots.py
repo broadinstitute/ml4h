@@ -997,8 +997,8 @@ def plot_partners_ecgs(args):
         'partners_ecg_paxis_md',    'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
     ]
     voltage_tensor = 'partners_ecg_voltage'
-    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as PARTNERS_TMAPS
-    tensor_maps_in = [PARTNERS_TMAPS[it] for it in plot_tensors + [voltage_tensor]]
+    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS
+    tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
     tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
 
     if 'clinical' == args.plot_mode:
