@@ -135,7 +135,7 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
-        :param time_series_limit: The maximum number of tensors in a time series to use if shape is dynamic
+        :param time_series_limit: If set, indicates dynamic shaping and sets the maximum number of tensors in a time series to use
         :param time_series_order: When selecting tensors in a time series, use newest, oldest, or randomly ordered tensors
         :param discretization_bounds: List of floats that delineate the boundaries of the bins that will be used
                                           for producing categorical values from continuous values
@@ -193,6 +193,7 @@ class TensorMap(object):
         # Infer shape from channel map or interpretation
         if self.shape is None:
             self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
+            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
             if self.time_series_limit is not None:
                 self.shape = (None,) + self.shape
 
