@@ -1995,7 +1995,7 @@ def random_text_window_tensor(text_file: str, window_size: int):
             start_next_window = random_index+window_size
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
-                dependents[tm.dependent_map][j, tm.channel_map[c]] = 1.0
+                dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
         logging.debug(f'{text[random_index:random_index+window_size]} \nand Dependent:{text[start_next_window:start_next_window+tm.dependent_map.shape[0]]}')
         return tensor
     return text_from_file
