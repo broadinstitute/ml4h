@@ -2005,13 +2005,13 @@ def random_text_window_tensor(text_file: str, window_size: int):
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
                 dependents[tm.dependent_map][j, tm.channel_map[c]] = 1.0
-        logging.debug(f' {text[random_index:random_index+window_size]} became {tensor} and dep {text[start_next_window:start_next_window+tm.dependent_map.shape[0]]} became{dependents[tm.dependent_map]}')
+        logging.debug(f'{text[random_index:random_index+window_size]} \nand Dependent:{text[start_next_window:start_next_window+tm.dependent_map.shape[0]]}')
         return tensor
     return text_from_file
 
 
 TMAPS['lsd_text_next_2_char'] = TensorMap(
-    'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(2, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX,
+    'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(32, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX,
 )
 
 TMAPS['lsd_text_32'] = TensorMap(
