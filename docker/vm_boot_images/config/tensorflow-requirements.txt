@@ -25,3 +25,4 @@ altair
 facets-overview
 plotnine
 vega
+pandasql

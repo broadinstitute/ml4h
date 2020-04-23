@@ -9,7 +9,7 @@ import datetime
 from operator import itemgetter
 from functools import reduce
 from itertools import combinations
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, OrderedDict
 from multiprocess import Pool, Value
 from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
@@ -17,6 +17,7 @@ import h5py
 import logging
 import numpy as np
 import pandas as pd
+from pandasql import sqldf
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -26,7 +27,7 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation, _decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters, plot_cross_reference
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -990,3 +991,213 @@ def explore(args):
                 )
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
+
+
+def _report_xref(args, xref_df, title):
+    title = title.replace(' ', '_')
+    if args.reference_label in xref_df:
+        labels, counts = np.unique(xref_df[args.reference_label], return_counts=True)
+        labels = np.append(labels, ['Total'])
+        counts = np.append(counts, [sum(counts)])
+
+        # save outcome distribution to csv
+        df_out = pd.DataFrame({ 'counts': counts, args.reference_label: labels }).set_index(args.reference_label, drop=True)
+        fpath = os.path.join(args.output_folder, args.id, f'distribution_{args.reference_label.replace(" ", "_")}_{title}.csv')
+        df_out.to_csv(fpath)
+        logging.info(f'Saved distribution of label in cross reference to {fpath}')
+
+    # save cross reference to csv
+    fpath = os.path.join(args.output_folder, args.id, f'list_{title}.csv')
+    xref_df.set_index(args.source_join, drop=True).to_csv(fpath)
+    logging.info(f'Saved cross reference to {fpath}')
+
+
+def cross_reference(args):
+    """
+    Cross reference a source cohort with a reference cohort.
+    Required:
+        source data - either a csv or a directory of hd5
+        source join - join column for source data
+        reference data - either a csv or a directory of hd5
+        reference join - join column for reference data
+    Optional:
+        numeric join - convert join column to int to perform join
+        source time - time column for source data
+        reference time - time column for reference data
+        reference time range - either an int defining the day range relative to reference time
+                               or a string defining the time column to use as the other bound of range
+        reference label - label column for reference data to report distribution
+    """
+    args.num_workers = 0
+    cohort_counts = OrderedDict()
+
+    src_path = args.source
+    src_name = args.source_name
+    src_join = args.source_join
+    src_join_og = src_join
+    src_time = args.source_time
+    ref_path = args.reference
+    ref_name = args.reference_name
+    ref_join = args.reference_join
+    ref_join_og = ref_join
+    ref_time = args.reference_time
+    ref_label = args.reference_label
+    ref_time_range = args.reference_time_range
+    numeric_join = not args.non_numeric_join
+
+    # parse options
+    src_cols = [col for col in [src_join, src_time] if col is not None]
+    ref_cols = [col for col in [ref_join, ref_time, ref_label] if col is not None]
+    use_time = src_time and ref_time
+    if use_time:
+        dynamic_time_range = False
+        try:
+            ref_time_range = int(ref_time_range)
+        except ValueError:
+            logging.debug(f'Could not interpret {ref_time_range} as an int, assuming dynamic time range for {ref_name}.')
+            ref_cols.append(ref_time_range)
+            dynamic_time_range = True
+
+    # load data into dataframes
+    def _load_data(name, path, cols):
+        if os.path.isdir(src_path):
+            logging.debug(f'Assuming {name} is directory of hd5 at {path}')
+            from ml4cvd.arguments import _get_tmap
+            args.tensor_maps_in = [_get_tmap(it, cols) for it in cols]
+            df = _tensors_to_df(args)
+        else:
+            logging.debug(f'Assuming {name} is a csv at {path}')
+            df = pd.read_csv(path, usecols=cols, low_memory=False)
+        return df
+    src_df = _load_data(src_name, src_path, src_cols)
+    logging.info(f'Loaded {src_name} into dataframe')
+    ref_df = _load_data(ref_name, ref_path, ref_cols)
+    logging.info(f'Loaded {ref_name} into dataframe')
+
+    # cleanup data
+    def _clean_col(df, col, func):
+        col_og = col
+        col = f'clean_{col}'
+        df[col] = func(df[col_og])
+        df = df.dropna()
+        return df, col, col_og
+
+    def _repl_cols(cols, cur_val, new_val):
+        return [new_val if col == cur_val else col for col in cols]
+
+    # cleanup join col
+    def _clean_numeric(df, col):
+        # TODO this is the source of count mismatch for mrn cleaning
+        return _clean_col(df, col, lambda data: pd.to_numeric(data, errors='coerce'))
+
+    if numeric_join:
+        src_df, src_join, src_join_og = _clean_numeric(src_df, src_join)
+        ref_df, ref_join, ref_join_og = _clean_numeric(ref_df, ref_join)
+        src_cols = _repl_cols(src_cols, src_join_og, src_join)
+        ref_cols = _repl_cols(ref_cols, ref_join_og, ref_join)
+
+    # cleanup time col
+    def _clean_time(df, col):
+        return _clean_col(df, col, lambda data: pd.to_datetime(data, errors='coerce', infer_datetime_format=True))
+
+    if use_time:
+        src_df, src_time, src_time_og = _clean_time(src_df, src_time)
+        ref_df, ref_time, ref_time_og = _clean_time(ref_df, ref_time)
+        src_cols = _repl_cols(src_cols, src_time_og, src_time)
+        ref_cols = _repl_cols(ref_cols, ref_time_og, ref_time)
+        if dynamic_time_range:
+            ref_df, ref_time_range, ref_time_range_og = _clean_time(ref_df, ref_time_range)
+            ref_cols = _repl_cols(ref_cols, ref_time_range_og, ref_time_range)
+            time_description = f'between {ref_name} {ref_time_range_og} and {ref_time_og}'
+        else:
+            # add time col to be the static window relative to ref time
+            days = ref_time_range
+            ref_time_range = f'{days}_relative_{ref_time_og}'
+            ref_df[ref_time_range] = ref_df[ref_time].apply(lambda x: x + datetime.timedelta(days=days))
+            ref_cols.append(ref_time_range)
+            time_description = f'{days} days relative {ref_name} {ref_time_og}'
+    logging.info('Cleaned data columns')
+
+    # drop duplicates based on cols
+    src_df.drop_duplicates(subset=src_cols, inplace=True)
+    ref_df.drop_duplicates(subset=ref_cols, inplace=True)
+    logging.info('Removed duplicates from dataframes, based on join, time, and label')
+
+    cohort_counts[f'{src_name} (total)'] = len(src_df)
+    cohort_counts[f'{src_name} (unique {src_join_og})'] = len(np.unique(src_df[src_join]))
+    cohort_counts[f'{ref_name} (total)'] = len(ref_df)
+    cohort_counts[f'{ref_name} (unique {ref_join_og})'] = len(np.unique(ref_df[ref_join]))
+
+    # filter to only occurrences that appear in the other, based on join
+    if np.issubdtype(src_df[src_join].dtype, np.number) and np.issubdtype(ref_df[ref_join].dtype, np.number):
+        src_df = src_df[np.isin(src_df[src_join], ref_df[ref_join])]
+        ref_df = ref_df[np.isin(ref_df[ref_join], src_df[src_join])]
+    else:
+        # np.isin is O(m*n) when computing with object datatype, slightly optimize with dicts O(m+n)
+        src_dict = defaultdict(list)
+        for row in src_df.itertuples(index=False):
+            row = row._asdict()
+            src_dict[row[src_join]].append(row)
+        ref_dict = defaultdict(list)
+        for row in ref_df.itertuples(index=False):
+            row = row._asdict()
+            ref_dict[row[ref_join]].append(row)
+        src_df = pd.DataFrame([src_dict[key] for key in src_dict if key in ref_dict])
+        ref_df = pd.DataFrame([ref_dict[key] for key in ref_dict if key in src_dict])
+    logging.info('Filtered to only occurrences that appear in the other, based on join')
+
+    cohort_counts[f'{src_name} in {ref_name} (total)'] = len(src_df)
+    cohort_counts[f'{src_name} in {ref_name} (unique {src_join_og})'] = len(np.unique(src_df[src_join]))
+    cohort_counts[f'{ref_name} in {src_name} (total)'] = len(ref_df)
+    cohort_counts[f'{ref_name} in {src_name} (unique {ref_join_og})'] = len(np.unique(ref_df[ref_join]))
+
+    # report xref no time filter
+    title = f'all {src_name} in {ref_name}'
+    _report_xref(args, src_df, title)
+
+    if use_time:
+        # infer which column in reference time range is left and which is right
+        left, right = ref_time, ref_time_range
+        lval, rval = ref_df.loc[0][left], ref_df.loc[0][right]
+        if lval > rval:
+            left, right = right, left
+        sql = (
+            f'SELECT src_df.*, ref_df.* '
+            f'FROM src_df '
+            f'INNER JOIN ref_df '
+            f'ON src_df.{src_join} = ref_df.{ref_join} '
+            f'AND src_df.{src_time} BETWEEN ref_df.{left} AND ref_df.{right}'
+        )
+        xref_df = sqldf(sql, locals())
+        for col in [src_time, ref_time, ref_time_range]: xref_df[col] = pd.to_datetime(xref_df[col], infer_datetime_format=True)
+        logging.info('Cross referenced based on time')
+
+        # At this point, rows in source have probably been duplicated by the join
+        # This is fine, each row in reference has all associated rows in source now
+
+        cohort_counts[f'{src_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(xref_df[src_join])
+        cohort_counts[f'{src_name} {time_description} (unique {src_join_og} and {src_time_og})'] = len(xref_df.drop_duplicates(subset=[src_join, src_time]))
+
+        # report xref, all, time filtered
+        title = f'all {src_name} {time_description}'
+        _report_xref(args, xref_df, title)
+        plot_cross_reference(args, xref_df, title, time_description)
+
+        # get most recent row in source for each row in reference
+        # sort in ascending order so last() returns most recent
+        xref_df = xref_df.sort_values(by=ref_cols+[src_time], ascending=True)
+        xref_df = xref_df.groupby(by=ref_cols, as_index=False).last()
+        logging.info(f'Found most recent {src_name} per {ref_name}')
+
+        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(xref_df[src_join])
+        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (unique {src_join_og} and {src_time_og})'] = len(xref_df.drop_duplicates(subset=[src_join, src_time]))
+
+        # report xref, most recent, time filtered
+        title = f'most recent {src_name} {time_description}'
+        _report_xref(args, xref_df, title)
+        plot_cross_reference(args, xref_df, title, time_description)
+
+    # report counts
+    fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.csv')
+    pd.DataFrame.from_dict(cohort_counts, orient='index', columns=['count']).rename_axis('description').to_csv(fpath)
+    logging.info(f'Saved cohort counts to {fpath}')

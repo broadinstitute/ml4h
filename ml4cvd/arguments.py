@@ -204,6 +204,19 @@ def parse_args():
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
     parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
+    # Cross reference arguments
+    parser.add_argument('--source')
+    parser.add_argument('--source_name', default='Source')
+    parser.add_argument('--source_join')
+    parser.add_argument('--source_time')
+    parser.add_argument('--reference')
+    parser.add_argument('--reference_name', default='Reference')
+    parser.add_argument('--reference_join')
+    parser.add_argument('--reference_time')
+    parser.add_argument('--reference_time_range')
+    parser.add_argument('--reference_label')
+    parser.add_argument('--non_numeric_join', default=False, action='store_true')
+
     args = parser.parse_args()
     _process_args(args)
     return args
