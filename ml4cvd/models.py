@@ -687,8 +687,8 @@ def _build_decoder(
     my_metrics[tm.output_name()] = tm.metrics
 
     if tm.is_language():
-        lstm_out = LSTM(tm.annotation_units, return_sequences=True)(multimodal_activation)
-        return Dense(tm.shape, activation=tm.activation, name=tm.output_name())(lstm_out) # -2 ?????
+        #lstm_out = LSTM(tm.annotation_units, return_sequences=True)(multimodal_activation)
+        return Dense(tm.shape[-1], activation=tm.activation, name=tm.output_name())(multimodal_activation)
     elif tm.axes() > 1:
         all_filters = conv_layers + dense_blocks
         conv_layer, kernel = _conv_layer_from_kind_and_dimension(tm.axes(), conv_type, conv_width, conv_x, conv_y, conv_z)
