@@ -115,6 +115,8 @@ def run(args):
             train_multimodal_multitask(args)
         elif 'tokenize' == args.mode:
             tokenize_tensor_maps(args)
+        elif 'tokenize_text' == args.mode:
+            tokenize_text(args.app_csv)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -678,6 +680,17 @@ def tokenize_tensor_maps(args):
                 text = str(tm.tensor_from_file(tm, hd5, dependents={}))
                 [characters.add(char) for char in text]
     logging.info(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
+
+
+def tokenize_text(text_file):
+    characters = set()
+    with open(text_file) as file:
+        lines = file.readlines()
+        for line in lines:
+            [characters.add(char) for char in line]
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')

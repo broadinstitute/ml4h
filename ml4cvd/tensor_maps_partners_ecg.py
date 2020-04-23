@@ -180,7 +180,7 @@ def make_partners_language_tensor(key: str):
     def language_tensor(tm, hd5, dependents={}):
         words = str(_decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs['dtype']))
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i, c in enumerate(words.lower()):  # TODO: remove this
+        for i, c in enumerate(words):
             if i >= tm.shape[0]:
                 logging.debug(f'Text {words} is longer than {tm.name} can store in shape:{tm.shape}, truncating...')
                 break

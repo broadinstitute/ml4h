@@ -2,6 +2,7 @@ import os
 import csv
 import logging
 import datetime
+import re
 from typing import List, Dict, Tuple, Callable
 
 import vtk
@@ -1969,3 +1970,50 @@ TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap(
     'cine_segmented_ao_ascending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=abbfc,
     channel_map=_bounding_box_channel_map(3),
 )
+
+
+def _preprocess_sentence(sentence):
+    sentence = sentence.strip().replace('\n', '')
+    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+    sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+    sentence = sentence.strip()
+    # adding a start and an end token to the sentence
+    return sentence
+
+
+def _load_text(path_to_text):
+    texts = ""
+    with open(path_to_text) as file:
+        lines = file.readlines()
+    for line in lines:
+        texts += _preprocess_sentence(line)
+    return texts
+
+
+def random_text_window_tensor(text_file: str, window_size: int):
+    error = None
+    try:
+        text = _load_text(text_file)
+    except FileNotFoundError as e:
+        error = e
+
+    def text_from_file(tm, _, dependents={}):
+        if error:
+            raise error
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        random_index = np.random.randint(len(text)-(window_size+1))
+        for i, c in enumerate(text[random_index:random_index+window_size]):
+            tensor[i, tm.channel_map[c]] = 1.0
+        if tm.dependent_map is not None:
+            start_next_window = random_index+window_size
+            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+            for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
+                dependents[tm.dependent_map][j, tm.channel_map[c]] = 1.0
+        return tensor
+    return text_from_file
+
+
+# TMAPS['lsd_text_corpus'] = TensorMap(
+#     'lsd_text_corpus', Interpretation.LANGUAGE, shape=(6,), tensor_from_file=random_text_window_tensor('/home/sam/lsd_small.txt', 32),
+#     channel_map=TESTIMONIAL_DICTIONARY,
+# )
