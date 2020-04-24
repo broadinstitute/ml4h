@@ -1661,6 +1661,11 @@ TMAPS['shmolli_192i_liver_only'] = TensorMap(
     tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i_liver']),
 )
 
+TMAPS['liver_shmolli_segmented'] = TensorMap(
+    'liver_shmolli_segmented', Interpretation.CATEGORICAL, shape=(288, 384, len(MRI_LIVER_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
+    channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP,
+)
 
 def preprocess_with_function(fxn, hd5_key=None):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):

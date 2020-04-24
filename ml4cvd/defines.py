@@ -60,6 +60,7 @@ MRI_AO_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'svc': 1, 'pulmonary_artery': 2, 'ascending_aortic_wall': 3, 'ascending_aorta': 4,
     'descending_aortic_wall': 5, 'descending_aorta': 6, 'thorax': 7, 'body': 8, 'breast_implant': 9,
 }
+MRI_LIVER_SEGMENTED_CHANNEL_MAP = {'background': 0, 'liver': 1, 'inferior_vena_cava': 2, 'abdominal_aorta': 3, 'body': 4}
 
 CAD_ICDS = [
     'K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
