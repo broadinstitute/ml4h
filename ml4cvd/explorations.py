@@ -345,8 +345,8 @@ def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output:
             language_input = tm
     burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
     index_2_token = {v: k for k, v in language_output.channel_map.items()}
-    for i in range(min(max_samples, test_data[language_input].shape[0])):  # iterate over the batch
-        burn_in[0] = test_data[language_input][i]
+    for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch
+        burn_in[0] = test_data[language_input.input_name()][i]
         sentence = ''.join([index_2_token[np.argmax(one_hot)] for one_hot in burn_in[0]])
         logging.info(f'Batch {i} sentence start:{sentence}')
         for j in range(max_samples):
