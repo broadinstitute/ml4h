@@ -448,7 +448,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
         else:
             caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
-        char_idx = np.random.randint(len(caption) + 1)
+        char_idx = np.random.randint(tm.shape[0], len(caption) + 1)
         if char_idx == len(caption):
             next_char = STOP_CHAR
         else:
@@ -456,13 +456,11 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if tm.dependent_map is not None:
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
             dependents[tm.dependent_map][tm.dependent_map.channel_map[next_char]] = 1.0
-            window_offset = max(0, tm.shape[0] - char_idx)
-            for k in range(max(0, char_idx - tm.shape[0]), char_idx):
+            for i, k in enumerate(range(char_idx - tm.shape[0], char_idx)):
                 if caption[k] not in tm.dependent_map.channel_map:
                     logging.warning(f'Could not find character {caption[k]} in channel map: {tm.dependent_map.channel_map}')
                     continue
-                tensor[window_offset, tm.dependent_map.channel_map[caption[k]]] = 1.0
-                window_offset += 1
+                tensor[i, tm.dependent_map.channel_map[caption[k]]] = 1.0
         return tensor
     else:
         raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')

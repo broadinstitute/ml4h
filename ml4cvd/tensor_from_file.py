@@ -1987,32 +1987,40 @@ def _preprocess_sentence(sentence):
 
 
 def _load_text(path_to_text):
-    texts = ""
+    text = ""
     with open(path_to_text) as file:
         lines = file.readlines()
     for line in lines:
-        texts += _preprocess_sentence(line)
-    return texts
+        text += _preprocess_sentence(line)
+    return text
 
 
 def random_text_window_tensor(text_file: str, window_size: int):
     text = _load_text(text_file)
 
     def text_from_file(tm, _, dependents={}):
-
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        random_index = np.random.randint(len(text)-(window_size*2))
+        random_index = np.random.randint(window_size, len(text)-window_size)
         for i, c in enumerate(text[random_index:random_index+window_size]):
             tensor[i, tm.channel_map[c]] = 1.0
         if tm.dependent_map is not None:
             start_next_window = random_index+window_size
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
-                dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
+            if tm.dependent_map.axes() == 1:
+                dependents[tm.dependent_map][tm.dependent_map.channel_map[text[start_next_window]]] = 1.0
+            elif tm.dependent_map.axes() == 2:
+                for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
+                    dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
+            else:
+                raise ValueError(f'No method to process dependent map:{tm.dependent_map.name} of shape {tm.dependent_map.shape}.')
         logging.debug(f'{text[random_index:random_index+window_size]} \nand Dependent:{text[start_next_window:start_next_window+tm.dependent_map.shape[0]]}')
         return tensor
     return text_from_file
 
+
+TMAPS['lsd_text_next_char'] = TensorMap(
+    'lsd_text_next_char', Interpretation.LANGUAGE, shape=(len(TESTIMONIAL_CHAR_2_IDX),), channel_map=TESTIMONIAL_CHAR_2_IDX, cacheable=False,
+)
 
 TMAPS['lsd_text_next_2_char'] = TensorMap(
     'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(3, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX, annotation_units=32, cacheable=False,
