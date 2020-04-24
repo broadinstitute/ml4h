@@ -172,30 +172,33 @@ TMAPS["len_v6_newest"] = TensorMap("len_v6_newest", shape=(1,), path_prefix=PART
 def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified"):
     if type(keys) == str:
         keys = [keys]
+
     def get_partners_ecg_label(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         label_array = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             found = False
-            for key in keys:
-                path = _make_hd5_path(tm, ecg_date, key)
-                if path not in hd5:
+            for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
+                if channel not in dict_of_list:
                     continue
-                try:
+                for key in keys:
+                    path = _make_hd5_path(tm, ecg_date, key)
+                    if path not in hd5:
+                        continue
                     read = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                    for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
-                        if channel in dict_of_list:
-                            for string in dict_of_list[channel]:
-                                if string in read:
-                                    slices = (i, idx) if dynamic else (idx,)
-                                    label_array[slices] = 1
-                                    found = True
-                                if found: break
-                        if found: break
-                    if found: break
-                except KeyError:
-                    pass
+                    for string in dict_of_list[channel]:
+                        if string not in read:
+                            continue
+                        slices = (i, idx) if dynamic else (idx,)
+                        label_array[slices] = 1
+                        found = True
+                        break
+                if found:
+                    break
+            if found:
+                break
+
             if not found:
                 slices = (i, tm.channel_map[not_found_key]) if dynamic else (tm.channel_map[not_found_key],)
                 label_array[slices] = 1
