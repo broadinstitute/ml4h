@@ -2027,10 +2027,10 @@ TMAPS['lsd_text_next_2_char'] = TensorMap(
 )
 
 TMAPS['lsd_text_32'] = TensorMap(
-    'lsd_text_corpus', Interpretation.LANGUAGE, shape=(16, len(TESTIMONIAL_CHAR_2_IDX)),
-    tensor_from_file=random_text_window_tensor('/home/sam/ml/lsd_small.txt', 16),
+    'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32, len(TESTIMONIAL_CHAR_2_IDX)),
+    tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32),
     dependent_map=TMAPS['lsd_text_next_char'],
     channel_map=TESTIMONIAL_CHAR_2_IDX,
-    annotation_units=32,
+    annotation_units=128,
     cacheable=False,
 )
