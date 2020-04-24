@@ -260,18 +260,25 @@ def explore(args):
     args.num_workers = 0
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    out_ext = 'tsv' if tsv_style_is_genetics else 'csv'
+    out_sep = '\t' if tsv_style_is_genetics else ','
 
     if any([len(tm.shape) != 1 for tm in tmaps]):
         raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+    if tsv_style_is_genetics:
+        fid = df['fpath'].str.split('/').str[-1].str.split('.').str[-2]
+        df.insert(0, 'FID', fid)
+        df.insert(1, 'IID', fid)
 
     # Save dataframe to CSV
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
-    df.to_csv(fpath, index=False)
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_intersect.csv")
-    df.dropna().to_csv(fpath, index=False)
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
+    df.to_csv(fpath, index=False, sep=out_sep)
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
+    df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
     #fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
@@ -482,6 +489,7 @@ def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
     tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     if args.variational:
         model, encoder, decoder = make_variational_multimodal_multitask_model(**args.__dict__)
@@ -498,6 +506,8 @@ def infer_multimodal_multitask(args):
         # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
+        if tsv_style_is_genetics:
+            header = ['FID', 'IID']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
             if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
@@ -522,6 +532,8 @@ def infer_multimodal_multitask(args):
                 prediction = [prediction]
 
             csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            if tsv_style_is_genetics:
+                csv_row *= 2
             for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
