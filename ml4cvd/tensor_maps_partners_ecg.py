@@ -689,7 +689,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_pc"),
     shape=(None, 1),
     time_series_limit=0,
@@ -716,7 +715,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -730,7 +728,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
     shape=(1,),
     validator=make_range_validator(20, 400),
@@ -743,7 +740,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
     shape=(None, 1),
     time_series_limit=0,
@@ -757,7 +753,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
     shape=(1,),
     validator=make_range_validator(50, 500),
@@ -770,7 +765,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -784,7 +778,6 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss='logcosh',
-    metrics=['mse'],
     tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
     shape=(1,),
     validator=make_range_validator(50, 500),
@@ -1097,11 +1090,10 @@ def partners_ecg_age(tm, hd5, dependents={}):
             years = delta.days / YEAR_DAYS
             tensor[i] = years
         except KeyError:
-            logging.debug(f'Could not calculate patient age from birthday, defer to age in ECG on {ecg_date} in {hd5.filename}')
             try:
                 tensor[i] = _decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
             except KeyError:
-                logging.debug(f'Could not get patient age from ECG on {ecg_date} in {hd5.filename}')
+                raise KeyError(f'Could not get patient date of birth or age from ECG on {ecg_date} in {hd5.filename}')
     return tensor
 
 
