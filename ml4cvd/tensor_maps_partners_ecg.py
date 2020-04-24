@@ -38,6 +38,7 @@ def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ..
         return True, (num_ecgs,) + tm.shape[1:]
     return False, tm.shape
 
+
 def _make_hd5_path(tm, ecg_date, value_key):
     return f'{tm.path_prefix}/{ecg_date}/{value_key}'
 
