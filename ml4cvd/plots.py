@@ -968,14 +968,14 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     plt.ylim([-0.02, 1.03])
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right")
+    plt.legend(loc="lower right", bbox_to_anchor=(1.05, 0))
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
+    plt.savefig(figure_path, bbox_inches='tight')
     plt.clf()
     logging.info("Saved ROC curve at: {}".format(figure_path))
     return labels_to_areas
