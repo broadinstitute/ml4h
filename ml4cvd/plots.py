@@ -135,9 +135,13 @@ def evaluate_predictions(
         for i in range(y_predictions.shape[0]):
             true_text = ''
             predict_text = ''
-            for j in range(tm.shape[0]):
-                true_text += index_2_token[np.argmax(y_truth[i, j])]
-                predict_text += index_2_token[np.argmax(y_predictions[i, j])]
+            if tm.axes() == 1:
+                true_text += index_2_token[np.argmax(y_truth[i])]
+                predict_text += index_2_token[np.argmax(y_predictions[i])]
+            elif tm.axes() == 2:
+                for j in range(tm.shape[0]):
+                    true_text += index_2_token[np.argmax(y_truth[i, j])]
+                    predict_text += index_2_token[np.argmax(y_predictions[i, j])]
             logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{y_predictions[i, j, :8]}\nargmax true{y_truth[i, j].shape}')
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
