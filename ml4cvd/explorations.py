@@ -339,7 +339,29 @@ def str2date(d):
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def sample_from_char_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
+def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output: TensorMap, model, test_data, max_samples=16):
+    for tm in tensor_maps_in:
+        if tm.interpretation == Interpretation.LANGUAGE:
+            language_input = tm
+    burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
+    index_2_token = {v: k for k, v in language_output.channel_map.items()}
+    for i in range(min(max_samples, test_data[language_input].shape[0])):  # iterate over the batch
+        burn_in[0] = test_data[language_input][i]
+        sentence = ''.join([index_2_token[np.argmax(one_hot)] for one_hot in burn_in[0]])
+        logging.info(f'Batch {i} sentence start:{sentence}')
+        for j in range(max_samples):
+            burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
+            for k, c in enumerate(sentence[j:]):
+                burn_in[0, k, language_output.channel_map[c]] = 1.0
+            cur_test = {language_input.input_name(): burn_in}
+            prediction = model.predict(cur_test)
+            next_token = index_2_token[_sample_with_heat(prediction[0, :], 0.7)]
+            logging.info(f'Next token:{next_token}')
+            sentence += next_token
+        logging.info(f'Model completed sentence:{sentence}')
+
+
+def sample_from_char_embed_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
     for tm in tensor_maps_in:
         if tm.interpretation == Interpretation.LANGUAGE:
             language_map = tm

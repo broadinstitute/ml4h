@@ -23,7 +23,7 @@ from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_partners import write_tensors_partners
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
+from ml4cvd.explorations import sample_from_char_embed_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv, sample_from_language_model
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -613,7 +613,7 @@ def train_char_model(args):
     )
     batch = next(generate_test)
     input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
-    sample_from_char_model(args.tensor_maps_in, char_model, input_data, tensor_paths)
+    sample_from_char_embed_model(args.tensor_maps_in, char_model, input_data, tensor_paths)
 
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -722,6 +722,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
             continue
         if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
+        if tm.is_language():
+            sample_from_language_model(tensor_maps_in, tm, model, test_data, max_samples=16)
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
