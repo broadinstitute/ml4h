@@ -1542,24 +1542,24 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn, time_series_limit=0)
+            #name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn, time_series_limit=0)
             name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
         name = f'incident_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn, time_series_limit=0)
+            #name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn, time_series_limit=0)
             name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn)
 
         # Build time to event TensorMaps
         name = f'cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, time_series_limit=0)
+            #name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, time_series_limit=0)
             name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff)
         name = f'incident_cox_{diagnosis}'
         if name in needed_tensor_maps:
             tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, time_series_limit=0)
+            #name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, time_series_limit=0)
             name2tensormap[f'{name}_newest'] = TensorMap(f'{name}_newest', Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff)
 
         # Build survival curve TensorMaps
@@ -1574,12 +1574,12 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name = f'survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
+                #name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
                 name2tensormap[f'{needed_name}_newest'] = TensorMap(f'{needed_name}_newest', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
             name = f'incident_survival_{diagnosis}'
             if name in needed_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-                name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
+                #name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
                 name2tensormap[f'{needed_name}_newest'] = TensorMap(f'{needed_name}_newest', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
 
     return name2tensormap
