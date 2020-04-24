@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, _decompress_data, TimeSeriesOrder
 
 
@@ -424,10 +424,8 @@ TMAPS[task] = TensorMap(
     task,
     channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
-<<<<<<< HEAD
-    tensor_from_file=make_partners_language_tensor(key="patientfirstname"),
-    shape=(512, len(PARTNERS_CHAR_2_IDX)),
-=======
+    #tensor_from_file=make_partners_language_tensor(key="patientfirstname"),
+    #shape=(512, len(PARTNERS_CHAR_2_IDX)),
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="patientfirstname"),
     shape=(None, 1),
