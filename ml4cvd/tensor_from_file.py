@@ -14,7 +14,7 @@ from tensorflow.keras.utils import to_categorical
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP
@@ -1666,6 +1666,22 @@ TMAPS['liver_shmolli_segmented'] = TensorMap(
     tensor_from_file=_segmented_dicom_slices('liver_shmolli_segmented_annotated_', path_prefix='ukb_liver_mri'),
     channel_map=MRI_LIVER_SEGMENTED_CHANNEL_MAP,
 )
+
+
+def _make_fallback_tensor_from_file(tensor_keys):
+    def fallback_tensor_from_file(tm, hd5, dependents={}):
+        for k in tensor_keys:
+            if k in hd5:
+                return _pad_or_crop_array_to_shape(tm.shape, np.array(hd5[k], dtype=np.float32))
+        raise ValueError(f'No fallback tensor found from keys: {tensor_keys}')
+    return fallback_tensor_from_file
+
+
+TMAPS['shmolli_192i_both_instance1'] = TensorMap(
+    'shmolli_192i_instance1', Interpretation.CONTINUOUS, shape=(288, 384, 1),
+    tensor_from_file=_make_fallback_tensor_from_file(['shmolli_192i', 'shmolli_192i_liver']),
+)
+
 
 def preprocess_with_function(fxn, hd5_key=None):
     def preprocess_tensor_from_file(tm, hd5, dependents={}):
