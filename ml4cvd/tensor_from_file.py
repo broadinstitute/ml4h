@@ -1996,9 +1996,15 @@ def _load_text(path_to_text):
 
 
 def random_text_window_tensor(text_file: str, window_size: int):
-    text = _load_text(text_file)
+    error = None
+    try:
+        text = _load_text(text_file)
+    except FileNotFoundError as e:
+        error = e
 
     def text_from_file(tm, _, dependents={}):
+        if error:
+            raise error
         tensor = np.zeros(tm.shape, dtype=np.float32)
         random_index = np.random.randint(window_size, len(text)-window_size)
         for i, c in enumerate(text[random_index:random_index+window_size]):
