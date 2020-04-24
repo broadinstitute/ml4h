@@ -356,7 +356,6 @@ def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output:
             cur_test = {language_input.input_name(): burn_in}
             prediction = model.predict(cur_test)
             next_token = index_2_token[_sample_with_heat(prediction[0, :], 0.7)]
-            logging.info(f'Next token:{next_token}')
             sentence += next_token
         logging.info(f'Model completed sentence:{sentence}')
 
