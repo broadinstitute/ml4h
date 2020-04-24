@@ -1536,7 +1536,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
         'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
     }
-
+    logging.info(f'needed name {needed_tensor_maps}')
     for diagnosis in diagnosis2column:
         # Build diagnosis classification TensorMaps
         name = f'diagnosis_{diagnosis}'
@@ -1581,7 +1581,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
                 #name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(None, 50), days_window=days_window, tensor_from_file=tff, time_series_limit=0)
                 name2tensormap[name] = TensorMap(f'{needed_name}_newest', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
-
+    logging.info(f'return names {list(name2tensormap.keys())}')
     return name2tensormap
 
 
