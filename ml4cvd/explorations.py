@@ -864,7 +864,7 @@ def explore(args):
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_intersect.{out_ext}")
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
