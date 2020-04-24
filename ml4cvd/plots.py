@@ -142,11 +142,12 @@ def evaluate_predictions(
                 for j in range(tm.shape[0]):
                     true_text += index_2_token[np.argmax(y_truth[i, j])]
                     predict_text += index_2_token[np.argmax(y_predictions[i, j])]
-            logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text} arg max y pred{y_predictions[i, j, :8]}\nargmax true{y_truth[i, j].shape}')
-        melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
-        idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
-        y_predictions = y_predictions.reshape(melt_shape)[idx]
-        y_truth = y_truth.reshape(melt_shape)[idx]
+                logging.info(f'arg max y pred{y_predictions[i, j, :8]}\nargmax true{y_truth[i, j].shape}')
+                melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
+                idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
+                y_predictions = y_predictions.reshape(melt_shape)[idx]
+                y_truth = y_truth.reshape(melt_shape)[idx]
+            logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text}')
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
