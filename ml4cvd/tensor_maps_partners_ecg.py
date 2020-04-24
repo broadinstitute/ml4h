@@ -27,7 +27,8 @@ def _get_ecg_dates(tm, hd5):
         np.random.shuffle(dates)
     else:
         raise ValueError(f'Unknown option "{tm.time_series_order}" passed for which tensors to use in multi tensor HD5')
-    dates = dates[-tm.time_series_limit if tm.time_series_limit is not None else 1:] # If num_tensors is 0, get all tensors
+    start_idx = tm.time_series_limit if tm.time_series_limit is not None else 1
+    dates = dates[-start_idx:] # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
     return dates
 
