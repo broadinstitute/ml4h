@@ -28,7 +28,7 @@ def _get_ecg_dates(tm, hd5):
         np.random.shuffle(dates)
     else:
         raise ValueError(f'Unknown option "{tm.time_series_order}" passed for which tensors to use in multi tensor HD5')
-    dates = dates[-tm.time_series_limit:] # If num_tensors is 0, get all tensors
+    dates = dates[-tm.time_series_limit if tm.time_series_limit is not None else 0:]  # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
     return dates
 
@@ -75,12 +75,6 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
 
 def make_voltage(population_normalize: float = None):
     def get_voltage_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for cm in tm.channel_map:
-            voltage = _decompress_data(data_compressed=hd5[cm][()], dtype=hd5[cm].attrs['dtype'])
-            voltage = _resample_voltage(voltage, tm.shape[0])
-            tensor[:, tm.channel_map[cm]] = voltage
-
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
