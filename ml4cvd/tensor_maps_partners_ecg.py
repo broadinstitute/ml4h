@@ -84,7 +84,7 @@ def make_voltage(population_normalize: float = None):
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = _decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
-                    slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.tm.channel_map[cm])
+                    slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
                 except KeyError:
                     pass
