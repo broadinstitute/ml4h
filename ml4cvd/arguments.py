@@ -235,9 +235,6 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
     TMAPS.update(script_tmaps)
 
-    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
-    TMAPS.update(script_tmaps)
-
     return TMAPS[name]
 
 
