@@ -711,8 +711,8 @@ def plot_cross_reference(args, xref_df, title, time_description):
         return
 
     title = title.replace(' ', '_')
-    src_time = f'clean_{args.source_time}'
-    ref_time = f'clean_{args.reference_time}'
+    src_time = f'{args.source_time}_clean'
+    ref_time = f'{args.reference_time}_clean'
 
     # compute day diffs
     day_diffs = np.array(xref_df.apply(lambda row: (row[src_time] - row[ref_time]).days, axis=1))

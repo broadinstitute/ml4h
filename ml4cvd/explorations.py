@@ -1077,7 +1077,7 @@ def cross_reference(args):
     # cleanup data
     def _clean_col(df, col, func):
         col_og = col
-        col = f'clean_{col}'
+        col = f'{col}_clean'
         df[col] = func(df[col_og])
         df = df.dropna()
         return df, col, col_og
@@ -1165,8 +1165,8 @@ def cross_reference(args):
             f'SELECT src_df.*, ref_df.* '
             f'FROM src_df '
             f'INNER JOIN ref_df '
-            f'ON src_df.{src_join} = ref_df.{ref_join} '
-            f'AND src_df.{src_time} BETWEEN ref_df.{left} AND ref_df.{right}'
+            f'ON src_df."{src_join}" = ref_df."{ref_join}" '
+            f'AND src_df."{src_time}" BETWEEN ref_df."{left}" AND ref_df."{right}"'
         )
         xref_df = sqldf(sql, locals())
         for col in [src_time, ref_time, ref_time_range]: xref_df[col] = pd.to_datetime(xref_df[col], infer_datetime_format=True)
@@ -1186,7 +1186,7 @@ def cross_reference(args):
         # get most recent row in source for each row in reference
         # sort in ascending order so last() returns most recent
         xref_df = xref_df.sort_values(by=ref_cols+[src_time], ascending=True)
-        xref_df = xref_df.groupby(by=ref_cols, as_index=False).last()
+        xref_df = xref_df.groupby(by=ref_cols, as_index=False).last()[list(src_df) + list(ref_df)]
         logging.info(f'Found most recent {src_name} per {ref_name}')
 
         cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(xref_df[src_join])
