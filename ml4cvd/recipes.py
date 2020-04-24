@@ -563,6 +563,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
     inference_tsv = hidden_inference_file_name(args.output_folder, args.id)
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
     tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
@@ -581,7 +582,8 @@ def infer_hidden_layer_multimodal_multitask(args):
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        header = ['sample_id'] + [f'latent_{i}' for i in range(latent_dimensions)]
+        header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
+        header += [f'latent_{i}' for i in range(latent_dimensions)]
         inference_writer.writerow(header)
 
         while True:
@@ -595,7 +597,8 @@ def infer_hidden_layer_multimodal_multitask(args):
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             prediction = embed_model.predict(input_data)
             prediction = np.reshape(prediction, (latent_dimensions,))
-            csv_row = [sample_id] + [f'{prediction[i]}' for i in range(latent_dimensions)]
+            csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
+            csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
             inference_writer.writerow(csv_row)
             stats[tensor_paths[0]] += 1
             stats['count'] += 1
