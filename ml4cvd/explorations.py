@@ -1008,7 +1008,7 @@ def _report_xref(args, xref_df, title):
 
     # save cross reference to csv
     fpath = os.path.join(args.output_folder, args.id, f'list_{title}.csv')
-    xref_df.set_index(args.source_join, drop=True).to_csv(fpath)
+    xref_df.set_index(args.tensors_join, drop=True).to_csv(fpath)
     logging.info(f'Saved cross reference to {fpath}')
 
 
@@ -1031,11 +1031,11 @@ def cross_reference(args):
     args.num_workers = 0
     cohort_counts = OrderedDict()
 
-    src_path = args.source
-    src_name = args.source_name
-    src_join = args.source_join
+    src_path = args.tensors
+    src_name = args.tensors_name
+    src_join = args.tensors_join
     src_join_og = src_join
-    src_time = args.source_time
+    src_time = args.tensors_time
     ref_path = args.reference
     ref_name = args.reference_name
     ref_join = args.reference_join

@@ -711,7 +711,7 @@ def plot_cross_reference(args, xref_df, title, time_description):
         return
 
     title = title.replace(' ', '_')
-    src_time = f'{args.source_time}_clean'
+    src_time = f'{args.tensors_time}_clean'
     ref_time = f'{args.reference_time}_clean'
 
     # compute day diffs
@@ -723,7 +723,7 @@ def plot_cross_reference(args, xref_df, title, time_description):
     ax.hist(day_diffs, bins=range(day_diffs.min(), day_diffs.max(), 1))
     ax.set_xlabel('Days relative to outcome')
     ax.set_ylabel('Number of patients')
-    ax.set_title(f'Distribution of {args.source_name} {time_description}: N={len(day_diffs)}')
+    ax.set_title(f'Distribution of {args.tensors_name} {time_description}: N={len(day_diffs)}')
 
     ax.text(0.05, 0.90, f'Min: {day_diffs.min()}', transform=ax.transAxes)
     ax.text(0.05, 0.85, f'Max: {day_diffs.max()}', transform=ax.transAxes)
