@@ -1259,6 +1259,10 @@ def _loyalty_str2date(date_string: str):
     return str2date(date_string.split(' ')[0])
 
 
+def _hd5_filename_to_mrn_int(filename: str) -> int:
+    return int(os.path.basename(filename).split('.')[0])
+
+
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
@@ -1314,7 +1318,7 @@ def build_incidence_tensor_from_file(
         categorical_data = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             path = lambda key: _make_hd5_path(tm, ecg_date, key)
-            mrn = os.path.basename(hd5.filename).split('.')[0]
+            mrn = _hd5_filename_to_mrn_int(hd5.filename)
             mrn_int = int(mrn)
 
             if mrn_int not in patient_table:
@@ -1405,9 +1409,7 @@ def loyalty_time_to_event(
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
-            mrn_file_name = os.path.basename(hd5.filename).split('.')[0]
-            patient_key_from_ecg = int(mrn_file_name)
-
+            patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
             if patient_key_from_ecg not in disease_dicts['follow_up_start']:
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
@@ -1488,9 +1490,7 @@ def _survival_from_file(
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         survival_then_censor = np.zeros(shape, dtype=np.float32)
         for ed, ecg_date in enumerate(ecg_dates):
-            mrn_file_name = os.path.basename(hd5.filename).split('.')[0]
-            patient_key_from_ecg = int(mrn_file_name)
-
+            patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
             if patient_key_from_ecg not in disease_dicts['follow_up_start']:
                 raise KeyError(f'{tm.name} mrn not in incidence csv')
 
@@ -1645,10 +1645,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         categorical_data = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
-            file_split = os.path.basename(hd5.filename).split("-")
-            mrn = file_split[0]
-            mrn_int = int(mrn)
-
+            mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
             if mrn_int not in patient_table:
                 raise KeyError(f"MRN not in STS outcomes CSV")
 
