@@ -2015,9 +2015,9 @@ def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = 
         if tm.dependent_map is not None:
             start_next_window = random_index+window_size
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            if tm.dependent_map.axes() == 1 and not one_hot:
+            if tm.dependent_map.axes() == 1 and one_hot:
                 dependents[tm.dependent_map][tm.dependent_map.channel_map[text[start_next_window]]] = 1.0
-            elif tm.dependent_map.axes() == 2 or (one_hot and tm.dependent_map.axes() == 1):
+            elif tm.dependent_map.axes() == 2 or (not one_hot and tm.dependent_map.axes() == 1):
                 for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
                     if one_hot:
                         dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
