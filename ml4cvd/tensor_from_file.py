@@ -1995,7 +1995,7 @@ def _load_text(path_to_text):
     return text
 
 
-def random_text_window_tensor(text_file: str, window_size: int):
+def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True):
     error = None
     try:
         text = _load_text(text_file)
@@ -2008,15 +2008,21 @@ def random_text_window_tensor(text_file: str, window_size: int):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         random_index = np.random.randint(window_size, len(text)-window_size)
         for i, c in enumerate(text[random_index:random_index+window_size]):
-            tensor[i, tm.channel_map[c]] = 1.0
+            if one_hot:
+                tensor[i, tm.channel_map[c]] = 1.0
+            else:
+                tensor[i] = tm.channel_map[c]
         if tm.dependent_map is not None:
             start_next_window = random_index+window_size
             dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            if tm.dependent_map.axes() == 1:
+            if tm.dependent_map.axes() == 1 and not one_hot:
                 dependents[tm.dependent_map][tm.dependent_map.channel_map[text[start_next_window]]] = 1.0
-            elif tm.dependent_map.axes() == 2:
+            elif tm.dependent_map.axes() == 2 or (one_hot and tm.dependent_map.axes() == 1):
                 for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
-                    dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
+                    if one_hot:
+                        dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
+                    else:
+                        dependents[tm.dependent_map][j] = tm.dependent_map.channel_map[c]
             else:
                 raise ValueError(f'No method to process dependent map:{tm.dependent_map.name} of shape {tm.dependent_map.shape}.')
         logging.debug(f'{text[random_index:random_index+window_size]} \nand Dependent:{text[start_next_window:start_next_window+tm.dependent_map.shape[0]]}')
@@ -2036,6 +2042,21 @@ TMAPS['lsd_text_32'] = TensorMap(
     'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32, len(TESTIMONIAL_CHAR_2_IDX)),
     tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32),
     dependent_map=TMAPS['lsd_text_next_char'],
+    channel_map=TESTIMONIAL_CHAR_2_IDX,
+    annotation_units=128,
+    cacheable=False,
+)
+
+TMAPS['lsd_next_2_index'] = TensorMap(
+    'lsd_next_2_index', Interpretation.LANGUAGE, shape=(2,),
+    channel_map=TESTIMONIAL_CHAR_2_IDX,
+    cacheable=False,
+)
+
+TMAPS['lsd_text_32_index'] = TensorMap(
+    'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32,),
+    tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32),
+    dependent_map=TMAPS['lsd_next_2_index'],
     channel_map=TESTIMONIAL_CHAR_2_IDX,
     annotation_units=128,
     cacheable=False,
