@@ -9,9 +9,9 @@ import glob
 import logging
 import hashlib
 import operator
-from datetime import datetime
 from textwrap import wrap
 from functools import reduce
+from datetime import datetime
 from multiprocessing import Pool
 from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
@@ -24,9 +24,9 @@ from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
+from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
@@ -683,7 +683,7 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
-def _top_panel(data, ax0):
+def _partners_top_panel(data, ax0):
     # top information panel
     dt = datetime.strptime(data['datetime'], PARTNERS_DATETIME_FORMAT)
     dob = data['dob']
@@ -739,7 +739,6 @@ def _top_panel(data, ax0):
 def _partners_full(data, args):
     # Set up plot
     fig = plt.figure(
-        constrained_layout=True,
         figsize=(13, 10),
     )
     gs = GridSpec(
@@ -752,7 +751,7 @@ def _partners_full(data, args):
     fig.set_size_inches(11, 8.5)
     plt.rcParams["font.family"] = "Times New Roman"
 
-    _top_panel(data, ax0)
+    _partners_top_panel(data, ax0)
 
     # middle signal panel
     ecg_signal = data['voltage']
@@ -824,7 +823,6 @@ def _partners_clinical(data, args):
 
     # Set up plot
     fig = plt.figure(
-        constrained_layout=True,
         figsize=(13, 10),
     )
     gs = GridSpec(
@@ -837,7 +835,7 @@ def _partners_clinical(data, args):
     fig.set_size_inches(11, 8.5)
     plt.rcParams["font.family"] = "Times New Roman"
 
-    _top_panel(data, ax0)
+    _partners_top_panel(data, ax0)
 
     # middle signal panel
     ecg_signal = data['voltage']
