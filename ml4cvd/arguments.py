@@ -24,8 +24,8 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
 def parse_args():
