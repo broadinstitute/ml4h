@@ -1428,8 +1428,8 @@ def loyalty_time_to_event(
             if incidence_only and censor_date <= assess_date and has_disease:
                 raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-            tensor[(i, 0) if dynamic else (0,)] = has_disease
-            tensor[(i, 1) if dynamic else (1,)] = (censor_date - assess_date).days
+            tensor[(i, 0) if dynamic else 0] = has_disease
+            tensor[(i, 1) if dynamic else 1] = (censor_date - assess_date).days
         return tensor
     return _cox_tensor_from_file
 
