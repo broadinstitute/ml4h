@@ -1353,7 +1353,7 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
 
 
 def _outcome_channels(outcome: str):
-    return {f'no_{outcome}': 0,  f'future_{outcome}': 1}
+    return {f'no_{outcome}': 0,  f'{outcome}': 1}
 
 
 def loyalty_time_to_event(
@@ -1684,7 +1684,7 @@ def build_cardiac_surgery_tensor_maps(
         "death": "mtopd",
         "stroke": "cnstrokp",
         "renal_failure": "crenfail",
-        "prolonged_ventilation": "crenfail",
+        "prolonged_ventilation": "cpvntlng",
         "dsw_infection": "deepsterninf",
         "reoperation": "reop",
         "any_morbidity": "anymorbidity",
@@ -1706,12 +1706,5 @@ def build_cardiac_surgery_tensor_maps(
                 channel_map=_outcome_channels(outcome),
                 tensor_from_file=tensor_from_file_fxn,
                 time_series_limit=0,
-            )
-            name2tensormap[f'{name}_newest'] = TensorMap(
-                f'{name}_newest',
-                Interpretation.CATEGORICAL,
-                path_prefix=PARTNERS_PREFIX,
-                channel_map=_outcome_channels(outcome),
-                tensor_from_file=tensor_from_file_fxn,
             )
     return name2tensormap
