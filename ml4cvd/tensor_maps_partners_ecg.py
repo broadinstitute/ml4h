@@ -1403,7 +1403,7 @@ def loyalty_time_to_event(
 
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        tensor = np.zeros(shape, dtype=np.float32)
+        tensor = np.zeros(tm.shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             mrn_file_name = os.path.basename(hd5.filename).split('.')[0]
             patient_key_from_ecg = int(mrn_file_name)
