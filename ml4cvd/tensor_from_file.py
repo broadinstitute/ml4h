@@ -2055,7 +2055,7 @@ TMAPS['lsd_next_2_index'] = TensorMap(
 
 TMAPS['lsd_text_32_index'] = TensorMap(
     'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32,),
-    tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32),
+    tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32, one_hot=False),
     dependent_map=TMAPS['lsd_next_2_index'],
     channel_map=TESTIMONIAL_CHAR_2_IDX,
     annotation_units=128,
