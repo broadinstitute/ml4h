@@ -1511,10 +1511,10 @@ def _survival_from_file(
 
             for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
                 cur_date = assess_date + datetime.timedelta(days=day_delta)
-                survival_then_censor[(ed, i) if dynamic else (i,)] = float(cur_date < censor_date)
-                survival_then_censor[(ed, intervals+i) if dynamic else (intervals+i,)] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                survival_then_censor[(ed, i) if dynamic else i] = float(cur_date < censor_date)
+                survival_then_censor[(ed, intervals+i) if dynamic else intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
                 if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                    survival_then_censor[(ed, intervals) if dynamic else (intervals,)] = has_disease
+                    survival_then_censor[(ed, intervals) if dynamic else intervals] = has_disease
                     if has_disease and incidence_only:
                         raise ValueError(f'{tm.name} is skipping prevalent cases.')
             logging.debug(
