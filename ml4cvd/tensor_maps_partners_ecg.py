@@ -1353,7 +1353,7 @@ def _diagnosis_channels(disease: str, incidence_only: bool = False):
 
 
 def _outcome_channels(outcome: str):
-    return {f'no_{outcome}': 0,  f'future_{outcome}': 1}
+    return {f'no_{outcome}': 0,  f'{outcome}': 1}
 
 
 def loyalty_time_to_event(
