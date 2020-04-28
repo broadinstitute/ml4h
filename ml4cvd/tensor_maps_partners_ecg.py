@@ -1706,6 +1706,5 @@ def build_cardiac_surgery_tensor_maps(
                 channel_map=_outcome_channels(outcome),
                 tensor_from_file=tensor_from_file_fxn,
                 time_series_limit=0,
-				shape=(1,),
             )
     return name2tensormap
