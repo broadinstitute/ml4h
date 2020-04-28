@@ -10,8 +10,8 @@
     --inspect_model \
     --test_modulo 0 \
     --epochs 5 \
-    --output_folder "/home/${USER}/sts-ecg-results/" \
-    --id 2020-04-17
+    --output_folder "/home/${USER}/" \
+    --id sts-ecg-results
     #outcome_stroke \
     #outcome_renal_failure \
     #outcome_prolonged_ventilation \
@@ -19,4 +19,3 @@
     #outcome_reoperation \
     #outcome_any_morbidity \
     #outcome_long_stay \
-
