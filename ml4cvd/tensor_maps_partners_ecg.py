@@ -256,8 +256,6 @@ def make_partners_ecg_tensor(key: str, fill: float = 0):
             tensor = np.zeros(shape, dtype=float) if fill == 0 else np.full(shape, fill, dtype=float)
 
         for i, ecg_date in enumerate(ecg_dates):
-            if i >= shape[0]:
-                break
             path = _make_hd5_path(tm, ecg_date, key)
             try:
                 tensor[i] = _decompress_data(data_compressed=hd5[path][()], dtype='str')
