@@ -173,8 +173,8 @@ class TensorGenerator:
 
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
-            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths.",
-            f"{int(stats['Tensors presented']/(1+stats['epochs']))} tensors were presented.",
+            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {(stats['epochs']/self.num_workers):.0f}",
+            f"{int(stats['Tensors presented']/(stats['epochs']/self.num_workers))} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
@@ -186,7 +186,8 @@ class TensorGenerator:
                 n = stats[f'{base_key}n']
                 n_sum = stats[f'{base_key}sum']
                 mean = n_sum/n
-                logging.info(f'Continuous value {base_key} mean:{mean:0.3f} standard deviation:{(sum_squared/n)-(mean*mean):0.3f}')
+                logging.info(f'Continuous value {base_key} mean:{mean:0.2f} standard deviation:{(sum_squared/n)-(mean*mean):0.2f} '
+                             f"max:{stats[f'{base_key}max']:0.2f} min{stats[f'{base_key}min']:0.2f}")
 
 
     def kill_workers(self):
@@ -334,6 +335,8 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_{index2channel[np.argmax(tensor)]}'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
+            self.epoch_stats[f'{tm.name}_max'] += max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
+            self.epoch_stats[f'{tm.name}_min'] += min(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
             self.epoch_stats[f'{tm.name}_sum'] += tm.rescale(tensor)[0]
             self.epoch_stats[f'{tm.name}_sum_squared'] += tm.rescale(tensor)[0] * tm.rescale(tensor)[0]
         return self.hd5
@@ -366,6 +369,7 @@ class _MultiModalMultiTaskWorker:
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
+        self.epoch_stats['epochs'] += 1
         while self.stats_q.qsize() == self.num_workers:
             continue
         self.stats_q.put(self.epoch_stats)
