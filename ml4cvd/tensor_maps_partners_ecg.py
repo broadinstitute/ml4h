@@ -1713,12 +1713,12 @@ def build_cardiac_surgery_tensor_maps(
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
             outcome2column=outcome2column,
+            population_normalize=2000,
             day_window=30,
         )
         name2tensormap[name] = TensorMap(
             name,
             shape=(2500, 12),
-            population_normalize=2000,
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
@@ -1729,12 +1729,12 @@ def build_cardiac_surgery_tensor_maps(
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
             outcome2column=outcome2column,
+            population_normalize=2000,
             day_window=30,
         )
         name2tensormap[name] = TensorMap(
             name,
             shape=(5000, 12),
-            population_normalize=2000,
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
