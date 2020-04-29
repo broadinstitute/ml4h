@@ -170,13 +170,24 @@ class TensorGenerator:
             f'[{error}] - {count}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
         ])
+
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths.",
             f"{int(stats['Tensors presented']/(1+stats['epochs']))} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
-        logging.info(f"\n~~~~ True epoch completed ~~~~\n{self.name} aggregated information string:\n\t{info_string}")
+        logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
+
+        for k in stats:
+            if 'sum_squared' in k:
+                sum_squared = stats[k]
+                base_key = k.replace('sum_squared')
+                n = stats[f'{base_key}n']
+                n_sum = stats[f'{base_key}sum']
+                mean = n_sum/n
+                logging.info(f'Continuous value {base_key} mean:{mean:0.3f} standard deviation:{(sum_squared/n)-(mean*mean):0.3f}')
+
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -321,6 +332,9 @@ class _MultiModalMultiTaskWorker:
         if tm.is_categorical() and tm.axes() == 1:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             self.epoch_stats[f'{tm.name}_{index2channel[np.argmax(tensor)]}'] += 1
+        if tm.is_continuous() and tm.axes() == 1:
+            self.epoch_stats[f'{tm.name}_sum'] += tm.rescale(tensor)[0]
+            self.epoch_stats[f'{tm.name}_sum_squared'] += tm.rescale(tensor)[0] * tm.rescale(tensor)[0]
         return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
