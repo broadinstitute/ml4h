@@ -190,8 +190,8 @@ class TensorGenerator:
                 n = stats[f'{base_key}n']
                 n_sum = stats[f'{base_key}sum']
                 mean = n_sum/(eps+n)
-                logging.info(f'Continuous value {base_key} mean:{mean:0.2f} standard deviation:{(sum_squared/n)-(mean*mean):0.2f} '
-                             f"max:{stats[f'{base_key}max']:0.2f} min{stats[f'{base_key}min']:0.2f}")
+                logging.info(f'Continuous value \n{base_key} Mean:{mean:0.2f} Standard Deviation:{(sum_squared/n)-(mean*mean):0.2f} '
+                             f"Maximum:{stats[f'{base_key}max']:0.2f} Minimum{stats[f'{base_key}min']:0.2f}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -339,8 +339,8 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
-            self.epoch_stats[f'{tm.name}_max'] += max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
-            self.epoch_stats[f'{tm.name}_min'] += min(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
+            self.epoch_stats[f'{tm.name}_max'] = max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
+            self.epoch_stats[f'{tm.name}_min'] = min(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_min'])
             self.epoch_stats[f'{tm.name}_sum'] += tm.rescale(tensor)[0]
             self.epoch_stats[f'{tm.name}_sum_squared'] += tm.rescale(tensor)[0] * tm.rescale(tensor)[0]
         return self.hd5
