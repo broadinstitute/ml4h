@@ -174,7 +174,7 @@ class TensorGenerator:
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths.",
-            f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
+            f"{int(stats['Tensors presented']/(1+stats['epochs']))} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
         logging.info(f"Aggregated information string:\n\t{info_string}")
