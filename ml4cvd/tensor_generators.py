@@ -339,13 +339,14 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
+            rescaled = tm.rescale(tensor)[0]
             if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
-                self.epoch_stats[f'{tm.name}_max'] = tm.rescale(tensor)[0]
-                self.epoch_stats[f'{tm.name}_min'] = tm.rescale(tensor)[0]
-            self.epoch_stats[f'{tm.name}_max'] = max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
-            self.epoch_stats[f'{tm.name}_min'] = min(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_min'])
-            self.epoch_stats[f'{tm.name}_sum'] += tm.rescale(tensor)[0]
-            self.epoch_stats[f'{tm.name}_sum_squared'] += tm.rescale(tensor)[0] * tm.rescale(tensor)[0]
+                self.epoch_stats[f'{tm.name}_max'] = min(0, rescaled)
+                self.epoch_stats[f'{tm.name}_min'] = max(0, rescaled)
+            self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
+            self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
+            self.epoch_stats[f'{tm.name}_sum'] += rescaled
+            self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
         return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
