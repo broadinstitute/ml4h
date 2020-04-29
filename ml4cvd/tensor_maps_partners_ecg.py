@@ -1679,7 +1679,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
                 voltage = _resample_voltage(voltage, tm.shape[0])
                 tensor[..., tm.channel_map[cm]] = voltage
             except KeyError as e:
-                logging.warning(f'KeyError for channel {cm} in {tm.name} path {path} error {e}')
+                logging.warning(f'KeyError for channel {cm} in {tm.name} path {path} error {e} hd5 {hd5.filename}')
         if population_normalize is not None:
             tensor /= population_normalize
 
