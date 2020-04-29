@@ -173,7 +173,7 @@ class TensorGenerator:
         ])
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
-            f"Generator looped & shuffled over {self.true_epoch_len} paths.",
+            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths.",
             f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
@@ -335,6 +335,7 @@ class _MultiModalMultiTaskWorker:
                 hd5 = self._handle_tm(tm, False, path)
             self.paths_in_batch.append(path)
             self.stats['Tensors presented'] += 1
+            self.epoch_stats['Tensors presented'] += 1
             self.stats['batch_index'] += 1
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
             error_name = type(e).__name__
