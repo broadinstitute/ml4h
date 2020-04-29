@@ -88,7 +88,7 @@ def make_voltage(population_normalize: float = None):
                     slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
                 except KeyError:
-                    pass
+                    logging.warning(f'KeyError for channel {cm} in {tm.name}')
         if population_normalize is not None:
             tensor /= population_normalize
         return tensor
@@ -1603,6 +1603,14 @@ def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
     return datetime.datetime.strptime(input_date, "%d%b%Y")
 
 
+def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
+    for ecg_date in ecg_dates:
+        ecg_datetime = datetime.datetime.combine(ecg_date, datetime.time.min)
+        if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
+            return surgery_date
+    raise ValueError(f'No ECG in time window')
+
+
 def build_cardiac_surgery_outcome_tensor_from_file(
     file_name: str,
     patient_column: str = "medrecn",
@@ -1610,6 +1618,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
     start_column: str = "surgdt",
     delimiter: str = ",",
     day_window: int = 30,
+    population_normalize: int = None,
 ) -> Callable:
     """Build a tensor_from_file function for outcomes given CSV of patients.
 
@@ -1632,55 +1641,47 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             date_index = header.index(start_column)
             outcome_index = header.index(outcome_column)
             date_surg_table = {}
-            patient_table = {}
+            outcome_table = {}
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
-                    patient_table[patient_key] = int(row[outcome_index])
-                    date_surg_table[patient_key] = _cardiac_surgery_str2date(
-                        row[date_index],
-                    )
-                    if len(patient_table) % 1000 == 0:
-                        logging.debug(f"Processed: {len(patient_table)} patient rows.")
+                    outcome_table[patient_key] = int(row[outcome_index])
+                    date_surg_table[patient_key] = _cardiac_surgery_str2date(row[date_index])
+                    if len(outcome_table) % 1000 == 0:
+                        logging.debug(f"Processed: {len(outcome_table)} outcome rows.")
                 except ValueError as e:
                     logging.warning(f"val err {e}")
+        logging.info(f"Processed {outcome_column}. Got {len(outcome_table)} outcomes.")
 
     except FileNotFoundError as e:
         error = e
-
-    logging.info(
-        f"Done processing {outcome_column}. Got {len(patient_table)} patient rows.",
-    )
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
             raise error
 
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in outcome_table:
+            raise KeyError(f"MRN not in STS outcomes CSV")
+
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        categorical_data = np.zeros(shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
-            if mrn_int not in patient_table:
-                raise KeyError(f"MRN not in STS outcomes CSV")
+        tensor = np.zeros(shape, dtype=np.float32)
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        ecg_date = _date_in_window_from_dates(ecg_dates, date_surg_table[mrn_int], day_window)
+        for cm in tm.channel_map:
+            try:
+                path = _make_hd5_path(tm, ecg_date, cm)
+                voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
+                tensor[..., tm.channel_map[cm]] = voltage
+            except KeyError:
+                logging.warning(f'KeyError for channel {cm} in {tm.name}')
+        if population_normalize is not None:
+            tensor /= population_normalize
 
-            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-            ecg_date = _partners_str2date(
-                decompress_data(
-                    data_compressed=hd5[path][()],
-                    dtype=hd5[path].attrs["dtype"],
-                ),
-            )
-
-            # Convert ecg_date from datetime.date to datetime.datetime
-            ecg_date = datetime.datetime.combine(ecg_date, datetime.time.min)
-
-            # If the date of surgery - date of ECG is > time window, skip it
-            if date_surg_table[mrn_int] - ecg_date > datetime.timedelta(days=day_window):
-                raise ValueError(f"ECG out of time window")
-
-            categorical_data[(i, patient_table[mrn_int]) if dynamic else (patient_table[mrn_int],)] = 1.0
-        return categorical_data
+        dependents[tm.dependent_map][outcome_table[mrn_int]] = 1.0
+        return tensor
     return tensor_from_file
 
 
@@ -1700,19 +1701,25 @@ def build_cardiac_surgery_tensor_maps(
     }
 
     for outcome in outcome2column:
-        name = f"outcome_{outcome}"
+        name = f"ecg_to_{outcome}"
+        outcome_name = f"outcome_{outcome}"
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
                 file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
                 outcome_column=outcome2column[outcome],
                 day_window=30,
             )
+            name2tensormap[outcome_name] = TensorMap(
+                outcome_name,
+                Interpretation.CATEGORICAL,
+                path_prefix=PARTNERS_PREFIX,
+                channel_map=_outcome_channels(outcome)
+            )
             name2tensormap[name] = TensorMap(
                 name,
-                Interpretation.CATEGORICAL,
                 path_prefix=PARTNERS_PREFIX,
                 channel_map=_outcome_channels(outcome),
                 tensor_from_file=tensor_from_file_fxn,
-                time_series_limit=0,
+                dependent_map=name2tensormap[outcome_name],
             )
     return name2tensormap

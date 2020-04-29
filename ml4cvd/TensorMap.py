@@ -102,13 +102,13 @@ class TensorMap(object):
         loss_weight: Optional[float] = 1.0,
         channel_map: Optional[Dict[str, int]] = None,
         storage_type: Optional[StorageType] = None,
-        dependent_map: Optional[str] = None,
+        dependent_map: Optional["TensorMap"] = None,
         augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
         normalization: Optional[Normalizer] = None,
         annotation_units: Optional[int] = 32,
         tensor_from_file: Optional[Callable] = None,
         time_series_limit: Optional[int] = None,
-        time_series_order: Optional[TimeSeriesOrder] = TimeSeriesOrder.NEWEST,
+        time_series_order: Optional[Callable] = None,
         discretization_bounds: Optional[List[float]] = None,
     ):
         """TensorMap constructor
@@ -227,6 +227,9 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x, hd5: None
+
+        if self.time_series_order is None:
+            self.time_series_order = lambda tm, hd5, dates: dates
 
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
