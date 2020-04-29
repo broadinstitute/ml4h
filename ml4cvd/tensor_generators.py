@@ -176,7 +176,7 @@ class TensorGenerator:
             f"{int(stats['Tensors presented']/(1+stats['epochs']))} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
-        logging.info(f"Aggregated information string:\n\t{info_string}")
+        logging.info(f"\n~~~~ True epoch completed ~~~~\n{self.name} aggregated information string:\n\t{info_string}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -318,6 +318,9 @@ class _MultiModalMultiTaskWorker:
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
+        if tm.is_categorical() and tm.axes() == 1:
+            index2channel = {v: k for k, v in tm.channel_map.items()}
+            self.epoch_stats[f'{tm.name}_{index2channel[np.argmax(tensor)]}'] += 1
         return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
