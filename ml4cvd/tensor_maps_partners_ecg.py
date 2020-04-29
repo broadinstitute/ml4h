@@ -1665,7 +1665,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             raise error
 
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
-        if mrn_int not in outcome_table:
+        if mrn_int not in surgery_date_table:
             raise KeyError(f"MRN not in STS outcomes CSV")
 
         ecg_dates = list(hd5[tm.path_prefix])
