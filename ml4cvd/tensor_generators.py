@@ -183,7 +183,7 @@ class TensorGenerator:
             if 'categorical_' in k:
                 base_key = k.split('categorical_')[0]
                 n = stats[f'{base_key}n']
-                logging.info(f'Categorical label \n{k} Percent presented:{100*(stats[k]/(eps+n)):0.2f}%')
+                logging.info(f'Categorical label \n{k} {stats[k]} examples seen, percent of total:{100*(stats[k]/(eps+n)):0.2f}%')
             if 'sum_squared' in k:
                 sum_squared = stats[k]
                 base_key = k.replace('sum_squared', '')
@@ -191,7 +191,7 @@ class TensorGenerator:
                 n_sum = stats[f'{base_key}sum']
                 mean = n_sum/(eps+n)
                 logging.info(f'Continuous value \n{base_key} Mean:{mean:0.2f} Standard Deviation:{(sum_squared/n)-(mean*mean):0.2f} '
-                             f"Maximum:{stats[f'{base_key}max']:0.2f} Minimum{stats[f'{base_key}min']:0.2f}")
+                             f"Maximum:{stats[f'{base_key}max']:0.2f} Minimum:{stats[f'{base_key}min']:0.2f}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
