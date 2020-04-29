@@ -165,8 +165,7 @@ class TensorGenerator:
         stats = Counter()
         while self.stats_q.qsize() != 0:
             stats += self.stats_q.get()
-        for k in stats:
-            logging.debug(f"AGGREGATEEDDDD {k}: {stats[k]}")
+
         error_info = '\n\t\t'.join([
             f'[{error}] - {count}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
@@ -352,21 +351,6 @@ class _MultiModalMultiTaskWorker:
         while self.stats_q.qsize() == self.num_workers:
             continue
         self.stats_q.put(self.epoch_stats)
-        for k in self.stats:
-            logging.debug(f"{k}: {self.stats[k]}")
-        error_info = '\n\t\t'.join([
-            f'[{error}] - {count}'
-            for error, count in sorted(self.epoch_stats.items(), key=lambda x: x[1], reverse=True)
-        ])
-        info_string = '\n\t'.join([
-            f"The following errors occurred:\n\t\t{error_info}",
-            f"Generator looped & shuffled over {self.true_epoch_len} paths.",
-            f"{int(self.stats['Tensors presented']/self.stats['epochs'])} tensors were presented.",
-            f"{self.epoch_stats['skipped_paths']} paths were skipped because they previously failed.",
-            str(self.cache),
-            f"{(time.time() - self.start):.2f} seconds elapsed.",
-        ])
-        logging.info(f"Worker {self.name} - In true epoch {self.stats['epochs']}:\n\t{info_string}")
         if self.stats['Tensors presented'] == 0:
             raise ValueError(f"Completed an epoch but did not find any tensors to yield")
         if 'test' in self.name:
