@@ -182,7 +182,7 @@ class TensorGenerator:
         for k in stats:
             if 'sum_squared' in k:
                 sum_squared = stats[k]
-                base_key = k.replace('sum_squared')
+                base_key = k.replace('sum_squared', '')
                 n = stats[f'{base_key}n']
                 n_sum = stats[f'{base_key}sum']
                 mean = n_sum/n
