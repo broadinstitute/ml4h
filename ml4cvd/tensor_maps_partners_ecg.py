@@ -1645,12 +1645,15 @@ def build_cardiac_surgery_outcome_tensor_from_file(
             surgery_date_table = {}
             outcome_table = defaultdict(dict)
             for row in reader:
-                patient_key = int(row[patient_index])
-                surgery_date_table[patient_key] = _cardiac_surgery_str2date(row[date_index])
-                for outcome in outcome2column:
-                    outcome_table[outcome][patient_key] = int(row[header.index(outcome2column[outcome])])
-                if len(outcome_table) % 1000 == 0:
-                    logging.debug(f"Processed: {len(outcome_table)} outcome rows.")
+                try:
+                    patient_key = int(row[patient_index])
+                    surgery_date_table[patient_key] = _cardiac_surgery_str2date(row[date_index])
+                    for outcome in outcome2column:
+                        outcome_table[outcome][patient_key] = int(row[header.index(outcome2column[outcome])])
+                    if len(outcome_table) % 1000 == 0:
+                        logging.debug(f"Processed: {len(outcome_table)} outcome rows.")
+                except ValueError as e:
+                    logging.debug(f'Value error {e}')
 
         logging.info(f"Processed outcomes:{list(outcome_table.keys())}. Got {len(surgery_date_table)} patients.")
 
