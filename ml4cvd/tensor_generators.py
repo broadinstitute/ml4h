@@ -125,6 +125,7 @@ class TensorGenerator:
             worker_instance = _MultiModalMultiTaskWorker(
                 self.q,
                 self.stats_q,
+                self.num_workers,
                 self.input_maps, self.output_maps,
                 path_iter, iter_len,
                 self.batch_function, self.batch_size, self.keep_paths, self.batch_function_kwargs,
@@ -156,7 +157,7 @@ class TensorGenerator:
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
-            if self.stats_q.qsize() == len(self.num_workers):
+            if self.stats_q.qsize() == self.num_workers:
                 self.aggregate_and_print_stats()
             return self.q.get(TENSOR_GENERATOR_TIMEOUT)
 
@@ -266,6 +267,7 @@ class _MultiModalMultiTaskWorker:
         self,
         q: Queue,
         stats_q: Queue,
+        num_workers: int,
         input_maps: List[TensorMap], output_maps: List[TensorMap],
         path_iter: PathIterator, true_epoch_len: int,
         batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
@@ -274,6 +276,8 @@ class _MultiModalMultiTaskWorker:
         augment: bool,
     ):
         self.q = q
+        self.stats_q = stats_q
+        self.num_workers = num_workers
         self.input_maps = input_maps
         self.output_maps = output_maps
         self.path_iter = path_iter
@@ -344,6 +348,8 @@ class _MultiModalMultiTaskWorker:
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
+        while self.stats_q.qsize() == self.num_workers:
+            continue
         self.stats_q.put(self.epoch_stats)
         for k in self.stats:
             logging.debug(f"{k}: {self.stats[k]}")
