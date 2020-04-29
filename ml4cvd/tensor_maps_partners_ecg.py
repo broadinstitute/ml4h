@@ -1680,7 +1680,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
 
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]][outcome_table[dtm][mrn_int]] = 1.0
-            
+
         return tensor
     return tensor_from_file
 
@@ -1709,7 +1709,7 @@ def build_cardiac_surgery_tensor_maps(
     if name in needed_tensor_maps:
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome_column=outcome2column[outcome],
+            outcome2column=outcome2column,
             day_window=30,
         )
         name2tensormap[name] = TensorMap(
