@@ -1671,15 +1671,11 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         ecg_date = _date_in_window_from_dates(ecg_dates, date_surg_table[mrn_int], day_window)
-        logging.debug(f'Got date: {ecg_date}')
         for cm in tm.channel_map:
-            try:
-                path = _make_hd5_path(tm, ecg_date, cm)
-                voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                voltage = _resample_voltage(voltage, tm.shape[0])
-                tensor[..., tm.channel_map[cm]] = voltage
-            except KeyError as e:
-                logging.warning(f'KeyError for channel {cm} in {tm.name} path {path} error {e} hd5 {hd5.filename}')
+            path = _make_hd5_path(tm, ecg_date, cm)
+            voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            voltage = _resample_voltage(voltage, tm.shape[0])
+            tensor[..., tm.channel_map[cm]] = voltage
         if population_normalize is not None:
             tensor /= population_normalize
 
