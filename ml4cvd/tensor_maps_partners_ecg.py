@@ -1606,6 +1606,7 @@ def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
 
 
 def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
+    ecg_dates.sort(reverse=True)
     for ecg_date in ecg_dates:
         logging.debug(f'Got date: {ecg_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATE_FORMAT)
@@ -1667,7 +1668,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         if mrn_int not in outcome_table:
             raise KeyError(f"MRN not in STS outcomes CSV")
 
-        ecg_dates = list(hd5[tm.path_prefix]).sort(reverse=True)
+        ecg_dates = list(hd5[tm.path_prefix])
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         ecg_date = _date_in_window_from_dates(ecg_dates, date_surg_table[mrn_int], day_window)
