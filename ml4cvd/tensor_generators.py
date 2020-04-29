@@ -339,7 +339,7 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
-            if self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
+            if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
                 self.epoch_stats[f'{tm.name}_max'] = tm.rescale(tensor)[0]
                 self.epoch_stats[f'{tm.name}_min'] = tm.rescale(tensor)[0]
             self.epoch_stats[f'{tm.name}_max'] = max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
