@@ -167,7 +167,7 @@ class TensorGenerator:
             stats += self.stats_q.get()
 
         error_info = '\n\t\t'.join([
-            f'[{error}] - {count:.2f}'
+            f'[{error}] - {count:.0f}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
         ])
 
