@@ -29,8 +29,10 @@ def _get_ecg_dates(tm, hd5):
     else:
         raise ValueError(f'Unknown option "{tm.time_series_order}" passed for which tensors to use in multi tensor HD5')
     start_idx = tm.time_series_limit if tm.time_series_limit is not None else 1
+    logging.debug(f'Sorted dates: {dates}')
     dates = dates[-start_idx:]  # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
+    logging.debug(f'Returned dates: {dates}')
     return dates
 
 
@@ -1605,6 +1607,7 @@ def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
 
 def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
     for ecg_date in ecg_dates:
+        logging.debug(f'Got date: {ecg_date}')
         ecg_datetime = datetime.datetime.combine(ecg_date, datetime.time.min)
         if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
             return surgery_date
