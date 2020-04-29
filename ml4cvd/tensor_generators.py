@@ -333,6 +333,7 @@ class _MultiModalMultiTaskWorker:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             self.epoch_stats[f'{tm.name}_{index2channel[np.argmax(tensor)]}'] += 1
         if tm.is_continuous() and tm.axes() == 1:
+            self.epoch_stats[f'{tm.name}_n'] += 1
             self.epoch_stats[f'{tm.name}_sum'] += tm.rescale(tensor)[0]
             self.epoch_stats[f'{tm.name}_sum_squared'] += tm.rescale(tensor)[0] * tm.rescale(tensor)[0]
         return self.hd5
