@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import Dict, List, Callable, Union, Tuple
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 
 
@@ -1609,7 +1609,7 @@ def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
     ecg_dates.sort(reverse=True)
     for ecg_date in ecg_dates:
         logging.debug(f'Got date: {ecg_date}')
-        ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATE_FORMAT)
+        ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
         if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
             return surgery_date
     raise ValueError(f'No ECG in time window')
