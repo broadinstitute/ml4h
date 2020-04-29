@@ -108,7 +108,7 @@ class TensorMap(object):
         annotation_units: Optional[int] = 32,
         tensor_from_file: Optional[Callable] = None,
         time_series_limit: Optional[int] = None,
-        time_series_order: Optional[Callable] = None,
+        time_series_order: Optional[TimeSeriesOrder] = TimeSeriesOrder.NEWEST,
         discretization_bounds: Optional[List[float]] = None,
     ):
         """TensorMap constructor
@@ -228,8 +228,8 @@ class TensorMap(object):
         if self.validator is None:
             self.validator = lambda tm, x, hd5: None
 
-        if self.time_series_order is None:
-            self.time_series_order = lambda tm, hd5, dates: dates
+        # if self.time_series_order is None:
+        #     self.time_series_order = lambda tm, hd5, dates: dates
 
     def __eq__(self, other):
         if not isinstance(other, TensorMap):

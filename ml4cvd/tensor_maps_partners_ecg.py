@@ -1717,8 +1717,9 @@ def build_cardiac_surgery_tensor_maps(
             )
             name2tensormap[name] = TensorMap(
                 name,
+                shape=(2500, 12),
                 path_prefix=PARTNERS_PREFIX,
-                channel_map=_outcome_channels(outcome),
+                channel_map=ECG_REST_AMP_LEADS,
                 tensor_from_file=tensor_from_file_fxn,
                 dependent_map=name2tensormap[outcome_name],
             )
