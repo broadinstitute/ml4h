@@ -1608,7 +1608,7 @@ def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
 def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
     for ecg_date in ecg_dates:
         logging.debug(f'Got date: {ecg_date}')
-        ecg_datetime = datetime.datetime.combine(ecg_date, datetime.time.min)
+        ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATE_FORMAT)
         if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
             return surgery_date
     raise ValueError(f'No ECG in time window')
@@ -1667,9 +1667,8 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         if mrn_int not in outcome_table:
             raise KeyError(f"MRN not in STS outcomes CSV")
 
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        tensor = np.zeros(shape, dtype=np.float32)
+        ecg_dates = list(hd5[tm.path_prefix]).sort(reverse=True)
+        tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         ecg_date = _date_in_window_from_dates(ecg_dates, date_surg_table[mrn_int], day_window)
         for cm in tm.channel_map:
