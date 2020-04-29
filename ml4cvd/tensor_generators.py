@@ -183,7 +183,7 @@ class TensorGenerator:
             if 'categorical_' in k:
                 base_key = k.split('categorical_')[0]
                 n = stats[f'{base_key}n']
-                logging.info(f'Categorical label {k} Percent presented:{100*(stats[k]/(eps+n)):0.2f}%')
+                logging.info(f'Categorical label \n{k} Percent presented:{100*(stats[k]/(eps+n)):0.2f}%')
             if 'sum_squared' in k:
                 sum_squared = stats[k]
                 base_key = k.replace('sum_squared', '')
@@ -339,6 +339,9 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
+            if self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
+                self.epoch_stats[f'{tm.name}_max'] = tm.rescale(tensor)[0]
+                self.epoch_stats[f'{tm.name}_min'] = tm.rescale(tensor)[0]
             self.epoch_stats[f'{tm.name}_max'] = max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
             self.epoch_stats[f'{tm.name}_min'] = min(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_min'])
             self.epoch_stats[f'{tm.name}_sum'] += tm.rescale(tensor)[0]
