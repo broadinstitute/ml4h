@@ -180,6 +180,10 @@ class TensorGenerator:
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
 
         for k in stats:
+            if 'categorical_' in k:
+                base_key = k.split('categorical_')[0]
+                n = stats[f'{base_key}n']
+                logging.info(f'Categorical label {k} Percent presented:{100*(stats[k]/n):0.2f}%')
             if 'sum_squared' in k:
                 sum_squared = stats[k]
                 base_key = k.replace('sum_squared', '')
@@ -188,7 +192,6 @@ class TensorGenerator:
                 mean = n_sum/n
                 logging.info(f'Continuous value {base_key} mean:{mean:0.2f} standard deviation:{(sum_squared/n)-(mean*mean):0.2f} '
                              f"max:{stats[f'{base_key}max']:0.2f} min{stats[f'{base_key}min']:0.2f}")
-
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -332,7 +335,8 @@ class _MultiModalMultiTaskWorker:
             self.cache[path, name] = tensor
         if tm.is_categorical() and tm.axes() == 1:
             index2channel = {v: k for k, v in tm.channel_map.items()}
-            self.epoch_stats[f'{tm.name}_{index2channel[np.argmax(tensor)]}'] += 1
+            self.epoch_stats[f'{tm.name}_categorical_{index2channel[np.argmax(tensor)]}'] += 1
+            self.epoch_stats[f'{tm.name}_categorical_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
             self.epoch_stats[f'{tm.name}_max'] += max(tm.rescale(tensor)[0], self.epoch_stats[f'{tm.name}_max'])
