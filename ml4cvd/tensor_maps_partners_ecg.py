@@ -1611,7 +1611,7 @@ def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
         logging.debug(f'Got date: {ecg_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
         if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
-            return surgery_date
+            return ecg_datetime
     raise ValueError(f'No ECG in time window')
 
 
