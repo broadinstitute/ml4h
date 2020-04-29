@@ -1608,10 +1608,9 @@ def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
 def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
     ecg_dates.sort(reverse=True)
     for ecg_date in ecg_dates:
-        logging.debug(f'Got date: {ecg_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
         if surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
-            return ecg_datetime
+            return datetime.datetime.strftime(ecg_datetime, PARTNERS_DATETIME_FORMAT)
     raise ValueError(f'No ECG in time window')
 
 
@@ -1672,6 +1671,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         tensor = np.zeros(tm.shape, dtype=np.float32)
         dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         ecg_date = _date_in_window_from_dates(ecg_dates, date_surg_table[mrn_int], day_window)
+        logging.debug(f'Got date: {ecg_date}')
         for cm in tm.channel_map:
             try:
                 path = _make_hd5_path(tm, ecg_date, cm)
