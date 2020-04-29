@@ -1693,14 +1693,14 @@ def build_cardiac_surgery_tensor_maps(
 ) -> Dict[str, TensorMap]:
     name2tensormap: Dict[str, TensorMap] = {}
     outcome2column = {
-        "death": "mtopd",
-        "stroke": "cnstrokp",
-        "renal_failure": "crenfail",
-        "prolonged_ventilation": "crenfail",
-        "dsw_infection": "deepsterninf",
-        "reoperation": "reop",
-        "any_morbidity": "anymorbidity",
-        "long_stay": "llos",
+        "sts_death": "mtopd",
+        "sts_stroke": "cnstrokp",
+        "sts_renal_failure": "crenfail",
+        "sts_prolonged_ventilation": "crenfail",
+        "sts_dsw_infection": "deepsterninf",
+        "sts_reoperation": "reop",
+        "sts_any_morbidity": "anymorbidity",
+        "sts_long_stay": "llos",
     }
 
     dependent_maps = {}
@@ -1708,7 +1708,7 @@ def build_cardiac_surgery_tensor_maps(
         channel_map = _outcome_channels(outcome)
         dependent_maps[outcome] = TensorMap(outcome, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=channel_map)
 
-    name = 'ecg_near_surgery'
+    name = 'ecg_2500_sts'
     if name in needed_tensor_maps:
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
@@ -1718,10 +1718,27 @@ def build_cardiac_surgery_tensor_maps(
         name2tensormap[name] = TensorMap(
             name,
             shape=(2500, 12),
+            population_normalize=2000,
             path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn,
+        )
+    name = 'ecg_5000_sts'
+    if name in needed_tensor_maps:
+        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
+            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+            outcome2column=outcome2column,
+            day_window=30,
+        )
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(5000, 12),
+            population_normalize=2000,
+            path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn,
         )
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
