@@ -217,9 +217,9 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     if name in TMAPS:
         return TMAPS[name]
 
-    #TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
-    #if name in TMAPS:
-    #    return TMAPS[name]
+    TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
+    if name in TMAPS:
+        return TMAPS[name]
 
     TMAPS.update(build_cardiac_surgery_tensor_maps(needed_tensor_maps))
     if name in TMAPS:

@@ -228,9 +228,6 @@ class TensorMap(object):
         if self.validator is None:
             self.validator = lambda tm, x, hd5: None
 
-        # if self.time_series_order is None:
-        #     self.time_series_order = lambda tm, hd5, dates: dates
-
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
             return NotImplemented
