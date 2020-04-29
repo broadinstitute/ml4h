@@ -208,7 +208,7 @@ def parse_args():
     parser.add_argument('--tensors_name', default='Tensors', help='Name of dataset at tensors.')
     parser.add_argument('--tensors_join', default='partners_ecg_patientid_clean', help='Name of value in tensors to match data in reference.')
     parser.add_argument('--tensors_time', default='partners_ecg_datetime', help='Name of value in tensors to perform time cross-ref on. Optional')
-    parser.add_argument('--reference', help='Either a csv or directory of hd5 containing a reference dataset.')
+    parser.add_argument('--reference_tensors', help='Either a csv or directory of hd5 containing a reference dataset.')
     parser.add_argument('--reference_name', default='Reference', help='Name of dataset at reference.')
     parser.add_argument('--reference_join', help='Name of value in reference to match data in tensors.')
     parser.add_argument('--reference_time', help='Name of value in reference to perform time cross-ref on. Optional')

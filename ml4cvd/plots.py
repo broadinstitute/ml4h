@@ -718,10 +718,12 @@ def plot_cross_reference(args, xref_df, title, time_description):
     day_diffs = np.array(xref_df.apply(lambda row: (row[src_time] - row[ref_time]).days, axis=1))
     max(day_diffs.min(), day_diffs.max(), key=abs)
 
-    fig = plt.figure()
+    plt.rcParams['font.size'] = 18
+    fig = plt.figure(figsize=(15,9))
     ax = fig.add_subplot(111)
-    ax.hist(day_diffs, bins=range(day_diffs.min(), day_diffs.max(), 1))
-    ax.set_xlabel('Days relative to outcome')
+    binwidth = 5
+    ax.hist(day_diffs, bins=range(day_diffs.min(), day_diffs.max() + binwidth, binwidth))
+    ax.set_xlabel('Days relative to event')
     ax.set_ylabel('Number of patients')
     ax.set_title(f'Distribution of {args.tensors_name} {time_description}: N={len(day_diffs)}')
 

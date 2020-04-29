@@ -1036,7 +1036,7 @@ def cross_reference(args):
     src_join = args.tensors_join
     src_join_og = src_join
     src_time = args.tensors_time
-    ref_path = args.reference
+    ref_path = args.reference_tensors
     ref_name = args.reference_name
     ref_join = args.reference_join
     ref_join_og = ref_join
@@ -1048,7 +1048,7 @@ def cross_reference(args):
     # parse options
     src_cols = [col for col in [src_join, src_time] if col is not None]
     ref_cols = [col for col in [ref_join, ref_time, ref_label] if col is not None]
-    use_time = src_time and ref_time
+    use_time = src_time and ref_time and ref_time_range
     if use_time:
         dynamic_time_range = False
         try:
