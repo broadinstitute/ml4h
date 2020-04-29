@@ -81,6 +81,7 @@ class TensorGenerator:
         self.augment = augment
         self.run_on_main_thread = num_workers == 0
         self.q = None
+        self.stats_q = None
         self._started = False
         self.workers = []
         self.worker_instances = []
@@ -117,11 +118,13 @@ class TensorGenerator:
 
     def _init_workers(self):
         self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
+        self.stats_q = Queue(len(self.worker_instances))
         self._started = True
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
             worker_instance = _MultiModalMultiTaskWorker(
                 self.q,
+                self.stats_q,
                 self.input_maps, self.output_maps,
                 path_iter, iter_len,
                 self.batch_function, self.batch_size, self.keep_paths, self.batch_function_kwargs,
@@ -153,7 +156,27 @@ class TensorGenerator:
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
+            if self.stats_q.qsize() == len(self.num_workers):
+                self.aggregate_and_print_stats()
             return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+
+    def aggregate_and_print_stats(self):
+        stats = Counter()
+        while self.stats_q.qsize() != 0:
+            stats += self.stats_q.get()
+        for k in stats:
+            logging.debug(f"{k}: {self.stats[k]}")
+        error_info = '\n\t\t'.join([
+            f'[{error}] - {count}'
+            for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
+        ])
+        info_string = '\n\t'.join([
+            f"The following errors occurred:\n\t\t{error_info}",
+            f"Generator looped & shuffled over {self.true_epoch_len} paths.",
+            f"{int(stats['Tensors presented']/stats['epochs'])} tensors were presented.",
+            f"{stats['skipped_paths']} paths were skipped because they previously failed.",
+        ])
+        logging.info(f"Aggregated information string:\n\t{info_string}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -242,6 +265,7 @@ class _MultiModalMultiTaskWorker:
     def __init__(
         self,
         q: Queue,
+        stats_q: Queue,
         input_maps: List[TensorMap], output_maps: List[TensorMap],
         path_iter: PathIterator, true_epoch_len: int,
         batch_function: BatchFunction, batch_size: int, return_paths: bool, batch_func_kwargs: Dict,
@@ -320,6 +344,7 @@ class _MultiModalMultiTaskWorker:
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
+        self.stats_q.put(self.epoch_stats)
         for k in self.stats:
             logging.debug(f"{k}: {self.stats[k]}")
         error_info = '\n\t\t'.join([
