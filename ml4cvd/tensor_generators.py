@@ -166,7 +166,7 @@ class TensorGenerator:
         while self.stats_q.qsize() != 0:
             stats += self.stats_q.get()
         for k in stats:
-            logging.debug(f"{k}: {self.stats[k]}")
+            logging.debug(f"AGGREGATEEDDDD {k}: {stats[k]}")
         error_info = '\n\t\t'.join([
             f'[{error}] - {count}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
