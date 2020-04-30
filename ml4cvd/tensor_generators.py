@@ -170,14 +170,14 @@ class TensorGenerator:
 
         error_info = '\n\t\t'.join([
             f'[{error}] - {count:.0f}'
-            for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
+            for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True) if 'Error' in error
         ])
 
         info_string = '\n\t'.join([
-            f"The following errors occurred:\n\t\t{error_info}",
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
             f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
+            f"The following errors occurred:\n\t\t{error_info}",
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
         eps = 1e-7
