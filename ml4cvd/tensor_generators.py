@@ -178,19 +178,22 @@ class TensorGenerator:
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
-        eps = 1e-5
+        eps = 1e-7
         for tm in self.input_maps + self.output_maps:
             if tm.is_categorical() and tm.axes() == 1:
-                n = stats[f'{tm.name}_n']
+                n = stats[f'{tm.name}_n'] + eps
+                message = f'Categorical \n{tm.name} has {n} total examples.'
                 for channel, index in tm.channel_map.items():
                     examples = stats[f'{tm.name}_index_{index:.0f}']
-                    logging.info(f'Categorical \n{tm.name} label {channel} {examples} examples seen, percent of total:{100 * (examples / (eps + n)):0.2f}%')
+                    message = f'{message}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
+                logging.info(message)
             elif tm.is_continuous() and tm.axes() == 1:
                 sum_squared = stats[f'{tm.name}_sum_squared']
-                n = stats[f'{tm.name}_n']
+                n = stats[f'{tm.name}_n'] + eps
                 n_sum = stats[f'{tm.name}_sum']
-                mean = n_sum/(eps+n)
-                logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{np.sqrt((sum_squared/n)-(mean*mean)):0.2f} '
+                mean = n_sum / n
+                std = np.sqrt((sum_squared/n)-(mean*mean))
+                logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
                              f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}")
 
 
