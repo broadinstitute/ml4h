@@ -178,11 +178,13 @@ class TensorGenerator:
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
+        if (stats['epochs']/self.num_workers) != 1:
+            return
         eps = 1e-7
         for tm in self.input_maps + self.output_maps:
             if tm.is_categorical() and tm.axes() == 1:
                 n = stats[f'{tm.name}_n'] + eps
-                message = f'Categorical \n{tm.name} has {n} total examples.'
+                message = f'Categorical \n{tm.name} has {n:.0f} total examples.'
                 for channel, index in tm.channel_map.items():
                     examples = stats[f'{tm.name}_index_{index:.0f}']
                     message = f'{message}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
@@ -380,7 +382,7 @@ class _MultiModalMultiTaskWorker:
 
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
-        self.epoch_stats['epochs'] += 1
+        self.epoch_stats['epochs'] = self.stats['epochs']
         while self.stats_q.qsize() == self.num_workers:
             continue
         self.stats_q.put(self.epoch_stats)
