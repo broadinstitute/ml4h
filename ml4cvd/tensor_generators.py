@@ -87,6 +87,7 @@ class TensorGenerator:
         self.worker_instances = []
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.name, self.keep_paths = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, name, keep_paths
+        self.true_epochs = 0
         if num_workers == 0:
             num_workers = 1  # The one worker is the main thread
         if weights is None:
@@ -163,6 +164,7 @@ class TensorGenerator:
 
     def aggregate_and_print_stats(self):
         stats = Counter()
+        self.true_epochs += 1
         while self.stats_q.qsize() != 0:
             stats += self.stats_q.get()
 
@@ -173,15 +175,15 @@ class TensorGenerator:
 
         info_string = '\n\t'.join([
             f"The following errors occurred:\n\t\t{error_info}",
-            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {(stats['epochs']/self.num_workers):.0f}",
-            f"{int(stats['Tensors presented']/(stats['epochs']/self.num_workers))} tensors were presented.",
+            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
+            f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
         ])
-        logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
-        if (stats['epochs']/self.num_workers) != 1:
-            return
+        logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
         eps = 1e-7
         for tm in self.input_maps + self.output_maps:
+            if self.true_epochs != 1:
+                break
             if tm.is_categorical() and tm.axes() == 1:
                 n = stats[f'{tm.name}_n'] + eps
                 message = f'Categorical \n{tm.name} has {n:.0f} total examples.'
@@ -197,7 +199,6 @@ class TensorGenerator:
                 std = np.sqrt((sum_squared/n)-(mean*mean))
                 logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
                              f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}")
-
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
