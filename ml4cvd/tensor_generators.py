@@ -179,19 +179,27 @@ class TensorGenerator:
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed a true epoch ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
         eps = 1e-5
+        for tm in self.input_maps + self.output_maps:
+            if tm.is_categorical() and tm.axes() == 1:
+                n = stats[f'{tm.name}_n']
+                for channel, index in tm.channel_map.items():
+                    examples = stats[f'{tm.name}_index_{index:.0f}']
+                    logging.info(f'Categorical \n{tm.name} label {channel} {examples} examples seen, percent of total:{100 * (examples / (eps + n)):0.2f}%')
+            elif tm.is_continuous() and tm.axes() == 1:
+                sum_squared = stats[f'{tm.name}_sum_squared']
+                n = stats[f'{tm.name}_n']
+                n_sum = stats[f'{tm.name}_sum']
+                mean = n_sum/(eps+n)
+                logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{np.sqrt((sum_squared/n)-(mean*mean)):0.2f} '
+                             f"Maximum:{stats[f'{tm.name}max']:0.2f} Minimum:{stats[f'{tm.name}min']:0.2f}")
         for k in stats:
             if 'categorical_' in k:
                 base_key = k.split('categorical_')[0]
                 n = stats[f'{base_key}n']
-                logging.info(f'Categorical label \n{k} {stats[k]} examples seen, percent of total:{100*(stats[k]/(eps+n)):0.2f}%')
+
             if 'sum_squared' in k:
-                sum_squared = stats[k]
-                base_key = k.replace('sum_squared', '')
-                n = stats[f'{base_key}n']
-                n_sum = stats[f'{base_key}sum']
-                mean = n_sum/(eps+n)
-                logging.info(f'Continuous value \n{base_key} Mean:{mean:0.2f} Standard Deviation:{np.sqrt((sum_squared/n)-(mean*mean)):0.2f} '
-                             f"Maximum:{stats[f'{base_key}max']:0.2f} Minimum:{stats[f'{base_key}min']:0.2f}")
+
+
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -334,8 +342,7 @@ class _MultiModalMultiTaskWorker:
         if tm.cacheable:
             self.cache[path, name] = tensor
         if tm.is_categorical() and tm.axes() == 1:
-            index2channel = {v: k for k, v in tm.channel_map.items()}
-            self.epoch_stats[f'{tm.name}_categorical_{index2channel[np.argmax(tensor)]}'] += 1
+            self.epoch_stats[f'{tm.name}_index_{np.argmax(tensor):.0f}'] += 1
             self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_n'] += 1
