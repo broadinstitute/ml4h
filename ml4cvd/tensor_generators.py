@@ -379,6 +379,8 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f"{error_name}: {e}"] += 1
             self.cache.failed_paths.add(path)
             _log_first_error(self.stats, path)
+        except SystemExit as e:
+            raise e
         finally:
             if hd5 is not None:
                 hd5.close()
@@ -391,7 +393,6 @@ class _MultiModalMultiTaskWorker:
         self.stats_q.put(self.epoch_stats)
         if self.stats['Tensors presented'] == 0:
             logging.error(f"Completed an epoch but did not find any tensors to yield")
-            sys.exit()
         if 'test' in self.name:
             logging.warning(f'Test worker {self.name} completed a full epoch. Test results may be double counting samples.')
         self.start = time.time()
