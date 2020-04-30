@@ -12,8 +12,6 @@ from __future__ import print_function
 # Imports
 import os
 import csv
-import sys
-
 import h5py
 import time
 import logging
@@ -379,8 +377,6 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f"{error_name}: {e}"] += 1
             self.cache.failed_paths.add(path)
             _log_first_error(self.stats, path)
-        except SystemExit as e:
-            raise e
         finally:
             if hd5 is not None:
                 hd5.close()
