@@ -12,6 +12,8 @@ from __future__ import print_function
 # Imports
 import os
 import csv
+import sys
+
 import h5py
 import time
 import logging
@@ -389,7 +391,7 @@ class _MultiModalMultiTaskWorker:
         self.stats_q.put(self.epoch_stats)
         if self.stats['Tensors presented'] == 0:
             logging.error(f"Completed an epoch but did not find any tensors to yield")
-            self.terminate()
+            sys.exit()
         if 'test' in self.name:
             logging.warning(f'Test worker {self.name} completed a full epoch. Test results may be double counting samples.')
         self.start = time.time()
