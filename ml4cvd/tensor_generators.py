@@ -192,13 +192,6 @@ class TensorGenerator:
                 mean = n_sum/(eps+n)
                 logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{np.sqrt((sum_squared/n)-(mean*mean)):0.2f} '
                              f"Maximum:{stats[f'{tm.name}max']:0.2f} Minimum:{stats[f'{tm.name}min']:0.2f}")
-        for k in stats:
-            if 'categorical_' in k:
-                base_key = k.split('categorical_')[0]
-                n = stats[f'{base_key}n']
-
-            if 'sum_squared' in k:
-
 
 
     def kill_workers(self):
