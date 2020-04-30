@@ -191,7 +191,7 @@ class TensorGenerator:
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum/(eps+n)
                 logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{np.sqrt((sum_squared/n)-(mean*mean)):0.2f} '
-                             f"Maximum:{stats[f'{tm.name}max']:0.2f} Minimum:{stats[f'{tm.name}min']:0.2f}")
+                             f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}")
 
 
     def kill_workers(self):
