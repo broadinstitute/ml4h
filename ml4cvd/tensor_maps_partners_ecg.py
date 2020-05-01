@@ -1280,6 +1280,8 @@ def _ecg_tensor_from_date(tm: TensorMap, hd5: h5py.File, ecg_date: str, populati
 def _date_from_dates(ecg_dates, target_date=None):
     if target_date:
         incident_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() < target_date]
+        if len(incident_dates) == 0:
+            raise ValueError('No ECGs prior to target were found.')
         return np.random.choice(incident_dates)
     return np.random.choice(ecg_dates)
 
@@ -1427,7 +1429,7 @@ def loyalty_time_to_event(
             raise error
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
         if mrn_int not in disease_dicts['follow_up_start']:
-            raise KeyError(f'{tm.name} mrn not in incidence csv')
+            raise KeyError(f'{diagnosis_column} did not contain MRN for TensorMap:{tm.name}')
         ecg_dates = list(hd5[tm.path_prefix])
         disease_date = disease_dicts['diagnosis_dates'][mrn_int] if mrn_int in disease_dicts['diagnosis_dates'] else None
         ecg_date_key = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
@@ -1451,7 +1453,7 @@ def loyalty_time_to_event(
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
             dependents[tm.dependent_map[dtm]][0] = has_disease
-            dependents[tm.dependent_map[dtm]][0] = (censor_date - ecg_date).days
+            dependents[tm.dependent_map[dtm]][1] = (censor_date - ecg_date).days
 
         return tensor
     return _cox_tensor_from_file
