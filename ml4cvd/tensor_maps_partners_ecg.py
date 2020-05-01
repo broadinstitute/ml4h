@@ -1567,15 +1567,15 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'ecg_2500_to_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            dependent = {f'diagnosis_{diagnosis}': TensorMap(f'diagnosis_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis))}
+            name2tensormap[f'diagnosis_{diagnosis}'] = TensorMap(f'diagnosis_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis))
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
-                                             dependent_map=dependent, tensor_from_file=tensor_from_file_fxn)
+                                             dependent_map={f'diagnosis_{diagnosis}': name2tensormap[f'diagnosis_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
         name = f'ecg_2500_to_incident_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            dependent = {f'incident_{diagnosis}': TensorMap(f'incident_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True))}
+            name2tensormap[f'incident_{diagnosis}'] = TensorMap(f'incident_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True))
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
-                                             dependent_map=dependent, tensor_from_file=tensor_from_file_fxn)
+                                             dependent_map={f'incident_{diagnosis}': name2tensormap[f'incident_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
         #
         # # Build time to event TensorMaps
         # name = f'cox_{diagnosis}'
