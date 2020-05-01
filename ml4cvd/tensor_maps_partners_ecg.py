@@ -1354,7 +1354,7 @@ def build_incidence_tensor_from_file(
 
         if mrn_int not in date_table:
             index = 0
-        else:
+        elif disease_date is not None:
             if incidence_only and disease_date < ecg_datetime:
                 raise ValueError(f'{tm.name} is skipping prevalent cases.')
             elif incidence_only and disease_date >= ecg_datetime:
