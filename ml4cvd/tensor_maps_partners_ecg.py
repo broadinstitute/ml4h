@@ -1436,8 +1436,8 @@ def loyalty_time_to_event(
         ecg_date = datetime.datetime.strptime(ecg_date_key, PARTNERS_DATETIME_FORMAT).date()
         tensor = _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
 
-        if ecg_date < disease_dicts['follow_up_start'][mrn_int]:
-            raise ValueError(f'Assessed earlier than enrollment.')
+        # if ecg_date < disease_dicts['follow_up_start'][mrn_int]:
+        #     raise ValueError(f'Assessed earlier than enrollment.')
 
         if mrn_int not in disease_dicts['diagnosis_dates']:
             has_disease = 0
