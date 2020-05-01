@@ -1067,11 +1067,17 @@ def cross_reference(args):
             df = _tensors_to_df(args)
         else:
             logging.debug(f'Assuming {name} is a csv at {path}')
-            df = pd.read_csv(path, usecols=cols, low_memory=False)
+            df = pd.read_csv(path, low_memory=False)
+
         return df
+
     src_df = _load_data(src_name, src_path, src_cols)
+    if "fpath" in src_df: # TODO fix fpath detection, argument?
+        src_cols.append("fpath")
+    src_df = src_df[src_cols]
     logging.info(f'Loaded {src_name} into dataframe')
     ref_df = _load_data(ref_name, ref_path, ref_cols)
+    ref_df = ref_df[ref_cols]
     logging.info(f'Loaded {ref_name} into dataframe')
 
     # cleanup data
