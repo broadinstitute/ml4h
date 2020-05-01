@@ -24,7 +24,7 @@ matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order 
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
 from ml4cvd.models import make_multimodal_multitask_model
-from ml4cvd.TensorMap import TensorMap, Interpretation, _decompress_data
+from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
@@ -392,7 +392,7 @@ def sample_from_char_embed_model(tensor_maps_in: List[TensorMap], char_model: Mo
         with h5py.File(test_paths[i], 'r') as hd5:
             logging.info(f"\n")
             if 'read_' in language_map.name:
-                caption = _decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
+                caption = decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
             else:
                 caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
             logging.info(f"Real text: {caption}")
@@ -868,18 +868,25 @@ def explore(args):
     args.num_workers = 0
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    out_ext = 'tsv' if tsv_style_is_genetics else 'csv'
+    out_sep = '\t' if tsv_style_is_genetics else ','
 
     if any([len(tm.shape) != 1 for tm in tmaps]) and any([(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps]):
         raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+    if tsv_style_is_genetics:
+        fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
+        df.insert(0, 'FID', fid)
+        df.insert(1, 'IID', fid)
 
     # Save dataframe to CSV
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
-    df.to_csv(fpath, index=False)
-    fpath = os.path.join(args.output_folder, args.id, "tensors_all_intersect.csv")
-    df.dropna().to_csv(fpath, index=False)
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
+    df.to_csv(fpath, index=False, sep=out_sep)
+    fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
+    df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
     #fpath = os.path.join(args.output_folder, args.id, "tensors_all_union.csv")
