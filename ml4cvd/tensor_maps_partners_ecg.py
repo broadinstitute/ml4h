@@ -1279,9 +1279,7 @@ def _ecg_tensor_from_date(tm: TensorMap, hd5: h5py.File, ecg_date: str, populati
 
 def _date_from_dates(ecg_dates, target_date=None):
     if target_date:
-        prevalent_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() >= target_date]
         incident_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() < target_date]
-        logging.debug(f'ecg_dates {ecg_dates} \nprevalent: {prevalent_dates}  \nincident_dates: {incident_dates}')
         return np.random.choice(incident_dates)
     return np.random.choice(ecg_dates)
 
@@ -1341,7 +1339,7 @@ def build_incidence_tensor_from_file(
             raise KeyError(f'{tm.name} mrn not in incidence csv')
         ecg_dates = list(hd5[tm.path_prefix])
         disease_date = date_table[mrn_int] if mrn_int in date_table else None
-        ecg_date = _date_from_dates(ecg_dates, disease_date)
+        ecg_date = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
         tensor = _ecg_tensor_from_date(tm, hd5, ecg_date, population_normalize)
         if check_birthday:
             path = _make_hd5_path(tm, ecg_date, 'dateofbirth')
