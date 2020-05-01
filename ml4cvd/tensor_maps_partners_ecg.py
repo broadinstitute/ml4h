@@ -1351,14 +1351,16 @@ def build_incidence_tensor_from_file(
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
         if ecg_datetime < patient_table[mrn_int]:
             raise ValueError(f'{tm.name} Assessed earlier than enrollment')
+
         if mrn_int not in date_table:
             index = 0
-        if incidence_only and disease_date < ecg_datetime:
-            raise ValueError(f'{tm.name} is skipping prevalent cases.')
-        elif incidence_only and disease_date >= ecg_datetime:
-            index = 1
         else:
-            index = 1 if disease_date < ecg_datetime else 2
+            if incidence_only and disease_date < ecg_datetime:
+                raise ValueError(f'{tm.name} is skipping prevalent cases.')
+            elif incidence_only and disease_date >= ecg_datetime:
+                index = 1
+            else:
+                index = 1 if disease_date < ecg_datetime else 2
         logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {ecg_date} index  {index}.')
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
