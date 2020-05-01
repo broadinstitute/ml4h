@@ -1361,10 +1361,10 @@ def build_incidence_tensor_from_file(
                 index = 1
             else:
                 index = 1 if disease_date < ecg_datetime else 2
-        logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {ecg_date} index  {index}.')
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
             dependents[tm.dependent_map[dtm]][index] = 1.0
+        logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {ecg_date} index {index}. dtm: {dependents[tm.dependent_map[dtm]]}')
         return tensor
     return tensor_from_file
 
