@@ -359,7 +359,6 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_sum'] += rescaled
             self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
 
-
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
         if path in self.cache.failed_paths:
