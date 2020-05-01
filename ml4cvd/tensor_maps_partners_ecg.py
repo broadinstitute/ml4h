@@ -1265,10 +1265,31 @@ def _hd5_filename_to_mrn_int(filename: str) -> int:
     return int(os.path.basename(filename).split('.')[0])
 
 
+def _ecg_tensor_from_date(tm: TensorMap, hd5: h5py.File, ecg_date: str, population_normalize: int = None):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    for cm in tm.channel_map:
+        path = _make_hd5_path(tm, ecg_date, cm)
+        voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+        voltage = _resample_voltage(voltage, tm.shape[0])
+        tensor[..., tm.channel_map[cm]] = voltage
+    if population_normalize is not None:
+        tensor /= population_normalize
+    return tensor
+
+
+def _date_from_dates(ecg_dates, target_date=None):
+    if target_date:
+        prevalent_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT) >= target_date]
+        incident_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT) < target_date]
+        logging.debug(f'ecg_dates {ecg_dates} \nprevalent: {prevalent_dates}  \nincident_dates: {incident_dates}')
+        return np.random.choice(incident_dates)
+    return np.random.choice(ecg_dates)
+
+
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
-    delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True,
+    delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True, population_normalize: int = None
 ) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
@@ -1315,42 +1336,34 @@ def build_incidence_tensor_from_file(
         if error:
             raise error
 
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        if len(ecg_dates) > 1:
-            raise NotImplementedError('Diagnosis models for multiple ECGs are not implemented.')
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        categorical_data = np.zeros(shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            path = lambda key: _make_hd5_path(tm, ecg_date, key)
-            mrn = _hd5_filename_to_mrn_int(hd5.filename)
-            mrn_int = int(mrn)
-
-            if mrn_int not in patient_table:
-                raise KeyError(f'{tm.name} mrn not in incidence csv')
-
-            if check_birthday:
-                birth_date = _partners_str2date(decompress_data(data_compressed=hd5[path('dateofbirth')][()], dtype=hd5[path('dateofbirth')].attrs['dtype']))
-                if birth_date != birth_table[mrn_int]:
-                    raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
-
-            assess_date = _partners_str2date(decompress_data(data_compressed=hd5[path('acquisitiondate')][()], dtype=hd5[path('acquisitiondate')].attrs['dtype']))
-            if assess_date < patient_table[mrn_int]:
-                raise ValueError(f'{tm.name} Assessed earlier than enrollment')
-            if mrn_int not in date_table:
-                index = 0
-            else:
-                disease_date = date_table[mrn_int]
-
-                if incidence_only and disease_date < assess_date:
-                    raise ValueError(f'{tm.name} is skipping prevalent cases.')
-                elif incidence_only and disease_date >= assess_date:
-                    index = 1
-                else:
-                    index = 1 if disease_date < assess_date else 2
-                logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.')
-            slices = (i, index) if dynamic else (index,)
-            categorical_data[slices] = 1.0
-        return categorical_data
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in patient_table:
+            raise KeyError(f'{tm.name} mrn not in incidence csv')
+        ecg_dates = list(hd5[tm.path_prefix])
+        disease_date = date_table[mrn_int] if mrn_int not in date_table else None
+        ecg_date = _date_from_dates(ecg_dates, disease_date)
+        tensor = _ecg_tensor_from_date(tm, hd5, ecg_date, population_normalize)
+        if check_birthday:
+            path = _make_hd5_path(tm, ecg_date, 'dateofbirth')
+            birth_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
+            if birth_date != birth_table[mrn_int]:
+                raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
+        ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
+        if ecg_datetime < patient_table[mrn_int]:
+            raise ValueError(f'{tm.name} Assessed earlier than enrollment')
+        if mrn_int not in date_table:
+            index = 0
+        if incidence_only and disease_date < ecg_datetime:
+            raise ValueError(f'{tm.name} is skipping prevalent cases.')
+        elif incidence_only and disease_date >= ecg_datetime:
+            index = 1
+        else:
+            index = 1 if disease_date < ecg_datetime else 2
+        logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {ecg_date} index  {index}.')
+        for dtm in tm.dependent_map:
+            dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
+            dependents[tm.dependent_map[dtm]][index] = 1.0
+        return tensor
     return tensor_from_file
 
 
@@ -1547,17 +1560,20 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
         'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
     }
+
     logging.info(f'needed name {needed_tensor_maps}')
     for diagnosis in diagnosis2column:
         # Build diagnosis classification TensorMaps
-        name = f'diagnosis_{diagnosis}'
+        name = f'ecg_2500_to_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
             name2tensormap[name] = TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
-        name = f'incident_diagnosis_{diagnosis}'
+        name = f'ecg_2500_to_incident_{diagnosis}'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            name2tensormap[name] = TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn)
+            dependent = {f'incident_{diagnosis}': TensorMap(f'incident_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True))}
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
+                                             dependent_map=dependent, tensor_from_file=tensor_from_file_fxn)
 
         # Build time to event TensorMaps
         name = f'cox_{diagnosis}'
