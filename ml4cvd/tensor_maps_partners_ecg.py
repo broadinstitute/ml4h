@@ -1380,7 +1380,7 @@ def _outcome_channels(outcome: str):
 def loyalty_time_to_event(
     file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
     follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-    diagnosis_column: str = 'first_stroke', delimiter: str = ',',
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',', population_normalize: int = None,
 ):
     """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
 
@@ -1425,36 +1425,34 @@ def loyalty_time_to_event(
     def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
             raise error
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in disease_dicts['follow_up_start']:
+            raise KeyError(f'{tm.name} mrn not in incidence csv')
+        ecg_dates = list(hd5[tm.path_prefix])
+        disease_date = disease_dicts['diagnosis_dates'][mrn_int] if mrn_int in disease_dicts['diagnosis_dates'] else None
+        ecg_date_key = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
+        ecg_date = datetime.datetime.strptime(ecg_date_key, PARTNERS_DATETIME_FORMAT).date()
+        tensor = _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
 
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        if len(ecg_dates) > 1:
-            raise NotImplementedError('Cox hazard models for multiple ECGs are not implemented.')
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
-            if patient_key_from_ecg not in disease_dicts['follow_up_start']:
-                raise KeyError(f'{tm.name} mrn not in incidence csv')
+        if ecg_date < disease_dicts['follow_up_start'][mrn_int]:
+            raise ValueError(f'Assessed earlier than enrollment.')
 
-            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-            assess_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
-            if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
-                raise ValueError(f'Assessed earlier than enrollment.')
+        if mrn_int not in disease_dicts['diagnosis_dates']:
+            has_disease = 0
+            censor_date = disease_dicts['follow_up_start'][mrn_int]
+            censor_date += datetime.timedelta(days=YEAR_DAYS * disease_dicts['follow_up_total'][mrn_int])
+        else:
+            has_disease = 1
+            censor_date = disease_dicts['diagnosis_dates'][mrn_int]
 
-            if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
-                has_disease = 0
-                censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(
-                    days=YEAR_DAYS * disease_dicts['follow_up_total'][patient_key_from_ecg],
-                )
-            else:
-                has_disease = 1
-                censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
+        if incidence_only and censor_date <= ecg_date and has_disease:
+            raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-            if incidence_only and censor_date <= assess_date and has_disease:
-                raise ValueError(f'{tm.name} only considers incident diagnoses')
+        for dtm in tm.dependent_map:
+            dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
+            dependents[tm.dependent_map[dtm]][0] = has_disease
+            dependents[tm.dependent_map[dtm]][0] = (censor_date - ecg_date).days
 
-            tensor[(i, 0) if dynamic else 0] = has_disease
-            tensor[(i, 1) if dynamic else 1] = (censor_date - assess_date).days
         return tensor
     return _cox_tensor_from_file
 
@@ -1576,6 +1574,21 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name2tensormap[f'incident_{diagnosis}'] = TensorMap(f'incident_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True))
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
                                              dependent_map={f'incident_{diagnosis}': name2tensormap[f'incident_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
+        # Build time to event TensorMaps
+        name = f'ecg_2500_to_cox_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[f'cox_{diagnosis}'] = TensorMap(f'diagnosis_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis))
+            name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
+                                             dependent_map={f'cox_{diagnosis}': name2tensormap[f'cox_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
+        name = f'ecg_2500_to_incident_cox_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
+            name2tensormap[f'incident_cox_{diagnosis}'] = TensorMap(f'incident_cox_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, incidence_only=True))
+            name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
+                                             dependent_map={f'incident_cox_{diagnosis}': name2tensormap[f'incident_cox_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
+
+
         #
         # # Build time to event TensorMaps
         # name = f'cox_{diagnosis}'
