@@ -330,6 +330,7 @@ class _MultiModalMultiTaskWorker:
             batch[name][idx] = self.dependents[tm]
             if tm.cacheable:
                 self.cache[path, name] = self.dependents[tm]
+            self._collect_stats(tm, self.dependents[tm])
             return self.hd5
         if (path, name) in self.cache:
             batch[name][idx] = self.cache[path, name]
@@ -340,6 +341,10 @@ class _MultiModalMultiTaskWorker:
         batch[name][idx] = tensor
         if tm.cacheable:
             self.cache[path, name] = tensor
+        self._collect_stats(tm, tensor)
+        return self.hd5
+
+    def _collect_stats(self, tm, tensor):
         if tm.is_categorical() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_index_{np.argmax(tensor):.0f}'] += 1
             self.epoch_stats[f'{tm.name}_n'] += 1
@@ -353,7 +358,6 @@ class _MultiModalMultiTaskWorker:
             self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
             self.epoch_stats[f'{tm.name}_sum'] += rescaled
             self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
-        return self.hd5
 
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
