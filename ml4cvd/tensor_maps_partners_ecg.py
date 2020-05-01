@@ -1340,7 +1340,7 @@ def build_incidence_tensor_from_file(
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
         ecg_dates = list(hd5[tm.path_prefix])
-        disease_date = date_table[mrn_int] if mrn_int not in date_table else None
+        disease_date = date_table[mrn_int] if mrn_int in date_table else None
         ecg_date = _date_from_dates(ecg_dates, disease_date)
         tensor = _ecg_tensor_from_date(tm, hd5, ecg_date, population_normalize)
         if check_birthday:
@@ -1354,7 +1354,7 @@ def build_incidence_tensor_from_file(
 
         if mrn_int not in date_table:
             index = 0
-        elif disease_date is not None:
+        else:
             if incidence_only and disease_date < ecg_datetime:
                 raise ValueError(f'{tm.name} is skipping prevalent cases.')
             elif incidence_only and disease_date >= ecg_datetime:
