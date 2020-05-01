@@ -1531,7 +1531,7 @@ def _survival_from_file(
                 has_disease = 1
                 censor_date = disease_dicts['diagnosis_dates'][mrn_int]
 
-            intervals = dtm.shape[0] // 2
+            intervals = tm.dependent_map[dtm].shape[0] // 2
             days_per_interval = day_window / intervals
             for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
                 cur_date = ecg_date + datetime.timedelta(days=day_delta)
