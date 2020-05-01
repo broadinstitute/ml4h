@@ -1462,7 +1462,7 @@ def loyalty_time_to_event(
 def _survival_from_file(
     day_window: int, file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
     follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-    diagnosis_column: str = 'first_stroke', delimiter: str = ',',
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',', population_normalize: int = None,
 ) -> Callable:
     """Build a tensor_from_file function for modeling survival curves of diagnoses given a TSV of patients and dates.
 
@@ -1508,45 +1508,45 @@ def _survival_from_file(
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         if error:
             raise error
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in disease_dicts['follow_up_start']:
+            raise KeyError(f'{diagnosis_column} did not contain MRN for TensorMap:{tm.name}')
+        ecg_dates = list(hd5[tm.path_prefix])
+        disease_date = disease_dicts['diagnosis_dates'][mrn_int] if mrn_int in disease_dicts['diagnosis_dates'] else None
+        ecg_date_key = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
+        ecg_date = datetime.datetime.strptime(ecg_date_key, PARTNERS_DATETIME_FORMAT).date()
+        tensor = _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
 
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        if len(ecg_dates) > 1:
-            raise NotImplementedError('Survival curve models for multiple ECGs are not implemented.')
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        survival_then_censor = np.zeros(shape, dtype=np.float32)
-        for ed, ecg_date in enumerate(ecg_dates):
-            patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
-            if patient_key_from_ecg not in disease_dicts['follow_up_start']:
-                raise KeyError(f'{tm.name} mrn not in incidence csv')
+        if mrn_int not in disease_dicts['follow_up_start']:
+            raise KeyError(f'{tm.name} mrn not in incidence csv')
+        if ecg_date < disease_dicts['follow_up_start'][mrn_int]:
+            raise ValueError(f'Assessed earlier than enrollment.')
 
-            path = _make_hd5_path(tm, ecg_date, 'acquisitiondate')
-            assess_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
-            if assess_date < disease_dicts['follow_up_start'][patient_key_from_ecg]:
-                raise ValueError(f'Assessed earlier than enrollment.')
-
-            if patient_key_from_ecg not in disease_dicts['diagnosis_dates']:
+        for dtm in tm.dependent_map:
+            survival_then_censor = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
+            if mrn_int not in disease_dicts['diagnosis_dates']:
                 has_disease = 0
-                censor_date = disease_dicts['follow_up_start'][patient_key_from_ecg] + datetime.timedelta(days=YEAR_DAYS*disease_dicts['follow_up_total'][patient_key_from_ecg])
+                censor_date = disease_dicts['follow_up_start'][mrn_int] + datetime.timedelta(days=YEAR_DAYS*disease_dicts['follow_up_total'][mrn_int])
             else:
                 has_disease = 1
-                censor_date = disease_dicts['diagnosis_dates'][patient_key_from_ecg]
+                censor_date = disease_dicts['diagnosis_dates'][mrn_int]
 
-            intervals = int(shape[1] if dynamic else shape[0] / 2)
+            intervals = dtm.shape[0] // 2
             days_per_interval = day_window / intervals
-
             for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
-                cur_date = assess_date + datetime.timedelta(days=day_delta)
-                survival_then_censor[(ed, i) if dynamic else i] = float(cur_date < censor_date)
-                survival_then_censor[(ed, intervals+i) if dynamic else intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                cur_date = ecg_date + datetime.timedelta(days=day_delta)
+                survival_then_censor[i] = float(cur_date < censor_date)
+                survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
                 if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                    survival_then_censor[(ed, intervals) if dynamic else intervals] = has_disease
+                    survival_then_censor[intervals] = has_disease
                     if has_disease and incidence_only:
                         raise ValueError(f'{tm.name} is skipping prevalent cases.')
+            dependents[tm.dependent_map[dtm]] = survival_then_censor
             logging.debug(
-                f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{(survival_then_censor[ed] if dynamic else survival_then_censor)[:4]} mid tense: {(survival_then_censor[ed] if dynamic else survival_then_censor)[intervals:intervals+4]} ",
+                f"Got survival disease {has_disease}, censor: {censor_date}, assess {ecg_date}, fu start {disease_dicts['follow_up_start'][mrn_int]} "
+                f"fu total {disease_dicts['follow_up_total'][mrn_int]} tensor:{survival_then_censor[:4]} mid tense: {survival_then_censor[intervals:intervals+4]} ",
             )
-        return survival_then_censor
+        return tensor
     return tensor_from_file
 
 
@@ -1589,6 +1589,20 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name2tensormap[f'incident_cox_{diagnosis}'] = TensorMap(f'incident_cox_{diagnosis}', Interpretation.TIME_TO_EVENT)
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
                                              dependent_map={f'incident_cox_{diagnosis}': name2tensormap[f'incident_cox_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
+
+        # Build survival curve TensorMaps
+        name = f'ecg_2500_to_survival_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[f'survival_{diagnosis}'] = TensorMap(f'survival_{diagnosis}', Interpretation.SURVIVAL_CURVE)
+            name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
+                                             dependent_map={f'survival_{diagnosis}': name2tensormap[f'survival_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
+        name = f'ecg_2500_to_incident_survival_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
+            name2tensormap[f'incident_survival_{diagnosis}'] = TensorMap(f'incident_survival_{diagnosis}', Interpretation.SURVIVAL_CURVE)
+            name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS,
+                                             dependent_map={f'incident_survival_{diagnosis}': name2tensormap[f'incident_survival_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
 
 
         #
