@@ -1,5 +1,5 @@
 # These are packages required to install the packages in tensorflow_requirements.txt.
-# pip currently fails to recognize them as necessary for installation
+# pip currently fails to recognize them as necessary for installation.
 cvxopt
 cvxpy>=1.0
 cython>=0.29
