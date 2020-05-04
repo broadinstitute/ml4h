@@ -1042,7 +1042,8 @@ def plot_partners_ecgs(args):
             logging.exception(f"Broken tensor at: {tp}")
 
 
-def plot_cross_reference(args, xref_df, title, time_description):
+def plot_cross_reference(args, xref_df, title, time_description, window_start, window_end):
+    # TODO make this work with start/end windows
     if xref_df.empty:
         logging.info(f'No cross reference found for "{title}"')
         return
@@ -1050,7 +1051,7 @@ def plot_cross_reference(args, xref_df, title, time_description):
     title = title.replace(' ', '_')
 
     # compute day diffs
-    day_diffs = np.array(xref_df.apply(lambda row: (row[args.time_tensor] - row[args.reference_time_tensor]).days, axis=1))
+    day_diffs = np.array(xref_df.apply(lambda row: (row[args.time_tensor] - row[window_end]).days, axis=1))
 
     plt.rcParams['font.size'] = 18
     fig = plt.figure(figsize=(15,9))
@@ -1068,7 +1069,7 @@ def plot_cross_reference(args, xref_df, title, time_description):
 
     fpath = os.path.join(args.output_folder, args.id, f'distribution_{title}{IMAGE_EXT}')
     fig.savefig(fpath)
-    logging.info(f'Saved histogram of days relative to {args.reference_time_tensor} to {fpath}')
+    logging.info(f'Saved histogram of days relative to {window_end} to {fpath}')
 
 
 def _ecg_rest_traces(hd5):

@@ -1037,26 +1037,32 @@ def cross_reference(args):
     ref_path = args.reference_tensors
     ref_name = args.reference_name
     ref_join = args.reference_join_tensors
-    ref_time = args.reference_time_tensor
+    ref_start = args.reference_start_time_tensor
+    ref_end = args.reference_end_time_tensor
     ref_label = args.reference_label
-    ref_time_range = args.reference_time_range
 
     # parse options
     src_cols = list(src_join)
     ref_cols = list(ref_join)
     if ref_label is not None:
         ref_cols.append(ref_label)
-    use_time = src_time and ref_time and ref_time_range
+
+    use_time = src_time is not None and len(ref_start) != 0 and len(ref_end) != 0
     if use_time:
         src_cols.append(src_time)
-        ref_cols.append(ref_time)
-        dynamic_time_range = False
-        try:
-            ref_time_range = int(ref_time_range)
-        except ValueError:
-            logging.debug(f'Could not interpret {ref_time_range} as an int, assuming dynamic time range for {ref_name}.')
-            ref_cols.append(ref_time_range)
-            dynamic_time_range = True
+
+        # ref start and end are lists where the first element is the name of the time tensor
+        # and the second element is the offset to the value of the time tensor
+
+        # if there is no second element in list, append 0 (if there is, still ok)
+        [l.append(0) for l in [ref_start, ref_end]]
+
+        # add unique column names to ref_cols
+        ref_cols.extend({ref_start[0], ref_end[0]})
+
+        # parse second element in list as int
+        ref_start[1] = int(ref_start[1])
+        ref_end[1] = int(ref_end[1])
 
     # load data into dataframes
     def _load_data(name, path, cols):
@@ -1078,20 +1084,25 @@ def cross_reference(args):
     # cleanup time col
     if use_time:
         src_df[src_time] = pd.to_datetime(src_df[src_time], errors='coerce', infer_datetime_format=True)
-        ref_df[ref_time] = pd.to_datetime(ref_df[ref_time], errors='coerce', infer_datetime_format=True)
         src_df.dropna(inplace=True)
+
+        for ref_time in {ref_start[0], ref_end[0]}:
+            ref_df[ref_time] = pd.to_datetime(ref_df[ref_time], errors='coerce', infer_datetime_format=True)
         ref_df.dropna(inplace=True)
-        if dynamic_time_range:
-            ref_df[ref_time_range] = pd.to_datetime(ref_df[ref_time_range], errors='coerce', infer_datetime_format=True)
-            ref_df.dropna()
-            time_description = f'between {ref_name} {ref_time_range} and {ref_time}'
-        else:
-            # add time col to be the static window relative to ref time
-            days = ref_time_range
-            ref_time_range = f'{days}_relative_{ref_time}'
-            ref_df[ref_time_range] = ref_df[ref_time].apply(lambda x: x + datetime.timedelta(days=days))
-            ref_cols.append(ref_time_range)
-            time_description = f'{days} days relative {ref_name} {ref_time}'
+
+        def _add_offset_time(ref_time):
+            offset = ref_time[1]
+            if offset == 0:
+                return ref_time[0]
+            ref_time_col = f'{ref_time[1]}_days_relative_{ref_time[0]}'
+            ref_df[ref_time_col] = ref_df[ref_start[0]].apply(lambda x: x + datetime.timedelta(days=offset))
+            ref_cols.append(ref_time_col)
+            return ref_time_col
+
+        ref_start = _add_offset_time(ref_start)
+        ref_end = _add_offset_time(ref_end)
+
+        time_description = f'between {ref_start.replace("_", " ")} and {ref_end.replace("_", " ")}'
     logging.info('Cleaned data columns and removed rows that could not be parsed')
 
     # drop duplicates based on cols
@@ -1100,9 +1111,9 @@ def cross_reference(args):
     logging.info('Removed duplicates from dataframes, based on join, time, and label')
 
     cohort_counts[f'{src_name} (total)'] = len(src_df)
-    cohort_counts[f'{src_name} (unique {src_join})'] = len(np.unique(src_df[src_join]))
+    cohort_counts[f'{src_name} (unique {",".join(src_join)})'] = len(src_df.drop_duplicates(subset=src_join))
     cohort_counts[f'{ref_name} (total)'] = len(ref_df)
-    cohort_counts[f'{ref_name} (unique {ref_join})'] = len(np.unique(ref_df[ref_join]))
+    cohort_counts[f'{ref_name} (unique {",".join(ref_join)})'] = len(ref_df.drop_duplicates(subset=ref_join))
 
     # merge on join columns
     xref_df = src_df.merge(ref_df, how='inner', left_on=src_join, right_on=ref_join)
@@ -1118,12 +1129,7 @@ def cross_reference(args):
     _report_xref(args, xref_df, title)
 
     if use_time:
-        # infer which column in reference time range is left and which is right
-        left, right = ref_time, ref_time_range
-        lval, rval = xref_df.loc[0][left], xref_df.loc[0][right]
-        if lval > rval:
-            left, right = right, left
-        xref_df = xref_df[(xref_df[left] <= xref_df[src_time]) & (xref_df[right] >= xref_df[src_time])]
+        xref_df = xref_df[(xref_df[ref_start] <= xref_df[src_time]) & (xref_df[ref_end] >= xref_df[src_time])]
         logging.info('Cross referenced based on time')
 
         # At this point, rows in source have probably been duplicated by the join
@@ -1135,7 +1141,7 @@ def cross_reference(args):
         # report xref, all, time filtered
         title = f'all {src_name} {time_description}'
         _report_xref(args, xref_df, title)
-        plot_cross_reference(args, xref_df, title, time_description)
+        plot_cross_reference(args, xref_df, title, time_description, ref_start, ref_end)
 
         # get most recent row in source for each row in reference
         # sort in ascending order so last() returns most recent
@@ -1149,7 +1155,7 @@ def cross_reference(args):
         # report xref, most recent, time filtered
         title = f'most recent {src_name} {time_description}'
         _report_xref(args, xref_df, title)
-        plot_cross_reference(args, xref_df, title, time_description)
+        plot_cross_reference(args, xref_df, title, time_description, ref_start, ref_end)
 
     # report counts
     fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.tsv')

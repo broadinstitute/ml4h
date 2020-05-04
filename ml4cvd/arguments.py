@@ -213,8 +213,8 @@ def parse_args():
     parser.add_argument('--reference_tensors', help='Either a csv or directory of hd5 containing a reference dataset.')
     parser.add_argument('--reference_name', default='Reference', help='Name of dataset at reference.')
     parser.add_argument('--reference_join_tensors', nargs='+', help='TensorMap or column name in csv of value in reference used in join in tensors. Can be more than 1 join value.')
-    parser.add_argument('--reference_time_tensor', help='TensorMap or column name in csv of value in reference to perform time cross-ref on. Optional')
-    parser.add_argument('--reference_time_range', help='Either a TensorMap or column name in csv of a value in reference or an integer describing the time window relative to reference time to perform time cross-ref on. Optional')
+    parser.add_argument('--reference_start_time_tensor', nargs='+', help='TensorMap or column name in csv of start of time window in reference. An integer can be provided as a second argument to specify an offset to the start time, for example: tStart -30')
+    parser.add_argument('--reference_end_time_tensor', nargs='+', help='TensorMap or column name in csv of end of time window in reference. An integer can be provided as a second argument to specify an offset to the end time, for example: tEnd 30')
     parser.add_argument('--reference_label', help='Name of value in reference to report distribution on.')
 
     args = parser.parse_args()
