@@ -1560,7 +1560,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
         'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
     }
-
+    days_window = 1825
     logging.info(f'needed name {needed_tensor_maps}')
     for needed_name in needed_tensor_maps:
         if 'survival' not in needed_name:
@@ -1570,7 +1570,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             days_window = int(potential_day_string)
         except ValueError:
             pass
-        logging.info(f'Got day window {days_window} from {needed_name}')
+
     for diagnosis in diagnosis2column:
         # Build diagnosis classification TensorMaps
         name = f'ecg_2500_to_diagnosis_{diagnosis}'
