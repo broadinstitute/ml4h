@@ -1569,7 +1569,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         try:
             days_window = int(potential_day_string)
         except ValueError:
-            days_window = 1825  # Default to 5 years of follow up
+            pass
         logging.info(f'Got day window {days_window} from {needed_name}')
     for diagnosis in diagnosis2column:
         # Build diagnosis classification TensorMaps
