@@ -208,15 +208,14 @@ def parse_args():
 
     # Cross reference arguments
     parser.add_argument('--tensors_name', default='Tensors', help='Name of dataset at tensors.')
-    parser.add_argument('--tensors_join', default='partners_ecg_patientid_clean', help='Name of value in tensors to match data in reference.')
-    parser.add_argument('--tensors_time', default='partners_ecg_datetime', help='Name of value in tensors to perform time cross-ref on. Optional')
+    parser.add_argument('--join_tensors', default=['partners_ecg_patientid_clean'], nargs='+', help='TensorMap or column name in csv of value in tensors used in join with reference. Can be more than 1 join value.')
+    parser.add_argument('--time_tensor', default='partners_ecg_datetime', help='TensorMap or column name in csv of value in tensors to perform time cross-ref on. Optional')
     parser.add_argument('--reference_tensors', help='Either a csv or directory of hd5 containing a reference dataset.')
     parser.add_argument('--reference_name', default='Reference', help='Name of dataset at reference.')
-    parser.add_argument('--reference_join', help='Name of value in reference to match data in tensors.')
-    parser.add_argument('--reference_time', help='Name of value in reference to perform time cross-ref on. Optional')
-    parser.add_argument('--reference_time_range', help='Either the name of a value in reference or an integer describing the time window relative to reference time to perform time cross-ref on. Optional')
+    parser.add_argument('--reference_join_tensors', nargs='+', help='TensorMap or column name in csv of value in reference used in join in tensors. Can be more than 1 join value.')
+    parser.add_argument('--reference_time_tensor', help='TensorMap or column name in csv of value in reference to perform time cross-ref on. Optional')
+    parser.add_argument('--reference_time_range', help='Either a TensorMap or column name in csv of a value in reference or an integer describing the time window relative to reference time to perform time cross-ref on. Optional')
     parser.add_argument('--reference_label', help='Name of value in reference to report distribution on.')
-    parser.add_argument('--non_numeric_join', default=False, action='store_true', help='If specified, join values are not compared as integers.')
 
     args = parser.parse_args()
     _process_args(args)

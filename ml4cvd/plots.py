@@ -1048,12 +1048,9 @@ def plot_cross_reference(args, xref_df, title, time_description):
         return
 
     title = title.replace(' ', '_')
-    src_time = f'{args.tensors_time}_clean'
-    ref_time = f'{args.reference_time}_clean'
 
     # compute day diffs
-    day_diffs = np.array(xref_df.apply(lambda row: (row[src_time] - row[ref_time]).days, axis=1))
-    max(day_diffs.min(), day_diffs.max(), key=abs)
+    day_diffs = np.array(xref_df.apply(lambda row: (row[args.time_tensor] - row[args.reference_time_tensor]).days, axis=1))
 
     plt.rcParams['font.size'] = 18
     fig = plt.figure(figsize=(15,9))
@@ -1071,7 +1068,7 @@ def plot_cross_reference(args, xref_df, title, time_description):
 
     fpath = os.path.join(args.output_folder, args.id, f'distribution_{title}{IMAGE_EXT}')
     fig.savefig(fpath)
-    logging.info(f'Saved histogram of days relative to {args.reference_time} to {fpath}')
+    logging.info(f'Saved histogram of days relative to {args.reference_time_tensor} to {fpath}')
 
 
 def _ecg_rest_traces(hd5):
