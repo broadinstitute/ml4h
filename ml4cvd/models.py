@@ -850,7 +850,7 @@ def make_multimodal_multitask_model(
         if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
             pre_decoder_shapes[tm] = None
         else:
-            pre_decoder_shapes[tm] = _calc_start_shape(num_upsamples=len(dense_blocks) - 1, output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
+            pre_decoder_shapes[tm] = _calc_start_shape(num_upsamples=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
 
     if bottleneck_type in {BottleneckType.FlattenRestructure, BottleneckType.GlobalAveragePoolStructured}:
         bottleneck = ConcatenateRestructure(
