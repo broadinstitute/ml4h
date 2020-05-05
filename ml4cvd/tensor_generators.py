@@ -485,15 +485,15 @@ def _sample_csv_to_set(sample_csv):
         return {row[0] for row in list(csv.reader(csv_file, 'r'))}
 
 
-def get_test_train_valid_paths(
-        tensors,
-        sample_csv,
-        valid_ratio,
-        test_ratio,
-        train_csv,
-        valid_csv,
-        test_csv,
-        test_modulo,
+def get_train_valid_test_paths(
+        tensors: str,
+        valid_ratio: float,
+        test_ratio: float,
+        sample_csv: Optional[str] = None,
+        train_csv: Optional[str] = None,
+        valid_csv: Optional[str] = None,
+        test_csv: Optional[str] = None,
+        test_modulo: Optional[int] = None,
 ):
     """
     Return 3 disjoint lists of tensor paths.
@@ -502,9 +502,9 @@ def get_test_train_valid_paths(
     apportioned according to the following arguments:
 
     :param tensors: path to directory containing tensors
-    :param sample_csv: path to csv containing sample ids to restrict all tensor paths
     :param valid_ratio: rate of tensors in validation list, overridable by valid_csv
     :param test_ratio: rate of tensors in testing list, overridable by test_csv and test_modulo
+    :param sample_csv: path to csv containing sample ids to restrict all tensor paths
     :param train_csv: path to csv containing sample ids to reserve for training list
     :param valid_csv: path to csv containing sample ids to reserve for validation list
     :param test_csv: path to csv containing sample ids to reserve for testing list
@@ -580,7 +580,17 @@ def get_test_train_valid_paths(
     return train_paths, valid_paths, test_paths
 
 
-def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv):
+def get_train_valid_test_paths_split_by_csvs(
+        tensors: str,
+        balance_csvs: List[str],
+        valid_ratio: float,
+        test_ratio: float,
+        sample_csv: Optional[str] = None,
+        train_csv: Optional[str] = None,
+        valid_csv: Optional[str] = None,
+        test_csv: Optional[str] = None,
+        test_modulo: Optional[int] = None,
+):
     stats = Counter()
     sample2group = {}
     for i, b_csv in enumerate(balance_csvs):
@@ -593,27 +603,21 @@ def get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio,
             stats['group_'+str(i+1)] += 1
     logging.info(f"Balancing with CSVs of Sample IDs stats: {stats}")
 
-    test_paths = [[] for _ in range(len(balance_csvs)+1)]
     train_paths = [[] for _ in range(len(balance_csvs)+1)]
     valid_paths = [[] for _ in range(len(balance_csvs)+1)]
-    for root, dirs, files in os.walk(tensors):
-        for name in files:
-            splits = os.path.splitext(name)
-            if splits[-1].lower() != TENSOR_EXT:
-                continue
+    test_paths = [[] for _ in range(len(balance_csvs)+1)]
+
+    _train, _valid, _test = get_train_valid_test_paths(tensors, valid_ratio, test_ratio, sample_csv, train_csv, valid_csv, test_csv, test_modulo)
+
+    for paths, split_list in [(_train, train_paths), (_valid, valid_paths), (_test, test_paths)]:
+        for path in paths:
+            split = os.path.splitext(os.path.basename(path))
+            sample_id = split[0]
 
             group = 0
-            sample_id = os.path.basename(splits[0])
             if sample_id in sample2group:
                 group = sample2group[sample_id]
-
-            dice = np.random.rand()
-            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
-                test_paths[group].append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
-                valid_paths[group].append(os.path.join(root, name))
-            else:
-                train_paths[group].append(os.path.join(root, name))
+            split_list[group].append(path)
 
     for i in range(len(train_paths)):
         if len(train_paths[i]) == 0 or len(valid_paths[i]) == 0 or len(test_paths[i]) == 0:
@@ -667,10 +671,10 @@ def test_train_valid_tensor_generators(
     """
     generate_train, generate_valid, generate_test = None, None, None
     if len(balance_csvs) > 0:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv)
+        train_paths, valid_paths, test_paths = get_train_valid_test_paths_split_by_csvs(tensors, balance_csvs, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
     else:
-        train_paths, valid_paths, test_paths = get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
+        train_paths, valid_paths, test_paths = get_train_valid_test_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv)
         weights = None
     generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
     generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese, augment=False)
