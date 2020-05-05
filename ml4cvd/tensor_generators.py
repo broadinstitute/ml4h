@@ -17,7 +17,7 @@ import time
 import logging
 import traceback
 import numpy as np
-from collections import Counter
+from collections import Counter, defaultdict
 from multiprocessing import Process, Queue
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union
@@ -197,8 +197,10 @@ class TensorGenerator:
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                logging.info(f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
-                             f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}")
+                logging.info(
+                    f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
+                    f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}",
+                )
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -472,54 +474,109 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         return inputs, outputs
 
 
-def get_test_train_valid_paths(tensors, valid_ratio, test_ratio, test_modulo, test_csv):
-    """Return 3 disjoint lists of tensor paths.
+def _sample_csv_to_set(sample_csv):
+    if sample_csv is None:
+        return None
+    with open(sample_csv, 'r') as csv_file:
+        has_header = csv.Sniffer().has_header(''.join(next(csv_file) for i in range(5)))
+        csv_file.seek(0)
+        if has_header:
+            next(csv_file)
+        return {row[0] for row in list(csv.reader(csv_file, 'r'))}
+
+
+def get_test_train_valid_paths(
+        tensors,
+        sample_csv,
+        valid_ratio,
+        test_ratio,
+        train_csv,
+        valid_csv,
+        test_csv,
+        test_modulo,
+):
+    """
+    Return 3 disjoint lists of tensor paths.
 
     The paths are split in training, validation and testing lists
-    apportioned according to valid_ratio and test_ratio
+    apportioned according to the following arguments:
 
-    Arguments:
-        tensors: directory containing tensors
-        valid_ratio: rate of tensors in validation list
-        test_ratio: rate of tensors in testing list
-        test_modulo: if greater than 1, all sample ids modulo this number will be used for testing regardless of test_ratio and valid_ratio
+    :param tensors: path to directory containing tensors
+    :param sample_csv: path to csv containing sample ids to restrict all tensor paths
+    :param valid_ratio: rate of tensors in validation list, overridable by valid_csv
+    :param test_ratio: rate of tensors in testing list, overridable by test_csv and test_modulo
+    :param train_csv: path to csv containing sample ids to reserve for training list
+    :param valid_csv: path to csv containing sample ids to reserve for validation list
+    :param test_csv: path to csv containing sample ids to reserve for testing list
+    :param test_modulo: an integer, if greater than 1, all sample ids that are integer
+                        multiples of this number will be reserved for testing
 
-    Returns:
-        A tuple of 3 lists of hd5 tensor file paths
+    :return: tuple of 3 lists of hd5 tensor file paths
     """
-    test_paths = []
     train_paths = []
     valid_paths = []
+    test_paths = []
 
-    assert valid_ratio > 0 and test_ratio > 0 and valid_ratio+test_ratio < 1.0
-
+    # if csv's are given, disregard it's ratio
+    assert valid_ratio > 0 and test_ratio > 0 and valid_ratio + test_ratio < 1.0
+    if valid_csv is not None:
+        valid_ratio = 0
     if test_csv is not None:
-        lol = list(csv.reader(open(test_csv, 'r')))
-        test_dict = {l[0]: True for l in lol}
-        logging.info(f'Using external test set with {len(test_dict)} examples from file:{test_csv}')
-        test_ratio = 0.0
-        test_modulo = 0
+        test_ratio = 0
+    train_ratio = 1 - valid_ratio - test_ratio
+    choices = {
+        'train': (train_paths, train_ratio),
+        'valid': (valid_paths, valid_ratio),
+        'test': (test_paths, test_ratio),
+    }
 
+    # parse csv's to disjoint sets, None if csv was None
+    sample_set = _sample_csv_to_set(sample_csv)
+
+    train_set = _sample_csv_to_set(train_csv)
+    valid_set = _sample_csv_to_set(valid_csv)
+    test_set = _sample_csv_to_set(test_csv)
+
+    assert train_set.isdisjoint(valid_set)
+    assert train_set.isdisjoint(test_set)
+    assert valid_set.isdisjoint(test_set)
+
+    # find tensors and split them among train/valid/test
     for root, dirs, files in os.walk(tensors):
         for name in files:
-            if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
+            path = os.path.join(root, name)
+            split = os.path.splitext(name)
+            sample_id = split[0]
+
+            if split[-1].lower() != TENSOR_EXT:
                 continue
 
-            if test_csv is not None and os.path.splitext(name)[0] in test_dict:
-                test_paths.append(os.path.join(root, name))
+            if sample_set is not None and sample_id not in sample_set:
                 continue
 
-            dice = np.random.rand()
-            if dice < test_ratio or (test_modulo > 1 and int(os.path.splitext(name)[0]) % test_modulo == 0):
-                test_paths.append(os.path.join(root, name))
-            elif dice < (valid_ratio+test_ratio):
-                valid_paths.append(os.path.join(root, name))
-            else:
-                train_paths.append(os.path.join(root, name))
+            if train_set is not None and sample_id in train_set:
+                train_paths.append(path)
+                continue
 
-    logging.info(f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}")
+            if valid_set is not None and sample_id in valid_set:
+                valid_paths.append(path)
+                continue
+
+            if test_set is not None and sample_id in test_set:
+                test_paths.append(path)
+                continue
+
+            if test_modulo > 1 and int(sample_id) % test_modulo == 0:
+                test_paths.append(path)
+                continue
+
+            choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
+            choices[choice][0].append(path)
+
+    logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
-        raise ValueError(f"Not enough tensors at {tensors}\n")
+        raise ValueError(f'Found no tensors at {tensors}')
+
     return train_paths, valid_paths, test_paths
 
 
