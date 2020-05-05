@@ -1347,7 +1347,7 @@ def _saliency_map_rgb(image, gradients, blur_radius=0):
 
 def _plot_ecgs(ecgs, figure_path, rows=3, cols=4, time_interval=2.5, raw_scale=0.005, hertz=500, lead_dictionary=ECG_REST_LEADS):
     index2leads = {v: k for k, v in lead_dictionary.items()}
-    _, axes = plt.subplots(rows, cols, figsize=(18, 16))
+    _, axes = plt.subplots(rows, cols, figsize=(18, 16), sharey=True)
     for i in range(rows):
         for j in range(cols):
             start = int(i*time_interval*hertz)
