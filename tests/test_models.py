@@ -206,6 +206,26 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
 
+    @pytest.mark.parametrize(
+        'input_output_tmaps',
+        [
+            (CONTINUOUS_TMAPS[:1], CONTINUOUS_TMAPS[1:2]), (CONTINUOUS_TMAPS[1:2], CONTINUOUS_TMAPS[:1]),
+            (CONTINUOUS_TMAPS[:2], CONTINUOUS_TMAPS[:2]),
+        ],
+    )
+    def test_multimodal_multitask_variational(self, input_output_tmaps):
+        """
+        Tests 1d->2d, 2d->1d, (1d,2d)->(1d,2d)
+        """
+        params = DEFAULT_PARAMS.copy()
+        params['bottleneck_type'] = BottleneckType.Variational
+        m = make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            **params
+        )
+        assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
+
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2

@@ -33,6 +33,7 @@ from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
     'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
+    'variational': BottleneckType.Variational,
 }
 
 
@@ -167,7 +168,6 @@ def parse_args():
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
-    parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
