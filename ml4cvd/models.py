@@ -724,7 +724,7 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
 def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     custom_objects = {
         obj.__name__: obj
-        for obj in chain(NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values())
+        for obj in chain(NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), [VariationalDiagNormal])
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 

@@ -227,6 +227,14 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
         m.save(os.path.join(tmpdir, 'vae.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            model_file=path,
+            **DEFAULT_PARAMS,
+        )
 
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()
