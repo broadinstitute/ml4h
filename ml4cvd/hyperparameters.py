@@ -94,7 +94,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             histories.append(history.history)
 
             plot_metric_history(history, args.training_steps, title, plot_path)
-            model.load_weights(os.path.join(plot_path, title + MODEL_EXT))
+            model.load_weights(os.path.join(plot_path, title, title + MODEL_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             if isinstance(loss_and_metrics, np.float64):  # Models without metrics return scalar loss, otherwise they return loss followed by metric values
                 loss_and_metrics = [loss_and_metrics]
