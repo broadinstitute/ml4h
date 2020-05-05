@@ -13,13 +13,15 @@ from enum import Enum, auto
 from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
 import h5py
+import numcodecs
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
-from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, pearson
+from ml4cvd.defines import StorageType, JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT
+from ml4cvd.metrics import sentinel_logcosh_loss, survival_likelihood_loss, cox_hazard_loss, pearson
 from ml4cvd.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -39,13 +41,20 @@ class Interpretation(Enum):
     CATEGORICAL = auto()
     EMBEDDING = auto()
     LANGUAGE = auto()
-    COX_PROPORTIONAL_HAZARDS = auto()
+    TIME_TO_EVENT = auto()
+    SURVIVAL_CURVE = auto()
     DISCRETIZED = auto()
     MESH = auto()
 
     def __str__(self):
         """class Interpretation.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split('.')[1])
+
+
+class TimeSeriesOrder(Enum):
+    NEWEST = 'NEWEST'
+    OLDEST = 'OLDEST'
+    RANDOM = 'RANDOM'
 
 
 def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
@@ -72,6 +81,9 @@ class TensorMap(object):
         In general, new data sources require new TensorMaps and new tensor writers.
         Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
+    def __hash__(self):
+        return hash((self.name, self.shape, self.interpretation))
+
     def __init__(
         self,
         name: str,
@@ -85,15 +97,18 @@ class TensorMap(object):
         validator: Optional[Callable] = None,
         cacheable: Optional[bool] = True,
         activation: Optional[Union[str, Callable]] = None,
+        days_window: int = 1825,
         path_prefix: Optional[str] = None,
         loss_weight: Optional[float] = 1.0,
         channel_map: Optional[Dict[str, int]] = None,
         storage_type: Optional[StorageType] = None,
-        dependent_map: Optional[str] = None,
+        dependent_map: Optional["TensorMap"] = None,
         augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
         normalization: Optional[Normalizer] = None,
         annotation_units: Optional[int] = 32,
         tensor_from_file: Optional[Callable] = None,
+        time_series_limit: Optional[int] = None,
+        time_series_order: Optional[TimeSeriesOrder] = TimeSeriesOrder.NEWEST,
         discretization_bounds: Optional[List[float]] = None,
     ):
         """TensorMap constructor
@@ -108,7 +123,9 @@ class TensorMap(object):
         :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
+        :param cacheable: boolean true if tensors made by this TensorMap can be cached.  Avoid this if there is randomness in tensor construction.
         :param activation: String specifying activation function
+        :param days_window: Number of days to consider for survival curve TensorMaps, the longest possible follow up.
         :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files
         :param loss_weight: Relative weight of the loss from this tensormap
         :param channel_map: Dictionary mapping strings indicating channel meaning to channel index integers
@@ -118,6 +135,8 @@ class TensorMap(object):
         :param normalization: Dictionary specifying normalization values
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
+        :param time_series_limit: If set, indicates dynamic shaping and sets the maximum number of tensors in a time series to use
+        :param time_series_order: When selecting tensors in a time series, use newest, oldest, or randomly ordered tensors
         :param discretization_bounds: List of floats that delineate the boundaries of the bins that will be used
                                           for producing categorical values from continuous values
         """
@@ -134,6 +153,7 @@ class TensorMap(object):
         self.validator = validator
         self.cacheable = cacheable
         self.activation = activation
+        self.days_window = days_window
         self.loss_weight = loss_weight
         self.channel_map = channel_map
         self.storage_type = storage_type
@@ -142,36 +162,46 @@ class TensorMap(object):
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
+        self.time_series_limit = time_series_limit
+        self.time_series_order = time_series_order
         self.discretization_bounds = discretization_bounds
 
-        if self.shape is None:
-            self.shape = (len(channel_map),)
-
-        if self.discretization_bounds is not None:
-            self.input_shape = self.shape
-            self.input_channel_map = self.channel_map
-            self.shape = self.input_shape[:-1] + (len(self.discretization_bounds)+1,)
-            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
-
-        if self.activation is None and self.is_categorical():
-            self.activation = 'softmax'
-        elif self.activation is None and self.is_continuous():
-            self.activation = 'linear'
-
+        # Infer loss from interpretation
         if self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
         elif self.loss is None and self.is_continuous():
             self.loss = 'mse'
-        elif self.loss is None and self.is_cox_proportional_hazard():
+        elif self.loss is None and self.is_survival_curve():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
-            self.activation = 'sigmoid'
+        elif self.loss is None and self.is_time_to_event():
+            self.loss = cox_hazard_loss
         elif self.loss is None and self.is_language():
             self.loss = 'categorical_crossentropy'
-            self.activation = 'softmax'
         elif self.loss is None:
             self.loss = 'mse'
+
+        # Infer activation from interpretation
+        if self.activation is None and (self.is_categorical() or self.is_language()):
+            self.activation = 'softmax'
+        elif self.activation is None and self.is_continuous():
+            self.activation = 'linear'
+        elif self.activation is None and (self.is_survival_curve() or self.is_time_to_event()):
+            self.activation = 'sigmoid'
+
+        # Infer shape from channel map or interpretation
+        if self.shape is None:
+            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
+            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
+            if self.time_series_limit is not None:
+                self.shape = (None,) + self.shape
+
+        if self.discretization_bounds is not None:
+            self.input_shape = self.shape
+            self.input_channel_map = self.channel_map
+            self.shape = self.input_shape[:-1] + (len(self.discretization_bounds)+1,)
+            self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
 
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
@@ -200,9 +230,6 @@ class TensorMap(object):
 
     def __repr__(self):
         return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
-
-    def __hash__(self):
-        return hash((self.name, self.shape, self.interpretation))
 
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
@@ -245,8 +272,11 @@ class TensorMap(object):
     def is_mesh(self):
         return self.interpretation == Interpretation.MESH
 
-    def is_cox_proportional_hazard(self):
-        return self.interpretation == Interpretation.COX_PROPORTIONAL_HAZARDS
+    def is_time_to_event(self):
+        return self.interpretation == Interpretation.TIME_TO_EVENT
+
+    def is_survival_curve(self):
+        return self.interpretation == Interpretation.SURVIVAL_CURVE
 
     def is_discretized(self):
         return self.interpretation == Interpretation.DISCRETIZED
@@ -416,7 +446,6 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                 if k in hd5[tm.path_prefix]:
                     categorical_data[tm.channel_map[k]] = 1.0
                     missing = False
-                    break
         if missing:
             raise ValueError(f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.")
         return categorical_data
@@ -431,7 +460,10 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tm.model.predict(input_dict)
     elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        caption = str(hd5[tm.name][0]).strip()
+        if PARTNERS_READ_TEXT in tm.name:
+            caption = decompress_data(data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs['dtype'])
+        else:
+            caption = str(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]).strip()
         char_idx = np.random.randint(len(caption) + 1)
         if char_idx == len(caption):
             next_char = STOP_CHAR
@@ -447,3 +479,17 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tensor
     else:
         raise ValueError(f'No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}')
+
+
+def decompress_data(data_compressed: np.array, dtype: str) -> np.array:
+    """Decompresses a compressed byte array. If the primitive type of the data
+    to decompress is a string, calls decode using the zstd codec. If the
+    primitive type of the data to decompress is not a string (e.g. int or
+    float), the buffer is interpreted using the passed dtype."""
+    codec = numcodecs.zstd.Zstd()
+    data_decompressed = codec.decode(data_compressed)
+    if dtype == 'str':
+        data = data_decompressed.decode()
+    else:
+        data = np.frombuffer(data_decompressed, dtype)
+    return data

@@ -10,7 +10,7 @@
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
-GPU_DEVICE="all"
+GPU_DEVICE="--gpus all"
 INTERACTIVE=""
 MOUNTS=""
 PYTHON_COMMAND="python"
@@ -57,13 +57,14 @@ while getopts ":i:d:m:cthT" opt ; do
             DOCKER_IMAGE=$OPTARG
             ;;
         d)
-            GPU_DEVICE="device=${OPTARG}"
+            GPU_DEVICE="--gpus device=${OPTARG}"
             ;;
         m)
             MOUNTS="-v ${OPTARG}:${OPTARG}"
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
+            GPU_DEVICE=
             ;;
         t)
             INTERACTIVE="-it"
@@ -122,18 +123,20 @@ PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
     docker run ${INTERACTIVE} \
-    --gpus ${GPU_DEVICE} \
+    ${GPU_DEVICE} \
     --rm \
     --ipc=host \
     -v ${WORKDIR}/:${WORKDIR}/ \
+    -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
     ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
 docker run ${INTERACTIVE} \
---gpus ${GPU_DEVICE} \
+${GPU_DEVICE} \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
+-v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"

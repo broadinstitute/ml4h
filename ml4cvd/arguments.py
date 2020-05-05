@@ -26,7 +26,7 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import parent_sort, BottleneckType
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps
+from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
@@ -66,6 +66,7 @@ def parse_args():
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--test_csv', default=None, help='Path to CSV with Sample IDs to reserve for testing')
+    parser.add_argument('--tsv_style', default='standard', choices=['standard', 'genetics'], help='Format choice for the TSV file produced in output by infer and explore modes.')
     parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
     parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
@@ -164,6 +165,8 @@ def parse_args():
     )
     parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
+    parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
+    parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
     parser.add_argument('--variational', default=False, action='store_true', help='Make the embed layer variational. No U-connections.')
 
     # Training and Hyper-Parameter Optimization Parameters
@@ -204,9 +207,11 @@ def parse_args():
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
     parser.add_argument('--write_pngs', default=False, action='store_true', help='Write pngs of slices.')
     parser.add_argument('--debug', default=False, action='store_true', help='Run in debug mode.')
+    parser.add_argument('--eager', default=False, action='store_true', help='Run tensorflow functions in eager execution mode (helpful for debugging).')
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
     parser.add_argument('--inspect_show_labels', default=True, action='store_true', help='Plot model architecture with labels for each layer.')
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
+    parser.add_argument('--plot_mode', default='clinical', choices=['clinical', 'full'], help='ECG view to plot for partners ECGs.')
 
     # Training optimization options
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
@@ -225,6 +230,10 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
         return TMAPS[name]
 
     TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
+    if name in TMAPS:
+        return TMAPS[name]
+
+    TMAPS.update(build_cardiac_surgery_tensor_maps(needed_tensor_maps))
     if name in TMAPS:
         return TMAPS[name]
 
@@ -275,7 +284,7 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect)
-    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else []
+    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
     args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     if args.sample_weight:
@@ -305,3 +314,7 @@ def _process_args(args):
 
     logging.info(f"Command Line was: {command_line}")
     logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
+
+    if args.eager:
+        import tensorflow as tf
+        tf.config.experimental_run_functions_eagerly(True)
