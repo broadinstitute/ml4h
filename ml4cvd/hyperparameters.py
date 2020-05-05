@@ -86,7 +86,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             generate_train, generate_valid, _ = test_train_valid_tensor_generators(**args.__dict__)
             model, history = train_model_from_generators(
                 model, generate_train, generate_valid, args.training_steps, args.validation_steps,
-                args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
+                args.batch_size, args.epochs, args.patience, fig_path, f'architecture_{i}',
                 args.inspect_model, args.inspect_show_labels, True, False,
             )
             history.history['parameter_count'] = [model.count_params()]
