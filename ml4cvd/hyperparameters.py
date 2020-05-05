@@ -96,10 +96,10 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             model.load_weights(os.path.join(args.output_folder, args.id, args.id + MODEL_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
-            logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
+            logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics}")
             generate_train.kill_workers()
             generate_valid.kill_workers()
-            return loss_and_metrics[0]
+            return loss_and_metrics
 
         except ValueError:
             logging.exception('ValueError trying to make a model for hyperparameter optimization. Returning max loss.')
