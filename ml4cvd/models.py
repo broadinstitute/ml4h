@@ -449,6 +449,7 @@ class VariationalDiagNormal(Layer):
             latent_size: int,
             **kwargs
     ):
+        self.latent_size = latent_size
         super(VariationalDiagNormal, self).__init__(**kwargs)
         self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros([latent_size]), scale_identity_multiplier=1.0)
 
@@ -458,6 +459,9 @@ class VariationalDiagNormal(Layer):
         kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
         self.add_loss(kl)
         return approx_posterior.sample()
+
+    def get_config(self):
+        return {'latent_size': self.latent_size}
 
 
 class VariationalBottleNeck:

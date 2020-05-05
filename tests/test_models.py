@@ -213,7 +213,7 @@ class TestMakeMultimodalMultitaskModel:
             ([SEGMENT_IN], [SEGMENT_IN]),
         ],
     )
-    def test_multimodal_multitask_variational(self, input_output_tmaps):
+    def test_multimodal_multitask_variational(self, input_output_tmaps, tmpdir):
         """
         Tests 1d->2d, 2d->1d, (1d,2d)->(1d,2d)
         """
@@ -226,6 +226,7 @@ class TestMakeMultimodalMultitaskModel:
             **params
         )
         assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
+        m.save(os.path.join(tmpdir, 'vae.h5'))
 
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()
