@@ -4,19 +4,19 @@
 import os
 import csv
 import math
+import logging
 import operator
 import datetime
 from operator import itemgetter
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
-from multiprocess import Pool, Value
 from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import h5py
-import logging
 import numpy as np
 import pandas as pd
+from multiprocess import Pool, Value
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -25,8 +25,10 @@ import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then i
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
-from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, evaluate_predictions, subplot_rocs, subplot_scatters, plot_cross_reference
+from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
+from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
+from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -1006,22 +1008,22 @@ def explore(args):
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
 
 
-def _report_xref(args, xref_df, title):
+def _report_cross_reference(args, cross_reference_df, title):
     title = title.replace(' ', '_')
-    if args.reference_label in xref_df:
-        labels, counts = np.unique(xref_df[args.reference_label], return_counts=True)
+    if args.reference_label in cross_reference_df:
+        labels, counts = np.unique(cross_reference_df[args.reference_label], return_counts=True)
         labels = np.append(labels, ['Total'])
         counts = np.append(counts, [sum(counts)])
 
         # save outcome distribution to csv
         df_out = pd.DataFrame({ 'counts': counts, args.reference_label: labels }).set_index(args.reference_label, drop=True)
-        fpath = os.path.join(args.output_folder, args.id, f'distribution_{args.reference_label.replace(" ", "_")}_{title}.tsv')
-        df_out.to_csv(fpath, sep='\t')
-        logging.info(f'Saved distribution of label in cross reference to {fpath}')
+        fpath = os.path.join(args.output_folder, args.id, f'distribution_{args.reference_label.replace(" ", "_")}_{title}.csv')
+        df_out.to_csv(fpath)
+        logging.info(f'Saved distribution of {args.reference_label} in cross reference to {fpath}')
 
     # save cross reference to csv
-    fpath = os.path.join(args.output_folder, args.id, f'list_{title}.tsv')
-    xref_df.set_index(args.join_tensors, drop=True).to_csv(fpath, sep='\t')
+    fpath = os.path.join(args.output_folder, args.id, f'list_{title}.csv')
+    cross_reference_df.set_index(args.join_tensors, drop=True).to_csv(fpath)
     logging.info(f'Saved cross reference to {fpath}')
 
 
@@ -1111,53 +1113,53 @@ def cross_reference(args):
     logging.info('Removed duplicates from dataframes, based on join, time, and label')
 
     cohort_counts[f'{src_name} (total)'] = len(src_df)
-    cohort_counts[f'{src_name} (unique {",".join(src_join)})'] = len(src_df.drop_duplicates(subset=src_join))
+    cohort_counts[f'{src_name} (unique {" + ".join(src_join)})'] = len(src_df.drop_duplicates(subset=src_join))
     cohort_counts[f'{ref_name} (total)'] = len(ref_df)
-    cohort_counts[f'{ref_name} (unique {",".join(ref_join)})'] = len(ref_df.drop_duplicates(subset=ref_join))
+    cohort_counts[f'{ref_name} (unique {" + ".join(ref_join)})'] = len(ref_df.drop_duplicates(subset=ref_join))
 
     # merge on join columns
-    xref_df = src_df.merge(ref_df, how='inner', left_on=src_join, right_on=ref_join)
+    cross_reference_df = src_df.merge(ref_df, how='inner', left_on=src_join, right_on=ref_join)
     logging.info('Cross referenced based on join tensors')
 
-    cohort_counts[f'{src_name} in {ref_name} (unique {",".join(src_cols)})'] = len(xref_df.drop_duplicates(subset=src_cols))
-    cohort_counts[f'{src_name} in {ref_name} (unique {",".join(src_join)})'] = len(xref_df.drop_duplicates(subset=src_join))
-    cohort_counts[f'{ref_name} in {src_name} (unique {",".join(ref_cols)})'] = len(xref_df.drop_duplicates(subset=ref_cols))
-    cohort_counts[f'{ref_name} in {src_name} (unique {",".join(ref_join)})'] = len(xref_df.drop_duplicates(subset=ref_join))
+    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
+    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_join)})'] = len(cross_reference_df.drop_duplicates(subset=src_join))
+    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_cols)})'] = len(cross_reference_df.drop_duplicates(subset=ref_cols))
+    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_join)})'] = len(cross_reference_df.drop_duplicates(subset=ref_join))
 
-    # report xref no time filter
+    # report cross_reference no time filter
     title = f'all {src_name} in {ref_name}'
-    _report_xref(args, xref_df, title)
+    _report_cross_reference(args, cross_reference_df, title)
 
     if use_time:
-        xref_df = xref_df[(xref_df[ref_start] <= xref_df[src_time]) & (xref_df[ref_end] >= xref_df[src_time])]
+        cross_reference_df = cross_reference_df[(cross_reference_df[ref_start] <= cross_reference_df[src_time]) & (cross_reference_df[ref_end] >= cross_reference_df[src_time])]
         logging.info('Cross referenced based on time')
 
         # At this point, rows in source have probably been duplicated by the join
         # This is fine, each row in reference has all associated rows in source now
 
-        cohort_counts[f'{src_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(xref_df)
-        cohort_counts[f'{src_name} {time_description} (unique {",".join(src_cols)})'] = len(xref_df.drop_duplicates(subset=src_cols))
+        cohort_counts[f'{src_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(cross_reference_df)
+        cohort_counts[f'{src_name} {time_description} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
 
-        # report xref, all, time filtered
+        # report cross_reference, all, time filtered
         title = f'all {src_name} {time_description}'
-        _report_xref(args, xref_df, title)
-        plot_cross_reference(args, xref_df, title, time_description, ref_start, ref_end)
+        _report_cross_reference(args, cross_reference_df, title)
+        plot_cross_reference(args, cross_reference_df, title, time_description, ref_start, ref_end)
 
         # get most recent row in source for each row in reference
         # sort in ascending order so last() returns most recent
-        xref_df = xref_df.sort_values(by=ref_cols+[src_time], ascending=True)
-        xref_df = xref_df.groupby(by=ref_cols, as_index=False).last()[list(src_df) + list(ref_df)]
+        cross_reference_df = cross_reference_df.sort_values(by=ref_cols+[src_time], ascending=True)
+        cross_reference_df = cross_reference_df.groupby(by=ref_cols, as_index=False).last()[list(src_df) + list(ref_df)]
         logging.info(f'Found most recent {src_name} per {ref_name}')
 
-        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(xref_df)
-        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (unique {",".join(src_cols)})'] = len(xref_df.drop_duplicates(subset=src_cols))
+        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(cross_reference_df)
+        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
 
-        # report xref, most recent, time filtered
+        # report cross_reference, most recent, time filtered
         title = f'most recent {src_name} {time_description}'
-        _report_xref(args, xref_df, title)
-        plot_cross_reference(args, xref_df, title, time_description, ref_start, ref_end)
+        _report_cross_reference(args, cross_reference_df, title)
+        plot_cross_reference(args, cross_reference_df, title, time_description, ref_start, ref_end)
 
     # report counts
-    fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.tsv')
-    pd.DataFrame.from_dict(cohort_counts, orient='index', columns=['count']).rename_axis('description').to_csv(fpath, sep='\t')
+    fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.csv')
+    pd.DataFrame.from_dict(cohort_counts, orient='index', columns=['count']).rename_axis('description').to_csv(fpath)
     logging.info(f'Saved cohort counts to {fpath}')
