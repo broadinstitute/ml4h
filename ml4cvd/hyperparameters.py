@@ -68,7 +68,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
     test_data, test_labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     generate_test.kill_workers()
     histories = []
-    fig_path = os.path.join(args.output_folder, args.id, 'plots')
+    plot_path = os.path.join(args.output_folder, args.id, 'plots')
     i = 0
 
     def loss_from_multimodal_multitask(x):
@@ -84,16 +84,17 @@ def hyperparameter_optimizer(args, space, param_lists={}):
                 logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 return MAX_LOSS
             generate_train, generate_valid, _ = test_train_valid_tensor_generators(**args.__dict__)
+            title = f'architecture_{i}'  # refer to loss_by_params.txt to find the params for this trial
             model, history = train_model_from_generators(
                 model, generate_train, generate_valid, args.training_steps, args.validation_steps,
-                args.batch_size, args.epochs, args.patience, fig_path, f'architecture_{i}',
+                args.batch_size, args.epochs, args.patience, plot_path, title,
                 args.inspect_model, args.inspect_show_labels, True, False,
             )
             history.history['parameter_count'] = [model.count_params()]
             histories.append(history.history)
-            title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
-            plot_metric_history(history, args.training_steps, title, fig_path)
-            model.load_weights(os.path.join(args.output_folder, args.id, args.id + MODEL_EXT))
+
+            plot_metric_history(history, args.training_steps, title, plot_path)
+            model.load_weights(os.path.join(plot_path, title + MODEL_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             if isinstance(loss_and_metrics, np.float64):  # Models without metrics return scalar loss, otherwise they return loss followed by metric values
                 loss_and_metrics = [loss_and_metrics]
@@ -117,8 +118,8 @@ def hyperparameter_optimizer(args, space, param_lists={}):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    plot_trials(trials, histories, fig_path, param_lists)
-    logging.info('Saved learning plot to:{}'.format(fig_path))
+    plot_trials(trials, histories, plot_path, param_lists)
+    logging.info('Saved learning plot to:{}'.format(plot_path))
 
 
 def optimize_architecture(args):
