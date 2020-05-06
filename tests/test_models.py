@@ -1,6 +1,6 @@
 import pytest
 
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 from ml4cvd.models import make_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap, Interpretation
