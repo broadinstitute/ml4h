@@ -891,7 +891,7 @@ def make_multimodal_multitask_model(
                 conv_x=conv_x,
                 conv_y=conv_y,
                 conv_z=conv_z,
-                block_size=block_size,
+                block_size=1,
                 activation=activation,
                 normalization=conv_normalize,
                 regularization=conv_regularize,
