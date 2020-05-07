@@ -685,12 +685,12 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         elif tm.is_time_to_event():
             for m in predictions[tm]:
                 logging.info(f"{tm.name} channel map {tm.channel_map}\nsum truth = {np.sum(outputs[tm.output_name()], axis=0)}\nsum preds = {np.sum(predictions[tm][m], axis=0)}")
-            c_index = concordance_index_censored(outputs[tm.output_name()][:, 0] == 1.0, outputs[tm.output_name()][:, 1], predictions[tm][:, 0])
-            new_title = f'{plot_title}_C_Index_{c_index[0]:0.3f}'
+                c_index = concordance_index_censored(outputs[tm.output_name()][:, 0] == 1.0, outputs[tm.output_name()][:, 1], predictions[tm][m][:, 0])
+                concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
+                logging.info(f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
+                plot_title = f'{plot_title}_C_Index_{c_index[0]:0.3f}'
             plot_rocs(predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], tm.channel_map, new_title, plot_folder)
             rocs.append((predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], tm.channel_map))
-            concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
-            logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
