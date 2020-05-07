@@ -528,11 +528,14 @@ def get_train_valid_test_paths(
     train_ratio = 1 - valid_ratio - test_ratio
     if train_csv is not None:
         train_ratio = 0
-    tot = train_ratio + valid_ratio + test_ratio
-    if tot != 0:
-        train_ratio /= tot
-        valid_ratio /= tot
-        test_ratio /= tot
+    ratio_sum = train_ratio + valid_ratio + test_ratio
+    use_ratios = True
+    if ratio_sum != 0:
+        train_ratio /= ratio_sum
+        valid_ratio /= ratio_sum
+        test_ratio /= ratio_sum
+    else:
+        use_ratios = False
 
     choices = {
         'train': (train_paths, train_ratio),
@@ -583,7 +586,7 @@ def get_train_valid_test_paths(
                 test_paths.append(path)
                 continue
 
-            if tot == 0:
+            if not use_ratios:
                 continue
 
             choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
