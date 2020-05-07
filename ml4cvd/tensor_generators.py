@@ -503,15 +503,20 @@ def get_train_valid_test_paths(
     apportioned according to the following arguments:
 
     :param tensors: path to directory containing tensors
-    :param valid_ratio: rate of tensors in validation list, overridable by valid_csv
-    :param test_ratio: rate of tensors in testing list, overridable by test_csv and test_modulo
+    :param valid_ratio: rate of tensors in validation list, not considered if valid_csv is
+                        supplied and train/test ratio is rescaled to remove valid ratio
+    :param test_ratio: rate of tensors in testing list, additional sample ids may be used
+                       for testing if test_modulo is supplied. if test_csv is supplied,
+                       neither test_ratio nor test_modulo is considered and train/valid
+                       ratio is rescaled to remove test_ratio
     :param sample_csv: path to csv containing sample ids to restrict all tensor paths
     :param train_csv: path to csv containing sample ids to reserve for training list
     :param valid_csv: path to csv containing sample ids to reserve for validation list
     :param test_csv: path to csv containing sample ids to reserve for testing list
     :param test_modulo: an integer, if greater than 1 and test_csv is not specified,
-                        all sample ids that are integer multiples of this number,
-                        regardless of valid/test ratio, will be reserved for testing
+                        all sample ids that are not contained in train/test/valid csv
+                        and are integer multiples of this number, regardless of test ratio,
+                        will be reserved for testing
 
     :return: tuple of 3 lists of hd5 tensor file paths
     """
