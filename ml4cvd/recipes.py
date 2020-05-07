@@ -688,7 +688,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
                 logging.info(f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
                 plot_title = f'{plot_title}_C_Index_{c_index[0]:0.3f}'
-            plot_rocs(predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], tm.channel_map, plot_title, plot_folder)
+            plot_rocs(predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], {f'{plot_title}_vs_ROC': 0}, plot_title, plot_folder)
             rocs.append((predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], tm.channel_map))
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
