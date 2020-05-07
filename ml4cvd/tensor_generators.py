@@ -496,15 +496,6 @@ def get_train_valid_test_paths(
         test_csv: Optional[str] = None,
         test_modulo: Optional[int] = None,
 ):
-    print()
-    print(tensors)
-    print(valid_ratio)
-    print(test_ratio)
-    print(sample_csv)
-    print(train_csv)
-    print(valid_csv)
-    print(test_csv)
-    print(test_modulo)
     """
     Return 3 disjoint lists of tensor paths.
 
@@ -548,7 +539,6 @@ def get_train_valid_test_paths(
         'valid': (valid_paths, valid_ratio),
         'test': (test_paths, test_ratio),
     }
-    print(choices)
 
     # parse csv's to disjoint sets, None if csv was None
     sample_set = _sample_csv_to_set(sample_csv)
@@ -557,9 +547,12 @@ def get_train_valid_test_paths(
     valid_set = _sample_csv_to_set(valid_csv)
     test_set = _sample_csv_to_set(test_csv)
 
-    assert train_set is None or valid_set is None or train_set.isdisjoint(valid_set)
-    assert train_set is None or test_set is None or train_set.isdisjoint(test_set)
-    assert valid_set is None or test_set is None or valid_set.isdisjoint(test_set)
+    if train_set is not None and valid_set is not None and not train_set.isdisjoint(valid_set):
+        raise ValueError('train and validation samples overlap')
+    if train_set is not None and test_set is not None and not train_set.isdisjoint(test_set):
+        raise ValueError('train and test samples overlap')
+    if valid_set is not None and test_set is not None and not valid_set.isdisjoint(test_set):
+        raise ValueError('validation and test samples overlap')
 
     # find tensors and split them among train/valid/test
     for root, dirs, files in os.walk(tensors):
@@ -593,7 +586,6 @@ def get_train_valid_test_paths(
             if tot == 0:
                 continue
 
-            print('here')
             choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
             choices[choice][0].append(path)
 
