@@ -189,10 +189,9 @@ class TestGetTrainValidTestPaths:
             assert _paths_equal_samples(test_paths, test_ids)
 
         if test_modulo is not None and test_ids is None:
-            # test_modulo is considered after train/valid/test csvs
-            # test_modulo only guarantees that test_paths will have samples that are divisible by test_modulo
-            # test_paths may contain additional paths that were not captured by the csvs
-            #            and are also not divisible by test_modulo
+            # test_modulo is considered after csvs and only if test_csv is not given
+            # test_modulo guarantees that test_paths will have samples that are divisible by test_modulo
+            # test_paths will likely contain more than just the divisible samples
             test_ids = {_path_2_sample(path) for path in test_paths}
             possible_test_ids = sample_ids - (train_ids or set()) - (valid_ids or set())
             mod_ids = {sample_id for sample_id in possible_test_ids if int(sample_id) % test_modulo == 0}

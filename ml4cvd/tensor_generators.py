@@ -509,8 +509,9 @@ def get_train_valid_test_paths(
     :param train_csv: path to csv containing sample ids to reserve for training list
     :param valid_csv: path to csv containing sample ids to reserve for validation list
     :param test_csv: path to csv containing sample ids to reserve for testing list
-    :param test_modulo: an integer, if greater than 1, all sample ids that are integer
-                        multiples of this number will be reserved for testing
+    :param test_modulo: an integer, if greater than 1 and test_csv is not specified,
+                        all sample ids that are integer multiples of this number,
+                        regardless of valid/test ratio, will be reserved for testing
 
     :return: tuple of 3 lists of hd5 tensor file paths
     """
@@ -566,27 +567,24 @@ def get_train_valid_test_paths(
 
             if split[-1].lower() != TENSOR_EXT:
                 continue
-
-            if sample_set is not None and sample_id not in sample_set:
+            elif sample_set is not None and sample_id not in sample_set:
                 continue
-
-            if train_set is not None and sample_id in train_set:
+            elif train_set is not None and sample_id in train_set:
                 train_paths.append(path)
                 continue
-
-            if valid_set is not None and sample_id in valid_set:
+            elif valid_set is not None and sample_id in valid_set:
                 valid_paths.append(path)
                 continue
-
-            if test_set is not None and sample_id in test_set:
+            elif test_set is not None and sample_id in test_set:
                 test_paths.append(path)
                 continue
-
-            if test_modulo is not None and test_modulo > 1 and int(sample_id) % test_modulo == 0:
+            elif test_modulo is not None and test_modulo > 1 and int(sample_id) % test_modulo == 0:
                 test_paths.append(path)
                 continue
-
-            if not use_ratios:
+            elif not use_ratios:
+                # if train/valid/test csvs were all given and sample was not in any
+                # if the sample id is still being considered up to here
+                # finally skip the sample id
                 continue
 
             choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
