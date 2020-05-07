@@ -683,14 +683,14 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
         elif tm.is_time_to_event():
-            title = ''
+            new_predictions = {}
             for m in predictions[tm]:
                 c_index = concordance_index_censored(outputs[tm.output_name()][:, 0] == 1.0, outputs[tm.output_name()][:, 1], predictions[tm][m][:, 0])
                 concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
                 logging.info(f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
-                title = f'C_Index_{c_index[0]:0.3f}_{title}'
-            plot_rocs(predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], {f'{title}_vs_ROC': 0}, plot_title, plot_folder)
-            rocs.append((predictions[tm], outputs[tm.output_name()][:, 0, np.newaxis], tm.channel_map))
+                new_predictions[f'{m}_C_Index_{c_index[0]:0.3f}'] = predictions[tm][m]
+            plot_rocs(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder)
+            rocs.append((new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}))
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
