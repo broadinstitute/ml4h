@@ -27,7 +27,7 @@ def sample_csv(tmpdir_factory, request):
     sample_ids = {
         str(sample_id) for sample_id in np.random.choice(
             range(pytest.N_TENSORS),
-            size=np.random.randint(pytest.N_TENSORS / 3, 2 * pytest.N_TENSORS / 3),
+            size=np.random.randint(pytest.N_TENSORS * 3 / 5, pytest.N_TENSORS * 4 / 5),
             replace=False,
         )
     }
@@ -42,10 +42,11 @@ def train_valid_test_csv(tmpdir_factory, request):
     train_path = csv_dir.join('train.csv')
     valid_path = csv_dir.join('valid.csv')
     test_path = csv_dir.join('test.csv')
-    n = pytest.N_TENSORS
+    # the total number of train/valid/test sets should be < sample set to test scenario when all 3 csv are used
+    n = int(pytest.N_TENSORS / 2)
     n1 = int(n/3)
     n2 = int(n*2/3)
-    sample_ids = [str(sample_id) for sample_id in range(pytest.N_TENSORS)]
+    sample_ids = [str(sample_id) for sample_id in range(n)]
     np.random.shuffle(sample_ids)
     train_ids, valid_ids, test_ids = sample_ids[:n1], sample_ids[n1:n2], sample_ids[n2:]
     if 'train' in overlap and 'valid' in overlap:
@@ -174,7 +175,12 @@ class TestGetTrainValidTestPaths:
                     sample_paths.append(os.path.join(root, name))
             sample_ids = {_path_2_sample(path) for path in sample_paths}
 
-        assert _paths_equal_samples(all_paths, sample_ids)
+        if train_ids is not None and valid_ids is not None and test_ids is not None:
+            # special case, all 3 train/valid/test were used, only samples in those csv's (and sample csv) are selected
+            assert len(all_paths) <= len(sample_ids)
+            assert all(_path_2_sample(path) in sample_ids for path in all_paths)
+        else:
+            assert _paths_equal_samples(all_paths, sample_ids)
 
         if train_ids is not None:
             train_ids &= sample_ids

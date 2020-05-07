@@ -521,17 +521,20 @@ def get_train_valid_test_paths(
 
     # if csv's are given, disregard it's ratio, and rebalance remaining ratios
     assert valid_ratio > 0 and test_ratio > 0 and valid_ratio + test_ratio < 1.0
+    train_ratio = 1 - valid_ratio - test_ratio
+    if train_csv is not None:
+        train_ratio = 0
     if valid_csv is not None:
         valid_ratio = 0
     if test_csv is not None:
         test_modulo = 0
         test_ratio = 0
-    train_ratio = 1 - valid_ratio - test_ratio
-    if train_csv is not None:
-        train_ratio = 0
     ratio_sum = train_ratio + valid_ratio + test_ratio
     use_ratios = True
     if ratio_sum != 0:
+        # because, for example, train csv wholly removes a sample id not
+        # in train csv from being considered for the training set, the
+        # other ratios, valid/test ratio, should be rescaled accordingly
         train_ratio /= ratio_sum
         valid_ratio /= ratio_sum
         test_ratio /= ratio_sum
