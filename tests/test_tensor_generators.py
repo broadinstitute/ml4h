@@ -91,17 +91,20 @@ def test_set(request, train_valid_test_csv):
         return None
     return train_valid_test_csv[2]
 
+
 @pytest.fixture(scope='function')
 def valid_test_ratio():
     valid_ratio = np.random.randint(1, 5) / 10
     test_ratio = np.random.randint(1, 5) / 10
     return valid_ratio, test_ratio
 
+
 @pytest.fixture(scope='function')
 def valid_ratio(request, valid_test_ratio):
     if request.param is None:
         return None
     return valid_test_ratio[0]
+
 
 @pytest.fixture(scope='function')
 def test_ratio(request, valid_test_ratio):
