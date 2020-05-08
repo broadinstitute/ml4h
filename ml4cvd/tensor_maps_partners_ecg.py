@@ -1188,8 +1188,10 @@ TMAPS['partners_ecg_race_newest'] = TensorMap(
     tensor_from_file=partners_channel_string('race', race_synonyms),
 )
 
-
-
+TMAPS['partners_gender'] = TensorMap(
+    'gender', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
+    tensor_from_file=partners_channel_string('gender'),
+)
 
 
 def _partners_adult(hd5_key, minimum_age=18):
