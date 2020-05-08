@@ -91,6 +91,24 @@ def test_set(request, train_valid_test_csv):
         return None
     return train_valid_test_csv[2]
 
+@pytest.fixture(scope='function')
+def valid_test_ratio():
+    valid_ratio = np.random.randint(1, 5) / 10
+    test_ratio = np.random.randint(1, 5) / 10
+    return valid_ratio, test_ratio
+
+@pytest.fixture(scope='function')
+def valid_ratio(request, valid_test_ratio):
+    if request.param is None:
+        return None
+    return valid_test_ratio[0]
+
+@pytest.fixture(scope='function')
+def test_ratio(request, valid_test_ratio):
+    if request.param is None:
+        return None
+    return valid_test_ratio[1]
+
 
 class TestSampleCsvToSet:
     def test_sample_csv(self, sample_csv):
@@ -132,8 +150,9 @@ class TestGetTrainValidTestPaths:
     @pytest.mark.parametrize('train_set', [None, 'train_csv'], indirect=True)
     @pytest.mark.parametrize('valid_set', [None, 'valid_csv'], indirect=True)
     @pytest.mark.parametrize('test_set', [None, 'test_csv'], indirect=True)
-    @pytest.mark.parametrize('test_modulo', [None, np.random.randint(3, 10)])
-    def test_get_paths(self, default_arguments, sample_set, train_set, valid_set, test_set, test_modulo):
+    @pytest.mark.parametrize('valid_ratio', [None, 'valid_ratio'], indirect=True)
+    @pytest.mark.parametrize('test_ratio', [None, 'test_ratio'], indirect=True)
+    def test_get_paths(self, default_arguments, sample_set, train_set, valid_set, test_set, valid_ratio, test_ratio):
         def _path_2_sample(path):
             return os.path.splitext(os.path.basename(path))[0]
 
@@ -142,21 +161,31 @@ class TestGetTrainValidTestPaths:
             assert all(_path_2_sample(path) in samples for path in paths)
             return True
 
-        args = default_arguments
         sample_csv, sample_ids = sample_set or (None, None)
         train_csv, train_ids = train_set or (None, None)
         valid_csv, valid_ids = valid_set or (None, None)
         test_csv, test_ids = test_set or (None, None)
-        train_paths, valid_paths, test_paths = get_train_valid_test_paths(
-            args.tensors,
-            args.valid_ratio,
-            args.test_ratio,
+
+        func = lambda: get_train_valid_test_paths(
+            default_arguments.tensors,
             sample_csv=sample_csv,
+            valid_ratio=valid_ratio,
+            test_ratio=test_ratio,
             train_csv=train_csv,
             valid_csv=valid_csv,
             test_csv=test_csv,
-            test_modulo=test_modulo,
         )
+
+        if (valid_csv is not None and valid_ratio is not None) or (test_csv is not None and test_ratio is not None):
+            with pytest.raises(ValueError, match=r'mutually exclusive arguments (valid|test)_csv and (valid|test)_ratio both set'):
+                _ = func()
+            return
+        elif sum(1 if val is not None else 0 for val in [train_csv, (valid_csv or valid_ratio), (test_csv or test_ratio)]) == 1:
+            with pytest.raises(ValueError, match=r'not enough arguments given to infer split of train/valid/test'):
+                _ = func()
+            return
+
+        train_paths, valid_paths, test_paths = func()
 
         # make sure paths are disjoint and unique
         all_paths = train_paths + valid_paths + test_paths
@@ -168,15 +197,17 @@ class TestGetTrainValidTestPaths:
         # if sample csv was not given, find the files, just like how tensor_generator does
         if sample_ids is None:
             sample_paths = []
-            for root, dirs, files in os.walk(args.tensors):
+            for root, dirs, files in os.walk(default_arguments.tensors):
                 for name in files:
                     if os.path.splitext(name)[-1].lower() != TENSOR_EXT:
                         continue
                     sample_paths.append(os.path.join(root, name))
             sample_ids = {_path_2_sample(path) for path in sample_paths}
 
-        if train_ids is not None and valid_ids is not None and test_ids is not None:
-            # special case, all 3 train/valid/test were used, only samples in those csv's (and sample csv) are selected
+        if ((train_ids is not None and valid_ids is not None and test_ids is not None) or
+            (train_ids is not None and (valid_ids or valid_ratio) is not None and (test_ids or test_ratio) is not None and (valid_ratio or 0) + (test_ratio or 0) < 1.0)):
+            # if all 3 train/valid/test csv were used, only samples in those csv's (and sample csv) are selected
+            # if all 3 train/valid/test are used in some combo and valid/test ratio do not sum to 1, samples are discarded
             assert len(all_paths) <= len(sample_ids)
             assert all(_path_2_sample(path) in sample_ids for path in all_paths)
         else:
@@ -193,16 +224,6 @@ class TestGetTrainValidTestPaths:
         if test_ids is not None:
             test_ids &= sample_ids
             assert _paths_equal_samples(test_paths, test_ids)
-
-        if test_modulo is not None and test_ids is None:
-            # test_modulo is considered after csvs and only if test_csv is not given
-            # test_modulo guarantees that test_paths will have samples that are divisible by test_modulo
-            # test_paths will likely contain more than just the divisible samples
-            test_ids = {_path_2_sample(path) for path in test_paths}
-            possible_test_ids = sample_ids - (train_ids or set()) - (valid_ids or set())
-            mod_ids = {sample_id for sample_id in possible_test_ids if int(sample_id) % test_modulo == 0}
-            assert len(mod_ids) <= len(test_ids)
-            assert all(mod_id in test_ids for mod_id in mod_ids)
 
     @pytest.mark.parametrize('train_valid_test_csv', ['train-valid', 'train-test', 'valid-test'], indirect=True)
     def test_get_paths_overlap(self, default_arguments, train_valid_test_csv):
