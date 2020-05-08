@@ -1130,7 +1130,7 @@ def partners_bmi(tm, hd5, dependents={}):
             height_in = decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
             height_m = 0.0254 * float(height_in)
             bmi = weight_kg / (height_m*height_m)
-            logging.info(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
+            logging.debug(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
             tensor[i] = bmi
         except KeyError:
             pass
