@@ -1147,7 +1147,7 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
-            path = _make_hd5_path(tm, ecg_date,hd5_key)
+            path = _make_hd5_path(tm, ecg_date, hd5_key)
             found = False
             try:
                 hd5_string = decompress_data(data_compressed=hd5[path][()], dtype='str')
@@ -1169,7 +1169,7 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
             if not found:
                 if unspecified_key is None:
                     # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
-                    raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+                    raise ValueError(f'No channel keys found in {hd5_key} for {tm.name} with channel map {tm.channel_map}.')
                 slices = (i, tm.channel_map[unspecified_key]) if dynamic else (tm.channel_map[unspecified_key],)
                 tensor[slices] = 1.0
         return tensor
