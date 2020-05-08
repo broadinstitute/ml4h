@@ -7,10 +7,11 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT
+from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators
 from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
+MEAN_PRECISION_EPS = .02  # how much mean precision degradation is acceptable
 DEFAULT_PARAMS = {
     'activation': 'relu',
     'dense_layers': [4, 2],
@@ -290,3 +291,73 @@ def test_parent_sort_cycle(tmaps):
 )
 def test_parent_sort_idempotent(tmaps):
     assert parent_sort(tmaps) == parent_sort(parent_sort(tmaps)) == parent_sort(parent_sort(parent_sort(tmaps)))
+
+
+class TestModelPerformance:
+    @pytest.mark.slow
+    def test_brain_seg(self, tmpdir):
+        tensor_path = '/mnt/disks/brains-all-together/2020-02-11/'
+        if not os.path.exists(tensor_path):
+            pytest.skip('To test brain segmentation performance, attach disk brains-all-together')
+
+        from ml4cvd.tensor_from_file import TMAPS
+        from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+        from multiprocessing import cpu_count
+        from sklearn.metrics import average_precision_score
+
+        tmaps_in = [TMAPS['t1_30_slices_4d']]
+        tmaps_out = [TMAPS['t1_seg_30_slices']]
+        m = make_multimodal_multitask_model(
+            tensor_maps_in=tmaps_in, tensor_maps_out=tmaps_out,
+            activation='relu',
+            learning_rate=1e-3,
+            bottleneck_type=BottleneckType.GlobalAveragePoolStructured,
+            optimizer='radam',
+            dense_layers=[16, 64],
+            conv_layers=[32],
+            dense_blocks=[32, 24, 16],
+            block_size=3,
+            conv_type='conv',
+            conv_x=3, conv_y=3, conv_z=2,
+            pool_x=2, pool_y=2, pool_z=1,
+            pool_type='max',
+            u_connect=defaultdict(set, {tmaps_in[0]: {tmaps_out[0]}}),
+        )
+        batch_size = 2
+        generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+            tmaps_in, tmaps_out,
+            tensors=tensor_path,
+            batch_size=batch_size,
+            valid_ratio=.2,
+            test_ratio=.2,
+            num_workers=cpu_count(),
+            cache_size=3.5e9 / cpu_count(),
+            balance_csvs=[],
+            test_modulo=0,
+        )
+        m = train_model_from_generators(
+            model=m,
+            generate_train=generate_train, generate_valid=generate_valid,
+            training_steps=64, validation_steps=18, epochs=24, patience=22, batch_size=batch_size,
+            output_folder=str(tmpdir), run_id='brain_seg_test',
+            inspect_model=True, inspect_show_labels=True,
+        )
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+            generate_test, 12,
+        )
+        y_prediction = m.predict(test_data, batch_size=batch_size)
+        y_truth = np.array(test_labels[tmaps_out[0].output_name()])
+        expected_precisions = {
+            'not_brain_tissue': 1.,
+            'csf': .921,
+            'grey': .963,
+            'white': .989,
+        }
+        actual_precisions = {}
+        for name, idx in tmaps_out[0].channel_map.items():
+            average_precision = average_precision_score(
+                y_truth[..., idx].flatten(), y_prediction[..., idx].flatten(),
+            )
+            actual_precisions[name] = average_precision
+        for name in expected_precisions:
+            assert actual_precisions[name] >= expected_precisions[name] - MEAN_PRECISION_EPS
