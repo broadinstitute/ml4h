@@ -1602,7 +1602,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         # Build survival curve TensorMaps
         name = f'ecg_2500_to_survival_{diagnosis}_{days_window}'
         if name in needed_tensor_maps:
-            tensor_from_file_fxn = tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], population_normalize=2000)
+            tensor_from_file_fxn = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], population_normalize=2000)
             name2tensormap[f'survival_{diagnosis}'] = TensorMap(f'survival_{diagnosis}', Interpretation.SURVIVAL_CURVE, shape=(50,), cacheable=False, days_window=days_window)
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS, cacheable=False,
                                              dependent_map={f'survival_{diagnosis}': name2tensormap[f'survival_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
