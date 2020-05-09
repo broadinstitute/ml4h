@@ -654,12 +654,14 @@ class ConvEncoder:
         return x, intermediates
 
 
-def _calc_start_shape(num_upsamples: int, output_shape: Tuple[int, ...], upsample_rates: Sequence[int]) -> Tuple[int, ...]:
+def _calc_start_shape(
+        num_upsamples: int, output_shape: Tuple[int, ...], upsample_rates: Sequence[int], channels: int,
+) -> Tuple[int, ...]:
     """
     Given the number of blocks in the decoder and the upsample rates, return required input shape to get to output shape
     """
     upsample_rates = list(upsample_rates) + [1] * len(output_shape)
-    return tuple((shape // rate**num_upsamples for shape, rate in zip(output_shape, upsample_rates)))
+    return tuple((shape // rate**num_upsamples for shape, rate in zip(output_shape[:-1], upsample_rates))) + (channels,)
 
 
 class DenseDecoder:
@@ -883,7 +885,10 @@ def make_multimodal_multitask_model(
         if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
             pre_decoder_shapes[tm] = None
         else:
-            pre_decoder_shapes[tm] = _calc_start_shape(num_upsamples=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z])
+            pre_decoder_shapes[tm] = _calc_start_shape(
+                num_upsamples=len(dense_blocks), output_shape=tm.shape, upsample_rates=[pool_x, pool_y, pool_z],
+                channels=dense_blocks[-1],
+            )
 
     if bottleneck_type in {BottleneckType.FlattenRestructure, BottleneckType.GlobalAveragePoolStructured}:
         bottleneck = ConcatenateRestructure(
