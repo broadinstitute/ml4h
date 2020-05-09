@@ -44,6 +44,7 @@ class BottleneckType(Enum):
     FlattenRestructure = auto()  # All decoder outputs are flattened to put into embedding
     GlobalAveragePoolStructured = auto()  # Structured (not flat) decoder outputs are global average pooled
     Variational = auto()  # All decoder outputs are flattened then variationally sampled to put into embedding
+    NoBottleNeck = auto()  # only works when everything is u_connected
 
 
 def make_shallow_model(
@@ -427,20 +428,44 @@ class FullyConnectedBlock:
 
 def adaptive_normalize_from_tensor(tensor: Tensor, target: Tensor) -> Tensor:
     """Uses Dense layers to convert `tensor` to a mean and standard deviation to normalize `target`"""
-    return adaptive_normalization(mu=Dense(target.shape[-1])(tensor), log_sigma=Dense(target.shape[-1])(tensor), target=target)
+    return adaptive_normalization(mu=Dense(target.shape[-1])(tensor), sigma=Dense(target.shape[-1])(tensor), target=target)
 
 
-def adaptive_normalization(mu: Tensor, log_sigma: Tensor, target: Tensor, epsilon=1e-5) -> Tensor:
+def adaptive_normalization(mu: Tensor, sigma: Tensor, target: Tensor) -> Tensor:
+    target = tfa.layers.InstanceNormalization()(target)
     normalizer_shape = (1,) * (len(target.shape) - 2) + (target.shape[-1],)
     mu = Reshape(normalizer_shape)(mu)
-    log_sigma = Reshape(normalizer_shape)(log_sigma)
-    target -= mu
-    target /= (tf.math.exp(log_sigma) + epsilon)
+    sigma = Reshape(normalizer_shape)(sigma)
+    target *= sigma
+    target += mu
     return target
 
 
 def global_average_pool(x: Tensor) -> Tensor:
     return K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+
+
+def check_no_bottleneck(u_connect: DefaultDict[TensorMap, Set[TensorMap]], tensor_maps_out: List[TensorMap]) -> bool:
+    """Checks if every output tensor is u-connected to"""
+    return all(any(tm in ucon_out for ucon_out in u_connect.values()) for tm in tensor_maps_out)
+
+
+class UConnectBottleNeck:
+
+    def __init__(
+            self,
+            u_connect: DefaultDict[TensorMap, Set[TensorMap]],
+    ):
+        self.u_connect = u_connect
+
+    def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
+        out = {}
+        for tmap_in, tensor in encoder_outputs.items():
+            out = {
+                **out,
+                **{tmap_out: tensor for tmap_out in self.u_connect[tmap_in]},
+            }
+        return out
 
 
 class VariationalDiagNormal(Layer):
@@ -724,7 +749,10 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
 def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     custom_objects = {
         obj.__name__: obj
-        for obj in chain(NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), [VariationalDiagNormal])
+        for obj in chain(
+            NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
+            [VariationalDiagNormal],
+        )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 
@@ -878,6 +906,10 @@ def make_multimodal_multitask_model(
             normalization=dense_normalize,
             pre_decoder_shapes=pre_decoder_shapes,
         )
+    elif bottleneck_type == BottleneckType.NoBottleNeck:
+        if not check_no_bottleneck(u_connect, tensor_maps_out):
+            raise ValueError(f'To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.')
+        bottleneck = UConnectBottleNeck(u_connect)
     else:
         raise NotImplementedError(f'Unknown BottleneckType {bottleneck_type}.')
 
@@ -1116,6 +1148,12 @@ ACTIVATION_FUNCTIONS = {
     'lisht': tfa.activations.lisht,
     'mish': tfa.activations.mish,
 }
+NORMALIZATION_CLASSES = {
+    'batch_norm': BatchNormalization,
+    'layer_norm': LayerNormalization,
+    'instance_norm': tfa.layers.InstanceNormalization,
+    'poincare_norm': tfa.layers.PoincareNormalize,
+}
 
 
 def _activation_layer(activation: str) -> Activation:
@@ -1126,13 +1164,9 @@ def _activation_layer(activation: str) -> Activation:
 
 
 def _normalization_layer(norm: str) -> Layer:
-    normalization_classes = {
-        'batch_norm': BatchNormalization(axis=CHANNEL_AXIS),
-        'layer_norm': LayerNormalization(),
-        'instance_norm': tfa.layers.InstanceNormalization(),
-        'poincare_norm': tfa.layers.PoincareNormalize(),
-    }
-    return normalization_classes.get(norm, lambda x: x)
+    if not norm:
+        return lambda x: x
+    return NORMALIZATION_CLASSES[norm]()
 
 
 def _regularization_layer(dimension: int, regularization_type: str, rate: float):

@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators
+from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
 from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 
 
@@ -249,6 +249,18 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
 
+    def test_u_connect_no_bottleneck(self):
+        params = DEFAULT_PARAMS.copy()
+        params['pool_x'] = params['pool_y'] = 2
+        params['bottleneck_type'] = BottleneckType.NoBottleNeck
+        m = make_multimodal_multitask_model(
+            [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
+            [SEGMENT_OUT],
+            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
+            **params,
+        )
+        assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
+
     def test_no_dense_layers(self):
         params = DEFAULT_PARAMS.copy()
         params['dense_layers'] = []
@@ -291,6 +303,19 @@ def test_parent_sort_cycle(tmaps):
 )
 def test_parent_sort_idempotent(tmaps):
     assert parent_sort(tmaps) == parent_sort(parent_sort(tmaps)) == parent_sort(parent_sort(parent_sort(tmaps)))
+
+
+@pytest.mark.parametrize(
+    'tmap_out',
+    TMAPS_UP_TO_4D,
+)
+@pytest.mark.parametrize(
+    'u_connect_out',
+    TMAPS_UP_TO_4D,
+)
+def test_check_no_bottleneck(tmap_out, u_connect_out):
+    u_connect = defaultdict(set, {tmap_out: {u_connect_out}})
+    assert check_no_bottleneck(u_connect, [tmap_out]) == (u_connect_out == tmap_out)
 
 
 class TestModelPerformance:

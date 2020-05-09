@@ -23,7 +23,7 @@ from collections import defaultdict
 
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import parent_sort, BottleneckType
+from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps
@@ -34,6 +34,7 @@ BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
     'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
     'variational': BottleneckType.Variational,
+    'no_bottleneck': BottleneckType.NoBottleNeck,
 }
 
 
@@ -306,6 +307,8 @@ def _process_args(args):
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
+    if args.bottleneck_type == BottleneckType.NoBottleNeck:
+        check_no_bottleneck(args.u_connect, args.tensor_maps_out)
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
