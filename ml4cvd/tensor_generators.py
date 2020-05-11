@@ -478,51 +478,13 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         return inputs, outputs
 
 
-def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
-    if sample_csv is None:
-        return None
-    with open(sample_csv, 'r') as csv_file:
-        sample_ids = [row[0] for row in csv.reader(csv_file)]
-        # simple header detection, sample ids are assumed to be ints, headers strings with non-numerics
-        try:
-            int(sample_ids[0])
-        except ValueError:
-            sample_ids = sample_ids[1:]
-        return set(sample_ids)
-
-
-def get_train_valid_test_paths(
-        tensors: str,
-        sample_csv: Optional[str] = None,
-        valid_ratio: Optional[float] = None,
-        test_ratio: Optional[float] = None,
-        train_csv: Optional[str] = None,
-        valid_csv: Optional[str] = None,
-        test_csv: Optional[str] = None,
-):
-    """
-    Return 3 disjoint lists of tensor paths.
-
-    The paths are split in training, validation, and testing lists.
-    If no arguments are given, paths are split into train/valid/test in the ratio 0.7/0.2/0.1.
-    Otherwise, at least 2 arguments are required to specify train/valid/test sets.
-
-    :param tensors: path to directory containing tensors
-    :param sample_csv: path to csv containing sample ids, only consider sample ids for splitting
-                       into train/valid/test sets if they appear in sample_csv
-    :param valid_ratio: rate of tensors in validation list, mutually exclusive with valid_csv
-    :param test_ratio: rate of tensors in testing list, mutually exclusive with test_csv
-    :param train_csv: path to csv containing sample ids to reserve for training list
-    :param valid_csv: path to csv containing sample ids to reserve for validation list, mutually exclusive with valid_ratio
-    :param test_csv: path to csv containing sample ids to reserve for testing list, mutually exclusive with test_ratio
-
-    :return: tuple of 3 lists of hd5 tensor file paths
-    """
-    train_paths = []
-    valid_paths = []
-    test_paths = []
-    discard_paths = []
-
+def _get_train_valid_test_discard_ratios(
+        valid_ratio: float,
+        test_ratio: float,
+        train_csv: str,
+        valid_csv: str,
+        test_csv: str,
+) -> Tuple[int, int, int, int]:
     train_ratio = None
     discard_ratio = 0
 
@@ -568,6 +530,62 @@ def get_train_valid_test_paths(
     if not math.isclose(train_ratio + valid_ratio + test_ratio + discard_ratio, 1.0):
         raise ValueError(f'ratios do not sum to 1, train/valid/test/discard = {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}')
     logging.debug(f'train/valid/test/discard ratios: {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}')
+
+    return train_ratio, valid_ratio, test_ratio, discard_ratio
+
+
+def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
+    if sample_csv is None:
+        return None
+    with open(sample_csv, 'r') as csv_file:
+        sample_ids = [row[0] for row in csv.reader(csv_file)]
+        # simple header detection, sample ids are assumed to be ints, headers strings with non-numerics
+        try:
+            int(sample_ids[0])
+        except ValueError:
+            sample_ids = sample_ids[1:]
+        return set(sample_ids)
+
+
+def get_train_valid_test_paths(
+        tensors: str,
+        sample_csv: str,
+        valid_ratio: float,
+        test_ratio: float,
+        train_csv: str,
+        valid_csv: str,
+        test_csv: str,
+) -> Tuple[List[str], List[str], List[str]]:
+    """
+    Return 3 disjoint lists of tensor paths.
+
+    The paths are split in training, validation, and testing lists.
+    If no arguments are given, paths are split into train/valid/test in the ratio 0.7/0.2/0.1.
+    Otherwise, at least 2 arguments are required to specify train/valid/test sets.
+
+    :param tensors: path to directory containing tensors
+    :param sample_csv: path to csv containing sample ids, only consider sample ids for splitting
+                       into train/valid/test sets if they appear in sample_csv
+    :param valid_ratio: rate of tensors in validation list, mutually exclusive with valid_csv
+    :param test_ratio: rate of tensors in testing list, mutually exclusive with test_csv
+    :param train_csv: path to csv containing sample ids to reserve for training list
+    :param valid_csv: path to csv containing sample ids to reserve for validation list, mutually exclusive with valid_ratio
+    :param test_csv: path to csv containing sample ids to reserve for testing list, mutually exclusive with test_ratio
+
+    :return: tuple of 3 lists of hd5 tensor file paths
+    """
+    train_paths = []
+    valid_paths = []
+    test_paths = []
+    discard_paths = []
+
+    train_ratio, valid_ratio, test_ratio, discard_ratio = _get_train_valid_test_discard_ratios(
+        valid_ratio=valid_ratio,
+        test_ratio=test_ratio,
+        train_csv=train_csv,
+        valid_csv=valid_csv,
+        test_csv=test_csv,
+    )
 
     choices = {
         'train': (train_paths, train_ratio),
@@ -625,13 +643,13 @@ def get_train_valid_test_paths(
 def get_train_valid_test_paths_split_by_csvs(
         tensors: str,
         balance_csvs: List[str],
-        sample_csv: Optional[str] = None,
-        valid_ratio: Optional[float] = None,
-        test_ratio: Optional[float] = None,
-        train_csv: Optional[str] = None,
-        valid_csv: Optional[str] = None,
-        test_csv: Optional[str] = None,
-):
+        sample_csv: str,
+        valid_ratio: float,
+        test_ratio: float,
+        train_csv: str,
+        valid_csv: str,
+        test_csv: str,
+) -> Tuple[List[List[str]], List[List[str]], List[List[str]]]:
     stats = Counter()
     sample2group = {}
     for i, b_csv in enumerate(balance_csvs):
