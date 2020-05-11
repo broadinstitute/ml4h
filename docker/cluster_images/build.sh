@@ -10,11 +10,12 @@
 set -e
 
 ################### VARIABLES ############################################
-USERNAME=$1
+USERNAME="paolo.achille"
+DOCKERFILE="ml/docker/cluster_images/Dockerfile"
 
 REPO="gitlab-registry.ccds.io/${USERNAME}/ml4cvd"
-TAG=$( git rev-parse --short HEAD )
-CONTEXT="docker/vm_boot_images/"
+TAG=$(date +'%m-%d-%y-%H-%M-%S') 
+CONTEXT="."
 CPU_ONLY="false"
 PUSH_TO_GCR="false"
 PUSH_TO_LATEST="false"
@@ -47,7 +48,9 @@ usage()
 
     Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4cvd/jamesp/docker/deeplearning -cp
 
-        -d      <path>      Path to directory where Dockerfile is located. Default: '${CONTEXT}'
+        -d      <path>      Context for docker build. This should be parent directory of the ml repo. Default: '${CONTEXT}'
+
+	-f      <path>      Dockerfile to build. Default: '${DOCKERFILE}'
 
         -t      <tag>       String used to tag the Docker image. Default: short version of the latest commit hash
 
@@ -56,14 +59,17 @@ usage()
 
         -p                  Push to gitlab registry
 
+	-u      <username>  Username for CCDS gitlab            
+
         -h                  Print this help text
+
 
 USAGE_MESSAGE
 }
 
 ################### OPTION PARSING #######################################
 
-while getopts ":d:t:chpP" opt ; do
+while getopts ":d:f:t:uchpP" opt ; do
     case ${opt} in
         h)
             usage
@@ -71,6 +77,9 @@ while getopts ":d:t:chpP" opt ; do
             ;;
         d)
             CONTEXT=$OPTARG
+            ;;
+	f)
+            DOCKERFILE=$OPTARG
             ;;
         t)
             TAG=$OPTARG
@@ -84,6 +93,9 @@ while getopts ":d:t:chpP" opt ; do
         P)
             PUSH_TO_LATEST="true"
             ;;
+	u)  USER=$OPTARG
+	    ;;
+
         :)
             echo -e "${RED}ERROR: Option -${OPTARG} requires an argument.${NC}" 1>&2
             usage
@@ -114,6 +126,7 @@ echo -e "${BLUE}Building Docker image '${REPO}:${TAG}' from base image '${BASE_I
 # --network host allows for the container's network stack to use the Docker host's network
 docker build ${CONTEXT} \
     --build-arg BASE_IMAGE=${BASE_IMAGE} \
+    --file ${DOCKERFILE} \
     --tag "${REPO}:${TAG}" \
     --tag "${REPO}:${LATEST_TAG}" \
     --network host \

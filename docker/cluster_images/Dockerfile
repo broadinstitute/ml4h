@@ -4,6 +4,7 @@
 # BASE_IMAGE can be specified at build time by adding the following argument:
 #   --build_arg BASE_IMAGE="some_other_image"
 
+ARG MAIN_SCRIPT=ml/scripts/cluster_main.sh
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
@@ -13,8 +14,9 @@ LABEL maintainer="James Pirruccello <jamesp@broadinstitute.org>"
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-COPY ./config/* /app/
-WORKDIR /app
+COPY ml/docker/cluster_images/config/* /app/config/
+COPY ml/ /app/ml/
+WORKDIR /app/config
 
 # Note that some layers are kept separate to encourage layer re-use and to try
 # to minimize full recompilation where possible.
@@ -35,3 +37,6 @@ RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
 RUN pip3 install --upgrade pip
 RUN pip3 install -r pre_requirements.txt
 RUN pip3 install -r tensorflow-requirements.txt
+
+WORKDIR /app
+RUN pip3 install ./ml
