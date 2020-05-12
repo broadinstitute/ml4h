@@ -161,11 +161,21 @@ def parse_args():
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
-    parser.add_argument('--train_csv', help='Path to CSV with Sample IDs to reserve for training')
-    parser.add_argument('--valid_csv', help='Path to CSV with Sample IDs to reserve for validation')
-    parser.add_argument('--test_csv', help='Path to CSV with Sample IDs to reserve for testing')
-    parser.add_argument('--valid_ratio', type=float, help='Rate of training tensors to save for validation must be in [0.0, 1.0]. Default 0.2')
-    parser.add_argument('--test_ratio', type=float, help='Rate of training tensors to save for testing [0.0, 1.0]. Default 0.1')
+    parser.add_argument('--train_csv', help='Path to CSV with Sample IDs to reserve for training.')
+    parser.add_argument('--valid_csv', help='Path to CSV with Sample IDs to reserve for validation. Takes precedence over valid_ratio.')
+    parser.add_argument('--test_csv', help='Path to CSV with Sample IDs to reserve for testing. Takes precedence over test_ratio.')
+    parser.add_argument(
+        '--valid_ratio', default=0.2, type=float,
+        help='Rate of training tensors to save for validation must be in [0.0, 1.0]. '
+             'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
+             'If not specified, default 0.2 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
+    )
+    parser.add_argument(
+        '--test_ratio', default=0.1, type=float,
+        help='Rate of training tensors to save for testing must be in [0.0, 1.0]. '
+             'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
+             'If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
+    )
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')

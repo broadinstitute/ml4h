@@ -485,47 +485,17 @@ def _get_train_valid_test_discard_ratios(
         valid_csv: str,
         test_csv: str,
 ) -> Tuple[int, int, int, int]:
-    train_ratio = None
-    discard_ratio = 0
 
-    # disallow specifying both csv/ratio for a given set
-    if valid_csv is not None and valid_ratio is not None:
-        raise ValueError('mutually exclusive arguments valid_csv and valid_ratio both set')
-    if test_csv is not None and test_ratio is not None:
-        raise ValueError('mutually exclusive arguments test_csv and test_ratio both set')
-
-    # allow none to be set, use all default ratios
-    # allow any combination of 2 to be set, infer 3rd
-    # allow all 3 to be set and potentially discard ids
-    if all(val is None for val in [train_csv, valid_csv, test_csv, valid_ratio, test_ratio]):
-        # user gave nothing, use defaults
-        valid_ratio = DEFAULT_VALID_RATIO
-        test_ratio = DEFAULT_TEST_RATIO
-        train_ratio = 1.0 - valid_ratio - test_ratio
-    elif sum(1 if val is not None else 0 for val in [train_csv, (valid_csv or valid_ratio), (test_csv or test_ratio)]) == 2:
-        # user gave 2, infer 3rd
-        if train_csv is None:
-            train_ratio = 1.0 - (valid_ratio or 0) - (test_ratio or 0)
-        elif valid_csv is None and valid_ratio is None:
-            valid_ratio = 1.0 - (test_ratio or 0)
-        elif test_csv is None and test_ratio is None:
-            test_ratio = 1.0 - (valid_ratio or 0)
-        else:
-            raise ValueError('could not infer which 3rd variable to set of train/valid/test')
-    elif all(val is not None for val in [train_csv, (valid_csv or valid_ratio), (test_csv or test_ratio)]):
-        # if user gave 3, potentially use discard ratio
-        if not math.isclose((valid_ratio or 0) + (test_ratio or 0), 1.0):
-            discard_ratio = 1.0 - (valid_ratio or 0) - (test_ratio or 0)
-    else:
-        raise ValueError('not enough arguments given to infer split of train/valid/test')
-
-    # finalize ratios
-    if train_csv is not None and train_ratio is None:
-        train_ratio = 0
-    if valid_csv is not None and valid_ratio is None:
+    if valid_csv is not None:
         valid_ratio = 0
-    if test_csv is not None and test_ratio is None:
+    if test_csv is not None:
         test_ratio = 0
+    if train_csv is not None:
+        train_ratio = 0
+        discard_ratio = 1.0 - valid_ratio - test_ratio
+    else:
+        train_ratio = 1.0 - valid_ratio - test_ratio
+        discard_ratio = 0
 
     if not math.isclose(train_ratio + valid_ratio + test_ratio + discard_ratio, 1.0):
         raise ValueError(f'ratios do not sum to 1, train/valid/test/discard = {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}')
@@ -621,16 +591,13 @@ def get_train_valid_test_paths(
                 continue
             elif train_set is not None and sample_id in train_set:
                 train_paths.append(path)
-                continue
             elif valid_set is not None and sample_id in valid_set:
                 valid_paths.append(path)
-                continue
             elif test_set is not None and sample_id in test_set:
                 test_paths.append(path)
-                continue
-
-            choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
-            choices[choice][0].append(path)
+            else:
+                choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
+                choices[choice][0].append(path)
 
     logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
