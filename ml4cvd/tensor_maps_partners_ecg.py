@@ -1,14 +1,16 @@
 import os
 import csv
+import copy
 import h5py
 import logging
 import datetime
 import numpy as np
+import pandas as pd
 from collections import defaultdict
-from typing import Dict, List, Callable, Union, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 
 
@@ -20,6 +22,10 @@ PARTNERS_PREFIX = 'partners_ecg_rest'
 
 def _get_ecg_dates(tm, hd5):
     dates = list(hd5[tm.path_prefix])
+    if tm.time_series_set is not None:
+        mrn = int(os.path.basename(hd5.filename).split(TENSOR_EXT)[0])
+        dates = [date for date in dates if (mrn, date) in tm.time_series_set]
+
     if tm.time_series_order == TimeSeriesOrder.NEWEST:
         dates.sort()
     elif tm.time_series_order == TimeSeriesOrder.OLDEST:
@@ -1727,5 +1733,39 @@ def build_cardiac_surgery_tensor_maps(
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
             name2tensormap[outcome] = dependent_maps[outcome]
+
+    return name2tensormap
+
+
+def build_xref_tensor_maps(
+    needed_tensor_maps: List[str],
+    filename: Optional[str] = None,
+    patient_column: Optional[str] = 'partners_ecg_patientid_clean',
+    datetime_column: Optional[str] = 'partners_ecg_datetime',
+) -> Dict[str, TensorMap]:
+    name2tensormap: Dict[str:TensorMap] = {}
+    ecg_set = None
+    if filename is not None:
+        df = pd.read_csv(
+            filename,
+            low_memory=False,
+            usecols=[patient_column, datetime_column],
+            dtype={patient_column: int, datetime_column: str},
+        )[[patient_column, datetime_column]]
+        ecg_set = set(df.itertuples(index=False, name=None))
+
+    for needed_name in needed_tensor_maps:
+        if not needed_name.endswith('_xref'):
+            continue
+
+        base_name = needed_name.split('_xref')[0]
+        if base_name not in TMAPS:
+            continue
+
+        xref_tmap = copy.deepcopy(TMAPS[base_name])
+        xref_tmap.name = needed_name
+        xref_tmap.time_series_set = ecg_set
+
+        name2tensormap[needed_name] = xref_tmap
 
     return name2tensormap
