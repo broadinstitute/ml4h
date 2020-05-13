@@ -1853,10 +1853,11 @@ def all_sax_tensor(total_b_slices=13):
                 tensor[:, :, b + total_b_slices, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_frame_b{b}/instance_0'], dtype=np.float32))
                 index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_mask_b{b}/instance_0'], dtype=np.float32))
                 dependents[tm.dependent_map][:, :, b + total_b_slices, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-            except KeyError:
+            except KeyError as e:
                 missing += 1
                 tensor[:, :, b, 0] = 0
                 dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+                logging.info(f'got e::::\n{e} gues is: {tm.hd5_key_guess()}')
         if missing == tm.shape[-2]:
             raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
         return tensor
