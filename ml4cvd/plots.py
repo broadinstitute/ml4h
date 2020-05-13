@@ -1293,13 +1293,15 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, paths: List, pre
 
     mean_saliency = np.zeros(data.shape[1:4] + (3,))
     for batch_i, path in enumerate(paths):
+        sample_id = os.path.basename(path).replace(TENSOR_EXT, '')
         if len(data.shape) == 3:
-            ecgs = {f'{os.path.basename(path)}_raw': data[batch_i], 'gradients': gradients[batch_i]}
-            _plot_ecgs(ecgs, f'{prefix}_{os.path.basename(path)}_saliency_map_{batch_i}{IMAGE_EXT}')
+            ecgs = {f'{sample_id}_raw': data[batch_i], 'gradients': gradients[batch_i]}
+            _plot_ecgs(ecgs, f'{prefix}_{sample_id}_saliency_{batch_i}{IMAGE_EXT}')
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
-            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), f'{prefix}_saliency_{batch_i}{IMAGE_EXT}', cols, rows)
+            title = f'{prefix}_{sample_id}_saliency_{batch_i}{IMAGE_EXT}'
+            _plot_3d_tensor_slices_as_rgb(_saliency_map_rgb(data[batch_i], gradients[batch_i]), title, cols, rows)
             saliency = _saliency_blurred_and_scaled(gradients[batch_i], blur_radius=5.0, max_value=1.0/data.shape[0])
             mean_saliency[..., 0] -= saliency
             mean_saliency[..., 1] += saliency
