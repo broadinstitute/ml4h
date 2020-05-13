@@ -1787,8 +1787,8 @@ def sax_tensor(b_series_prefix):
         for b in range(tm.shape[-2]):
             try:
                 tm_shape = (tm.shape[0], tm.shape[1])
-                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}{b_series_prefix}_frame_b{b}'], dtype=np.float32))
-                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}{b_series_prefix}_mask_b{b}'], dtype=np.float32))
+                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}{b_series_prefix}_frame_b{b}/instance_0'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}{b_series_prefix}_mask_b{b}/instance_0'], dtype=np.float32))
                 dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
             except KeyError:
                 missing += 1
@@ -1847,11 +1847,11 @@ def all_sax_tensor(total_b_slices=13):
         for b in range(total_b_slices):
             try:
                 tm_shape = (tm.shape[0], tm.shape[1])
-                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_frame_b{b}'], dtype=np.float32))
-                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_mask_b{b}'], dtype=np.float32))
+                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_frame_b{b}/instance_0'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_mask_b{b}/instance_0'], dtype=np.float32))
                 dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-                tensor[:, :, b + total_b_slices, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_frame_b{b}'], dtype=np.float32))
-                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_mask_b{b}'], dtype=np.float32))
+                tensor[:, :, b + total_b_slices, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_frame_b{b}/instance_0'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_mask_b{b}/instance_0'], dtype=np.float32))
                 dependents[tm.dependent_map][:, :, b + total_b_slices, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
             except KeyError:
                 missing += 1
