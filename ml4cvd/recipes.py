@@ -421,7 +421,7 @@ def saliency_maps(args):
             continue
         for channel in tm.channel_map:
             gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
-            plot_saliency_maps(in_tensor, gradients, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
+            plot_saliency_maps(in_tensor, gradients, paths, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
 
 
 def tokenize_tensor_maps(args):

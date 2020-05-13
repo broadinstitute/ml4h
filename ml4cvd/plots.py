@@ -1274,7 +1274,7 @@ def plot_find_learning_rate(
     plt.clf()
 
 
-def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
+def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, paths: List, prefix: str):
     """Plot saliency maps of a batch of input tensors.
 
     Saliency maps for each input tensor in the batch will be saved at the file path indicated by prefix.
@@ -1284,6 +1284,7 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
 
     :param data: A batch of input tensors
     :param gradients: A corresponding batch of gradients for those inputs, must be the same shape as data
+    :param paths: A List of paths corresponding to each input tensor
     :param prefix: file path prefix where saliency maps will be saved
     """
     if data.shape[-1] == 1:
@@ -1291,10 +1292,10 @@ def plot_saliency_maps(data: np.ndarray, gradients: np.ndarray, prefix: str):
         gradients = gradients[..., 0]
 
     mean_saliency = np.zeros(data.shape[1:4] + (3,))
-    for batch_i in range(data.shape[0]):
+    for batch_i, path in enumerate(paths):
         if len(data.shape) == 3:
-            ecgs = {'raw': data[batch_i], 'gradients': gradients[batch_i]}
-            _plot_ecgs(ecgs, f'{prefix}_saliency_map_{batch_i}{IMAGE_EXT}')
+            ecgs = {f'{os.path.basename(path)}_raw': data[batch_i], 'gradients': gradients[batch_i]}
+            _plot_ecgs(ecgs, f'{prefix}_{os.path.basename(path)}_saliency_map_{batch_i}{IMAGE_EXT}')
         elif len(data.shape) == 4:
             cols = max(2, int(math.ceil(math.sqrt(data.shape[-1]))))
             rows = max(2, int(math.ceil(data.shape[-1] / cols)))
