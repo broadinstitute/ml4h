@@ -973,7 +973,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     plt.ylim([-0.02, 1.03])
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right", bbox_to_anchor=(1.25, 0))
+    plt.legend(loc="lower right", bbox_to_anchor=(0.98, 0))
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
     plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
 
