@@ -601,8 +601,12 @@ def get_train_valid_test_paths(
 
     logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
-    if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
-        raise ValueError(f'Found no tensors at {tensors}')
+    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
+        raise ValueError(
+            f'Not enough tensors at {tensors}\n'
+            f'Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors\n'
+            f'Discarded {len(discard_paths)} tensors',
+        )
 
     return train_paths, valid_paths, test_paths
 
