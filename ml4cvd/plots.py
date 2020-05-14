@@ -416,7 +416,7 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', ):
     sick_per_step = 0
     censored = 0
     survivorship = []
-    for i, day_index in enumerate(days_sorted):
+    for day_index in days_sorted_index:
         alive_per_step -= survived[day_index]
         sick_per_step += survived[day_index]
         censored += 1 - survived[day_index]
