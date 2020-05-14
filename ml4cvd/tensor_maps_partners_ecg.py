@@ -287,8 +287,8 @@ def make_partners_language_tensor(key: str):
 task = "partners_ecg_read_md_raw"
 TMAPS[task] = TensorMap(
     task,
-    annotation_units=128,
-    channel_map=PARTNERS_CHAR_2_IDX,
+    #annotation_units=128,
+    #channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     #shape=(512, len(PARTNERS_CHAR_2_IDX)),
     path_prefix=PARTNERS_PREFIX,
@@ -314,8 +314,8 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_read_pc_raw"
 TMAPS[task] = TensorMap(
     task,
-    annotation_units=128,
-    channel_map=PARTNERS_CHAR_2_IDX,
+    #annotation_units=128,
+    #channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     #tensor_from_file=make_partners_language_tensor(key="read_pc_clean"),
     #shape=(512, len(PARTNERS_CHAR_2_IDX)),
@@ -423,7 +423,7 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_firstname"
 TMAPS[task] = TensorMap(
     task,
-    channel_map=PARTNERS_CHAR_2_IDX,
+    #channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     #tensor_from_file=make_partners_language_tensor(key="patientfirstname"),
     #shape=(512, len(PARTNERS_CHAR_2_IDX)),
@@ -449,7 +449,7 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_lastname"
 TMAPS[task] = TensorMap(
     task,
-    channel_map=PARTNERS_CHAR_2_IDX,
+    #channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
     #tensor_from_file=make_partners_language_tensor(key="patientlastname"),
     #shape=(512, len(PARTNERS_CHAR_2_IDX)),
@@ -606,7 +606,6 @@ TMAPS[task] = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=validator_not_empty,
 )
 
 
@@ -617,7 +616,6 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc"),
     shape=(1,),
-    validator=validator_not_empty,
 )
 
 
