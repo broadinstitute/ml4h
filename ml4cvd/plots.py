@@ -135,7 +135,7 @@ def evaluate_predictions(
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
         logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
 
-        plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, title, prefix='./figures/')
+        plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, {tm.name: 0}, title, folder)
     elif tm.is_language():
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -199,7 +199,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
-def plot_calibration(prediction, truth, title, prefix='./figures/'):
+def plot_calibration(prediction, truth, label, title, prefix='./figures/'):
     fig = plt.figure(figsize=(10, 10))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
@@ -208,7 +208,7 @@ def plot_calibration(prediction, truth, title, prefix='./figures/'):
     brier_score = brier_score_loss(truth, prediction, pos_label=prediction.max())
     fraction_of_positives, mean_predicted_value = calibration_curve(truth, prediction, n_bins=10)
     ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="(%1.3f)" % (brier_score))
-    ax2.hist(prediction, range=(0, 1), bins=10, label='name', histtype="step", lw=2)
+    ax2.hist(prediction, range=(0, 1), bins=10, label=label, histtype="step", lw=2)
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
     ax1.legend(loc="lower right")
