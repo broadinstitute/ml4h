@@ -1352,8 +1352,8 @@ def build_incidence_tensor_from_file(
                 raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
 
-        if ecg_datetime < patient_table[mrn_int]:
-            raise ValueError(f'{tm.name} Assessed earlier than enrollment')
+        if ecg_date > patient_table[mrn_int]:
+            raise ValueError(f'Assessed after enrollment.')
 
         if mrn_int not in date_table:
             index = 0
@@ -1440,8 +1440,8 @@ def loyalty_time_to_event(
         ecg_date = datetime.datetime.strptime(ecg_date_key, PARTNERS_DATETIME_FORMAT).date()
         tensor = _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
 
-        if ecg_date < disease_dicts['follow_up_start'][mrn_int]:
-            raise ValueError(f'Assessed earlier than enrollment.')
+        if ecg_date > disease_dicts['follow_up_start'][mrn_int]:
+            raise ValueError(f'Assessed after enrollment.')
 
         if mrn_int not in disease_dicts['diagnosis_dates']:
             has_disease = 0
@@ -1523,8 +1523,8 @@ def _survival_from_file(
 
         if mrn_int not in disease_dicts['follow_up_start']:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
-        if ecg_date < disease_dicts['follow_up_start'][mrn_int]:
-            raise ValueError(f'Assessed earlier than enrollment.')
+        if ecg_date > disease_dicts['follow_up_start'][mrn_int]:
+            raise ValueError(f'Assessed after enrollment.')
 
         for dtm in tm.dependent_map:
             survival_then_censor = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
