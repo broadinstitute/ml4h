@@ -1128,6 +1128,8 @@ def partners_bmi(tm, hd5, dependents={}):
             weight_lbs = decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype='str')
             weight_kg = 0.453592 * float(weight_lbs)
             height_in = decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
+            if height_in == 0:
+                raise ValueError('Height from ECG was 0, can not compute BMI')
             height_m = 0.0254 * float(height_in)
             bmi = weight_kg / (height_m*height_m)
             logging.debug(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
@@ -1351,15 +1353,15 @@ def build_incidence_tensor_from_file(
             if birth_date != birth_table[mrn_int]:
                 raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
+        if incidence_only and disease_date < ecg_datetime:
+            raise ValueError(f'{tm.name} is skipping prevalent cases.')
         if ecg_datetime < patient_table[mrn_int]:
             raise ValueError(f'{tm.name} Assessed earlier than enrollment')
 
         if mrn_int not in date_table:
             index = 0
         else:
-            if incidence_only and disease_date < ecg_datetime:
-                raise ValueError(f'{tm.name} is skipping prevalent cases.')
-            elif incidence_only and disease_date >= ecg_datetime:
+            if incidence_only and disease_date >= ecg_datetime:
                 index = 1
             else:
                 index = 1 if disease_date < ecg_datetime else 2
