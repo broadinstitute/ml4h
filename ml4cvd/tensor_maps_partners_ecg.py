@@ -1353,7 +1353,7 @@ def build_incidence_tensor_from_file(
             if birth_date != birth_table[mrn_int]:
                 raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
-        if incidence_only and disease_date < ecg_datetime:
+        if incidence_only and disease_date is not None and disease_date < ecg_datetime:
             raise ValueError(f'{tm.name} is skipping prevalent cases.')
         if ecg_datetime < patient_table[mrn_int]:
             raise ValueError(f'{tm.name} Assessed earlier than enrollment')
