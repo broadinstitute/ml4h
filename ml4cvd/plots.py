@@ -415,12 +415,12 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', ):
     sick_per_step = 0
     censored = 0
     survivorship = []
-    for day_index in days_sorted:
-        alive_per_step -= survived[day_index]
+    for i, day_index in enumerate(days_sorted):
+        enroll_per_step = len(survived) - i
         sick_per_step += survived[day_index]
         censored += 1 - survived[day_index]
-        survivorship.append(1 - (sick_per_step / alive_per_step))
-    plt.plot(range(0, len(survived)), survivorship, marker='o', label='Survivorship')
+        survivorship.append(1 - (sick_per_step / enroll_per_step))
+        plt.plot(range(0, len(survived)), survivorship, marker='o', label='Survivorship')
     plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Event:{sick_per_step}\n')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
