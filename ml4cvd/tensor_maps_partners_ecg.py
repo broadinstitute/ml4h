@@ -259,6 +259,45 @@ TMAPS[task] = TensorMap(
 )
 
 
+def make_voltage_len_categorical_tmap(lead, cm_prefix = '_', cm_unknown = 'other'):
+    def _tensor_from_file(tm, hd5, dependents = {}):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=float)
+        for i, ecg_date in enumerate(ecg_dates):
+            path = _make_hd5_path(tm, ecg_date, lead)
+            try:
+                lead_len = hd5[path].attrs['len']
+                lead_len = f'{cm_prefix}{lead_len}'
+                matched = False
+                for cm in tm.channel_map:
+                    if lead_len.lower() == cm.lower():
+                        slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
+                        tensor[slices] = 1.0
+                        matched = True
+                        break
+                if not matched:
+                    slices = (i, tm.channel_map[cm_unknown]) if dynamic else (tm.channel_map[cm_unknown],)
+                    tensor[slices] = 1.0
+            except KeyError:
+                logging.debug(f'Could not get voltage length for lead {lead} from ECG on {ecg_date} in {hd5.filename}')
+        return tensor
+    return _tensor_from_file
+
+
+for lead in ECG_REST_AMP_LEADS:
+    tmap_name = f'lead_{lead}_len'
+    TMAPS[tmap_name] = TensorMap(
+        tmap_name,
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead),
+        channel_map={'_2500': 0, '_5000': 1, 'other': 2},
+        time_series_limit=0,
+        validator=validator_not_all_zero,
+    )
+
+
 def make_partners_ecg_tensor(key: str, fill: float = 0, cm_prefix: str = '', cm_unknown: str = 'other'):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
