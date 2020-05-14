@@ -1135,7 +1135,7 @@ def partners_bmi(tm, hd5, dependents={}):
             logging.debug(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
             tensor[i] = bmi
         except KeyError:
-            pass
+            raise ValueError('Missing Height or weight from ECG can not compute BMI.')
     return tensor
 
 
