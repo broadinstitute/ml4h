@@ -98,6 +98,7 @@ def evaluate_predictions(
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_calibrations(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
@@ -217,13 +218,42 @@ def plot_calibration(prediction, truth, label, title, prefix='./figures/'):
     ax2.set_xlabel("Mean predicted value")
     ax2.set_ylabel("Count")
     ax2.legend(loc="upper center", ncol=2)
-
-    plt.tight_layout()
-
     figure_path = os.path.join(prefix, 'calibration_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info("Try to save calibration plot at: {}".format(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+
+
+def plot_calibrations(prediction, truth, labels, title, prefix='./figures/'):
+    fig = plt.figure(figsize=(10, 10))
+    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+
+    for k in labels:
+        color = _hash_string_to_color(k)
+        brier_score = brier_score_loss(truth[..., k], prediction[..., k], pos_label=prediction[..., k].max())
+        fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., k], prediction[..., k], n_bins=10)
+        ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"({brier_score:1.3f})", color=color)
+        ax2.hist(prediction[..., k], range=(0, 1), bins=10, label=k, histtype="step", lw=2)
+    ax1.set_ylabel("Fraction of positives")
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.legend(loc="lower right")
+    ax1.set_title('Calibrations plots  (reliability curve)')
+
+    ax2.set_xlabel("Mean predicted value")
+    ax2.set_ylabel("Count")
+    ax2.legend(loc="upper center", ncol=2)
+
+    plt.tight_layout()
+
+    figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info("Try to save calibrations plot at: {}".format(figure_path))
     plt.savefig(figure_path)
     plt.clf()
 
