@@ -1093,7 +1093,7 @@ def partners_ecg_age(tm, hd5, dependents={}):
             try:
                 tensor[i] = decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
             except KeyError:
-                raise KeyError(f'Could not get patient date of birth or age from ECG on {ecg_date} in {hd5.filename}')
+                logging.debug(f'Could not get patient date of birth or age from ECG on {ecg_date} in {hd5.filename}')
     return tensor
 
 
