@@ -31,7 +31,8 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
-from sksurv.metrics import concordance_index_censored, brier_score_loss, precision_score, recall_score, f1_score
+from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
+from sksurv.metrics import concordance_index_censored
 import seaborn as sns
 from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
