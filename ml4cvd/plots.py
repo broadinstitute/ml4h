@@ -238,7 +238,7 @@ def plot_calibrations(prediction, truth, labels, title, prefix='./figures/'):
         brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=prediction[..., labels[k]].max())
         fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], prediction[..., labels[k]], n_bins=10)
         ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"Brier score {k}:{brier_score:1.3f})", color=color)
-        ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=10, label=k, histtype="step", lw=2)
+        ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=10, label=k, histtype="step", lw=2, color=color)
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
     ax1.legend(loc="lower right")
