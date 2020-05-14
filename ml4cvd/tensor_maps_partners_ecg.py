@@ -1349,7 +1349,7 @@ def build_incidence_tensor_from_file(
             path = _make_hd5_path(tm, ecg_date, 'dateofbirth')
             birth_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
             if birth_date != birth_table[mrn_int]:
-                raise ValueError(f'Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
+                raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
         if ecg_datetime < patient_table[mrn_int]:
             raise ValueError(f'{tm.name} Assessed earlier than enrollment')
