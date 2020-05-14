@@ -434,7 +434,7 @@ class LSTMEncoder:
         self.lstm = LSTM(tensor_map_in.annotation_units)
 
     def __call__(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
-        return self.lstm(x)
+        return self.lstm(x), []
 
 
 def adaptive_normalize_from_tensor(tensor: Tensor, target: Tensor) -> Tensor:
