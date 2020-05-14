@@ -1129,7 +1129,7 @@ def partners_bmi(tm, hd5, dependents={}):
             weight_kg = 0.453592 * float(weight_lbs)
             height_in = decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
             height_m = 0.0254 * float(height_in)
-            if height_m < 0.2 or weight_kg < 3 or weight_kg > 300:
+            if height_m < 0.2 or height_m > 2.1 or weight_kg < 3 or weight_kg > 300:
                 raise ValueError('Height or weight from ECG were not reasonable, can not compute BMI')
             bmi = weight_kg / (height_m*height_m)
             logging.debug(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
