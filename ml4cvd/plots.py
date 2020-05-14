@@ -132,12 +132,13 @@ def evaluate_predictions(
         logging.info(f"{[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
-        clf_score = brier_score_loss(y_truth[:, 0, np.newaxis], y_predictions) #, pos_label=y.max())
+        logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
+        clf_score = brier_score_loss(y_truth[:, 0] == 1.0, y_predictions[:, 0]) #, pos_label=y.max())
         print("%s:" % tm.name)
         print("\tBrier: %1.3f" % (clf_score))
-        print("\tPrecision: %1.3f" % precision_score(y_truth[:, 0, np.newaxis], y_predictions))
-        print("\tRecall: %1.3f" % recall_score(y_truth[:, 0, np.newaxis], y_predictions))
-        print("\tF1: %1.3f\n" % f1_score(y_truth[:, 0, np.newaxis], y_predictions))
+        print("\tPrecision: %1.3f" % precision_score(y_truth[:, 0] == 1.0, y_predictions[:, 0]))
+        print("\tRecall: %1.3f" % recall_score(y_truth[:, 0] == 1.0, y_predictions[:, 0]))
+        print("\tF1: %1.3f\n" % f1_score(y_truth[:, 0] == 1.0, y_predictions[:, 0]))
     elif tm.is_language():
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
