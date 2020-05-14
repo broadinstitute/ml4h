@@ -734,7 +734,7 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                         # If not a multi-tensor tensor, wrap in array to loop through
                         tensors = np.array([tensors])
                     for i, tensor in enumerate(tensors):
-                        if tensor == None:
+                        if tensor is None:
                             break
 
                         error_type = ''
@@ -898,7 +898,7 @@ def explore(args):
                 counts.append(sum(counts))
 
                 # Create list of row names
-                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
+                cm_names = [f'{tm.name} {cm}' for cm in tm.channel_map] + [f"missing", f"total"]
 
                 # Transform list into dataframe indexed by channel maps
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
@@ -936,13 +936,14 @@ def explore(args):
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
                             stats["median"] = df_cur[key].median()
-                            stats["mode"] = df_cur[key].mode()[0]
+                            mode = df_cur[key].mode()
+                            stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                             stats["variance"] = df_cur[key].var()
                             stats["count"] = df_cur[key].count()
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -950,7 +951,8 @@ def explore(args):
                         stats["max"] = df_cur[key].max()
                         stats["mean"] = df_cur[key].mean()
                         stats["median"] = df_cur[key].median()
-                        stats["mode"] = df_cur[key].mode()[0]
+                        mode = df_cur[key].mode()
+                        stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                         stats["variance"] = df_cur[key].var()
                         stats["count"] = df_cur[key].count()
                         stats["missing"] = df_cur[key].isna().sum()
@@ -987,7 +989,7 @@ def explore(args):
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
