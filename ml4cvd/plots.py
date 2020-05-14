@@ -133,24 +133,6 @@ def evaluate_predictions(
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
     elif tm.is_language():
-        logging.info(f'In language y_predictions {y_predictions.shape} y_truth {y_truth.shape} cm: {tm.channel_map}')
-        # index_2_token = {v: k for k, v in tm.channel_map.items()}
-        # for i in range(y_predictions.shape[0]):
-        #     true_text = ''
-        #     predict_text = ''
-        #     if tm.axes() == 1:
-        #         true_text += index_2_token[np.argmax(y_truth[i])]
-        #         predict_text += index_2_token[np.argmax(y_predictions[i])]
-        #     elif tm.axes() == 2:
-        #         for j in range(tm.shape[0]):
-        #             true_text += index_2_token[np.argmax(y_truth[i, j])]
-        #             predict_text += index_2_token[np.argmax(y_predictions[i, j])]
-        #         logging.info(f'arg max y pred{y_predictions[i, j, :8]}\nargmax true{y_truth[i, j].shape}')
-        #         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
-        #         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
-        #         y_predictions = y_predictions.reshape(melt_shape)[idx]
-        #         y_truth = y_truth.reshape(melt_shape)[idx]
-        #     logging.info(f'Text at batch:{i}\nTruth: {true_text}\nModel: {predict_text}')
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
