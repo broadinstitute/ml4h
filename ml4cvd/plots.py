@@ -135,8 +135,8 @@ def evaluate_predictions(
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
         logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
-
         plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, {tm.name: 0}, title, folder)
+        plot_survivorship(y_truth[:, 0], y_truth[:, 1], tm.name, folder)
     elif tm.is_language():
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -407,6 +407,31 @@ def subplot_comparison_scatters(
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
+
+
+def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', ):
+    days_sorted = np.argsort(days_follow_up)
+    alive_per_step = len(survived)
+    sick_per_step = 0
+    censored = 0
+    survivorship = []
+    for day_index in days_sorted:
+        alive_per_step -= survived[day_index]
+        sick_per_step += survived[day_index]
+        censored += 1 - survived[day_index]
+        survivorship.append(1 - (sick_per_step / alive_per_step))
+    plt.plot(range(0, len(survived)), survivorship, marker='o', label='Survivorship')
+    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Event:{sick_per_step}\n')
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Proportion Surviving')
+    plt.legend(loc="upper right")
+
+    figure_path = os.path.join(prefix, 'survivorship_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info(f'Try to save survival plot at: {figure_path}')
+    plt.savefig(figure_path)
+    return {}
 
 
 def plot_survival(prediction, truth, title, days_window, prefix='./figures/', paths=None):
