@@ -1128,9 +1128,9 @@ def partners_bmi(tm, hd5, dependents={}):
             weight_lbs = decompress_data(data_compressed=hd5[path('weightlbs')][()], dtype='str')
             weight_kg = 0.453592 * float(weight_lbs)
             height_in = decompress_data(data_compressed=hd5[path('heightin')][()], dtype='str')
-            if height_in == 0:
-                raise ValueError('Height from ECG was 0, can not compute BMI')
             height_m = 0.0254 * float(height_in)
+            if height_m == 0:
+                raise ValueError('Height from ECG was 0, can not compute BMI')
             bmi = weight_kg / (height_m*height_m)
             logging.debug(f' Height was {height_in} weight: {weight_lbs} bmi is {bmi}')
             tensor[i] = bmi
@@ -1353,8 +1353,7 @@ def build_incidence_tensor_from_file(
             if birth_date != birth_table[mrn_int]:
                 raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
-        if incidence_only and disease_date is not None and disease_date <= ecg_datetime:
-            raise ValueError(f'{tm.name} is skipping prevalent cases.')
+
         if ecg_datetime < patient_table[mrn_int]:
             raise ValueError(f'{tm.name} Assessed earlier than enrollment')
 
@@ -1363,10 +1362,11 @@ def build_incidence_tensor_from_file(
         else:
             if incidence_only and disease_date > ecg_datetime:
                 index = 1
-            elif not incidence_only:
-                index = 1 if disease_date < ecg_datetime else 2
-            else:
+            elif incidence_only:
                 raise ValueError(f'{tm.name} is skipping prevalent cases.')
+            else:
+                index = 1 if disease_date < ecg_datetime else 2
+
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
             dependents[tm.dependent_map[dtm]][index] = 1.0
