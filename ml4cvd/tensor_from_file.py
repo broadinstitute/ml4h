@@ -1816,7 +1816,7 @@ def sax_tensor(b_series_prefix):
                 tensor[:, :, b, 0] = 0
                 dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
         if missing == tm.shape[-2]:
-            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
+            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]} looked at: {tm.hd5_key_guess()}{b_series_prefix}')
         return tensor
     return sax_tensor_from_file
 
