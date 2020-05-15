@@ -203,15 +203,15 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
-def plot_calibration(prediction, truth, label, title, prefix='./figures/'):
-    fig = plt.figure(figsize=(10, 10))
+def plot_calibration(prediction, truth, label, title, prefix='./figures/', pos_label=1.0):
+    fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
 
-    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
-    brier_score = brier_score_loss(truth, prediction, pos_label=prediction.max())
+    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+    brier_score = brier_score_loss(truth, prediction, pos_label=pos_label)
     fraction_of_positives, mean_predicted_value = calibration_curve(truth, prediction, n_bins=10)
-    ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label="(%1.3f)" % (brier_score))
+    ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f'{label} Brier score:{brier_score:0.3f}')
     ax2.hist(prediction, range=(0, 1), bins=10, label=label, histtype="step", lw=2)
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
@@ -230,10 +230,11 @@ def plot_calibration(prediction, truth, label, title, prefix='./figures/'):
 
 
 def plot_calibrations(prediction, truth, labels, title, prefix='./figures/'):
-    fig = plt.figure(figsize=(10, 10))
+    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
 
+    true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
 
     for k in labels:
@@ -241,7 +242,7 @@ def plot_calibrations(prediction, truth, labels, title, prefix='./figures/'):
         brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
         fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], prediction[..., labels[k]], n_bins=10)
         ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
-        ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=10, label=k, histtype="step", lw=2, color=color)
+        ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=10, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
     ax1.legend(loc="lower right")
