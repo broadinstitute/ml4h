@@ -439,7 +439,7 @@ class LSTMEncoder:
 
 def adaptive_normalize_from_tensor(tensor: Tensor, target: Tensor) -> Tensor:
     """Uses Dense layers to convert `tensor` to a mean and standard deviation to normalize `target`"""
-    return adaptive_normalization(mu=Dense(target.shape[-1])(tensor), sigma=Dense(target.shape[-1])(tensor), target=target)
+    return adaptive_normalization(mu=Dense(target.shape[-1], name='mu')(tensor), sigma=Dense(target.shape[-1], name='sigma')(tensor), target=target)
 
 
 def adaptive_normalization(mu: Tensor, sigma: Tensor, target: Tensor) -> Tensor:
