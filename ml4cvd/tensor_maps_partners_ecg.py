@@ -317,8 +317,7 @@ def make_partners_ecg_tensor(key: str, fill: float = 0, cm_prefix: str = '', cm_
                 data = decompress_data(data_compressed=hd5[path][()], dtype='str')
                 if tm.interpretation == Interpretation.CATEGORICAL:
                     matched = False
-                    if cm_prefix != '':
-                        data = f'{cm_prefix}{data}'
+                    data = f'{cm_prefix}{data}'
                     for cm in tm.channel_map:
                         if data.lower() == cm.lower():
                             slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
