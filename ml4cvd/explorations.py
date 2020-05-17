@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import h5py
 import numpy as np
 import pandas as pd
-from multiprocess import Pool, Value
+from multiprocess import Manager, Pool
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -701,30 +701,17 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
-def _init_dict_of_tensors(tmaps: list) -> dict:
-    # Iterate through tmaps and initialize dict in which to store
-    # tensors, error types, and fpath
-    dict_of_tensors = defaultdict(dict)
-    for tm in tmaps:
-        if tm.channel_map:
-            for cm in tm.channel_map:
-                dict_of_tensors[tm.name].update({(tm.name, cm): list()})
-        else:
-            dict_of_tensors[tm.name].update({f'{tm.name}': list()})
-        dict_of_tensors[tm.name].update({f'error_type_{tm.name}': list()})
-        dict_of_tensors[tm.name].update({'fpath': list()})
-    return dict_of_tensors
-
-
-def _hd5_to_dict(tmaps, path, gen_name, tot):
-    with count.get_lock():
-        i = count.value
-        if (i+1) % 500 == 0:
-            logging.info(f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
+def _hd5_to_dicts(params):
+    tmaps, path, gen_name, lock, count, num_hd5 = params
+    with lock:
+        if count.value % 500 == 0:
+            logging.info(f"{gen_name} - Parsing {count.value}/{num_hd5} ({count.value/num_hd5*100:.1f}%) done")
         count.value += 1
     try:
         with h5py.File(path, "r") as hd5:
-            dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
+            # easier to first have default dict instead of list, flatten to list later
+            dict_of_tensor_dicts = defaultdict(dict)
+
             # Iterate through each tmap
             for tm in tmaps:
                 shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
@@ -743,40 +730,38 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                                    dict_of_tensor_dicts[i][(tm.name, cm)] = tensor[tm.channel_map[cm]]
                             else:
                                 # If tensor is a scalar, isolate the value in the array;
                                 # otherwise, retain the value as array
                                 if shape[0] == 1:
                                     if type(tensor) == np.ndarray:
                                         tensor = tensor.item()
-                                dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
+                                dict_of_tensor_dicts[i][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
+                                    dict_of_tensor_dicts[i][(tm.name, cm)] = np.nan
                             else:
-                                dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(shape, np.nan)[0]
+                                dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
                             error_type = type(e).__name__
 
                         # Save error type, fpath, and generator name (set)
-                        dict_of_tensor_dicts[i][tm.name][f'error_type_{tm.name}'] = error_type
-                        dict_of_tensor_dicts[i][tm.name]['fpath'] = path
-                        dict_of_tensor_dicts[i][tm.name]['generator'] = gen_name
+                        dict_of_tensor_dicts[i][f'error_type_{tm.name}'] = error_type
 
                 except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                     # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                     if tm.channel_map:
                         for cm in tm.channel_map:
-                            dict_of_tensor_dicts[0][tm.name][(tm.name, cm)] = np.nan
+                            dict_of_tensor_dicts[0][(tm.name, cm)] = np.nan
                     else:
-                        dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(shape, np.nan)[0]
-                    dict_of_tensor_dicts[0][tm.name][f'error_type_{tm.name}'] = type(e).__name__
-                    dict_of_tensor_dicts[0][tm.name]['fpath'] = path
-                    dict_of_tensor_dicts[0][tm.name]['generator'] = gen_name
+                        dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
+                    dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
 
-            # Append list of dicts with tensor_dict
-            return dict_of_tensor_dicts
+            for i in dict_of_tensor_dicts:
+                dict_of_tensor_dicts[i]['fpath'] = path
+                dict_of_tensor_dicts[i]['generator'] = gen_name
+            return list(dict_of_tensor_dicts.values())
     except OSError as e:
         logging.info(f"OSError {e}")
         return None
@@ -785,66 +770,34 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    global count # TODO figure out how to not use global
-    count = Value('l', 0)
     paths = [(path, gen.name) for gen in generators for path in gen.path_iters[0].paths]
-    tot = len(paths)
-    with Pool(processes=None) as pool:
-        list_of_dicts_of_dicts = pool.starmap(
-            _hd5_to_dict,
-            [(tmaps, path, gen_name, tot) for path, gen_name in paths],
-        )
+    num_hd5 = len(paths)
 
-    num_hd5 = len(list_of_dicts_of_dicts)
-    list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
-
-    # Now we have a list of dicts where each dict has {tmaps:values} and
-    # each HD5 -> one dict in the list
-    # Next, convert list of dicts -> dataframe
-    df = pd.DataFrame()
-
-    for tm in tmaps:
-        # Isolate all {tmap:values} from the list of dicts for this tmap
-        list_of_tmap_dicts = list(map(itemgetter(tm.name), list_of_tensor_dicts))
-
-        # Convert this tmap-specific list of dicts into dict of lists
-        dict_of_tmap_lists = {
-            k: [d[k] for d in list_of_tmap_dicts]
-            for k in list_of_tmap_dicts[0]
-        }
-
-        # Convert list of dicts into dataframe and concatenate to big df
-        df = pd.concat([df, pd.DataFrame(dict_of_tmap_lists)], axis=1)
-
-    # Remove duplicate columns: error_types, fpath
-    df = df.loc[:, ~df.columns.duplicated()]
+    list_of_tdicts = []
+    with Pool(processes=None) as pool, Manager() as manager:
+        lock = manager.Lock()
+        count = manager.Value('l', 0)
+        for tdicts in pool.imap(
+                _hd5_to_dicts,
+                [(tmaps, path, gen_name, lock, count, num_hd5) for path, gen_name in paths],
+                chunksize=int(len(paths) / pool._processes),
+        ):
+            list_of_tdicts.extend(tdicts)
+    df = pd.DataFrame(list_of_tdicts)
 
     # Remove "_worker" from "generator" values
     df["generator"].replace("_worker", "", regex=True, inplace=True)
 
-    # Rearrange df columns so fpath and generator are at the end
-    cols = [col for col in df if col not in ["fpath", "generator"]] \
-           + ["fpath", "generator"]
-    df = df[cols]
+    # Cast string values to pandas string dtype
+    str_cols = ['fpath', 'generator']
+    for tm in tmaps:
+        if tm.interpretation == Interpretation.LANGUAGE:
+            str_cols.extend([(tm.name, cm) for cm in tm.channel_map] if tm.channel_map else [tm.name])
+        str_cols.append(f'error_type_{tm.name}')
+    for col in str_cols:
+        df[col] = df[col].astype('string')
 
-    # Cast dtype of some columns to string. Note this is necessary; although a
-    # df (or pd.series) of floats will have the type "float", a df of strings
-    # assumes a dtype of "object". Casting to dtype "string" will confer performnace
-    # improvements in future versions of Pandas
-    df["fpath"] = df["fpath"].astype("string")
-    df["generator"] = df["generator"].astype("string")
-
-    # Iterate through tensor (and channel) maps and cast Pandas dtype to string
-    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
-        for tm in [tm for tm in args.tensor_maps_in if tm.interpretation is Interpretation.LANGUAGE]:
-            if tm.channel_map:
-                for cm in tm.channel_map:
-                    key = (tm.name, cm)
-                    df[key] = df[key].astype("string")
-            else:
-                key = tm.name
-                df[key] = df[key].astype("string")
-    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors across {num_hd5} hd5 files into DataFrame")
+    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
     return df
 
 
