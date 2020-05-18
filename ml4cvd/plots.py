@@ -413,7 +413,7 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_follow_up=365*5):
+def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_follow_up=365):
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(survived)
@@ -427,6 +427,7 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_
         sick_per_step += survived[day_index]
         censored += 1 - survived[day_index]
         survivorship.append(1 - (sick_per_step / alive_per_step))
+    logging.info(f'Last day was {day_index}, day {days_sorted[day_index]}, censored {censored}')
     plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='o', label='Survivorship')
     plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Event:{sick_per_step}\n')
     plt.xlabel('Follow up time (days)')
