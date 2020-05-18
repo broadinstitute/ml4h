@@ -750,7 +750,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
 
 
 def _identity_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
-    sample_weights = [None] * len(out_batch)
+    sample_weights = [1.0] * len(out_batch)
     return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weights)
 
 
