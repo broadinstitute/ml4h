@@ -1238,15 +1238,10 @@ def _inspect_model(
     Returns:
         The slightly optimized keras model
     """
-    b = next(generate_train)
-    print(f'got B: {b}')
-    _ = model.fit(b, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
     t0 = time.time()
-    b = next(generate_train)
-    print(f'got B: {b}')
-    _ = model.fit(b, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
+    _ = model.fit(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     n = batch_size * training_steps
     train_speed = (t1 - t0) / n
