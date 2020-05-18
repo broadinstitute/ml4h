@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 
 
@@ -20,10 +20,6 @@ PARTNERS_PREFIX = 'partners_ecg_rest'
 
 def _get_ecg_dates(tm, hd5):
     dates = list(hd5[tm.path_prefix])
-    if tm.time_series_set is not None:
-        mrn = int(os.path.basename(hd5.filename).split(TENSOR_EXT)[0])
-        dates = [date for date in dates if (mrn, date) in tm.time_series_set]
-
     if tm.time_series_order == TimeSeriesOrder.NEWEST:
         dates.sort()
     elif tm.time_series_order == TimeSeriesOrder.OLDEST:

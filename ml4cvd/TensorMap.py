@@ -10,7 +10,7 @@
 import logging
 import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Union, Callable, Dict, List, Optional, Tuple
 
 import h5py
 import numcodecs
@@ -105,7 +105,6 @@ class TensorMap(object):
         dependent_map: Optional["TensorMap"] = None,
         augmentations: Optional[List[Callable[[np.ndarray], np.ndarray]]] = None,
         normalization: Optional[Normalizer] = None,
-        time_series_set: Optional[Set] = None,
         annotation_units: Optional[int] = 32,
         tensor_from_file: Optional[Callable] = None,
         time_series_limit: Optional[int] = None,
@@ -134,7 +133,6 @@ class TensorMap(object):
         :param dependent_map: TensorMap that depends on or is determined by this one
         :param augmentations: Tensor shape preserving transformations not applied at validation or test time
         :param normalization: Dictionary specifying normalization values
-        :param time_series_set: Set defining specific tensors to use in a time series.
         :param annotation_units: Size of embedding dimension for unstructured input tensor maps.
         :param tensor_from_file: Function that returns numpy array from hd5 file for this TensorMap
         :param time_series_limit: If set, indicates dynamic shaping and sets the maximum number of tensors in a time series to use
@@ -162,7 +160,6 @@ class TensorMap(object):
         self.augmentations = augmentations
         self.normalization = normalization if isinstance(normalization, Normalizer) else _convert_old_normalization(normalization)
         self.dependent_map = dependent_map
-        self.time_series_set = time_series_set
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
         self.time_series_limit = time_series_limit
