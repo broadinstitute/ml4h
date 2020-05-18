@@ -734,7 +734,7 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                         # If not a multi-tensor tensor, wrap in array to loop through
                         tensors = np.array([tensors])
                     for i, tensor in enumerate(tensors):
-                        if tensor == None:
+                        if tensor is None:
                             break
 
                         error_type = ''
