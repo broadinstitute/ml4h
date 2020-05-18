@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
+# This script can be used to build and tag a 'ml4cvd' image to , optionally push it to Google Container Registry,
 # and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 #
 # It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
@@ -10,7 +10,7 @@
 set -e
 
 ################### VARIABLES ############################################
-USERNAME="paolo.achille"
+USERNAME=${USER}
 DOCKERFILE="ml/docker/cluster_images/Dockerfile"
 
 REPO="gitlab-registry.ccds.io/${USERNAME}/ml4cvd"

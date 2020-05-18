@@ -1,7 +1,7 @@
 # The suggested base images are:
-#   - ufoym/deepo:all-py36-jupyter for GPU-enabled machines
-#   - ufoym/deepo:all-py36-jupyter-cpu for CPU-only (non-GPU-enabled) machines
-# BASE_IMAGE can be specified at build time by adding the following argument:
+#   - tensorflow/tensorflow:2.1.0-gpu-py3 for GPU-enabled machines
+#   - tensorflow/tensorflow:2.1.0-py3 for CPU-only (non-GPU-enabled) machines
+#   BASE_IMAGE can be specified at build time by adding the following argument:
 #   --build_arg BASE_IMAGE="some_other_image"
 
 ARG BASE_IMAGE
@@ -22,16 +22,9 @@ WORKDIR /app
 # Basic setup
 RUN ./ubuntu.sh
 
-# FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
-# understand this odd sequence of installing then uninstalling fastai before 
-# installing it from github. (Basically, to get its deps.)
-# RUN pip3 install -r fastai-requirements.txt
-# RUN pip3 uninstall -y fastai
-# RUN ./fastai.sh
-
-RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
-
 # Requirements for the tensorflow project
-RUN pip3 install --upgrade pip
-RUN pip3 install -r pre_requirements.txt
-RUN pip3 install -r tensorflow-requirements.txt
+RUN pip3 install --upgrade pip && \
+    pip3 install -r pre_requirements.txt && \
+    pip3 install -r tensorflow-requirements.txt
+
+RUN rm -rf '/root/.cache/pip/*'

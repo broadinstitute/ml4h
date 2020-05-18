@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 
-# This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
+# This script can be used to build and tag a 'ml4cvd' image, optionally push it to a Docker Container Registry,
 # and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 #
-# It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
-# by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
+# It assumes Docker has been configured with appropriate credentials, and the script is being run at the root of
+# the GitHub repo clone.
 
 # Stop the execution if any of the commands fails
 set -e
 
 ################### VARIABLES ############################################
-
 REPO="gcr.io/broad-ml4cvd/deeplearning"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
-PUSH_TO_GCR="false"
+PUSH_TO_CR="false"
 PUSH_TO_LATEST="false"
 
 BASE_IMAGE_GPU="tensorflow/tensorflow:2.1.0-gpu-py3"
@@ -36,24 +35,29 @@ usage()
 {
     cat <<USAGE_MESSAGE
 
-    This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
+    This script can be used to build and tag a 'ml4cvd' image, optionally push it to a Docker Container Registry,
     and again optionally, tag the image also as 'latest_<gpu|cpu>'.
+    
+    It assumes Docker has been configured with appropriate credentials, and the script is being run at the root of
+    the GitHub repo clone.
 
-    It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
-    by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
-
-    Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-chp]
+    Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-r <registry>] [-chp]
 
     Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4cvd/jamesp/docker/deeplearning -cp
 
         -d      <path>      Path to directory where Dockerfile is located. Default: '${CONTEXT}'
 
         -t      <tag>       String used to tag the Docker image. Default: short version of the latest commit hash
+	
+	    -r      <registry>  Full name of the image, optionally including the path to the registry. 
+			    Default: '${REPO}'			    
 
         -c                  Build off of the cpu-only base image and tag image also as '${LATEST_TAG_CPU}'.
                             Default: Build image to run on GPU-enabled machines and tag image also as '${LATEST_TAG_GPU}'.
 
-        -p                  Push to Google Container Register
+        -p                  Push to the Docker Container Registry
+
+	    -P 		    Push to the Docker Container Registry and tag as latest image
 
         -h                  Print this help text
 
@@ -62,7 +66,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":d:t:chpP" opt ; do
+while getopts ":d:t:r:chpP" opt ; do
     case ${opt} in
         h)
             usage
@@ -74,11 +78,14 @@ while getopts ":d:t:chpP" opt ; do
         t)
             TAG=$OPTARG
             ;;
+	    r) 
+	        REPO=$OPTARG
+	        ;;
         c)
             CPU_ONLY="true"
             ;;
         p)
-            PUSH_TO_GCR="true"
+            PUSH_TO_CR="true"
             ;;
         P)
             PUSH_TO_LATEST="true"
@@ -118,12 +125,12 @@ docker build ${CONTEXT} \
     --network host \
 
 if [[ ${PUSH_TO_LATEST} == "true" ]]; then
-    echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
+    echo -e "${BLUE}Pushing the image '${REPO}' to container registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
     docker push ${REPO}:${TAG}
     docker push ${REPO}:${LATEST_TAG}
 fi
 
-if [[ ${PUSH_TO_GCR} == "true" ]]; then
-    echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}'...${NC}"
+if [[ ${PUSH_TO_CR} == "true" ]]; then
+    echo -e "${BLUE}Pushing the image '${REPO}' to container registry with tags '${TAG}'...${NC}"
     docker push ${REPO}:${TAG}
 fi
