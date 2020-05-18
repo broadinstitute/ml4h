@@ -375,7 +375,10 @@ def _process_args(args):
     if args.eager:
         import tensorflow as tf
         tf.config.experimental_run_functions_eagerly(True)
-    import tensorflow as tf
-    tf.config.gpu.set_per_process_memory_fraction(0.75)
-    tf.config.gpu.set_per_process_memory_growth(True)
-    
+    from tensorflow.compat.v1 import ConfigProto
+    from tensorflow.compat.v1 import InteractiveSession
+
+    config = ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.2
+    config.gpu_options.allow_growth = True
+    session = InteractiveSession(config=config)
