@@ -421,8 +421,6 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_
     censored = 0
     survivorship = []
     for cur_day, day_index in enumerate(days_sorted_index):
-        if days_sorted[day_index] < max_follow_up:
-            break
         alive_per_step -= survived[day_index]
         sick_per_step += survived[day_index]
         censored += 1 - survived[day_index]
