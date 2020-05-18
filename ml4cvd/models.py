@@ -1072,7 +1072,7 @@ def train_model_from_generators(
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
-    history = model.fit_generator(
+    history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
         validation_steps=validation_steps, validation_data=generate_valid,
         callbacks=_get_callbacks(patience, model_file),
@@ -1238,15 +1238,10 @@ def _inspect_model(
     Returns:
         The slightly optimized keras model
     """
-    b = next(generate_train)
-    print(f'got B: {len(b)} b0 keys {list(b[0].keys())} b1 keys {list(b[1].keys())}, b2 {b[2]}')
-    _ = model.fit((b[0], b[1]), steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
     t0 = time.time()
-    b = next(generate_train)
-    print(f'22222222got B: {list(b[0].keys())}')
-    _ = model.fit(b, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
+    _ = model.fit(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     n = batch_size * training_steps
     train_speed = (t1 - t0) / n
