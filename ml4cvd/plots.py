@@ -413,7 +413,7 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_follow_up=1825):
+def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_follow_up=365):
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(survived)
@@ -429,12 +429,12 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_
         survivorship.append(1 - (sick_per_step / alive_per_step))
     logging.info(f'First day {days_sorted[0]}   Last day, day {days_follow_up[day_index]}, censored {censored} cur day {cur_day}')
     plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='o', label='Survivorship')
-    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Event:{sick_per_step}\n')
+    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Events:{sick_per_step}\nMax follow up {max_follow_up} days.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="upper right")
 
-    figure_path = os.path.join(prefix, 'survivorship_' + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, f'survivorship_fu_{max_follow_up}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f'Try to save survival plot at: {figure_path}')
