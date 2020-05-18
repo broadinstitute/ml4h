@@ -1241,7 +1241,9 @@ def _inspect_model(
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
     t0 = time.time()
-    _ = model.fit_generator(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
+    b = next(generate_train)
+    print(f'got B: {b}')
+    _ = model.fit(b, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
     n = batch_size * training_steps
     train_speed = (t1 - t0) / n
