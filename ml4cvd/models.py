@@ -1239,7 +1239,7 @@ def _inspect_model(
         The slightly optimized keras model
     """
     b = next(generate_train)
-    print(f'got B: {len(b)} b0 keys {list(b[0].keys())} b1 keys {list(b[1].keys())}, b111 {b[1]}')
+    print(f'got B: {len(b)} b0 keys {list(b[0].keys())} b1 keys {list(b[1].keys())}, b2 {b[2]}')
     _ = model.fit(b, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     if image_path:
         _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
