@@ -375,7 +375,3 @@ def _process_args(args):
     if args.eager:
         import tensorflow as tf
         tf.config.experimental_run_functions_eagerly(True)
-    import tensorflow as tf
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    print(f'GPUs are: {gpus}')
-    tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
