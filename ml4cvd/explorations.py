@@ -796,7 +796,7 @@ def _tensors_to_df(args):
         str_cols.append(f'error_type_{tm.name}')
     str_cols = {key: 'string' for key in str_cols}
 
-    # read all temporary files to df and remove temporary files
+    # read all temporary files to df
     df = pd.DataFrame()
     base = os.path.join(args.output_folder, args.id)
     temp_files = []
@@ -814,6 +814,7 @@ def _tensors_to_df(args):
 
     logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
 
+    # remove temporary files
     for fpath in temp_files:
         os.remove(fpath)
     logging.debug(f'Deleted {len(temp_files)} temporary files')
