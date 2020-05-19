@@ -1442,6 +1442,8 @@ def loyalty_time_to_event(
 
         if ecg_date > disease_dicts['follow_up_start'][mrn_int]:
             raise ValueError(f'Assessed after enrollment.')
+        if (disease_dicts['follow_up_start'][mrn_int] - ecg_date).days > 365*3:
+            raise ValueError(f'Assessed 3 years or more before enrollment.')
 
         if mrn_int not in disease_dicts['diagnosis_dates']:
             has_disease = 0
