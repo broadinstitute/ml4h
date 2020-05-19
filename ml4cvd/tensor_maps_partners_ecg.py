@@ -1729,3 +1729,101 @@ def build_cardiac_surgery_tensor_maps(
             name2tensormap[outcome] = dependent_maps[outcome]
 
     return name2tensormap
+
+TMAPS['partners_ecg_race'] = TensorMap(
+    'partners_ecg_race', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'asian': 0, 'black': 1, 'hispanic': 2, 'white': 3, 'unknown': 4},
+    tensor_from_file=partners_channel_string('race', race_synonyms), time_series_limit=0,
+)
+
+def partners_channel_string_bias(hd5_key, synonyms={}, unspecified_key=None):
+    def tensor_from_string(tm, hd5, dependents={}):
+        shape = (len(tm.channel_map),)
+        tensor = np.zeros(shape, dtype=np.float32)
+        found = False
+        try:
+            hd5_string = hd5[f'partners_ecg_rest/{hd5_key}'][()]
+            for key in tm.channel_map:
+                slices = (tm.channel_map[key],)
+                for synonym in synonyms:
+                    if tm.channel_map[key] == synonyms[synonym]:
+                        break
+                if hd5_string.lower() == synonym.lower():
+                    tensor[slices] = 1.0
+                    found = True
+                    break
+        except KeyError:
+            pass
+        if not found:
+            if unspecified_key is None:
+                # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+            slices = (synonyms[unspecified_key],)
+            tensor[slices] = 1.0
+        return tensor
+    return tensor_from_string
+
+bias_dic = {'acquisitiondevice': {'MAC': 0, 'MAC55': 1, 'MAC5K': 2, 'D3K': 3, 'MACVU': 4, 'S8500': 5, 'CASE': 6, 'MAC16': 7, 'MAC 8': 8, 'unspecified': 9},
+'acquisitionsoftwareversion': {'nan': 0, '010A': 1, '009A': 2, '007A.2': 3, '005A.1': 4, '006A': 5, '009C': 6, '010B': 7, '008A': 8, '008B': 9, 'unspecified': 10},
+'analysissoftwareversion': {'22': 0, '14': 1, '231': 2, '241 HD': 3, '239': 4, '26': 5, '237': 6, '235': 7, '233': 8, '241': 9, 'unspecified': 10}, 
+'cartnumber': {'1.0': 0, '0.0': 1, '2.0': 2, '14.0': 3, '3.0': 4, '4.0': 5, '101.0': 6, '127.0': 7, '102.0': 8, '126.0': 9, 'unspecified': 10}, 
+'locationname': {'46-YAWKEY5 - CARDIOLOGY NR': 0, '30-EMERGENCY DEPARTMENT': 1, '40-WACC2/6 - CLINICS': 2, '160-LUNDER EMERGENCY DEPARTMENT': 3, '23-JACKSON 121-SURGICAL DAY CARE': 4, '7-ELLISON 10 - CARDIAC': 5, '53-WACC 5 BUL MED GROUP': 6, '22-PRIVATE AMBULATORY': 7, '44-PROCESS DO NOT INTERPRET': 8, '106-BIGELOW8-CARDIO SUITE 800 NR': 9, 'unspecified': 10}, 
+'overreaderid': {'999.0': 0, '888.0': 1, '3.0': 2, '32.0': 3, '80.0': 4, '15.0': 5, '103.0': 6, '57.0': 7, '18.0': 8, '131.0': 9, 'unspecified': 10}, 
+'priority': {'NORMAL': 0, 'PREOP': 1, 'STAT': 2, 'unspecified': 3}, 
+'roomid': {'nan': 0, '99': 1, 'BAY3': 2, '57': 3, 'BAY4': 4, 'BAY1': 5, 'BAY6': 6, 'BAY9': 7, 'BAY2': 8, 'BAY7': 9, 'unspecified': 10}, 
+'testreason': {'nan': 0, 'V72.81': 1, '786.50': 2, 'NOBILL': 3, '401.9': 4, '00': 5, '785.1': 6, '57': 7, '786.09': 8, 'V71.7': 9, 'unspecified': 10}, 
+'I_len': {'2500.0': 0, '5000.0': 1, 'unspecified': 2}, 
+'I_nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4}, 
+'II_nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4}, 
+'III_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4}, 
+'V1_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
+'V2_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
+'V3_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
+'V4_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
+'V5_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
+'V6_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
+'aVR_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4}, 
+'aVL_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4}, 
+'aVF_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4},
+'sex': {'M': 0, 'F': 1, 'unspecified': 2}, 
+'race': {'WHITE': 0, 'BLACK OR AFRICAN AMERICAN': 1, 'OTHER': 2, 'ASIAN': 3, 'OTHER@HISPANIC': 4, 'UNKNOWN': 5, 'DECLINED': 6, 'HISPANIC OR LATINO': 7, 'HISPANIC': 8, 'BLACK': 9, 'unspecified': 10}, 
+'incident_mi': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_cvd': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_pad': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_valvular_disease': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_af': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_stroke': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_hf': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_htn': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_dm': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_bpmed': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'incident_lvh': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_mi': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_cvd': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_pad': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_valvular_disease': {'False': 0, 'True': 1, 'unspecified': 2},
+'prevalent_af': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_stroke': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_hf': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_htn': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_dm': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_bpmed': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_cad': {'False': 0, 'True': 1, 'unspecified': 2}, 
+'prevalent_lvh': {'False': 0, 'True': 1, 'unspecified': 2}}
+
+for bias_key in bias_dic:
+    TMAPS[f'partners_ecg_bias_{bias_key}'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}', 
+        interpretation=Interpretation.CATEGORICAL, 
+        path_prefix=PARTNERS_PREFIX,
+        channel_map={f'val_{i}': i for i in range(len(bias_dic[bias_key]))},
+        tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
+
+
+
+
+
+
+
+
+
+
