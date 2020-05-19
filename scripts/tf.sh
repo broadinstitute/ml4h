@@ -94,9 +94,9 @@ fi
 
 ################### SCRIPT BODY ##########################################
 
-if ! docker pull ${DOCKER_IMAGE}; then
-    echo "Could not pull the image ${DOCKER_IMAGE}. Will try anyway..."
-fi
+# if ! docker pull ${DOCKER_IMAGE}; then
+#     echo "Could not pull the image ${DOCKER_IMAGE}. Will try anyway..."
+# fi
 
 if [[ -d "/data" ]] ; then
     echo "Found /data folder will try to mount it."
