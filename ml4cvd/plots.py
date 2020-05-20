@@ -139,7 +139,7 @@ def evaluate_predictions(
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
         logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
         plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, {tm.name: 0}, title, folder)
-        plot_survivorship(y_truth[:, 0], y_truth[:, 1], tm.name, folder)
+        plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder)
     elif tm.is_language():
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -413,7 +413,7 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_follow_up=1825):
+def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./figures/', max_follow_up=1825):
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(survived)
@@ -427,8 +427,26 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_
         sick_per_step += survived[day_index]
         censored += 1 - survived[day_index]
         survivorship.append(1 - (sick_per_step / alive_per_step))
-    logging.info(f'First day {days_sorted[0]}   Last day, day {days_follow_up[day_index]}, censored {censored} cur day {cur_day}')
+    logging.info(f'First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
     plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='o', label='Survivorship')
+
+    groups = ['High risk', 'Low risk']
+    predicted_alive = {g: len(survived) for g in groups}
+    predicted_sick = {g: 0 for g in groups}
+    predicted_days = defaultdict(list)
+    predicted_survival = defaultdict(list)
+    threshold = np.median(predictions)
+    for cur_day, day_index in enumerate(days_sorted_index):
+        if days_follow_up[day_index] > max_follow_up:
+            break
+        group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
+        predicted_alive[group] -= survived[day_index]
+        predicted_sick[group] += survived[day_index]
+        predicted_survival[group].append(1 - (predicted_sick[group] / predicted_alive[group]))
+        predicted_days[group].append(days_follow_up[day_index])
+
+    for group in groups:
+        plt.plot(predicted_days[group], predicted_survival[group], marker='.', label=f'{group} Events: {predicted_sick[group]}')
     plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Events:{sick_per_step}\nMax follow up {max_follow_up} days, {max_follow_up//365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
