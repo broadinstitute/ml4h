@@ -444,7 +444,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
 
         predicted_sick[group] += survived[day_index]
-        predicted_survival[group].append(1 - (predicted_sick[group] / predicted_alive[group]))
+        predicted_survival[group].append(1 - (predicted_sick[group] / (predicted_alive[group]+predicted_sick[group])))
         predicted_alive[group] -= survived[day_index]
         predicted_days[group].append(days_follow_up[day_index])
 
