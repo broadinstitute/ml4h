@@ -1615,11 +1615,11 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'cox_{diagnosis}_newest'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], dependent=False)
-            name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
         name = f'incident_cox_{diagnosis}_newest'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True, dependent=False)
-            name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
         # Build survival curve TensorMaps
         name = f'ecg_2500_to_survival_{diagnosis}_{days_window}'
         if name in needed_tensor_maps:
