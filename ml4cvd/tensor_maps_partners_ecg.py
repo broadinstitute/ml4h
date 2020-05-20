@@ -1357,7 +1357,7 @@ def build_incidence_tensor_from_file(
                 raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT).date()
 
-        if ecg_date > patient_table[mrn_int]:
+        if ecg_datetime > patient_table[mrn_int]:
             raise ValueError(f'Assessed after enrollment.')
 
         if mrn_int not in date_table:
