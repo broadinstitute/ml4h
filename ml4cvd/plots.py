@@ -1670,7 +1670,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
         if tm in categorical_labels + gene_labels:
             for c in tm.channel_map:
                 categorical_subsets[tm.channel_map[c]] = label_dict[tm] == tm.channel_map[c]
-                categorical_counts[tm.channel_map[c]] += label_dict[tm] == tm.channel_map[c]
+                categorical_counts[tm.channel_map[c]] = np.sum(categorical_subsets[tm.channel_map[c]])
         elif tm in continuous_labels:
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
