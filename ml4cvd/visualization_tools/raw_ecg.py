@@ -9,6 +9,8 @@ import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
+from ml4cvd.tensor_from_file import TMAPS
+from ml4cvd.TensorMap import TensorMap
 from ml4cvd.runtime_data_defines import get_exercise_ecg_hd5_folder
 from ml4cvd.runtime_data_defines import get_resting_ecg_hd5_folder
 from ml4cvd.tensor_from_file import _get_tensor_at_first_date
@@ -17,9 +19,10 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
+from ml4cvd.defines import ECG_REST_LEADS
+
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-RESTING_ECG_PATH_PREFIX = 'ecg_rest'
 RESTING_SIGNAL_LENGTH = 5000
 EXERCISE_ECG_PATH_PREFIX = 'ukb_ecg_bike'
 EXERCISE_SIGNAL_LENGTH = 30000
@@ -52,47 +55,47 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
       return pd.DataFrame(data)
 
     with h5py.File(local_path, mode='r') as hd5:
-      if RESTING_ECG_PATH_PREFIX not in hd5:
-        return None
-
-      # Loop over all ecg_rest fields. If they are the raw waveforms (not
-      # medians), use biosppy package to apply band-pass filter and store
-      # additional data.
-      for field in list(hd5[RESTING_ECG_PATH_PREFIX].keys()):
-        signal = hd5[RESTING_ECG_PATH_PREFIX][field][:]
-        signal_length = len(signal)
-        # If 5000 steps long, this is raw.
-        if signal_length == RESTING_SIGNAL_LENGTH:
-          data['raw'].extend(signal)
-          data['lead'].extend([field] * signal_length)
-          data['ts_reference'].extend(np.array([i*1./(SAMPLING_RATE+1.) for i in range(0, signal_length)]))
-          filtered, _, _ = filter_signal(
-              signal=signal,
-              ftype='FIR',
-              band='bandpass',
-              order=int(0.3 * SAMPLING_RATE),
-              frequency=[.9, 50],
-              sampling_rate=SAMPLING_RATE,
-          )
-          data['filtered'].extend(filtered)
-          filtered_1, _, _ = filter_signal(
-              signal=signal,
-              ftype='FIR',
-              band='bandpass',
-              order=int(0.3 * SAMPLING_RATE),
-              frequency=[.9, 20],
-              sampling_rate=SAMPLING_RATE,
-          )
-          data['filtered_1'].extend(filtered_1)
-          filtered_2, _, _ = filter_signal(
-              signal=signal,
-              ftype='FIR',
-              band='bandpass',
-              order=int(0.3 * SAMPLING_RATE),
-              frequency=[.9, 30],
-              sampling_rate=SAMPLING_RATE,
-          )
-          data['filtered_2'].extend(filtered_2)
+      tmap = TMAPS['ecg_rest_raw']
+      try:
+        signals = tmap.tensor_from_file(tmap, hd5)
+      except ValueError as e:
+        print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+        return pd.DataFrame(data)
+      for (lead, channel) in ECG_REST_LEADS.items():
+        signal = signals[:, channel]
+        if(RESTING_SIGNAL_LENGTH != len(signal)):
+          print(f'Warning: Resting ECG raw signal is malformed for sample {sample_id}')
+          return pd.DataFrame(data)
+        data['raw'].extend(signal)
+        data['lead'].extend([lead] * RESTING_SIGNAL_LENGTH)
+        data['ts_reference'].extend(np.array([i*1./(SAMPLING_RATE+1.) for i in range(0, RESTING_SIGNAL_LENGTH)]))
+        filtered, _, _ = filter_signal(
+            signal=signal,
+            ftype='FIR',
+            band='bandpass',
+            order=int(0.3 * SAMPLING_RATE),
+            frequency=[.9, 50],
+            sampling_rate=SAMPLING_RATE,
+        )
+        data['filtered'].extend(filtered)
+        filtered_1, _, _ = filter_signal(
+            signal=signal,
+            ftype='FIR',
+            band='bandpass',
+            order=int(0.3 * SAMPLING_RATE),
+            frequency=[.9, 20],
+            sampling_rate=SAMPLING_RATE,
+        )
+        data['filtered_1'].extend(filtered_1)
+        filtered_2, _, _ = filter_signal(
+            signal=signal,
+            ftype='FIR',
+            band='bandpass',
+            order=int(0.3 * SAMPLING_RATE),
+            frequency=[.9, 30],
+            sampling_rate=SAMPLING_RATE,
+        )
+        data['filtered_2'].extend(filtered_2)
 
   signal_df = pd.DataFrame(data)
   # Convert the raw signal to mV.
