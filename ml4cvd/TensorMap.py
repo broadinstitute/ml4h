@@ -27,6 +27,7 @@ from ml4cvd.metrics import per_class_precision, per_class_precision_3d, per_clas
 
 MEAN_IDX = 0
 STD_IDX = 1
+DEFAULT_TIME_TO_EVENT_CHANNELS = {'event': 0, 'follow_up_days': 1}
 
 
 class Interpretation(Enum):
@@ -196,6 +197,9 @@ class TensorMap(object):
             # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
             if self.time_series_limit is not None:
                 self.shape = (None,) + self.shape
+
+        if self.channel_map is None and self.is_time_to_event():
+            self.channel_map = DEFAULT_TIME_TO_EVENT_CHANNELS
 
         if self.discretization_bounds is not None:
             self.input_shape = self.shape
