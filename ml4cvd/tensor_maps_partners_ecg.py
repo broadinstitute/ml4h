@@ -11,6 +11,7 @@ from typing import Dict, List, Callable, Union, Tuple
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
+from ml4cvd.normalizer import Standardize
 
 
 YEAR_DAYS = 365.26
@@ -1615,7 +1616,6 @@ def build_cardiac_surgery_outcome_tensor_from_file(
     start_column: str = "surgdt",
     delimiter: str = ",",
     day_window: int = 30,
-    population_normalize: int = None,
     require_exact_length: bool = False,
 ) -> Callable:
     """Build a tensor_from_file function for outcomes given CSV of patients.
@@ -1677,8 +1677,6 @@ def build_cardiac_surgery_outcome_tensor_from_file(
                 raise ValueError(f'lead {cm} voltage length {len(voltage)} did not match required length {tm.shape[0]}')
             voltage = _resample_voltage(voltage, tm.shape[0])
             tensor[..., tm.channel_map[cm]] = voltage
-        if population_normalize is not None:
-            tensor /= population_normalize
 
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]][outcome_table[dtm][mrn_int]] = 1.0
@@ -1712,7 +1710,6 @@ def build_cardiac_surgery_tensor_maps(
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
             outcome2column=outcome2column,
-            population_normalize=2000,
             day_window=30,
         )
         name2tensormap[name] = TensorMap(
@@ -1722,13 +1719,13 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn,
+            normalization=Standardize(mean=0, std=2000),
         )
     name = 'ecg_5000_sts'
     if name in needed_tensor_maps:
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
             outcome2column=outcome2column,
-            population_normalize=2000,
             day_window=30,
         )
         name2tensormap[name] = TensorMap(
@@ -1738,13 +1735,13 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn,
+            normalization=Standardize(mean=0, std=2000),
         )
     name = 'ecg_2500_sts_exact'
     if name in needed_tensor_maps:
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
             outcome2column=outcome2column,
-            population_normalize=2000,
             day_window=30,
             require_exact_length=True,
         )
@@ -1755,13 +1752,13 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn,
+            normalization=Standardize(mean=0, std=2000),
         )
     name = 'ecg_5000_sts_exact'
     if name in needed_tensor_maps:
         tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
             file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
             outcome2column=outcome2column,
-            population_normalize=2000,
             day_window=30,
             require_exact_length=True,
         )
@@ -1772,6 +1769,7 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn,
+            normalization=Standardize(mean=0, std=2000),
         )
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
