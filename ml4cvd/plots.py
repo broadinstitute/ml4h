@@ -431,7 +431,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='o', label='Survivorship')
 
     groups = ['High risk', 'Low risk']
-    alive_per_step = len(survived)
+    predicted_alive = {g: len(survived)//2 for g in groups}
     predicted_sick = {g: 0 for g in groups}
     predicted_days = defaultdict(list)
     predicted_survival = defaultdict(list)
@@ -440,9 +440,9 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         if days_follow_up[day_index] > max_follow_up:
             break
         group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
-        alive_per_step -= survived[day_index]
+        predicted_alive[group] -= survived[day_index]
         predicted_sick[group] += survived[day_index]
-        predicted_survival[group].append(1 - (predicted_sick[group] / alive_per_step))
+        predicted_survival[group].append(1 - (predicted_sick[group] / predicted_alive[group]))
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
