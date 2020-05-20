@@ -1612,12 +1612,12 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'diagnosis_{diagnosis}_newest'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], dependent=False)
-            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
 
         name = f'incident_{diagnosis}_newest'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True, dependent=False)
-            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, True), tensor_from_file=tensor_from_file_fxn)
 
         # Build time to event TensorMaps
         name = f'ecg_2500_to_cox_{diagnosis}'
