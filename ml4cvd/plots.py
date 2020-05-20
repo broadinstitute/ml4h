@@ -446,8 +446,8 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
-        plt.plot(predicted_days[group], predicted_survival[group], marker='o', label=f'{group} Events: {predicted_sick[group]}')
-    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Events:{sick_per_step}\nMax follow up {max_follow_up} days, {max_follow_up//365} years.')
+        plt.plot(predicted_days[group], predicted_survival[group], marker='o', label=f'{group} group had {predicted_sick[group]} events')
+    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored:.0f}, {100*(censored/len(survived)):2.1f}%, Events:{sick_per_step:.0f}, {100*(sick_per_step/len(survived)):2.1f}%\nMax follow up {max_follow_up} days, {max_follow_up//365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="upper right")
