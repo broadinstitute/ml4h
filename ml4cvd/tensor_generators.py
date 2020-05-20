@@ -172,16 +172,19 @@ class TensorGenerator:
         while self.stats_q.qsize() != 0:
             stats += self.stats_q.get()
 
-        error_info = '\n\t\t'.join([
+        all_errors = [
             f'[{error}] - {count:.0f}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True) if 'Error' in error
-        ])
-
+        ]
+        if len(all_errors) > 0:
+            error_info = 'The following errors were raised:\n\t\t'.join(all_errors)
+        else:
+            error_info = 'No errors raised.'
         info_string = '\n\t'.join([
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
             f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
-            f"The following errors occurred:\n\t\t{error_info}",
+            f"\n\t{error_info}",
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
         eps = 1e-7
@@ -351,6 +354,10 @@ class _MultiModalMultiTaskWorker:
         return self.hd5
 
     def _collect_stats(self, tm, tensor):
+        if tm.is_time_to_event():
+            self.epoch_stats[f'{tm.name}_Events'] += tensor[0]
+            self.epoch_stats[f'{tm.name}_sum_follow_up'] += tensor[1]
+            self.epoch_stats[f'{tm.name}_sum_squared_follow_up'] += tensor[1] * tensor[1]
         if tm.is_categorical() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_index_{np.argmax(tensor):.0f}'] += 1
             self.epoch_stats[f'{tm.name}_n'] += 1
