@@ -1609,6 +1609,16 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name2tensormap[f'incident_{diagnosis}'] = TensorMap(f'incident_{diagnosis}', Interpretation.CATEGORICAL, channel_map=_diagnosis_channels(diagnosis, True), cacheable=False)
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS, cacheable=False,
                                              dependent_map={f'incident_{diagnosis}': name2tensormap[f'incident_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
+        name = f'diagnosis_{diagnosis}_newest'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], dependent=False)
+            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
+
+        name = f'incident_{diagnosis}_newest'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True, dependent=False)
+            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
+
         # Build time to event TensorMaps
         name = f'ecg_2500_to_cox_{diagnosis}'
         if name in needed_tensor_maps:
@@ -1630,6 +1640,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         if name in needed_tensor_maps:
             tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True, dependent=False)
             name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
+
         # Build survival curve TensorMaps
         name = f'ecg_2500_to_survival_{diagnosis}_{days_window}'
         if name in needed_tensor_maps:
