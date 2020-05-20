@@ -184,7 +184,7 @@ class TensorGenerator:
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
             f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
-            f"\n\t{error_info}",
+            f"{error_info}",
         ])
         logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
         eps = 1e-7
