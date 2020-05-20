@@ -1291,7 +1291,7 @@ def _date_from_dates(ecg_dates, target_date=None):
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
-    delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True, population_normalize: int = None
+    delimiter: str = ',', incidence_only: bool = False, check_birthday: bool = True, population_normalize: int = None, dependent: bool = False,
 ) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
@@ -1341,10 +1341,15 @@ def build_incidence_tensor_from_file(
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
         if mrn_int not in patient_table:
             raise KeyError(f'{tm.name} mrn not in incidence csv')
-        ecg_dates = list(hd5[tm.path_prefix])
+
         disease_date = date_table[mrn_int] if mrn_int in date_table else None
-        ecg_date = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
-        tensor = _ecg_tensor_from_date(tm, hd5, ecg_date, population_normalize)
+        ecg_dates = list(hd5[tm.path_prefix])
+        if dependent:
+            ecg_date = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
+        else:
+            ecg_dates.sort()
+            ecg_date = ecg_dates[-1]
+
         if check_birthday:
             path = _make_hd5_path(tm, ecg_date, 'dateofbirth')
             birth_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
@@ -1364,11 +1369,16 @@ def build_incidence_tensor_from_file(
                 raise ValueError(f'{tm.name} is skipping prevalent cases.')
             else:
                 index = 1 if disease_date < ecg_datetime else 2
+        if dependent:
+            tensor = _ecg_tensor_from_date(tm, hd5, ecg_date, population_normalize)
+            for dtm in tm.dependent_map:
+                dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
+                dependents[tm.dependent_map[dtm]][index] = 1.0
+            logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {ecg_date} index {index}. dtm: {dependents[tm.dependent_map[dtm]]}')
+        else:
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            tensor[index] = 1.0
 
-        for dtm in tm.dependent_map:
-            dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
-            dependents[tm.dependent_map[dtm]][index] = 1.0
-        logging.debug(f'mrn: {mrn_int}  Got disease_date: {disease_date} assess  {ecg_date} index {index}. dtm: {dependents[tm.dependent_map[dtm]]}')
         return tensor
     return tensor_from_file
 
