@@ -1386,7 +1386,7 @@ def _outcome_channels(outcome: str):
 def loyalty_time_to_event(
     file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
     follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
-    diagnosis_column: str = 'first_stroke', delimiter: str = ',', population_normalize: int = None,
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',', population_normalize: int = None, dependent: bool = True,
 ):
     """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
 
@@ -1436,9 +1436,12 @@ def loyalty_time_to_event(
             raise KeyError(f'{diagnosis_column} did not contain MRN for TensorMap:{tm.name}')
         ecg_dates = list(hd5[tm.path_prefix])
         disease_date = disease_dicts['diagnosis_dates'][mrn_int] if mrn_int in disease_dicts['diagnosis_dates'] else None
-        ecg_date_key = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
+        if dependent:
+            ecg_date_key = _date_from_dates(ecg_dates, disease_date if incidence_only else None)
+        else:
+            ecg_dates.sort()
+            ecg_date_key = ecg_dates[-1]
         ecg_date = datetime.datetime.strptime(ecg_date_key, PARTNERS_DATETIME_FORMAT).date()
-        tensor = _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
 
         if ecg_date > disease_dicts['follow_up_start'][mrn_int]:
             raise ValueError(f'Assessed after enrollment.')
@@ -1456,11 +1459,16 @@ def loyalty_time_to_event(
         if incidence_only and censor_date <= ecg_date and has_disease:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-        for dtm in tm.dependent_map:
-            dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
-            dependents[tm.dependent_map[dtm]][0] = has_disease
-            dependents[tm.dependent_map[dtm]][1] = (censor_date - ecg_date).days
-
+        if dependent:
+            tensor = _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
+            for dtm in tm.dependent_map:
+                dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
+                dependents[tm.dependent_map[dtm]][0] = has_disease
+                dependents[tm.dependent_map[dtm]][1] = (censor_date - ecg_date).days
+        else:
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            tensor[0] = has_disease
+            tensor[1] = (censor_date - ecg_date).days
         return tensor
     return _cox_tensor_from_file
 
@@ -1604,7 +1612,14 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name2tensormap[f'incident_cox_{diagnosis}'] = TensorMap(f'incident_cox_{diagnosis}', Interpretation.TIME_TO_EVENT, cacheable=False)
             name2tensormap[name] = TensorMap(name, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, channel_map=ECG_REST_AMP_LEADS, cacheable=False,
                                              dependent_map={f'incident_cox_{diagnosis}': name2tensormap[f'incident_cox_{diagnosis}']}, tensor_from_file=tensor_from_file_fxn)
-
+        name = f'cox_{diagnosis}_newest'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], dependent=False)
+            name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, tensor_from_file=tensor_from_file_fxn)
+        name = f'incident_cox_{diagnosis}_newest'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True, dependent=False)
+            name2tensormap[name] = TensorMap(name,  Interpretation.TIME_TO_EVENT, tensor_from_file=tensor_from_file_fxn)
         # Build survival curve TensorMaps
         name = f'ecg_2500_to_survival_{diagnosis}_{days_window}'
         if name in needed_tensor_maps:

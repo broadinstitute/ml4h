@@ -429,7 +429,7 @@ def plot_survivorship(survived, days_follow_up, title, prefix='./figures/', max_
         survivorship.append(1 - (sick_per_step / alive_per_step))
     logging.info(f'First day {days_sorted[0]}   Last day, day {days_follow_up[day_index]}, censored {censored} cur day {cur_day}')
     plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='o', label='Survivorship')
-    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Events:{sick_per_step}\nMax follow up {max_follow_up} days, {max_follow_up/365:.0f}.')
+    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Events:{sick_per_step}\nMax follow up {max_follow_up} days, {max_follow_up/365:.0f} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="upper right")
