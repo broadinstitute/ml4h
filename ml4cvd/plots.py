@@ -1652,7 +1652,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [10, 25, 60]
+    perplexities = [25, 75]
     (fig, subplots) = plt.subplots(rows, len(perplexities), figsize=(len(perplexities)*SUBPLOT_SIZE*2, rows*SUBPLOT_SIZE*2))
 
     p2y = {}
@@ -1666,9 +1666,11 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
         if j == rows:
             break
         categorical_subsets = {}
+        categorical_counts = Counter()
         if tm in categorical_labels + gene_labels:
             for c in tm.channel_map:
                 categorical_subsets[tm.channel_map[c]] = label_dict[tm] == tm.channel_map[c]
+                categorical_counts[tm.channel_map[c]] += label_dict[tm] == tm.channel_map[c]
         elif tm in continuous_labels:
             colors = label_dict[tm]
         for i, p in enumerate(perplexities):
@@ -1679,7 +1681,7 @@ def plot_tsne(x_embed, categorical_labels, continuous_labels, gene_labels, label
                 for c in tm.channel_map:
                     channel_index = tm.channel_map[c]
                     color = _hash_string_to_color(c)
-                    color_labels.append(c)
+                    color_labels.append(f'{c} n={categorical_counts[tm.channel_map[c]]}')
                     ax.scatter(p2y[p][categorical_subsets[channel_index], 0], p2y[p][categorical_subsets[channel_index], 1], c=color, alpha=alpha)
                 ax.legend(color_labels, loc='lower left')
             elif tm in continuous_labels:
