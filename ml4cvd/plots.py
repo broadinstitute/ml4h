@@ -428,7 +428,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         censored += 1 - survived[day_index]
         survivorship.append(1 - (sick_per_step / alive_per_step))
     logging.info(f'First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
-    plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='o', label='Survivorship')
+    plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='.', label='Cohort survivorship')
 
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(survived)//2 for g in groups}
@@ -446,7 +446,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
-        plt.plot(predicted_days[group], predicted_survival[group], marker='.', label=f'{group} Events: {predicted_sick[group]}')
+        plt.plot(predicted_days[group], predicted_survival[group], marker='o', label=f'{group} Events: {predicted_sick[group]}')
     plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored}, Events:{sick_per_step}\nMax follow up {max_follow_up} days, {max_follow_up//365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
