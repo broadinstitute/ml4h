@@ -1,32 +1,38 @@
-"""Methods for reshaping raw ECG signal data for use in the pandas ecosystem.
-
-TODO(deflaux): refactor this to make more use of the hd5 parsing code elsewhere
-in the ml4cvd package, so that these reshaping methods become more tolerant of
-file format changes.
-"""
+"""Methods for reshaping raw ECG signal data for use in the pandas ecosystem."""
 import os
 import tempfile
 
 from biosppy.signals.tools import filter_signal
 import h5py
-from ml4cvd.tensor_from_file import TMAPS
-from ml4cvd.TensorMap import TensorMap
+from ml4cvd.defines import ECG_REST_LEADS
+from ml4cvd.defines import ECG_BIKE_LEADS
 from ml4cvd.runtime_data_defines import get_exercise_ecg_hd5_folder
 from ml4cvd.runtime_data_defines import get_resting_ecg_hd5_folder
-from ml4cvd.tensor_from_file import _get_tensor_at_first_date
-from ml4cvd.tensor_from_file import _pass_nan
+from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.TensorMap import TensorMap
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from ml4cvd.defines import ECG_REST_LEADS
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
 RESTING_SIGNAL_LENGTH = 5000
-EXERCISE_ECG_PATH_PREFIX = 'ukb_ecg_bike'
+RESTING_ECG_SIGNAL_TMAP = TMAPS['ecg_rest_raw']
 EXERCISE_SIGNAL_LENGTH = 30000
-EXERCISE_LEADS = ['I', 'II', 'III']
+EXERCISE_ECG_SIGNAL_TMAP = TMAPS['ecg-bike-raw-full']
+EXERCISE_ECG_TREND_TMAPS = [
+    TMAPS['ecg-bike-raw-trend-hr'],
+    TMAPS['ecg-bike-raw-trend-load'],
+    TMAPS['ecg-bike-raw-trend-grade'],
+    TMAPS['ecg-bike-raw-trend-artifact'],
+    TMAPS['ecg-bike-raw-trend-mets'],
+    TMAPS['ecg-bike-raw-trend-pacecount'],
+    TMAPS['ecg-bike-raw-trend-phasename'],
+    TMAPS['ecg-bike-raw-trend-phasetime'],
+    TMAPS['ecg-bike-raw-trend-time'],
+    TMAPS['ecg-bike-raw-trend-vecount'],
+]
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
 
@@ -55,9 +61,8 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
       return pd.DataFrame(data)
 
     with h5py.File(local_path, mode='r') as hd5:
-      tmap = TMAPS['ecg_rest_raw']
       try:
-        signals = tmap.tensor_from_file(tmap, hd5)
+        signals = RESTING_ECG_SIGNAL_TMAP.tensor_from_file(RESTING_ECG_SIGNAL_TMAP, hd5)
       except ValueError as e:
         print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}')
         return pd.DataFrame(data)
@@ -149,22 +154,23 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
       return (pd.DataFrame({}), pd.DataFrame({}))
 
     with h5py.File(local_path, mode='r') as hd5:
-      if EXERCISE_ECG_PATH_PREFIX not in hd5:
-        print(f'Warning: Exercise ECG does not contain ecg_bike_recovery for sample {sample_id}.')
-        return (pd.DataFrame({}), pd.DataFrame({}))
       trend_data = {}
-      for key in hd5[EXERCISE_ECG_PATH_PREFIX].keys():
-        if not key.startswith('trend_'):
-          continue
-        tensor = _get_tensor_at_first_date(hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name=key, handle_nan=_pass_nan)
-        if len(tensor.shape) == 1:  # Add 1-d trend data to this dictionary.
-          trend_data[key.replace('trend_', '')] = tensor
-
-      full = _get_tensor_at_first_date(hd5=hd5, path_prefix=EXERCISE_ECG_PATH_PREFIX, name='full')
+      for tmap in EXERCISE_ECG_TREND_TMAPS:
+        try:
+          tensor = tmap.tensor_from_file(tmap, hd5)
+          trend_data[tmap.name.replace('trend_', '')] = tensor
+        except ValueError as e:
+          print(f'Warning: Exercise ECG trend not available for sample {sample_id}\n\n{e.message}')
+          return (pd.DataFrame({}), pd.DataFrame({}))
+      try:
+        full = EXERCISE_ECG_SIGNAL_TMAP.tensor_from_file(EXERCISE_ECG_SIGNAL_TMAP, hd5)
+      except ValueError as e:
+        print(f'Warning: Exercise ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+        return (pd.DataFrame({}), pd.DataFrame({}))
 
   signal_data = {}
-  for idx in range(0, len(EXERCISE_LEADS)):
-    signal_data['raw_mV_' + EXERCISE_LEADS[idx]] = full[:, idx] * RAW_SCALE
+  for (lead, channel) in ECG_BIKE_LEADS.items():
+    signal_data['raw_mV_' + lead] = full[:, channel] * RAW_SCALE
   signal_data['time'] = np.arange(len(full)) / SAMPLING_RATE
 
   # Convert exercise ecg trend tensor dictionarys to a dataframe and
@@ -186,7 +192,7 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
   )
   tidy_signal_df.reset_index(inplace=True)  # Turn pd multiindex into columns.
   # The leads have a meaningful order, apply the order to this column.
-  lead_factor_type = pd.api.types.CategoricalDtype(categories=EXERCISE_LEADS, ordered=True)
+  lead_factor_type = pd.api.types.CategoricalDtype(categories=ECG_BIKE_LEADS.keys(), ordered=True)
   tidy_signal_df['lead'] = tidy_signal_df.lead.astype(lead_factor_type)
 
   return (trend_df, tidy_signal_df)
