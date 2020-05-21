@@ -177,7 +177,7 @@ class TensorGenerator:
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True) if 'Error' in error
         ]
         if len(all_errors) > 0:
-            error_info = f"The following errors were raised:" + '\n\t\t'.join(all_errors)
+            error_info = f'The following errors were raised:\n\t\t' + '\n\t\t'.join(all_errors)
         else:
             error_info = 'No errors raised.'
         info_string = '\n\t'.join([
