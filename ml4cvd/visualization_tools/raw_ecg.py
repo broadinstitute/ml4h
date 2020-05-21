@@ -17,9 +17,7 @@ import tensorflow as tf
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-RESTING_SIGNAL_LENGTH = 5000
-RESTING_ECG_SIGNAL_TMAP = TMAPS['ecg_rest_raw']
-EXERCISE_SIGNAL_LENGTH = 30000
+RESTING_ECG_SIGNAL_TMAP = TMAPS['ecg_rest']
 EXERCISE_ECG_SIGNAL_TMAP = TMAPS['ecg-bike-raw-full']
 EXERCISE_ECG_TREND_TMAPS = [
     TMAPS['ecg-bike-raw-trend-hr'],
@@ -35,6 +33,11 @@ EXERCISE_ECG_TREND_TMAPS = [
 ]
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
+
+def examine_available_keys(hd5):
+  print(f'hd5 ECG keys {[k for k in hd5.keys() if "ecg" in k]}')
+  for key in [k for k in hd5.keys() if "ecg" in k]:
+    print(f'hd5 {key} keys {[k for k in hd5[key].keys()]}')
 
 def reshape_resting_ecg_to_tidy(sample_id, folder=None):
   """Wrangle raw resting ECG data to tidy.
@@ -63,17 +66,16 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
     with h5py.File(local_path, mode='r') as hd5:
       try:
         signals = RESTING_ECG_SIGNAL_TMAP.tensor_from_file(RESTING_ECG_SIGNAL_TMAP, hd5)
-      except ValueError as e:
-        print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+      except (KeyError, ValueError) as e:
+        print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e}')
+        examine_available_keys(hd5)
         return pd.DataFrame(data)
       for (lead, channel) in ECG_REST_LEADS.items():
         signal = signals[:, channel]
-        if(RESTING_SIGNAL_LENGTH != len(signal)):
-          print(f'Warning: Resting ECG raw signal is malformed for sample {sample_id}')
-          return pd.DataFrame(data)
+        signal_length = len(signal)
         data['raw'].extend(signal)
-        data['lead'].extend([lead] * RESTING_SIGNAL_LENGTH)
-        data['ts_reference'].extend(np.array([i*1./(SAMPLING_RATE+1.) for i in range(0, RESTING_SIGNAL_LENGTH)]))
+        data['lead'].extend([lead] * signal_length)
+        data['ts_reference'].extend(np.array([i*1./(SAMPLING_RATE+1.) for i in range(0, signal_length)]))
         filtered, _, _ = filter_signal(
             signal=signal,
             ftype='FIR',
@@ -159,13 +161,15 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
         try:
           tensor = tmap.tensor_from_file(tmap, hd5)
           trend_data[tmap.name.replace('trend_', '')] = tensor
-        except ValueError as e:
-          print(f'Warning: Exercise ECG trend not available for sample {sample_id}\n\n{e.message}')
+        except (KeyError, ValueError) as e:
+          print(f'Warning: Exercise ECG trend not available for sample {sample_id}\n\n{e}')
+          examine_available_keys(hd5)
           return (pd.DataFrame({}), pd.DataFrame({}))
       try:
         full = EXERCISE_ECG_SIGNAL_TMAP.tensor_from_file(EXERCISE_ECG_SIGNAL_TMAP, hd5)
-      except ValueError as e:
-        print(f'Warning: Exercise ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+      except (KeyError, ValueError) as e:
+        print(f'Warning: Exercise ECG raw signal not available for sample {sample_id}\n\n{e}')
+        examine_available_keys(hd5)
         return (pd.DataFrame({}), pd.DataFrame({}))
 
   signal_data = {}
