@@ -5,6 +5,7 @@ import h5py
 import logging
 import datetime
 import numpy as np
+from functools import partial
 from collections import defaultdict
 from typing import Dict, List, Callable, Union, Tuple
 
@@ -1600,12 +1601,17 @@ def _dates_with_voltage_len(ecg_dates, voltage_len, tm, hd5, voltage_key = list(
     return [ecg_date for ecg_date in ecg_dates if hd5[path(ecg_date)].attrs['len'] == voltage_len]
 
 
-def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
+def _date_in_window_from_dates(ecg_dates, surgery_date, day_window, most_recent_ecg):
     ecg_dates.sort(reverse=True)
+    ecg_datetimes = []
     for ecg_date in ecg_dates:
         ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
         if datetime.timedelta(days=0) <= surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
-            return ecg_date
+            if most_recent_ecg:
+                return ecg_date
+            ecg_datetimes.append(ecg_date)
+    if len(ecg_datetimes) > 0:
+        return np.random.choice(ecg_datetimes)
     raise ValueError(f'No ECG in time window')
 
 
@@ -1617,6 +1623,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
     delimiter: str = ",",
     day_window: int = 30,
     require_exact_length: bool = False,
+    most_recent_ecg: bool = True,
 ) -> Callable:
     """Build a tensor_from_file function for outcomes given CSV of patients.
 
@@ -1669,7 +1676,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for dtm in tm.dependent_map:
             dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
-        ecg_date = _date_in_window_from_dates(ecg_dates, surgery_date_table[mrn_int], day_window)
+        ecg_date = _date_in_window_from_dates(ecg_dates, surgery_date_table[mrn_int], day_window, most_recent_ecg)
         for cm in tm.channel_map:
             path = _make_hd5_path(tm, ecg_date, cm)
             voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
@@ -1705,72 +1712,108 @@ def build_cardiac_surgery_tensor_maps(
         channel_map = _outcome_channels(outcome)
         dependent_maps[outcome] = TensorMap(outcome, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=channel_map)
 
+    tensor_from_file_fxn = partial(
+        build_cardiac_surgery_outcome_tensor_from_file,
+        file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+        outcome2column=outcome2column,
+        day_window=30)
+
+    name = 'ecg_2500_sts_random_from_window'
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(2500, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            normalization=Standardize(mean=0, std=2000),
+        )
+
+    name = 'ecg_5000_sts_random_from_window'
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(5000, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            normalization=Standardize(mean=0, std=2000),
+        )
+
+    name = 'ecg_2500_sts_exact_random_from_window'
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(2500, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            normalization=Standardize(mean=0, std=2000),
+        )
+
+    name = 'ecg_5000_sts_exact_random_from_window'
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(5000, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            normalization=Standardize(mean=0, std=2000),
+        )
+
     name = 'ecg_2500_sts'
     if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-        )
         name2tensormap[name] = TensorMap(
             name,
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
+            channel_map=ECG_REST_AMP_LEADS, 
+            tensor_from_file=tensor_from_file_fxn(),
             normalization=Standardize(mean=0, std=2000),
         )
+
     name = 'ecg_5000_sts'
     if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-        )
         name2tensormap[name] = TensorMap(
             name,
             shape=(5000, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
+            tensor_from_file=tensor_from_file_fxn(),
             normalization=Standardize(mean=0, std=2000),
         )
+
     name = 'ecg_2500_sts_exact'
     if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-            require_exact_length=True,
-        )
         name2tensormap[name] = TensorMap(
             name,
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
+            tensor_from_file=tensor_from_file_fxn(),
             normalization=Standardize(mean=0, std=2000),
         )
+
     name = 'ecg_5000_sts_exact'
     if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-            require_exact_length=True,
-        )
         name2tensormap[name] = TensorMap(
             name,
             shape=(5000, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
+            tensor_from_file=tensor_from_file_fxn(),
             normalization=Standardize(mean=0, std=2000),
         )
+
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
             name2tensormap[outcome] = dependent_maps[outcome]
