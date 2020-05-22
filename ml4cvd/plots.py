@@ -486,6 +486,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     sick_per_step = 0
     censored = 0
     survivorship = []
+    real_survivorship = [1.0]
     for cur_day, day_index in enumerate(days_sorted_index):
         if days_follow_up[day_index] > max_follow_up:
             break
@@ -494,9 +495,10 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         censored += 1 - survived[day_index]
         survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
         alive_per_step -= survived[day_index]
+        real_survivorship.append(real_survivorship[cur_day]*(1 - (sick_per_step / alive_per_step)))
     logging.info(f'First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
     plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='.', label='Cohort survivorship')
-
+    plt.plot(days_sorted[:cur_day], real_survivorship[:cur_day], marker='.', label='Real survivorship')
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(survived)//2 for g in groups}
     predicted_sick = {g: 0 for g in groups}
