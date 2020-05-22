@@ -26,7 +26,7 @@ from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialD
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
-from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add, GlobalAveragePooling1D
 import tensorflow_probability as tfp
 
 from ml4cvd.metrics import get_metric_dict
@@ -456,7 +456,7 @@ def adaptive_normalization(mu: Tensor, sigma: Tensor, target: Tensor) -> Tensor:
 
 
 def global_average_pool(x: Tensor) -> Tensor:
-    return K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+    return GlobalAveragePooling1D()(x) #K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
 
 
 def check_no_bottleneck(u_connect: DefaultDict[TensorMap, Set[TensorMap]], tensor_maps_out: List[TensorMap]) -> bool:
