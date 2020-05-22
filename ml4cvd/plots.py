@@ -98,7 +98,7 @@ def evaluate_predictions(
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
-        plot_calibrations(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
@@ -108,7 +108,7 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-        plot_calibrations(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2], y_predictions.shape[3])
@@ -117,7 +117,7 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-        plot_calibrations(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2] * y_predictions.shape[3], y_predictions.shape[4])
@@ -126,7 +126,7 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
-        plot_calibrations(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
         plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder)
@@ -229,7 +229,72 @@ def plot_calibration(prediction, truth, label, title, prefix='./figures/', pos_l
     plt.clf()
 
 
-def plot_calibrations(prediction, truth, labels, title, prefix='./figures/'):
+def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
+    lw = 2
+    true_sums = np.sum(truth, axis=0)
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+
+    for p in predictions:
+        fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
+        for key in labels:
+            if 'no_' in key and len(labels) == 2:
+                continue
+            color = _hash_string_to_color(p+key)
+            label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
+            plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+            logging.info(f"ROC Label {label_text}")
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([-0.02, 1.03])
+    plt.ylabel(RECALL_LABEL)
+    plt.xlabel(FALLOUT_LABEL)
+    plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
+    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
+
+    figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    plt.clf()
+    logging.info("Saved ROC curve at: {}".format(figure_path))
+
+
+def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./figures/'):
+    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+    true_sums = np.sum(truth, axis=0)
+    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+
+    for p in predictions:
+        for k in labels:
+            color = _hash_string_to_color(p+k)
+            brier_score = brier_score_loss(truth[..., labels[k]], predictions[p][..., labels[k]], pos_label=1)
+            fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], predictions[p][..., labels[k]], n_bins=10)
+            ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+            ax2.hist(predictions[p][..., labels[k]], range=(0, 1), bins=10, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
+    ax1.set_ylabel("Fraction of positives")
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.legend(loc="lower right")
+    ax1.set_title('Calibrations plots  (reliability curve)')
+
+    ax2.set_xlabel("Mean predicted value")
+    ax2.set_ylabel("Count")
+    ax2.legend(loc="upper center", ncol=2)
+
+    plt.tight_layout()
+
+    figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    logging.info(f"Try to save calibration comparison plot at: {figure_path}")
+    plt.savefig(figure_path)
+    plt.clf()
+
+
+def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figures/'):
     _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))

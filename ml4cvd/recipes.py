@@ -36,7 +36,7 @@ from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, pl
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
-from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
+from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne, plot_prediction_calibrations
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
@@ -688,6 +688,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 new_predictions[f'{m}_C_Index_{c_index[0]:0.3f}'] = predictions[tm][m]
             plot_rocs(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder)
             rocs.append((new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}))
+            plot_prediction_calibrations(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0})
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
