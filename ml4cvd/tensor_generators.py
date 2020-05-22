@@ -186,7 +186,7 @@ class TensorGenerator:
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
             f"{error_info}",
         ])
-        logging.info(f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}")
+        logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
         eps = 1e-7
         for tm in self.input_maps + self.output_maps:
             if self.true_epochs != 1:
@@ -207,6 +207,16 @@ class TensorGenerator:
                 logging.info(
                     f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
                     f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}",
+                )
+            elif tm.is_time_to_event():
+                sum_squared = stats[f'{tm.name}_sum_squared']
+                n = stats[f'{tm.name}_n'] + eps
+                n_sum = stats[f'{tm.name}_sum']
+                mean = n_sum / n
+                std = np.sqrt((sum_squared/n)-(mean*mean))
+                logging.info(
+                    f"Time to event \n{tm.name} Total events: {stats[f'{tm.name}_events']}, Mean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
+                    f"Max Follow Up:{stats[f'{tm.name}_max']:0.2f} Min Follow Up:{stats[f'{tm.name}_min']:0.2f}",
                 )
 
     def kill_workers(self):
@@ -349,9 +359,7 @@ class _MultiModalMultiTaskWorker:
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
-
         slices = tuple(slice(min(tm.static_shape()[i], tensor.shape[i])) for i in range(len(tensor.shape)))
-        #logging.debug(f' sliices is {slices} and batch shape {batch[name].shape} and tensor shape {tensor.shape} and static: {tm.static_shape()}')
         batch[name][(idx,)+slices] = tensor[slices]
         if tm.cacheable:
             self.cache[path, name] = batch[name][idx]
@@ -360,22 +368,22 @@ class _MultiModalMultiTaskWorker:
 
     def _collect_stats(self, tm, tensor):
         if tm.is_time_to_event():
-            self.epoch_stats[f'{tm.name}_Events'] += tensor[0]
-            self.epoch_stats[f'{tm.name}_sum_follow_up'] += tensor[1]
-            self.epoch_stats[f'{tm.name}_sum_squared_follow_up'] += tensor[1] * tensor[1]
+            self.epoch_stats[f'{tm.name}_events'] += tensor[0]
+            self._collect_continuous_stats(tm, tensor[1])
         if tm.is_categorical() and tm.axes() == 1:
             self.epoch_stats[f'{tm.name}_index_{np.argmax(tensor):.0f}'] += 1
-            self.epoch_stats[f'{tm.name}_n'] += 1
         if tm.is_continuous() and tm.axes() == 1:
-            self.epoch_stats[f'{tm.name}_n'] += 1
-            rescaled = tm.rescale(tensor)[0]
-            if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
-                self.epoch_stats[f'{tm.name}_max'] = min(0, rescaled)
-                self.epoch_stats[f'{tm.name}_min'] = max(0, rescaled)
-            self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
-            self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
-            self.epoch_stats[f'{tm.name}_sum'] += rescaled
-            self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
+            self._collect_continuous_stats(tm, tm.rescale(tensor)[0])
+        self.epoch_stats[f'{tm.name}_n'] += 1
+
+    def _collect_continuous_stats(self, tm, rescaled):
+        if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
+            self.epoch_stats[f'{tm.name}_max'] = min(0, rescaled)
+            self.epoch_stats[f'{tm.name}_min'] = max(0, rescaled)
+        self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
+        self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
+        self.epoch_stats[f'{tm.name}_sum'] += rescaled
+        self.epoch_stats[f'{tm.name}_sum_squared'] += rescaled * rescaled
 
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
