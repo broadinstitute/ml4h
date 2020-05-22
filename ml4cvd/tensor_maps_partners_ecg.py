@@ -1716,7 +1716,8 @@ def build_cardiac_surgery_tensor_maps(
         build_cardiac_surgery_outcome_tensor_from_file,
         file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
         outcome2column=outcome2column,
-        day_window=30)
+        day_window=30,
+    )
 
     name = 'ecg_2500_sts_random_from_window'
     if name in needed_tensor_maps:
@@ -1727,6 +1728,7 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            cacheable=False,
             normalization=Standardize(mean=0, std=2000),
         )
 
@@ -1739,6 +1741,7 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            cacheable=False,
             normalization=Standardize(mean=0, std=2000),
         )
 
@@ -1751,6 +1754,7 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            cacheable=False,
             normalization=Standardize(mean=0, std=2000),
         )
 
@@ -1763,6 +1767,7 @@ def build_cardiac_surgery_tensor_maps(
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            cacheable=False,
             normalization=Standardize(mean=0, std=2000),
         )
 
@@ -1773,7 +1778,7 @@ def build_cardiac_surgery_tensor_maps(
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS, 
+            channel_map=ECG_REST_AMP_LEADS,
             tensor_from_file=tensor_from_file_fxn(),
             normalization=Standardize(mean=0, std=2000),
         )
