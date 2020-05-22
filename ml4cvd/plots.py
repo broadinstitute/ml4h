@@ -134,8 +134,8 @@ def evaluate_predictions(
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
-        logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
-        new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
+        logging.info(f"{[f'{label}: {value:.3g}' for label, value in zip(concordance_return_values, c_index)]}")
+        new_title = f'{title}_C_Index_{c_index[0]:0.3g}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
         logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
         plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, {tm.name: 0}, title, folder)
