@@ -288,6 +288,9 @@ class TensorMap(object):
     def axes(self):
         return len(self.shape)
 
+    def static_shape(self, limit=6):
+        return tuple([size if size else limit for size in self.shape])
+
     def hd5_key_guess(self):
         if self.path_prefix is None:
             return f'/{self.name}/'

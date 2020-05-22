@@ -324,8 +324,9 @@ class _MultiModalMultiTaskWorker:
         self.epoch_stats = Counter()
         self.start = time.time()
         self.paths_in_batch = []
-        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.shape) for tm in input_maps}
-        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.shape) for tm in output_maps}
+
+        self.in_batch = {tm.input_name(): np.zeros((batch_size,) + tm.static_shape()) for tm in input_maps}
+        self.out_batch = {tm.output_name(): np.zeros((batch_size,) + tm.static_shape()) for tm in output_maps}
 
         self.cache = TensorMapArrayCache(cache_size, input_maps, output_maps, true_epoch_len)
         self.dependents = {}
@@ -335,6 +336,7 @@ class _MultiModalMultiTaskWorker:
         name = tm.input_name() if is_input else tm.output_name()
         batch = self.in_batch if is_input else self.out_batch
         idx = self.stats['batch_index']
+
         if tm in self.dependents:
             batch[name][idx] = self.dependents[tm]
             if tm.cacheable:
@@ -347,7 +349,8 @@ class _MultiModalMultiTaskWorker:
         if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
-        batch[name][idx] = tensor
+        slices = [min(batch[name].shape[i+1], size) for i, size in enumerate(tensor.shape)]
+        batch[name][[idx]+slices] = tensor[slices]
         if tm.cacheable:
             self.cache[path, name] = tensor
         self._collect_stats(tm, tensor)
