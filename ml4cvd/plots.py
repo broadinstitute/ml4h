@@ -136,7 +136,7 @@ def evaluate_predictions(
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value:.2f}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.2f}'
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, {f'{new_title}_vs_ROC': 0}, new_title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
         logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
         plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, {tm.name: 0}, title, folder)
         plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder)
@@ -1432,7 +1432,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
         color = _hash_string_to_color(key)
         label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
         plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-        logging.info(f'ROC Label {label_text}')
+        logging.info(f'ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}')
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
@@ -1440,7 +1440,7 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right", bbox_to_anchor=(0.98, 0))
     plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
-    plt.title(f'ROC {title} n={np.sum(true_sums):.0f}\n')
+    plt.title(f'ROC {title} n={truth.shape[0]:.0f}\n')
 
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
