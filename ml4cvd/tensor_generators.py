@@ -205,8 +205,8 @@ class TensorGenerator:
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
                 logging.info(
-                    f'Continuous value \n{tm.name} Mean:{mean:0.2f} Standard Deviation:{std:0.2f} '
-                    f"Maximum:{stats[f'{tm.name}_max']:0.2f} Minimum:{stats[f'{tm.name}_min']:0.2f}",
+                    f'Continuous value \n{tm.name} Mean: {mean:0.2f}, Standard Deviation: {std:0.2f} '
+                    f"Maximum: {stats[f'{tm.name}_max']:0.2f}, Minimum: {stats[f'{tm.name}_min']:0.2f}",
                 )
             elif tm.is_time_to_event():
                 sum_squared = stats[f'{tm.name}_sum_squared']
@@ -216,7 +216,7 @@ class TensorGenerator:
                 std = np.sqrt((sum_squared/n)-(mean*mean))
                 logging.info(
                     f"Time to event \n{tm.name} Total events: {stats[f'{tm.name}_events']}, Mean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
-                    f"Max Follow Up:{stats[f'{tm.name}_max']:0.2f} Min Follow Up:{stats[f'{tm.name}_min']:0.2f}",
+                    f"Max Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}",
                 )
 
     def kill_workers(self):
