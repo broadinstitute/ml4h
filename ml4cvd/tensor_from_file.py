@@ -160,6 +160,8 @@ def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
         tensor[1] = (censor_date - assess_date).days
+        if np.isnan(tensor[1]):
+            raise ValueError(f'Got nan follow up from {censor_date} and {assess_date} diffed: {(censor_date - assess_date).days} ')
         return tensor
     return _cox_tensor_from_file
 
