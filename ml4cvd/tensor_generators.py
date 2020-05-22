@@ -233,16 +233,16 @@ class TensorMapArrayCache:
         output_tms = [tm for tm in output_tms if tm.cacheable]
         self.max_size = max_size
         self.data = {}
-        self.row_size = sum(np.zeros(tm.shape, dtype=np.float32).nbytes for tm in set(input_tms + output_tms))
+        self.row_size = sum(np.zeros(tm.static_shape(), dtype=np.float32).nbytes for tm in set(input_tms + output_tms))
         self.nrows = min(int(max_size / self.row_size), max_rows) if self.row_size else 0
         self.autoencode_names: Dict[str, str] = {}
         for tm in input_tms:
-            self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
+            self.data[tm.input_name()] = np.zeros((self.nrows,) + tm.static_shape(), dtype=np.float32)
         for tm in output_tms:
             if tm in input_tms:  # Useful for autoencoders
                 self.autoencode_names[tm.output_name()] = tm.input_name()
             else:
-                self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.shape, dtype=np.float32)
+                self.data[tm.output_name()] = np.zeros((self.nrows,) + tm.static_shape(), dtype=np.float32)
         self.files_seen = Counter()  # name -> max position filled in cache
         self.key_to_index = {}  # file_path, name -> position in self.data
         self.hits = 0
@@ -423,8 +423,8 @@ class _MultiModalMultiTaskWorker:
                 self.q.put(out)
                 self.paths_in_batch = []
                 self.stats['batch_index'] = 0
-                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.input_maps}
-                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.shape) for tm in self.output_maps}
+                self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.static_shape()) for tm in self.input_maps}
+                self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.static_shape()) for tm in self.output_maps}
             if i > 0 and i % self.true_epoch_len == 0:
                 self._on_epoch_end()
 
