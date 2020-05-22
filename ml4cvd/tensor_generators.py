@@ -350,9 +350,9 @@ class _MultiModalMultiTaskWorker:
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
 
-        slices = [min(tm.static_shape()[i], size) for i, size in enumerate(tensor.shape)]
+        slices = tuple([min(tm.static_shape()[i], size) for i, size in enumerate(tensor.shape)])
         logging.debug(f' sliices is {slices} and batch shape {batch[name].shape} and tensor shape {tensor.shape} and static: {tm.static_shape()}')
-        batch[name][[idx]+slices] = tensor[slices]
+        batch[name][(idx,)+slices] = tensor[slices]
         if tm.cacheable:
             self.cache[path, name] = tensor
         self._collect_stats(tm, tensor)
