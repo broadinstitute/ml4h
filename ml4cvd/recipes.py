@@ -17,8 +17,8 @@ from collections import Counter, defaultdict
 from sksurv.metrics import concordance_index_censored
 
 import tensorflow as tf
-#gpus = tf.config.experimental.list_physical_devices('GPU')
-#tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.optimizers import find_learning_rate
