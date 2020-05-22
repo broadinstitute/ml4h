@@ -351,10 +351,10 @@ class _MultiModalMultiTaskWorker:
         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
 
         slices = tuple(slice(min(tm.static_shape()[i], tensor.shape[i])) for i in range(len(tensor.shape)))
-        logging.debug(f' sliices is {slices} and batch shape {batch[name].shape} and tensor shape {tensor.shape} and static: {tm.static_shape()}')
+        #logging.debug(f' sliices is {slices} and batch shape {batch[name].shape} and tensor shape {tensor.shape} and static: {tm.static_shape()}')
         batch[name][(idx,)+slices] = tensor[slices]
         if tm.cacheable:
-            self.cache[path, name] = tensor
+            self.cache[path, name] = tensor[slices]
         self._collect_stats(tm, tensor)
         return self.hd5
 
