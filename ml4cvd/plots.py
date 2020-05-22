@@ -273,7 +273,7 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
             color = _hash_string_to_color(p+k)
             brier_score = brier_score_loss(truth[..., labels[k]], predictions[p][..., labels[k]], pos_label=1)
             fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], predictions[p][..., labels[k]], n_bins=10)
-            ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{p} {k} Brier score: {brier_score:0.3f}", color=color)
+            ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{p} {k} Brier: {brier_score:0.3f}", color=color)
             ax2.hist(predictions[p][..., labels[k]], range=(0, 1), bins=10, label=f'{p} {k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
             logging.info(f'{p} {k} n={true_sums[labels[k]]:.0f}\nBrier score: {brier_score:0.3f}')
     ax1.set_ylabel("Fraction of positives")
@@ -283,7 +283,7 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
 
     ax2.set_xlabel("Mean predicted value")
     ax2.set_ylabel("Count")
-    ax2.legend(loc="upper center", ncol=2)
+    ax2.legend(loc="upper center")
 
     plt.tight_layout()
 
