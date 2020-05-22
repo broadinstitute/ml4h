@@ -141,69 +141,57 @@ def _get_voltage_from_xml(fpath_xml: str) -> Tuple[Dict[str, np.ndarray], str]:
 
 
 def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
-    # Initialize empty dictionary in which to store text from the XML
     ecg_data = dict()
 
-    # Define tags that we want to find and use SoupStrainer to speed up search
+    # define tags that we want to find and use SoupStrainer to speed up search
     tags = [
         'patientdemographics',
         'testdemographics',
         'order',
         'restingecgmeasurements',
         'originalrestingecgmeasurements',
+        'diagnosis',
+        'originaldiagnosis',
         'intervalmeasurementtimeresolution',
         'intervalmeasurementamplituderesolution',
         'intervalmeasurementfilter',
-        'diagnosis',
-        'originaldiagnosis',
+        'waveform',
     ]
     strainer = SoupStrainer(tags)
 
-    # Use lxml parser, which makes all tags lower case
+    # lxml parser makes all tags lower case
     with open(fpath_xml, 'r') as f:
         soup = BeautifulSoup(f, 'lxml', parse_only=strainer)
 
-    # If the XML is gibberish and un-parseable,
-    # then soup.prettify() will return '' or False
-    # and we should return an empty dict()
+    for tag in tags:
+        tag_suffix = ''
+        if tag == 'restingecgmeasurements':
+            tag_suffix = '_md'
+        elif tag == 'originalrestingecgmeasurements':
+            tag_suffix = '_pc'
+        elif tag == 'diagnosis':
+            ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find(tag))
+            continue
+        elif tag == 'originaldiagnosis':
+            ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find(tag))
+            continue
+        elif tag == 'waveform':
+            voltage_data = _get_voltage_from_waveform_tag(soup.find_all(tag))
+            ecg_date.update(voltage_data)
+            continue
 
-    # If the XML is not gibberish, parse the contents
-    if soup.prettify():
+        soup_tag = soup.find(tag)
 
-        # Loop through the tags we want to extract
-        for tag in tags:
-            append_tag = ''
-            if tag == 'restingecgmeasurements':
-                append_tag = '_md'
-            elif tag == 'originalrestingecgmeasurements':
-                append_tag = '_pc'
-            elif tag == 'diagnosis':
-                # Parse text of cardiologist read within <Diagnosis> tag and save to ecg_data dict
-                ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find('diagnosis'))
-                continue
-            elif tag == 'originaldiagnosis':
-                # Parse text of computer read within <OriginalDiagnosis> tag and save to ecg_data dict
-                ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find('originaldiagnosis'))
-                continue
+        if soup_tag is not None:
+            # find sub tags
+            soup_sub_tags = soup_tag.find_all()
 
-            # Ovewrite soup with contents in major tag
-            soup_of_tag = soup.find(tag)
+            # if there are no sub tags, use original tag
+            if len(soup_sub_tags) == 0:
+                soup_sub_tags = [soup_tag]
 
-            # Check if soup_of_tag is not None, otherwise find_all() throws an
-            # error if called on a 'NoneType' object
-            if soup_of_tag is not None:
-                # Find all child elements in subset
-                elements = soup_of_tag.find_all()
+            ecg_data.update({st.name + tag_suffix: st.text for st in soup_sub_tags})
 
-                # If there are no child elements, get the text of the tag
-                if not elements:
-                    elements = [soup_of_tag]
-
-                # Iterate through child elements via list comprehension
-                # and save the element key-value (name-text) to dict
-                [ecg_data.update({el.name + append_tag: el.get_text()}) for el in elements]
-
-    # Return dict
     return ecg_data
 
 
