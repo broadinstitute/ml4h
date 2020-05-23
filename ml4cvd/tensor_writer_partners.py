@@ -10,11 +10,11 @@ from collections import defaultdict
 from typing import List, Dict, Tuple, Union
 from xml.parsers.expat import ExpatError, ParserCreate
 
+import bs4
 import h5py
 import numcodecs
 import numpy as np
 from joblib import Parallel, delayed
-from bs4 import BeautifulSoup, SoupStrainer, PageElement
 
 from ml4cvd.defines import TENSOR_EXT, XML_EXT
 
@@ -140,7 +140,7 @@ def _get_voltage_from_xml(fpath_xml: str) -> Tuple[Dict[str, np.ndarray], str]:
     return voltage, units
 
 
-def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
+def _data_from_xml(fpath_xml: str) -> Dict[str, Union[str, np.ndarray]]:
     ecg_data = dict()
 
     # define tags that we want to find and use SoupStrainer to speed up search
@@ -157,11 +157,11 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
         'intervalmeasurementfilter',
         'waveform',
     ]
-    strainer = SoupStrainer(tags)
+    strainer = bs4.SoupStrainer(tags)
 
     # lxml parser makes all tags lower case
     with open(fpath_xml, 'r') as f:
-        soup = BeautifulSoup(f, 'lxml', parse_only=strainer)
+        soup = bs4.BeautifulSoup(f, 'lxml', parse_only=strainer)
 
     for tag in tags:
         tag_suffix = ''
@@ -176,8 +176,8 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
             ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find(tag))
             continue
         elif tag == 'waveform':
-            voltage_data = _get_voltage_from_waveform_tag(soup.find_all(tag))
-            ecg_date.update(voltage_data)
+            voltage_data = _get_voltage_from_waveform_tags(soup.find_all(tag))
+            ecg_data.update(voltage_data)
             continue
 
         soup_tag = soup.find(tag)
@@ -195,7 +195,59 @@ def _text_from_xml(fpath_xml: str) -> Dict[str, str]:
     return ecg_data
 
 
-def _parse_soup_diagnosis(input_from_soup: PageElement) -> str:
+def _get_voltage_from_waveform_tags(waveform_tags: bs4.ResultSet) -> Dict[str, Union[str, np.ndarray]]:
+    voltage_data = dict()
+    metadata_tags = ['samplebase', 'sampleexponent', 'highpassfilter', 'lowpassfilter', 'acfilter']
+
+    for waveform_tag in waveform_tags:
+        # only use full rhythm waveforms, do not use median waveforms
+        if waveform_tag.find('waveformtype').text != 'Rhythm':
+            continue
+
+        # get voltage metadata
+        for metadata_tag in metadata_tags:
+            mt = waveform_tag.find(metadata_tag)
+            if mt is not None:
+                voltage_data[f'waveform_{metadata_tag}'] = mt.text
+
+        # get voltage leads
+        lead_tags = waveform_tag.find_all('leaddata')
+        lead_data, lead_units, lead_length = _get_voltage_from_lead_tags(lead_tags)
+        voltage_data.update(lead_data)
+
+        return voltage_data
+
+
+def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Tuple[Dict[str, np.ndarray], Union[str, None], Union[str, None]]:
+    lead_data = dict()
+    all_lead_units = []
+    all_lead_lengths = []
+
+    def _decode_waveform(waveform_raw: str, scale: float) -> np.ndarray:
+        decoded = base64.b64decode(waveform_raw)
+        waveform = [struct.unpack("h", bytes([decoded[t], decoded[t + 1]]))[0] for t in range(0, len(decoded), 2)]
+        return np.ndarray[waveform] * scale
+
+    try:
+        for lead_tag in lead_tags:
+            lead_id = lead_tag.find('leadid').text
+            lead_scale = lead_tag.find('leadamplitudeunitsperbit').text
+            lead_units = lead_tag.find('leadamplitudeunits').text
+            lead_length = lead_tag.find('leadsamplecounttotal').text
+            lead_waveform_raw = lead_tag.find('waveformdata').text
+            lead_waveform = _decode_waveform(lead_waveform_raw, float(lead_scale))
+
+            assert(int(lead_length) == len(lead_waveform))
+            lead_data[lead_id] = lead_waveform
+            # TODO check all leads have same units
+            # TODO check all leads have same length
+            # TODO check lead_length == len(lead_waveform) after decoding
+    except (AttributeError, AssertionError) as e:
+        logging.warning(e)
+        return dict(), None, None
+
+
+def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
 
     parsed_text = ''
 
