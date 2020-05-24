@@ -22,7 +22,7 @@ from tensorflow.keras.models import Model
 import matplotlib
 
 matplotlib.use(
-    "Agg"
+    "Agg",
 )  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
@@ -70,7 +70,7 @@ def sort_csv(tensors, tensor_maps_in):
         for name in sorted(os.listdir(os.path.join(tensors, folder))):
             try:
                 with h5py.File(
-                    os.path.join(tensors, folder, name), "r"
+                    os.path.join(tensors, folder, name), "r",
                 ) as hd5:
                     for tm in tensor_maps_in:
                         tensor = tm.postprocess_tensor(
@@ -99,14 +99,14 @@ def sort_csv(tensors, tensor_maps_in):
                 # logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
 
         logging.info(
-            f"In folder {folder} with {len(os.listdir(os.path.join(tensors, folder)))} ECGs"
+            f"In folder {folder} with {len(os.listdir(os.path.join(tensors, folder)))} ECGs",
         )
         if len(os.listdir(os.path.join(tensors, folder))) > 0:
             logging.info(
-                f'I Zero padded has:{stats[f"{folder}_lead_i_zeros_zero_padded"]}, {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%'
+                f'I Zero padded has:{stats[f"{folder}_lead_i_zeros_zero_padded"]}, {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%',
             )
             logging.info(
-                f'V6 Zero padded has:{stats[f"{folder}_lead_v6_zeros_zero_padded"]}, {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%'
+                f'V6 Zero padded has:{stats[f"{folder}_lead_v6_zeros_zero_padded"]}, {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%',
             )
     for k, v in sorted(stats.items(), key=lambda x: x[0]):
         logging.info(f"{k} has {v}")
@@ -127,7 +127,7 @@ def predictions_to_pngs(
         os.makedirs(folder)
     for y, tm in zip(predictions, tensor_maps_out):
         if not isinstance(
-            predictions, list
+            predictions, list,
         ):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = predictions
         for im in tensor_maps_in:
@@ -136,7 +136,7 @@ def predictions_to_pngs(
             elif len(tm.shape) == len(im.shape):
                 input_map = im
         logging.info(
-            f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}"
+            f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}",
         )
         if tm.is_mesh():
             vmin = np.min(data[input_map.input_name()])
@@ -146,14 +146,14 @@ def predictions_to_pngs(
                 if input_map.axes() == 4 and input_map.shape[-1] == 1:
                     sample_data = data[input_map.input_name()][i, ..., 0]
                     cols = max(
-                        2, int(math.ceil(math.sqrt(sample_data.shape[-1])))
+                        2, int(math.ceil(math.sqrt(sample_data.shape[-1]))),
                     )
                     rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = (
                         f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}"
                     )
                     logging.info(
-                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}"
+                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}",
                     )
                     _plot_3d_tensor_slices_as_gray(
                         sample_data,
@@ -179,7 +179,7 @@ def predictions_to_pngs(
                             vmax=vmax,
                         )
                     corner, width, height = _2d_bbox_to_corner_and_size(
-                        labels[tm.output_name()][i]
+                        labels[tm.output_name()][i],
                     )
                     ax.add_patch(
                         matplotlib.patches.Rectangle(
@@ -189,10 +189,10 @@ def predictions_to_pngs(
                             linewidth=1,
                             edgecolor="g",
                             facecolor="none",
-                        )
+                        ),
                     )
                     y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(
-                        y[i]
+                        y[i],
                     )
                     ax.add_patch(
                         matplotlib.patches.Rectangle(
@@ -202,13 +202,13 @@ def predictions_to_pngs(
                             linewidth=1,
                             edgecolor="y",
                             facecolor="none",
-                        )
+                        ),
                     )
                     logging.info(
-                        f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}"
+                        f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}",
                     )
                 plt.savefig(
-                    f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}"
+                    f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}",
                 )
         elif len(tm.shape) in [1, 2]:
             vmin = np.min(data[input_map.input_name()])
@@ -218,14 +218,14 @@ def predictions_to_pngs(
                 if input_map.axes() == 4 and input_map.shape[-1] == 1:
                     sample_data = data[input_map.input_name()][i, ..., 0]
                     cols = max(
-                        2, int(math.ceil(math.sqrt(sample_data.shape[-1])))
+                        2, int(math.ceil(math.sqrt(sample_data.shape[-1]))),
                     )
                     rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = (
                         f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}"
                     )
                     logging.info(
-                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}"
+                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}",
                     )
                     _plot_3d_tensor_slices_as_gray(
                         sample_data,
@@ -251,7 +251,7 @@ def predictions_to_pngs(
                             vmax=vmax,
                         )
                     corner, width, height = _2d_bbox_to_corner_and_size(
-                        labels[tm.output_name()][i]
+                        labels[tm.output_name()][i],
                     )
                     ax.add_patch(
                         matplotlib.patches.Rectangle(
@@ -261,10 +261,10 @@ def predictions_to_pngs(
                             linewidth=1,
                             edgecolor="g",
                             facecolor="none",
-                        )
+                        ),
                     )
                     y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(
-                        y[i]
+                        y[i],
                     )
                     ax.add_patch(
                         matplotlib.patches.Rectangle(
@@ -274,13 +274,13 @@ def predictions_to_pngs(
                             linewidth=1,
                             edgecolor="y",
                             facecolor="none",
-                        )
+                        ),
                     )
                     logging.info(
-                        f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}"
+                        f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}",
                     )
                 plt.savefig(
-                    f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}"
+                    f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}",
                 )
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
@@ -289,7 +289,7 @@ def predictions_to_pngs(
                     plt.imsave(
                         f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}",
                         np.argmax(
-                            labels[tm.output_name()][i], axis=-1, cmap="gray"
+                            labels[tm.output_name()][i], axis=-1, cmap="gray",
                         ),
                     )
                     plt.imsave(
@@ -329,11 +329,11 @@ def predictions_to_pngs(
                 for j in range(y.shape[3]):
                     if tm.is_categorical():
                         truth = np.argmax(
-                            labels[tm.output_name()][i, :, :, j, :], axis=-1
+                            labels[tm.output_name()][i, :, :, j, :], axis=-1,
                         )
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)
                         true_donut = np.ma.masked_where(
-                            truth == 2, data[im.input_name()][i, :, :, j, 0]
+                            truth == 2, data[im.input_name()][i, :, :, j, 0],
                         )
                         predict_donut = np.ma.masked_where(
                             prediction == 2,
@@ -404,7 +404,7 @@ def plot_while_learning(
     tensor_maps_out: List[TensorMap],
     generate_train: Generator[
         Tuple[
-            Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]
+            Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]],
         ],
         None,
         None,
@@ -436,14 +436,14 @@ def plot_while_learning(
                 vmin = np.min(mri_in)
                 vmax = np.max(mri_in)
                 logging.info(
-                    f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}"
+                    f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}",
                 )
                 if tm.is_categorical() and len(tm.shape) == 3:
                     for yi in range(y.shape[0]):
                         plt.imsave(
                             f"{folder}batch_{yi}_truth_epoch_{i:03d}{IMAGE_EXT}",
                             np.argmax(
-                                test_labels[tm.output_name()][yi], axis=-1
+                                test_labels[tm.output_name()][yi], axis=-1,
                             ),
                             cmap="gray",
                         )
@@ -468,10 +468,10 @@ def plot_while_learning(
                             )
                             prediction = np.argmax(y[yi, :, :, j, :], axis=-1)
                             true_donut = np.ma.masked_where(
-                                truth == 2, mri_in[yi, :, :, j, 0]
+                                truth == 2, mri_in[yi, :, :, j, 0],
                             )
                             predict_donut = np.ma.masked_where(
-                                prediction == 2, mri_in[yi, :, :, j, 0]
+                                prediction == 2, mri_in[yi, :, :, j, 0],
                             )
                             plt.imsave(
                                 f"{folder}batch_{yi}_slice_{j:03d}_prediction_epoch_{i:03d}{IMAGE_EXT}",
@@ -526,7 +526,7 @@ def plot_while_learning(
             subplot_scatters(scatters, folder + f"epoch_{i:03d}_")
 
         model.fit_generator(
-            generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1
+            generate_train, steps_per_epoch=training_steps, epochs=1, verbose=1,
         )
 
 
@@ -543,10 +543,10 @@ def plot_histograms_of_tensors_in_pdf(
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
     stats, num_tensor_files = _collect_continuous_stats_from_tensor_files(
-        tensor_folder, max_samples
+        tensor_folder, max_samples,
     )
     logging.info(
-        f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them..."
+        f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...",
     )
     plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
@@ -566,10 +566,10 @@ def plot_heatmap_of_tensors(
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
     stats, _ = _collect_continuous_stats_from_tensor_files(
-        tensor_folder, max_samples, ["0"], 0
+        tensor_folder, max_samples, ["0"], 0,
     )
     logging.info(
-        f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations..."
+        f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...",
     )
     plot_heatmap(stats, id, min_samples, output_folder)
 
@@ -589,10 +589,10 @@ def tabulate_correlations_of_tensors(
     :param max_samples: specifies how many tensor files to down-sample from; by default all tensors are used
     """
     stats, _ = _collect_continuous_stats_from_tensor_files(
-        tensor_folder, max_samples
+        tensor_folder, max_samples,
     )
     logging.info(
-        f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations..."
+        f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...",
     )
     _tabulate_correlations(stats, run_id, min_samples, output_folder)
 
@@ -630,7 +630,7 @@ def mri_dates(tensors: str, output_folder: str, run_id: str):
             output_folder,
             run_id,
             disease + "_" + data_date_key + "_incident" + IMAGE_EXT,
-        )
+        ),
     )
     plt.figure(figsize=(12, 12))
     plt.xlabel(data_date_key)
@@ -640,7 +640,7 @@ def mri_dates(tensors: str, output_folder: str, run_id: str):
             output_folder,
             run_id,
             disease + "_" + data_date_key + "_prevalent" + IMAGE_EXT,
-        )
+        ),
     )
 
 
@@ -661,7 +661,7 @@ def ecg_dates(tensors: str, output_folder: str, run_id: str):
                 ):
                     ecg_date = str2date(str(hd5["ecg_bike_date_0"][0]))
                     cad_date = str2date(
-                        str(hd5["coronary_artery_disease_soft_date"][0])
+                        str(hd5["coronary_artery_disease_soft_date"][0]),
                     )
                     if ecg_date < cad_date:
                         incident_dates.append(ecg_date)
@@ -674,13 +674,13 @@ def ecg_dates(tensors: str, output_folder: str, run_id: str):
     plt.xlabel("ECG Acquisition Date")
     plt.hist(incident_dates, bins=60)
     plt.savefig(
-        os.path.join(output_folder, run_id, "ecg_dates_incident" + IMAGE_EXT)
+        os.path.join(output_folder, run_id, "ecg_dates_incident" + IMAGE_EXT),
     )
     plt.figure(figsize=(12, 12))
     plt.xlabel("ECG Acquisition Date")
     plt.hist(prevalent_dates, bins=60)
     plt.savefig(
-        os.path.join(output_folder, run_id, "ecg_dates_prevalent" + IMAGE_EXT)
+        os.path.join(output_folder, run_id, "ecg_dates_prevalent" + IMAGE_EXT),
     )
 
 
@@ -713,7 +713,7 @@ def sample_from_char_model(
         embed_map
     except NameError:
         raise ValueError(
-            f"Sampling from a character level model requires an embedding tmap."
+            f"Sampling from a character level model requires an embedding tmap.",
         )
 
     window_size = test_batch[language_map.input_name()].shape[1]
@@ -734,7 +734,7 @@ def sample_from_char_model(
                 )
             else:
                 caption = str(
-                    tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()]
+                    tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())[()],
                 ).strip()
             logging.info(f"Real text: {caption}")
         while next_char != "!" and count < 400:
@@ -787,7 +787,7 @@ def tensors_to_label_dictionary(
 
 
 def test_labels_to_label_map(
-    test_labels: Dict[TensorMap, np.ndarray], examples: int
+    test_labels: Dict[TensorMap, np.ndarray], examples: int,
 ) -> Tuple[Dict[str, np.ndarray], List[str], List[str]]:
     label_dict = {tm: np.zeros((examples,)) for tm in test_labels}
     categorical_labels = []
@@ -810,7 +810,7 @@ def infer_with_pixels(args):
     tensor_paths_inferred = {}
     args.num_workers = 0
     inference_tsv = os.path.join(
-        args.output_folder, args.id, "pixel_inference_" + args.id + ".tsv"
+        args.output_folder, args.id, "pixel_inference_" + args.id + ".tsv",
     )
     tensor_paths = [
         args.tensors + tp
@@ -860,7 +860,7 @@ def infer_with_pixels(args):
                         "ventricle_pixel_actual",
                         "myocardium_pixel_prediction",
                         "myocardium_pixel_actual",
-                    ]
+                    ],
                 )
                 if otm.name == "sax_all_diastole_segmented":
                     header.append("total_b_slices")
@@ -875,7 +875,7 @@ def infer_with_pixels(args):
             )
             if tensor_paths[0] in tensor_paths_inferred:
                 logging.info(
-                    f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}"
+                    f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}",
                 )
                 break
 
@@ -884,12 +884,12 @@ def infer_with_pixels(args):
                 prediction = [prediction]
 
             csv_row = [
-                os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, "")
+                os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, ""),
             ]  # extract sample id
             for y, tm in zip(prediction, args.tensor_maps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(
-                        str(tm.rescale(y)[0][0])
+                        str(tm.rescale(y)[0][0]),
                     )  # first index into batch then index into the 1x1 structure
                     if (
                         tm.sentinel is not None
@@ -899,8 +899,8 @@ def infer_with_pixels(args):
                     else:
                         csv_row.append(
                             str(
-                                tm.rescale(output_data[tm.output_name()])[0][0]
-                            )
+                                tm.rescale(output_data[tm.output_name()])[0][0],
+                            ),
                         )
                 elif len(tm.shape) == 1 and tm.is_categorical():
                     for k in tm.channel_map:
@@ -909,44 +909,44 @@ def infer_with_pixels(args):
                             str(
                                 output_data[tm.output_name()][0][
                                     tm.channel_map[k]
-                                ]
-                            )
+                                ],
+                            ),
                         )
                 elif tm.name in [
                     "mri_systole_diastole_8_segmented",
                     "sax_all_diastole_segmented",
                 ]:
                     csv_row.append(
-                        f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}"
+                        f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}",
                     )
                     csv_row.append(
-                        f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.2f}'
+                        f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.2f}',
                     )
                     csv_row.append(
-                        f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}'
+                        f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}',
                     )
                     csv_row.append(
-                        f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.2f}'
+                        f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.2f}',
                     )
                     csv_row.append(
-                        f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}'
+                        f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}',
                     )
                     csv_row.append(
-                        f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.2f}'
+                        f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.2f}',
                     )
                     csv_row.append(
-                        f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}'
+                        f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}',
                     )
                     if tm.name == "sax_all_diastole_segmented":
                         background_counts = np.count_nonzero(
                             output_data[tm.output_name()][
-                                ..., MRI_SEGMENTED_CHANNEL_MAP["background"]
+                                ..., MRI_SEGMENTED_CHANNEL_MAP["background"],
                             ]
                             == 0,
                             axis=(0, 1, 2),
                         )
                         csv_row.append(
-                            f"{np.count_nonzero(background_counts):0.0f}"
+                            f"{np.count_nonzero(background_counts):0.0f}",
                         )
 
             inference_writer.writerow(csv_row)
@@ -954,7 +954,7 @@ def infer_with_pixels(args):
             stats["count"] += 1
             if stats["count"] % 250 == 0:
                 logging.info(
-                    f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}"
+                    f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}",
                 )
 
 
@@ -977,7 +977,7 @@ def _2d_bbox_to_corner_and_size(bbox):
 
 
 def _plot_3d_tensor_slices_as_gray(
-    tensor, figure_path, cols=3, rows=10, bboxes=[]
+    tensor, figure_path, cols=3, rows=10, bboxes=[],
 ):
     colors = ["blue", "red", "green", "yellow"]
     _, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
@@ -985,7 +985,7 @@ def _plot_3d_tensor_slices_as_gray(
     vmax = np.max(tensor)
     for i in range(tensor.shape[-1]):
         axes[i // cols, i % cols].imshow(
-            tensor[:, :, i], cmap="gray", vmin=vmin, vmax=vmax
+            tensor[:, :, i], cmap="gray", vmin=vmin, vmax=vmax,
         )
         axes[i // cols, i % cols].set_yticklabels([])
         axes[i // cols, i % cols].set_xticklabels([])
@@ -999,7 +999,7 @@ def _plot_3d_tensor_slices_as_gray(
                     linewidth=1,
                     edgecolor=colors[c],
                     facecolor="none",
-                )
+                ),
             )
 
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1028,7 +1028,7 @@ def _tabulate_correlations(
     field_pairs = combinations(fields, 2)
     table_rows: List[list] = []
     logging.info(
-        f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs."
+        f"There are {int(num_fields * (num_fields - 1) / 2)} field pairs.",
     )
     processed_field_pair_count = 0
     nan_counter = Counter()  # keep track of if we've seen a field have NaNs
@@ -1038,13 +1038,13 @@ def _tabulate_correlations(
             and field2 not in nan_counter.keys()
         ):
             common_samples = set(stats[field1].keys()).intersection(
-                stats[field2].keys()
+                stats[field2].keys(),
             )
             num_common_samples = len(common_samples)
             processed_field_pair_count += 1
             if processed_field_pair_count % 50000 == 0:
                 logging.debug(
-                    f"Processed {processed_field_pair_count} field pairs."
+                    f"Processed {processed_field_pair_count} field pairs.",
                 )
             if num_common_samples >= min_samples:
                 field1_values = reduce(
@@ -1087,11 +1087,11 @@ def _tabulate_correlations(
                                 corr,
                                 corr * corr,
                                 num_common_samples,
-                            ]
+                            ],
                         )
                     else:
                         logging.warning(
-                            f"Pearson correlation for fields {field1} and {field2} is NaN."
+                            f"Pearson correlation for fields {field1} and {field2} is NaN.",
                         )
                 else:
                     logging.debug(
@@ -1103,14 +1103,14 @@ def _tabulate_correlations(
 
     # Note: NaNs mess up sorting unless they are handled specially by a custom sorting function
     sorted_table_rows = sorted(
-        table_rows, key=operator.itemgetter(2), reverse=True
+        table_rows, key=operator.itemgetter(2), reverse=True,
     )
     logging.info(f"Total number of correlations: {len(sorted_table_rows)}")
 
     fields_with_nans = nan_counter.keys()
     if len(fields_with_nans) != 0:
         logging.warning(
-            f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}."
+            f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.",
         )
 
     table_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
@@ -1137,8 +1137,8 @@ def _collect_continuous_stats_from_tensor_files(
         raise ValueError("Source directory does not exist: ", tensor_folder)
     all_tensor_files = list(
         filter(
-            lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder)
-        )
+            lambda file: file.endswith(TENSOR_EXT), os.listdir(tensor_folder),
+        ),
     )
     if max_samples is not None:
         if len(all_tensor_files) < max_samples:
@@ -1148,24 +1148,24 @@ def _collect_continuous_stats_from_tensor_files(
             )
             max_samples = len(all_tensor_files)
         tensor_files = np.random.choice(
-            all_tensor_files, max_samples, replace=False
+            all_tensor_files, max_samples, replace=False,
         )
     else:
         tensor_files = all_tensor_files
 
     num_tensor_files = len(tensor_files)
     logging.info(
-        f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}..."
+        f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}...",
     )
 
     # Declare the container to hold {field_1: {sample_1: [values], sample_2: [values], field_2:...}}
     stats: DefaultDict[str, DefaultDict[str, List[float]]] = defaultdict(
-        lambda: defaultdict(list)
+        lambda: defaultdict(list),
     )
     file_count = 0
     for tensor_file in tensor_files:
         _collect_continuous_stats_from_tensor_file(
-            tensor_folder, tensor_file, stats, instances, max_arr_idx
+            tensor_folder, tensor_file, stats, instances, max_arr_idx,
         )
         file_count += 1
         if file_count % 1000 == 0:
@@ -1245,13 +1245,13 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
         i = count.value
         if (i + 1) % 500 == 0:
             logging.info(
-                f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done"
+                f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done",
             )
         count.value += 1
     try:
         with h5py.File(path, "r") as hd5:
             dict_of_tensor_dicts = defaultdict(
-                lambda: _init_dict_of_tensors(tmaps)
+                lambda: _init_dict_of_tensors(tmaps),
             )
             # Iterate through each tmap
             for tm in tmaps:
@@ -1268,7 +1268,7 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                         error_type = ""
                         try:
                             tensor = tm.postprocess_tensor(
-                                tensor, augment=False, hd5=hd5
+                                tensor, augment=False, hd5=hd5,
                             )
                             # Append tensor to dict
                             if tm.channel_map:
@@ -1327,7 +1327,7 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                             ] = np.nan
                     else:
                         dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(
-                            shape, np.nan
+                            shape, np.nan,
                         )[0]
                     dict_of_tensor_dicts[0][tm.name][
                         f"error_type_{tm.name}"
@@ -1375,7 +1375,7 @@ def _tensors_to_df(args):
     for tm in tmaps:
         # Isolate all {tmap:values} from the list of dicts for this tmap
         list_of_tmap_dicts = list(
-            map(itemgetter(tm.name), list_of_tensor_dicts)
+            map(itemgetter(tm.name), list_of_tensor_dicts),
         )
 
         # Convert this tmap-specific list of dicts into dict of lists
@@ -1422,7 +1422,7 @@ def _tensors_to_df(args):
                 key = tm.name
                 df[key] = df[key].astype("string")
     logging.info(
-        f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors across {num_hd5} hd5 files into DataFrame"
+        f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors across {num_hd5} hd5 files into DataFrame",
     )
     return df
 
@@ -1436,10 +1436,10 @@ def explore(args):
     out_sep = "\t" if tsv_style_is_genetics else ","
 
     if any([len(tm.shape) != 1 for tm in tmaps]) and any(
-        [(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps]
+        [(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps],
     ):
         raise ValueError(
-            "Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1."
+            "Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.",
         )
 
     # Iterate through tensors, get tmaps, and save to dataframe
@@ -1452,15 +1452,15 @@ def explore(args):
 
     # Save dataframe to CSV
     fpath = os.path.join(
-        args.output_folder, args.id, f"tensors_all_union.{out_ext}"
+        args.output_folder, args.id, f"tensors_all_union.{out_ext}",
     )
     df.to_csv(fpath, index=False, sep=out_sep)
     fpath = os.path.join(
-        args.output_folder, args.id, f"tensors_all_intersect.{out_ext}"
+        args.output_folder, args.id, f"tensors_all_intersect.{out_ext}",
     )
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(
-        f"Saved dataframe of tensors (union and intersect) to {fpath}"
+        f"Saved dataframe of tensors (union and intersect) to {fpath}",
     )
 
     # Check if any tmaps are categorical
@@ -1499,7 +1499,7 @@ def explore(args):
 
                 # Transform list into dataframe indexed by channel maps
                 df_stats = pd.DataFrame(
-                    counts, index=cm_names, columns=["counts"]
+                    counts, index=cm_names, columns=["counts"],
                 )
 
                 # Add new column: percent of all counts
@@ -1516,7 +1516,7 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(
-                    f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}"
+                    f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}",
                 )
 
     # Check if any tmaps are continuous
@@ -1553,7 +1553,7 @@ def explore(args):
                                 stats["missing"] / stats["total"] * 100
                             )
                             df_stats = pd.concat(
-                                [df_stats, pd.DataFrame([stats], index=[cm])]
+                                [df_stats, pd.DataFrame([stats], index=[cm])],
                             )
                     else:
                         stats = dict()
@@ -1571,7 +1571,7 @@ def explore(args):
                             stats["missing"] / stats["total"] * 100
                         )
                         df_stats = pd.concat(
-                            [df_stats, pd.DataFrame([stats], index=[key])]
+                            [df_stats, pd.DataFrame([stats], index=[key])],
                         )
 
                 # Save parent dataframe to CSV on disk
@@ -1583,7 +1583,7 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(
-                    f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to {fpath}"
+                    f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to {fpath}",
                 )
 
     # Check if any tmaps are language (strings)
@@ -1607,7 +1607,7 @@ def explore(args):
                             key = (tm.name, cm)
                             stats["count"] = df_cur[key].count()
                             stats["count_unique"] = len(
-                                df_cur[key].value_counts()
+                                df_cur[key].value_counts(),
                             )
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
@@ -1615,7 +1615,7 @@ def explore(args):
                                 stats["missing"] / stats["total"] * 100
                             )
                             df_stats = pd.concat(
-                                [df_stats, pd.DataFrame([stats], index=[cm])]
+                                [df_stats, pd.DataFrame([stats], index=[cm])],
                             )
                     else:
                         stats = dict()
@@ -1628,7 +1628,7 @@ def explore(args):
                             stats["missing"] / stats["total"] * 100
                         )
                         df_stats = pd.concat(
-                            [df_stats, pd.DataFrame([stats], index=[tm.name])]
+                            [df_stats, pd.DataFrame([stats], index=[tm.name])],
                         )
 
                 # Save parent dataframe to CSV on disk
@@ -1640,7 +1640,7 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(
-                    f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}"
+                    f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}",
                 )
 
 
@@ -1648,14 +1648,14 @@ def _report_cross_reference(args, cross_reference_df, title):
     title = title.replace(" ", "_")
     if args.reference_label in cross_reference_df:
         labels, counts = np.unique(
-            cross_reference_df[args.reference_label], return_counts=True
+            cross_reference_df[args.reference_label], return_counts=True,
         )
         labels = np.append(labels, ["Total"])
         counts = np.append(counts, [sum(counts)])
 
         # save outcome distribution to csv
         df_out = pd.DataFrame(
-            {"counts": counts, args.reference_label: labels}
+            {"counts": counts, args.reference_label: labels},
         ).set_index(args.reference_label, drop=True)
         fpath = os.path.join(
             args.output_folder,
@@ -1664,7 +1664,7 @@ def _report_cross_reference(args, cross_reference_df, title):
         )
         df_out.to_csv(fpath)
         logging.info(
-            f"Saved distribution of {args.reference_label} in cross reference to {fpath}"
+            f"Saved distribution of {args.reference_label} in cross reference to {fpath}",
         )
 
     # save cross reference to csv
@@ -1735,13 +1735,13 @@ def cross_reference(args):
     # cleanup time col
     if use_time:
         src_df[src_time] = pd.to_datetime(
-            src_df[src_time], errors="coerce", infer_datetime_format=True
+            src_df[src_time], errors="coerce", infer_datetime_format=True,
         )
         src_df.dropna(inplace=True)
 
         for ref_time in {ref_start[0], ref_end[0]}:
             ref_df[ref_time] = pd.to_datetime(
-                ref_df[ref_time], errors="coerce", infer_datetime_format=True
+                ref_df[ref_time], errors="coerce", infer_datetime_format=True,
             )
         ref_df.dropna(inplace=True)
 
@@ -1751,7 +1751,7 @@ def cross_reference(args):
                 return ref_time[0]
             ref_time_col = f"{ref_time[1]}_days_relative_{ref_time[0]}"
             ref_df[ref_time_col] = ref_df[ref_time[0]].apply(
-                lambda x: x + datetime.timedelta(days=offset)
+                lambda x: x + datetime.timedelta(days=offset),
             )
             ref_cols.append(ref_time_col)
             return ref_time_col
@@ -1761,28 +1761,28 @@ def cross_reference(args):
 
         time_description = f'between {ref_start.replace("_", " ")} and {ref_end.replace("_", " ")}'
     logging.info(
-        "Cleaned data columns and removed rows that could not be parsed"
+        "Cleaned data columns and removed rows that could not be parsed",
     )
 
     # drop duplicates based on cols
     src_df.drop_duplicates(subset=src_cols, inplace=True)
     ref_df.drop_duplicates(subset=ref_cols, inplace=True)
     logging.info(
-        "Removed duplicates from dataframes, based on join, time, and label"
+        "Removed duplicates from dataframes, based on join, time, and label",
     )
 
     cohort_counts[f"{src_name} (total)"] = len(src_df)
     cohort_counts[f'{src_name} (unique {" + ".join(src_join)})'] = len(
-        src_df.drop_duplicates(subset=src_join)
+        src_df.drop_duplicates(subset=src_join),
     )
     cohort_counts[f"{ref_name} (total)"] = len(ref_df)
     cohort_counts[f'{ref_name} (unique {" + ".join(ref_join)})'] = len(
-        ref_df.drop_duplicates(subset=ref_join)
+        ref_df.drop_duplicates(subset=ref_join),
     )
 
     # merge on join columns
     cross_reference_df = src_df.merge(
-        ref_df, how="inner", left_on=src_join, right_on=ref_join
+        ref_df, how="inner", left_on=src_join, right_on=ref_join,
     )
     logging.info("Cross referenced based on join tensors")
 
@@ -1835,10 +1835,10 @@ def cross_reference(args):
         # get most recent row in source for each row in reference
         # sort in ascending order so last() returns most recent
         cross_reference_df = cross_reference_df.sort_values(
-            by=ref_cols + [src_time], ascending=True
+            by=ref_cols + [src_time], ascending=True,
         )
         cross_reference_df = cross_reference_df.groupby(
-            by=ref_cols, as_index=False
+            by=ref_cols, as_index=False,
         ).last()[list(src_df) + list(ref_df)]
         logging.info(f"Found most recent {src_name} per {ref_name}")
 
@@ -1863,9 +1863,9 @@ def cross_reference(args):
 
     # report counts
     fpath = os.path.join(
-        args.output_folder, args.id, "summary_cohort_counts.csv"
+        args.output_folder, args.id, "summary_cohort_counts.csv",
     )
     pd.DataFrame.from_dict(
-        cohort_counts, orient="index", columns=["count"]
+        cohort_counts, orient="index", columns=["count"],
     ).rename_axis("description").to_csv(fpath)
     logging.info(f"Saved cohort counts to {fpath}")
