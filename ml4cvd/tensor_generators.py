@@ -508,7 +508,7 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     if sample_csv is None:
         return None
     with open(sample_csv, 'r') as csv_file:
-        sample_ids = [row[0] for row in csv.reader(csv_file)]
+        sample_ids = [row[4] for row in csv.reader(csv_file)]
         # simple header detection, sample ids are assumed to be ints, headers strings with non-numerics
         try:
             int(sample_ids[0])
