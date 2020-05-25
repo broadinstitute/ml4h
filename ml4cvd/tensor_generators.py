@@ -283,9 +283,8 @@ class TensorGenerator:
             logging.info(f"Stopped {len(self.workers)} workers.")
         self.workers = []
 
-    def __iter__(
-        self,
-    ):  # This is so python type annotations recognize TensorGenerator as an iterator
+    # This is so python type annotations recognize TensorGenerator as an iterator
+    def __iter__(self):
         return self
 
     def __del__(self):
@@ -451,9 +450,8 @@ class _MultiModalMultiTaskWorker:
         if (path, name) in self.cache:
             batch[name][idx] = self.cache[path, name]
             return self.hd5
-        if (
-            self.hd5 is None
-        ):  # Don't open hd5 if everything is in the self.cache
+        # Don't open hd5 if everything is in the self.cache
+        if self.hd5 is None:
             self.hd5 = h5py.File(path, "r")
         tensor = tm.postprocess_tensor(
             tm.tensor_from_file(tm, self.hd5, self.dependents),
@@ -688,7 +686,7 @@ def _sample_csv_to_set(
         matches = set(df.columns).intersection(possible_mrn_col_names)
 
         if len(matches) > 1:
-            raise ValueError(
+            logging.warning(
                 f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
             )
 
@@ -785,14 +783,12 @@ def get_train_valid_test_paths(
     ):
         raise ValueError("validation and test samples overlap")
 
-    tensor_fnames = []
     # find tensors and split them among train/valid/test
     for root, dirs, files in os.walk(tensors):
         for name in files:
             path = os.path.join(root, name)
             split = os.path.splitext(name)
             sample_id = split[0]
-            tensor_fnames.append(sample_id)
 
             if split[-1].lower() != TENSOR_EXT:
                 continue
