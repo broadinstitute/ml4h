@@ -128,13 +128,26 @@ singularity exec ${INTERACTIVE} \
     ${GPU_DEVICE} \
     ${MOUNTS} \
     docker://${DOCKER_IMAGE} /bin/bash -c \
-        "pip install -e ${WORKDIR}/ml
+        "pip install -e ${WORKDIR}/ml; \
         mkdir -p ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}; \
-        s3fs -o use_path_request_style \
-             -o url=http://ogw.ccds.io \
-             -o passwd_file=${WORKDIR}/.passwd-s3fs \
-             ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/; \
-        apt update ; \
-        apt install s3cmd -y ; \
-        s3cmd ls ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/;
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_1.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_2.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_4.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_5.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_6.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_7.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_8.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_9.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        wait; \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_1.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_2.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_4.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_5.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_6.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_7.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_8.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_9.tar & \
+        wait; \
         ${PYTHON_COMMAND} ${PYTHON_ARGS}"
