@@ -5,7 +5,6 @@
 #SBATCH --gpus=1
 #SBATCH --time 00:10:00
 #SBATCH --job-name=ml4cvd_tf2
-
 # Script to enable running Python modules within Singularity containers of Docker images
 
 ################### VARIABLES ############################################
@@ -102,23 +101,40 @@ fi
 USER=$(whoami)
 WORKDIR=$(pwd)
 
+echo $WORKDIR
+
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run singularity with
     singularity exec ${INTERACTIVE} \
-    ${GPU_DEVICE} \
-    ${MOUNTS} \
-    docker://${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}/ml; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+        ${GPU_DEVICE} \
+        ${MOUNTS} \
+        docker://${DOCKER_IMAGE} /bin/bash -c \
+            "pip install -e ${WORKDIR}/ml
+            mkdir -p ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}; \
+            s3fs -o use_path_request_style \
+                 -o url=http://ogw.ccds.io \
+                 -o passwd_file=${WORKDIR}/.passwd-s3fs \
+                 ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/; \
+            ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
-# Mount bucket
-s3cmd sync ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/
-echo ${SLURM_JOB_SCRATCHDIR}
-ls -l ${SLURM_JOB_SCRATCHDIR}
+## Mount bucket
+# s3cmd sync ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/
+# echo ${SLURM_JOB_SCRATCHDIR}
+# ls -l ${SLURM_JOB_SCRATCHDIR}
 
 singularity exec ${INTERACTIVE} \
-${GPU_DEVICE} \
---bind ${WORKDIR}:${WORKDIR} \
-${MOUNTS} \
-docker://${DOCKER_IMAGE} /bin/bash -c "pip install -e ${SLURM_JOB_SCRATCHDIR}/ml; \
-    ${PYTHON_COMMAND} ${SLURM_JOB_SCRATCHDIR}/${PYTHON_ARGS}"
+    ${GPU_DEVICE} \
+    ${MOUNTS} \
+    docker://${DOCKER_IMAGE} /bin/bash -c \
+        "pip install -e ${WORKDIR}/ml
+        mkdir -p ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}; \
+        s3fs -o use_path_request_style \
+             -o url=http://ogw.ccds.io \
+             -o passwd_file=${WORKDIR}/.passwd-s3fs \
+             ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/; \
+        apt update ; \
+        apt install s3cmd -y ; \
+        s3cmd ls ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/;
+        ${PYTHON_COMMAND} ${PYTHON_ARGS}"
