@@ -5,6 +5,7 @@ import h5py
 import logging
 import datetime
 import numpy as np
+from functools import partial
 from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
@@ -989,8 +990,7 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     loss="logcosh",
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
-    shape=(None, 1)
-    ,
+    shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(10, 200),
 )
@@ -2297,8 +2297,11 @@ def _dates_with_voltage_len(
     ]
 
 
-def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
+def _date_in_window_from_dates(
+    ecg_dates, surgery_date, day_window, most_recent_ecg,
+):
     ecg_dates.sort(reverse=True)
+    ecg_datetimes = []
     for ecg_date in ecg_dates:
         ecg_datetime = datetime.datetime.strptime(
             ecg_date, PARTNERS_DATETIME_FORMAT,
@@ -2308,7 +2311,11 @@ def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
             <= surgery_date - ecg_datetime
             <= datetime.timedelta(days=day_window)
         ):
-            return ecg_date
+            if most_recent_ecg:
+                return ecg_date
+            ecg_datetimes.append(ecg_date)
+    if len(ecg_datetimes) > 0:
+        return np.random.choice(ecg_datetimes)
     raise ValueError(f"No ECG in time window")
 
 
@@ -2320,6 +2327,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
     delimiter: str = ",",
     day_window: int = 30,
     require_exact_length: bool = False,
+    most_recent_ecg: bool = True,
 ) -> Callable:
     """Build a tensor_from_file function for outcomes given CSV of patients.
 
@@ -2385,7 +2393,10 @@ def build_cardiac_surgery_outcome_tensor_from_file(
                 tm.dependent_map[dtm].shape, dtype=np.float32,
             )
         ecg_date = _date_in_window_from_dates(
-            ecg_dates, surgery_date_table[mrn_int], day_window,
+            ecg_dates,
+            surgery_date_table[mrn_int],
+            day_window,
+            most_recent_ecg,
         )
         for cm in tm.channel_map:
             path = _make_hd5_path(tm, ecg_date, cm)
@@ -2432,6 +2443,39 @@ def build_cardiac_surgery_tensor_maps(
             Interpretation.CATEGORICAL,
             path_prefix=PARTNERS_PREFIX,
             channel_map=channel_map,
+        )
+
+    tensor_from_file_fxn = partial(
+        build_cardiac_surgery_outcome_tensor_from_file,
+        file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+        outcome2column=outcome2column,
+        day_window=30,
+    )
+
+    name = "ecg_2500_sts_random_from_window"
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(2500, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            cacheable=False,
+            normalization=Standardize(mean=0, std=2000),
+        )
+
+    name = "ecg_5000_sts_random_from_window"
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(5000, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
+            cacheable=False,
+            normalization=Standardize(mean=0, std=2000),
         )
 
     name = "ecg_2500_sts"
