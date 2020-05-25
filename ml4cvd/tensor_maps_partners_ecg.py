@@ -16,7 +16,7 @@ from ml4cvd.normalizer import Standardize
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
-CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts/mgh-all-features-labels.csv'
+CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-all-features-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
@@ -1753,8 +1753,11 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     return name2tensormap
 
 
-def _cardiac_surgery_str2date(input_date: str) -> datetime.datetime:
-    return datetime.datetime.strptime(input_date, "%d%b%Y")
+def _cardiac_surgery_str2date(
+        input_date: str,
+        date_format: str = "%Y-%m-%d"
+) -> datetime.datetime:
+    return datetime.datetime.strptime(input_date, date_format)
 
 
 def _dates_with_voltage_len(ecg_dates, voltage_len, tm, hd5, voltage_key = list(ECG_REST_AMP_LEADS.keys())[0]):
@@ -1973,7 +1976,15 @@ def _build_cardiac_surgery_basic_tensor_maps(
 ) -> Dict[str, TensorMap]:
     name2tensormap: Dict[str:TensorMap] = {}
 
-    date_interval_lookup = build_date_interval_lookup()
+    date_interval_lookup = build_date_interval_lookup(
+        file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
+        delimiter=',',
+        patient_column='medrecn',
+        start_column='surgdt',
+        start_offset=-30,
+        end_column='surgdt',
+        end_offset=0)
+    
     for needed_name in needed_tensor_maps:
         if not needed_name.endswith('_sts'):
             continue
