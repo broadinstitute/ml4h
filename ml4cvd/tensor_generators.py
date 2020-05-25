@@ -698,7 +698,7 @@ def _sample_csv_to_set(
     # The MRN column name is specified, so try it
     else:
         if mrn_column_name not in df.columns:
-            raise ValueError(
+            raise KeyError(
                 f"{sample_csv} does not contain a column named {mrn_column_name}."
             )
 
