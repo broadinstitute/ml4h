@@ -660,7 +660,6 @@ TMAPS[task] = TensorMap(
     validator=validator_clean_mrn,
 )
 
-
 task = "partners_ecg_patientid_clean_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -670,7 +669,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_clean_mrn,
 )
-
 
 task = "partners_ecg_firstname"
 TMAPS[task] = TensorMap(
@@ -686,7 +684,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_firstname_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -696,7 +693,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_lastname"
 TMAPS[task] = TensorMap(
@@ -712,7 +708,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_lastname_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -722,7 +717,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_gender"
 TMAPS[task] = TensorMap(
@@ -734,7 +728,6 @@ TMAPS[task] = TensorMap(
     time_series_limit=0,
     validator=validator_no_empty,
 )
-
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(
     task,
@@ -746,7 +739,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_date_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -756,7 +748,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_time"
 TMAPS[task] = TensorMap(
@@ -769,7 +760,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_time_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -779,7 +769,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_sitename"
 TMAPS[task] = TensorMap(
@@ -792,7 +781,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_sitename_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -802,7 +790,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_location"
 TMAPS[task] = TensorMap(
@@ -815,7 +802,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_location_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -825,7 +811,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_dob"
 TMAPS[task] = TensorMap(
@@ -838,7 +823,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_dob_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -848,7 +832,6 @@ TMAPS[task] = TensorMap(
     shape=(1,),
     validator=validator_no_empty,
 )
-
 
 task = "partners_ecg_sampling_frequency"
 TMAPS[task] = TensorMap(
@@ -863,7 +846,6 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-
 task = "partners_ecg_sampling_frequency_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -875,7 +857,6 @@ TMAPS[task] = TensorMap(
     channel_map={"_0": 0, "_250": 1, "_500": 2, "other": 3},
     validator=validator_not_all_zero,
 )
-
 
 task = "partners_ecg_time_resolution"
 TMAPS[task] = TensorMap(
@@ -890,7 +871,6 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-
 task = "partners_ecg_time_resolution_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -902,7 +882,6 @@ TMAPS[task] = TensorMap(
     channel_map={"_25": 0, "_50": 1, "_100": 2, "other": 3},
     validator=validator_not_all_zero,
 )
-
 
 task = "partners_ecg_amplitude_resolution"
 TMAPS[task] = TensorMap(
@@ -917,7 +896,6 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-
 task = "partners_ecg_amplitude_resolution_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -929,7 +907,6 @@ TMAPS[task] = TensorMap(
     channel_map={"_10": 0, "_20": 1, "_40": 2, "other": 3},
     validator=validator_not_all_zero,
 )
-
 
 task = "partners_ecg_measurement_filter"
 TMAPS[task] = TensorMap(
@@ -944,7 +921,6 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-
 task = "partners_ecg_measurement_filter_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -957,7 +933,6 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-
 task = "partners_ecg_rate"
 TMAPS[task] = TensorMap(
     task,
@@ -968,8 +943,8 @@ TMAPS[task] = TensorMap(
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(10, 200),
+    normalization={"mean": 59.3, "std": 10.6},
 )
-
 
 task = "partners_ecg_rate_newest"
 TMAPS[task] = TensorMap(
@@ -980,8 +955,8 @@ TMAPS[task] = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(1,),
     validator=make_range_validator(10, 200),
+    normalization={"mean": 59.3, "std": 10.6},
 )
-
 
 task = "partners_ecg_rate_md"
 TMAPS[task] = TensorMap(
@@ -993,8 +968,8 @@ TMAPS[task] = TensorMap(
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(10, 200),
+    normalization={"mean": 59.3, "std": 10.6},
 )
-
 
 task = "partners_ecg_rate_md_newest"
 TMAPS[task] = TensorMap(
@@ -1005,31 +980,8 @@ TMAPS[task] = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
     shape=(1,),
     validator=make_range_validator(10, 200),
-)
-
-
-TMAPS["partners_ventricular_rate"] = TensorMap(
-    "VentricularRate",
-    path_prefix=PARTNERS_PREFIX,
-    loss="logcosh",
-    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
-    shape=(None, 1),
-    time_series_limit=0,
-    validator=make_range_validator(10, 200),
     normalization={"mean": 59.3, "std": 10.6},
 )
-
-
-TMAPS["partners_ventricular_rate_newest"] = TensorMap(
-    "VentricularRate_newest",
-    path_prefix=PARTNERS_PREFIX,
-    loss="logcosh",
-    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
-    shape=(1,),
-    validator=make_range_validator(10, 200),
-    normalization={"mean": 59.3, "std": 10.6},
-)
-
 
 task = "partners_ecg_qrs"
 TMAPS[task] = TensorMap(
