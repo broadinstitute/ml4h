@@ -30,7 +30,7 @@ class TestUConnect:
         inp, out = list(args.u_connect.items())[0]
         tmap = MOCK_TMAPS[inp_key]
         assert inp == tmap
-        assert out == {tmap, }
+        assert out == {tmap}
 
     def test_many_to_one(self, tmpdir):
         inp_key1 = '3d_cont'
@@ -76,5 +76,5 @@ class TestUConnect:
         ]
         args = parse_args()
         assert len(args.u_connect) == 2
-        assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1], }
-        assert args.u_connect[MOCK_TMAPS[key2]] == {MOCK_TMAPS[key2], }
+        assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1]}
+        assert args.u_connect[MOCK_TMAPS[key2]] == {MOCK_TMAPS[key2]}

@@ -169,7 +169,7 @@ class TensorGenerator:
         self.stats_q = Queue(len(self.worker_instances))
         self._started = True
         for i, (path_iter, iter_len) in enumerate(
-            zip(self.path_iters, self.true_epoch_lens)
+            zip(self.path_iters, self.true_epoch_lens),
         ):
             name = f"{self.name}_{i}"
             worker_instance = _MultiModalMultiTaskWorker(
@@ -198,7 +198,7 @@ class TensorGenerator:
                 process.start()
                 self.workers.append(process)
         logging.info(
-            f"Started {i} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB."
+            f"Started {i} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB.",
         )
 
     def set_worker_paths(self, paths: List[Path]):
@@ -207,14 +207,14 @@ class TensorGenerator:
             self._init_workers()
         if not self.run_on_main_thread:
             raise ValueError(
-                "Cannot sort paths of multiprocessing workers. num_workers must be 0."
+                "Cannot sort paths of multiprocessing workers. num_workers must be 0.",
             )
         self.worker_instances[0].path_iter.paths = paths
 
     def __next__(
         self,
     ) -> Tuple[
-        Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]
+        Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]],
     ]:
         if not self._started:
             self._init_workers()
@@ -235,10 +235,10 @@ class TensorGenerator:
             [
                 f"[{error}] - {count:.0f}"
                 for error, count in sorted(
-                    stats.items(), key=lambda x: x[1], reverse=True
+                    stats.items(), key=lambda x: x[1], reverse=True,
                 )
                 if "Error" in error
-            ]
+            ],
         )
 
         info_string = "\n\t".join(
@@ -247,10 +247,10 @@ class TensorGenerator:
                 f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
                 f"{stats['skipped_paths']} paths were skipped because they previously failed.",
                 f"The following errors occurred:\n\t\t{error_info}",
-            ]
+            ],
         )
         logging.info(
-            f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}"
+            f"\n!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!\nAggregated information string:\n\t{info_string}",
         )
         eps = 1e-7
         for tm in self.input_maps + self.output_maps:
@@ -320,14 +320,14 @@ class TensorMapArrayCache:
         self.autoencode_names: Dict[str, str] = {}
         for tm in input_tms:
             self.data[tm.input_name()] = np.zeros(
-                (self.nrows,) + tm.shape, dtype=np.float32
+                (self.nrows,) + tm.shape, dtype=np.float32,
             )
         for tm in output_tms:
             if tm in input_tms:  # Useful for autoencoders
                 self.autoencode_names[tm.output_name()] = tm.input_name()
             else:
                 self.data[tm.output_name()] = np.zeros(
-                    (self.nrows,) + tm.shape, dtype=np.float32
+                    (self.nrows,) + tm.shape, dtype=np.float32,
                 )
         self.files_seen = Counter()  # name -> max position filled in cache
         self.key_to_index = {}  # file_path, name -> position in self.data
@@ -431,13 +431,13 @@ class _MultiModalMultiTaskWorker:
         }
 
         self.cache = TensorMapArrayCache(
-            cache_size, input_maps, output_maps, true_epoch_len
+            cache_size, input_maps, output_maps, true_epoch_len,
         )
         self.dependents = {}
         self.idx = 0
 
     def _handle_tm(
-        self, tm: TensorMap, is_input: bool, path: Path
+        self, tm: TensorMap, is_input: bool, path: Path,
     ) -> h5py.File:
         name = tm.input_name() if is_input else tm.output_name()
         batch = self.in_batch if is_input else self.out_batch
@@ -481,10 +481,10 @@ class _MultiModalMultiTaskWorker:
                 self.epoch_stats[f"{tm.name}_max"] = min(0, rescaled)
                 self.epoch_stats[f"{tm.name}_min"] = max(0, rescaled)
             self.epoch_stats[f"{tm.name}_max"] = max(
-                rescaled, self.epoch_stats[f"{tm.name}_max"]
+                rescaled, self.epoch_stats[f"{tm.name}_max"],
             )
             self.epoch_stats[f"{tm.name}_min"] = min(
-                rescaled, self.epoch_stats[f"{tm.name}_min"]
+                rescaled, self.epoch_stats[f"{tm.name}_min"],
             )
             self.epoch_stats[f"{tm.name}_sum"] += rescaled
             self.epoch_stats[f"{tm.name}_sum_squared"] += rescaled * rescaled
@@ -525,11 +525,11 @@ class _MultiModalMultiTaskWorker:
         self.stats_q.put(self.epoch_stats)
         if self.stats["Tensors presented"] == 0:
             logging.error(
-                f"Completed an epoch but did not find any tensors to yield"
+                f"Completed an epoch but did not find any tensors to yield",
             )
         if "test" in self.name:
             logging.warning(
-                f"Test worker {self.name} completed a full epoch. Test results may be double counting samples."
+                f"Test worker {self.name} completed a full epoch. Test results may be double counting samples.",
             )
         self.start = time.time()
         self.epoch_stats = Counter()
@@ -580,7 +580,7 @@ class _MultiModalMultiTaskWorker:
 
 
 def big_batch_from_minibatch_generator(
-    generator: TensorGenerator, minibatches: int
+    generator: TensorGenerator, minibatches: int,
 ):
     """Collect minibatches into bigger batches
 
@@ -615,7 +615,7 @@ def big_batch_from_minibatch_generator(
     )
     for i in range(1, minibatches):
         logging.debug(
-            f"big_batch_from_minibatch {100 * i / minibatches:.2f}% done."
+            f"big_batch_from_minibatch {100 * i / minibatches:.2f}% done.",
         )
         next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
@@ -628,7 +628,7 @@ def big_batch_from_minibatch_generator(
 
     for key, array in saved_tensors.items():
         logging.info(
-            f"Made a big batch of tensors with key:{key} and shape:{array.shape}."
+            f"Made a big batch of tensors with key:{key} and shape:{array.shape}.",
         )
     inputs = {key: saved_tensors[key] for key in input_tensors}
     outputs = {key: saved_tensors[key] for key in output_tensors}
@@ -658,13 +658,13 @@ def _get_train_valid_test_discard_ratios(
         discard_ratio = 0
 
     if not math.isclose(
-        train_ratio + valid_ratio + test_ratio + discard_ratio, 1.0
+        train_ratio + valid_ratio + test_ratio + discard_ratio, 1.0,
     ):
         raise ValueError(
-            f"ratios do not sum to 1, train/valid/test/discard = {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}"
+            f"ratios do not sum to 1, train/valid/test/discard = {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}",
         )
     logging.debug(
-        f"train/valid/test/discard ratios: {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}"
+        f"train/valid/test/discard ratios: {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}",
     )
 
     return train_ratio, valid_ratio, test_ratio, discard_ratio
@@ -689,7 +689,7 @@ def _sample_csv_to_set(
 
         if len(matches) > 1:
             raise ValueError(
-                f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name."
+                f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
             )
 
         # Get one string from the set of matches
@@ -699,7 +699,7 @@ def _sample_csv_to_set(
     else:
         if mrn_column_name not in df.columns:
             raise KeyError(
-                f"{sample_csv} does not contain a column named {mrn_column_name}."
+                f"{sample_csv} does not contain a column named {mrn_column_name}.",
             )
 
     # Isolate this column from the dataframe, and cast to strings
@@ -806,15 +806,15 @@ def get_train_valid_test_paths(
                 test_paths.append(path)
             else:
                 choice = np.random.choice(
-                    [k for k in choices], p=[choices[k][1] for k in choices]
+                    [k for k in choices], p=[choices[k][1] for k in choices],
                 )
                 choices[choice][0].append(path)
 
     logging.info(
-        f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}"
+        f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}",
     )
     logging.debug(
-        f"Discarded {len(discard_paths)} tensors due to given ratios"
+        f"Discarded {len(discard_paths)} tensors due to given ratios",
     )
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
         raise ValueError(
@@ -886,11 +886,11 @@ def get_train_valid_test_paths_split_by_csvs(
             raise ValueError(my_error)
         if i == 0:
             logging.info(
-                f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs."
+                f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.",
             )
         else:
             logging.info(
-                f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors."
+                f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.",
             )
     return train_paths, valid_paths, test_paths
 
@@ -1021,7 +1021,7 @@ def _log_first_error(stats: Counter, tensor_path: str):
 
 
 def _identity_batch(
-    in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]
+    in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path],
 ):
     sample_weights = [None] * len(out_batch)
     return (
@@ -1068,12 +1068,12 @@ def _mixup_batch(
             )
 
     return _identity_batch(
-        mixed_ins, mixed_outs, return_paths, paths[:half_batch]
+        mixed_ins, mixed_outs, return_paths, paths[:half_batch],
     )
 
 
 def _make_batch_siamese(
-    in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]
+    in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path],
 ):
     full_batch = in_batch.values().__iter__().__next__().shape[0]
     half_batch = full_batch // 2
@@ -1086,7 +1086,7 @@ def _make_batch_siamese(
         {
             k + "_right": np.zeros((half_batch,) + in_batch[k].shape[1:])
             for k in in_batch
-        }
+        },
     )
     siamese_out = {"output_siamese": np.zeros((half_batch, 1))}
 
@@ -1115,7 +1115,7 @@ def _weighted_batch(
     sample_weight: TensorMap,
 ):
     sample_weights = [
-        in_batch.pop(sample_weight.input_name()).flatten()
+        in_batch.pop(sample_weight.input_name()).flatten(),
     ] * len(out_batch)
     return (
         (in_batch, out_batch, sample_weights, paths)
