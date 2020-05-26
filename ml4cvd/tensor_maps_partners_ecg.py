@@ -37,7 +37,6 @@ PARTNERS_PREFIX = "partners_ecg_rest"
 
 def _get_ecg_dates(tm, hd5):
     dates = list(hd5[tm.path_prefix])
-
     if tm.time_series_lookup is not None:
         mrn = int(os.path.basename(hd5.filename).split(TENSOR_EXT)[0])
         start, end = tm.time_series_lookup[mrn]
@@ -900,7 +899,7 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-task = "partners_ecg_rate"
+task = "partners_ecg_rate_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -909,18 +908,6 @@ TMAPS[task] = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(10, 200),
-    normalization={"mean": 59.3, "std": 10.6},
-)
-
-task = "partners_ecg_rate_newest_sts"
-TMAPS[task] = TensorMap(
-    task,
-    interpretation=Interpretation.CONTINUOUS,
-    path_prefix=PARTNERS_PREFIX,
-    loss="logcosh",
-    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
-    shape=(1,),
     validator=make_range_validator(10, 200),
     normalization={"mean": 59.3, "std": 10.6},
 )
@@ -950,7 +937,7 @@ TMAPS[task] = TensorMap(
     normalization={"mean": 59.3, "std": 10.6},
 )
 
-task = "partners_ecg_qrs"
+task = "partners_ecg_qrs_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -963,7 +950,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qrs_newest"
+task = "partners_ecg_qrs_pc_newest"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1001,7 +988,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_pr"
+task = "partners_ecg_pr_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1014,7 +1001,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_pr_newest"
+task = "partners_ecg_pr_pc_newest"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1051,7 +1038,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qt"
+task = "partners_ecg_qt_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1064,7 +1051,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qt_newest"
+task = "partners_ecg_qt_pc_newest"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1101,7 +1088,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qtc"
+task = "partners_ecg_qtc_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1114,7 +1101,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qtc_newest"
+task = "partners_ecg_qtc_pc_newest"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1151,7 +1138,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_paxis"
+task = "partners_ecg_paxis_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1164,7 +1151,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_paxis_newest"
+task = "partners_ecg_paxis_pc_newest"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1201,7 +1188,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_raxis"
+task = "partners_ecg_raxis_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1251,7 +1238,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_taxis"
+task = "partners_ecg_taxis_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -1264,7 +1251,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_taxis_newest"
+task = "partners_ecg_taxis_pc_newest"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -2342,7 +2329,7 @@ def build_cardiac_surgery_outcome_tensor_from_file(
 def build_cardiac_surgery_tensor_maps(
     needed_tensor_maps: List[str],
 ) -> Dict[str, TensorMap]:
-    name2tensormap: Dict[str, TensorMap] = {}
+    cardiac_surgery_tmaps: Dict[str, TensorMap] = {}
     outcome2column = {
         "sts_death": "mtopd",
         "sts_stroke": "cnstrokp",
@@ -2364,6 +2351,32 @@ def build_cardiac_surgery_tensor_maps(
             channel_map=channel_map,
         )
 
+    name = "partners_ecg_date_newest_sts"
+    if name in needed_tensor_maps:
+        cardiac_surgery_tmaps[name] = TensorMap(
+            name,
+            interpretation=Interpretation.LANGUAGE,
+            path_prefix=PARTNERS_PREFIX,
+            tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
+            shape=(1,),
+            validator=validator_no_empty,
+        )
+
+    name = "partners_ecg_rate_md_newest_sts"
+    if name in needed_tensor_maps:
+        cardiac_surgery_tmaps[name] = TensorMap(
+            name,
+            interpretation=Interpretation.CONTINUOUS,
+            path_prefix=PARTNERS_PREFIX,
+            loss="logcosh",
+            tensor_from_file=make_partners_ecg_tensor(
+                key="ventricularrate_md",
+            ),
+            shape=(1,),
+            validator=make_range_validator(10, 200),
+            normalization={"mean": 59.3, "std": 10.6},
+        )
+
     tensor_from_file_fxn = partial(
         build_cardiac_surgery_outcome_tensor_from_file,
         file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
@@ -2373,7 +2386,7 @@ def build_cardiac_surgery_tensor_maps(
 
     name = "ecg_2500_sts_random"
     if name in needed_tensor_maps:
-        name2tensormap[name] = TensorMap(
+        cardiac_surgery_tmaps[name] = TensorMap(
             name,
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
@@ -2386,7 +2399,7 @@ def build_cardiac_surgery_tensor_maps(
 
     name = "ecg_2500_sts_newest"
     if name in needed_tensor_maps:
-        name2tensormap[name] = TensorMap(
+        cardiac_surgery_tmaps[name] = TensorMap(
             name,
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
@@ -2398,7 +2411,7 @@ def build_cardiac_surgery_tensor_maps(
 
     name = "ecg_5000_sts_random"
     if name in needed_tensor_maps:
-        name2tensormap[name] = TensorMap(
+        cardiac_surgery_tmaps[name] = TensorMap(
             name,
             shape=(5000, 12),
             path_prefix=PARTNERS_PREFIX,
@@ -2411,7 +2424,7 @@ def build_cardiac_surgery_tensor_maps(
 
     name = "ecg_5000_sts_newest"
     if name in needed_tensor_maps:
-        name2tensormap[name] = TensorMap(
+        cardiac_surgery_tmaps[name] = TensorMap(
             name,
             shape=(5000, 12),
             path_prefix=PARTNERS_PREFIX,
@@ -2423,7 +2436,7 @@ def build_cardiac_surgery_tensor_maps(
 
     name = "ecg_2500_sts_exact"
     if name in needed_tensor_maps:
-        name2tensormap[name] = TensorMap(
+        cardiac_surgery_tmaps[name] = TensorMap(
             name,
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
@@ -2437,7 +2450,7 @@ def build_cardiac_surgery_tensor_maps(
 
     name = "ecg_5000_sts_exact"
     if name in needed_tensor_maps:
-        name2tensormap[name] = TensorMap(
+        cardiac_surgery_tmaps[name] = TensorMap(
             name,
             shape=(5000, 12),
             path_prefix=PARTNERS_PREFIX,
@@ -2451,12 +2464,12 @@ def build_cardiac_surgery_tensor_maps(
 
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
-            name2tensormap[outcome] = dependent_maps[outcome]
+            cardiac_surgery_tmaps[outcome] = dependent_maps[outcome]
 
-    name2tensormap.update(
+    cardiac_surgery_tmaps.update(
         _modify_tmap_for_cardiac_surgery(needed_tensor_maps),
     )
-    return name2tensormap
+    return cardiac_surgery_tmaps
 
 
 def build_date_interval_lookup(
@@ -2512,6 +2525,7 @@ def _modify_tmap_for_cardiac_surgery(
             continue
 
         base_name = needed_name.split("_sts")[0]
+
         if base_name not in TMAPS:
             continue
 
