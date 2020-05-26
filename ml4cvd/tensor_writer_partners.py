@@ -64,7 +64,7 @@ def _get_mrn_xmls_map(xml_folder: str, num_workers: int) -> Dict[str, List[str]]
     with multiprocess.Pool(processes=num_workers) as pool:
         mrn_xml_list = pool.starmap(
             _map_mrn_to_xml,
-            [(fpath_xml) for fpath_xml in fpath_xmls],
+            [(fpath_xml,) for fpath_xml in fpath_xmls],
         )
 
     # Build dict of MRN to XML files with that MRN
@@ -245,14 +245,14 @@ def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str
     def _decode_waveform(waveform_raw: str, scale: float) -> np.ndarray:
         decoded = base64.b64decode(waveform_raw)
         waveform = [struct.unpack("h", bytes([decoded[t], decoded[t + 1]]))[0] for t in range(0, len(decoded), 2)]
-        return np.ndarray[waveform] * scale
+        return np.array(waveform) * scale
 
     try:
         for lead_tag in lead_tags:
             # for each lead, we make sure all leads use 2 bytes per sample,
             # the decoded lead length is the same as the lead length tag,
             # the lead lengths are all the same, and the units are all the same
-            lead_sample_size = lead_tag.find('leadsamplesize').text
+            lead_sample_size = int(lead_tag.find('leadsamplesize').text)
             assert lead_sample_size == 2
 
             lead_id = lead_tag.find('leadid').text
@@ -284,8 +284,8 @@ def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str
 
         lead_data['voltage'] = voltage
         return lead_data
-    except (AttributeError, AssertionError) as e:
-        logging.warning(e)
+    except (AssertionError, AttributeError, ValueError) as e:
+        logging.exception(e)
         return dict()
 
 
