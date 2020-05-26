@@ -589,39 +589,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
-# TODO do we still need the cross reference tmaps?
-def validator_cross_reference(tm: TensorMap, tensor: np.ndarray):
-    if int(tensor) not in tm.cross_reference:
-        raise ValueError(f"Skipping TensorMap {tm.name} not found in Apollo.")
-
-
-def create_cross_reference_dict(fpath="/data/apollo/demographics.csv"):
-    try:
-        with open(fpath, mode="r") as f:
-            reader = csv.reader(f)
-            next(reader)
-            cross_reference_dict = {int(rows[0]): None for rows in reader}
-        return cross_reference_dict
-    except FileNotFoundError:
-        return {}
-
-
-task = "partners_ecg_patientid_cross_reference_apollo"
-TMAPS[task] = TensorMap(
-    task,
-    interpretation=Interpretation.LANGUAGE,
-    path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="patientid"),
-    shape=(None, 1),
-    time_series_limit=0,
-    validator=validator_cross_reference,
-)
-
-
-TMAPS[task].cross_reference = create_cross_reference_dict()
-
-
 task = "partners_ecg_patientid"
 TMAPS[task] = TensorMap(
     task,
@@ -2404,7 +2371,7 @@ def build_cardiac_surgery_tensor_maps(
         day_window=30,
     )
 
-    name = "ecg_2500_sts_random_from_window"
+    name = "ecg_2500_sts_random"
     if name in needed_tensor_maps:
         name2tensormap[name] = TensorMap(
             name,
@@ -2417,7 +2384,7 @@ def build_cardiac_surgery_tensor_maps(
             normalization=Standardize(mean=0, std=2000),
         )
 
-    name = "ecg_5000_sts_random_from_window"
+    name = "ecg_5000_sts_random"
     if name in needed_tensor_maps:
         name2tensormap[name] = TensorMap(
             name,
@@ -2430,72 +2397,34 @@ def build_cardiac_surgery_tensor_maps(
             normalization=Standardize(mean=0, std=2000),
         )
 
-    name = "ecg_2500_sts"
-    if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-        )
-        name2tensormap[name] = TensorMap(
-            name,
-            shape=(2500, 12),
-            path_prefix=PARTNERS_PREFIX,
-            dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
-            normalization=Standardize(mean=0, std=2000),
-        )
-    name = "ecg_5000_sts"
-    if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-        )
-        name2tensormap[name] = TensorMap(
-            name,
-            shape=(5000, 12),
-            path_prefix=PARTNERS_PREFIX,
-            dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
-            normalization=Standardize(mean=0, std=2000),
-        )
     name = "ecg_2500_sts_exact"
     if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-            require_exact_length=True,
-        )
         name2tensormap[name] = TensorMap(
             name,
             shape=(2500, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
+            tensor_from_file=tensor_from_file_fxn(
+                most_recent_ecg=False, require_exact_length=True,
+            ),
             normalization=Standardize(mean=0, std=2000),
         )
+
     name = "ecg_5000_sts_exact"
     if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-            require_exact_length=True,
-        )
         name2tensormap[name] = TensorMap(
             name,
             shape=(5000, 12),
             path_prefix=PARTNERS_PREFIX,
             dependent_map=dependent_maps,
             channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
+            tensor_from_file=tensor_from_file_fxn(
+                most_recent_ecg=False, require_exact_length=True,
+            ),
             normalization=Standardize(mean=0, std=2000),
         )
+
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
             name2tensormap[outcome] = dependent_maps[outcome]
