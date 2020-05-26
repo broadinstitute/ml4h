@@ -139,10 +139,14 @@ def _data_from_xml(fpath_xml: str) -> Dict[str, Union[str, Dict[str, np.ndarray]
         elif tag == 'originalrestingecgmeasurements':
             tag_suffix = '_pc'
         elif tag == 'diagnosis':
-            ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup.find(tag))
+            soup_tag = soup.find(tag)
+            if soup_tag is not None:
+                ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup_tag)
             continue
         elif tag == 'originaldiagnosis':
-            ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup.find(tag))
+            soup_tag = soup.find(tag)
+            if soup_tag is not None:
+                ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup_tag)
             continue
         elif tag == 'waveform':
             voltage_data = _get_voltage_from_waveform_tags(soup.find_all(tag))
@@ -168,50 +172,47 @@ def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
 
     parsed_text = ''
 
-    if input_from_soup is None:
-        return parsed_text
-    else:
-        parts = input_from_soup.find_all('diagnosisstatement')
+    parts = input_from_soup.find_all('diagnosisstatement')
 
-        # Check for edge case where <diagnosis> </diagnosis> does not encompass
-        # <DiagnosisStatement> sub-element, which results in parts being length 0
-        if len(parts) > 0:
-            for part in parts:
+    # Check for edge case where <diagnosis> </diagnosis> does not encompass
+    # <DiagnosisStatement> sub-element, which results in parts being length 0
+    if len(parts) > 0:
+        for part in parts:
 
-                # Create list of all <stmtflag> entries
-                flags = part.find_all('stmtflag')
+            # Create list of all <stmtflag> entries
+            flags = part.find_all('stmtflag')
 
-                # Isolate text from part
-                text_to_append = part.find('stmttext').text
+            # Isolate text from part
+            text_to_append = part.find('stmttext').text
 
-                # Initialize flag to ignore sentence, e.g. do not append it
-                flag_ignore_sentence = False
+            # Initialize flag to ignore sentence, e.g. do not append it
+            flag_ignore_sentence = False
 
-                # If no reasons found, append
-                if not flag_ignore_sentence:
-                    # Append diagnosis string with contents within <stmttext> tags
-                    parsed_text += text_to_append
+            # If no reasons found, append
+            if not flag_ignore_sentence:
+                # Append diagnosis string with contents within <stmttext> tags
+                parsed_text += text_to_append
 
-                    endline_flag = False
+                endline_flag = False
 
-                    # Loop through flags and if 'ENDSLINE' found anywhere, mark flag
-                    for flag in flags:
-                        if flag.text == 'ENDSLINE':
-                            endline_flag = True
+                # Loop through flags and if 'ENDSLINE' found anywhere, mark flag
+                for flag in flags:
+                    if flag.text == 'ENDSLINE':
+                        endline_flag = True
 
-                    # If 'ENDSLINE' was found anywhere, append newline
-                    if endline_flag:
-                        parsed_text += '\n'
+                # If 'ENDSLINE' was found anywhere, append newline
+                if endline_flag:
+                    parsed_text += '\n'
 
-                    # Else append space
-                    else:
-                        parsed_text += ' '
+                # Else append space
+                else:
+                    parsed_text += ' '
 
-            # Remove final newline character in diagnosis
-            if parsed_text[-1] == '\n':
-                parsed_text = parsed_text[:-1]
+        # Remove final newline character in diagnosis
+        if parsed_text[-1] == '\n':
+            parsed_text = parsed_text[:-1]
 
-        return parsed_text
+    return parsed_text
 
 
 def _get_voltage_from_waveform_tags(waveform_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
@@ -232,8 +233,8 @@ def _get_voltage_from_waveform_tags(waveform_tags: bs4.ResultSet) -> Dict[str, U
         # get voltage leads and lead metadata
         lead_data = _get_voltage_from_lead_tags(waveform_tag.find_all('leaddata'))
         voltage_data.update(lead_data)
-
-        return voltage_data
+        break
+    return voltage_data
 
 
 def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
@@ -298,6 +299,9 @@ def _compress_and_save_data(
 
     # If data is string, encode to bytes
     if dtype == 'str':
+        # do not save empty string, cannot be decoded
+        if data == '':
+            return
         data_compressed = codec.encode(data.encode())
         dsize = len(data.encode())
     else:
@@ -365,12 +369,11 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
         for key in ecg_data:
             _compress_and_save_data(hd5=gp, name=key, data=ecg_data[key], dtype='str')
 
-        # Clean Patient MRN to only numbers, do nothing if there are no numbers in MRN
+        # Clean Patient MRN to only numbers
         key_mrn_clean = 'patientid_clean'
         if 'patientid' in ecg_data:
             mrn_clean = _clean_mrn(ecg_data['patientid'], fallback='')
-            if mrn_clean != '':
-                _compress_and_save_data(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
+            _compress_and_save_data(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
 
         # Clean cardiologist read
         key_read_md = 'diagnosis_md'
