@@ -5,6 +5,7 @@ import h5py
 import logging
 import datetime
 import numpy as np
+import pandas as pd
 from functools import partial
 from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
@@ -103,9 +104,25 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
         )
 
 
-def make_voltage(population_normalize: float = None):
+def make_voltage(
+    population_normalize: float = None, exact_length: bool = False
+):
     def get_voltage_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
+        # Overwrite ECG dates with only those with exact length given by tm.shape
+        if exact_length:
+            ecg_dates = _dates_with_voltage_len(
+                ecg_dates,
+                tm.shape[0] if tm.shape[0] is not None else tm.shape[1],
+                tm,
+                hd5,
+            )
+
+        if not ecg_dates:
+            raise ValueError(
+                "No ECGs found in time window or with matching voltage length"
+            )
+
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
@@ -134,23 +151,12 @@ def make_voltage(population_normalize: float = None):
     return get_voltage_from_file
 
 
-TMAPS["partners_ecg_voltage"] = TensorMap(
-    "partners_ecg_voltage",
-    shape=(None, 2500, 12),
-    interpretation=Interpretation.CONTINUOUS,
-    path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_voltage(population_normalize=2000.0),
-    channel_map=ECG_REST_AMP_LEADS,
-    time_series_limit=0,
-)
-
-
-TMAPS["partners_ecg_voltage_newest"] = TensorMap(
-    "partners_ecg_voltage_newest",
+TMAPS["partners_ecg_2500_newest_exact"] = TensorMap(
+    "ecg_rest_2500",
     shape=(2500, 12),
-    interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_voltage(population_normalize=2000.0),
+    tensor_from_file=make_voltage(exact_length=True),
+    normalization={"zero_mean_std1": True},
     channel_map=ECG_REST_AMP_LEADS,
 )
 
@@ -2326,10 +2332,40 @@ def build_cardiac_surgery_outcome_tensor_from_file(
     return tensor_from_file
 
 
+def make_cardiac_surgery_outcome():
+    df = pd.read_csv(CARDIAC_SURGERY_OUTCOMES_CSV)
+
+    def cardiac_surgery_outcome(
+        tm: TensorMap, hd5: h5py.File, dependents: Dict = {}
+    ):
+        mrn = int(os.path.basename(hd5.filename).split(TENSOR_EXT)[0])
+        matches = df[df["medrecn"] == mrn]
+        outcome = matches[matches["surgdt"] == matches["surgdt"].max()]["mtopd"].item()
+        tensor = np.zeros(2,)
+        tensor[outcome] = 1
+        return tensor
+
+    return cardiac_surgery_outcome
+
+
+name = "sts_death"
+TMAPS[name] = TensorMap(
+    name,
+    shape=(2,),
+    path_prefix=PARTNERS_PREFIX,
+    interpretation=Interpretation.CATEGORICAL,
+    channel_map={"no_death": 0, "death": 1},
+    tensor_from_file=make_cardiac_surgery_outcome(),
+)
+
+
 def build_cardiac_surgery_tensor_maps(
     needed_tensor_maps: List[str],
 ) -> Dict[str, TensorMap]:
+
     cardiac_surgery_tmaps: Dict[str, TensorMap] = {}
+
+    """
     outcome2column = {
         "sts_death": "mtopd",
         "sts_stroke": "cnstrokp",
@@ -2340,7 +2376,6 @@ def build_cardiac_surgery_tensor_maps(
         "sts_any_morbidity": "anymorbidity",
         "sts_long_stay": "llos",
     }
-
     dependent_maps = {}
     for outcome in outcome2column:
         channel_map = _outcome_channels(outcome)
@@ -2350,33 +2385,6 @@ def build_cardiac_surgery_tensor_maps(
             path_prefix=PARTNERS_PREFIX,
             channel_map=channel_map,
         )
-
-    name = "partners_ecg_date_newest_sts"
-    if name in needed_tensor_maps:
-        cardiac_surgery_tmaps[name] = TensorMap(
-            name,
-            interpretation=Interpretation.LANGUAGE,
-            path_prefix=PARTNERS_PREFIX,
-            tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
-            shape=(1,),
-            validator=validator_no_empty,
-        )
-
-    name = "partners_ecg_rate_md_newest_sts"
-    if name in needed_tensor_maps:
-        cardiac_surgery_tmaps[name] = TensorMap(
-            name,
-            interpretation=Interpretation.CONTINUOUS,
-            path_prefix=PARTNERS_PREFIX,
-            loss="logcosh",
-            tensor_from_file=make_partners_ecg_tensor(
-                key="ventricularrate_md",
-            ),
-            shape=(1,),
-            validator=make_range_validator(10, 200),
-            normalization={"mean": 59.3, "std": 10.6},
-        )
-
     tensor_from_file_fxn = partial(
         build_cardiac_surgery_outcome_tensor_from_file,
         file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
@@ -2465,7 +2473,7 @@ def build_cardiac_surgery_tensor_maps(
     for outcome in outcome2column:
         if outcome in needed_tensor_maps:
             cardiac_surgery_tmaps[outcome] = dependent_maps[outcome]
-
+    """
     cardiac_surgery_tmaps.update(
         _modify_tmap_for_cardiac_surgery(needed_tensor_maps),
     )
@@ -2499,7 +2507,17 @@ def build_date_interval_lookup(
                     _cardiac_surgery_str2date(row[end_index])
                     + datetime.timedelta(days=end_offset)
                 ).strftime(PARTNERS_DATETIME_FORMAT)
-                date_interval_lookup[patient_key] = (start_date, end_date)
+
+                # Return date of latest surgery
+                if patient_key in date_interval_lookup:
+                    current_end_date = date_interval_lookup[patient_key][1]
+                    if end_date > current_end_date:
+                        date_interval_lookup[patient_key] = (
+                            start_date,
+                            end_date,
+                        )
+                else:
+                    date_interval_lookup[patient_key] = (start_date, end_date)
             except ValueError as e:
                 logging.debug(f"Value error {e}")
         return date_interval_lookup
