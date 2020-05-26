@@ -913,13 +913,13 @@ TMAPS[task] = TensorMap(
     normalization={"mean": 59.3, "std": 10.6},
 )
 
-task = "partners_ecg_rate_newest"
+task = "partners_ecg_rate_newest_sts"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
     loss="logcosh",
-    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
     shape=(1,),
     validator=make_range_validator(10, 200),
     normalization={"mean": 59.3, "std": 10.6},
@@ -2384,6 +2384,18 @@ def build_cardiac_surgery_tensor_maps(
             normalization=Standardize(mean=0, std=2000),
         )
 
+    name = "ecg_2500_sts_newest"
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(2500, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=True),
+            cacheable=False,
+        )
+
     name = "ecg_5000_sts_random"
     if name in needed_tensor_maps:
         name2tensormap[name] = TensorMap(
@@ -2395,6 +2407,18 @@ def build_cardiac_surgery_tensor_maps(
             tensor_from_file=tensor_from_file_fxn(most_recent_ecg=False),
             cacheable=False,
             normalization=Standardize(mean=0, std=2000),
+        )
+
+    name = "ecg_5000_sts_newest"
+    if name in needed_tensor_maps:
+        name2tensormap[name] = TensorMap(
+            name,
+            shape=(5000, 12),
+            path_prefix=PARTNERS_PREFIX,
+            dependent_map=dependent_maps,
+            channel_map=ECG_REST_AMP_LEADS,
+            tensor_from_file=tensor_from_file_fxn(most_recent_ecg=True),
+            cacheable=False,
         )
 
     name = "ecg_2500_sts_exact"
@@ -2430,7 +2454,7 @@ def build_cardiac_surgery_tensor_maps(
             name2tensormap[outcome] = dependent_maps[outcome]
 
     name2tensormap.update(
-        _build_cardiac_surgery_basic_tensor_maps(needed_tensor_maps),
+        _modify_tmap_for_cardiac_surgery(needed_tensor_maps),
     )
     return name2tensormap
 
@@ -2468,7 +2492,7 @@ def build_date_interval_lookup(
         return date_interval_lookup
 
 
-def _build_cardiac_surgery_basic_tensor_maps(
+def _modify_tmap_for_cardiac_surgery(
     needed_tensor_maps: List[str],
 ) -> Dict[str, TensorMap]:
     name2tensormap: Dict[str:TensorMap] = {}
