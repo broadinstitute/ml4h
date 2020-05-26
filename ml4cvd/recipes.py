@@ -28,6 +28,8 @@ from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
+from ml4cvd.TensorMap import TensorMap
+from ml4cvd.metrics import simclr_loss
 
 
 def run(args):
@@ -89,6 +91,8 @@ def run(args):
             train_char_model(args)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
+        elif 'train_simclr' == args.mode:
+            train_simclr_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'sort_csv' == args.mode:
@@ -365,6 +369,25 @@ def train_siamese_model(args):
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     prediction = siamese_model.predict(data)
     return plot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0}, args.id, os.path.join(args.output_folder, args.id + '/'))
+
+
+def train_simclr_model(args):
+    assert not args.tensor_maps_out
+    shape = (args.dense_layers[-1], 1)
+
+    def zero_tensor_from_file(_, __, ___=None):
+        return np.zeros(shape)
+    output_tensor = TensorMap(
+        name='projection', shape=shape, loss=simclr_loss,
+        tensor_from_file=zero_tensor_from_file,
+    )
+    args.tensor_maps_out = [output_tensor]
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, simclr=True)
+    model = make_multimodal_multitask_model(**args.__dict__)
+    train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
 
 
 def plot_predictions(args):
