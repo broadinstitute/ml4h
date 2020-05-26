@@ -570,8 +570,9 @@ def concordance_index(prediction, truth, tied_tol=1e-8):
     return cindex, concordant, discordant, tied_risk, tied_time
 
 
-def simclr_loss(hidden, temperature=.1):
+def simclr_loss(_, hidden):
     """https://arxiv.org/abs/2002.05709"""
+    temperature = .1
     large_num = 1e9  # TODO: why?
     hidden = tf.math.l2_normalize(hidden, -1)
     hidden1, hidden2 = tf.split(hidden, 2, 0)  # hidden is created from 2 * batch_size tensors, each set with different augmentations
