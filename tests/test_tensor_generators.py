@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.tensor_generators import _sample_csv_to_set, get_train_valid_test_paths, get_train_valid_test_paths_split_by_csvs
+from ml4cvd.tensor_generators import _SimclrPath
 
 
 def _write_samples(csv_path, sample_ids, use_header=False, write_dupes=False):
@@ -230,3 +231,19 @@ class TestGetTrainValidTestPaths:
             )
 
     # TODO test method with balance csvs
+
+
+class TestSimclrPath:
+
+    def test_one_epoch(self):
+        batch_size = 5
+        n_paths = 2 * batch_size
+        paths = [str(i) for i in range(n_paths)]
+        gen = _SimclrPath(batch_size=batch_size, paths=paths)
+        presented_paths = []
+        for i in range(2 * n_paths):
+            path = next(gen)
+            presented_paths.append(path)
+            if i % (2 * batch_size) >= batch_size:
+                assert path == presented_paths[i - batch_size]
+        assert sorted(presented_paths) == paths * 2
