@@ -805,6 +805,11 @@ def explore(args):
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+   
+    # By default, remove columns with error_type
+    if not args.explore_export_errors:
+        cols = [c for c in df.columns if not c.startswith('error_type_')]
+        df = df[cols]
 
     if tsv_style_is_genetics:
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
