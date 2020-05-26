@@ -76,7 +76,6 @@ class _SimclrPath(Iterator[str]):
 
     def __init__(self, paths: List[str], batch_size: int):
         self.paths = paths
-        np.random.shuffle(self.paths)
         self.batch_size = batch_size
         self.in_batch_idx = 0
         self.batch_idx = 0
@@ -85,7 +84,7 @@ class _SimclrPath(Iterator[str]):
         if self.in_batch_idx >= 2 * self.batch_size:
             self.batch_idx += 1
             self.in_batch_idx = 0
-        if self.batch_idx % (len(self.paths) // self.batch_size) == 0:
+        if self.batch_idx % (len(self.paths) // self.batch_size) == 0 and self.in_batch_idx == 0:
             np.random.shuffle(self.paths)
         idx = (self.batch_idx * self.batch_size + self.in_batch_idx % self.batch_size) % len(self.paths)
         path = self.paths[idx]

@@ -235,7 +235,7 @@ class TestGetTrainValidTestPaths:
 
 class TestSimclrPath:
 
-    def test_one_epoch(self):
+    def test_divisible_epoch(self):
         batch_size = 5
         n_paths = 2 * batch_size
         paths = [str(i) for i in range(n_paths)]
@@ -246,4 +246,17 @@ class TestSimclrPath:
             presented_paths.append(path)
             if i % (2 * batch_size) >= batch_size:
                 assert path == presented_paths[i - batch_size]
-        assert sorted(presented_paths) == paths * 2
+        assert sorted(presented_paths) == sorted(paths * 2)
+
+    def test_non_divisible_epoch(self):
+        batch_size = 5
+        n_paths = 2 * batch_size - 1
+        paths = [str(i) for i in range(n_paths)]
+        gen = _SimclrPath(batch_size=batch_size, paths=paths)
+        n_batches = 20
+        presented_paths = []
+        for i in range(batch_size * n_batches):
+            path = next(gen)
+            presented_paths.append(path)
+            if i % (2 * batch_size) >= batch_size:
+                assert path == presented_paths[i - batch_size]
