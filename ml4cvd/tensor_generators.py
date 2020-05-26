@@ -44,7 +44,7 @@ Batch = Dict[Path, np.ndarray]
 BatchFunction = Callable[[Batch, Batch, bool, List[Path], 'kwargs'], Any]
 
 
-class _ShufflePaths(Iterator):
+class _ShufflePaths(Iterator[str]):
 
     def __init__(self, paths: List[Path]):
         self.paths = paths
@@ -60,7 +60,7 @@ class _ShufflePaths(Iterator):
         return path
 
 
-class _WeightedPaths(Iterator):
+class _WeightedPaths(Iterator[str]):
 
     def __init__(self, paths: List[PathIterator], weights: List[float]):
         self.paths = paths
@@ -70,6 +70,27 @@ class _WeightedPaths(Iterator):
 
     def __next__(self) -> str:
         return np.random.choice(np.random.choice(self.paths, self.weights))
+
+
+class _SimclrPath(Iterator[str]):
+
+    def __init__(self, paths: List[str], batch_size: int):
+        self.paths = paths
+        np.random.shuffle(self.paths)
+        self.batch_size = batch_size
+        self.in_batch_idx = 0
+        self.batch_idx = 0
+
+    def __next__(self):
+        if self.in_batch_idx >= 2 * self.batch_size:
+            self.batch_idx += 1
+            self.in_batch_idx = 0
+        if self.batch_idx % (len(self.paths) // self.batch_size) == 0:
+            np.random.shuffle(self.paths)
+        idx = (self.batch_idx * self.batch_size + self.in_batch_idx % self.batch_size) % len(self.paths)
+        path = self.paths[idx]
+        self.in_batch_idx += 1
+        return path
 
 
 class TensorGenerator:
@@ -799,3 +820,21 @@ def _make_batch_siamese(in_batch: Batch, out_batch: Batch, return_paths: bool, p
 def _weighted_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], sample_weight: TensorMap):
     sample_weights = [in_batch.pop(sample_weight.input_name()).flatten()] * len(out_batch)
     return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weights)
+
+
+def _make_simclr_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
+    full_batch = in_batch.values().__iter__().__next__().shape[0]
+    double_batch = full_batch * 2
+
+    siamese_in = {k+'_left': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch}
+    siamese_in.update({k+'_right': np.zeros((half_batch,) + in_batch[k].shape[1:]) for k in in_batch})
+    siamese_out = {'output_siamese': np.zeros((half_batch, 1))}
+
+    for i in range(half_batch):
+        for k in in_batch:
+            siamese_in[k+'_left'][i] = in_batch[k][i, ...]
+            siamese_in[k+'_right'][i] = in_batch[k][half_batch + i, ...]
+        random_task_key = np.random.choice(list(out_batch.keys()))
+        siamese_out['output_siamese'][i] = 0 if np.array_equal(out_batch[random_task_key][i], out_batch[random_task_key][i+half_batch]) else 1
+
+    return _identity_batch(siamese_in, siamese_out, return_paths, paths)
