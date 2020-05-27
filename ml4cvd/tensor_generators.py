@@ -172,8 +172,8 @@ class TensorGenerator:
         self.true_epochs += 1
         while self.stats_q.qsize() != 0:
             worker_stats = self.stats_q.get()
-            for i, k in enumerate(worker_stats):
-                if i == 0 and stats[k] == 0 and ('_max' in k or '_min' in k):
+            for k in enumerate(worker_stats):
+                if stats[k] == 0 and ('_max' in k or '_min' in k):
                     stats[k] = worker_stats[k]
                 elif '_max' in k:
                     stats[k] = max(stats[k], worker_stats[k])
@@ -388,7 +388,7 @@ class _MultiModalMultiTaskWorker:
     def _collect_continuous_stats(self, tm, rescaled):
         if self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
             self.epoch_stats[f'{tm.name}_max'] = -9e9
-        if self.epoch_stats[f'{tm.name}_min'] == 0 and rescaled != 0:
+        if self.epoch_stats[f'{tm.name}_min'] == 0:
             self.epoch_stats[f'{tm.name}_min'] = 9e9
         self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
         self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
