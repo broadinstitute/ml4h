@@ -18,6 +18,7 @@ import time
 import logging
 import traceback
 import numpy as np
+import pandas as pd
 from collections import Counter
 from multiprocessing import Process, Queue
 from itertools import chain
@@ -511,28 +512,23 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     # Load CSV into dataframe
     df = pd.read_csv(sample_csv, header="infer")
 
-    # If MRN column name is not specified, guess what it is
-    if mrn_column_name is None:
-        # Declare set of possible MRN column names
-        possible_mrn_col_names = {"medrecn", "mrn", "patient_id"}
+    # Declare set of possible MRN column names
+    possible_mrn_col_names = {"medrecn", "mrn", "patient_id"}
 
-        # Find intersection between CSV columns and possible MRN column names
-        matches = set(df.columns).intersection(possible_mrn_col_names)
+    # Find intersection between CSV columns and possible MRN column names
+    matches = set(df.columns).intersection(possible_mrn_col_names)
 
-        if len(matches) > 1:
-            logging.warning(
-                f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
-            )
+    # If no matches, assume the first column is MRN
+    if not matches:
+        mrn_col_name = df.columns[0]
 
-        # Get one string from the set of matches
+    elif len(matches) > 1:
+        logging.warning(
+            f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
+        )
+
+        # Get one string from the set of matches; this is the column name
         mrn_col_name = next(iter(matches))
-
-    # The MRN column name is specified, so try it
-    else:
-        if mrn_column_name not in df.columns:
-            raise KeyError(
-                f"{sample_csv} does not contain a column named {mrn_column_name}.",
-            )
 
     # Isolate this column from the dataframe, and cast to strings
     sample_ids = df[mrn_col_name].apply(str)
