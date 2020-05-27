@@ -188,7 +188,7 @@ class TensorGenerator:
                 break
             if tm.is_categorical() and tm.axes() == 1:
                 n = stats[f'{tm.name}_n'] + eps
-                self.stats_string = f'{self.stats_string}\nCategorical \n{tm.name} has {n:.0f} total examples.'
+                self.stats_string = f'{self.stats_string}\nCategorical TensorMap: {tm.name} has {n:.0f} total examples.'
                 for channel, index in tm.channel_map.items():
                     examples = stats[f'{tm.name}_index_{index:.0f}']
                     self.stats_string = f'{self.stats_string}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
@@ -198,17 +198,17 @@ class TensorGenerator:
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                self.stats_string = f'{self.stats_string}\nContinuous value \n{tm.name} Mean: {mean:0.2f}, Standard Deviation: {std:0.2f} '
-                self.stats_string = f"{self.stats_string}Maximum: {stats[f'{tm.name}_max']:0.2f}, Minimum: {stats[f'{tm.name}_min']:0.2f}"
+                self.stats_string = f'{self.stats_string}\nContinuous TensorMap: {tm.name} has {n:.0f} total examples.\n\tMean: {mean:0.2f}, '
+                self.stats_string = f"{self.stats_string}Standard Deviation: {std:0.2f}, Max: {stats[f'{tm.name}_max']:0.2f}, Min: {stats[f'{tm.name}_min']:0.2f}"
             elif tm.is_time_to_event():
                 sum_squared = stats[f'{tm.name}_sum_squared']
                 n = stats[f'{tm.name}_n'] + eps
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                self.stats_string = f"{self.stats_string}\nTime to event \n{tm.name} Total events: {stats[f'{tm.name}_events']}, "
-                self.stats_string = f"{self.stats_string}Mean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
-                self.stats_string = f"{self.stats_string}Max Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}"
+                self.stats_string = f"{self.stats_string}\nTime to event TensorMap: {tm.name} Total events: {stats[f'{tm.name}_events']}, "
+                self.stats_string = f"{self.stats_string}\n\tMean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
+                self.stats_string = f"{self.stats_string}\n\tMax Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}"
 
         info_string = '\n\t'.join([
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
@@ -378,8 +378,8 @@ class _MultiModalMultiTaskWorker:
 
     def _collect_continuous_stats(self, tm, rescaled):
         if 0.0 == self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
-            self.epoch_stats[f'{tm.name}_max'] = min(0, rescaled)
-            self.epoch_stats[f'{tm.name}_min'] = max(0, rescaled)
+            self.epoch_stats[f'{tm.name}_max'] = rescaled
+            self.epoch_stats[f'{tm.name}_min'] = rescaled
         self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
         self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
         self.epoch_stats[f'{tm.name}_sum'] += rescaled
