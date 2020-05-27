@@ -24,7 +24,7 @@ class Standardize(Normalizer):
         return (tensor - self.mean) / self.std
 
     def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
-        return tensor * self.std + self.mean
+        return (tensor * self.std) + self.mean
 
 
 class ZeroMeanStd1(Normalizer):
