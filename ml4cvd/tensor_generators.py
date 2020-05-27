@@ -170,20 +170,12 @@ class TensorGenerator:
     def aggregate_and_print_stats(self):
         stats = Counter()
         self.true_epochs += 1
-        cur_worker = 0
+        total_workers = self.stats_q.qsize()
         while self.stats_q.qsize() != 0:
-            worker_stats = self.stats_q.get()
-            cur_worker += 1
-            for k in enumerate(worker_stats):
-                if cur_worker == 1 and ('_max' in k or '_min' in k):
-                    stats[k] = worker_stats[k]
-                elif '_max' in k:
-                    stats[k] = max(stats[k], worker_stats[k])
-                elif '_min' in k:
-                    stats[k] = min(stats[k], worker_stats[k])
-                else:
-                    stats[k] += worker_stats[k]
-
+            stats += self.stats_q.get()
+        for k in stats:
+            if '_max' in k or '_min' in k:
+                stats[k] /= total_workers
         all_errors = [
             f'[{error}] - {count:.0f}'
             for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True) if 'Error' in error
