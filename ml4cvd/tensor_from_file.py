@@ -1859,6 +1859,25 @@ TMAPS['sax_all_systole_weighted'] = TensorMap(
     dependent_map=TMAPS['sax_all_systole_segmented_weighted'],
 )
 
+TMAPS['sax_all_diastole_192_segmented'] = TensorMap(
+    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 224, 13, 3), path_prefix='ukb_cardiac_mri',
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+)
+TMAPS['sax_all_diastole_192_segmented_weighted'] = TensorMap(
+    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 224, 13, 3), path_prefix='ukb_cardiac_mri',
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_diastole_192_segmented'),
+)
+
+TMAPS['sax_all_diastole_192'] = TensorMap(
+    'sax_all_diastole_192', shape=(192, 224, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
+    dependent_map=TMAPS['sax_all_diastole_192_segmented'],
+)
+TMAPS['sax_all_diastole_192_weighted'] = TensorMap(
+    'sax_all_diastole_192', shape=(192, 224, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
+    dependent_map=TMAPS['sax_all_diastole_192_segmented_weighted'],
+)
+
 
 def all_sax_tensor(total_b_slices=13):
     def sax_tensor_from_file(tm, hd5, dependents={}):
