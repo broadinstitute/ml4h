@@ -171,7 +171,14 @@ class TensorGenerator:
         stats = Counter()
         self.true_epochs += 1
         while self.stats_q.qsize() != 0:
-            stats += self.stats_q.get()
+            worker_stats = self.stats_q.get()
+            for k in worker_stats:
+                if '_max' in k:
+                    stats[k] = max(stats[k], worker_stats[k])
+                elif '_min' in k:
+                    stats[k] = min(stats[k], worker_stats[k])
+                else:
+                    stats[k] += self.stats_q[k]
 
         all_errors = [
             f'[{error}] - {count:.0f}'
