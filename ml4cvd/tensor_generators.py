@@ -178,7 +178,7 @@ class TensorGenerator:
                 elif '_min' in k:
                     stats[k] = min(stats[k], worker_stats[k])
                 else:
-                    stats[k] += self.stats_q[k]
+                    stats[k] += worker_stats[k]
 
         all_errors = [
             f'[{error}] - {count:.0f}'
@@ -230,7 +230,7 @@ class TensorGenerator:
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 worker.terminate()
-            logging.info(f'Stopped {len(self.workers)} workers. Scalar statistics: {self.stats_string}')
+            logging.info(f'Stopped {len(self.workers)} workers. {self.stats_string}')
         self.workers = []
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
