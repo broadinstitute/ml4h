@@ -388,6 +388,7 @@ class _MultiModalMultiTaskWorker:
     def _collect_continuous_stats(self, tm, rescaled):
         if self.epoch_stats[f'{tm.name}_max'] == self.epoch_stats[f'{tm.name}_min']:
             self.epoch_stats[f'{tm.name}_max'] = -9e9
+        if self.epoch_stats[f'{tm.name}_min'] == 0 and rescaled != 0:
             self.epoch_stats[f'{tm.name}_min'] = 9e9
         self.epoch_stats[f'{tm.name}_max'] = max(rescaled, self.epoch_stats[f'{tm.name}_max'])
         self.epoch_stats[f'{tm.name}_min'] = min(rescaled, self.epoch_stats[f'{tm.name}_min'])
