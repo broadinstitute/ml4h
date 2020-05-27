@@ -507,14 +507,38 @@ def _get_train_valid_test_discard_ratios(
 def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
     if sample_csv is None:
         return None
-    with open(sample_csv, 'r') as csv_file:
-        sample_ids = [row[0] for row in csv.reader(csv_file)]
-        # simple header detection, sample ids are assumed to be ints, headers strings with non-numerics
-        try:
-            int(sample_ids[0])
-        except ValueError:
-            sample_ids = sample_ids[1:]
-        return set(sample_ids)
+
+    # Load CSV into dataframe
+    df = pd.read_csv(sample_csv, header="infer")
+
+    # If MRN column name is not specified, guess what it is
+    if mrn_column_name is None:
+        # Declare set of possible MRN column names
+        possible_mrn_col_names = {"medrecn", "mrn", "patient_id"}
+
+        # Find intersection between CSV columns and possible MRN column names
+        matches = set(df.columns).intersection(possible_mrn_col_names)
+
+        if len(matches) > 1:
+            logging.warning(
+                f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
+            )
+
+        # Get one string from the set of matches
+        mrn_col_name = next(iter(matches))
+
+    # The MRN column name is specified, so try it
+    else:
+        if mrn_column_name not in df.columns:
+            raise KeyError(
+                f"{sample_csv} does not contain a column named {mrn_column_name}.",
+            )
+
+    # Isolate this column from the dataframe, and cast to strings
+    sample_ids = df[mrn_col_name].apply(str)
+
+    return set(sample_ids)
+
 
 
 def get_train_valid_test_paths(
