@@ -1866,7 +1866,7 @@ TMAPS['sax_all_diastole_192_segmented'] = TensorMap(
 TMAPS['sax_all_diastole_192_segmented_weighted'] = TensorMap(
     'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 224, 13, 3), path_prefix='ukb_cardiac_mri',
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy([1.0, 15.0, 15.0], 'sax_all_diastole_192_segmented'),
+    loss=weighted_crossentropy([1.0, 35.0, 15.0], 'sax_all_diastole_192_segmented'),
 )
 
 TMAPS['sax_all_diastole_192'] = TensorMap(
