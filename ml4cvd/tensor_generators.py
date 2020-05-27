@@ -214,7 +214,8 @@ class TensorGenerator:
             f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
             f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
             f"{stats['skipped_paths']} paths were skipped because they previously failed.",
-            f"{error_info} {self.stats_string}",
+            f"{error_info}",
+            f"{self.stats_string}"
         ])
         logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
 
@@ -222,7 +223,7 @@ class TensorGenerator:
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 worker.terminate()
-            logging.info(f'Stopped {len(self.workers)} workers. With scalar stats: {self.stats_string}')
+            logging.info(f'Stopped {len(self.workers)} workers. Scalar statistics: {self.stats_string}')
         self.workers = []
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
