@@ -172,8 +172,10 @@ class TensorGenerator:
         self.true_epochs += 1
         while self.stats_q.qsize() != 0:
             worker_stats = self.stats_q.get()
-            for k in worker_stats:
-                if '_max' in k:
+            for i, k in enumerate(worker_stats):
+                if i == 0 and stats[k] == 0 and ('_max' in k or '_min' in k):
+                    stats[k] = worker_stats[k]
+                elif '_max' in k:
                     stats[k] = max(stats[k], worker_stats[k])
                 elif '_min' in k:
                     stats[k] = min(stats[k], worker_stats[k])
