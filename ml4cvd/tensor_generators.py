@@ -92,6 +92,7 @@ class TensorGenerator:
         self.batch_size, self.input_maps, self.output_maps, self.num_workers, self.cache_size, self.weights, self.name, self.keep_paths = \
             batch_size, input_maps, output_maps, num_workers, cache_size, weights, name, keep_paths
         self.true_epochs = 0
+        self.stats_string = ""
         if num_workers == 0:
             num_workers = 1  # The one worker is the main thread
         if weights is None:
@@ -180,50 +181,48 @@ class TensorGenerator:
             error_info = f'The following errors were raised:\n\t\t' + '\n\t\t'.join(all_errors)
         else:
             error_info = 'No errors raised.'
-        info_string = '\n\t'.join([
-            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
-            f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
-            f"{stats['skipped_paths']} paths were skipped because they previously failed.",
-            f"{error_info}",
-        ])
-        logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
+
         eps = 1e-7
         for tm in self.input_maps + self.output_maps:
             if self.true_epochs != 1:
                 break
             if tm.is_categorical() and tm.axes() == 1:
                 n = stats[f'{tm.name}_n'] + eps
-                message = f'Categorical \n{tm.name} has {n:.0f} total examples.'
+                self.stats_string = f'{self.stats_string}\nCategorical \n{tm.name} has {n:.0f} total examples.'
                 for channel, index in tm.channel_map.items():
                     examples = stats[f'{tm.name}_index_{index:.0f}']
-                    message = f'{message}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
-                logging.info(message)
+                    self.stats_string = f'{self.stats_string}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total.'
             elif tm.is_continuous() and tm.axes() == 1:
                 sum_squared = stats[f'{tm.name}_sum_squared']
                 n = stats[f'{tm.name}_n'] + eps
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                logging.info(
-                    f'Continuous value \n{tm.name} Mean: {mean:0.2f}, Standard Deviation: {std:0.2f} '
-                    f"Maximum: {stats[f'{tm.name}_max']:0.2f}, Minimum: {stats[f'{tm.name}_min']:0.2f}",
-                )
+                self.stats_string = f'{self.stats_string}\nContinuous value \n{tm.name} Mean: {mean:0.2f}, Standard Deviation: {std:0.2f} '
+                self.stats_string = f"{self.stats_string}Maximum: {stats[f'{tm.name}_max']:0.2f}, Minimum: {stats[f'{tm.name}_min']:0.2f}"
             elif tm.is_time_to_event():
                 sum_squared = stats[f'{tm.name}_sum_squared']
                 n = stats[f'{tm.name}_n'] + eps
                 n_sum = stats[f'{tm.name}_sum']
                 mean = n_sum / n
                 std = np.sqrt((sum_squared/n)-(mean*mean))
-                logging.info(
-                    f"Time to event \n{tm.name} Total events: {stats[f'{tm.name}_events']}, Mean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
-                    f"Max Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}",
-                )
+                self.stats_string = f"{self.stats_string}\nTime to event \n{tm.name} Total events: {stats[f'{tm.name}_events']}, "
+                self.stats_string = f"{self.stats_string}Mean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
+                self.stats_string = f"{self.stats_string}Max Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}"
+
+        info_string = '\n\t'.join([
+            f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
+            f"{stats['Tensors presented']/self.true_epochs:0.0f} tensors were presented.",
+            f"{stats['skipped_paths']} paths were skipped because they previously failed.",
+            f"{error_info} {self.stats_string}",
+        ])
+        logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 worker.terminate()
-            logging.info(f'Stopped {len(self.workers)} workers.')
+            logging.info(f'Stopped {len(self.workers)} workers. With scalar stats: {self.stats_string}')
         self.workers = []
 
     def __iter__(self):  # This is so python type annotations recognize TensorGenerator as an iterator
