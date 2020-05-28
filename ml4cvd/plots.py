@@ -138,7 +138,6 @@ def evaluate_predictions(
         new_title = f'{title}_C_Index_{c_index[0]:0.2f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
         logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
-        plot_calibration(y_predictions[:, 0], y_truth[:, 0] == 1.0, {tm.name: 0}, title, folder)
         plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, title, folder)
         plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder)
     elif tm.is_language():
@@ -233,32 +232,6 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     plt.savefig(figure_path)
     plt.clf()
     logging.info("Saved ROC curve at: {}".format(figure_path))
-
-
-def plot_calibration(prediction, truth, label, title, prefix='./figures/', pos_label=1.0):
-    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-    ax2 = plt.subplot2grid((3, 1), (2, 0))
-
-    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
-    brier_score = brier_score_loss(truth, prediction, pos_label=pos_label)
-    fraction_of_positives, mean_predicted_value = calibration_curve(truth, prediction, n_bins=10)
-    ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f'{label} Brier score:{brier_score:0.3f}')
-    ax2.hist(prediction, range=(0, 1), bins=10, label=label, histtype="step", lw=2)
-    ax1.set_ylabel("Fraction of positives")
-    ax1.set_ylim([-0.05, 1.05])
-    ax1.legend(loc="lower right")
-    ax1.set_title('Calibration plots  (reliability curve)')
-
-    ax2.set_xlabel("Mean predicted value")
-    ax2.set_ylabel("Count")
-    ax2.legend(loc="upper center", ncol=2)
-    figure_path = os.path.join(prefix, 'calibration_' + title + IMAGE_EXT)
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    logging.info(f"Try to save calibration plot at: {figure_path}")
-    plt.savefig(figure_path)
-    plt.clf()
 
 
 def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./figures/'):
@@ -487,7 +460,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     alive_per_step = len(survived)
     sick_per_step = 0
     censored = 0
-    survivorship = []
+    survivorship = [1.0]
     real_survivorship = [1.0]
     for cur_day, day_index in enumerate(days_sorted_index):
         if days_follow_up[day_index] > max_follow_up:
