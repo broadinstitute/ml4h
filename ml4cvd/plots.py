@@ -480,6 +480,7 @@ def subplot_comparison_scatters(
 
 
 def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./figures/', max_follow_up=1825):
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(survived)
