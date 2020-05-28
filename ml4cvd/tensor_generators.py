@@ -513,7 +513,7 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     df = pd.read_csv(sample_csv, header="infer")
 
     # Declare set of possible MRN column names
-    possible_mrn_col_names = {"medrecn", "mrn", "patient_id"}
+    possible_mrn_col_names = {"sampleid", "medrecn", "mrn", "patient_id"}
 
     # Find intersection between CSV columns and possible MRN column names
     matches = set(df.columns).intersection(possible_mrn_col_names)
