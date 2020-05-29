@@ -1293,6 +1293,7 @@ def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 
 
 
 def _date_field_to_age(value: str) -> float:
+    logging.info(f' birthday {_loyalty_str2date(value)}  day diff: {(datetime.date.today() - _loyalty_str2date(value)).days} year age:{(datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS:.3f} ')
     return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
 
 
