@@ -1397,7 +1397,7 @@ def csv_time_to_event(
 
         if incidence_only and has_disease:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
-
+        logging.info(f"Has disease {has_disease} Follow up {follow_up} patient rows and total {disease_dicts['follow_up_total'][mrn_int]} start fu {disease_dicts['follow_up_start'][mrn_int]}.")
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
         tensor[1] = follow_up
