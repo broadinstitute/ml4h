@@ -1388,18 +1388,17 @@ def csv_time_to_event(
             raise KeyError(f'{diagnosis_column} did not contain MRN for TensorMap:{tm.name}')
         if mrn_int not in disease_dicts['diagnosis_dates']:
             has_disease = 0
-            censor_date = disease_dicts['follow_up_start'][mrn_int]
-            censor_date += datetime.timedelta(days=YEAR_DAYS * disease_dicts['follow_up_total'][mrn_int])
+            follow_up = YEAR_DAYS * disease_dicts['follow_up_total'][mrn_int]
         else:
             has_disease = 1
-            censor_date = disease_dicts['diagnosis_dates'][mrn_int]
+            follow_up = (disease_dicts['diagnosis_dates'][mrn_int] - disease_dicts['follow_up_start'][mrn_int]).days
 
         if incidence_only and has_disease:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
-        tensor[1] = (censor_date - disease_dicts['follow_up_start'][mrn_int]).days
+        tensor[1] = follow_up
         return tensor
     return _cox_tensor_from_file
 
@@ -1702,12 +1701,13 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
     }
     days_window = 1825
+    other_csv = '/home/sam/ml/c3po_mgh_outcomes_05152020.csv'
     logging.info(f'needed name {needed_tensor_maps}')
     for needed_name in needed_tensor_maps:
         if needed_name == 'age_from_csv':
-            name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(INCIDENCE_CSV))
+            name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(other_csv))
         elif needed_name == 'sex_from_csv':
-            csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
+            csv_tff = csv_field_tensor_from_file(other_csv, value_column='sex', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap(needed_name, shape=(2,), channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
 
         if 'survival' not in needed_name:
@@ -1721,9 +1721,9 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     for diagnosis in diagnosis2column:
         name = f'csv_incident_cox_{diagnosis}'
         if name in needed_tensor_maps:
-            tensor_from_file_fxn = csv_time_to_event(INCIDENCE_CSV, incidence_only=True, diagnosis_column=diagnosis2column[diagnosis])
+            tensor_from_file_fxn = csv_time_to_event(other_csv, incidence_only=True, diagnosis_column=diagnosis2column[diagnosis])
             name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
-            
+
         # Build diagnosis classification TensorMaps
         name = f'ecg_2500_to_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:
