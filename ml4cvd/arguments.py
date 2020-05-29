@@ -230,6 +230,10 @@ def parse_args():
 
     # Cross reference arguments
     parser.add_argument(
+        '--tensors_source',
+        help='Either a csv or directory of hd5 containing a source dataset.',
+    )
+    parser.add_argument(
         '--tensors_name', default='Tensors',
         help='Name of dataset at tensors, e.g. ECG. '
              'Adds contextual detail to summary CSV and plots.',
@@ -259,19 +263,31 @@ def parse_args():
              'Can be more than 1 join value.',
     )
     parser.add_argument(
-        '--reference_start_time_tensor', nargs='+',
+        '--reference_start_time_tensor', action='append', nargs='+',
         help='TensorMap or column name in csv of start of time window in reference. '
              'An integer can be provided as a second argument to specify an offset to the start time. '
              'e.g. tStart -30',
     )
     parser.add_argument(
-        '--reference_end_time_tensor', nargs='+',
+        '--reference_end_time_tensor', action='append', nargs='+',
         help='TensorMap or column name in csv of end of time window in reference. '
              'An integer can be provided as a second argument to specify an offset to the end time. '
              'e.g. tEnd 30',
     )
     parser.add_argument(
-        '--reference_label',
+        '--window_name', action='append',
+        # TODO help docs
+    )
+    parser.add_argument(
+        '--number_in_window', action='append', type=int,
+        # TODO help docs
+    )
+    parser.add_argument(
+        '--which_in_window', action='append', choices=['newest', 'oldest', 'random'],
+        # TODO help docs
+    )
+    parser.add_argument(
+        '--reference_label', # TODO allow multiple labels
         help='TensorMap or column name of value in csv to report distribution on, e.g. mortality. '
              'Label distribution reporting is optional.',
     )
