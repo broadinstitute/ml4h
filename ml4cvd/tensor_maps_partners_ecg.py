@@ -13,7 +13,7 @@ from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_val
 
 
 YEAR_DAYS = 365.26
-INCIDENCE_CSV = '/media/erisone_snf13/c3po_mgh_outcomes_05152020.csv'
+INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts/mgh-all-features-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
@@ -1707,9 +1707,9 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     logging.info(f'needed name {needed_tensor_maps}')
     for needed_name in needed_tensor_maps:
         if needed_name == 'age_from_csv':
-            name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(other_csv))
+            name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(INCIDENCE_CSV))
         elif needed_name == 'sex_from_csv':
-            csv_tff = csv_field_tensor_from_file(other_csv, value_column='sex', value_transform=_field_to_index_from_map)
+            csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
 
         if 'survival' not in needed_name:
@@ -1723,7 +1723,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     for diagnosis in diagnosis2column:
         name = f'csv_incident_cox_{diagnosis}'
         if name in needed_tensor_maps:
-            tensor_from_file_fxn = csv_time_to_event(other_csv, incidence_only=True, diagnosis_column=diagnosis2column[diagnosis])
+            tensor_from_file_fxn = csv_time_to_event(INCIDENCE_CSV, incidence_only=True, diagnosis_column=diagnosis2column[diagnosis])
             name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
 
         # Build diagnosis classification TensorMaps
