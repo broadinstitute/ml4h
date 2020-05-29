@@ -13,7 +13,7 @@ from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_val
 
 
 YEAR_DAYS = 365.26
-INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
+INCIDENCE_CSV = '/media/erisone_snf13/c3po_mgh_patient_outcomes_05152020.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts/mgh-all-features-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
