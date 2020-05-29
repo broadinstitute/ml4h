@@ -1293,7 +1293,6 @@ def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 
 
 
 def _date_field_to_age(value: str) -> float:
-    logging.info(f' birthday {_loyalty_str2date(value)}  day diff: {(datetime.date.today() - _loyalty_str2date(value)).days} year age:{(datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS:.3f} ')
     return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
 
 
@@ -1333,9 +1332,9 @@ def csv_field_tensor_from_file(
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if tm.is_categorical():
-            tensor[value_table[patient_key]] = 1.0
+            tensor[value_table[mrn_int]] = 1.0
         elif tm.is_continuous():
-            tensor[0] = value_table[patient_key]
+            tensor[0] = value_table[mrn_int]
         else:
             raise ValueError(f'{tm.name} has no way to make tensor from csv value.')
         return tensor
