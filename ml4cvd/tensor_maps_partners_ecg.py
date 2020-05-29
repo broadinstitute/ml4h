@@ -1389,9 +1389,14 @@ def csv_time_to_event(
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
         if mrn_int not in disease_dicts['follow_up_start']:
             raise KeyError(f'{diagnosis_column} did not contain MRN for TensorMap:{tm.name}')
-        if mrn_int not in disease_dicts['diagnosis_dates']:
+
+        follow_up_days = YEAR_DAYS * disease_dicts['follow_up_total'][mrn_int]
+        if follow_up_days > tm.days_window: # Censor outside window
             has_disease = 0
-            follow_up = YEAR_DAYS * disease_dicts['follow_up_total'][mrn_int]
+            follow_up = tm.days_window + 1
+        elif mrn_int not in disease_dicts['diagnosis_dates']:
+            has_disease = 0
+            follow_up = follow_up_days
         else:
             has_disease = 1
             follow_up = (disease_dicts['diagnosis_dates'][mrn_int] - disease_dicts['follow_up_start'][mrn_int]).days
