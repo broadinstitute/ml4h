@@ -13,7 +13,7 @@ from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_val
 
 
 YEAR_DAYS = 365.26
-INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
+INCIDENCE_CSV = '/media/erisone_snf13/c3po_mgh_outcomes_05152020.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts/mgh-all-features-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
@@ -1288,6 +1288,122 @@ def _date_from_dates(ecg_dates, target_date=None):
     return np.random.choice(ecg_dates)
 
 
+def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 'M': 1}) -> float:
+    return field_map[value]
+
+
+def _date_field_to_age(value: str) -> float:
+    return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
+
+
+def csv_field_tensor_from_file(
+    file_name: str, patient_column: str = 'Mrn', value_column: str = 'birth_date', value_transform: Callable = _date_field_to_age, delimiter: str = ','
+) -> Callable:
+    """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
+
+    The tensor_from_file function returned here should be used
+    with CATEGORICAL TensorMaps to classify patients by disease state.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param value_column: The header name of the column of values to load
+    :param value_transform: A function that transforms the string found in the CSV to the desired value
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    with open(file_name, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        header = next(reader)
+        patient_index = header.index(patient_column)
+        value_index = header.index(value_column)
+        value_table = {}
+        for row in reader:
+            try:
+                patient_key = int(row[patient_index])
+                value_table[patient_key] = value_transform(row[value_index])
+            except ValueError as e:
+                logging.warning(f'val err {e}')
+        logging.info(f'Done processing {value_column} Got {len(value_table)} patient rows.')
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in value_table:
+            raise KeyError(f'{tm.name} mrn not in csv')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        if tm.is_categorical():
+            tensor[value_table[patient_key]] = 1.0
+        elif tm.is_continuous():
+            tensor[0] = value_table[patient_key]
+        else:
+            raise ValueError(f'{tm.name} has no way to make tensor from csv value.')
+        return tensor
+    return tensor_from_file
+
+
+def csv_time_to_event(
+    file_name: str, incidence_only: bool = False, patient_column: str = 'Mrn',
+    follow_up_start_column: str = 'start_fu', follow_up_total_column: str = 'total_fu',
+    diagnosis_column: str = 'first_stroke', delimiter: str = ',',
+):
+    """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
+
+    The tensor_from_file function returned here should be used
+    with TIME_TO_EVENT TensorMaps to model relative time free from a diagnosis for a given disease.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
+    :param patient_column: The header name of the column of patient ids
+    :param follow_up_start_column: The header name of the column of enrollment dates
+    :param follow_up_total_column: The header name of the column with total enrollment time (in years)
+    :param diagnosis_column: The header name of the column of disease diagnosis dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    disease_dicts = defaultdict(dict)
+    with open(file_name, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        header = next(reader)
+        follow_up_start_index = header.index(follow_up_start_column)
+        follow_up_total_index = header.index(follow_up_total_column)
+        patient_index = header.index(patient_column)
+        date_index = header.index(diagnosis_column)
+        for row in reader:
+            try:
+                patient_key = int(row[patient_index])
+                disease_dicts['follow_up_start'][patient_key] = _loyalty_str2date(row[follow_up_start_index])
+                disease_dicts['follow_up_total'][patient_key] = float(row[follow_up_total_index])
+                if row[date_index] == '' or row[date_index] == 'NULL':
+                    continue
+                disease_dicts['diagnosis_dates'][patient_key] = _loyalty_str2date(row[date_index])
+                if len(disease_dicts['follow_up_start']) % 2000 == 0:
+                    logging.debug(f"Processed: {len(disease_dicts['follow_up_start'])} patient rows.")
+            except ValueError as e:
+                logging.warning(f'val err {e}')
+        logging.info(f"Done processing {diagnosis_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.")
+
+    def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in disease_dicts['follow_up_start']:
+            raise KeyError(f'{diagnosis_column} did not contain MRN for TensorMap:{tm.name}')
+        if mrn_int not in disease_dicts['diagnosis_dates']:
+            has_disease = 0
+            censor_date = disease_dicts['follow_up_start'][mrn_int]
+            censor_date += datetime.timedelta(days=YEAR_DAYS * disease_dicts['follow_up_total'][mrn_int])
+        else:
+            has_disease = 1
+            censor_date = disease_dicts['diagnosis_dates'][mrn_int]
+
+        if incidence_only and has_disease:
+            raise ValueError(f'{tm.name} only considers incident diagnoses')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        tensor[0] = has_disease
+        tensor[1] = (censor_date - disease_dicts['follow_up_start'][mrn_int]).days
+        return tensor
+    return _cox_tensor_from_file
+
+
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
@@ -1588,6 +1704,12 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     days_window = 1825
     logging.info(f'needed name {needed_tensor_maps}')
     for needed_name in needed_tensor_maps:
+        if needed_name == 'age_from_csv':
+            name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(INCIDENCE_CSV))
+        elif needed_name == 'sex_from_csv':
+            csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
+            name2tensormap[needed_name] = TensorMap(needed_name, shape=(2,), channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
+
         if 'survival' not in needed_name:
             continue
         potential_day_string = needed_name.split('_')[-1]
@@ -1597,6 +1719,11 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             pass
 
     for diagnosis in diagnosis2column:
+        name = f'csv_incident_cox_{diagnosis}'
+        if name in needed_tensor_maps:
+            tensor_from_file_fxn = csv_time_to_event(INCIDENCE_CSV, incidence_only=True, diagnosis_column=diagnosis2column[diagnosis])
+            name2tensormap[name] = TensorMap(name, Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tensor_from_file_fxn)
+            
         # Build diagnosis classification TensorMaps
         name = f'ecg_2500_to_diagnosis_{diagnosis}'
         if name in needed_tensor_maps:

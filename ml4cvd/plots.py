@@ -134,12 +134,11 @@ def evaluate_predictions(
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
-        logging.info(f"{[f'{label}: {value:.2f}' for label, value in zip(concordance_return_values, c_index)]}")
-        new_title = f'{title}_C_Index_{c_index[0]:0.2f}'
+        logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
+        new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
-        logging.info(f"ytru {y_truth.shape} ypred {y_predictions.shape}")
         plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, title, folder)
-        plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder)
+        plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder, tm.days_window)
     elif tm.is_language():
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -453,7 +452,7 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./figures/', max_follow_up=1825):
+def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./figures/', days_window=1825):
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
@@ -463,7 +462,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     survivorship = [1.0]
     real_survivorship = [1.0]
     for cur_day, day_index in enumerate(days_sorted_index):
-        if days_follow_up[day_index] > max_follow_up:
+        if days_follow_up[day_index] > days_window:
             break
         sick_per_step += survived[day_index]
         censored += 1 - survived[day_index]
@@ -471,8 +470,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
         real_survivorship.append(real_survivorship[cur_day]*(1 - (survived[day_index] / alive_per_step)))
     logging.info(f'First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
-    plt.plot(days_sorted[:cur_day], survivorship[:cur_day], marker='.', label='Cohort survivorship')
-    plt.plot(days_sorted[:cur_day], real_survivorship[:cur_day], marker='.', label='Real survivorship')
+    plt.plot([0]+days_sorted[:cur_day-1], real_survivorship[:cur_day], marker='.', label='Survivorship')
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(survived)//2 for g in groups}
     predicted_sick = {g: 0 for g in groups}
@@ -480,23 +478,22 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     predicted_survival = defaultdict(list)
     threshold = np.median(predictions)
     for cur_day, day_index in enumerate(days_sorted_index):
-        if days_follow_up[day_index] > max_follow_up:
+        if days_follow_up[day_index] > days_window:
             break
         group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
-
         predicted_sick[group] += survived[day_index]
         predicted_survival[group].append(1 - (predicted_sick[group] / (predicted_alive[group]+predicted_sick[group])))
         predicted_alive[group] -= survived[day_index]
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
-        plt.plot(predicted_days[group], predicted_survival[group], color='r' if 'High' in group else 'g', marker='o', label=f'{group} group had {predicted_sick[group]} events')
-    plt.title(f'{title} Enrolled:{len(survived)}, Censored:{censored:.0f}, {100*(censored/len(survived)):2.1f}%, Events:{sick_per_step:.0f}, {100*(sick_per_step/len(survived)):2.1f}%\nMax follow up {max_follow_up} days, {max_follow_up//365} years.')
+        plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o', label=f'{group} group had {predicted_sick[group]} events')
+    plt.title(f'{title}\nEnrolled: {len(survived)}, Censored: {censored:.0f}, {100*(censored/len(survived)):2.1f}%, Events: {sick_per_step:.0f}, {100*(sick_per_step/len(survived)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="upper right")
 
-    figure_path = os.path.join(prefix, f'survivorship_fu_{max_follow_up}_{title}{IMAGE_EXT}')
+    figure_path = os.path.join(prefix, f'survivorship_fu_{days_window}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f'Try to save survival plot at: {figure_path}')
