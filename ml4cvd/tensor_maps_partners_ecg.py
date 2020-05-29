@@ -1293,8 +1293,6 @@ def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 
 
 
 def _date_field_to_age(value: str) -> float:
-    birth_day = _loyalty_str2date(value)
-    logging.info(f'birth day is {birth_day} and today is {datetime.date.today()} and diff days {(datetime.date.today() - _loyalty_str2date(value)).days} ')
     return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
 
 
@@ -1395,7 +1393,7 @@ def csv_time_to_event(
             has_disease = 1
             follow_up = (disease_dicts['diagnosis_dates'][mrn_int] - disease_dicts['follow_up_start'][mrn_int]).days
 
-        if incidence_only and has_disease:
+        if incidence_only and has_disease and disease_dicts['diagnosis_dates'][mrn_int] < disease_dicts['follow_up_start'][mrn_int]:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
         logging.info(f"Has disease {has_disease} Follow up {follow_up} patient rows and total {disease_dicts['follow_up_total'][mrn_int]} start fu {disease_dicts['follow_up_start'][mrn_int]}.")
         tensor = np.zeros(tm.shape, dtype=np.float32)
