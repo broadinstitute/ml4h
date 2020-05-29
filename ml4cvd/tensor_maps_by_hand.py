@@ -531,12 +531,16 @@ TMAPS['adjusted_myocardium_mass_asym_outlier'] = TensorMap(
 )
 
 
+TMAPS['lvm_prediction'] = TensorMap(
+    'LVM_prediction', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
+    channel_map={'LVM_prediction': 0}, path_prefix='continuous', normalization={'mean': 89.70, 'std': 24.80},
+)
+
 TMAPS['lvm_prediction_asym_outlier'] = TensorMap(
     'LVM_prediction', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
     loss=asymmetric_outlier_mse, channel_map={'LVM_prediction': 0}, path_prefix='continuous',
     normalization={'mean': 89.70, 'std': 24.80},
 )
-
 
 def _ecg_poor_data_quality_validator(tm: TensorMap, tensor, hd5):
     ecg_interpretation = str(tm.hd5_first_dataset_in_group(hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
