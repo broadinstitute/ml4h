@@ -1293,6 +1293,8 @@ def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 
 
 
 def _date_field_to_age(value: str) -> float:
+    birth_day = _loyalty_str2date(value)
+    logging.info(f'birth day is {birth_day} and today is {datetime.date.today()} and diff days {(datetime.date.today() - _loyalty_str2date(value)).days} ')
     return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
 
 
@@ -1708,7 +1710,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(other_csv))
         elif needed_name == 'sex_from_csv':
             csv_tff = csv_field_tensor_from_file(other_csv, value_column='sex', value_transform=_field_to_index_from_map)
-            name2tensormap[needed_name] = TensorMap(needed_name, shape=(2,), channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
+            name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
 
         if 'survival' not in needed_name:
             continue
@@ -1740,7 +1742,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         name = f'diagnosis_{diagnosis}_newest'
         if name in needed_tensor_maps:
             tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], dependent=False)
-            name2tensormap[name] = TensorMap(name,  Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
+            name2tensormap[name] = TensorMap(name, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
 
         name = f'incident_{diagnosis}_newest'
         if name in needed_tensor_maps:
