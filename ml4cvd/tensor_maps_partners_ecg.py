@@ -1288,16 +1288,17 @@ def _date_from_dates(ecg_dates, target_date=None):
     return np.random.choice(ecg_dates)
 
 
-def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 'M': 1}) -> float:
+def _field_to_index_from_map(value: str, follow_up_start: datetime.datetime, field_map: Dict[str, float] = {'F': 0, 'M': 1}) -> float:
     return field_map[value]
 
 
-def _date_field_to_age(value: str) -> float:
+def _date_field_to_age(value: str, follow_up_start: datetime.datetime) -> float:
     return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
 
 
 def csv_field_tensor_from_file(
-    file_name: str, patient_column: str = 'Mrn', value_column: str = 'birth_date', value_transform: Callable = _date_field_to_age, delimiter: str = ','
+    file_name: str, patient_column: str = 'Mrn', value_column: str = 'birth_date', value_transform: Callable = _date_field_to_age,
+        follow_up_start_column: str = 'start_fu', delimiter: str = ','
 ) -> Callable:
     """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
 
@@ -1308,19 +1309,21 @@ def csv_field_tensor_from_file(
     :param patient_column: The header name of the column of patient ids
     :param value_column: The header name of the column of values to load
     :param value_transform: A function that transforms the string found in the CSV to the desired value
+    :param follow_up_start_column: The header name of the column of enrollment dates
     :param delimiter: The delimiter separating columns of the TSV or CSV
     :return: The tensor_from_file function to provide to TensorMap constructors
     """
     with open(file_name, 'r', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter=delimiter)
         header = next(reader)
+        follow_up_start_index = header.index(follow_up_start_column)
         patient_index = header.index(patient_column)
         value_index = header.index(value_column)
         value_table = {}
         for row in reader:
             try:
                 patient_key = int(row[patient_index])
-                value_table[patient_key] = value_transform(row[value_index])
+                value_table[patient_key] = value_transform(row[value_index], _loyalty_str2date(row[follow_up_start_index]))
             except ValueError as e:
                 logging.warning(f'val err {e}')
         logging.info(f'Done processing {value_column} Got {len(value_table)} patient rows.')
