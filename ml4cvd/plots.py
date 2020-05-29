@@ -279,7 +279,6 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
 
     for k in labels:
         color = _hash_string_to_color(k)
-        bin_edges = stats.mstats.mquantiles(prediction[..., labels[k]], range(0.0, 1.0, 0.1))
         brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
         fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], prediction[..., labels[k]], n_bins=10)
         ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
@@ -312,7 +311,8 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         color = _hash_string_to_color(k)
         y_true = truth[..., labels[k]]
         y_prob = prediction[..., labels[k]]
-        bins = np.linspace(0., 1. + 1e-8, n_bins + 1)
+
+        bins = stats.mstats.mquantiles(prediction[..., labels[k]], np.arange(0.0, 1.0, 0.1))
         binids = np.digitize(y_prob, bins) - 1
 
         bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
