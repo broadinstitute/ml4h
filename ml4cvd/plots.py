@@ -270,7 +270,7 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
 
 
 def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figures/', n_bins=10):
-    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, 2*SUBPLOT_SIZE))
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
