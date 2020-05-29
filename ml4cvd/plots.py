@@ -272,47 +272,23 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
 def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figures/', n_bins=10):
     _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    ax3 = plt.subplot2grid((3, 1), (0, 0), rowspan=3)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
-
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+    ax3.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
 
     for k in labels:
-        color = _hash_string_to_color(k)
-        brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
-        fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], prediction[..., labels[k]], n_bins=n_bins)
-        ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
-        ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
-    ax1.set_ylabel("Fraction of positives")
-    ax1.set_ylim([-0.05, 1.05])
-    ax1.legend(loc="lower right")
-    ax1.set_title('Calibrations plots  (reliability curve)')
-
-    ax2.set_xlabel("Mean predicted value")
-    ax2.set_ylabel("Count")
-    ax2.legend(loc="upper center", ncol=2)
-
-    plt.tight_layout()
-
-    figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    logging.info(f"Try to save calibrations plot at: {figure_path}")
-    plt.savefig(figure_path)
-    plt.clf()
-
-    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-    ax2 = plt.subplot2grid((3, 1), (2, 0))
-
-    true_sums = np.sum(truth, axis=0)
-    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
-    for k in labels:
-        color = _hash_string_to_color(k)
         y_true = truth[..., labels[k]]
         y_prob = prediction[..., labels[k]]
+        color = _hash_string_to_color(k)
+        brier_score = brier_score_loss(y_true, prediction[..., labels[k]], pos_label=1)
+        fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins)
+        ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+        ax2.hist(y_prob, range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
 
-        bins = stats.mstats.mquantiles(prediction[..., labels[k]], np.arange(0.0, 1.0, 1.0/n_bins))
+
+        bins = stats.mstats.mquantiles(y_prob, np.arange(0.0, 1.0, 1.0/n_bins))
         binids = np.digitize(y_prob, bins) - 1
 
         bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
@@ -322,10 +298,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         nonzero = bin_total != 0
         prob_true = (bin_true[nonzero] / bin_total[nonzero])
         prob_pred = (bin_sums[nonzero] / bin_total[nonzero])
-        #brier_score = brier_score_loss(y_true, prob_pred, pos_label=1)
-        brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
-        ax1.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
-        ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
+        ax3.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
     ax1.legend(loc="lower right")
@@ -334,15 +307,58 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
     ax2.set_xlabel("Mean predicted value")
     ax2.set_ylabel("Count")
     ax2.legend(loc="upper center", ncol=2)
-
+    ax3.set_title('Calibration plot (equal sized bins)')
     plt.tight_layout()
 
-    figure_path = os.path.join(prefix, 'calibrations_even_bin_' + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save calibrations plot at: {figure_path}")
     plt.savefig(figure_path)
     plt.clf()
+    # 
+    # _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    # ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    # ax2 = plt.subplot2grid((3, 1), (2, 0))
+    # 
+    # true_sums = np.sum(truth, axis=0)
+    # ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
+    # for k in labels:
+    #     color = _hash_string_to_color(k)
+    #     y_true = truth[..., labels[k]]
+    #     y_prob = prediction[..., labels[k]]
+    # 
+    #     bins = stats.mstats.mquantiles(prediction[..., labels[k]], np.arange(0.0, 1.0, 1.0/n_bins))
+    #     binids = np.digitize(y_prob, bins) - 1
+    # 
+    #     bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
+    #     bin_true = np.bincount(binids, weights=y_true, minlength=len(bins))
+    #     bin_total = np.bincount(binids, minlength=len(bins))
+    # 
+    #     nonzero = bin_total != 0
+    #     prob_true = (bin_true[nonzero] / bin_total[nonzero])
+    #     prob_pred = (bin_sums[nonzero] / bin_total[nonzero])
+    #     #brier_score = brier_score_loss(y_true, prob_pred, pos_label=1)
+    #     brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
+    #     ax1.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+    #     ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
+    # ax1.set_ylabel("Fraction of positives")
+    # ax1.set_ylim([-0.05, 1.05])
+    # ax1.legend(loc="lower right")
+    # ax1.set_title('Calibrations plots  (reliability curve)')
+    # 
+    # ax2.set_xlabel("Mean predicted value")
+    # ax2.set_ylabel("Count")
+    # ax2.legend(loc="upper center", ncol=2)
+    # 
+    # plt.tight_layout()
+    # 
+    # figure_path = os.path.join(prefix, 'calibrations_even_bin_' + title + IMAGE_EXT)
+    # if not os.path.exists(os.path.dirname(figure_path)):
+    #     os.makedirs(os.path.dirname(figure_path))
+    # logging.info(f"Try to save calibrations plot at: {figure_path}")
+    # plt.savefig(figure_path)
+    # plt.clf()
 
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
