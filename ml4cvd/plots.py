@@ -234,7 +234,7 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
-def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./figures/'):
+def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./figures/', n_bins=10):
     _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
@@ -246,7 +246,7 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
         for k in labels:
             color = _hash_string_to_color(p+k)
             brier_score = brier_score_loss(truth[..., labels[k]], predictions[p][..., labels[k]], pos_label=1)
-            fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], predictions[p][..., labels[k]], n_bins=10)
+            fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], predictions[p][..., labels[k]], n_bins=n_bins)
             ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{p} {k} Brier: {brier_score:0.3f}", color=color)
             ax2.hist(predictions[p][..., labels[k]], range=(0, 1), bins=10, label=f'{p} {k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
             logging.info(f'{p} {k} n={true_sums[labels[k]]:.0f}\nBrier score: {brier_score:0.3f}')
@@ -280,7 +280,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
     for k in labels:
         color = _hash_string_to_color(k)
         brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
-        fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], prediction[..., labels[k]], n_bins=10)
+        fraction_of_positives, mean_predicted_value = calibration_curve(truth[..., labels[k]], prediction[..., labels[k]], n_bins=n_bins*2)
         ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
         ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=10, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
     ax1.set_ylabel("Fraction of positives")
@@ -312,7 +312,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         y_true = truth[..., labels[k]]
         y_prob = prediction[..., labels[k]]
 
-        bins = stats.mstats.mquantiles(prediction[..., labels[k]], np.arange(0.0, 1.0, 0.1))
+        bins = stats.mstats.mquantiles(prediction[..., labels[k]], np.arange(0.0, 1.0, 1.0/n_bins))
         binids = np.digitize(y_prob, bins) - 1
 
         bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
