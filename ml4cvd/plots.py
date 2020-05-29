@@ -270,7 +270,7 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
 
 
 def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figures/', n_bins=10):
-    _, (ax1, ax2, ax3) = plt.subplots(3, figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
@@ -281,7 +281,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         y_prob = prediction[..., labels[k]]
         color = _hash_string_to_color(k)
         brier_score = brier_score_loss(y_true, prediction[..., labels[k]], pos_label=1)
-        fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins)
+        fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins*2)
         ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
         ax2.hist(y_prob, range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
 
