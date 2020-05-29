@@ -1293,7 +1293,7 @@ def _field_to_index_from_map(value: str, follow_up_start: datetime.datetime, fie
 
 
 def _date_field_to_age(value: str, follow_up_start: datetime.datetime) -> float:
-    return (datetime.date.today() - _loyalty_str2date(value)).days / YEAR_DAYS
+    return (_loyalty_str2date(follow_up_start) - _loyalty_str2date(value)).days / YEAR_DAYS
 
 
 def csv_field_tensor_from_file(
@@ -1323,7 +1323,7 @@ def csv_field_tensor_from_file(
         for row in reader:
             try:
                 patient_key = int(row[patient_index])
-                value_table[patient_key] = value_transform(row[value_index], _loyalty_str2date(row[follow_up_start_index]))
+                value_table[patient_key] = value_transform(row[value_index], row[follow_up_start_index])
             except ValueError as e:
                 logging.warning(f'val err {e}')
         logging.info(f'Done processing {value_column} Got {len(value_table)} patient rows.')
