@@ -147,7 +147,7 @@ class TensorGenerator:
                 )
                 process.start()
                 self.workers.append(process)
-        logging.info(f"Started {i} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB.")
+        logging.info(f"Started {i+1} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9:.3f} GB.")
 
     def set_worker_paths(self, paths: List[Path]):
         """In the single worker case, set the worker's paths."""
