@@ -491,7 +491,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     plt.title(f'{title}\nEnrolled: {len(survived)}, Censored: {censored:.0f}, {100*(censored/len(survived)):2.1f}%, Events: {sick_per_step:.0f}, {100*(sick_per_step/len(survived)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    plt.legend(loc="upper right")
+    plt.legend(loc="lower left")
 
     figure_path = os.path.join(prefix, f'survivorship_fu_{days_window}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
