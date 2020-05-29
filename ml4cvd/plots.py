@@ -270,10 +270,8 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
 
 
 def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figures/', n_bins=10):
-    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-    ax3 = plt.subplot2grid((3, 1), (0, 0), rowspan=3)
-    ax2 = plt.subplot2grid((3, 1), (2, 0))
+    _, (ax1, ax2, ax3) = plt.subplots(3, figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
     ax3.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
@@ -286,7 +284,6 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins)
         ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
         ax2.hist(y_prob, range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
-
 
         bins = stats.mstats.mquantiles(y_prob, np.arange(0.0, 1.0, 1.0/n_bins))
         binids = np.digitize(y_prob, bins) - 1
