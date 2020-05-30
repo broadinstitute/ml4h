@@ -291,7 +291,7 @@ def parse_args():
              'The number of time windows must match across all time window arguments. ',
     )
     parser.add_argument(
-        '--which_in_window', action='append', choices=['newest', 'oldest', 'random'],
+        '--order_in_window', action='append', choices=['newest', 'oldest', 'random'],
         help='Which source tensors in a time series to use in time window. By default, newest tensors are used for each window. '
              'Define multiple time windows by using this argument more than once. '
              'The number of time windows must match across all time window arguments. ',

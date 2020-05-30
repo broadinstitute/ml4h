@@ -1001,7 +1001,7 @@ def cross_reference(args):
     ref_end = args.reference_end_time_tensor
     ref_label = args.reference_label
     number_in_window = args.number_in_window
-    which_in_window = args.which_in_window
+    order_in_window = args.order_in_window
     window_names = args.window_name
 
     # parse options
@@ -1018,12 +1018,12 @@ def cross_reference(args):
         if len(ref_start) != len(ref_end):
             raise ValueError(f"Invalid time windows, got {len(ref_start)} starts and {len(ref_end)} ends")
 
-        if number_in_window is None and which_in_window is None:
+        if number_in_window is None and order_in_window is None:
             # use for all time windows
             number_in_window = [1] * len(ref_start)
-            which_in_window = ['newest'] * len(ref_start)
-        elif not(len(number_in_window) == len(which_in_window) == len(ref_start)):
-            raise ValueError(f"Ambiguous time selection in time windows, got {len(number_in_window)} number_in_windows and {len(which_in_window)} which_in_windows for {len(ref_start)} windows")
+            order_in_window = ['newest'] * len(ref_start)
+        elif not(len(number_in_window) == len(order_in_window) == len(ref_start)):
+            raise ValueError(f"Ambiguous time selection in time windows, got {len(number_in_window)} number_in_windows and {len(order_in_window)} order_in_windows for {len(ref_start)} windows")
 
         if window_names is None:
             window_names = [str(i) for i in range(len(ref_start))]
@@ -1139,11 +1139,11 @@ def cross_reference(args):
         def _count_time_windows(dfs, title, description):
             if type(dfs) is list:
                 # at least N in any time window: at least 1 ECG in pre-op window (between -180 days relative surgdt and surgdt) (total)
-                for df, window_name, N, which, (start, end) in zip(dfs, window_names, number_in_window, which_in_window, time_windows):
-                    which = f' {which}' if description == 'exactly' else ''
-                    cohort_counts[f'{title}: {description} {N}{which} {src_name} in {window_name} window (between {start.replace("_", " ")} and {end.replace("_", " ")}) (total)'] = len(df)
-                    cohort_counts[f'{title}: {description} {N}{which} {src_name} in {window_name} window (between {start.replace("_", " ")} and {end.replace("_", " ")}) (unique {" + ".join(src_cols)})'] = len(df.drop_duplicates(subset=src_cols))
-                    cohort_counts[f'{title}: {description} {N}{which} {src_name} in {window_name} window (between {start.replace("_", " ")} and {end.replace("_", " ")}) (unique {" + ".join(src_join)})'] = len(df.drop_duplicates(subset=src_join))
+                for df, window_name, N, order, (start, end) in zip(dfs, window_names, number_in_window, order_in_window, time_windows):
+                    order = f' {order}' if description == 'exactly' else ''
+                    cohort_counts[f'{title}: {description} {N}{order} {src_name} in {window_name} window (between {start.replace("_", " ")} and {end.replace("_", " ")}) (total)'] = len(df)
+                    cohort_counts[f'{title}: {description} {N}{order} {src_name} in {window_name} window (between {start.replace("_", " ")} and {end.replace("_", " ")}) (unique {" + ".join(src_cols)})'] = len(df.drop_duplicates(subset=src_cols))
+                    cohort_counts[f'{title}: {description} {N}{order} {src_name} in {window_name} window (between {start.replace("_", " ")} and {end.replace("_", " ")}) (unique {" + ".join(src_join)})'] = len(df.drop_duplicates(subset=src_join))
             else:
                 # at least N in any time window (total)
                 df = dfs
@@ -1180,12 +1180,12 @@ def cross_reference(args):
 
         # get at least N occurrences in any time window
         dfs_min_in_any_time_window = [df.groupby(src_join).filter(lambda g: len(g) >= N) for df, N in zip(dfs_min_in_any_time_window, number_in_window)]
-        min_in_any_time_window = _aggregate_time_windows(dfs_min_in_any_time_window, window_names)
-        logging.info(f"Cross referenced so {' + '.join(src_join)} occurs at least N times in any time window")
-        title = f'at least N in any time window'
-        _report_cross_reference(min_in_any_time_window, title)
-        _count_time_windows(dfs_min_in_any_time_window, title, 'at least')
-        _count_time_windows(min_in_any_time_window, title, 'at least')
+        # min_in_any_time_window = _aggregate_time_windows(dfs_min_in_any_time_window, window_names)
+        # logging.info(f"Cross referenced so {' + '.join(src_join)} occurs at least N times in any time window")
+        # title = f'at least N in any time window'
+        # _report_cross_reference(min_in_any_time_window, title)
+        # _count_time_windows(dfs_min_in_any_time_window, title, 'at least')
+        # _count_time_windows(min_in_any_time_window, title, 'at least')
 
         # get at least N occurrences in every time window
         dfs_min_in_every_time_window = _intersect_time_windows(dfs_min_in_any_time_window)
@@ -1197,25 +1197,25 @@ def cross_reference(args):
         _count_time_windows(min_in_every_time_window, title, 'at least')
 
         # get exactly N occurrences, select based on ordering
-        def _get_occurrences(df, N, which):
-            if which == 'newest':
+        def _get_occurrences(df, N, order):
+            if order == 'newest':
                 df = df.groupby(src_join).tail(N)
-            elif which == 'oldest':
+            elif order == 'oldest':
                 df = df.groupby(src_join).head(N)
-            elif which == 'random':
+            elif order == 'random':
                 df = df.groupby(src_join).apply(lambda g: g.sample(N))
             else:
-                raise NotImplementedError(f"Ordering for which rows to use in time window unknown: {which}")
+                raise NotImplementedError(f"Ordering for which rows to use in time window unknown: {order}")
             return df.reset_index(drop=True)
 
         # get exactly N occurrences in any time window
-        dfs_exact_in_any_time_window = [_get_occurrences(df, N, which) for df, N, which in zip(dfs_min_in_any_time_window, number_in_window, which_in_window)]
-        exact_in_any_time_window = _aggregate_time_windows(dfs_exact_in_any_time_window, window_names)
-        logging.info(f"Cross referenced so {' + '.join(src_join)} occurs exactly N times in any time window")
-        title = f'exactly N in any time window'
-        _report_cross_reference(exact_in_any_time_window, title)
-        _count_time_windows(dfs_exact_in_any_time_window, title, 'exactly')
-        _count_time_windows(exact_in_any_time_window, title, 'exactly')
+        dfs_exact_in_any_time_window = [_get_occurrences(df, N, order) for df, N, order in zip(dfs_min_in_any_time_window, number_in_window, order_in_window)]
+        # exact_in_any_time_window = _aggregate_time_windows(dfs_exact_in_any_time_window, window_names)
+        # logging.info(f"Cross referenced so {' + '.join(src_join)} occurs exactly N times in any time window")
+        # title = f'exactly N in any time window'
+        # _report_cross_reference(exact_in_any_time_window, title)
+        # _count_time_windows(dfs_exact_in_any_time_window, title, 'exactly')
+        # _count_time_windows(exact_in_any_time_window, title, 'exactly')
 
         # get exactly N occurrences in every time window
         dfs_exact_in_every_time_window = _intersect_time_windows(dfs_exact_in_any_time_window)
