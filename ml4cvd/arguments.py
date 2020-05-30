@@ -265,26 +265,36 @@ def parse_args():
     parser.add_argument(
         '--reference_start_time_tensor', action='append', nargs='+',
         help='TensorMap or column name in csv of start of time window in reference. '
+             'Define multiple time windows by using this argument more than once. '
+             'The number of time windows must match across all time window arguments. '
              'An integer can be provided as a second argument to specify an offset to the start time. '
              'e.g. tStart -30',
     )
     parser.add_argument(
         '--reference_end_time_tensor', action='append', nargs='+',
         help='TensorMap or column name in csv of end of time window in reference. '
+             'Define multiple time windows by using this argument more than once. '
+             'The number of time windows must match across all time window arguments. '
              'An integer can be provided as a second argument to specify an offset to the end time. '
              'e.g. tEnd 30',
     )
     parser.add_argument(
         '--window_name', action='append',
-        # TODO help docs
+        help='Name of time window. By default, the name of the window is the index of the window. '
+             'Define multiple time windows by using this argument more than once. '
+             'The number of time windows must match across all time window arguments. ',
     )
     parser.add_argument(
         '--number_in_window', action='append', type=int,
-        # TODO help docs
+        help='Number of source tensors to use in time window. By default, 1 tensor is used for each window. '
+             'Define multiple time windows by using this argument more than once. '
+             'The number of time windows must match across all time window arguments. ',
     )
     parser.add_argument(
         '--which_in_window', action='append', choices=['newest', 'oldest', 'random'],
-        # TODO help docs
+        help='Which source tensors in a time series to use in time window. By default, newest tensors are used for each window. '
+             'Define multiple time windows by using this argument more than once. '
+             'The number of time windows must match across all time window arguments. ',
     )
     parser.add_argument(
         '--reference_label', # TODO allow multiple labels
