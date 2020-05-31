@@ -3,7 +3,7 @@ import re
 import base64
 import struct
 import logging
-import multiprocess
+import multiprocessing
 from datetime import datetime
 from collections import defaultdict
 from typing import List, Dict, Tuple, Union
@@ -61,7 +61,7 @@ def _get_mrn_xmls_map(xml_folder: str, num_workers: int) -> Dict[str, List[str]]
     logging.info(f'Found {len(fpath_xmls)} XMLs at {xml_folder}')
 
     # Read through xmls to get MRN in parallel
-    with multiprocess.Pool(processes=num_workers) as pool:
+    with multiprocessing.Pool(processes=num_workers) as pool:
         mrn_xml_list = pool.starmap(
             _map_mrn_to_xml,
             [(fpath_xml,) for fpath_xml in fpath_xmls],
@@ -433,7 +433,7 @@ def _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map: Dict[str, List[str]], dir_hd5
     tot_xml = sum([len(v) for k, v in mrn_xmls_map.items()])
     os.makedirs(dir_hd5, exist_ok=True)
 
-    with multiprocess.Pool(processes=num_workers) as pool:
+    with multiprocessing.Pool(processes=num_workers) as pool:
         converted = pool.starmap(
             _convert_mrn_xmls_to_hd5,
             [(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xmls_map.items()],
