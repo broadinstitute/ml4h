@@ -5,6 +5,7 @@ import h5py
 import logging
 import datetime
 import numpy as np
+import pandas as pd
 from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
@@ -20,10 +21,19 @@ CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-all-features-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
+def _hd5_filename_to_mrn_int(filename: str) -> int:
+    return int(os.path.basename(filename).split('.')[0])
+
+
 def _get_ecg_dates(tm, hd5):
+    if not hasattr(_get_ecg_dates, 'mrn_lookup'):
+        _get_ecg_dates.mrn_lookup = dict()
+    mrn = _hd5_filename_to_mrn_int(hd5.filename)
+    if mrn in _get_ecg_dates.mrn_lookup:
+        return _get_ecg_dates.mrn_lookup[mrn]
+
     dates = list(hd5[tm.path_prefix])
     if tm.time_series_lookup is not None:
-        mrn = int(os.path.basename(hd5.filename).split(TENSOR_EXT)[0])
         start, end = tm.time_series_lookup[mrn]
         dates = [date for date in dates if start <= date <= end]
     if tm.time_series_order == TimeSeriesOrder.NEWEST:
@@ -37,6 +47,7 @@ def _get_ecg_dates(tm, hd5):
     start_idx = tm.time_series_limit if tm.time_series_limit is not None else 1
     dates = dates[-start_idx:]  # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
+    _get_ecg_dates.mrn_lookup[mrn] = dates
     return dates
 
 
@@ -1160,10 +1171,6 @@ def _cardiac_surgery_str2date(input_date: str, date_format: str = CARDIAC_SURGER
     return datetime.datetime.strptime(input_date, date_format)
 
 
-def _hd5_filename_to_mrn_int(filename: str) -> int:
-    return int(os.path.basename(filename).split('.')[0])
-
-
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
@@ -1489,92 +1496,48 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     return name2tensormap
 
 
-def _dates_with_voltage_len(ecg_dates, voltage_len, tm, hd5, voltage_key = list(ECG_REST_AMP_LEADS.keys())[0]):
-    path = lambda ecg_date: _make_hd5_path(tm, ecg_date, voltage_key)
-    return [ecg_date for ecg_date in ecg_dates if hd5[path(ecg_date)].attrs['len'] == voltage_len]
+def build_cardiac_surgery_dict(
+    filename: str = CARDIAC_SURGERY_OUTCOMES_CSV,
+    patient_column: str = 'medrecn',
+    date_column: str = 'surgdt',
+    additional_columns: List[str] = [],
+) -> Dict:
+    keys = [date_column] + additional_columns
+    df = pd.read_csv(
+        filename,
+        low_memory=False,
+        usecols=[patient_column]+keys,
+    )
+    cardiac_surgery_dict = {}
+    for row in df.itertuples():
+        patient_key = getattr(row, patient_column)
+        cardiac_surgery_dict[patient_key] = {key: getattr(row, key) for key in keys}
+    return cardiac_surgery_dict
 
 
-def _date_in_window_from_dates(ecg_dates, surgery_date, day_window):
-    ecg_dates.sort(reverse=True)
-    for ecg_date in ecg_dates:
-        ecg_datetime = datetime.datetime.strptime(ecg_date, PARTNERS_DATETIME_FORMAT)
-        if datetime.timedelta(days=0) <= surgery_date - ecg_datetime <= datetime.timedelta(days=day_window):
-            return ecg_date
-    raise ValueError(f'No ECG in time window')
+def build_date_interval_lookup(
+    cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]],
+    start_column: str = 'surgdt',
+    start_offset: int = -30,
+    end_column: str = 'surgdt',
+    end_offset: int = 0,
+) -> Dict[int, Tuple[str, str]]:
+    date_interval_lookup = {}
+    for mrn in cardiac_surgery_dict:
+        start_date = (_cardiac_surgery_str2date(cardiac_surgery_dict[mrn][start_column]) + datetime.timedelta(days=start_offset)).strftime(PARTNERS_DATETIME_FORMAT)
+        end_date = (_cardiac_surgery_str2date(cardiac_surgery_dict[mrn][end_column]) + datetime.timedelta(days=end_offset)).strftime(PARTNERS_DATETIME_FORMAT)
+        date_interval_lookup[mrn] = (start_date, end_date)
+    return date_interval_lookup
 
 
-def build_cardiac_surgery_outcome_tensor_from_file(
-    file_name: str,
-    outcome2column: Dict[str, str],
-    patient_column: str = "medrecn",
-    start_column: str = "surgdt",
-    delimiter: str = ",",
-    day_window: int = 30,
-    require_exact_length: bool = False,
+def make_cardiac_surgery_outcome_tensor_from_file(
+    cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]],
+    outcome_column: str,
 ) -> Callable:
-    """Build a tensor_from_file function for outcomes given CSV of patients.
-
-    The tensor_from_file function returned here should be used
-    with CATEGORICAL TensorMaps to classify patients by disease state.
-
-    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
-    :param patient_column: The header name of the column of patient ids
-    :param outcome2column: Dictionary mapping outcome names to the header name of the column with outcome status
-    :param start_column: The header name of the column of surgery dates
-    :param delimiter: The delimiter separating columns of the TSV or CSV
-    :return: The tensor_from_file function to provide to TensorMap constructors
-    """
-    error = None
-    try:
-        with open(file_name, "r", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            header = next(reader)
-            patient_index = header.index(patient_column)
-            date_index = header.index(start_column)
-            surgery_date_table = {}
-            outcome_table = defaultdict(dict)
-            for row in reader:
-                try:
-                    patient_key = int(row[patient_index])
-                    surgery_date_table[patient_key] = _cardiac_surgery_str2date(row[date_index])
-                    for outcome in outcome2column:
-                        outcome_table[outcome][patient_key] = int(row[header.index(outcome2column[outcome])])
-                    if len(outcome_table) % 1000 == 0:
-                        logging.debug(f"Processed: {len(outcome_table)} outcome rows.")
-                except ValueError as e:
-                    logging.debug(f'Value error {e}')
-
-        logging.info(f"Processed outcomes:{list(outcome_table.keys())}. Got {len(surgery_date_table)} patients.")
-
-    except FileNotFoundError as e:
-        error = e
-
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        if error:
-            raise error
-
-        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
-        if mrn_int not in surgery_date_table:
-            raise KeyError(f"MRN not in STS outcomes CSV")
-
-        ecg_dates = list(hd5[tm.path_prefix])
-        if require_exact_length:
-            ecg_dates = _dates_with_voltage_len(ecg_dates, tm.shape[0], tm, hd5)
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
+        mrn = _hd5_filename_to_mrn_int(hd5.filename)
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for dtm in tm.dependent_map:
-            dependents[tm.dependent_map[dtm]] = np.zeros(tm.dependent_map[dtm].shape, dtype=np.float32)
-        ecg_date = _date_in_window_from_dates(ecg_dates, surgery_date_table[mrn_int], day_window)
-        for cm in tm.channel_map:
-            path = _make_hd5_path(tm, ecg_date, cm)
-            voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-            if require_exact_length and len(voltage) != tm.shape[0]:
-                raise ValueError(f'lead {cm} voltage length {len(voltage)} did not match required length {tm.shape[0]}')
-            voltage = _resample_voltage(voltage, tm.shape[0])
-            tensor[..., tm.channel_map[cm]] = voltage
-
-        for dtm in tm.dependent_map:
-            dependents[tm.dependent_map[dtm]][outcome_table[dtm][mrn_int]] = 1.0
-
+        tensor[cardiac_surgery_dict[mrn][outcome_column]] = 1
         return tensor
     return tensor_from_file
 
@@ -1594,129 +1557,32 @@ def build_cardiac_surgery_tensor_maps(
         "sts_long_stay": "llos",
     }
 
-    dependent_maps = {}
-    for outcome in outcome2column:
-        channel_map = _outcome_channels(outcome)
-        dependent_maps[outcome] = TensorMap(outcome, Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=channel_map)
-
-    name = 'ecg_2500_sts'
-    if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-        )
-        name2tensormap[name] = TensorMap(
-            name,
-            shape=(2500, 12),
-            path_prefix=PARTNERS_PREFIX,
-            dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
-            normalization=Standardize(mean=0, std=2000),
-        )
-    name = 'ecg_5000_sts'
-    if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-        )
-        name2tensormap[name] = TensorMap(
-            name,
-            shape=(5000, 12),
-            path_prefix=PARTNERS_PREFIX,
-            dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
-            normalization=Standardize(mean=0, std=2000),
-        )
-    name = 'ecg_2500_sts_exact'
-    if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-            require_exact_length=True,
-        )
-        name2tensormap[name] = TensorMap(
-            name,
-            shape=(2500, 12),
-            path_prefix=PARTNERS_PREFIX,
-            dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
-            normalization=Standardize(mean=0, std=2000),
-        )
-    name = 'ecg_5000_sts_exact'
-    if name in needed_tensor_maps:
-        tensor_from_file_fxn = build_cardiac_surgery_outcome_tensor_from_file(
-            file_name=CARDIAC_SURGERY_OUTCOMES_CSV,
-            outcome2column=outcome2column,
-            day_window=30,
-            require_exact_length=True,
-        )
-        name2tensormap[name] = TensorMap(
-            name,
-            shape=(5000, 12),
-            path_prefix=PARTNERS_PREFIX,
-            dependent_map=dependent_maps,
-            channel_map=ECG_REST_AMP_LEADS,
-            tensor_from_file=tensor_from_file_fxn,
-            normalization=Standardize(mean=0, std=2000),
-        )
-    for outcome in outcome2column:
-        if outcome in needed_tensor_maps:
-            name2tensormap[outcome] = dependent_maps[outcome]
-
-    name2tensormap.update(_build_cardiac_surgery_basic_tensor_maps(needed_tensor_maps))
-    return name2tensormap
-
-
-def build_date_interval_lookup(
-    file_name: str = CARDIAC_SURGERY_OUTCOMES_CSV,
-    delimiter: str = ',',
-    patient_column: str = 'medrecn',
-    start_column: str = 'surgdt',
-    start_offset: int = -30,
-    end_column: str = 'surgdt',
-    end_offset: int = 0,
-) -> Dict[int, Tuple[str, str]]:
-    with open(file_name, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f, delimiter=delimiter)
-        header = next(reader)
-        patient_index = header.index(patient_column)
-        start_index = header.index(start_column)
-        end_index = header.index(end_column)
-        date_interval_lookup = {}
-        for row in reader:
-            try:
-                patient_key = int(row[patient_index])
-                start_date = (_cardiac_surgery_str2date(row[start_index]) + datetime.timedelta(days=start_offset)).strftime(PARTNERS_DATETIME_FORMAT)
-                end_date = (_cardiac_surgery_str2date(row[end_index]) + datetime.timedelta(days=end_offset)).strftime(PARTNERS_DATETIME_FORMAT)
-                date_interval_lookup[patient_key] = (start_date, end_date)
-            except ValueError as e:
-                logging.debug(f'Value error {e}')
-        return date_interval_lookup
-
-
-def _build_cardiac_surgery_basic_tensor_maps(
-    needed_tensor_maps: List[str],
-) -> Dict[str, TensorMap]:
-    name2tensormap: Dict[str:TensorMap] = {}
-
-    date_interval_lookup = build_date_interval_lookup()
+    cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=list(outcome2column.values()))
+    date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
     for needed_name in needed_tensor_maps:
-        if not needed_name.endswith('_sts'):
-            continue
+        if needed_name in outcome2column:
+            channel_map = _outcome_channels(needed_name)
+            sts_tmap = TensorMap(
+                needed_name,
+                Interpretation.CATEGORICAL,
+                path_prefix=PARTNERS_PREFIX,
+                tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(cardiac_surgery_dict, outcome2column[needed_name]),
+                channel_map=channel_map,
+                validator=validator_not_all_zero,
+            )
+        else:
+            if not needed_name.endswith('_sts'):
+                continue
 
-        base_name = needed_name.split('_sts')[0]
-        if base_name not in TMAPS:
-            continue
+            base_name = needed_name.split('_sts')[0]
+            if base_name not in TMAPS:
+                TMAPS.update(build_partners_time_series_tensor_maps([base_name]))
+                if base_name not in TMAPS:
+                    continue
 
-        sts_tmap = copy.deepcopy(TMAPS[base_name])
-        sts_tmap.name = needed_name
-        sts_tmap.time_series_lookup = date_interval_lookup
+            sts_tmap = copy.deepcopy(TMAPS[base_name])
+            sts_tmap.name = needed_name
+            sts_tmap.time_series_lookup = date_interval_lookup
 
         name2tensormap[needed_name] = sts_tmap
 
