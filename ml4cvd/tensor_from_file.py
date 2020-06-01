@@ -1366,38 +1366,43 @@ TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap(
 )
 
 
-def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, dest_shape=None):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
     hd5_path = f'{path_prefix}/{name}/instance_{instance}'
     if concatenate:
-        hd5_path = f'{path_prefix}/{name}1/instance_{instance}'
+        hd5_path = f'{path_prefix}/{name}1/instance_{instance}'    
     if isinstance(hd5[hd5_path], h5py.Group):
-        nslices = len(hd5[hd5_path]) // MRI_FRAMES
         for img in hd5[hd5_path]:
             img_shape = hd5[hd5_path][img].shape
             break
-        shape = (img_shape[0], img_shape[1], nslices, MRI_FRAMES)
+        if dest_shape is None:
+            dest_shape = img_shape
+        nslices = len(hd5[hd5_path]) // MRI_FRAMES        
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         t = 0
         s = 0
         for k in sorted(hd5[hd5_path], key=int):
-            arr[:, :, s, t] = np.array(hd5[hd5_path][k]).T
+            arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[hd5_path][k]).T
             t += 1
             if t == MRI_FRAMES:
                 s += 1
                 t = 0
     elif isinstance(hd5[hd5_path], h5py.Dataset):
+        img_shape = hd5[hd5_path].shape
+        if dest_shape is None:
+            dest_shape = img_shape
         nslices = 1
-        shape = (hd5[hd5_path].shape[0], hd5[hd5_path].shape[1], nslices, MRI_FRAMES)
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
             if concatenate:
                 hd5_path = f'{path_prefix}/{name}{t+1}/instance_{instance}'
-                arr[:, :, 0, t] = np.array(hd5[hd5_path][:, :]).T
+                arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
             else:
-                arr[:, :, 0, t] = np.array(hd5[hd5_path][:, :, t]).T
+                arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
     else:
         raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
