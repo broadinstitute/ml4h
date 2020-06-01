@@ -91,42 +91,34 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
         raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} with desired rate {desired_rate} and rate {rate}.')
 
 
-def make_voltage(population_normalize: float = None):
+def make_voltage(exact_length = False):
     def get_voltage_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        voltage_length = shape[1] if dynamic else shape[0]
         tensor = np.zeros(shape, dtype=np.float32)
         for i, ecg_date in enumerate(ecg_dates):
             for cm in tm.channel_map:
                 try:
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                    voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
+                    if exact_length:
+                        assert len(voltage) == voltage_length
+                    voltage = _resample_voltage(voltage, voltage_length)
                     slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
-                except KeyError:
-                    logging.warning(f'KeyError for channel {cm} in {tm.name}')
-        if population_normalize is not None:
-            tensor /= population_normalize
+                except (KeyError, AssertionError, ValueError):
+                    logging.warning(f'Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}')
         return tensor
     return get_voltage_from_file
 
 
-TMAPS['partners_ecg_voltage'] = TensorMap(
-    'partners_ecg_voltage',
-    shape=(None, 2500, 12),
-    interpretation=Interpretation.CONTINUOUS,
-    path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_voltage(population_normalize=2000.0),
-    channel_map=ECG_REST_AMP_LEADS,
-    time_series_limit=0,
-)
-
-
-TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500'] = TensorMap('partners_ecg_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_5000'] = TensorMap('partners_ecg_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500_raw'] = TensorMap('partners_ecg_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_5000_raw'] = TensorMap('partners_ecg_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500_exact'] = TensorMap('partners_ecg_2500_exact', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_5000_exact'] = TensorMap('partners_ecg_5000_exact', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
 
 
 def make_voltage_attr(volt_attr: str = ""):
