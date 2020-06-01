@@ -62,7 +62,7 @@ def validator_no_negative(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
 
 
 def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if not any(tensor != 0):
+    if np.count_nonzero(tensor) == 0:
         raise ValueError(f'TensorMap {tm.name} failed all-zero check')
 
 
