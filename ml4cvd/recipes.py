@@ -222,7 +222,13 @@ def infer_multimodal_multitask(args):
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    sample_set = None
+    if args.sample_csv is not None:
+        with open(args.sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
+                    if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)]
     model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
