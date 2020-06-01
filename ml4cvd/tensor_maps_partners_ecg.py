@@ -124,6 +124,7 @@ TMAPS['partners_ecg_2500_newest'] = TensorMap('ecg_rest_2500_newest', shape=(250
 TMAPS['partners_ecg_5000_newest'] = TensorMap('ecg_rest_5000_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_raw_newest'] = TensorMap('ecg_rest_2500_raw_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_raw_newest'] = TensorMap('ecg_rest_5000_raw_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000_raw_newest_ukb'] = TensorMap('ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
 
 def make_voltage_attr(volt_attr: str = ""):
