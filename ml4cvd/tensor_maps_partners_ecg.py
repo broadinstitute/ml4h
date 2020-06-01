@@ -51,6 +51,21 @@ def _get_ecg_dates(tm, hd5):
     return dates
 
 
+def validator_no_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+    if any(tensor == ''):
+        raise ValueError(f'TensorMap {tm.name} failed empty string check.')
+
+
+def validator_no_negative(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+    if any(tensor < 0):
+        raise ValueError(f'TensorMap {tm.name} failed non-negative check')
+
+
+def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+    if not any(tensor != 0):
+        raise ValueError(f'TensorMap {tm.name} failed all-zero check')
+
+
 def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ...]]:
     if tm.shape[0] is None:
         return True, (num_ecgs,) + tm.shape[1:]
@@ -113,12 +128,12 @@ def make_voltage(exact_length = False):
     return get_voltage_from_file
 
 
-TMAPS['partners_ecg_2500'] = TensorMap('partners_ecg_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_5000'] = TensorMap('partners_ecg_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_2500_raw'] = TensorMap('partners_ecg_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_5000_raw'] = TensorMap('partners_ecg_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_2500_exact'] = TensorMap('partners_ecg_2500_exact', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_5000_exact'] = TensorMap('partners_ecg_5000_exact', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500'] = TensorMap('partners_ecg_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
+TMAPS['partners_ecg_5000'] = TensorMap('partners_ecg_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
+TMAPS['partners_ecg_2500_raw'] = TensorMap('partners_ecg_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
+TMAPS['partners_ecg_5000_raw'] = TensorMap('partners_ecg_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
+TMAPS['partners_ecg_2500_exact'] = TensorMap('partners_ecg_2500_exact', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
+TMAPS['partners_ecg_5000_exact'] = TensorMap('partners_ecg_5000_exact', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
 
 
 def make_voltage_attr(volt_attr: str = ""):
@@ -186,21 +201,6 @@ def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_
                 label_array[slices] = 1
         return label_array
     return get_partners_ecg_label
-
-
-def validator_no_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if any(tensor == ''):
-        raise ValueError(f'TensorMap {tm.name} failed empty string check.')
-
-
-def validator_no_negative(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if any(tensor < 0):
-        raise ValueError(f'TensorMap {tm.name} failed non-negative check')
-
-
-def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if not any(tensor != 0):
-        raise ValueError(f'TensorMap {tm.name} failed all-zero check')
 
 
 def partners_ecg_datetime(tm, hd5, dependents={}):
