@@ -958,7 +958,20 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
-
+    
+    if args.plot_hist == "True":
+        for tm in args.tensor_maps_in:
+            if tm.interpretation == Interpretation.CONTINUOUS:
+                name = tm.name
+                arr = list(df[name])
+                plt.figure()
+                plt.hist(arr, 50, rwidth = .9)
+                plt.xlabel(name)
+                plt.ylabel('Fraction')
+                plt.rcParams.update({'font.size': 13})
+                figure_path = os.path.join(args.output_folder, args.id, f"{name}.png")
+                plt.savefig(figure_path)
+                logging.info(f"Saved {name} histogram plot at: {figure_path}")
 
 def _report_cross_reference(args, cross_reference_df, title):
     title = title.replace(' ', '_')
