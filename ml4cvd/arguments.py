@@ -282,19 +282,27 @@ def parse_args():
         '--window_name', action='append',
         help='Name of time window. By default, the name of the window is the index of the window. '
              'Define multiple time windows by using this argument more than once. '
-             'The number of time windows must match across all time window arguments. ',
+             'The number of time windows must match across all time window arguments.',
     )
     parser.add_argument(
         '--number_in_window', action='append', type=int,
-        help='Number of source tensors to use in time window. By default, 1 tensor is used for each window. '
+        help='Minimum number of rows with join tensor to use in time window. '
+             'By default, 1 tensor is used for each window. '
              'Define multiple time windows by using this argument more than once. '
-             'The number of time windows must match across all time window arguments. ',
+             'The number of time windows must match across all time window arguments.',
     )
     parser.add_argument(
         '--order_in_window', action='append', choices=['newest', 'oldest', 'random'],
-        help='Which source tensors in a time series to use in time window. By default, newest tensors are used for each window. '
+        help='If specified, exactly --number_in_window rows with join tensor are used in time window. '
+             'Defines which source tensors in a time series to use in time window. '
              'Define multiple time windows by using this argument more than once. '
-             'The number of time windows must match across all time window arguments. ',
+             'The number of time windows must match across all time window arguments.',
+    )
+    parser.add_argument(
+        '--match_any_window', action='store_true', default=False,
+        help='If specified, join tensor does not need to be found in every time window. '
+             'Join tensor needs only be found in at least 1 time window. '
+             'Default only use rows with join tensor that appears across all time windows.',
     )
     parser.add_argument(
         '--reference_label', # TODO allow multiple labels
