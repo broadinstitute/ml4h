@@ -123,7 +123,7 @@ def make_voltage(exact_length = False):
                     slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
                 except (KeyError, AssertionError, ValueError):
-                    logging.warning(f'Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}')
+                    logging.debug(f'Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}')
         return tensor
     return get_voltage_from_file
 
