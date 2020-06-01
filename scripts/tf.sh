@@ -14,6 +14,7 @@ GPU_DEVICE="--gpus all"
 INTERACTIVE=""
 MOUNTS=""
 PYTHON_COMMAND="python"
+PYTHON_COMMAND="bash"
 TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -139,4 +140,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash #-c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
