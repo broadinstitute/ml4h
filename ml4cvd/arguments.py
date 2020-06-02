@@ -227,6 +227,9 @@ def parse_args():
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
     parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
+    # TensorMap prefix for convenience
+    parser.add_argument('--tensormap_prefix', default="ml4cvd.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4cvd.tensormap\"")
+
     # Cross reference arguments
     parser.add_argument(
         '--tensors_name', default='Tensors',
