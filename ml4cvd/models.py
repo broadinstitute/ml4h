@@ -14,12 +14,11 @@ from typing import Dict, List, Tuple, Iterable, Union, Optional
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
 from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback, TensorBoard, History
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
@@ -31,6 +30,11 @@ from ml4cvd.optimizers import get_optimizer
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+
+# progress
+from tqdm.keras import TqdmCallback
+# tensorboard
+import datetime
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
@@ -888,6 +892,7 @@ def train_model_from_generators(
     anneal_max: Optional[float] = None,
     anneal_shift: Optional[float] = None,
     anneal_rate: Optional[float] = None,
+    callbacks: Optional[list] = None,
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
@@ -910,19 +915,33 @@ def train_model_from_generators(
     :param return_history: If true return history from training and don't plot the training history
     :return: The optimized model.
     """
+    # MDRK: I do not like that this is hardcoded without an override option
+    # and that TENSOR_EXT.
+    # Target path and file
     model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
+    # Inspect model
     if inspect_model:
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
         _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
+    # Determine which set of callbacks to use
+    callback_fns = None
+    if callbacks == None:
+        callback_fns = _get_default_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate)
+    else:
+        callback_fns = callbacks
+
+    # Fit model
     history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
         validation_steps=validation_steps, validation_data=generate_valid,
-        callbacks=_get_callbacks(patience, model_file, anneal_max, anneal_shift, anneal_rate),
+        callbacks=callback_fns,
     )
+
+    # Kill workers
     generate_train.kill_workers()
     generate_valid.kill_workers()
 
@@ -934,20 +953,27 @@ def train_model_from_generators(
     return model
 
 
-def _get_callbacks(
-    patience: int, model_file: str,
-    anneal_max: Optional[float] = None,
-    anneal_shift: Optional[float] = None,
-    anneal_rate: Optional[float] = None,
-) -> List[Callback]:
+def _get_default_callbacks(patience: int, 
+                   model_file: str,
+                   anneal_max: Optional[float] = None,
+                   anneal_shift: Optional[float] = None,
+                   anneal_rate: Optional[float] = None,
+                ) -> List[Callback]:
+    
+    # TensorBoard log directory
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
+        TqdmCallback(verbose=2),
+        TensorBoard(log_dir=log_dir, histogram_freq=1, log_every = 1, update_freq = 'epoch')
     ]
-    if anneal_max is not None and anneal_rate is not None and anneal_shift is not None:
+    if anneal_max and anneal_rate and anneal_shift:
         callbacks.append(AdjustKLLoss(anneal_max, anneal_rate, anneal_shift))
     return callbacks
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -6,7 +6,7 @@ import vtk
 import vtk.util.numpy_support
 from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.defines import MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_FRAMES, MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
-from ml4cvd.tensormap.ukbb.mri.mri import mri_tensor_2d
+from ml4cvd.tensormap.ukb.mri import mri_tensor_2d
 
 
 def _mri_tensor_4d(hd5, name):

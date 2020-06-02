@@ -77,14 +77,6 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
         return pad_or_crop_array_to_shape(tm.shape, tensor)
     else:
         return tensor
-
-
-def is_genetic_man(hd5):
-    return 'Genetic-sex_Male_0_0' in hd5['categorical']
-
-
-def is_genetic_woman(hd5):
-    return 'Genetic-sex_Female_0_0' in hd5['categorical']
     
 
 def build_tensor_from_file(file_name: str,

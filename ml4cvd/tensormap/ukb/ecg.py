@@ -5,10 +5,10 @@ from typing import List, Tuple
 from tensorflow.keras.utils import to_categorical
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
-from ml4cvd.tensormap.ukbb.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
-from ml4cvd.metrics import weighted_crossentropy
-from ml4cvd.tensormap.ukbb.demographics.demographics import age_in_years_tensor
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
+from ml4cvd.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
+from ml4cvd.metrics import weighted_crossentropy, ignore_zeros_logcosh
+from ml4cvd.tensormap.ukb.demographics import age_in_years_tensor
 
 _HRR_SENTINEL = -1000
 
@@ -699,4 +699,285 @@ ecg_second_to_segment_warp = TensorMap(
 poor_data_quality = TensorMap(
     'poor_data_quality', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
     loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'),
+)
+
+####
+ecg_semi_coarse = TensorMap(
+    'ecg_semi_coarse', Interpretation.CATEGORICAL, loss=weighted_crossentropy([1.0, 1.0, 2.0, 4.0, 16.0, 20.0], 'ecg_semi_coarse'),
+    channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
+)
+
+
+ecg_semi_coarse_with_poor = TensorMap(
+    'ecg_semi_coarse_with_poor', Interpretation.CATEGORICAL, loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_semi_coarse_with_poor'),
+    channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
+)
+
+ecg_normal = TensorMap(
+    'ecg_normal', Interpretation.CATEGORICAL, loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
+    channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3},
+)
+ecg_infarct = TensorMap(
+    'ecg_infarct', Interpretation.CATEGORICAL, channel_map={'no_infarct': 0, 'infarct': 1},
+    loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'),
+)
+ecg_poor_data = TensorMap(
+    'ecg_poor_data', Interpretation.CATEGORICAL, channel_map={'no_poor_data_quality': 0, 'poor_data_quality': 1},
+    loss=weighted_crossentropy([1.0, 8.0], 'ecg_poor_data'),
+)
+ecg_block = TensorMap(
+    'ecg_block', Interpretation.CATEGORICAL, channel_map={'no_block': 0, 'block': 1},
+    loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'),
+)
+
+ecg_rest_next_char = TensorMap('ecg_rest_next_char', Interpretation.LANGUAGE, shape=(len(ECG_CHAR_2_IDX),), channel_map=ECG_CHAR_2_IDX, activation='softmax', loss='categorical_crossentropy', loss_weight=2.0)
+ecg_rest_text = TensorMap('ecg_rest_text', Interpretation.LANGUAGE, shape=(100, len(ECG_CHAR_2_IDX)), path_prefix='ukb_ecg_rest', channel_map={'context': 0, 'alphabet': 1}, dependent_map=ecg_rest_next_char)
+
+p_axis = TensorMap(
+    'PAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PAxis': 0}, loss='logcosh', validator=make_range_validator(-50, 130),
+    normalization={'mean': 48.7, 'std': 23.1},
+)
+p_duration = TensorMap(
+    'PDuration', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PDuration': 0}, loss='logcosh', validator=make_range_validator(30, 140),
+    normalization={'mean': 96.1, 'std': 18.85},
+)
+p_offset = TensorMap(
+    'POffset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'POffset': 0}, loss='logcosh', validator=make_range_validator(200, 500),
+    normalization={'mean': 369.1, 'std': 28.42},
+)
+p_onset = TensorMap(
+    'POnset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'POnset': 0}, loss='logcosh', validator=make_range_validator(120, 400),
+    normalization={'mean': 275.1, 'std': 26.420},
+)
+pp_interval = TensorMap(
+    'PPInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PPInterval': 0}, loss='logcosh', validator=make_range_validator(300, 1800),
+    normalization={'mean': 1036.1, 'std': 185.0},
+)
+pq_interval = TensorMap(
+    'PQInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PQInterval': 0}, loss='logcosh', validator=make_range_validator(70, 400),
+    normalization={'mean': 165.9, 'std': 26.3},
+)
+q_offset = TensorMap(
+    'QOffset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QOffset': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+    normalization={'mean': 525.1, 'std': 13.52},
+)
+q_onset = TensorMap(
+    'QOnset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QOnset': 0}, loss='logcosh', validator=make_range_validator(370, 600),
+    normalization={'mean': 435.1, 'std': 11.420},
+)
+qrs_complexes = TensorMap(
+    'QRSComplexes', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QRSComplexes': 0}, loss='logcosh', validator=make_range_validator(0, 60),
+    normalization={'mean': 8.0, 'std': 20.0},
+)
+qrs_duration = TensorMap(
+    'QRSDuration', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+    normalization={'mean': 89.53, 'std': 12.21},
+)
+qrs_num = TensorMap(
+    'QRSNum', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QRSNum': 0}, loss='logcosh', validator=make_range_validator(2, 30),
+    normalization={'mean': 9.61, 'std': 1.64},
+)
+qt_interval = TensorMap(
+    'QTInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+    normalization={'mean': 426.1, 'std': 32.24},
+)
+qt_interval_quintiles = TensorMap(
+    'QTInterval', Interpretation.DISCRETIZED, path_prefix='ukb_ecg_rest',
+    channel_map={'QTInterval': 0}, normalization={'mean': 426.1, 'std': 32.24},
+    discretization_bounds=[-0.842, -0.253, 0.253, 0.842],
+)
+qtc_interval = TensorMap(
+    'QTCInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
+    normalization={'mean': 419.1, 'std': 20.7},
+)
+r_axis = TensorMap(
+    'RAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'RAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+    normalization={'mean': 25.7, 'std': 36.6},
+)
+rr_interval = TensorMap(
+    'RRInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
+    normalization={'mean': 1040.61, 'std': 175.5},
+)
+ventricular_rate = TensorMap(
+    'VentricularRate', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
+    loss='logcosh', normalization={'mean': 59.3, 'std': 10.6},
+)
+t_offset = TensorMap(
+    'TOffset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'TOffset': 0}, loss='logcosh', validator=make_range_validator(700, 1000),
+    normalization={'mean': 860.7, 'std': 32.52},
+)
+t_axis = TensorMap(
+    'TAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'TAxis': 0}, loss='logcosh', validator=make_range_validator(-100, 200),
+    normalization={'mean': 40.8, 'std': 32.6},
+)
+
+af_prs = TensorMap('AF_PRS_LDscore', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
+charge = TensorMap(
+    'charge', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
+    validator=make_range_validator(0, 20),
+)
+
+qtc_intervalp = TensorMap(
+    'QTCInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTCInterval': 0}, loss='logcosh', validator=make_range_validator(100, 900),
+    parents=[qt_interval, rr_interval], normalization={'mean': 419.1, 'std': 20.7},
+)
+qrs_durationpp = TensorMap(
+    'QRSDuration', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QRSDuration': 0}, loss='logcosh', validator=make_range_validator(45, 175),
+    normalization={'mean': 89.53, 'std': 12.21},
+    parents=[qtc_intervalp],
+)
+
+p_axis_sentinel = TensorMap(
+    'PAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PAxis': 0}, sentinel=0, metrics=['logcosh'],
+    normalization={'mean': 48.7, 'std': 23.1},
+)
+p_duration_sentinel = TensorMap(
+    'PDuration', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PDuration': 0}, sentinel=0, metrics=['logcosh'],
+    normalization={'mean': 96.1, 'std': 18.85},
+)
+p_offset_sentinel = TensorMap(
+    'POffset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'POffset': 0}, sentinel=0, metrics=['logcosh'],
+    normalization={'mean': 369.1, 'std': 28.42},
+)
+p_onset_sentinel = TensorMap(
+    'POnset', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'POnset': 0}, sentinel=0, metrics=['logcosh'],
+    normalization={'mean': 275.1, 'std': 26.420},
+)
+pp_interval_sentinel = TensorMap(
+    'PPInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PPInterval': 0}, sentinel=0, metrics=['logcosh'],
+    normalization={'mean': 1036.1, 'std': 185.0},
+)
+pq_interval_sentinel = TensorMap(
+    'PQInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'PQInterval': 0}, sentinel=0, metrics=['logcosh'],
+    normalization={'mean': 165.9, 'std': 26.3},
+)
+qrs_duration_sentinel = TensorMap(
+    'QRSDuration', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QRSDuration': 0}, sentinel=0,
+    normalization={'mean': 89.53, 'std': 12.21},
+)
+qt_interval_sentinel = TensorMap(
+    'QTInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTInterval': 0}, sentinel=0,
+    normalization={'mean': 426.1, 'std': 32.24},
+)
+qtc_interval_sentinel = TensorMap(
+    'QTCInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTCInterval': 0}, sentinel=0,
+    normalization={'mean': 419.1, 'std': 20.7},
+)
+qtc_intervalp_sentinel = TensorMap(
+    'QTCInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTCInterval': 0}, sentinel=0,
+    normalization={'mean': 419.1, 'std': 20.7},
+    parents=[qt_interval, rr_interval],
+)
+qtc_intervalp_sentinel = TensorMap(
+    'QTCInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTCInterval': 0}, sentinel=0,
+    normalization={'mean': 419.1, 'std': 20.7},
+    parents=[qt_interval, rr_interval],
+)
+r_axis_sentinel = TensorMap('RAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'RAxis': 0}, sentinel=0, normalization={'mean': 25.7, 'std': 36.6})
+rr_interval_sentinel = TensorMap(
+    'RRInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'RRInterval': 0}, sentinel=0,
+    normalization={'mean': 1040.61, 'std': 175.5},
+)
+t_axis_sentinel = TensorMap('TAxis', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'TAxis': 0}, sentinel=0, normalization={'mean': 40.8, 'std': 32.6})
+
+
+bb_baseline = TensorMap(
+    'bb_baseline', Interpretation.CATEGORICAL, channel_map={'no_bb_baseline': 0, 'bb_baseline': 1},
+    loss=weighted_crossentropy([0.0453, 0.9547], 'bb_baseline'),
+)
+ccb_baseline = TensorMap(
+    'ccb_baseline', Interpretation.CATEGORICAL, channel_map={'no_ccb_baseline': 0, 'ccb_baseline': 1},
+    loss=weighted_crossentropy([0.0044, 0.9956], 'ccb_baseline'),
+)
+class1_baseline = TensorMap(
+    'class1_baseline', Interpretation.CATEGORICAL, channel_map={'no_class1_baseline': 0, 'class1_baseline': 1},
+    loss=weighted_crossentropy([0.0023, 0.9977], 'class1_baseline'),
+)
+class3_baseline = TensorMap(
+    'class3_baseline', Interpretation.CATEGORICAL, channel_map={'no_class3_baseline': 0, 'class3_baseline': 1},
+    loss=weighted_crossentropy([0.0011, 0.9989], 'class3_baseline'),
+)
+qtc_drug_def_baseline = TensorMap(
+    'qtc_drug_def_baseline', Interpretation.CATEGORICAL,
+    channel_map={'no_qtc_drug_def_baseline': 0, 'qtc_drug_def_baseline': 1},
+    loss=weighted_crossentropy([0.0210, 0.9790], 'qtc_drug_def_baseline'),
+)
+qtc_drug_poss_baseline = TensorMap(
+    'qtc_drug_poss_baseline', Interpretation.CATEGORICAL,
+    channel_map={'no_qtc_drug_poss_baseline': 0, 'qtc_drug_poss_baseline': 1},
+    loss=weighted_crossentropy([0.0189, 0.9811], 'qtc_drug_poss_baseline'),
+)
+combined_qtc_drug_baseline = TensorMap(
+    'combined_qtc_drug_baseline', Interpretation.CATEGORICAL,
+    channel_map={'no_combined_qtc_drug_baseline': 0, 'combined_qtc_drug_baseline': 1},
+    loss=weighted_crossentropy([0.0389, 0.9611], 'combined_qtc_drug_baseline'),
+)
+
+class1_baseline = TensorMap('class1_baseline', Interpretation.CATEGORICAL, channel_map={'no_class1_baseline': 0, 'class1_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0023, 0.9977], 'class1_baseline'))
+bb_baseline = TensorMap('bb_baseline', Interpretation.CATEGORICAL, channel_map={'no_bb_baseline': 0, 'bb_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0453, 0.9547], 'bb_baseline'))
+class3_baseline = TensorMap('class3_baseline', Interpretation.CATEGORICAL, channel_map={'no_class3_baseline': 0, 'class3_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0011, 0.9989], 'class3_baseline'))
+ccb_baseline = TensorMap('ccb_baseline', Interpretation.CATEGORICAL, channel_map={'no_ccb_baseline': 0, 'ccb_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0044, 0.9956], 'ccb_baseline'))
+qtc_drug_def_baseline = TensorMap('qtc_drug_def_baseline', Interpretation.CATEGORICAL, channel_map={'no_qtc_drug_def_baseline': 0, 'qtc_drug_def_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0210, 0.9790], 'qtc_drug_def_baseline'))
+qtc_drug_poss_baseline = TensorMap('qtc_drug_poss_baseline', Interpretation.CATEGORICAL, channel_map={'no_qtc_drug_poss_baseline': 0, 'qtc_drug_poss_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0189, 0.9811], 'qtc_drug_poss_baseline'))
+class1_fu = TensorMap('class1_fu', Interpretation.CATEGORICAL, channel_map={'no_class1_fu': 0, 'class1_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0018, 0.9982], 'class1_fu'))
+bb_fu = TensorMap('bb_fu', Interpretation.CATEGORICAL, channel_map={'no_bb_fu': 0, 'bb_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0306, 0.9694], 'bb_fu'))
+class3_fu = TensorMap('class3_fu', Interpretation.CATEGORICAL, channel_map={'no_class3_fu': 0, 'class3_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0006, 0.9994], 'class3_fu'))
+ccb_fu = TensorMap('ccb_fu', Interpretation.CATEGORICAL, channel_map={'no_ccb_fu': 0, 'ccb_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0035, 0.9965], 'ccb_fu'))
+qtc_drug_def_fu = TensorMap('qtc_drug_def_fu', Interpretation.CATEGORICAL, channel_map={'no_qtc_drug_def_fu': 0, 'qtc_drug_def_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0140, 0.9860], 'qtc_drug_def_fu'))
+qtc_drug_poss_fu = TensorMap('qtc_drug_poss_fu', Interpretation.CATEGORICAL, channel_map={'no_qtc_drug_poss_fu': 0, 'qtc_drug_poss_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0127, 0.9873], 'qtc_drug_poss_fu'))
+qtc_drug_def_any = TensorMap('qtc_drug_def_any', Interpretation.CATEGORICAL, channel_map={'no_qtc_drug_def_any': 0, 'qtc_drug_def_any': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0302, 0.9698], 'qtc_drug_def_any'))
+qtc_drug_poss_any = TensorMap('qtc_drug_poss_any', Interpretation.CATEGORICAL, channel_map={'no_qtc_drug_poss_any': 0, 'qtc_drug_poss_any': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0267, 0.9733], 'qtc_drug_poss_any'))
+any_class1 = TensorMap('any_class1', Interpretation.CATEGORICAL, channel_map={'no_any_class1': 0, 'any_class1': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0031, 0.9969], 'any_class1'))
+any_bb = TensorMap('any_bb', Interpretation.CATEGORICAL, channel_map={'no_any_bb': 0, 'any_bb': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0602, 0.9398], 'any_bb'))
+any_class3 = TensorMap('any_class3', Interpretation.CATEGORICAL, channel_map={'no_any_class3': 0, 'any_class3': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0013, 0.9987], 'any_class3'))
+any_ccb = TensorMap('any_ccb', Interpretation.CATEGORICAL, channel_map={'no_any_ccb': 0, 'any_ccb': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0062, 0.9938], 'any_ccb'))
+combined_qtc_drug_baseline = TensorMap('combined_qtc_drug_baseline', Interpretation.CATEGORICAL, channel_map={'no_combined_qtc_drug_baseline': 0, 'combined_qtc_drug_baseline': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0389, 0.9611], 'combined_qtc_drug_baseline'))
+combined_qtc_drug_fu = TensorMap('combined_qtc_drug_fu', Interpretation.CATEGORICAL, channel_map={'no_combined_qtc_drug_fu': 0, 'combined_qtc_drug_fu': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0260, 0.9740], 'combined_qtc_drug_fu'))
+combined_qtc_drug_any = TensorMap('combined_qtc_drug_any', Interpretation.CATEGORICAL, channel_map={'no_combined_qtc_drug_any': 0, 'combined_qtc_drug_any': 1}, loss_weight=100.0, loss=weighted_crossentropy([0.0546, 0.9454], 'combined_qtc_drug_any'))
+
+ecg_bike_max_hr_no0 = TensorMap(
+    'bike_max_hr', Interpretation.CONTINUOUS, channel_map={'bike_max_hr': 0},
+    loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 110.03, 'std': 20.04},
+)
+ecg_bike_resting_hr_no0 = TensorMap(
+    'bike_resting_hr', Interpretation.CONTINUOUS, channel_map={'bike_resting_hr': 0},
+    loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 71.2, 'std': 12.57},
+)
+ecg_bike_max_pred_hr_no0 = TensorMap(
+    'bike_max_pred_hr', Interpretation.CONTINUOUS, channel_map={'bike_max_pred_hr': 0},
+    loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 167.5, 'std': 5.78},
+)
+
+
+ecg_bike_max_hr = TensorMap(
+    'max_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mape'],
+    normalization={'mean': 110.03, 'std': 20.04}, shape=(1,),
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_resting_hr = TensorMap(
+    'resting_hr', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', shape=(1,),
+    metrics=['mape'], normalization={'mean': 71.2, 'std': 12.57},
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_age = TensorMap(
+    'age', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+    normalization={'mean': 60, 'std': 7.65},
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_max_pred_hr = TensorMap(
+    'max_pred_hr', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
+    normalization={'mean': 167.5, 'std': 5.81},
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_trend_hr = TensorMap(
+    'trend_heartrate', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_trend_load = TensorMap(
+    'trend_load', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_trend_grade = TensorMap(
+    'trend_grade', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
+    tensor_from_file=normalized_first_date,
 )
