@@ -3,6 +3,7 @@
 To build and push:
 ```
 mv ml4cvd ml4cvdBAK_$(date +"%Y%m%d_%H%M%S") \
+  && mv config configBAK_$(date +"%Y%m%d_%H%M%S") \
   && cp -r ../../ml4cvd . \
   && cp -r ../vm_boot_images/config . \
   && gcloud --project uk-biobank-sek-data builds submit \
