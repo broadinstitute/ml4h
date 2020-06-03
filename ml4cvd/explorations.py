@@ -1116,7 +1116,7 @@ def cross_reference(args):
 
     cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_cols)})'] = len(cross_df.drop_duplicates(subset=src_cols))
     cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_join)})'] = len(cross_df.drop_duplicates(subset=src_join))
-    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_cols)})'] = len(cross_df.drop_duplicates(subset=ref_cols))
+    cohort_counts[f'{ref_name} in {src_name} (unique joins + times + labels)'] = len(cross_df.drop_duplicates(subset=ref_cols))
     cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_join)})'] = len(cross_df.drop_duplicates(subset=ref_join))
 
     # dump results and report label distribution
