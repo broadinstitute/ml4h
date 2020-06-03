@@ -969,7 +969,7 @@ def explore(args):
                 plt.xlabel(name)
                 plt.ylabel('Fraction')
                 plt.rcParams.update({'font.size': 13})
-                figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram.{IMAGE_EXT}")
+                figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
 
