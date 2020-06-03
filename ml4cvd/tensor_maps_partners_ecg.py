@@ -1534,7 +1534,7 @@ def build_cardiac_surgery_tensor_maps(
         "sts_long_stay": "llos",
     }
 
-    cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=list(outcome2column.values()))
+    cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
     date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
     for needed_name in needed_tensor_maps:
         if needed_name in outcome2column:
