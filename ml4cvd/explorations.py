@@ -1149,23 +1149,28 @@ def cross_reference(args):
         # count rows across time windows
         def _count_time_windows(dfs, title, exact_or_min):
             if type(dfs) is list:
-                # 1+ ecg in preop window (surgdt -180 days, surgdt) (total)
-                # 1 newest ecg in preop window (surgdt -180 days, surgdt)
+                # Number of pre-op (surgdt -180 days; surgdt) ECG from patients with 1+ ECG in all windows
+                # Number of distinct pre-op (surgdt -180 days; surgdt) ECG from patients with 1+ ECG in all windows
+                # Number of distinct pre-op (surgdt -180 days; surgdt) partners_ecg_patientid_clean from patients with 1+ ECG in all windows
+
+                # Number of newest pre-op (surgdt -180 days; surgdt) ECG from patients with 1 ECG in all windows
+                # Number of distinct newest pre-op (surgdt -180 days; surgdt) ECG from patients with 1 ECG in all windows
+                # Number of distinct newest pre-op (surgdt -180 days; surgdt) partners_ecg_patientid_clean from patients with 1 ECG in all windows
                 for df, window_name, order, (start, end) in zip(dfs, window_names, order_in_window, time_windows):
-                    order = f' {order}' if exact_or_min == 'exactly' else '+'
+                    order = f'{order} ' if exact_or_min == 'exactly' else ''
                     start = start.replace('_', ' ')
                     end = end.replace('_', ' ')
-                    description = f'{number_in_window}{order} {src_name} in {window_name} window ({start}; {end})'
-                    cohort_counts[f'{description} (total)'] = len(df)
-                    cohort_counts[f'{description} (unique {" + ".join(src_cols)})'] = len(df.drop_duplicates(subset=src_cols))
-                    cohort_counts[f'{description} (unique {" + ".join(src_join)})'] = len(df.drop_duplicates(subset=src_join))
+                    cohort_counts[f'Number of {order}{window_name} ({start}; {end}) {src_name} from patients with {title}'] = len(df)
+                    cohort_counts[f'Number of distinct {order}{window_name} ({start}; {end}) {src_name} from patients with {title}'] = len(df.drop_duplicates(subset=src_cols))
+                    cohort_counts[f'Number of distinct {order}{window_name} ({start}; {end}) {" + ".join(src_join)} from patients with {title}'] = len(df.drop_duplicates(subset=src_join))
             else:
-                # 1+ in any time window (total)
-                # 1 in any time window (total)
+                # Number of ECGs from patients with 1+ ECG in all windows
+                # Number of distinct ECGs from patients with 1+ ECG in all windows
+                # Number of distinct partners_ecg_patientid_clean from patients with 1+ ECG in all windows
                 df = dfs
-                cohort_counts[f'{title} (total)'] = len(df)
-                cohort_counts[f'{title} (unique {" + ".join(src_cols)})'] = len(df.drop_duplicates(subset=src_cols))
-                cohort_counts[f'{title} (unique {" + ".join(src_join)})'] = len(df.drop_duplicates(subset=src_join))
+                cohort_counts[f'Number of {src_name} from patients with {title}'] = len(df)
+                cohort_counts[f'Number of distinct {src_name} from patients with {title}'] = len(df.drop_duplicates(subset=src_cols))
+                cohort_counts[f'Number of distinct {" + ".join(src_join)} from patients with {title}'] = len(df.drop_duplicates(subset=src_join))
 
         # aggregate all time windows back into one dataframe with indicator for time window index
         def _aggregate_time_windows(time_window_dfs, window_names):
@@ -1199,7 +1204,7 @@ def cross_reference(args):
         if match_min_window and match_any_window:
             min_in_any_time_window = _aggregate_time_windows(dfs_min_in_any_time_window, window_names)
             logging.info(f"Cross referenced so unique event occurs {number_in_window}+ times in any time window")
-            title = f'{number_in_window}+ in any time window'
+            title = f'{number_in_window}+ in any window'
             _report_cross_reference(min_in_any_time_window, title)
             _count_time_windows(dfs_min_in_any_time_window, title, 'at least')
             if len(dfs_min_in_any_time_window) > 1:
@@ -1210,7 +1215,7 @@ def cross_reference(args):
             dfs_min_in_every_time_window = _intersect_time_windows(dfs_min_in_any_time_window)
             min_in_every_time_window = _aggregate_time_windows(dfs_min_in_every_time_window, window_names)
             logging.info(f"Cross referenced so unique event occurs {number_in_window}+ times in all time windows")
-            title = f'{number_in_window}+ in all time windows'
+            title = f'{number_in_window}+ in all windows'
             _report_cross_reference(min_in_every_time_window, title)
             _count_time_windows(dfs_min_in_every_time_window, title, 'at least')
             if len(dfs_min_in_every_time_window) > 1:
@@ -1234,7 +1239,7 @@ def cross_reference(args):
         if match_exact_window and match_any_window:
             exact_in_any_time_window = _aggregate_time_windows(dfs_exact_in_any_time_window, window_names)
             logging.info(f"Cross referenced so unique event occurs exactly {number_in_window} times in any time window")
-            title = f'{number_in_window} in any time window'
+            title = f'{number_in_window} in any window'
             _report_cross_reference(exact_in_any_time_window, title)
             _count_time_windows(dfs_exact_in_any_time_window, title, 'exactly')
             if len(dfs_exact_in_any_time_window) > 1:
@@ -1245,7 +1250,7 @@ def cross_reference(args):
             dfs_exact_in_every_time_window = _intersect_time_windows(dfs_exact_in_any_time_window)
             exact_in_every_time_window = _aggregate_time_windows(dfs_exact_in_every_time_window, window_names)
             logging.info(f"Cross referenced so unique event occurs exactly {number_in_window} times in all time windows")
-            title = f'{number_in_window} in all time windows'
+            title = f'{number_in_window} in all windows'
             _report_cross_reference(exact_in_every_time_window, title)
             _count_time_windows(dfs_exact_in_every_time_window, title, 'exactly')
             if len(dfs_exact_in_every_time_window) > 1:
