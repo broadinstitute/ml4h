@@ -1514,7 +1514,7 @@ def make_cardiac_surgery_outcome_tensor_from_file(
         if outcome != 0 and outcome != 1:
             raise ValueError(f'Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got non-binary value: {outcome}')
 
-        tensor[cardiac_surgery_dict[mrn][outcome_column]] = 1
+        tensor[outcome] = 1
         return tensor
     return tensor_from_file
 
