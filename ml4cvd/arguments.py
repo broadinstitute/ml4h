@@ -285,18 +285,16 @@ def parse_args():
              'The number of time windows must match across all time window arguments.',
     )
     parser.add_argument(
-        '--number_in_window', action='append', type=int,
-        help='Minimum number of rows with join tensor to use in time window. '
-             'By default, 1 tensor is used for each window. '
-             'Define multiple time windows by using this argument more than once. '
-             'The number of time windows must match across all time window arguments.',
-    )
-    parser.add_argument(
         '--order_in_window', action='append', choices=['newest', 'oldest', 'random'],
         help='If specified, exactly --number_in_window rows with join tensor are used in time window. '
              'Defines which source tensors in a time series to use in time window. '
              'Define multiple time windows by using this argument more than once. '
              'The number of time windows must match across all time window arguments.',
+    )
+    parser.add_argument(
+        '--number_per_window', type=int, default=1,
+        help='Minimum number of rows with join tensor to use in each time window. '
+             'By default, 1 tensor is used for each window.',
     )
     parser.add_argument(
         '--match_any_window', action='store_true', default=False,
@@ -305,9 +303,9 @@ def parse_args():
              'Default only use rows with join tensor that appears across all time windows.',
     )
     parser.add_argument(
-        '--reference_label', # TODO allow multiple labels
-        help='TensorMap or column name of value in csv to report distribution on, e.g. mortality. '
-             'Label distribution reporting is optional.',
+        '--reference_labels', nargs='+',
+        help='TensorMap or column name of values in csv to report distribution on, e.g. mortality. '
+             'Label distribution reporting is optional. Can list multiple labels to report.',
     )
 
     args = parser.parse_args()
