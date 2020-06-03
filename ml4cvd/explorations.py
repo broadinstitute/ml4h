@@ -28,7 +28,7 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, SUBPLOT_SIZE
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -964,12 +964,12 @@ def explore(args):
             if tm.interpretation == Interpretation.CONTINUOUS:
                 name = tm.name
                 arr = list(df[name])
-                plt.figure()
+                plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
                 plt.hist(arr, 50, rwidth = .9)
                 plt.xlabel(name)
                 plt.ylabel('Fraction')
                 plt.rcParams.update({'font.size': 13})
-                figure_path = os.path.join(args.output_folder, args.id, f"{name}.png")
+                figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram.{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
 
