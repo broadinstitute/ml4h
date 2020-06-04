@@ -1,19 +1,4 @@
-"""Methods for integration of dicom plots within notebooks.
-
-TODO:
-* incorporate gs://ml4cvd/projects/fake_mris/. Per Sam "These HD5s have
-  information from the DICOMs and have applied processing to them already.  So
-  keys like `systole_frame_b9` or `diastole_frame_b2` have the same array data
-  that is in dcm.pixel_array for short axis slices. For long axis the 2D slices
-  have been merged into 3D tensors so the keys `cine_segmented_lax_2ch`
-  `cine_segmented_lax_3ch` and `cine_segmented_lax_4ch` map to arrays of
-  dimension (256, 256, 50) where each of the 50 z slices correspond to a
-  dcm.pixel_array."
-* Refactor this to reduce duplicate code from elsewhere in this repository
-such as
-  https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_long_axis_sketch.ipynb
-  https://github.com/broadinstitute/ml/blob/master/notebooks/mri/mri_cardiac_short_axis_sketch.ipynb
-"""
+"""Methods for integration of dicom plots within notebooks."""
 
 import collections
 import os
