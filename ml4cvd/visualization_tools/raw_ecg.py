@@ -17,7 +17,9 @@ import tensorflow as tf
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-RESTING_ECG_SIGNAL_TMAP = TMAPS['ecg_rest']
+DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME = 'ecg_rest'
+
+# TODO(deflaux): parameterize exercise ECG by TMAP name if there is similar ECG data from other studies.
 EXERCISE_ECG_SIGNAL_TMAP = TMAPS['ecg-bike-raw-full']
 EXERCISE_ECG_TREND_TMAPS = [
     TMAPS['ecg-bike-raw-trend-hr'],
@@ -39,12 +41,13 @@ def examine_available_keys(hd5):
   for key in [k for k in hd5.keys() if "ecg" in k]:
     print(f'hd5 {key} keys {[k for k in hd5[key].keys()]}')
 
-def reshape_resting_ecg_to_tidy(sample_id, folder=None):
+def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):
   """Wrangle raw resting ECG data to tidy.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
+    tmap_name: The name of the TMAP to use for ecg input.
 
   Returns:
     A pandas dataframe in tidy format or a notebook-friendly error.
@@ -60,14 +63,16 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
     try:
       tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}')
+      print(f'''Warning: Resting ECG raw signal not available for sample {sample_id} in folder {folder}.
+      Use the folder parameter to read HD5s from a different directory or bucket.\n\n{e.message}''')
       return pd.DataFrame(data)
 
     with h5py.File(local_path, mode='r') as hd5:
       try:
-        signals = RESTING_ECG_SIGNAL_TMAP.tensor_from_file(RESTING_ECG_SIGNAL_TMAP, hd5)
+        signals = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], hd5)
       except (KeyError, ValueError) as e:
-        print(f'Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e}')
+        print(f'''Warning: Resting ECG raw signal TMAP {tmap_name} not available for sample {sample_id}.
+        Use the tmap_name parameter to choose a different TMAP.\n\n{e}''')
         examine_available_keys(hd5)
         return pd.DataFrame(data)
       for (lead, channel) in ECG_REST_LEADS.items():
