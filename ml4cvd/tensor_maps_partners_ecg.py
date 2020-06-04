@@ -1855,7 +1855,7 @@ def csv_time_to_event(
 
 
 def build_legacy_ecg(
-    file_name: str, patient_column: str = 'Mrn', birth_column: str = 'dob', start_column: str = 'start_fu',
+    file_name: str, patient_column: str = 'MGH_MRN_unified', birth_column: str = 'dob', start_column: str = 'start_fu',
     delimiter: str = ',', check_birthday: bool = True, population_normalize: int = None,
 ) -> Callable:
     """Build a tensor_from_file function for ECGs in the legacy cohort.
