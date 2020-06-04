@@ -743,7 +743,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_rate"
+task = "partners_ecg_rate_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -751,6 +751,7 @@ TMAPS[task] = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(None, 1),
+    normalization=Standardize(mean=59.3, std=10.6),
     time_series_limit=0,
     validator=make_range_validator(10, 200),
 )
@@ -769,19 +770,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-TMAPS['partners_ventricular_rate'] = TensorMap(
-    'VentricularRate',
-    path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
-    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
-    shape=(None, 1),
-    time_series_limit=0,
-    validator=make_range_validator(10, 200),
-    normalization={'mean': 59.3, 'std': 10.6},
-)
-
-
-task = "partners_ecg_qrs"
+task = "partners_ecg_qrs_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -807,7 +796,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_pr"
+task = "partners_ecg_pr_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -833,7 +822,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qt"
+task = "partners_ecg_qt_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -859,7 +848,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_qtc"
+task = "partners_ecg_qtc_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -885,7 +874,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_paxis"
+task = "partners_ecg_paxis_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -911,7 +900,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_raxis"
+task = "partners_ecg_raxis_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
@@ -937,7 +926,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_taxis"
+task = "partners_ecg_taxis_pc"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CONTINUOUS,
