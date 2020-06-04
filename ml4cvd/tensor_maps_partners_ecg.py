@@ -1514,7 +1514,7 @@ def build_cardiac_surgery_dict(
     patient_column: str = 'medrecn',
     date_column: str = 'surgdt',
     additional_columns: List[str] = [],
-) -> Dict:
+) -> Dict[int, Dict[str, Union[int, str]]]:
     keys = [date_column] + additional_columns
     df = pd.read_csv(
         filename,
