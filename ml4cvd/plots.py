@@ -704,9 +704,7 @@ def _partners_top_panel(data, ax0):
     ax0.text(0.55, 0.9, f"{data['sitename']}", weight='bold')
 
     ax0.text(0.0, 0.75, f"{dob} ({age} yr)", weight='bold')  # TODO age units
-    #gender = {value: key for key, value in data['gender'].items()}
     gender = data['gender']
-    #ax0.text(0.0, 0.67, f"{gender[1]}".title(), weight='bold')
     ax0.text(0.0, 0.67, f"{gender}".title(), weight='bold')
     ax0.text(0.0, 0.51, f"Room: ", weight='bold')  # TODO room?
     ax0.text(0.0, 0.43, f"Loc: {data['location']}", weight='bold')
