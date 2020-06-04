@@ -27,8 +27,9 @@ class DataType(Enum):
   RESTING_ECG_HD5 = 1
   RESTING_ECG_SVG = 2
   EXERCISE_ECG_HD5 = 3
-  BRAIN_MRI = 4
-  CARDIAC_MRI = 5
+  BRAIN_MRI_DICOM = 4
+  CARDIAC_MRI_DICOM = 5
+  MRI_HD5 = 6
 
 # Three-level dictionary of data locations.
 FOLDERS = collections.defaultdict(lambda: collections.defaultdict(dict))
@@ -42,8 +43,9 @@ FOLDERS[Runtime.TERRA] = {
         DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_11_04_2019_svg/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: 'gs://ml4cvd/data/mris/cardiac/',
+        DataType.MRI_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
@@ -51,8 +53,9 @@ FOLDERS[Runtime.TERRA] = {
         DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_fake/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: 'gs://ml4cvd/projects/fake_mris/',
+        DataType.MRI_HD5: 'gs://ml4cvd/projects/fake_mris/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
     },
 }
 
@@ -64,8 +67,9 @@ FOLDERS[Runtime.ML4CVD_VM] = {
         DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_11_04_2019_svg/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: '/mnt/ml4cvd/data/mris/cardiac/',
+        DataType.MRI_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: '/mnt/ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
@@ -73,8 +77,9 @@ FOLDERS[Runtime.ML4CVD_VM] = {
         DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors',
         DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_fake/',
-        DataType.BRAIN_MRI: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI: '/mnt/ml4cvd/projects/fake_mris/',
+        DataType.MRI_HD5: '/mnt/ml4cvd/projects/fake_mris/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: '/mnt/ml4cvd/projects/fake_mris/',
     },
 }
 
@@ -121,21 +126,26 @@ def get_exercise_ecg_hd5_folder(sample_id):
 def get_brain_mri_folder(sample_id):
   return FOLDERS[determine_runtime()][
       determine_dataset(sample_id)
-  ][DataType.BRAIN_MRI]
+  ][DataType.BRAIN_MRI_DICOM]
 
 
 def get_cardiac_mri_folder(sample_id):
   return FOLDERS[determine_runtime()][
       determine_dataset(sample_id)
-  ][DataType.CARDIAC_MRI]
+  ][DataType.CARDIAC_MRI_DICOM]
+
+def get_mri_hd5_folder(sample_id):
+  return FOLDERS[determine_runtime()][
+      determine_dataset(sample_id)
+  ][DataType.MRI_HD5]
 
 
 def get_mri_folders(sample_id):
   return [
       FOLDERS[determine_runtime()][
           determine_dataset(sample_id)
-      ][DataType.BRAIN_MRI],
+      ][DataType.BRAIN_MRI_DICOM],
       FOLDERS[determine_runtime()][
           determine_dataset(sample_id)
-      ][DataType.CARDIAC_MRI],
+      ][DataType.CARDIAC_MRI_DICOM],
   ]
