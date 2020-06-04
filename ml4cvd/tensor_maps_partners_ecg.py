@@ -9,7 +9,8 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT, CARDIAC_SURGERY_DATE_FORMAT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT, CARDIAC_SURGERY_DATE_FORMAT, \
+    ECG_REST_UKB_LEADS
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize
 
@@ -1852,6 +1853,55 @@ def csv_time_to_event(
     return _cox_tensor_from_file
 
 
+
+def build_legacy_ecg(
+    file_name: str, patient_column: str = 'Mrn', birth_column: str = 'dob', start_column: str = 'start_fu',
+    delimiter: str = ',', check_birthday: bool = True, population_normalize: int = None,
+) -> Callable:
+    """Build a tensor_from_file function for ECGs in the legacy cohort.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param birth_column: The header name of the column of dates of birth
+    :param start_column: The header name of the column of enrollment dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    with open(file_name, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        header = next(reader)
+        patient_index = header.index(patient_column)
+        birth_index = header.index(birth_column)
+        start_index = header.index(start_column)
+        birth_table = {}
+        patient_table = {}
+        for row in reader:
+            try:
+                patient_key = int(row[patient_index])
+                patient_table[patient_key] = _loyalty_str2date(row[start_index])
+                birth_table[patient_key] = _loyalty_str2date(row[birth_index])
+            except ValueError as e:
+                logging.warning(f'val err {e}')
+        logging.info(f'Done processing. Got {len(patient_table)} patient rows.')
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in patient_table:
+            raise KeyError(f'{tm.name} mrn not in legacy csv.')
+
+        ecg_dates = list(hd5[tm.path_prefix])
+        ecg_date_key = _date_from_dates(ecg_dates, patient_table[patient_key])
+
+        if check_birthday:
+            path = _make_hd5_path(tm, ecg_date_key, 'dateofbirth')
+            birth_date = _partners_str2date(decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype']))
+            if birth_date != birth_table[mrn_int]:
+                raise ValueError(f'Birth dates do not match CSV had {birth_table[patient_key]}!')  # CSV had {birth_table[patient_key]} but HD5 has {birth_date}')
+
+        return _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
+    return tensor_from_file
+
+
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
     diagnosis_column: str = 'first_stroke', start_column: str = 'start_fu',
@@ -2150,7 +2200,6 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
     }
     days_window = 1825
-    other_csv = '/home/sam/ml/c3po_mgh_outcomes_05152020.csv'
     logging.info(f'needed name {needed_tensor_maps}')
     for needed_name in needed_tensor_maps:
         if needed_name == 'age_from_csv':
@@ -2158,7 +2207,9 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
         elif needed_name == 'sex_from_csv':
             csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
-
+        elif needed_name == 'ecg_5000_legacy':
+            tff = build_legacy_ecg('/home/sam/ml/legacy_cohort_mrn_complete.csv')
+            name2tensormap[needed_name] = TensorMap('ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, channel_map=ECG_REST_UKB_LEADS)
         if 'survival' not in needed_name:
             continue
         potential_day_string = needed_name.split('_')[-1]
