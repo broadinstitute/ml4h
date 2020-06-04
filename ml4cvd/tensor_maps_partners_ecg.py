@@ -1527,7 +1527,7 @@ def build_cardiac_surgery_tensor_maps(
         "sts_death": "mtopd",
         "sts_stroke": "cnstrokp",
         "sts_renal_failure": "crenfail",
-        "sts_prolonged_ventilation": "crenfail",
+        "sts_prolonged_ventilation": "cpvntlng",
         "sts_dsw_infection": "deepsterninf",
         "sts_reoperation": "reop",
         "sts_any_morbidity": "anymorbidity",
