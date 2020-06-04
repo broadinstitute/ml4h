@@ -440,7 +440,6 @@ def tokenize_tensor_maps(args):
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
-<<<<<<< HEAD
 def _preprocess_sentence(sentence):
     sentence = sentence.strip()
     # creating a space between a word and the punctuation following it
