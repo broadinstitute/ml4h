@@ -704,8 +704,10 @@ def _partners_top_panel(data, ax0):
     ax0.text(0.55, 0.9, f"{data['sitename']}", weight='bold')
 
     ax0.text(0.0, 0.75, f"{dob} ({age} yr)", weight='bold')  # TODO age units
-    gender = {value: key for key, value in data['gender'].items()}
-    ax0.text(0.0, 0.67, f"{gender[1]}".title(), weight='bold')
+    #gender = {value: key for key, value in data['gender'].items()}
+    gender = data['gender']
+    #ax0.text(0.0, 0.67, f"{gender[1]}".title(), weight='bold')
+    ax0.text(0.0, 0.67, f"{gender}".title(), weight='bold')
     ax0.text(0.0, 0.51, f"Room: ", weight='bold')  # TODO room?
     ax0.text(0.0, 0.43, f"Loc: {data['location']}", weight='bold')
 
@@ -727,7 +729,7 @@ def _partners_top_panel(data, ax0):
     ax0.text(0.35, 0.51, f"ms", weight='bold', ha='right')
     ax0.text(0.35, 0.43, f"{int(data['taxis_md'])}", weight='bold', ha='right')
 
-    ax0.text(0.4, 0.43, f"{data['read_md_raw']}", wrap=True, weight='bold')
+    ax0.text(0.4, 0.43, f"{data['read_md']}", wrap=True, weight='bold')
 
     # TODO tensorize these values from XML
     ax0.text(0.1, 0.23, f"Technician: {''}", weight='bold')
@@ -754,7 +756,7 @@ def _partners_full(data, args):
     _partners_top_panel(data, ax0)
 
     # middle signal panel
-    ecg_signal = data['voltage']
+    ecg_signal = data['2500']
     all_leads = np.full((12, 2500), np.nan)
     for i, lead in enumerate(ecg_signal):
         all_leads[i] = ecg_signal[lead]
@@ -838,7 +840,8 @@ def _partners_clinical(data, args):
     _partners_top_panel(data, ax0)
 
     # middle signal panel
-    ecg_signal = data['voltage']
+    ecg_signal = data['2500']
+    #print('signal',ecg_signal)
 
     all_leads = np.full((6, 2500), np.nan)
     halfgap = 5
@@ -990,11 +993,11 @@ def plot_partners_ecgs(args):
         'partners_ecg_patientid',   'partners_ecg_firstname', 'partners_ecg_lastname',
         'partners_ecg_gender',      'partners_ecg_dob',       'partners_ecg_age',
         'partners_ecg_datetime',    'partners_ecg_sitename',  'partners_ecg_location',
-        'partners_ecg_read_md_raw', 'partners_ecg_taxis_md',  'partners_ecg_rate_md',
+        'partners_ecg_read_md', 'partners_ecg_taxis_md',  'partners_ecg_rate_md',
         'partners_ecg_pr_md',       'partners_ecg_qrs_md',    'partners_ecg_qt_md',
         'partners_ecg_paxis_md',    'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
     ]
-    voltage_tensor = 'partners_ecg_voltage'
+    voltage_tensor = 'partners_ecg_2500'
     from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS
     tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
     tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
@@ -1037,6 +1040,8 @@ def plot_partners_ecgs(args):
 
                 # plot each ecg
                 for i in tdict:
+                    for lead in tdict[i]['2500'].keys():
+                        tdict[i]['2500'][lead] /= 2000
                     plot(tdict[i], args)
         except:
             logging.exception(f"Broken tensor at: {tp}")
