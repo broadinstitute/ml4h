@@ -10,9 +10,9 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, TENSOR_EXT, CARDIAC_SURGERY_DATE_FORMAT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
-from ml4cvd.normalizer import Standardize
+from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 
 
 YEAR_DAYS = 365.26
@@ -128,12 +128,76 @@ def make_voltage(exact_length = False):
     return get_voltage_from_file
 
 
-TMAPS['partners_ecg_2500'] = TensorMap('partners_ecg_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
-TMAPS['partners_ecg_5000'] = TensorMap('partners_ecg_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
-TMAPS['partners_ecg_2500_raw'] = TensorMap('partners_ecg_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
-TMAPS['partners_ecg_5000_raw'] = TensorMap('partners_ecg_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
-TMAPS['partners_ecg_2500_exact'] = TensorMap('partners_ecg_2500_exact', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
-TMAPS['partners_ecg_5000_exact'] = TensorMap('partners_ecg_5000_exact', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(exact_length=True), normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0, validator=validator_not_all_zero)
+TMAPS['partners_ecg_2500'] = TensorMap(
+    'partners_ecg_2500',
+    shape=(None, 2500, 12),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(),
+    normalization=ZeroMeanStd1(),
+    channel_map=ECG_REST_AMP_LEADS,
+    time_series_limit=0,
+    validator=validator_not_all_zero,
+)
+
+
+TMAPS['partners_ecg_5000'] = TensorMap(
+    'partners_ecg_5000',
+    shape=(None, 5000, 12),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(),
+    normalization=ZeroMeanStd1(),
+    channel_map=ECG_REST_AMP_LEADS,
+    time_series_limit=0,
+    validator=validator_not_all_zero,
+)
+
+
+TMAPS['partners_ecg_2500_raw'] = TensorMap(
+    'partners_ecg_2500_raw',
+    shape=(None, 2500, 12),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(),
+    normalization=Standardize(mean=0, std=2000),
+    channel_map=ECG_REST_AMP_LEADS,
+    time_series_limit=0,
+    validator=validator_not_all_zero,
+)
+
+
+TMAPS['partners_ecg_5000_raw'] = TensorMap(
+    'partners_ecg_5000_raw',
+    shape=(None, 5000, 12),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(),
+    normalization=Standardize(mean=0, std=2000),
+    channel_map=ECG_REST_AMP_LEADS,
+    time_series_limit=0,
+    validator=validator_not_all_zero,
+)
+
+
+TMAPS['partners_ecg_2500_exact'] = TensorMap(
+    'partners_ecg_2500_exact',
+    shape=(None, 2500, 12),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(exact_length=True),
+    normalization=Standardize(mean=0, std=2000),
+    channel_map=ECG_REST_AMP_LEADS,
+    time_series_limit=0,
+    validator=validator_not_all_zero,
+)
+
+
+TMAPS['partners_ecg_5000_exact'] = TensorMap(
+    'partners_ecg_5000_exact',
+    shape=(None, 5000, 12),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_voltage(exact_length=True),
+    normalization=Standardize(mean=0, std=2000),
+    channel_map=ECG_REST_AMP_LEADS,
+    time_series_limit=0,
+    validator=validator_not_all_zero,
+)
 
 
 def make_voltage_attr(volt_attr: str = ""):
