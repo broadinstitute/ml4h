@@ -17,7 +17,7 @@ from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
-CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-all-features-labels.csv'
+CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
@@ -1532,8 +1532,8 @@ def build_date_interval_lookup(
 ) -> Dict[int, Tuple[str, str]]:
     date_interval_lookup = {}
     for mrn in cardiac_surgery_dict:
-        start_date = (_cardiac_surgery_str2date(cardiac_surgery_dict[mrn][start_column]) + datetime.timedelta(days=start_offset)).strftime(PARTNERS_DATETIME_FORMAT)
-        end_date = (_cardiac_surgery_str2date(cardiac_surgery_dict[mrn][end_column]) + datetime.timedelta(days=end_offset)).strftime(PARTNERS_DATETIME_FORMAT)
+        start_date = (_cardiac_surgery_str2date(cardiac_surgery_dict[mrn][start_column], PARTNERS_DATETIME_FORMAT.replace('T', ' ')) + datetime.timedelta(days=start_offset)).strftime(PARTNERS_DATETIME_FORMAT)
+        end_date = (_cardiac_surgery_str2date(cardiac_surgery_dict[mrn][end_column], PARTNERS_DATETIME_FORMAT.replace('T', ' ')) + datetime.timedelta(days=end_offset)).strftime(PARTNERS_DATETIME_FORMAT)
         date_interval_lookup[mrn] = (start_date, end_date)
     return date_interval_lookup
 
