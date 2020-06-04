@@ -1721,9 +1721,12 @@ def _ecg_tensor_from_date(tm: TensorMap, hd5: h5py.File, ecg_date: str, populati
     return tensor
 
 
-def _date_from_dates(ecg_dates, target_date=None):
+def _date_from_dates(ecg_dates, target_date=None, earliest_date=None):
     if target_date:
-        incident_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() < target_date]
+        if target_date and earliest_date:
+            incident_dates = [d for d in ecg_dates if earliest_date < datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() < target_date]
+        else:
+            incident_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() < target_date]
         if len(incident_dates) == 0:
             raise ValueError('No ECGs prior to target were found.')
         return np.random.choice(incident_dates)
@@ -1853,7 +1856,6 @@ def csv_time_to_event(
     return _cox_tensor_from_file
 
 
-
 def build_legacy_ecg(
     file_name: str, patient_column: str = 'MGH_MRN_unified', birth_column: str = 'dob', start_column: str = 'start_fu',
     delimiter: str = ',', check_birthday: bool = True, population_normalize: int = None,
@@ -1875,11 +1877,13 @@ def build_legacy_ecg(
         start_index = header.index(start_column)
         birth_table = {}
         patient_table = {}
+        earliest_table = {}
         for row in reader:
             try:
                 patient_key = int(row[patient_index])
                 patient_table[patient_key] = _loyalty_str2date(row[start_index])
                 birth_table[patient_key] = _loyalty_str2date(row[birth_index])
+                earliest_table[patient_key] = patient_table[patient_key] - datetime.timedelta(days=3*YEAR_DAYS)
             except ValueError as e:
                 logging.debug(f'val err {e}')
         logging.info(f'Done processing. Got {len(patient_table)} patient rows.')
@@ -1890,7 +1894,7 @@ def build_legacy_ecg(
             raise KeyError(f'{tm.name} mrn not in legacy csv.')
 
         ecg_dates = list(hd5[tm.path_prefix])
-        ecg_date_key = _date_from_dates(ecg_dates, patient_table[patient_key])
+        ecg_date_key = _date_from_dates(ecg_dates, patient_table[patient_key], earliest_table[patient_key])
 
         if check_birthday:
             path = _make_hd5_path(tm, ecg_date_key, 'dateofbirth')
