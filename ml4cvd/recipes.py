@@ -26,7 +26,7 @@ from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_pr
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
-from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
+from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, make_simple_model
 
 
 def run(args):
@@ -82,6 +82,8 @@ def run(args):
             plot_partners_ecgs(args)
         elif 'tabulate_correlations' == args.mode:
             tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+        elif 'train_simple' == args.mode:
+            train_simple_model(args)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
         elif 'train_char' == args.mode:
@@ -316,9 +318,22 @@ def infer_hidden_layer_multimodal_multitask(args):
                 logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
 
 
+def train_simple_model(args):
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    model = make_simple_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate)
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+    )
+
+    p = os.path.join(args.output_folder, args.id + '/')
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha)
+
+
 def train_shallow_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
+    model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
