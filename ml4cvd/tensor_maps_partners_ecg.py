@@ -228,9 +228,6 @@ TMAPS["voltage_len"] = TensorMap(
 )
 
 
-TMAPS["len_i"] = TensorMap("len_i", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'I': 0}, time_series_limit=0)
-TMAPS["len_v6"] = TensorMap("len_v6", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage_attr(volt_attr="len"), channel_map={'V6': 0}, time_series_limit=0)
-
 def make_partners_ecg_label(keys: Union[str, List[str]] = "read_md_clean", dict_of_list: Dict = dict(), not_found_key: str = "unspecified"):
     if type(keys) == str:
         keys = [keys]
@@ -1127,9 +1124,6 @@ TMAPS["voltage_zeros"] = TensorMap(
     channel_map=ECG_REST_AMP_LEADS,
     time_series_limit=0,
 )
-
-TMAPS["lead_i_zeros"] = TensorMap("lead_i_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'I': 0}, time_series_limit=0)
-TMAPS["lead_v6_zeros"] = TensorMap("lead_v6_zeros", shape=(None, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_zeros, channel_map={'V6': 0}, time_series_limit=0)
 
 
 def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
