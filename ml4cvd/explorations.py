@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 import h5py
 import numpy as np
 import pandas as pd
-from multiprocess import Pool, Value
+import multiprocess
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -28,43 +28,12 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, SUBPLOT_SIZE
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
 
 CSV_EXT = '.tsv'
-
-
-def sort_csv(tensors, tensor_maps_in):
-    stats = Counter()
-    for folder in sorted(os.listdir(tensors)):
-
-        for name in sorted(os.listdir(os.path.join(tensors, folder))):
-            try:
-                with h5py.File(os.path.join(tensors, folder, name), "r") as hd5:
-                    for tm in tensor_maps_in:
-                        tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, hd5, {}), augment=False, hd5=hd5)
-
-                        if tm.name == 'lead_v6_zeros' and tensor[0] > 1874:
-                            stats[f'Total_{tm.name}_zero_padded'] += 1
-                            stats[f'{folder}_{tm.name}_zero_padded'] += 1
-                        elif tm.name == 'lead_i_zeros' and tensor[0] > 1249:
-                            stats[f'Total_{tm.name}_zero_padded'] += 1
-                            stats[f'{folder}_{tm.name}_zero_padded'] += 1
-                        elif tm.name not in ['lead_i_zeros', 'lead_v6_zeros']:
-                            stats[f'{folder}_{tm.name}_{tensor[0]}'] += 1
-                            stats[f'Total_{tm.name}_{tensor[0]}'] += 1
-            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                pass
-                #logging.info(f'Got error at {name} error:\n {e} {traceback.format_exc()}')
-
-        logging.info(f'In folder {folder} with {len(os.listdir(os.path.join(tensors, folder)))} ECGs')
-        if len(os.listdir(os.path.join(tensors, folder))) > 0:
-            logging.info(f'I Zero padded has:{stats[f"{folder}_lead_i_zeros_zero_padded"]}, {100 * stats[f"{folder}_lead_i_zeros_zero_padded"] / len(os.listdir(os.path.join(tensors, folder))):.1f}%')
-            logging.info(f'V6 Zero padded has:{stats[f"{folder}_lead_v6_zeros_zero_padded"]}, {100*stats[f"{folder}_lead_v6_zeros_zero_padded"]/len(os.listdir(os.path.join(tensors, folder))):.1f}%')
-    for k, v in sorted(stats.items(), key=lambda x: x[0]):
-        logging.info(f'{k} has {v}')
 
 
 def predictions_to_pngs(
@@ -725,30 +694,21 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
-def _init_dict_of_tensors(tmaps: list) -> dict:
-    # Iterate through tmaps and initialize dict in which to store
-    # tensors, error types, and fpath
-    dict_of_tensors = defaultdict(dict)
-    for tm in tmaps:
-        if tm.channel_map:
-            for cm in tm.channel_map:
-                dict_of_tensors[tm.name].update({(tm.name, cm): list()})
-        else:
-            dict_of_tensors[tm.name].update({f'{tm.name}': list()})
-        dict_of_tensors[tm.name].update({f'error_type_{tm.name}': list()})
-        dict_of_tensors[tm.name].update({'fpath': list()})
-    return dict_of_tensors
-
-
-def _hd5_to_dict(tmaps, path, gen_name, tot):
+def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
     with count.get_lock():
         i = count.value
-        if (i+1) % 500 == 0:
+        if i % 500 == 0:
             logging.info(f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
         count.value += 1
+
+    # each worker should write to it's own file
+    pid = multiprocess.current_process().pid
+    fpath = os.path.join(output_folder, id, f'tensors_all_union_{pid}.csv')
+    write_header = not os.path.isfile(fpath)
+
     try:
         with h5py.File(path, "r") as hd5:
-            dict_of_tensor_dicts = defaultdict(lambda: _init_dict_of_tensors(tmaps))
+            dict_of_tensor_dicts = defaultdict(dict)
             # Iterate through each tmap
             for tm in tmaps:
                 shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
@@ -758,7 +718,7 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                         # If not a multi-tensor tensor, wrap in array to loop through
                         tensors = np.array([tensors])
                     for i, tensor in enumerate(tensors):
-                        if tensor == None:
+                        if tensor is None:
                             break
 
                         error_type = ''
@@ -767,113 +727,97 @@ def _hd5_to_dict(tmaps, path, gen_name, tot):
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = tensor[tm.channel_map[cm]]
+                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
                             else:
                                 # If tensor is a scalar, isolate the value in the array;
                                 # otherwise, retain the value as array
                                 if shape[0] == 1:
                                     if type(tensor) == np.ndarray:
                                         tensor = tensor.item()
-                                dict_of_tensor_dicts[i][tm.name][tm.name] = tensor
+                                dict_of_tensor_dicts[i][tm.name] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][tm.name][(tm.name, cm)] = np.nan
+                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
                             else:
-                                dict_of_tensor_dicts[i][tm.name][tm.name] = np.full(shape, np.nan)[0]
+                                dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
                             error_type = type(e).__name__
-
-                        # Save error type, fpath, and generator name (set)
-                        dict_of_tensor_dicts[i][tm.name][f'error_type_{tm.name}'] = error_type
-                        dict_of_tensor_dicts[i][tm.name]['fpath'] = path
-                        dict_of_tensor_dicts[i][tm.name]['generator'] = gen_name
+                        dict_of_tensor_dicts[i][f'error_type_{tm.name}'] = error_type
 
                 except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                     # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                     if tm.channel_map:
                         for cm in tm.channel_map:
-                            dict_of_tensor_dicts[0][tm.name][(tm.name, cm)] = np.nan
+                            dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
                     else:
-                        dict_of_tensor_dicts[0][tm.name][tm.name] = np.full(shape, np.nan)[0]
-                    dict_of_tensor_dicts[0][tm.name][f'error_type_{tm.name}'] = type(e).__name__
-                    dict_of_tensor_dicts[0][tm.name]['fpath'] = path
-                    dict_of_tensor_dicts[0][tm.name]['generator'] = gen_name
+                        dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
+                    dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
 
-            # Append list of dicts with tensor_dict
-            return dict_of_tensor_dicts
+            for i in dict_of_tensor_dicts:
+                dict_of_tensor_dicts[i]['fpath'] = path
+                dict_of_tensor_dicts[i]['generator'] = gen_name
+
+            # write tdicts to disk
+            if len(dict_of_tensor_dicts) > 0:
+                keys = dict_of_tensor_dicts[0].keys()
+                with open(fpath, 'a') as output_file:
+                    dict_writer = csv.DictWriter(output_file, keys)
+                    if write_header:
+                        dict_writer.writeheader()
+                    dict_writer.writerows(dict_of_tensor_dicts.values())
     except OSError as e:
         logging.info(f"OSError {e}")
-        return None
 
 
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
     global count # TODO figure out how to not use global
-    count = Value('l', 0)
-    paths = [(path, gen.name) for gen in generators for path in gen.path_iters[0].paths]
-    tot = len(paths)
-    with Pool(processes=None) as pool:
-        list_of_dicts_of_dicts = pool.starmap(
-            _hd5_to_dict,
-            [(tmaps, path, gen_name, tot) for path, gen_name in paths],
+    count = multiprocess.Value('l', 1)
+    paths = [(path, gen.name) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
+    num_hd5 = len(paths)
+    chunksize = num_hd5 // args.num_workers
+    with multiprocess.Pool(processes=args.num_workers) as pool:
+        pool.starmap(
+            _hd5_to_disk,
+            [(tmaps, path, gen_name, num_hd5, args.output_folder, args.id) for path, gen_name in paths],
+            chunksize=chunksize,
         )
 
-    num_hd5 = len(list_of_dicts_of_dicts)
-    list_of_tensor_dicts = [dotd[i] for dotd in list_of_dicts_of_dicts for i in dotd if dotd is not None]
-
-    # Now we have a list of dicts where each dict has {tmaps:values} and
-    # each HD5 -> one dict in the list
-    # Next, convert list of dicts -> dataframe
-    df = pd.DataFrame()
-
+    # get columns that should have dtype 'string' instead of dtype 'O'
+    str_cols = ['fpath', 'generator']
     for tm in tmaps:
-        # Isolate all {tmap:values} from the list of dicts for this tmap
-        list_of_tmap_dicts = list(map(itemgetter(tm.name), list_of_tensor_dicts))
+        if tm.interpretation == Interpretation.LANGUAGE:
+            str_cols.extend([f'{tm.name} {cm}' for cm in tm.channel_map] if tm.channel_map else [tm.name])
+        str_cols.append(f'error_type_{tm.name}')
+    str_cols = {key: 'string' for key in str_cols}
 
-        # Convert this tmap-specific list of dicts into dict of lists
-        dict_of_tmap_lists = {
-            k: [d[k] for d in list_of_tmap_dicts]
-            for k in list_of_tmap_dicts[0]
-        }
-
-        # Convert list of dicts into dataframe and concatenate to big df
-        df = pd.concat([df, pd.DataFrame(dict_of_tmap_lists)], axis=1)
-
-    # Remove duplicate columns: error_types, fpath
-    df = df.loc[:, ~df.columns.duplicated()]
+    # read all temporary files to df
+    df = pd.DataFrame()
+    base = os.path.join(args.output_folder, args.id)
+    temp_files = []
+    for name in os.listdir(base):
+        if 'tensors_all_union_' in name:
+            fpath = os.path.join(base, name)
+            _df = pd.read_csv(fpath, dtype=str_cols)
+            logging.debug(f'Loaded {fpath} into memory')
+            df = df.append(_df, ignore_index=True)
+            logging.debug(f'Appended {fpath} to overall dataframe')
+            temp_files.append(fpath)
 
     # Remove "_worker" from "generator" values
     df["generator"].replace("_worker", "", regex=True, inplace=True)
 
-    # Rearrange df columns so fpath and generator are at the end
-    cols = [col for col in df if col not in ["fpath", "generator"]] \
-           + ["fpath", "generator"]
-    df = df[cols]
+    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
 
-    # Cast dtype of some columns to string. Note this is necessary; although a
-    # df (or pd.series) of floats will have the type "float", a df of strings
-    # assumes a dtype of "object". Casting to dtype "string" will confer performnace
-    # improvements in future versions of Pandas
-    df["fpath"] = df["fpath"].astype("string")
-    df["generator"] = df["generator"].astype("string")
-
-    # Iterate through tensor (and channel) maps and cast Pandas dtype to string
-    if Interpretation.LANGUAGE in [tm.interpretation for tm in tmaps]:
-        for tm in [tm for tm in args.tensor_maps_in if tm.interpretation is Interpretation.LANGUAGE]:
-            if tm.channel_map:
-                for cm in tm.channel_map:
-                    key = (tm.name, cm)
-                    df[key] = df[key].astype("string")
-            else:
-                key = tm.name
-                df[key] = df[key].astype("string")
-    logging.info(f"Extracted {len(tmaps)} tmaps from {df.shape[0]} tensors across {num_hd5} hd5 files into DataFrame")
+    # remove temporary files
+    for fpath in temp_files:
+        os.remove(fpath)
+    logging.debug(f'Deleted {len(temp_files)} temporary files')
     return df
 
 
 def explore(args):
-    args.num_workers = 0
     tmaps = args.tensor_maps_in
     fpath_prefix = "summary_stats"
     tsv_style_is_genetics = 'genetics' in args.tsv_style
@@ -885,6 +829,12 @@ def explore(args):
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
+
+    # By default, remove columns with error_type
+    if not args.explore_export_errors:
+        cols = [c for c in df.columns if not c.startswith('error_type_')]
+        df = df[cols]
+
     if tsv_style_is_genetics:
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
         df.insert(0, 'FID', fid)
@@ -907,7 +857,7 @@ def explore(args):
                 counts_missing = []
                 if tm.channel_map:
                     for cm in tm.channel_map:
-                        key = (tm.name, cm)
+                        key = f'{tm.name} {cm}'
                         counts.append(df_cur[key].sum())
                         counts_missing.append(df_cur[key].isna().sum())
                 else:
@@ -955,18 +905,19 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = (tm.name, cm)
+                            key = f'{tm.name} {cm}'
                             stats["min"] = df_cur[key].min()
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
                             stats["median"] = df_cur[key].median()
-                            stats["mode"] = df_cur[key].mode()[0]
+                            mode = df_cur[key].mode()
+                            stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                             stats["variance"] = df_cur[key].var()
                             stats["count"] = df_cur[key].count()
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -974,7 +925,8 @@ def explore(args):
                         stats["max"] = df_cur[key].max()
                         stats["mean"] = df_cur[key].mean()
                         stats["median"] = df_cur[key].median()
-                        stats["mode"] = df_cur[key].mode()[0]
+                        mode = df_cur[key].mode()
+                        stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                         stats["variance"] = df_cur[key].var()
                         stats["count"] = df_cur[key].count()
                         stats["missing"] = df_cur[key].isna().sum()
@@ -1005,13 +957,13 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = (tm.name, cm)
+                            key = f'{tm.name} {cm}'
                             stats["count"] = df_cur[key].count()
                             stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[cm])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -1030,33 +982,26 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
-
-
-def _report_cross_reference(args, cross_reference_df, title):
-    title = title.replace(' ', '_')
-    if args.reference_label in cross_reference_df:
-        labels, counts = np.unique(cross_reference_df[args.reference_label], return_counts=True)
-        labels = np.append(labels, ['Total'])
-        counts = np.append(counts, [sum(counts)])
-
-        # save outcome distribution to csv
-        df_out = pd.DataFrame({ 'counts': counts, args.reference_label: labels }).set_index(args.reference_label, drop=True)
-        fpath = os.path.join(args.output_folder, args.id, f'distribution_{args.reference_label.replace(" ", "_")}_{title}.csv')
-        df_out.to_csv(fpath)
-        logging.info(f'Saved distribution of {args.reference_label} in cross reference to {fpath}')
-
-    # save cross reference to csv
-    fpath = os.path.join(args.output_folder, args.id, f'list_{title}.csv')
-    cross_reference_df.set_index(args.join_tensors, drop=True).to_csv(fpath)
-    logging.info(f'Saved cross reference to {fpath}')
-
+    
+    if args.plot_hist == "True":
+        for tm in args.tensor_maps_in:
+            if tm.interpretation == Interpretation.CONTINUOUS:
+                name = tm.name
+                arr = list(df[name])
+                plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+                plt.hist(arr, 50, rwidth = .9)
+                plt.xlabel(name)
+                plt.ylabel('Fraction')
+                plt.rcParams.update({'font.size': 13})
+                figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
+                plt.savefig(figure_path)
+                logging.info(f"Saved {name} histogram plot at: {figure_path}")
 
 def cross_reference(args):
     """Cross reference a source cohort with a reference cohort."""
-    args.num_workers = 0
     cohort_counts = OrderedDict()
 
-    src_path = args.tensors
+    src_path = args.tensors_source
     src_name = args.tensors_name
     src_join = args.join_tensors
     src_time = args.time_tensor
@@ -1065,34 +1010,68 @@ def cross_reference(args):
     ref_join = args.reference_join_tensors
     ref_start = args.reference_start_time_tensor
     ref_end = args.reference_end_time_tensor
-    ref_label = args.reference_label
+    ref_labels = args.reference_labels
+    number_in_window = args.number_per_window
+    order_in_window = args.order_in_window
+    window_names = args.window_name
+    match_exact_window = order_in_window is not None
+    match_min_window = not match_exact_window
+    match_any_window = args.match_any_window
+    match_every_window = not match_any_window
 
     # parse options
     src_cols = list(src_join)
     ref_cols = list(ref_join)
-    if ref_label is not None:
-        ref_cols.append(ref_label)
+    if ref_labels is not None:
+        ref_cols.extend(ref_labels)
 
-    use_time = src_time is not None and len(ref_start) != 0 and len(ref_end) != 0
+    def _cols_from_time_windows(time_windows):
+        return {time_point[0] for time_window in time_windows for time_point in time_window}
+
+    use_time = not any(arg is None for arg in [src_time, ref_start, ref_end])
     if use_time:
+        if len(ref_start) != len(ref_end):
+            raise ValueError(f"Invalid time windows, got {len(ref_start)} starts and {len(ref_end)} ends")
+
+        if order_in_window is None:
+            # if not matching exactly N in time window, order_in_window is None
+            # make array of blanks so zip doesnt break later
+            order_in_window = [''] * len(ref_start)
+        elif len(order_in_window) != len(ref_start):
+            raise ValueError(f"Ambiguous time selection in time windows, got {len(order_in_window)} order_in_window for {len(ref_start)} windows")
+
+        if window_names is None:
+            window_names = [str(i) for i in range(len(ref_start))]
+        elif len(window_names) != len(ref_start):
+            raise ValueError(f"Ambiguous time window names, got {len(window_names)} names for {len(ref_start)} windows")
+
+        # get time columns and ensure time windows are defined
         src_cols.append(src_time)
 
-        # ref start and end are lists where the first element is the name of the time tensor
-        # and the second element is the offset to the value of the time tensor
+        # ref start and end are lists of lists, defining time windows
+        time_windows = list(zip(ref_start, ref_end))
 
-        # if there is no second element in list, append 0 (if there is, still ok)
-        [l.append(0) for l in [ref_start, ref_end]]
+        # each time window is defined by a tuples of two lists,
+        # where the first list of each tuple defines the start point of the time window
+        # and the second list of each tuple defines the end point of the time window
+        for start, end in time_windows:
+            # each start/end point list is two elements,
+            # where the first element in the list is the name of the time tensor
+            # and the second element is the offset to the value of the time tensor
+
+            # add day offset of 0 for time points without explicit offset
+            [time_point.append(0) for time_point in [start, end] if len(time_point) == 1]
+
+            # parse day offset as int
+            start[1] = int(start[1])
+            end[1] = int(end[1])
 
         # add unique column names to ref_cols
-        ref_cols.extend({ref_start[0], ref_end[0]})
-
-        # parse second element in list as int
-        ref_start[1] = int(ref_start[1])
-        ref_end[1] = int(ref_end[1])
+        ref_cols.extend(_cols_from_time_windows(time_windows))
 
     # load data into dataframes
     def _load_data(name, path, cols):
-        if os.path.isdir(src_path):
+        if os.path.isdir(path):
             logging.debug(f'Assuming {name} is directory of hd5 at {path}')
             from ml4cvd.arguments import _get_tmap
             args.tensor_maps_in = [_get_tmap(it, cols) for it in cols]
@@ -1110,25 +1089,25 @@ def cross_reference(args):
     # cleanup time col
     if use_time:
         src_df[src_time] = pd.to_datetime(src_df[src_time], errors='coerce', infer_datetime_format=True)
-        src_df.dropna(inplace=True)
+        src_df.dropna(subset=[src_time], inplace=True)
 
-        for ref_time in {ref_start[0], ref_end[0]}:
+        for ref_time in _cols_from_time_windows(time_windows):
             ref_df[ref_time] = pd.to_datetime(ref_df[ref_time], errors='coerce', infer_datetime_format=True)
-        ref_df.dropna(inplace=True)
+        ref_df.dropna(subset=_cols_from_time_windows(time_windows), inplace=True)
 
         def _add_offset_time(ref_time):
             offset = ref_time[1]
+            ref_time = ref_time[0]
             if offset == 0:
-                return ref_time[0]
-            ref_time_col = f'{ref_time[1]}_days_relative_{ref_time[0]}'
-            ref_df[ref_time_col] = ref_df[ref_start[0]].apply(lambda x: x + datetime.timedelta(days=offset))
-            ref_cols.append(ref_time_col)
+                return ref_time
+            ref_time_col = f'{ref_time}_{offset:+}_days'
+            if ref_time_col not in ref_df:
+                ref_df[ref_time_col] = ref_df[ref_time].apply(lambda x: x + datetime.timedelta(days=offset))
+                ref_cols.append(ref_time_col)
             return ref_time_col
 
-        ref_start = _add_offset_time(ref_start)
-        ref_end = _add_offset_time(ref_end)
-
-        time_description = f'between {ref_start.replace("_", " ")} and {ref_end.replace("_", " ")}'
+        # convert time windows to tuples of cleaned and parsed column names
+        time_windows = [(_add_offset_time(start), _add_offset_time(end)) for start, end in time_windows]
     logging.info('Cleaned data columns and removed rows that could not be parsed')
 
     # drop duplicates based on cols
@@ -1141,47 +1120,154 @@ def cross_reference(args):
     cohort_counts[f'{ref_name} (total)'] = len(ref_df)
     cohort_counts[f'{ref_name} (unique {" + ".join(ref_join)})'] = len(ref_df.drop_duplicates(subset=ref_join))
 
-    # merge on join columns
-    cross_reference_df = src_df.merge(ref_df, how='inner', left_on=src_join, right_on=ref_join)
+    # merging on join columns duplicates rows in source if there are duplicate join values in both source and reference
+    # this is fine, each row in reference needs all associated rows in source
+    cross_df = src_df.merge(ref_df, how='inner', left_on=src_join, right_on=ref_join).sort_values(src_cols)
     logging.info('Cross referenced based on join tensors')
 
-    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
-    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_join)})'] = len(cross_reference_df.drop_duplicates(subset=src_join))
-    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_cols)})'] = len(cross_reference_df.drop_duplicates(subset=ref_cols))
-    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_join)})'] = len(cross_reference_df.drop_duplicates(subset=ref_join))
+    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_cols)})'] = len(cross_df.drop_duplicates(subset=src_cols))
+    cohort_counts[f'{src_name} in {ref_name} (unique {" + ".join(src_join)})'] = len(cross_df.drop_duplicates(subset=src_join))
+    cohort_counts[f'{ref_name} in {src_name} (unique joins + times + labels)'] = len(cross_df.drop_duplicates(subset=ref_cols))
+    cohort_counts[f'{ref_name} in {src_name} (unique {" + ".join(ref_join)})'] = len(cross_df.drop_duplicates(subset=ref_join))
 
-    # report cross_reference no time filter
-    title = f'all {src_name} in {ref_name}'
-    _report_cross_reference(args, cross_reference_df, title)
+    # dump results and report label distribution
+    def _report_cross_reference(df, title):
+        title = title.replace(' ', '_')
+        if ref_labels is not None:
+            series = df[ref_labels].astype(str).apply(lambda x: '<>'.join(x), axis=1, raw=True)
+            label_values, counts = np.unique(series, return_counts=True)
+            label_values = np.array(list(map(lambda val: val.split('<>'), label_values)))
+            label_values = np.append(label_values, [['Total']*len(ref_labels)], axis=0)
+            total = sum(counts)
+            counts = np.append(counts, [total])
+            fracs = list(map(lambda f: f'{f:0.5f}', counts / total))
+
+            res = pd.DataFrame(data=label_values, columns=ref_labels)
+            res['count'] = counts
+            res['fraction total'] = fracs
+
+            # save label counts to csv
+            fpath = os.path.join(args.output_folder, args.id, f'label_counts_{title}.csv')
+            res.to_csv(fpath, index=False)
+            logging.info(f'Saved distribution of labels in cross reference to {fpath}')
+
+        # save cross reference to csv
+        fpath = os.path.join(args.output_folder, args.id, f'list_{title}.csv')
+        df.set_index(src_join, drop=True).to_csv(fpath)
+        logging.info(f'Saved cross reference to {fpath}')
 
     if use_time:
-        cross_reference_df = cross_reference_df[(cross_reference_df[ref_start] <= cross_reference_df[src_time]) & (cross_reference_df[ref_end] >= cross_reference_df[src_time])]
-        logging.info('Cross referenced based on time')
+        # count rows across time windows
+        def _count_time_windows(dfs, title, exact_or_min):
+            if type(dfs) is list:
+                # Number of pre-op (surgdt -180 days; surgdt) ECG from patients with 1+ ECG in all windows
+                # Number of distinct pre-op (surgdt -180 days; surgdt) ECG from patients with 1+ ECG in all windows
+                # Number of distinct pre-op (surgdt -180 days; surgdt) partners_ecg_patientid_clean from patients with 1+ ECG in all windows
 
-        # At this point, rows in source have probably been duplicated by the join
-        # This is fine, each row in reference has all associated rows in source now
+                # Number of newest pre-op (surgdt -180 days; surgdt) ECG from patients with 1 ECG in all windows
+                # Number of distinct newest pre-op (surgdt -180 days; surgdt) ECG from patients with 1 ECG in all windows
+                # Number of distinct newest pre-op (surgdt -180 days; surgdt) partners_ecg_patientid_clean from patients with 1 ECG in all windows
+                for df, window_name, order, (start, end) in zip(dfs, window_names, order_in_window, time_windows):
+                    order = f'{order} ' if exact_or_min == 'exactly' else ''
+                    start = start.replace('_', ' ')
+                    end = end.replace('_', ' ')
+                    cohort_counts[f'Number of {order}{window_name} ({start}; {end}) {src_name} from patients with {title}'] = len(df)
+                    cohort_counts[f'Number of distinct {order}{window_name} ({start}; {end}) {src_name} from patients with {title}'] = len(df.drop_duplicates(subset=src_cols))
+                    cohort_counts[f'Number of distinct {order}{window_name} ({start}; {end}) {" + ".join(src_join)} from patients with {title}'] = len(df.drop_duplicates(subset=src_join))
+            else:
+                # Number of ECGs from patients with 1+ ECG in all windows
+                # Number of distinct ECGs from patients with 1+ ECG in all windows
+                # Number of distinct partners_ecg_patientid_clean from patients with 1+ ECG in all windows
+                df = dfs
+                cohort_counts[f'Number of {src_name} from patients with {title}'] = len(df)
+                cohort_counts[f'Number of distinct {src_name} from patients with {title}'] = len(df.drop_duplicates(subset=src_cols))
+                cohort_counts[f'Number of distinct {" + ".join(src_join)} from patients with {title}'] = len(df.drop_duplicates(subset=src_join))
 
-        cohort_counts[f'{src_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(cross_reference_df)
-        cohort_counts[f'{src_name} {time_description} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
+        # aggregate all time windows back into one dataframe with indicator for time window index
+        def _aggregate_time_windows(time_window_dfs, window_names):
+            for df, window_name in zip(time_window_dfs, window_names):
+                if 'time_window' not in df:
+                    df['time_window'] = window_name
+            aggregated_df = pd.concat(time_window_dfs, ignore_index=True).sort_values(by=src_cols + ['time_window'], ignore_index=True)
+            return aggregated_df
 
-        # report cross_reference, all, time filtered
-        title = f'all {src_name} {time_description}'
-        _report_cross_reference(args, cross_reference_df, title)
-        plot_cross_reference(args, cross_reference_df, title, time_description, ref_start, ref_end)
+        # get only occurrences for join_tensors that appear in every time window
+        def _intersect_time_windows(time_window_dfs):
+            # find the intersection of join_tensors that appear in all time_window_dfs
+            join_tensor_intersect = reduce(lambda a, b: a.merge(b), [pd.DataFrame(df[src_join].drop_duplicates()) for df in time_window_dfs])
 
-        # get most recent row in source for each row in reference
-        # sort in ascending order so last() returns most recent
-        cross_reference_df = cross_reference_df.sort_values(by=ref_cols+[src_time], ascending=True)
-        cross_reference_df = cross_reference_df.groupby(by=ref_cols, as_index=False).last()[list(src_df) + list(ref_df)]
-        logging.info(f'Found most recent {src_name} per {ref_name}')
+            # filter time_window_dfs to only the rows that have join_tensors across all time windows
+            time_window_dfs_intersect = [df.merge(join_tensor_intersect) for df in time_window_dfs]
+            return time_window_dfs_intersect
 
-        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (total - {src_name} may be duplicated if valid for multiple {ref_name})'] = len(cross_reference_df)
-        cohort_counts[f'Most recent {src_name} in {ref_name} {time_description} (unique {" + ".join(src_cols)})'] = len(cross_reference_df.drop_duplicates(subset=src_cols))
+        # 1. get data with at least N (default 1) occurrences in all time windows
+        # 2. within each time window, get only data for join_tensors that have N rows in the time window
+        # 3. across all time windows, get only data for join_tensors that have data in all time windows
 
-        # report cross_reference, most recent, time filtered
-        title = f'most recent {src_name} {time_description}'
-        _report_cross_reference(args, cross_reference_df, title)
-        plot_cross_reference(args, cross_reference_df, title, time_description, ref_start, ref_end)
+        # get df for each time window
+        dfs_min_in_any_time_window = [
+            cross_df[(cross_df[start] < cross_df[src_time]) & (cross_df[src_time] < cross_df[end])]
+            for start, end in time_windows
+        ]
+
+        # get at least N occurrences in any time window
+        dfs_min_in_any_time_window = [df.groupby(src_join+[start, end]).filter(lambda g: len(g) >= number_in_window) for df, (start, end) in zip(dfs_min_in_any_time_window, time_windows)]
+        if match_min_window and match_any_window:
+            min_in_any_time_window = _aggregate_time_windows(dfs_min_in_any_time_window, window_names)
+            logging.info(f"Cross referenced so unique event occurs {number_in_window}+ times in any time window")
+            title = f'{number_in_window}+ in any window'
+            _report_cross_reference(min_in_any_time_window, title)
+            _count_time_windows(dfs_min_in_any_time_window, title, 'at least')
+            if len(dfs_min_in_any_time_window) > 1:
+                _count_time_windows(min_in_any_time_window, title, 'at least')
+
+        # get at least N occurrences in every time window
+        if match_min_window and match_every_window:
+            dfs_min_in_every_time_window = _intersect_time_windows(dfs_min_in_any_time_window)
+            min_in_every_time_window = _aggregate_time_windows(dfs_min_in_every_time_window, window_names)
+            logging.info(f"Cross referenced so unique event occurs {number_in_window}+ times in all time windows")
+            title = f'{number_in_window}+ in all windows'
+            _report_cross_reference(min_in_every_time_window, title)
+            _count_time_windows(dfs_min_in_every_time_window, title, 'at least')
+            if len(dfs_min_in_every_time_window) > 1:
+                _count_time_windows(min_in_every_time_window, title, 'at least')
+
+        # get exactly N occurrences, select based on ordering
+        def _get_occurrences(df, order, start, end):
+            if order == 'newest':
+                df = df.groupby(src_join+[start, end]).tail(number_in_window)
+            elif order == 'oldest':
+                df = df.groupby(src_join+[start, end]).head(number_in_window)
+            elif order == 'random':
+                df = df.groupby(src_join+[start, end]).apply(lambda g: g.sample(number_in_window))
+            else:
+                raise NotImplementedError(f"Ordering for which rows to use in time window unknown: '{order}'")
+            return df.reset_index(drop=True)
+
+        # get exactly N occurrences in any time window
+        if match_exact_window:
+            dfs_exact_in_any_time_window = [_get_occurrences(df, order, start, end) for df, order, (start, end) in zip(dfs_min_in_any_time_window, order_in_window, time_windows)]
+        if match_exact_window and match_any_window:
+            exact_in_any_time_window = _aggregate_time_windows(dfs_exact_in_any_time_window, window_names)
+            logging.info(f"Cross referenced so unique event occurs exactly {number_in_window} times in any time window")
+            title = f'{number_in_window} in any window'
+            _report_cross_reference(exact_in_any_time_window, title)
+            _count_time_windows(dfs_exact_in_any_time_window, title, 'exactly')
+            if len(dfs_exact_in_any_time_window) > 1:
+                _count_time_windows(exact_in_any_time_window, title, 'exactly')
+
+        # get exactly N occurrences in every time window
+        if match_exact_window and match_every_window:
+            dfs_exact_in_every_time_window = _intersect_time_windows(dfs_exact_in_any_time_window)
+            exact_in_every_time_window = _aggregate_time_windows(dfs_exact_in_every_time_window, window_names)
+            logging.info(f"Cross referenced so unique event occurs exactly {number_in_window} times in all time windows")
+            title = f'{number_in_window} in all windows'
+            _report_cross_reference(exact_in_every_time_window, title)
+            _count_time_windows(dfs_exact_in_every_time_window, title, 'exactly')
+            if len(dfs_exact_in_every_time_window) > 1:
+                _count_time_windows(exact_in_every_time_window, title, 'exactly')
+    else:
+        _report_cross_reference(cross_df, f'all {src_name} in {ref_name}')
 
     # report counts
     fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.csv')
