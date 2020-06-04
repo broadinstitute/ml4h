@@ -1881,7 +1881,7 @@ def build_legacy_ecg(
                 patient_table[patient_key] = _loyalty_str2date(row[start_index])
                 birth_table[patient_key] = _loyalty_str2date(row[birth_index])
             except ValueError as e:
-                logging.warning(f'val err {e}')
+                logging.debug(f'val err {e}')
         logging.info(f'Done processing. Got {len(patient_table)} patient rows.')
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
