@@ -839,8 +839,6 @@ def _partners_clinical(data, args):
 
     # middle signal panel
     ecg_signal = data['2500']
-    #print('signal',ecg_signal)
-
     all_leads = np.full((6, 2500), np.nan)
     halfgap = 5
 
@@ -991,7 +989,7 @@ def plot_partners_ecgs(args):
         'partners_ecg_patientid',   'partners_ecg_firstname', 'partners_ecg_lastname',
         'partners_ecg_gender',      'partners_ecg_dob',       'partners_ecg_age',
         'partners_ecg_datetime',    'partners_ecg_sitename',  'partners_ecg_location',
-        'partners_ecg_read_md', 'partners_ecg_taxis_md',  'partners_ecg_rate_md',
+        'partners_ecg_read_md',     'partners_ecg_taxis_md',  'partners_ecg_rate_md',
         'partners_ecg_pr_md',       'partners_ecg_qrs_md',    'partners_ecg_qt_md',
         'partners_ecg_paxis_md',    'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
     ]
@@ -1037,9 +1035,10 @@ def plot_partners_ecgs(args):
                 if skip_hd5: continue
 
                 # plot each ecg
+                normalization_factor = 2000
                 for i in tdict:
                     for lead in tdict[i]['2500'].keys():
-                        tdict[i]['2500'][lead] /= 2000
+                        tdict[i]['2500'][lead] /= normalization_factor
                     plot(tdict[i], args)
         except:
             logging.exception(f"Broken tensor at: {tp}")
