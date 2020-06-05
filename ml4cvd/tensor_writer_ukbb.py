@@ -451,6 +451,9 @@ def _write_tensors_from_dicoms(
                 if _is_mitral_valve_segmentation(slicer):
                     stats['Skipped likely mitral valve segmentation'] += 1
                     continue
+                if slicer.Rows != mri_data.shape[0] or slicer.Columns != mri_data.shape[1]:
+                    logging.info(f'Shape mismatch! {mri_data.shape} versus {slicer.Rows}, {slicer.Columns} series {v} slice index {slice_index} total slices {len(views[v])}')
+                    continue
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
