@@ -134,8 +134,10 @@ def evaluate_predictions(
         plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
         predictions_at_end = np.cumprod(y_predictions[:, :tm.shape[-1]//2], axis=-1)[:, -1]
         events_at_end = np.cumsum(y_truth[:, tm.shape[-1]//2:], axis=-1)[:, -1]
-        logging.info(f'Shapes event {events_at_end.shape}, preds shape {predictions_at_end} new ax shape {events_at_end[:, np.newaxis].shape}')
+        follow_up = np.cumsum(y_truth[:, :tm.shape[-1] // 2], axis=0)[:, -1]
+        logging.info(f'Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}')
         plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0}, title, folder)
+        plot_survivorship(events_at_end, follow_up, predictions_at_end, tm.name, folder, tm.days_window)
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
