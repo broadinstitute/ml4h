@@ -439,7 +439,7 @@ TMAPS['enroll_afib_hazard'] = TensorMap(
     'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
-TMAPS['enroll_af_hazard_incident'] = TensorMap(
+TMAPS['enroll_af_hazard_5_incident'] = TensorMap(
     'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
