@@ -2507,7 +2507,6 @@ def _build_cardiac_surgery_basic_tensor_maps(
 ) -> Dict[str, TensorMap]:
     name2tensormap: Dict[str:TensorMap] = {}
 
-    date_interval_lookup = build_date_interval_lookup()
     for needed_name in needed_tensor_maps:
         if not needed_name.endswith('_sts'):
             continue
@@ -2516,6 +2515,7 @@ def _build_cardiac_surgery_basic_tensor_maps(
         if base_name not in TMAPS:
             continue
 
+        date_interval_lookup = build_date_interval_lookup()
         sts_tmap = copy.deepcopy(TMAPS[base_name])
         sts_tmap.name = needed_name
         sts_tmap.time_series_lookup = date_interval_lookup
