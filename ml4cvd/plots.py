@@ -134,7 +134,7 @@ def evaluate_predictions(
         plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
         time_steps = tm.shape[-1]//2
         days_per_step = 1 + tm.days_window // time_steps
-        predictions_at_end = np.cumprod(y_predictions[:, :time_steps], axis=-1)[:, -1]
+        predictions_at_end = 1 - np.cumprod(y_predictions[:, :time_steps], axis=-1)[:, -1]
         events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
         follow_up = np.cumsum(y_truth[:, :time_steps], axis=-1)[:, -1] * days_per_step
         logging.info(f'Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}')
