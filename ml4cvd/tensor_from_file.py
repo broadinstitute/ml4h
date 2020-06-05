@@ -157,9 +157,12 @@ def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
         if incidence_only and censor_date <= assess_date:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
+        days_of_follow_up = (censor_date - assess_date).days
+        if days_of_follow_up > tm.days_window:
+            has_disease = 0
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
-        tensor[1] = (censor_date - assess_date).days
+        tensor[1] = days_of_follow_up
         return tensor
     return _cox_tensor_from_file
 
