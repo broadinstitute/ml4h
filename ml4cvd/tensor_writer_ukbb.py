@@ -448,6 +448,9 @@ def _write_tensors_from_dicoms(
                 _save_slice_thickness_if_missing(slicer, v, hd5)
                 _save_series_orientation_and_position_if_missing(slicer, v, hd5)
                 slice_index = slicer.InstanceNumber - 1
+                if _is_mitral_valve_segmentation(slicer):
+                    stats['Skipped likely mitral valve segmentation'] += 1
+                    continue
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
