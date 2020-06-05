@@ -547,7 +547,7 @@ def plot_survival(prediction, truth, title, days_window, prefix='./figures/', pa
     plt.ylabel('Proportion Surviving')
     plt.title(
         f'{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
-        f'Events: {cumulative_sick[-1]:.0f}, {100 * (sick_per_step / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
