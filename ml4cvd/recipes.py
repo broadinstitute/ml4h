@@ -48,8 +48,7 @@ def run(args):
         if 'tensorize' == args.mode:
             write_tensors(
                 args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                args.zoom_x, args.zoom_y, args.zoom_width, args.zoom_height, args.write_pngs, args.min_sample_id,
-                args.max_sample_id, args.min_values,
+                args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values,
             )
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id, args.x, args.y)

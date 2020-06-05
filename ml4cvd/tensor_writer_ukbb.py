@@ -86,10 +86,6 @@ def write_tensors(
     mri_unzip: str,
     mri_field_ids: List[int],
     xml_field_ids: List[int],
-    zoom_x: int,
-    zoom_y: int,
-    zoom_width: int,
-    zoom_height: int,
     write_pngs: bool,
     min_sample_id: int,
     max_sample_id: int,
@@ -111,10 +107,6 @@ def write_tensors(
     :param x: Maximum x dimension of MRIs
     :param y: Maximum y dimension of MRIs
     :param z: Maximum z dimension of MRIs
-    :param zoom_x: x coordinate of the zoom
-    :param zoom_y: y coordinate of the zoom
-    :param zoom_width: width of the zoom
-    :param zoom_height: height of the zoom
     :param write_pngs: write MRIs as PNG images for debugging
     :param min_sample_id: Minimum sample id to generate, for parallelization
     :param max_sample_id: Maximum sample id to generate, for parallelization
@@ -136,7 +128,7 @@ def write_tensors(
             continue
         try:
             with h5py.File(tp, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
@@ -366,10 +358,6 @@ def _to_float_or_nan(s):
 
 
 def _write_tensors_from_zipped_dicoms(
-    zoom_x: int,
-    zoom_y: int,
-    zoom_width: int,
-    zoom_height: int,
     write_pngs: bool,
     tensors: str,
     dicoms: str,
@@ -383,16 +371,13 @@ def _write_tensors_from_zipped_dicoms(
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
         for zipped in mris:
-            logging.info("Got zipped dicoms for sample: {} with MRI field: {}".format(sample_id, mri_field))
+            logging.info(f"Got zipped dicoms for sample: {sample_id} with MRI field: {mri_field}")
             dicom_folder = os.path.join(dicoms, sample_str, mri_field)
             if not os.path.exists(dicom_folder):
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(
-                    zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicom_folder,
-                    hd5, sample_str, stats,
-                )
+                _write_tensors_from_dicoms(write_pngs, tensors, dicom_folder, hd5, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -409,26 +394,17 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
 
 
 def _write_tensors_from_dicoms(
-    zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
-    dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int],
+    write_pngs: bool, tensors: str, dicom_folder: str, hd5: h5py.File, stats: Dict[str, int],
 ) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
     Segmented dicoms require special processing and are written to tensor per-slice
 
     Arguments
-        :param x: Width of the tensors (actual MRI width will be padded with 0s or cropped to this number)
-        :param y: Height of the tensors (actual MRI width will be padded with 0s or cropped to this number)
-        :param z: Minimum number of slices to include in the each tensor if more slices are found they will be kept
-        :param zoom_x: x coordinate of the zoom
-        :param zoom_y: y coordinate of the zoom
-        :param zoom_width: width of the zoom
-        :param zoom_height: height of the zoom
         :param write_pngs: write MRIs as PNG images for debugging
         :param tensors: Folder where hd5 tensor files are being written
         :param dicom_folder: Folder with all dicoms associated with one sample.
         :param hd5: Tensor file in which to create datasets for each series and each segmented slice
-        :param sample_str: The current sample ID as a string
         :param stats: Counter to keep track of summary statistics
 
     """
@@ -461,8 +437,8 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
-        if v == MRI_TO_SEGMENT:
-            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, mri_date, mri_group, stats)
+        if False and v == MRI_TO_SEGMENT:
+            _tensorize_short_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
@@ -479,8 +455,7 @@ def _write_tensors_from_dicoms(
 
 
 def _tensorize_short_axis_segmented_cardiac_mri(
-    slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
-    zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
+    slices: List[pydicom.Dataset], series: str, write_pngs: bool, tensors: str,
     hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
     stats: Dict[str, int],
 ) -> None:
@@ -496,8 +471,15 @@ def _tensorize_short_axis_segmented_cardiac_mri(
 
         if _has_overlay(slicer):
             series_segmented = f'{series}_segmented'
-            series_zoom = f'{series}_zoom'
             series_zoom_segmented = f'{series}_zoom_segmented'
+
+            _save_pixel_dimensions_if_missing(slicer, series, hd5)
+            _save_slice_thickness_if_missing(slicer, series, hd5)
+            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
+            _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
+            _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
+            _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
+
             if _is_mitral_valve_segmentation(slicer):
                 stats['Skipped likely mitral valve segmentation'] += 1
                 continue
@@ -507,22 +489,10 @@ def _tensorize_short_axis_segmented_cardiac_mri(
                 logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
 
-            _save_pixel_dimensions_if_missing(slicer, series, hd5)
-            _save_slice_thickness_if_missing(slicer, series, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
-            _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
-            _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
-
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
             full_slice[:] = slicer.pixel_array.astype(np.float32)
             create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
             create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
-
-            zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            zoom_mask = mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_slice, stats, mri_date)
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_mask, stats, mri_date)
 
             if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
                 diastoles[cur_angle] = slicer

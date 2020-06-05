@@ -128,10 +128,6 @@ def parse_args():
     # Model Architecture Parameters
     parser.add_argument('--x', default=256, type=int, help='x tensor resolution')
     parser.add_argument('--y', default=256, type=int, help='y tensor resolution')
-    parser.add_argument('--zoom_x', default=50, type=int, help='zoom_x tensor resolution')
-    parser.add_argument('--zoom_y', default=35, type=int, help='zoom_y tensor resolution')
-    parser.add_argument('--zoom_width', default=96, type=int, help='zoom_width tensor resolution')
-    parser.add_argument('--zoom_height', default=96, type=int, help='zoom_height tensor resolution')
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
