@@ -439,6 +439,10 @@ TMAPS['enroll_afib_hazard'] = TensorMap(
     'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
+TMAPS['enroll_af_hazard_incident'] = TensorMap(
+    'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
 TMAPS['enroll_chol_hazard'] = TensorMap(
     'hypercholesterolemia', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
@@ -447,7 +451,7 @@ TMAPS['enroll_diabetes2_hazard'] = TensorMap(
     'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
-TMAPS['enroll_diabetes2_hazard_incident'] = TensorMap(
+TMAPS['enroll_db2_hazard_5_incident'] = TensorMap(
     'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
@@ -473,6 +477,10 @@ TMAPS['enroll_mi_hazard_5'] = TensorMap(
 )
 TMAPS['enroll_mi_hazard_5_incident'] = TensorMap(
     'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+)
+TMAPS['enroll_death_hazard_5_incident'] = TensorMap(
+    'death', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
 
