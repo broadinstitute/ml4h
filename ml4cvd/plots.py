@@ -130,8 +130,11 @@ def evaluate_predictions(
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
-        plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder)
+        performance_metrics.update(plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder))
         plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
+        predictions_at_end = np.cumprod(y_predictions[:, :tm.shape//2], axis=-1)[:, -1]
+        events_at_end = np.cumsum(np.sum(y_truth[:, tm.shape//2:], axis=0))[:, -1]
+        plot_prediction_calibration(predictions_at_end, events_at_end, {tm.name: 0}, title, folder)
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
@@ -282,7 +285,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         color = _hash_string_to_color(k)
         brier_score = brier_score_loss(y_true, prediction[..., labels[k]], pos_label=1)
         fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins*2)
-        ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+        ax3.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
         ax2.hist(y_prob, range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
 
         bins = stats.mstats.mquantiles(y_prob, np.arange(0.0, 1.0, 1.0/n_bins))
@@ -295,16 +298,16 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         nonzero = bin_total != 0
         prob_true = (bin_true[nonzero] / bin_total[nonzero])
         prob_pred = (bin_sums[nonzero] / bin_total[nonzero])
-        ax3.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
+        ax1.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
     ax1.legend(loc="lower right")
-    ax1.set_title('Calibrations plots  (reliability curve)')
+    ax1.set_title('Calibration plot (equally sized bins)')
 
     ax2.set_xlabel("Mean predicted value")
     ax2.set_ylabel("Count")
     ax2.legend(loc="upper center", ncol=2)
-    ax3.set_title('Calibration plot (equal sized bins)')
+    ax3.set_title('Calibration plot (equally spaced bins)')
     plt.tight_layout()
 
     figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
@@ -313,49 +316,6 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
     logging.info(f"Try to save calibrations plot at: {figure_path}")
     plt.savefig(figure_path)
     plt.clf()
-    # 
-    # _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-    # ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-    # ax2 = plt.subplot2grid((3, 1), (2, 0))
-    # 
-    # true_sums = np.sum(truth, axis=0)
-    # ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
-    # for k in labels:
-    #     color = _hash_string_to_color(k)
-    #     y_true = truth[..., labels[k]]
-    #     y_prob = prediction[..., labels[k]]
-    # 
-    #     bins = stats.mstats.mquantiles(prediction[..., labels[k]], np.arange(0.0, 1.0, 1.0/n_bins))
-    #     binids = np.digitize(y_prob, bins) - 1
-    # 
-    #     bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
-    #     bin_true = np.bincount(binids, weights=y_true, minlength=len(bins))
-    #     bin_total = np.bincount(binids, minlength=len(bins))
-    # 
-    #     nonzero = bin_total != 0
-    #     prob_true = (bin_true[nonzero] / bin_total[nonzero])
-    #     prob_pred = (bin_sums[nonzero] / bin_total[nonzero])
-    #     #brier_score = brier_score_loss(y_true, prob_pred, pos_label=1)
-    #     brier_score = brier_score_loss(truth[..., labels[k]], prediction[..., labels[k]], pos_label=1)
-    #     ax1.plot(prob_pred, prob_true, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
-    #     ax2.hist(prediction[..., labels[k]], range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
-    # ax1.set_ylabel("Fraction of positives")
-    # ax1.set_ylim([-0.05, 1.05])
-    # ax1.legend(loc="lower right")
-    # ax1.set_title('Calibrations plots  (reliability curve)')
-    # 
-    # ax2.set_xlabel("Mean predicted value")
-    # ax2.set_ylabel("Count")
-    # ax2.legend(loc="upper center", ncol=2)
-    # 
-    # plt.tight_layout()
-    # 
-    # figure_path = os.path.join(prefix, 'calibrations_even_bin_' + title + IMAGE_EXT)
-    # if not os.path.exists(os.path.dirname(figure_path)):
-    #     os.makedirs(os.path.dirname(figure_path))
-    # logging.info(f"Try to save calibrations plot at: {figure_path}")
-    # plt.savefig(figure_path)
-    # plt.clf()
 
 
 def plot_scatter(prediction, truth, title, prefix='./figures/', paths=None, top_k=3, alpha=0.5):
@@ -588,7 +548,7 @@ def plot_survival(prediction, truth, title, days_window, prefix='./figures/', pa
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f'Try to save survival plot at: {figure_path}')
     plt.savefig(figure_path)
-    return {}
+    return {'c_index': c_index, 'concordant': concordant, 'discordant': discordant, 'tied_risk': tied_risk, 'tied_time': tied_time}
 
 
 def plot_survival_curves(prediction, truth, title, days_window, prefix='./figures/', num_curves=30, paths=None):
