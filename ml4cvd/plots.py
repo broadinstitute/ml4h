@@ -132,9 +132,11 @@ def evaluate_predictions(
     elif tm.is_survival_curve():
         performance_metrics.update(plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder))
         plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
-        predictions_at_end = np.cumprod(y_predictions[:, :tm.shape[-1]//2], axis=-1)[:, -1]
-        events_at_end = np.cumsum(y_truth[:, tm.shape[-1]//2:], axis=-1)[:, -1]
-        follow_up = np.cumsum(y_truth[:, :tm.shape[-1] // 2], axis=-1)[:, -1]
+        time_steps = tm.shape[-1]//2
+        days_per_step = 1 + tm.days_window // time_steps
+        predictions_at_end = np.cumprod(y_predictions[:, :time_steps], axis=-1)[:, -1]
+        events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
+        follow_up = np.cumsum(y_truth[:, :time_steps], axis=-1)[:, -1] * days_per_step
         logging.info(f'Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}')
         plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0}, title, folder)
         plot_survivorship(events_at_end, follow_up, predictions_at_end, tm.name, folder, tm.days_window)
@@ -490,7 +492,7 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
         real_survivorship.append(real_survivorship[cur_day]*(1 - (survived[day_index] / alive_per_step)))
     logging.info(f'Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
-    plt.plot([0]+days_sorted[:cur_day+1], real_survivorship, marker='.', label='Survivorship')
+    plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(survived)//2 for g in groups}
     predicted_sick = {g: 0 for g in groups}
