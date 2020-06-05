@@ -437,7 +437,7 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
-        if False and v == MRI_TO_SEGMENT:
+        if v == MRI_TO_SEGMENT:
             _tensorize_short_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
@@ -448,12 +448,6 @@ def _write_tensors_from_dicoms(
                 _save_slice_thickness_if_missing(slicer, v, hd5)
                 _save_series_orientation_and_position_if_missing(slicer, v, hd5)
                 slice_index = slicer.InstanceNumber - 1
-                if _is_mitral_valve_segmentation(slicer):
-                    stats['Skipped likely mitral valve segmentation'] += 1
-                    continue
-                if slicer.Rows != mri_data.shape[0] or slicer.Columns != mri_data.shape[1]:
-                    logging.info(f'Shape mismatch! {mri_data.shape} versus {slicer.Rows}, {slicer.Columns} series {v} slice index {slice_index} total slices {len(views[v])}')
-                    continue
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
@@ -472,7 +466,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(
     diastoles_masks = {}
 
     for slicer in slices:
-        full_mask = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
+        #full_mask = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
         full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
 
         if _has_overlay(slicer):
@@ -482,52 +476,52 @@ def _tensorize_short_axis_segmented_cardiac_mri(
             _save_pixel_dimensions_if_missing(slicer, series, hd5)
             _save_slice_thickness_if_missing(slicer, series, hd5)
             _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
-            _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
-            _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
+            # _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
+            # _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
+            # _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
 
             if _is_mitral_valve_segmentation(slicer):
                 stats['Skipped likely mitral valve segmentation'] += 1
                 continue
-            try:
-                overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
-            except KeyError:
-                logging.exception(f'Got key error trying to make anatomical mask, skipping.')
-                continue
+            # try:
+            #     overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
+            # except KeyError:
+            #     logging.exception(f'Got key error trying to make anatomical mask, skipping.')
+            #     continue
 
             cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
             full_slice[:] = slicer.pixel_array.astype(np.float32)
             create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
+            #create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
 
             if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
                 diastoles[cur_angle] = slicer
-                diastoles_masks[cur_angle] = mask
-            if cur_angle not in systoles:
-                systoles[cur_angle] = slicer
-                systoles_pix[cur_angle] = ventricle_pixels
-                systoles_masks[cur_angle] = mask
-            else:
-                if ventricle_pixels < systoles_pix[cur_angle]:
-                    systoles[cur_angle] = slicer
-                    systoles_pix[cur_angle] = ventricle_pixels
-                    systoles_masks[cur_angle] = mask
+            #     diastoles_masks[cur_angle] = mask
+            # if cur_angle not in systoles:
+            #     systoles[cur_angle] = slicer
+            #     systoles_pix[cur_angle] = ventricle_pixels
+            #     systoles_masks[cur_angle] = mask
+            # else:
+            #     if ventricle_pixels < systoles_pix[cur_angle]:
+            #         systoles[cur_angle] = slicer
+            #         systoles_pix[cur_angle] = ventricle_pixels
+            #         systoles_masks[cur_angle] = mask
 
     for angle in diastoles:
-        logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
+        #logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
         full_slice = diastoles[angle].pixel_array.astype(np.float32)
         create_tensor_in_hd5(hd5, mri_group, f'diastole_frame_b{angle}', full_slice, stats, mri_date)
-        create_tensor_in_hd5(hd5, mri_group, f'diastole_mask_b{angle}', diastoles_masks[angle], stats, mri_date)
-        if write_pngs:
-            plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
-            plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
-
-        full_slice = systoles[angle].pixel_array.astype(np.float32)
-        create_tensor_in_hd5(hd5, mri_group, f'systole_frame_b{angle}', full_slice, stats, mri_date)
-        create_tensor_in_hd5(hd5, mri_group, f'systole_mask_b{angle}', systoles_masks[angle], stats, mri_date)
-        if write_pngs:
-            plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
-            plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
+        # create_tensor_in_hd5(hd5, mri_group, f'diastole_mask_b{angle}', diastoles_masks[angle], stats, mri_date)
+        # if write_pngs:
+        #     plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
+        #     plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
+        #
+        # full_slice = systoles[angle].pixel_array.astype(np.float32)
+        # create_tensor_in_hd5(hd5, mri_group, f'systole_frame_b{angle}', full_slice, stats, mri_date)
+        # create_tensor_in_hd5(hd5, mri_group, f'systole_mask_b{angle}', systoles_masks[angle], stats, mri_date)
+        # if write_pngs:
+        #     plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
+        #     plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
 
 
 def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
