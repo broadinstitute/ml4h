@@ -468,15 +468,15 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_gender"
+task = "partners_ecg_sex"
 TMAPS[task] = TensorMap(
     task,
-    interpretation=Interpretation.LANGUAGE,
+    interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="gender"),
-    shape=(None, 1),
+    channel_map={'female': 0, 'male': 1, 'other': 2},
     time_series_limit=0,
-    validator=validator_no_empty,
+    validator=validator_not_all_zero,
 )
 
 task = "partners_ecg_date"
@@ -1096,8 +1096,8 @@ def _partners_adult(hd5_key, minimum_age=18):
     return tensor_from_string
 
 
-TMAPS['partners_adult_gender'] = TensorMap(
-    'adult_gender', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
+TMAPS['partners_adult_sex'] = TensorMap(
+    'adult_sex', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
     tensor_from_file=_partners_adult('gender'), time_series_limit=0,
 )
 
