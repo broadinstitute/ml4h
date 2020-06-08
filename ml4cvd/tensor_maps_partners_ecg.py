@@ -1733,7 +1733,7 @@ def _date_from_dates(ecg_dates, target_date=None, earliest_date=None):
     return np.random.choice(ecg_dates)
 
 
-def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'F': 0, 'M': 1}) -> float:
+def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'Female': 0, 'Male': 1}) -> float:
     return field_map[value]
 
 
@@ -2222,7 +2222,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
                                                     normalization={'mean': 63.35798891483556, 'std': 7.554638350423902},
                                                     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0})
         elif needed_name == 'sex_from_csv_ukb':
-            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='Gender', value_transform=_field_to_index_from_map(field_map={'Female': 0, 'Male': 1}))
+            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='Gender', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap('Sex_Male_0_0', Interpretation.CATEGORICAL, annotation_units=2, tensor_from_file=csv_tff,
                                                     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1})
         elif needed_name == 'bmi_from_csv_ukb':
