@@ -2217,8 +2217,8 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
         elif needed_name == 'age_from_csv_ukb':
-            csv_tff = csv_field_tensor_from_file(legacy_csv, shape=(1,), value_column='start_fu_age', value_transform=float)
-            name2tensormap[needed_name] = TensorMap('21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, tensor_from_file=csv_tff,
+            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='start_fu_age', value_transform=float)
+            name2tensormap[needed_name] = TensorMap('21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, shape=(1,), tensor_from_file=csv_tff,
                                                     normalization={'mean': 63.35798891483556, 'std': 7.554638350423902},
                                                     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0})
         elif needed_name == 'sex_from_csv_ukb':
