@@ -430,7 +430,7 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="gender"),
-    channel_map={'female': 0, 'male': 1, 'other': 2},
+    channel_map={'female': 0, 'male': 1},
     time_series_limit=0,
     validator=validator_not_all_zero,
 )
