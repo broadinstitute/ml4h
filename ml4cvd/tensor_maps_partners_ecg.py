@@ -128,8 +128,12 @@ TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(None, 250
 TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
 TMAPS['partners_ecg_2500_newest'] = TensorMap('ecg_rest_2500_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_newest'] = TensorMap('ecg_rest_5000_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500_oldest'] = TensorMap('ecg_rest_2500_raw_oldest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000_oldest'] = TensorMap('ecg_rest_5000_raw_oldest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_raw_newest'] = TensorMap('ecg_rest_2500_raw_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_raw_newest'] = TensorMap('ecg_rest_5000_raw_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500_raw_oldest'] = TensorMap('ecg_rest_2500_raw_oldest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000_raw_oldest'] = TensorMap('ecg_rest_5000_raw_oldest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
 
 def make_voltage_attr(volt_attr: str = ""):
@@ -727,6 +731,18 @@ TMAPS[task] = TensorMap(
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_sampling_frequency_from_file(),
+    channel_map={'_250': 0, '_500': 1, 'other': 2},
+    validator=validator_not_all_zero,
+)
+
+
+task = "partners_ecg_sampling_frequency_oldest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_sampling_frequency_from_file(),
+    time_series_order=TimeSeriesOrder.OLDEST,
     channel_map={'_250': 0, '_500': 1, 'other': 2},
     validator=validator_not_all_zero,
 )
@@ -2259,95 +2275,228 @@ TMAPS['partners_ecg_race'] = TensorMap(
     tensor_from_file=partners_channel_string('race', race_synonyms), time_series_limit=0,
 )
 
-def partners_channel_string_bias(hd5_key, synonyms={}, unspecified_key=None):
+def partners_channel_string_bias(hd5_key, synonyms={}, unspecified_key='unspecified'):
     def tensor_from_string(tm, hd5, dependents={}):
-        shape = (len(tm.channel_map),)
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=np.float32)
         found = False
-        try:
-            hd5_string = hd5[f'partners_ecg_rest/{hd5_key}'][()]
-            for key in tm.channel_map:
-                slices = (tm.channel_map[key],)
-                for synonym in synonyms:
-                    if tm.channel_map[key] == synonyms[synonym]:
+        for ecg_date in ecg_dates:
+            try:
+                if hd5_key == 'acquisitionyear':
+                    hd5_string = ecg_date.split('-')[0]
+                else:
+                    path = _make_hd5_path(tm, ecg_date, hd5_key)
+                    hd5_string = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                for key in synonyms:
+                    if hd5_string.lower() == key.lower():                        
+                        slices = (synonyms[key],)
+                        tensor[slices] = 1.0
+                        found = True
                         break
-                if hd5_string.lower() == synonym.lower():
-                    tensor[slices] = 1.0
-                    found = True
-                    break
-        except KeyError:
-            pass
-        if not found:
-            if unspecified_key is None:
-                # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
-                raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
-            slices = (synonyms[unspecified_key],)
-            tensor[slices] = 1.0
+            except KeyError:
+                pass
+            if not found:
+                if unspecified_key is None:
+                    # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                    raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+                slices = (synonyms[unspecified_key],)
+                tensor[slices] = 1.0
         return tensor
     return tensor_from_string
 
-bias_dic = {'acquisitiondevice': {'MAC': 0, 'MAC55': 1, 'MAC5K': 2, 'D3K': 3, 'MACVU': 4, 'S8500': 5, 'CASE': 6, 'MAC16': 7, 'MAC 8': 8, 'unspecified': 9},
-'acquisitionsoftwareversion': {'nan': 0, '010A': 1, '009A': 2, '007A.2': 3, '005A.1': 4, '006A': 5, '009C': 6, '010B': 7, '008A': 8, '008B': 9, 'unspecified': 10},
-'analysissoftwareversion': {'22': 0, '14': 1, '231': 2, '241 HD': 3, '239': 4, '26': 5, '237': 6, '235': 7, '233': 8, '241': 9, 'unspecified': 10}, 
-'cartnumber': {'1.0': 0, '0.0': 1, '2.0': 2, '14.0': 3, '3.0': 4, '4.0': 5, '101.0': 6, '127.0': 7, '102.0': 8, '126.0': 9, 'unspecified': 10}, 
-'locationname': {'46-YAWKEY5 - CARDIOLOGY NR': 0, '30-EMERGENCY DEPARTMENT': 1, '40-WACC2/6 - CLINICS': 2, '160-LUNDER EMERGENCY DEPARTMENT': 3, '23-JACKSON 121-SURGICAL DAY CARE': 4, '7-ELLISON 10 - CARDIAC': 5, '53-WACC 5 BUL MED GROUP': 6, '22-PRIVATE AMBULATORY': 7, '44-PROCESS DO NOT INTERPRET': 8, '106-BIGELOW8-CARDIO SUITE 800 NR': 9, 'unspecified': 10}, 
-'overreaderid': {'999.0': 0, '888.0': 1, '3.0': 2, '32.0': 3, '80.0': 4, '15.0': 5, '103.0': 6, '57.0': 7, '18.0': 8, '131.0': 9, 'unspecified': 10}, 
-'priority': {'NORMAL': 0, 'PREOP': 1, 'STAT': 2, 'unspecified': 3}, 
-'roomid': {'nan': 0, '99': 1, 'BAY3': 2, '57': 3, 'BAY4': 4, 'BAY1': 5, 'BAY6': 6, 'BAY9': 7, 'BAY2': 8, 'BAY7': 9, 'unspecified': 10}, 
-'testreason': {'nan': 0, 'V72.81': 1, '786.50': 2, 'NOBILL': 3, '401.9': 4, '00': 5, '785.1': 6, '57': 7, '786.09': 8, 'V71.7': 9, 'unspecified': 10}, 
-'I_len': {'2500.0': 0, '5000.0': 1, 'unspecified': 2}, 
-'I_nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4}, 
-'II_nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4}, 
-'III_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4}, 
-'V1_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
-'V2_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
-'V3_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
-'V4_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
-'V5_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
-'V6_nonzero': {'10.0': 0, '2.5': 1, '0.0': 2, '5.0': 3, 'unspecified': 4}, 
-'aVR_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4}, 
-'aVL_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4}, 
-'aVF_nonzero': {'10.0': 0, '5.0': 1, '2.5': 2, '0.0': 3, 'unspecified': 4},
-'sex': {'M': 0, 'F': 1, 'unspecified': 2}, 
-'race': {'WHITE': 0, 'BLACK OR AFRICAN AMERICAN': 1, 'OTHER': 2, 'ASIAN': 3, 'OTHER@HISPANIC': 4, 'UNKNOWN': 5, 'DECLINED': 6, 'HISPANIC OR LATINO': 7, 'HISPANIC': 8, 'BLACK': 9, 'unspecified': 10}, 
-'incident_mi': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_cvd': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_pad': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_valvular_disease': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_af': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_stroke': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_hf': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_htn': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_dm': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_bpmed': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'incident_lvh': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_mi': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_cvd': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_pad': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_valvular_disease': {'False': 0, 'True': 1, 'unspecified': 2},
-'prevalent_af': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_stroke': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_hf': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_htn': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_dm': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_bpmed': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_cad': {'False': 0, 'True': 1, 'unspecified': 2}, 
-'prevalent_lvh': {'False': 0, 'True': 1, 'unspecified': 2}}
+
+bias_dic = {'acquisitionyear': {'2000': 0,
+                                '2001': 1,
+                                '1999': 2,
+                                '2002': 3,
+                                '2015': 4,
+                                '2016': 5,
+                                '2017': 6,
+                                '2012': 7,
+                                '2011': 8,
+                                '2014': 9,
+                                '2010': 10,
+                                '2003': 11,
+                                '2013': 12,
+                                '2007': 13,
+                                '2009': 14,
+                                '2008': 15,
+                                '2004': 16,
+                                '2006': 17,
+                                '2005': 18,
+                                '1998': 19,
+                                '2018': 20,
+                                '2019': 21,
+                                'unspecified': 22},
+            'acquisitionsoftwareversion': {'010A': 0,
+                                           '009A': 1,
+                                           '007A.2': 2,
+                                           '005A.1': 3,
+                                           '006A': 4,
+                                           '009C': 5,
+                                           '010B': 6,
+                                           '008A': 7,
+                                           '008B': 8,
+                                           '005A': 9,
+                                           '5.7': 10,
+                                           '6.7': 11,
+                                           '6.4': 12,
+                                           '7.2': 13,
+                                           '7.3': 14,
+                                           '009B.1': 15,
+                                           '5.4': 16,
+                                           '003A': 17,
+                                           '5.3': 18,
+                                           '1.0.2': 19,
+                                           'V6.5': 20,
+                                           '6.3': 21,
+                                           '6.8': 22,
+                                           '5.5': 23,
+                                           '008C': 24,
+                                           'V6.73': 25,
+                                           'V6.51': 26,
+                                           '010Bsp1': 27,
+                                           'V6.72': 28,
+                                           '010A.1': 29,
+                                           'unspecified': 30},
+            'acquisitiondevice': {'MAC': 0,
+                                  'MAC55': 1,
+                                  'MAC5K': 2,
+                                  'D3K': 3,
+                                  'MACVU': 4,
+                                  'S8500': 5,
+                                  'CASE': 6,
+                                  'MAC16': 7,
+                                  'MAC 8': 8,
+                                  'unspecified': 9},
+            'locationname': {'46-YAWKEY5 - CARDIOLOGY NR': 0,
+                             '30-EMERGENCY DEPARTMENT': 1,
+                             '40-WACC2/6 - CLINICS': 2,
+                             '160-LUNDER EMERGENCY DEPARTMENT': 3,
+                             '23-JACKSON 121-SURGICAL DAY CARE': 4,
+                             '7-ELLISON 10 - CARDIAC': 5,
+                             '53-WACC 5 BUL MED GROUP': 6,
+                             '22-PRIVATE AMBULATORY': 7,
+                             '44-PROCESS DO NOT INTERPRET': 8,
+                             '106-BIGELOW8-CARDIO SUITE 800 NR': 9,
+                             '18-GREY 1 ADMITTING TEST AREA': 10,
+                             '43-CHELSEA HLTH CNTR LAB': 11,
+                             '6-ELLISON 9 - CCU': 12,
+                             '8-ELLISON 11 - CARDIAC': 13,
+                             '2-BLAKE 8 - CARDIAC SICU': 14,
+                             '91-REVERE HLTH CNTR LAB': 15,
+                             '89-WHITE 9 - MED': 16,
+                             '33-ELLISON 16 - MED': 17,
+                             '71-BIGELOW 11 - MED': 18,
+                             '88-WHITE 8 - MED': 19,
+                             '98-BUNKER HILL HEALTH CENTER NR': 20,
+                             '63-MGH BACK BAY': 21,
+                             '59-CHELSEA HEALTH CENTER ED NR': 22,
+                             '80-WHITE 10 - MED': 23,
+                             '81-WHITE 11 - UROLOGY': 24,
+                             '5-ELLISON 8 - CARDIAC SURG': 25,
+                             '110-ED TRAUMA': 26,
+                             '101-BEACON HILL PRIMARY NR': 27,
+                             '138-ED OBSERVATION UNIT': 28,
+                             '147-DANVERS ACC CARDIOLOGY PRTCE': 29,
+                             'unspecified': 30},
+            'testreason': {'V72.81': 0,
+                           '786.50': 1,
+                           'NOBILL': 2,
+                           '401.9': 3,
+                           '00': 4,
+                           '785.1': 5,
+                           '57': 6,
+                           '786.09': 7,
+                           'V71.7': 8,
+                           '99': 9,
+                           '429.9': 10,
+                           '780.2': 11,
+                           '427.9': 12,
+                           '414.00': 13,
+                           'Arrhythmia~I49.9': 14,
+                           '1': 15,
+                           '780.4': 16,
+                           '427.31': 17,
+                           'Chest pain / anginal equivalent~R07.9,I20.8': 18,
+                           '410.90': 19,
+                           '789.00': 20,
+                           '786.59': 21,
+                           '15': 22,
+                           '11': 23,
+                           'EKG': 24,
+                           '6': 25,
+                           '411.1': 26,
+                           '428.0': 27,
+                           '414.04': 28,
+                           '2': 29,
+                           'unspecified': 30}}
 
 for bias_key in bias_dic:
-    TMAPS[f'partners_ecg_bias_{bias_key}'] = TensorMap(
-        f'partners_ecg_bias_{bias_key}', 
-        interpretation=Interpretation.CATEGORICAL, 
+    TMAPS[f'partners_ecg_bias_{bias_key}_oldest'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}_oldest',
+        interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
+        time_series_order=TimeSeriesOrder.OLDEST,
         channel_map={f'val_{i}': i for i in range(len(bias_dic[bias_key]))},
         tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
 
 
+bias_waveform_dic = {'nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4},
+                     'len': {'2500': 0, '5000': 1, 'unspecified': 2}}
 
 
+def partners_waveform_feature_bias(bias_key, lead='I', synonyms={}, unspecified_key='unspecified', window_size=100):
+    def tensor_from_waveform(tm, hd5, dependents={}):
+        found = False
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        for ecg_date in ecg_dates:
+            try:
+                path = _make_hd5_path(tm, ecg_date, lead)
+                waveform = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                hd5_len = len(waveform)
+                if 'len' in bias_key:
+                    hd5_string = str(hd5_len)
+                if 'nonzero' in bias_key:
+                    diff_waveform = waveform[1:] > waveform[:-1]
+                    cumsum = np.cumsum(np.insert(diff_waveform, 0, 0))
+                    running_mean = (cumsum[window_size:] - cumsum[:-window_size]) / float(window_size)
+                    hd5_nonzero_frac = np.count_nonzero(running_mean)/hd5_len
+                    if hd5_nonzero_frac > 0.6:
+                        hd5_string = '10.0'
+                    elif (hd5_nonzero_frac <= 0.6) and (hd5_nonzero_frac > 0.4):
+                        hd5_string = '5.0'
+                    elif (hd5_nonzero_frac <= 0.4) and (hd5_nonzero_frac) > 0.15:
+                        hd5_string = '2.5'
+                    else:
+                        hd5_string = '0.0'
+                for key in synonyms:
+                    if key.lower() in hd5_string.lower():                        
+                        slices = (synonyms[key],)
+                        tensor[slices] = 1.0
+                        found = True
+                        break               
+            except KeyError:
+                pass
+            if not found:
+                if unspecified_key is None:
+                    # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                    raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+                slices = (synonyms[unspecified_key],)
+                tensor[slices] = 1.0
+        return tensor
+    return tensor_from_waveform
 
 
-
-
-
-
+for bias_key in bias_waveform_dic:
+    for lead in ECG_REST_AMP_LEADS:
+        TMAPS[f'partners_ecg_bias_{lead}_{bias_key}_oldest'] = TensorMap(
+            f'partners_ecg_bias_{lead}_{bias_key}_oldest',
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=PARTNERS_PREFIX,
+            time_series_order=TimeSeriesOrder.OLDEST,
+            channel_map={f'val_{i}': i for i in range(len(bias_waveform_dic[bias_key]))},
+            tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
