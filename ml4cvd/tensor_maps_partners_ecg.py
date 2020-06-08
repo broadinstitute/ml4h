@@ -1775,7 +1775,7 @@ def csv_field_tensor_from_file(
                     value_table[patient_key] = value_transform(row[value_index])
             except ValueError as e:
                 logging.warning(f'val err {e}')
-        logging.info(f'Done processing {value_column} Got {len(value_table)} patient rows.')
+        logging.info(f'Done processing {value_column} Got {len(value_table)} patient rows. Last value was: {value_table[patient_key]}')
 
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
