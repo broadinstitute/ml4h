@@ -1506,13 +1506,6 @@ def make_cardiac_surgery_outcome_tensor_from_file(
         if type(outcome) is float and not outcome.is_integer():
             raise ValueError(f'Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got non-discrete value: {outcome}')
 
-        outcome = int(outcome)
-        if tm.name == 'sts_dsw_infection':
-            if outcome == 2:
-                outcome = 0
-            elif outcome == 3 or outcome == 4:
-                outcome = 1
-
         # ensure binary outcome
         if outcome != 0 and outcome != 1:
             raise ValueError(f'Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got non-binary value: {outcome}')
