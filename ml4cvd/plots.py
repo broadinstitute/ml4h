@@ -138,7 +138,8 @@ def evaluate_predictions(
         events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
         follow_up = np.cumsum(y_truth[:, :time_steps], axis=-1)[:, -1] * days_per_step
         logging.info(f'Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}')
-        plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0}, title, folder)
+        calibration_title = f'{title}_at_{tm.days_window}_days'
+        plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0}, calibration_title, folder)
         plot_survivorship(events_at_end, follow_up, predictions_at_end, tm.name, folder, tm.days_window)
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
@@ -146,7 +147,8 @@ def evaluate_predictions(
         logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
-        plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, title, folder)
+        calibration_title = f'{title}_at_{tm.days_window}_days'
+        plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, calibration_title, folder)
         plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder, tm.days_window)
     elif tm.is_language():
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
@@ -266,7 +268,6 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
     ax2.set_xlabel("Mean predicted value")
     ax2.set_ylabel("Count")
     ax2.legend(loc="upper center")
-
     plt.tight_layout()
 
     figure_path = os.path.join(prefix, 'calibrations_' + title + IMAGE_EXT)
@@ -289,7 +290,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
         y_prob = prediction[..., labels[k]]
         color = _hash_string_to_color(k)
         brier_score = brier_score_loss(y_true, prediction[..., labels[k]], pos_label=1)
-        fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins*2)
+        fraction_of_positives, mean_predicted_value = calibration_curve(y_true, y_prob, n_bins=n_bins)
         ax3.plot(mean_predicted_value, fraction_of_positives, "s-", label=f"{k} Brier score: {brier_score:0.3f}", color=color)
         ax2.hist(y_prob, range=(0, 1), bins=n_bins, label=f'{k} n={true_sums[labels[k]]:.0f}', histtype="step", lw=2, color=color)
 
@@ -307,8 +308,7 @@ def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figu
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
     ax1.legend(loc="lower right")
-    ax1.set_title('Calibration plot (equally sized bins)')
-
+    ax1.set_title(f'{title.replace("_", " ")}\nCalibration plot (equally sized bins)')
     ax2.set_xlabel("Mean predicted value")
     ax2.set_ylabel("Count")
     ax2.legend(loc="upper center", ncol=2)
