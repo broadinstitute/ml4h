@@ -110,7 +110,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
-def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool = False):
+def _survival_tensor(start_date_key: str, incidence_only: bool = False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
@@ -125,9 +125,9 @@ def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool 
             raise ValueError(f'No date found for survival {tm.name}')
 
         intervals = int(tm.shape[0] / 2)
-        days_per_interval = day_window / intervals
+        days_per_interval = tm.days_window / intervals
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
-        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
+        for i, day_delta in enumerate(np.arange(0, tm.days_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
@@ -432,59 +432,59 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap(
 DAYS_IN_5_YEARS = 365 * 5
 TMAPS['enroll_cad_hazard'] = TensorMap(
     'coronary_artery_disease', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_hyp_hazard'] = TensorMap(
     'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_afib_hazard'] = TensorMap(
     'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_af_hazard_5_incident'] = TensorMap(
     'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
 )
 TMAPS['enroll_chol_hazard'] = TensorMap(
     'hypercholesterolemia', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_diabetes2_hazard'] = TensorMap(
     'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_db2_hazard_5_incident'] = TensorMap(
     'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
 )
 TMAPS['enroll_hyp_hazard_5'] = TensorMap(
     'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap(
     'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
 )
 TMAPS['enroll_cad_hazard_5_incident'] = TensorMap(
     'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
 )
 TMAPS['enroll_cad_hazard_5'] = TensorMap(
     'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_mi_hazard_5'] = TensorMap(
     'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
+    tensor_from_file=_survival_tensor('dates/enroll_date'),
 )
 TMAPS['enroll_mi_hazard_5_incident'] = TensorMap(
     'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
 )
 TMAPS['enroll_death_hazard_5_incident'] = TensorMap(
     'death', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
 )
 
 TMAPS['cox_mi'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))

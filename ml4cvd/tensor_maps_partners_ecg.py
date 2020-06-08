@@ -1857,7 +1857,7 @@ def csv_time_to_event(
 
 
 def build_legacy_ecg(
-    file_name: str, patient_column: str = 'MGH_MRN_unified', birth_column: str = 'dob', start_column: str = 'start_fu',
+    file_name: str, patient_column: str = 'MGH_MRN', birth_column: str = 'dob', start_column: str = 'start_fu_age',
     delimiter: str = ',', check_birthday: bool = True, population_normalize: int = 2000,
 ) -> Callable:
     """Build a tensor_from_file function for ECGs in the legacy cohort.
@@ -1881,8 +1881,8 @@ def build_legacy_ecg(
         for row in reader:
             try:
                 patient_key = int(row[patient_index])
-                patient_table[patient_key] = _loyalty_str2date(row[start_index])
                 birth_table[patient_key] = _loyalty_str2date(row[birth_index])
+                patient_table[patient_key] = birth_table[patient_key] + datetime.timedelta(days=float(row[start_index])*YEAR_DAYS)
                 earliest_table[patient_key] = patient_table[patient_key] - datetime.timedelta(days=3*YEAR_DAYS)
             except ValueError as e:
                 logging.debug(f'val err {e}')
@@ -2205,14 +2205,28 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
     }
     days_window = 1825
     logging.info(f'needed name {needed_tensor_maps}')
+    legacy_csv = '/home/sam/ml/legacy_cohort_overlap.csv'
     for needed_name in needed_tensor_maps:
         if needed_name == 'age_from_csv':
             name2tensormap[needed_name] = TensorMap(needed_name, shape=(1,), tensor_from_file=csv_field_tensor_from_file(INCIDENCE_CSV))
         elif needed_name == 'sex_from_csv':
             csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
+        elif needed_name == 'age_from_csv_ukb':
+            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='start_fu_age', value_transform=float)
+            name2tensormap[needed_name] = TensorMap('21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, tensor_from_file=csv_tff,
+                                                    normalization={'mean': 63.35798891483556, 'std': 7.554638350423902},
+                                                    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0})
+        elif needed_name == 'sex_from_csv_ukb':
+            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='Gender', value_transform=_field_to_index_from_map(field_map={'Female': 0, 'Male': 1}))
+            name2tensormap[needed_name] = TensorMap('Sex_Male_0_0', Interpretation.CATEGORICAL, annotation_units=2, tensor_from_file=csv_tff,
+                                                    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1})
+        elif needed_name == 'bmi_from_csv_ukb':
+            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='bmi_atStartFu', value_transform=float)
+            name2tensormap[needed_name] = TensorMap('21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, channel_map={'21001_Body-mass-index-BMI_0_0': 0},
+                                                    annotation_units=1,  normalization={'mean': 27.3397, 'std': 4.77216}, tensor_from_file=csv_tff)
         elif needed_name == 'ecg_5000_legacy':
-            tff = build_legacy_ecg('/home/sam/ml/legacy_cohort_mrn_complete.csv')
+            tff = build_legacy_ecg(legacy_csv)
             name2tensormap[needed_name] = TensorMap('ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff, channel_map=ECG_REST_UKB_LEADS)
         if 'survival' not in needed_name:
             continue
