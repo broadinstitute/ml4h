@@ -1733,7 +1733,7 @@ def _date_from_dates(ecg_dates, target_date=None, earliest_date=None):
     return np.random.choice(ecg_dates)
 
 
-def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'Female': 0, 'Male': 1}) -> float:
+def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'"Female"': 0, '"Male"': 1}) -> float:
     return field_map[value]
 
 
@@ -2217,7 +2217,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
             csv_tff = csv_field_tensor_from_file(INCIDENCE_CSV, value_column='sex', value_transform=_field_to_index_from_map)
             name2tensormap[needed_name] = TensorMap(needed_name, Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1}, tensor_from_file=csv_tff)
         elif needed_name == 'age_from_csv_ukb':
-            csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='start_fu_age', value_transform=float)
+            csv_tff = csv_field_tensor_from_file(legacy_csv, shape=(1,), value_column='start_fu_age', value_transform=float)
             name2tensormap[needed_name] = TensorMap('21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, tensor_from_file=csv_tff,
                                                     normalization={'mean': 63.35798891483556, 'std': 7.554638350423902},
                                                     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0})
@@ -2227,7 +2227,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
                                                     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1})
         elif needed_name == 'bmi_from_csv_ukb':
             csv_tff = csv_field_tensor_from_file(legacy_csv, value_column='bmi_atStartFu', value_transform=float)
-            name2tensormap[needed_name] = TensorMap('21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, channel_map={'21001_Body-mass-index-BMI_0_0': 0},
+            name2tensormap[needed_name] = TensorMap('21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, shape=(1,), channel_map={'21001_Body-mass-index-BMI_0_0': 0},
                                                     annotation_units=1,  normalization={'mean': 27.3397, 'std': 4.77216}, tensor_from_file=csv_tff)
         elif needed_name == 'ecg_5000_legacy':
             tff = build_legacy_ecg(legacy_csv)
