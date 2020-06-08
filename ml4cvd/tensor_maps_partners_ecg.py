@@ -132,6 +132,34 @@ TMAPS['partners_ecg_2500_raw_newest'] = TensorMap('ecg_rest_2500_raw_newest', sh
 TMAPS['partners_ecg_5000_raw_newest'] = TensorMap('ecg_rest_5000_raw_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 
 
+def voltage_stat(tm, hd5, dependents={}):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=np.float32)
+    for i, ecg_date in enumerate(ecg_dates):
+        try:
+            slices = lambda stat: (i, tm.channel_map[stat]) if dynamic else (tm.channel_map[stat],)
+            path = lambda lead: _make_hd5_path(tm, ecg_date, lead)
+            voltages = np.array([decompress_data(data_compressed=hd5[path(lead)][()], dtype='int16') for lead in ECG_REST_AMP_LEADS])
+            tensor[slices('mean')] = np.mean(voltages)
+            tensor[slices('std')] = np.std(voltages)
+            tensor[slices('min')] = np.min(voltages)
+            tensor[slices('max')] = np.max(voltages)
+        except KeyError:
+            logging.warning(f'Could not get voltage stats for ECG at {hd5.filename}')
+    return tensor
+
+
+TMAPS['partners_ecg_voltage_stats'] = TensorMap(
+    'partners_ecg_voltage_stats',
+    shape=(None, 4),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=voltage_stat,
+    channel_map={'mean': 0, 'std': 1, 'min': 2, 'max': 3},
+    time_series_limit=0,
+)
+
+
 def make_voltage_attr(volt_attr: str = ""):
     def get_voltage_attr_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
