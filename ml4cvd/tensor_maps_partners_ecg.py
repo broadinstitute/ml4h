@@ -1733,7 +1733,7 @@ def _date_from_dates(ecg_dates, target_date=None, earliest_date=None):
     return np.random.choice(ecg_dates)
 
 
-def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'"Female"': 0, '"Male"': 1}) -> float:
+def _field_to_index_from_map(value: str, field_map: Dict[str, float] = {'Female': 0, 'Male': 1}) -> float:
     return field_map[value]
 
 
