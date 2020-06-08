@@ -145,6 +145,7 @@ def voltage_stat(tm, hd5, dependents={}):
             tensor[slices('std')] = np.std(voltages)
             tensor[slices('min')] = np.min(voltages)
             tensor[slices('max')] = np.max(voltages)
+            tensor[slices('median')] = np.median(voltages)
         except KeyError:
             logging.warning(f'Could not get voltage stats for ECG at {hd5.filename}')
     return tensor
@@ -152,10 +153,10 @@ def voltage_stat(tm, hd5, dependents={}):
 
 TMAPS['partners_ecg_voltage_stats'] = TensorMap(
     'partners_ecg_voltage_stats',
-    shape=(None, 4),
+    shape=(None, 5),
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=voltage_stat,
-    channel_map={'mean': 0, 'std': 1, 'min': 2, 'max': 3},
+    channel_map={'mean': 0, 'std': 1, 'min': 2, 'max': 3, 'median': 4},
     time_series_limit=0,
 )
 

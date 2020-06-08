@@ -750,7 +750,7 @@ def _tensors_to_df(args):
     tmaps = [tm for tm in args.tensor_maps_in]
     global count # TODO figure out how to not use global
     count = multiprocess.Value('l', 1)
-    paths = [(path, gen.name) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
+    paths = [(path, gen.name.replace('_worker', '')) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
     num_hd5 = len(paths)
     chunksize = num_hd5 // args.num_workers
     with multiprocess.Pool(processes=args.num_workers) as pool:
@@ -780,9 +780,6 @@ def _tensors_to_df(args):
             df = df.append(_df, ignore_index=True)
             logging.debug(f'Appended {fpath} to overall dataframe')
             temp_files.append(fpath)
-
-    # Remove "_worker" from "generator" values
-    df["generator"].replace("_worker", "", regex=True, inplace=True)
 
     logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
 
