@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, 
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import History
+from tensorflow.keras.callbacks import History, TensorBoard
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
@@ -1070,6 +1070,7 @@ def _get_callbacks(
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
+        TensorBoard(os.path.dirname(model_file))
     ]
     return callbacks
 

@@ -12,6 +12,8 @@ DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="docker"
 PORT="8888"
+TENSORBOARD_PORT="6006"
+LOGDIR="${HOME}/ml/recipes_output"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 GPU_DEVICE="--gpus all"
 
@@ -40,7 +42,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":ip:ch" opt ; do
+while getopts ":ip:l:ch" opt ; do
     case ${opt} in
         h)
             usage
@@ -54,7 +56,10 @@ while getopts ":ip:ch" opt ; do
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
-	    GPU_DEVICE=""
+	        GPU_DEVICE=""
+            ;;
+        l)
+            LOGDIR=$OPTARG
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -103,8 +108,11 @@ ${GPU_DEVICE} \
 -v /mnt/:/mnt/ \
 -v /data/:/data/ \
 -p 0.0.0.0:${PORT}:${PORT} \
-${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
+-p 0.0.0.0:${TENSORBOARD_PORT}:${TENSORBOARD_PORT} \
+${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; \
+                              tensorboard --host=0.0.0.0 --logdir=${LOGDIR} --port=${TENSORBOARD_PORT}"
 
+# jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER} & \
 
 # Automatically back up any local notebooks and artifacts non-recursively (no subfolders)
 echo 'Backing up local files to' /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/

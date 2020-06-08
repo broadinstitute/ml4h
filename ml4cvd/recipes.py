@@ -418,6 +418,33 @@ def tokenize_tensor_maps(args):
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
+def _predict_and_evaluate_paolo(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha):
+    layer_names = [layer.name for layer in model.layers]
+    performance_metrics = {}
+    scatters = []
+    rocs = []
+
+    y_predictions = model.predict(test_data, batch_size=batch_size)
+    for y, tm in zip(y_predictions, tensor_maps_out):
+        if tm.output_name() not in layer_names:
+            continue
+        if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+            y = y_predictions
+        y_truth = np.array(test_labels[tm.output_name()])
+        performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+
+    if len(rocs) > 1:
+        subplot_rocs(rocs, plot_path)
+    if len(scatters) > 1:
+        subplot_scatters(scatters, plot_path)
+
+    test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+    if embed_visualization == "tsne":
+        _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data, tensor_maps_in=tensor_maps_in, batch_size=batch_size)
+
+    return y_truth, y_predictions, performance_metrics
+
+
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
