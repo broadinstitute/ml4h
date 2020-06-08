@@ -674,7 +674,7 @@ def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
     with count.get_lock():
         i = count.value
         if i % 500 == 0:
-            logging.info(f"{gen_name} - Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
+            logging.info(f"Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
         count.value += 1
 
     # each worker should write to it's own file
@@ -958,7 +958,7 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}")
-    
+
     if args.plot_hist == "True":
         for tm in args.tensor_maps_in:
             if tm.interpretation == Interpretation.CONTINUOUS:
