@@ -279,9 +279,12 @@ def infer_multimodal_multitask(args):
                         csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
                 elif len(tm.shape) == 1 and tm.is_categorical():
                     for k, i in tm.channel_map.items():
-                        csv_row.append(str(y[0][tm.channel_map[k]]))
-                        actual = output_data[tm.output_name()][0][i]
-                        csv_row.append("NA" if np.isnan(actual) else str(actual))
+                        try:
+                            csv_row.append(str(y[0][tm.channel_map[k]]))
+                            actual = output_data[tm.output_name()][0][i]
+                            csv_row.append("NA" if np.isnan(actual) else str(actual))
+                        except IndexError:
+                            logging.debug(f'index error at item {i} key {k} with cm: {tm.channel_map}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
