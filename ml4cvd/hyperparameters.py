@@ -50,6 +50,8 @@ def run(args):
             optimize_ecg_rest_unet_architecture(args)
         elif 'mri_sax' == args.mode:
             optimize_mri_sax_architecture(args)
+        elif 'conv_x' == args.mode:
+            optimize_conv_x(args)
         else:
             raise ValueError('Unknown hyper-parameter optimization mode:', args.mode)
 
@@ -176,7 +178,7 @@ def optimize_ecg_rest_architecture(args):
         'activation': hp.choice('activation', activation),
         #'conv_normalize': hp.choice('conv_normalize', conv_normalize),
         'pool_type': hp.choice('pool_type', pool_type),
-        'conv_width': hp.loguniform('conv_width', 1, 5),
+        'conv_x': hp.loguniform('conv_x', 1, 5),
         'block_size': hp.quniform('block_size', 1, 6, 1),
     }
     param_lists = {
@@ -189,6 +191,13 @@ def optimize_ecg_rest_architecture(args):
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)
+
+
+def optimize_conv_x(args):
+    space = {
+        'conv_x': hp.loguniform('conv_x', 1, 6),
+    }
+    hyperparameter_optimizer(args, space, {})
 
 
 def optimize_ecg_rest_unet_architecture(args):
