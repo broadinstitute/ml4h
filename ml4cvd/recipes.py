@@ -262,7 +262,9 @@ def infer_multimodal_multitask(args):
                 next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
-            logging.debug(f'input {input_data}')
+            for it in args.tensor_maps_in:
+                if it.axes() == 1:
+                    logging.debug(f'input {it.name} is {it.rescale(input_data[it.input_name()])}')
             prediction = model.predict(input_data)
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
