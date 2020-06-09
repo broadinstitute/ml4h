@@ -213,7 +213,19 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
-def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
+def plot_rocs(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int], title: str, prefix: str = './figures/'):
+    """Plot Receiver Operating Characteristic (ROC) curves from a dictionary of predictions
+
+    Typically this function is used to compare several models predictions across multiple labels.
+    As a hack to avoid repetitive ROC curves for binary classification label string containing 'no_' are skipped.
+
+    :param predictions: The keys are strings identifying the model the values are numpy arrays
+                        The arrays have shape (num_samples, num_classes)
+    :param truth: The true classifications of each class, one hot encoded of shape (num_samples, num_classes)
+    :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
+    :param title: The name of this plot
+    :param prefix: Optional path prefix where the plot will be saved
+    """
     lw = 2
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
@@ -241,10 +253,23 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-    logging.info("Saved ROC curve at: {}".format(figure_path))
+    logging.info(f"Saved ROC curve at: {figure_path}")
 
 
-def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./figures/', n_bins=10):
+def plot_prediction_calibrations(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int],
+                                 title: str, prefix: str = './figures/', n_bins: int = 10):
+    """Plot calibration performance and compute Brier Score.
+
+    Typically this function is used to compare several models predictions across multiple labels.
+
+    :param predictions: The keys are strings identifying the model the values are numpy arrays
+                        The arrays have shape (num_samples, num_classes)
+    :param truth: The true classifications of each class, one hot encoded of shape (num_samples, num_classes)
+    :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
+    :param title: The name of this plot
+    :param prefix: Optional path prefix where the plot will be saved
+    :param n_bins: Number of bins to quantize predictions into
+    """
     _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
@@ -278,7 +303,17 @@ def plot_prediction_calibrations(predictions, truth, labels, title, prefix='./fi
     plt.clf()
 
 
-def plot_prediction_calibration(prediction, truth, labels, title, prefix='./figures/', n_bins=10):
+def plot_prediction_calibration(prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+                                title: str, prefix: str = './figures/', n_bins: int = 10):
+    """Plot calibration performance and compute Brier Score.
+
+    :param prediction: Array of probabilistic predictions with shape (num_samples, num_classes)
+    :param truth: The true classifications of each class, one hot encoded of shape (num_samples, num_classes)
+    :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
+    :param title: The name of this plot
+    :param prefix: Optional path prefix where the plot will be saved
+    :param n_bins: Number of bins to quantize predictions into
+    """
     _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, 2*SUBPLOT_SIZE))
 
     true_sums = np.sum(truth, axis=0)
@@ -474,11 +509,22 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./figures/', days_window=1825):
+def plot_survivorship(events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
+                      title: str, prefix: str = './figures/', days_window: int = 1825):
+    """Plot Kaplan-Meier survivorship curves and stratify by median model prediction.
+    All input arrays have the same shape: (num_samples,)
+
+    :param events: Array indicating if each sample had an event (1) or not (0) by the end of follow up
+    :param days_follow_up: Array with the total days of follow up for each sample
+    :param predictions: Array with model predictions of an event before the end of follow up.
+    :param title: Title for the plot
+    :param prefix: Path prefix where plot will be saved
+    :param days_window: Maximum days of follow up
+    """
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
-    alive_per_step = len(survived)
+    alive_per_step = len(events)
     sick_per_step = 0
     censored = 0
     survivorship = [1.0]
@@ -486,15 +532,15 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     for cur_day, day_index in enumerate(days_sorted_index):
         if days_follow_up[day_index] > days_window:
             break
-        sick_per_step += survived[day_index]
-        censored += 1 - survived[day_index]
-        alive_per_step -= survived[day_index]
+        sick_per_step += events[day_index]
+        censored += 1 - events[day_index]
+        alive_per_step -= events[day_index]
         survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
-        real_survivorship.append(real_survivorship[cur_day]*(1 - (survived[day_index] / alive_per_step)))
+        real_survivorship.append(real_survivorship[cur_day] * (1 - (events[day_index] / alive_per_step)))
     logging.info(f'Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
     plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
     groups = ['High risk', 'Low risk']
-    predicted_alive = {g: len(survived)//2 for g in groups}
+    predicted_alive = {g: len(events) // 2 for g in groups}
     predicted_sick = {g: 0 for g in groups}
     predicted_days = defaultdict(list)
     predicted_survival = defaultdict(list)
@@ -503,14 +549,14 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
         if days_follow_up[day_index] > days_window:
             break
         group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
-        predicted_sick[group] += survived[day_index]
+        predicted_sick[group] += events[day_index]
         predicted_survival[group].append(1 - (predicted_sick[group] / (predicted_alive[group]+predicted_sick[group])))
-        predicted_alive[group] -= survived[day_index]
+        predicted_alive[group] -= events[day_index]
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
         plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o', label=f'{group} group had {predicted_sick[group]} events')
-    plt.title(f'{title}\nEnrolled: {len(survived)}, Censored: {censored:.0f}, {100*(censored/len(survived)):2.1f}%, Events: {sick_per_step:.0f}, {100*(sick_per_step/len(survived)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+    plt.title(f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, {100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="lower left")
@@ -523,7 +569,18 @@ def plot_survivorship(survived, days_follow_up, predictions, title, prefix='./fi
     return {}
 
 
-def plot_survival(prediction, truth, title, days_window, prefix='./figures/', paths=None):
+def plot_survival(prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
+                  prefix: str = './figures/') -> Dict[str, float]:
+    """Plot Kaplan-Meier survivorship and predicted proportion surviving, calculate and return C-Index
+
+    :param prediction: Array with model predictions of an event at each time step, with shape (num_samples, intervals*2).
+    :param truth: Array with survival at each time step followed by events, shape is (num_samples, intervals*2)
+    :param title: Title for the plot
+    :param days_window: Maximum days of follow up
+    :param prefix: Path prefix where plot will be saved
+
+    :return: Dictionary mapping metric names to their floating point values
+    """
     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
     logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
     intervals = truth.shape[-1] // 2
@@ -539,8 +596,7 @@ def plot_survival(prediction, truth, title, days_window, prefix='./figures/', pa
     logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
     logging.info(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
-    if paths is not None:
-        pass
+
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
