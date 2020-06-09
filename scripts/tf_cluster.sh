@@ -3,7 +3,7 @@
 #SBATCH -p batch
 #SBATCH -N 1
 #SBATCH --gpus=1
-#SBATCH --time 00:10:00
+#SBATCH --time 00:20:00
 #SBATCH --job-name=ml4cvd_tf2
 # Script to enable running Python modules within Singularity containers of Docker images
 
@@ -123,6 +123,7 @@ LAUNCH_MESSAGE
 # s3cmd sync ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/
 # echo ${SLURM_JOB_SCRATCHDIR}
 # ls -l ${SLURM_JOB_SCRATCHDIR}
+echo s3://${MOUNT_BUCKETS}/mgh_1.tar
 
 singularity exec ${INTERACTIVE} \
     ${GPU_DEVICE} \
@@ -130,24 +131,32 @@ singularity exec ${INTERACTIVE} \
     docker://${DOCKER_IMAGE} /bin/bash -c \
         "pip install -e ${WORKDIR}/ml; \
         mkdir -p ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}; \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_1.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_2.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_4.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_5.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_6.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_7.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_8.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_9.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_a.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_b.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_c.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_d.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_e.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_f.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_g.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_h.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_i.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_j.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
+        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_k.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
         wait; \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_1.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_2.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_4.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_5.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_6.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_7.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_8.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_9.tar & \
+        cd ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ ; \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_a.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_b.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_c.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_d.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_e.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_f.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_g.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_h.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_i.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_j.tar & \
+        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_k.tar & \
         wait; \
-        ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+        cd ${SLURM_JOB_SCRATCHDIR}; \
+        cp -r ${WORKDIR}/mgh_3yrs_hd5s . ; \
+        ln -s ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/tmp_hd5 partners_ecg ; \
+        ${PYTHON_COMMAND} ${PYTHON_ARGS} --tensors ${SLURM_JOB_SCRATCHDIR}/mgh_3yrs_hd5s"
