@@ -271,6 +271,7 @@ def infer_multimodal_multitask(args):
             if tsv_style_is_genetics:
                 csv_row *= 2
             for y, tm in zip(prediction, no_fail_tmaps_out):
+                logging.debug(f'index error at {tm.name} with cm: {tm.channel_map} tm shape {tm.shape} y is {y.shape} y is {y}')
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
