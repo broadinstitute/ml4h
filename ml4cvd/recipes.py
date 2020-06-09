@@ -285,7 +285,7 @@ def infer_multimodal_multitask(args):
                             actual = output_data[tm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
-                            logging.debug(f'index error at item {i} key {k} with cm: {tm.channel_map}')
+                            logging.debug(f'index error at {tm.name} item {i} key {k} with cm: {tm.channel_map} y is {y.shape} y is {y}')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
