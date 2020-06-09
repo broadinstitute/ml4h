@@ -373,7 +373,7 @@ def train_siamese_model(args):
 
 def train_simclr_model(args):
     assert not args.tensor_maps_out
-    shape = (args.dense_layers[-1], 1)
+    shape = (args.dense_layers[-1],)
 
     def zero_tensor_from_file(_, __, ___=None):
         return np.zeros(shape)
