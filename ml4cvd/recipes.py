@@ -244,6 +244,7 @@ def infer_multimodal_multitask(args):
         if tsv_style_is_genetics:
             header = ['FID', 'IID']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
+            logging.info(f"Got ot  {ot} and otm {otm}  ot  {ot.name} and otm {otm.name} ot  {ot.channel_map} and otm {otm.channel_map} channel_map {ot.interpretation} and otm {otm.interpretation}.")
             if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([ot+'_prediction', ot+'_actual'])
             elif len(otm.shape) == 1 and otm.is_categorical():
