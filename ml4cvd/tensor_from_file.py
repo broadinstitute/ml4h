@@ -2066,19 +2066,20 @@ def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = 
             else:
                 tensor[i] = tm.channel_map[c]
         if tm.dependent_map is not None:
-            start_next_window = random_index+window_size
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-            if tm.dependent_map.axes() == 1 and one_hot:
-                dependents[tm.dependent_map][tm.dependent_map.channel_map[text[start_next_window]]] = 1.0
-            elif tm.dependent_map.axes() == 2 or (not one_hot and tm.dependent_map.axes() == 1):
-                for j, c in enumerate(text[start_next_window:start_next_window+tm.dependent_map.shape[0]]):
-                    if one_hot:
-                        dependents[tm.dependent_map][j, tm.dependent_map.channel_map[c]] = 1.0
-                    else:
-                        dependents[tm.dependent_map][j] = tm.dependent_map.channel_map[c]
-            else:
-                raise ValueError(f'No method to process dependent map:{tm.dependent_map.name} of shape {tm.dependent_map.shape}.')
-        logging.debug(f'{text[random_index:random_index+window_size]} \nand Dependent:{text[start_next_window:start_next_window+tm.dependent_map.shape[0]]}')
+            for i, dm in enumerate(tm.dependent_map):
+                start_next_window = random_index+window_size
+                dependents[dm] = np.zeros(dm.shape, dtype=np.float32)
+                if tm.dependent_map.axes() == 1 and one_hot:
+                    dependents[dm][dm.channel_map[text[start_next_window]]] = 1.0
+                elif dm.axes() == 2 or (not one_hot and dm.axes() == 1):
+                    for j, c in enumerate(text[i+start_next_window:i+start_next_window+dm.shape[0]]):
+                        if one_hot:
+                            dependents[dm][j, dm.channel_map[c]] = 1.0
+                        else:
+                            dependents[dm][j] = dm.channel_map[c]
+                else:
+                    raise ValueError(f'No method to process dependent map:{dm.name} of shape {dm.shape}.')
+                logging.debug(f'{text[random_index:random_index+window_size]} \nand Dependent:{text[start_next_window:start_next_window+dm.shape[0]]}')
         return tensor
     return text_from_file
 
@@ -2106,10 +2107,16 @@ TMAPS['lsd_next_32_index'] = TensorMap(
     cacheable=False,
 )
 
+TMAPS['lsd_next_next_32_index'] = TensorMap(
+    'lsd_next_next_32_index', Interpretation.LANGUAGE, shape=(32,),
+    channel_map=TESTIMONIAL_CHAR_2_IDX,
+    cacheable=False,
+)
+
 TMAPS['lsd_text_32_index'] = TensorMap(
     'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32,),
     tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32, one_hot=False),
-    dependent_map=TMAPS['lsd_next_32_index'],
+    dependent_map=[TMAPS['lsd_next_32_index'], TMAPS['lsd_next_next_32_index']],
     channel_map=TESTIMONIAL_CHAR_2_IDX,
     annotation_units=128,
     cacheable=False,
