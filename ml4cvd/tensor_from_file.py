@@ -2069,7 +2069,7 @@ def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = 
             for i, dm in enumerate(tm.dependent_map):
                 start_next_window = random_index+window_size
                 dependents[dm] = np.zeros(dm.shape, dtype=np.float32)
-                if tm.dependent_map.axes() == 1 and one_hot:
+                if dm.axes() == 1 and one_hot:
                     dependents[dm][dm.channel_map[text[start_next_window]]] = 1.0
                 elif dm.axes() == 2 or (not one_hot and dm.axes() == 1):
                     for j, c in enumerate(text[i+start_next_window:i+start_next_window+dm.shape[0]]):
