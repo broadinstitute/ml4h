@@ -2088,7 +2088,7 @@ TMAPS['lsd_text_next_char'] = TensorMap(
 )
 
 TMAPS['lsd_text_next_2_char'] = TensorMap(
-    'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(3, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX, annotation_units=32, cacheable=False,
+    'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(2, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX, annotation_units=32, cacheable=False,
 )
 
 TMAPS['lsd_text_32'] = TensorMap(
