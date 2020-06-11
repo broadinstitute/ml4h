@@ -6,6 +6,8 @@
 *.csv
 *.png
 *.log
+*.vtp
+*.vts
 **/__pycache__/*
 trained_models/*
 recipes_output/*
