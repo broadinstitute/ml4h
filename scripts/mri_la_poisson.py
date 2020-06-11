@@ -170,13 +170,17 @@ for i in cli_idxs:
                 clean.PointMergingOn()
                 clean.SetInputConnection(append.GetOutputPort())
                 clean.Update()
+
+                triangle_filter = vtk.vtkTriangleFilter()
+                triangle_filter.SetInputConnection(clean.GetOutputPort())
+                triangle_filter.Update()
             
                 mass = vtk.vtkMassProperties()
-                mass.SetInputConnection(clean.GetOutputPort())
+                mass.SetInputConnection(triangle_filter.GetOutputPort())
                 mass.Update()
                 petersen.loc[i, f'LA_poisson_{t}'] = mass.GetVolume()
-                break
+                print(idx, i)
     except:
         pass
 
-petersen.iloc[cli_idxs].to_csv(f'petersen_{cli_idxs[0]}.csv', sep='\t', index=False)
+petersen.loc[cli_idxs].to_csv(f'petersen_{cli_idxs[0]}.csv', sep='\t', index=False)
