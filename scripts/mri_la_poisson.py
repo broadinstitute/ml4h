@@ -179,7 +179,7 @@ for i in cli_idxs:
                 mass.SetInputConnection(triangle_filter.GetOutputPort())
                 mass.Update()
                 petersen.loc[i, f'LA_poisson_{t}'] = mass.GetVolume()
-                print(idx, i)
+                print(idx, t)
     except:
         pass
 
