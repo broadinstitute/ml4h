@@ -2,6 +2,9 @@
 .vscode
 .idea/*
 *.linux
+*.tsv
+*.csv
+*.png
 *.log
 **/__pycache__/*
 trained_models/*
