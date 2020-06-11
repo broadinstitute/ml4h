@@ -8,14 +8,15 @@ python setup.py install
 
 mkdir -p /home/pdiachil/atria_poisson_output
 cd /home/pdiachil/atria_poisson_output
-
-for i in {1..5000}
+cnt=0
+for i in {1..1200}
 do
-    python /home/pdiachil/ml/scripts/mri_la_poisson.py 0 &
-    python /home/pdiachil/ml/scripts/mri_la_poisson.py 1 &
-    python /home/pdiachil/ml/scripts/mri_la_poisson.py 2 &
-    python /home/pdiachil/ml/scripts/mri_la_poisson.py 3 &
+    python /home/pdiachil/ml/scripts/mri_la_poisson.py $cnt &
+    python /home/pdiachil/ml/scripts/mri_la_poisson.py $(($cnt+1)) &
+    python /home/pdiachil/ml/scripts/mri_la_poisson.py $(($cnt+2)) &
+    python /home/pdiachil/ml/scripts/mri_la_poisson.py $(($cnt+3)) &
     wait
+    cnt=$((cnt+4))
     break
 done    
 
