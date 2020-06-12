@@ -77,7 +77,7 @@ ECG_REST_PLOT_AMP_LEADS = [
 
 def evaluate_predictions(
     tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-    max_melt: int = 150000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+    max_melt: int = 150000, protected: Dict[TensorMap: np.ndarray] = {}, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
@@ -90,6 +90,7 @@ def evaluate_predictions(
     :param folder: The folder to save the plots at
     :param test_paths: The tensor paths that were predicted
     :param max_melt: For multi-dimensional prediction the maximum number of prediction to allow in the flattened array
+    :param protected: TensorMaps and tensors sensitive to bias
     :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
     :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
     :return: Dictionary of performance metrics with string keys for labels and float values
@@ -98,9 +99,9 @@ def evaluate_predictions(
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
-        plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
+        plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder)
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
@@ -1481,7 +1482,7 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
-def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
+def plot_roc_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
     lw = 2
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
