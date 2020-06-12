@@ -473,7 +473,8 @@ def tokenize_text(text_file):
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
-def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha):
+def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
+                          batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
     scatters = []
@@ -486,7 +487,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
         if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
-        performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+        performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, tensor_maps_protected, rocs=rocs, scatters=scatters))
         if tm.is_language():
             sample_from_language_model(tensor_maps_in, tm, model, test_data, max_samples=16)
 
