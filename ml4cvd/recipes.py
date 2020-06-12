@@ -14,7 +14,7 @@ import numpy as np
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-from sksurv.metrics import concordance_index_censored
+#from sksurv.metrics import concordance_index_censored
 
 # try:
 #     import tensorflow as tf
