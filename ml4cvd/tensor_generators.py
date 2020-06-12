@@ -722,6 +722,7 @@ def get_train_valid_test_paths_split_by_csvs(
 def test_train_valid_tensor_generators(
     tensor_maps_in: List[TensorMap],
     tensor_maps_out: List[TensorMap],
+    tensor_maps_protected: List[TensorMap],
     tensors: str,
     batch_size: int,
     num_workers: int,
@@ -744,6 +745,8 @@ def test_train_valid_tensor_generators(
 
     :param tensor_maps_in: list of TensorMaps that are input names to a model
     :param tensor_maps_out: list of TensorMaps that are output from a model
+    :param tensor_maps_protected: list of TensorMaps that are sensitive to bias from a model
+                                    only added to the test set
     :param tensors: directory containing tensors
     :param batch_size: number of examples in each mini-batch
     :param num_workers: number of processes spun off for training and testing. Validation uses half as many workers
@@ -786,9 +789,12 @@ def test_train_valid_tensor_generators(
             test_csv=test_csv,
         )
         weights = None
-    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
-    generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese, augment=False)
-    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False)
+    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_workers, cache_size, weights, keep_paths,
+                                     mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
+    generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_workers // 2, cache_size, weights,
+                                     keep_paths, name='validation_worker', siamese=siamese, augment=False)
+    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out+tensor_maps_protected, test_paths, num_workers, 0, weights,
+                                    keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False)
     return generate_train, generate_valid, generate_test
 
 
