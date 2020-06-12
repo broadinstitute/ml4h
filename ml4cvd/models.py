@@ -47,55 +47,6 @@ class BottleneckType(Enum):
     NoBottleNeck = auto()  # only works when everything is u_connected
 
 
-def make_simple_model(
-    tensor_maps_in: List[TensorMap],
-    tensor_maps_out: List[TensorMap],
-    learning_rate: float,
-) -> Model:
-    """Make linear or logistic regression
-
-    Input and output tensor maps are set from the command line.
-    Model summary printed to output
-
-    :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
-                            otherwise there are layer name collisions.
-    :param tensor_maps_out: List of output TensorMaps
-    :param learning_rate: Size of learning steps in SGD optimization
-    :return: a compiled keras model
-    """
-    losses = []
-    outputs = []
-    loss_weights = []
-
-    if len(tensor_maps_out) > 1:
-        raise ValueError("Only handles single output tensor")
-
-    # Instantiate Keras tensors from list of TMaps
-    inputs = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-
-    # Shorter alias for the single output tmap
-    ot = tensor_maps_out[0]
-    
-    # Set up output dense layer 
-    outputs = Dense(
-            units=len(ot.channel_map),
-            activation=ot.activation,
-            name=ot.output_name())(concatenate(inputs))
-
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-
-    m = Model(inputs=inputs, outputs=outputs)
-    
-    m.compile(
-        optimizer=opt,
-        loss=ot.loss,
-        loss_weights=[ot.loss_weight],
-        metrics=ot.metrics) 
-    m.summary()
-
-    return m
-
-
 def make_shallow_model(
     tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
     learning_rate: float, model_file: str = None, model_layers: str = None,
@@ -124,14 +75,13 @@ def make_shallow_model(
     my_metrics = {}
     loss_weights = []
     input_tensors = [Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in]
-    if len(input_tensors) > 1:
-        logging.warning('multi input tensors not fully supported')
-    for it in input_tensors:
-        for ot in tensor_maps_out:
-            losses.append(ot.loss)
-            loss_weights.append(ot.loss_weight)
-            my_metrics[ot.output_name()] = ot.metrics
-            outputs.append(Dense(units=len(ot.channel_map), activation=ot.activation, name=ot.output_name())(it))
+
+    it = concatenate(input_tensors) if len(input_tensors) > 1 else input_tensors[0]
+    for ot in tensor_maps_out:
+        losses.append(ot.loss)
+        loss_weights.append(ot.loss_weight)
+        my_metrics[ot.output_name()] = ot.metrics
+        outputs.append(Dense(units=len(ot.channel_map), activation=ot.activation, name=ot.output_name())(it))
 
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     m = Model(inputs=input_tensors, outputs=outputs)
