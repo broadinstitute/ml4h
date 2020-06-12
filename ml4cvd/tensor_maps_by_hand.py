@@ -605,19 +605,6 @@ TMAPS['ejection_fractionp'] = TensorMap(
     parents=[TMAPS['end_systole_volume'], TMAPS['end_diastole_volume']],
 )
 
-TMAPS['cine_segmented_sax_b1'] = TensorMap('cine_segmented_sax_b1', shape=(256, 256, 50), loss='mse')
-TMAPS['cine_segmented_sax_b2'] = TensorMap('cine_segmented_sax_b2', shape=(256, 256, 50), loss='mse')
-TMAPS['cine_segmented_sax_b4'] = TensorMap('cine_segmented_sax_b4', shape=(256, 256, 50), loss='mse')
-TMAPS['cine_segmented_sax_b6'] = TensorMap('cine_segmented_sax_b6', shape=(256, 256, 50), loss='mse')
-
-TMAPS['cine_segmented_lax_2ch'] = TensorMap('cine_segmented_lax_2ch', shape=(256, 256, 50), normalization={'zero_mean_std1': True})
-TMAPS['cine_segmented_lax_3ch'] = TensorMap('cine_segmented_lax_3ch', shape=(256, 256, 50), normalization={'zero_mean_std1': True})
-TMAPS['cine_segmented_lax_4ch'] = TensorMap('cine_segmented_lax_4ch', shape=(256, 256, 50), normalization={'zero_mean_std1': True})
-
-TMAPS['cine_segmented_lax_2ch_4d'] = TensorMap('cine_segmented_lax_2ch_4d', shape=(256, 256, 50, 1), normalization={'zero_mean_std1': True})
-TMAPS['cine_segmented_lax_3ch_4d'] = TensorMap('cine_segmented_lax_3ch_4d', shape=(256, 256, 50, 1), normalization={'zero_mean_std1': True})
-TMAPS['cine_segmented_lax_4ch_4d'] = TensorMap('cine_segmented_lax_4ch_4d', shape=(256, 256, 50, 1), normalization={'zero_mean_std1': True})
-
 TMAPS['lax-view-detect'] = TensorMap(
     'lax-view-detect', Interpretation.CATEGORICAL,
     channel_map={
