@@ -99,7 +99,7 @@ def evaluate_predictions(
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}")
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
-        plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder)
+        plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -1488,7 +1488,7 @@ def plot_roc_per_class(prediction, truth, labels, protected, title, prefix='./fi
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
-
+    logging.info(f'Protected in roc {[(p.name, p.shape, protected[p].shape) for p in protected]} ')
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
         if 'no_' in key and len(labels) == 2:

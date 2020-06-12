@@ -183,7 +183,7 @@ def plot_while_learning(
             elif write_pngs:
                 if len(tensor_maps_out) == 1:
                     y = predictions[0]
-                evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, rocs=rocs, scatters=scatters)
+                evaluate_predictions(tm, y, test_labels[tm.output_name()], f"{tm.name}_epoch_{i:03d}", folder, test_paths, test_labels, rocs=rocs, scatters=scatters)
         if len(rocs) > 1:
             subplot_rocs(rocs, folder+f"epoch_{i:03d}_")
         if len(scatters) > 1:
