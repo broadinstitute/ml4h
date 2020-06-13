@@ -102,10 +102,10 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
 from scipy.spatial import ConvexHull
 volumes = []
 for i, idx in enumerate(petersen_idxs):
+    if i == 1000: 
+      break
     if (i % 10) == 0: 
         print(f'{i} out of {len(petersen_idxs)}')
-    if i == 1:
-        break
     with h5py.File(f'/mnt/disks/sax-and-lax-zip-2019-09-30/unzip-sax-and-lax-44k-2020-06-05/{idx}.hd5', 'r') as ff:
         dss = []
         for view in ['2ch', '3ch', '4ch']:
