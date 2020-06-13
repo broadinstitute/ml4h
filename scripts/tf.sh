@@ -14,7 +14,6 @@ GPU_DEVICE="--gpus all"
 INTERACTIVE=""
 MOUNTS=""
 PYTHON_COMMAND="python"
-PYTHON_COMMAND="bash"
 TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
