@@ -139,4 +139,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; git clone --recursive git://github.com/mmolero/pypoisson.git; cd pypoisson; python setup.py build; python setup.py install; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; apt update; apt install -y git; cd ${WORKDIR}; git clone --recursive git://github.com/mmolero/pypoisson.git; cd pypoisson; python setup.py build; python setup.py install; cd ${WORKDIR}; mkdir -p atria; cd atria; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
