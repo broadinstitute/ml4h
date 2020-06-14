@@ -1,4 +1,5 @@
 import h5py
+import sys
 import glob
 from ml4cvd.tensor_from_file import _mri_tensor_4d, _mri_hd5_to_structured_grids
 from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
@@ -21,7 +22,7 @@ for t in range(MRI_FRAMES):
 
 def project_3dpts_plane(pts):
     
-    N = np.cross(pts[10] - pts[0], pts[200] - pts[0])
+    N = np.cross(pts[10] - pts[0], pts[-1] - pts[0])
     U = (pts[10] - pts[0])/np.linalg.norm(pts[10] - pts[0])
     uN = N / np.linalg.norm(N)
     u = pts[0] + U  
@@ -101,11 +102,13 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
 
 from scipy.spatial import ConvexHull
 volumes = []
+petersen_processed = []
 for i, idx in enumerate(petersen_idxs):
-    if i == 1000: 
-      break
-    if (i % 10) == 0: 
-        print(f'{i} out of {len(petersen_idxs)}')
+    if i < int(sys.argv[1]): 
+        continue
+    if i > int(sys.argv[1]): 
+        break
+    
     with h5py.File(f'/mnt/disks/sax-and-lax-zip-2019-09-30/unzip-sax-and-lax-44k-2020-06-05/{idx}.hd5', 'r') as ff:
         dss = []
         for view in ['2ch', '3ch', '4ch']:
@@ -118,9 +121,9 @@ for i, idx in enumerate(petersen_idxs):
             pts = []
             normals = []
             for ds, view, la_value in zip(dss, ['2ch', '3ch', '4ch'],
-                                          [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                           MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                           MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
+                                            [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                                            MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                                            MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
                 centers = vtk.vtkCellCenters()
                 centers.SetInputData(ds[0])
                 centers.Update()
@@ -128,7 +131,7 @@ for i, idx in enumerate(petersen_idxs):
                 idx_view = np.where(arr_annot == la_value)
                 pts_view = ns.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())[idx_view]
                 pts_view_2d = project_3dpts_plane(pts_view)
-                n_view = np.cross(pts_view[10] - pts_view[0], pts_view[200] - pts_view[0])
+                n_view = np.cross(pts_view[10] - pts_view[0], pts_view[-1] - pts_view[0])
                 n_view /= np.linalg.norm(n_view)
                 hull_view = ConvexHull(pts_view_2d[:, :-1])
                 pts_hull_view = pts_view[hull_view.vertices]
@@ -187,13 +190,17 @@ for i, idx in enumerate(petersen_idxs):
             triangle_filter = vtk.vtkTriangleFilter()
             triangle_filter.SetInputConnection(clean.GetOutputPort())
             triangle_filter.Update()
-
+            
             append = False if (t == 0) else True
             write_footer = True if (t == MRI_FRAMES - 1) else False
             to_xdmf(triangle_filter.GetOutput(), f'{idx}_atrium', append=append, 
                     append_time=t, write_footer=write_footer)
-         
+
             mass = vtk.vtkMassProperties()
             mass.SetInputConnection(triangle_filter.GetOutputPort())
             mass.Update()
             petersen.loc[i, f'LA_poisson_{t}'] = mass.GetVolume()
+    petersen_processed.append(i)
+
+petersen.loc[petersen_processed].to_csv(f'petersen_processed_{i-1}.csv', sep='\t', index=False)
+        
