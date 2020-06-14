@@ -1069,8 +1069,7 @@ def _get_callbacks(
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
-        TensorBoard(os.path.dirname(model_file))
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1)
     ]
     return callbacks
 

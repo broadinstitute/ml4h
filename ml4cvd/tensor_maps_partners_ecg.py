@@ -13,6 +13,12 @@ from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, 
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize
 
+ECG_GEISINGER_1 = {k: v for k, v in ECG_REST_AMP_LEADS.items() if k in ['V1', 'II', 'V5']}
+ECG_GEISINGER_2 = {k: v for k, v in ECG_REST_AMP_LEADS.items() if k in ['I', 'II', 'III']}
+ECG_GEISINGER_3 = {k: v for k, v in ECG_REST_AMP_LEADS.items() if k in ['aVR', 'aVL', 'aVF']}
+ECG_GEISINGER_4 = {k: v for k, v in ECG_REST_AMP_LEADS.items() if k in ['V1', 'V2', 'V3']}
+ECG_GEISINGER_5 = {k: v for k, v in ECG_REST_AMP_LEADS.items() if k in ['V4', 'V5', 'V6']}
+
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
@@ -121,6 +127,11 @@ TMAPS['partners_ecg_voltage_newest'] = TensorMap(
     channel_map=ECG_REST_AMP_LEADS,
 )
 
+TMAPS['partners_ecg_geisinger_1'] = TensorMap('ecg_geisinger_1', shape=(5040, 3), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_GEISINGER_1)
+TMAPS['partners_ecg_geisinger_2'] = TensorMap('ecg_geisinger_2', shape=(1248, 3), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_GEISINGER_2)
+TMAPS['partners_ecg_geisinger_3'] = TensorMap('ecg_geisinger_3', shape=(1248, 3), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_GEISINGER_3)
+TMAPS['partners_ecg_geisinger_4'] = TensorMap('ecg_geisinger_4', shape=(1248, 3), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_GEISINGER_4)
+TMAPS['partners_ecg_geisinger_5'] = TensorMap('ecg_geisinger_5', shape=(1248, 3), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_GEISINGER_5)
 
 TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
 TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
@@ -554,13 +565,13 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "partners_ecg_gender"
+task = "partners_ecg_sex"
 TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="gender"),
-    shape=(None, 1),
+    shape=(1, ),
     time_series_limit=0,
     validator=validator_no_empty,
 )
@@ -2285,6 +2296,9 @@ def partners_channel_string_bias(hd5_key, synonyms={}, unspecified_key='unspecif
             try:
                 if hd5_key == 'acquisitionyear':
                     hd5_string = ecg_date.split('-')[0]
+                elif hd5_key == 'locationcardiology':
+                    path = _make_hd5_path(tm, ecg_date, 'hd5_key')
+                    hd5_string = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 else:
                     path = _make_hd5_path(tm, ecg_date, hd5_key)
                     hd5_string = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
@@ -2401,6 +2415,38 @@ bias_dic = {'acquisitionyear': {'2000': 0,
                              '138-ED OBSERVATION UNIT': 28,
                              '147-DANVERS ACC CARDIOLOGY PRTCE': 29,
                              'unspecified': 30},
+            'locationcardiology': {
+                             '46-YAWKEY5 - CARDIOLOGY NR': 1,
+                             '30-EMERGENCY DEPARTMENT': 0,
+                             '40-WACC2/6 - CLINICS': 0,
+                             '160-LUNDER EMERGENCY DEPARTMENT': 0,
+                             '23-JACKSON 121-SURGICAL DAY CARE': 0,
+                             '7-ELLISON 10 - CARDIAC': 1,
+                             '53-WACC 5 BUL MED GROUP': 0,
+                             '22-PRIVATE AMBULATORY': 0,
+                             '44-PROCESS DO NOT INTERPRET': 0,
+                             '106-BIGELOW8-CARDIO SUITE 800 NR': 1,
+                             '18-GREY 1 ADMITTING TEST AREA': 0,
+                             '43-CHELSEA HLTH CNTR LAB': 0,
+                             '6-ELLISON 9 - CCU': 1,
+                             '8-ELLISON 11 - CARDIAC': 1,
+                             '2-BLAKE 8 - CARDIAC SICU': 1,
+                             '91-REVERE HLTH CNTR LAB': 0,
+                             '89-WHITE 9 - MED': 0,
+                             '33-ELLISON 16 - MED': 0,
+                             '71-BIGELOW 11 - MED': 0,
+                             '88-WHITE 8 - MED': 0,
+                             '98-BUNKER HILL HEALTH CENTER NR': 0,
+                             '63-MGH BACK BAY': 0,
+                             '59-CHELSEA HEALTH CENTER ED NR': 0,
+                             '80-WHITE 10 - MED': 0,
+                             '81-WHITE 11 - UROLOGY': 0,
+                             '5-ELLISON 8 - CARDIAC SURG': 1,
+                             '110-ED TRAUMA': 0,
+                             '101-BEACON HILL PRIMARY NR': 0,
+                             '138-ED OBSERVATION UNIT': 0,
+                             '147-DANVERS ACC CARDIOLOGY PRTCE': 1,
+                             'unspecified': 0},
             'testreason': {'V72.81': 0,
                            '786.50': 1,
                            'NOBILL': 2,
@@ -2439,7 +2485,7 @@ for bias_key in bias_dic:
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
         time_series_order=TimeSeriesOrder.OLDEST,
-        channel_map={f'val_{i}': i for i in range(len(bias_dic[bias_key]))},
+        channel_map={f'val_{i}': i for i in set(bias_dic[bias_key].values())},
         tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
 
 
@@ -2498,5 +2544,5 @@ for bias_key in bias_waveform_dic:
             interpretation=Interpretation.CATEGORICAL,
             path_prefix=PARTNERS_PREFIX,
             time_series_order=TimeSeriesOrder.OLDEST,
-            channel_map={f'val_{i}': i for i in range(len(bias_waveform_dic[bias_key]))},
+            channel_map={f'val_{i}': i for i in set(bias_waveform_dic[bias_key].values())},
             tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
