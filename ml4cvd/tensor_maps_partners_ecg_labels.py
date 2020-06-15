@@ -126,7 +126,7 @@ TMAPS['partners_ecg_lvh'] = TensorMap(
     'partners_ecg_lvh', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='partners_ecg_rest',
     channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
     tensor_from_file=make_partners_ecg_label(
-        keys=['read_md_clean'],
+        keys=['read_md_clean', 'read_pc_clean'],
         not_found_key='no_lvh',
         dict_of_list={
             'left_ventricular_hypertrophy': ['left_ventricular_hypertrophy', 'left ventricular hypertrophy', 'lvh'],
