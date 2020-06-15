@@ -161,11 +161,11 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
+        if self.stats_q.qsize() == self.num_workers:
+            self.aggregate_and_print_stats()
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
-            if self.stats_q.qsize() == self.num_workers:
-                self.aggregate_and_print_stats()
             return self.q.get(TENSOR_GENERATOR_TIMEOUT)
 
     def aggregate_and_print_stats(self):
