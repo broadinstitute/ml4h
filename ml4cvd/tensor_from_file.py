@@ -1609,11 +1609,22 @@ TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap(
 )
 
 
-
 def _pad_crop_tensor(tm, hd5, dependents={}):
     return _pad_or_crop_array_to_shape(tm.shape, np.array(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32))
 
 
+TMAPS['cine_lax_2ch_192_16'] = TensorMap(
+    'cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
+)
+TMAPS['cine_lax_3ch_192_16'] = TensorMap(
+    'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
+)
+TMAPS['cine_lax_4ch_192_16'] = TensorMap(
+    'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
+)
 TMAPS['cine_lax_3ch_192'] = TensorMap(
     'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
