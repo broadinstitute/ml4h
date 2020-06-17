@@ -1623,6 +1623,10 @@ TMAPS['cine_lax_4ch_192_16'] = TensorMap(
     'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
 )
+TMAPS['cine_lax_4ch_192_16_4d'] = TensorMap(
+    'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_pad_crop_tensor, normalization=ZeroMeanStd1(),
+)
 TMAPS['cine_lax_2ch_192_16_3'] = TensorMap(
     'cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch', 192, 160, 3, pad_shape=(192, 160, 50)),
@@ -1730,7 +1734,7 @@ TMAPS['lax_4ch_segmented_192_w'] = TensorMap(
     loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
 )
 TMAPS['lax_4ch_segmented_192_16_3_w'] = TensorMap(
-    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 16, 14),
+    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 16, 14),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
