@@ -417,6 +417,10 @@ TMAPS['LVEDV'] = TensorMap(
     'LVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 144.1479505192425, 'std': 34.39409859908663}, loss='logcosh', path_prefix='continuous',
     validator=make_range_validator(0, 500), channel_map={'LVEDV': 0},
 )
+TMAPS['LVEF'] = TensorMap(
+    'LVEF',  Interpretation.CONTINUOUS, normalization={'mean': 47.0, 'std': 10.0}, loss='logcosh', path_prefix='continuous',
+    validator=make_range_validator(0, 500), channel_map={'LVEF': 0},
+)
 TMAPS['LVESV'] = TensorMap(
     'LVESV',  Interpretation.CONTINUOUS, normalization={'mean': 59.58324862553452, 'std': 21.186976544044025}, loss='logcosh', path_prefix='continuous',
     validator=make_range_validator(0, 400), channel_map={'LVESV': 0},
