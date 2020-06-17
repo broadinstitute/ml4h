@@ -1673,7 +1673,7 @@ TMAPS['cine_sax_b6_192_1'] = TensorMap(
 )
 
 
-def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
+def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', step=1):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if path_prefix == 'ukb_liver_mri':
@@ -1681,10 +1681,12 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         elif tm.axes() == 4:
-            for i in range(tm.shape[-2]):
+            tensor_index = 0
+            for i in range(0, tm.shape[-2], step=step):
                 categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}{i+1}')
                 categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-                tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
+                tensor[..., tensor_index, :] = _pad_or_crop_array_to_shape(tensor[..., tensor_index, :].shape, categorical_one_hot)
+                tensor_index += 1
         else:
             raise ValueError(f'No method to get segmented slices for TensorMap: {tm}')
         return tensor
@@ -1724,6 +1726,12 @@ TMAPS['lax_4ch_segmented_192'] = TensorMap(
 TMAPS['lax_4ch_segmented_192_w'] = TensorMap(
     'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
+    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
+)
+TMAPS['lax_4ch_segmented_192_16_3_w'] = TensorMap(
+    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 16, 14),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
 )
