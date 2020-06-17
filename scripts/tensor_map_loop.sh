@@ -1,6 +1,6 @@
 #!/bin/bash
 # Define a string variable with a value
-tensor_maps="Welcome to linuxhint"
+tensor_maps="strip_I strip_II strip_III strip_V1 strip_V2 strip_V3 strip_V4 strip_V5 strip_V6 strip_aVF strip_aVL strip_aVR ecg_rest_raw"
 
 # Iterate the string variable using for loop
 for tm in $tensor_maps; do
