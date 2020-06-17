@@ -578,7 +578,7 @@ for lead in ECG_REST_LEADS:
     )
     TMAPS[f'ecg_rest_raw_{lead}'] = TensorMap(
         lead, Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-        channel_map={lead: 0}, normalization=Standardize(mean=2000.0),
+        channel_map={lead: 0}, normalization=Standardize(mean=0, std=2000),
     )
 TMAPS['ecg_rest_2500_ukb'] = TensorMap(
     'ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
