@@ -12,7 +12,7 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.normalizer import ZeroMeanStd1
+from ml4cvd.normalizer import ZeroMeanStd1, Standardize
 from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
@@ -571,6 +571,15 @@ TMAPS['ecg_rest'] = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
 )
+for lead in ECG_REST_LEADS:
+    TMAPS[f'ecg_rest_{lead}'] = TensorMap(
+        lead, Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+        channel_map={lead: 0}, normalization=ZeroMeanStd1(),
+    )
+    TMAPS[f'ecg_rest_raw_{lead}'] = TensorMap(
+        lead, Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+        channel_map={lead: 0}, normalization=Standardize(mean=2000.0),
+    )
 TMAPS['ecg_rest_2500_ukb'] = TensorMap(
     'ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
     tensor_from_file=_make_ecg_rest(downsample_steps=2), normalization={'zero_mean_std1': 1.0},
