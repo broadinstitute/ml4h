@@ -1686,7 +1686,7 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', ste
             tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         elif tm.axes() == 4:
             tensor_index = 0
-            for i in range(0, tm.shape[-2], step=step):
+            for i in range(0, tm.shape[-2], step):
                 categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}{i+1}')
                 categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
                 tensor[..., tensor_index, :] = _pad_or_crop_array_to_shape(tensor[..., tensor_index, :].shape, categorical_one_hot)
