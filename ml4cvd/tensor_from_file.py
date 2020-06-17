@@ -12,6 +12,7 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
+from ml4cvd.normalizer import ZeroMeanStd1
 from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
@@ -49,12 +50,9 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
     return _random_slice_tensor_from_file
 
 
-def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False, swap_axes=-1):
+def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, allow_channels=True, flip_swap=False, swap_axes=-1):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        if dtype_override is not None:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
-        else:
-            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
+        big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
 
         if flip_swap:
             big_tensor = np.flip(np.swapaxes(big_tensor, 0, swap_axes))
@@ -1061,7 +1059,7 @@ def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
-    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override='float_array')
+    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape)
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         original = slice_subset_tensor_from_file(tm, hd5, dependents)
@@ -1625,6 +1623,22 @@ TMAPS['cine_lax_4ch_192_16'] = TensorMap(
     'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
 )
+TMAPS['cine_lax_2ch_192_16_3'] = TensorMap(
+    'cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch', 192, 160, 3, pad_shape=(192, 160, 50)),
+    normalization=ZeroMeanStd1(),
+)
+TMAPS['cine_lax_3ch_192_16_3'] = TensorMap(
+    'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch', 192, 160, 3, pad_shape=(192, 160, 50)),
+    normalization=ZeroMeanStd1(),
+)
+TMAPS['cine_lax_4ch_192_16_3'] = TensorMap(
+    'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 192, 160, 3, pad_shape=(192, 160, 50)),
+    normalization=ZeroMeanStd1(),
+)
+
 TMAPS['cine_lax_3ch_192'] = TensorMap(
     'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
