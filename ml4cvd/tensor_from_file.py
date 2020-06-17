@@ -1653,7 +1653,7 @@ TMAPS['cine_lax_4ch_192_16_3'] = TensorMap(
 )
 TMAPS['cine_lax_4ch_192_16_3_4d'] = TensorMap(
     'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(192, 160, 48)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 
