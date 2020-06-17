@@ -2048,7 +2048,7 @@ def _bounding_box_channel_map(total_axes: int) -> Dict[str, int]:
 
 TMAPS['lax_3ch_lv_cavity_bbox_slice0'] = TensorMap(
     'lax_3ch_lv_cavity_bbox_slice0', Interpretation.MESH, shape=(4,),
-    tensor_from_file=_bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity']),
+    tensor_from_file=_bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_cavity']),
     channel_map=_bounding_box_channel_map(2),
 )
 TMAPS['lax_3ch_left_atrium_bbox_slice0'] = TensorMap(
