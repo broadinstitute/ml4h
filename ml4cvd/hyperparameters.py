@@ -314,6 +314,7 @@ def optimize_optimizer(args):
 
 
 def set_args_from_x(args, x):
+    logging.info(f"\n\n\n\nx is {x}")
     for k in args.__dict__:
         if k in x:
             logging.info(f"k is {k} and x[k] is {x[k]} args dict is:{args.__dict__[k]}")
