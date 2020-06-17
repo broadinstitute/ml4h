@@ -13,3 +13,9 @@ for tm in $tensor_maps; do
     model_files="${model_files} ${output_folder}${tm}/${tm}.h5"
 done
 echo $model_files
+echo ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode compare_scalar --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
+    --input_tensors ${tensor_maps} \
+    --output_tensors adjusted_myocardium_mass --test_steps 72 \
+    --patience 32 --batch_size 32 --output_folder ${output_folder} --id compare_leads \
+    ${model_files} \
+    --test_csv /home/sam/lvh_hold_out.txt
