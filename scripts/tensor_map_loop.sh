@@ -11,7 +11,8 @@ for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} \
         --output_tensors adjusted_myocardium_mass \
-        --training_steps 98 --validation_steps 48 --test_steps 48 --epochs 146 --batch_size 32 \
+        --conv_x 71 \
+        --training_steps 98 --validation_steps 48 --test_steps 48 --epochs 96 --batch_size 32 \
         --patience ${patience} --learning_rate ${learning_rate} \
         --output_folder ${output_folder} --id ${tm}_amm \
         --test_csv /home/sam/lvh_hold_out.txt
@@ -30,7 +31,9 @@ model_files="--model_files"
 for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} age_2 sex bmi_21 \
-        --output_tensors adjusted_myocardium_mass_asym_outlier --training_steps 98 --validation_steps 48 --test_steps 36 --epochs 146 \
+        --output_tensors adjusted_myocardium_mass_asym_outlier \
+        --conv_x 71 \
+        --training_steps 98 --validation_steps 48 --test_steps 48 --epochs 96 \
         --patience ${patience} --learning_rate ${learning_rate} \
         --batch_size 32 --output_folder ${output_folder} --id ${tm}_age_sex_bmi_asym_amm \
         --test_csv /home/sam/lvh_hold_out.txt
@@ -49,7 +52,9 @@ model_files="--model_files"
 for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} age_2 sex bmi_21 \
-        --output_tensors adjusted_myocardium_mass --training_steps 98 --validation_steps 48 --test_steps 36 --epochs 146 \
+        --output_tensors adjusted_myocardium_mass \
+        --conv_x 71 \
+        --training_steps 98 --validation_steps 48 --test_steps 48 --epochs 96 \
         --patience ${patience} --learning_rate ${learning_rate} \
         --batch_size 32 --output_folder ${output_folder} --id ${tm}_age_sex_bmi_amm \
         --test_csv /home/sam/lvh_hold_out.txt
