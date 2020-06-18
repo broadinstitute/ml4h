@@ -147,6 +147,7 @@ def parse_args():
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
     parser.add_argument('--conv_normalize', default=None, choices=['', 'batch_norm'], help='Type of normalization layer for convolutions')
     parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
+    parser.add_argument('--layer_order', default=['a', 'r', 'n'], choices=['a', 'n', 'r'])
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')
@@ -412,3 +413,6 @@ def _process_args(args):
     if args.eager:
         import tensorflow as tf
         tf.config.experimental_run_functions_eagerly(True)
+
+    if len(set(args.layer_order)) != 3:
+        raise ValueError(f'Invalid ordering for activation, normalization, and regularization layers: {args.layer_order}')
