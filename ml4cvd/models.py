@@ -1102,7 +1102,7 @@ def _get_callbacks(
 ) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
-        EarlyStopping(monitor='val_loss', patience=patience * 4, verbose=1),
+        EarlyStopping(monitor='val_loss', patience=patience * 2, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
     return callbacks
