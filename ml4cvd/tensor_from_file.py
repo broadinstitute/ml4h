@@ -1758,6 +1758,11 @@ TMAPS['lax_4ch_segmented_192'] = TensorMap(
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
 )
+TMAPS['lax_4ch_segmented_192_16_3'] = TensorMap(
+    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 16, 14),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
+    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+)
 TMAPS['lax_4ch_segmented_192_w'] = TensorMap(
     'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
