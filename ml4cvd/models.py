@@ -867,11 +867,9 @@ def make_multimodal_multitask_model(
     def _repeat_dimension(dim: List[int], name: str) -> List[int]:
         if len(dim) != num_layers:
             logging.warning(
-                ''.join([
-                    f'Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) ',
-                    f'do not match number of convolutional layers ({num_layers}), ',
-                    f'matching values to fit {num_layers} convolutional layers.',
-                ]),
+                f'Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) '
+                f'do not match number of convolutional layers ({num_layers}), '
+                f'matching values to fit {num_layers} convolutional layers.',
             )
             repeat = num_layers // len(dim) + 1
             dim = (dim * repeat)[:num_layers]
