@@ -1,11 +1,11 @@
 #!/bin/bash
 # Define a string variable with a value
 tensor_maps="strip_I strip_II strip_III strip_V1 strip_V2 strip_V3 strip_V4 strip_V5 strip_V6 strip_aVF strip_aVL strip_aVR ecg_rest_raw"
-tensor_maps="strip_I strip_II strip_V5 ecg_rest_raw"
+
 output_folder="/home/sam/ml/trained_models/"
 model_files="--model_files"
 learning_rate="0.0001"
-patience="10"
+patience="16"
 # Iterate the string variable using for loop
 for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
