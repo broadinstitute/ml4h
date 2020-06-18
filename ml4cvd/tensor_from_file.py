@@ -546,8 +546,8 @@ def _make_ecg_rest(
 
 
 TMAPS['ecg_rest_raw'] = TensorMap(
-    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
-    channel_map=ECG_REST_LEADS,
+    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_LEADS,
 )
 
 TMAPS['ecg_rest_raw_roll'] = TensorMap(
