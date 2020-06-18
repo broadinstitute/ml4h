@@ -8,9 +8,10 @@
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:latest-cpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="docker" #"nvidia-docker"
+GPUS_COMMAND="--gpus all"
 PORT="8888"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -54,6 +55,7 @@ while getopts ":ip:ch" opt ; do
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
             DOCKER_COMMAND=docker
+	    GPUS_COMMAND=""
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -95,7 +97,7 @@ chmod o+w /home/${USER}/jupyter/
 mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
 ${DOCKER_COMMAND} run -it \
---gpus all \
+${GPUS_COMMAND} \
 --rm \
 --ipc=host \
 -v /home/${USER}/:/home/${USER}/ \
