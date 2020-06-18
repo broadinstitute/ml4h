@@ -8,8 +8,10 @@ model_files="--model_files"
 for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} \
-        --output_tensors adjusted_myocardium_mass --training_steps 92 --validation_steps 36 --test_steps 36 --epochs 96 \
-        --batch_size 32 --output_folder ${output_folder} --id ${tm}_amm \
+        --output_tensors adjusted_myocardium_mass \
+        --training_steps 92 --validation_steps 36 --test_steps 36 --epochs 96 --batch_size 32 \
+        --patience 5 --learning_rate 0.0001 \
+        --output_folder ${output_folder} --id ${tm}_amm \
         --test_csv /home/sam/lvh_hold_out.txt
     model_files="${model_files} ${output_folder}${tm}_amm/${tm}_amm.h5"
 done
@@ -27,6 +29,7 @@ for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} \
         --output_tensors adjusted_myocardium_mass_asym_outlier --training_steps 92 --validation_steps 36 --test_steps 36 --epochs 96 \
+        --patience 5 --learning_rate 0.0001 \
         --batch_size 32 --output_folder ${output_folder} --id ${tm}_asym \
         --test_csv /home/sam/lvh_hold_out.txt
     model_files="${model_files} ${output_folder}${tm}_asym/${tm}_asym.h5"
@@ -45,6 +48,7 @@ for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} age_2 sex bmi_21 \
         --output_tensors adjusted_myocardium_mass_asym_outlier --training_steps 92 --validation_steps 36 --test_steps 36 --epochs 96 \
+        --patience 5 --learning_rate 0.0001 \
         --batch_size 32 --output_folder ${output_folder} --id ${tm}_age_sex_bmi_asym_amm \
         --test_csv /home/sam/lvh_hold_out.txt
     model_files="${model_files} ${output_folder}${tm}_age_sex_bmi_asym_amm/${tm}_age_sex_bmi_asym_amm.h5"
@@ -63,6 +67,7 @@ for tm in $tensor_maps; do
     ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode train --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
         --input_tensors ${tm} age_2 sex bmi_21 \
         --output_tensors adjusted_myocardium_mass --training_steps 92 --validation_steps 36 --test_steps 36 --epochs 96 \
+        --patience 5 --learning_rate 0.0001 \
         --batch_size 32 --output_folder ${output_folder} --id ${tm}_age_sex_bmi_amm \
         --test_csv /home/sam/lvh_hold_out.txt
     model_files="${model_files} ${output_folder}${tm}_age_sex_bmi_amm/${tm}_age_sex_bmi_amm.h5"
