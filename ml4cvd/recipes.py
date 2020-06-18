@@ -169,7 +169,7 @@ def test_multimodal_multitask(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
                                  args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha)
 
 
@@ -357,7 +357,8 @@ def train_shallow_model(args):
 
     p = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+                                 args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha)
 
 
 def train_char_model(args):
@@ -378,9 +379,10 @@ def train_char_model(args):
     input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
     sample_from_char_embed_model(args.tensor_maps_in, char_model, input_data, tensor_paths)
 
-    output_path = os.path.join(args.output_folder, args.id + '/')
+    out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.embed_visualization, args.alpha)
+    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+                                 args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha)
 
 
 def train_siamese_model(args):

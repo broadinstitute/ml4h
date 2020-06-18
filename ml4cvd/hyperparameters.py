@@ -76,6 +76,8 @@ def hyperparameter_optimizer(args, space, param_lists={}):
     def loss_from_multimodal_multitask(x):
         model = None
         history = None
+        generate_train = None
+        generate_valid = None
         nonlocal i
         i += 1
         try:
@@ -113,6 +115,10 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             logging.exception('Error trying hyperparameter optimization. Returning max loss.')
             return MAX_LOSS
         finally:
+            if generate_train is not None:
+                generate_train.kill_workers()
+            if generate_valid is not None:
+                generate_valid.kill_workers()
             del model
             gc.collect()
             if history is None:
