@@ -4,7 +4,7 @@ tensor_maps="strip_I strip_II strip_III strip_V1 strip_V2 strip_V3 strip_V4 stri
 tensor_maps="strip_I strip_II strip_V5 ecg_rest_raw"
 output_folder="/home/sam/ml/trained_models/"
 model_files="--model_files"
-learning_rate="0.00002"
+learning_rate="0.0001"
 patience="16"
 # Iterate the string variable using for loop
 for tm in $tensor_maps; do
@@ -19,7 +19,7 @@ for tm in $tensor_maps; do
 done
 
 ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode compare_scalar --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
-    --input_tensors ${tensor_maps} age_2 sex bmi_21 \
+    --input_tensors ${tensor_maps} \
     --output_tensors adjusted_myocardium_mass --test_steps 128 \
     --batch_size 32 --output_folder ${output_folder} --id compare_leads_amm \
     ${model_files} \
@@ -38,7 +38,7 @@ for tm in $tensor_maps; do
 done
 
 ./scripts/tf.sh /home/sam/ml/ml4cvd/recipes.py --mode compare_scalar --tensors /mnt/disks/ecg-rest-38k-tensors/2020-03-14/ \
-    --input_tensors ${tensor_maps} age_2 sex bmi_21 \
+    --input_tensors ${tensor_maps} \
     --output_tensors adjusted_myocardium_mass_asym_outlier --test_steps 128 \
     --batch_size 32 --output_folder ${output_folder} --id compare_leads_asym \
     ${model_files} \
