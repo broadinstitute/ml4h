@@ -137,10 +137,10 @@ def make_voltage(exact_length = False):
 # _std normalizes with Standardize mean = 0, std = 2000
 # _raw does not normalize
 # _exact does not resample
-length_opts = [2500, 5000]
-exact_opts = [True, False]
-normalize_opts = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
-for length, exact_length, normalization in product(length_opts, exact_opts, normalize_opts):
+length_options = [2500, 5000]
+exact_options = [True, False]
+normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
+for length, exact_length, normalization in product(length_options, exact_options, normalize_options):
     norm = '' if isinstance(normalization, ZeroMeanStd1) else '_std' if isinstance(normalization, Standardize) else '_raw'
     exact = '_exact' if exact_length else ''
     name = f'partners_ecg_{length}{norm}{exact}'
@@ -270,7 +270,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-def make_voltage_len_categorical_tmap(lead, cm_prefix = '_', cm_unknown = 'other'):
+def make_voltage_len_categorical_tmap(lead, channel_prefix = '_', channel_unknown = 'other'):
     def _tensor_from_file(tm, hd5, dependents = {}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -279,7 +279,7 @@ def make_voltage_len_categorical_tmap(lead, cm_prefix = '_', cm_unknown = 'other
             path = _make_hd5_path(tm, ecg_date, lead)
             try:
                 lead_len = hd5[path].attrs['len']
-                lead_len = f'{cm_prefix}{lead_len}'
+                lead_len = f'{channel_prefix}{lead_len}'
                 matched = False
                 for cm in tm.channel_map:
                     if lead_len.lower() == cm.lower():
@@ -288,7 +288,7 @@ def make_voltage_len_categorical_tmap(lead, cm_prefix = '_', cm_unknown = 'other
                         matched = True
                         break
                 if not matched:
-                    slices = (i, tm.channel_map[cm_unknown]) if dynamic else (tm.channel_map[cm_unknown],)
+                    slices = (i, tm.channel_map[channel_unknown]) if dynamic else (tm.channel_map[channel_unknown],)
                     tensor[slices] = 1.0
             except KeyError:
                 logging.debug(f'Could not get voltage length for lead {lead} from ECG on {ecg_date} in {hd5.filename}')
@@ -309,7 +309,7 @@ for lead in ECG_REST_AMP_LEADS:
     )
 
 
-def make_partners_ecg_tensor(key: str, fill: float = 0, cm_prefix: str = '', cm_unknown: str = 'other'):
+def make_partners_ecg_tensor(key: str, fill: float = 0, channel_prefix: str = '', channel_unknown: str = 'other'):
     def get_partners_ecg_tensor(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -328,7 +328,7 @@ def make_partners_ecg_tensor(key: str, fill: float = 0, cm_prefix: str = '', cm_
                 data = decompress_data(data_compressed=hd5[path][()], dtype='str')
                 if tm.interpretation == Interpretation.CATEGORICAL:
                     matched = False
-                    data = f'{cm_prefix}{data}'
+                    data = f'{channel_prefix}{data}'
                     for cm in tm.channel_map:
                         if data.lower() == cm.lower():
                             slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
@@ -336,7 +336,7 @@ def make_partners_ecg_tensor(key: str, fill: float = 0, cm_prefix: str = '', cm_
                             matched = True
                             break
                     if not matched:
-                        slices = (i, tm.channel_map[cm_unknown]) if dynamic else (tm.channel_map[cm_unknown],)
+                        slices = (i, tm.channel_map[channel_unknown]) if dynamic else (tm.channel_map[channel_unknown],)
                         tensor[slices] = 1.0
                 else:
                     tensor[i] = data
@@ -524,7 +524,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-def make_sampling_frequency_from_file(lead: str = "I", duration: int = 10, cm_prefix: str = "_", cm_unknown: str = "other", fill: int = -1):
+def make_sampling_frequency_from_file(lead: str = "I", duration: int = 10, channel_prefix: str = "_", channel_unknown: str = "other", fill: int = -1):
     def sampling_frequency_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -539,7 +539,7 @@ def make_sampling_frequency_from_file(lead: str = "I", duration: int = 10, cm_pr
             try:
                 if tm.interpretation == Interpretation.CATEGORICAL:
                     matched = False
-                    sampling_frequency = f'{cm_prefix}{sampling_frequency}'
+                    sampling_frequency = f'{channel_prefix}{sampling_frequency}'
                     for cm in tm.channel_map:
                         if sampling_frequency.lower() == cm.lower():
                             slices = (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
@@ -547,7 +547,7 @@ def make_sampling_frequency_from_file(lead: str = "I", duration: int = 10, cm_pr
                             matched = True
                             break
                     if not matched:
-                        slices = (i, tm.channel_map[cm_unknown]) if dynamic else (tm.channel_map[cm_unknown],)
+                        slices = (i, tm.channel_map[channel_unknown]) if dynamic else (tm.channel_map[channel_unknown],)
                         tensor[slices] = 1.0
                 else:
                     tensor[i] = sampling_frequency
@@ -574,7 +574,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_pc", channel_prefix='_'),
     channel_map={'_0': 0, '_250': 1, '_500': 2, 'other': 3},
     time_series_limit=0,
     validator=validator_not_all_zero,
@@ -586,7 +586,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_md", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="ecgsamplebase_md", channel_prefix='_'),
     channel_map={'_0': 0, '_250': 1, '_500': 2, 'other': 3},
     time_series_limit=0,
     validator=validator_not_all_zero,
@@ -598,7 +598,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="waveform_samplebase", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="waveform_samplebase", channel_prefix='_'),
     channel_map={'_0': 0, '_240': 1, '_250': 2, '_500': 3, 'other': 4},
     time_series_limit=0,
     validator=validator_not_all_zero,
@@ -658,7 +658,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="intervalmeasurementtimeresolution", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="intervalmeasurementtimeresolution", channel_prefix='_'),
     channel_map={'_25': 0, '_50': 1, '_100': 2, 'other': 3},
     time_series_limit=0,
     validator=validator_not_all_zero,
@@ -670,7 +670,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="intervalmeasurementamplituderesolution", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="intervalmeasurementamplituderesolution", channel_prefix='_'),
     channel_map={'_10': 0, '_20': 1, '_40': 2, 'other': 3},
     time_series_limit=0,
     validator=validator_not_all_zero,
@@ -682,7 +682,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="intervalmeasurementfilter", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="intervalmeasurementfilter", channel_prefix='_'),
     time_series_limit=0,
     channel_map={'_None': 0, '_40': 1, '_80': 2, 'other': 3},
     validator=validator_not_all_zero,
@@ -718,7 +718,7 @@ TMAPS[task] = TensorMap(
     task,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="waveform_acfilter", cm_prefix='_'),
+    tensor_from_file=make_partners_ecg_tensor(key="waveform_acfilter", channel_prefix='_'),
     time_series_limit=0,
     channel_map={'_None': 0, '_50': 1, '_60': 2, 'other': 3},
     validator=validator_not_all_zero,
