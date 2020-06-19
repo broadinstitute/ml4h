@@ -17,6 +17,8 @@ from ml4cvd.defines import TENSOR_EXT, XML_EXT
 
 
 ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
+ECG_REST_AMPLITUDE_LEADS = {"I": 0, "II": 1, "III": 2, "AVR": 3, "AVL": 4, "AVF": 5, 
+                            "V1": 6, "V2": 7, "V3": 8, "V4": 9, "V5": 10, "V6": 11}
 
 
 def write_tensors_partners(xml_folder: str, tensors: str, num_workers: int) -> None:
@@ -124,6 +126,7 @@ def _data_from_xml(fpath_xml: str) -> Dict[str, Union[str, Dict[str, np.ndarray]
         'intervalmeasurementtimeresolution',
         'intervalmeasurementamplituderesolution',
         'intervalmeasurementfilter',
+        'amplitudemeasurements',
         'waveform',
     ]
     strainer = bs4.SoupStrainer(tags)
@@ -147,6 +150,12 @@ def _data_from_xml(fpath_xml: str) -> Dict[str, Union[str, Dict[str, np.ndarray]
             soup_tag = soup.find(tag)
             if soup_tag is not None:
                 ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup_tag)
+            continue
+        elif tag == 'amplitudemeasurements':
+            soup_tag = soup.find(tag)
+            if soup_tag is not None:
+                amplitude_data = _get_amplitude_from_amplitude_tags(soup.find_all('measuredamplitude'))
+                ecg_data['amplitude'] = amplitude_data
             continue
         elif tag == 'waveform':
             voltage_data = _get_voltage_from_waveform_tags(soup.find_all(tag))
@@ -213,6 +222,24 @@ def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
             parsed_text = parsed_text[:-1]
 
     return parsed_text
+
+
+def _get_amplitude_from_amplitude_tags(amplitude_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
+    amplitude_data = {}
+    amplitude_features = ['peak', 'start', 'duration', 'area']
+    wave_ids = set()
+    for amplitude_tag in amplitude_tags:
+        lead_id = amplitude_tag.find('amplitudemeasurementleadid').text
+        wave_id = amplitude_tag.find('amplitudemeasurementwaveid').text
+        if wave_id not in wave_ids:
+            wave_ids.add(wave_id)
+            for amplitude_feature in amplitude_features:
+                amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'] = np.empty(len(ECG_REST_AMPLITUDE_LEADS))
+                amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][:] = np.nan
+        for amplitude_feature in amplitude_features:
+            value = int(amplitude_tag.find(f'amplitudemeasurement{amplitude_feature}').text)
+            amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][ECG_REST_AMPLITUDE_LEADS[lead_id]] = value
+    return amplitude_data
 
 
 def _get_voltage_from_waveform_tags(waveform_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
@@ -364,6 +391,14 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
         voltage = ecg_data.pop('voltage')
         for lead in voltage:
             _compress_and_save_data(hd5=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
+
+        # Save ECG wave amplitudes if present
+        try:
+            amplitudes = ecg_data.pop('amplitude')
+            for amplitude in amplitudes:
+                _compress_and_save_data(hd5=gp, name=amplitude, data=amplitudes[amplitude], dtype='float')
+        except KeyError:
+            logging.warning(f'Conversion of amplitude measures failed! Not present in: {fpath_xml}')
 
         # Save everything else
         for key in ecg_data:
