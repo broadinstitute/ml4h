@@ -671,14 +671,14 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
 
 
 class ExploreParallelWrapper():
-    def __init__(self, tmaps, paths,  num_workers, total, output_folder, run_id):
+    def __init__(self, tmaps, paths,  num_workers, output_folder, run_id):
         self.tmaps = tmaps
         self.paths = paths
         self.num_workers = num_workers
-        self.total = total
+        self.total = len(paths)
         self.output_folder = output_folder
         self.run_id = run_id
-        self.chunksize = total // num_workers
+        self.chunksize = self.total // num_workers
         self.counter = mp.Value('l', 1)
 
     def _hd5_to_disk(self, path, gen_name):
@@ -777,7 +777,7 @@ def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
     paths = [(path, gen.name.replace('_worker', '')) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
-    ExploreParallelWrapper(tmaps, paths, args.num_workers, len(paths), args.output_folder, args.id).run()
+    ExploreParallelWrapper(tmaps, paths, args.num_workers, args.output_folder, args.id).run()
 
     # get columns that should have dtype 'string' instead of dtype 'O'
     str_cols = ['fpath', 'generator']
