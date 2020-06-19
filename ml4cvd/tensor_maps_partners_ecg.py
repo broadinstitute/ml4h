@@ -1495,16 +1495,19 @@ def build_cardiac_surgery_dict(
     additional_columns: List[str] = [],
 ) -> Dict[int, Dict[str, Union[int, str]]]:
     keys = [date_column] + additional_columns
-    df = pd.read_csv(
-        filename,
-        low_memory=False,
-        usecols=[patient_column]+keys,
-    ).sort_values(by=[patient_column, date_column])
-    # sort dataframe such that newest surgery per patient appears later and is used in lookup table
     cardiac_surgery_dict = {}
-    for row in df.itertuples():
-        patient_key = getattr(row, patient_column)
-        cardiac_surgery_dict[patient_key] = {key: getattr(row, key) for key in keys}
+    try:
+        df = pd.read_csv(
+            filename,
+            low_memory=False,
+            usecols=[patient_column]+keys,
+        ).sort_values(by=[patient_column, date_column])
+        # sort dataframe such that newest surgery per patient appears later and is used in lookup table
+        for row in df.itertuples():
+            patient_key = getattr(row, patient_column)
+            cardiac_surgery_dict[patient_key] = {key: getattr(row, key) for key in keys}
+    except FileNotFoundError:
+        logging.warning(f'Cardiac Surgery data not found: f{filename}')
     return cardiac_surgery_dict
 
 
