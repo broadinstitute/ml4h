@@ -13,12 +13,10 @@ import h5py
 import numcodecs
 import numpy as np
 
-from ml4cvd.defines import TENSOR_EXT, XML_EXT
+from ml4cvd.defines import TENSOR_EXT, XML_EXT, ECG_REST_AMP_LEADS
 
 
 ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
-ECG_REST_AMPLITUDE_LEADS = {"I": 0, "II": 1, "III": 2, "AVR": 3, "AVL": 4, "AVF": 5, 
-                            "V1": 6, "V2": 7, "V3": 8, "V4": 9, "V5": 10, "V6": 11}
 
 
 def write_tensors_partners(xml_folder: str, tensors: str, num_workers: int) -> None:
@@ -234,11 +232,11 @@ def _get_amplitude_from_amplitude_tags(amplitude_tags: bs4.ResultSet) -> Dict[st
         if wave_id not in wave_ids:
             wave_ids.add(wave_id)
             for amplitude_feature in amplitude_features:
-                amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'] = np.empty(len(ECG_REST_AMPLITUDE_LEADS))
+                amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'] = np.empty(len(ECG_REST_AMP_LEADS))
                 amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][:] = np.nan
         for amplitude_feature in amplitude_features:
             value = int(amplitude_tag.find(f'amplitudemeasurement{amplitude_feature}').text)
-            amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][ECG_REST_AMPLITUDE_LEADS[lead_id]] = value
+            amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][ECG_REST_AMP_LEADS[lead_id.upper()]] = value
     return amplitude_data
 
 
