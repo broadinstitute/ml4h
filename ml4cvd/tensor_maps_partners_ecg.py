@@ -2297,7 +2297,7 @@ def partners_channel_string_bias(hd5_key, synonyms={}, unspecified_key='unspecif
                 if hd5_key == 'acquisitionyear':
                     hd5_string = ecg_date.split('-')[0]
                 elif hd5_key == 'locationcardiology':
-                    path = _make_hd5_path(tm, ecg_date, 'hd5_key')
+                    path = _make_hd5_path(tm, ecg_date, 'locationname')
                     hd5_string = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 else:
                     path = _make_hd5_path(tm, ecg_date, hd5_key)
