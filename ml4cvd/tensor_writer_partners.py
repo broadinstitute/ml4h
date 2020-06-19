@@ -398,7 +398,7 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
             for amplitude in amplitudes:
                 _compress_and_save_data(hd5=gp, name=amplitude, data=amplitudes[amplitude], dtype='float')
         except KeyError:
-            logging.warning(f'Conversion of amplitude measures failed! Not present in: {fpath_xml}')
+            logging.info(f'Conversion of amplitude measures failed! Not present in: {fpath_xml}')
 
         # Save everything else
         for key in ecg_data:
