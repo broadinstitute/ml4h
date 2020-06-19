@@ -275,6 +275,13 @@ def optimize_mri_sax_architecture(args):
     hyperparameter_optimizer(args, space, param_lists)
 
 
+def optimize_conv_x(args):
+    space = {
+        'conv_x': hp.loguniform('conv_x', 1, 6),
+    }
+    hyperparameter_optimizer(args, space, {})
+
+
 def optimize_conv_layers_multimodal_multitask(args):
     dense_blocks_sets = [[16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
     conv_layers_sets = [[64], [48], [32], [24]]
