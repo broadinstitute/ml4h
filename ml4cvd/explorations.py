@@ -758,6 +758,8 @@ class ExploreParallelWrapper():
     def mp_worker(self, worker_idx):
         start = worker_idx * self.chunksize
         end = start + self.chunksize
+        if worker_idx == self.num_workers - 1:
+            end = self.total
         for path, gen in self.paths[start:end]:
             self._hd5_to_disk(path, gen)
 
