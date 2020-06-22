@@ -11,9 +11,9 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, EPS
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
-from ml4cvd.normalizer import Standardize, ZeroMeanStd1
+from ml4cvd.normalizer import Standardize, ZeroMeanStd1, Normalizer
 
 
 YEAR_DAYS = 365.26
@@ -127,6 +127,63 @@ def make_voltage(exact_length = False):
                     logging.debug(f'Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}')
         return tensor
     return get_voltage_from_file
+
+
+def voltage_from_file_no_resample(tm, hd5, dependents=None):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=np.float32)
+    for i, ecg_date in enumerate(ecg_dates):
+        for cm in tm.channel_map:
+            try:
+                path = _make_hd5_path(tm, ecg_date, cm)
+                voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                if len(voltage) < tm.shape[0]:
+                    raise ValueError(f'Voltage is not the right length for TensorMap {tm.name}.')
+                slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
+                tensor[slices] = voltage[:tm.shape[0]]
+            except KeyError:
+                logging.warning(f'KeyError for channel {cm} in {tm.name}')
+    return tensor
+
+
+def _find_max_zero_run(x: np.ndarray):
+    assert x.ndim == 1
+    run_ends = np.flatnonzero(np.diff(x, append=np.nan))
+    run_lens = np.diff(run_ends, prepend=0)
+    run_lens[0] += 1
+    run_vals = x[run_ends]
+    zero_run_lens = run_lens[run_vals == 0]
+    if len(zero_run_lens) == 0:
+        return 0
+    return np.array(np.max(zero_run_lens)).reshape(1)
+
+
+def voltage_full_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+    assert None not in tm.shape
+    max_zero_run_frac = .05
+    for lead in range(tensor.shape[-1]):
+        if _find_max_zero_run(tensor[:, lead]) / tensor.shape[0] > max_zero_run_frac:
+            raise ValueError(f'{tm.name} has a zero run great than {max_zero_run_frac * 100: .2f}%.')
+
+
+class ZeroMeanStd1Scale(Normalizer):
+
+    def __init__(self, scale: float):
+        self.scale = scale
+
+    def normalize(self, tensor: np.ndarray) -> np.ndarray:
+        tensor -= np.mean(tensor)
+        tensor /= np.std(tensor) + EPS
+        return tensor * self.scale
+
+
+for scale in [10, 1, 1e-1, 1e-2]:
+    TMAPS[f'partners_ecg_5000_only_scale_{scale}'] = TensorMap(
+        'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample,
+        normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
+    )
+
 
 # Creates 12 TMaps:
 # partners_ecg_2500      partners_ecg_2500_exact      partners_ecg_5000      partners_ecg_5000_exact
