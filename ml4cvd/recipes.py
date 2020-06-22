@@ -3,7 +3,6 @@
 # Imports
 import os
 import csv
-
 import h5py
 import copy
 import logging
@@ -17,7 +16,7 @@ from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_partners import write_tensors_partners
-from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs, sort_csv
+from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels, explore
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -46,7 +45,7 @@ def run(args):
         elif 'tensorize_ecg_pngs' == args.mode:
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'tensorize_partners' == args.mode:
-            write_tensors_partners(args.xml_folder, args.tensors)
+            write_tensors_partners(args.xml_folder, args.tensors, args.num_workers)
         elif 'explore' == args.mode:
             explore(args)
         elif 'cross_reference' == args.mode:
@@ -95,8 +94,6 @@ def run(args):
             train_simclr_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
-        elif 'sort_csv' == args.mode:
-            sort_csv(args.tensors, args.tensor_maps_in)
         elif 'append_continuous_csv' == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
         elif 'append_categorical_csv' == args.mode:
@@ -150,7 +147,7 @@ def train_multimodal_multitask(args):
 
     out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.alpha)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha)
 
 
 def test_multimodal_multitask(args):
@@ -158,7 +155,7 @@ def test_multimodal_multitask(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.alpha)
+    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha)
 
 
 def test_multimodal_scalar_tasks(args):
@@ -331,7 +328,7 @@ def train_shallow_model(args):
 
     p = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.alpha)
+    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha)
 
 
 def train_char_model(args):
@@ -354,7 +351,7 @@ def train_char_model(args):
 
     output_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.alpha)
+    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, output_path, paths, args.embed_visualization, args.alpha)
 
 
 def train_siamese_model(args):
@@ -442,7 +439,7 @@ def tokenize_tensor_maps(args):
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
-def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, alpha):
+def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
     scatters = []
@@ -463,7 +460,8 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
         subplot_scatters(scatters, plot_path)
 
     test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-    _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data, tensor_maps_in=tensor_maps_in, batch_size=batch_size)
+    if embed_visualization == "tsne":
+        _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data, tensor_maps_in=tensor_maps_in, batch_size=batch_size)
 
     return performance_metrics
 
