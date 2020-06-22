@@ -1507,7 +1507,7 @@ def build_cardiac_surgery_dict(
             patient_key = getattr(row, patient_column)
             cardiac_surgery_dict[patient_key] = {key: getattr(row, key) for key in keys}
     except FileNotFoundError:
-        pass
+        logging.warning(f'Cardiac Surgery data not found at: {filename}')
     return cardiac_surgery_dict
 
 
@@ -1562,10 +1562,12 @@ def build_cardiac_surgery_tensor_maps(
         "sts_long_stay": "llos",
     }
 
-    cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
-    date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
+    cardiac_surgery_dict = None
+    date_interval_lookup = None
     for needed_name in needed_tensor_maps:
         if needed_name in outcome2column:
+            if cardiac_surgery_dict is None:
+                cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
             channel_map = _outcome_channels(needed_name)
             sts_tmap = TensorMap(
                 needed_name,
@@ -1585,6 +1587,10 @@ def build_cardiac_surgery_tensor_maps(
                 if base_name not in TMAPS:
                     continue
 
+            if cardiac_surgery_dict is None:
+                cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
+            if date_interval_lookup is None:
+                date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
             sts_tmap = copy.deepcopy(TMAPS[base_name])
             sts_tmap.name = needed_name
             sts_tmap.time_series_lookup = date_interval_lookup
