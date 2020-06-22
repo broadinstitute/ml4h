@@ -378,7 +378,6 @@ class DenseConvolutionalBlock:
             regularization: str,
             regularization_rate: float,
     ):
-        assert len(conv_x) == len(conv_y) == len(conv_z) == block_size
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
         self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
@@ -639,15 +638,13 @@ class ConvEncoder:
             regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
         )
 
-        divide_list = lambda l: [l[i * block_size:(i + 1) * block_size] for i in range((len(l) + block_size - 1) // block_size)]
         dense_x, dense_y, dense_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
-        dense_x, dense_y, dense_z = divide_list(dense_x), divide_list(dense_y), divide_list(dense_z)
         self.dense_blocks = [
             DenseConvolutionalBlock(
-                dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=xs, conv_y=ys,
-                conv_z=zs, block_size=block_size, activation=activation, normalization=normalization,
+                dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size, conv_y=[y]*block_size,
+                conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
-            ) for filters, xs, ys, zs in zip(filters_per_dense_block, dense_x, dense_y, dense_z)
+            ) for filters, x, y, z in zip(filters_per_dense_block, dense_x, dense_y, dense_z)
         ]
         self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(filters_per_dense_block) + 1, pool_x, pool_y, pool_z)
 
@@ -714,15 +711,13 @@ class ConvDecoder:
             u_connect_parents: List[TensorMap] = None,
     ):
         dimension = tensor_map_out.axes()
-        divide_list = lambda l: [l[i * block_size:(i + 1) * block_size] for i in range((len(l) + block_size - 1) // block_size)]
-        dense_x, dense_y, dense_z = divide_list(conv_x), divide_list(conv_y), divide_list(conv_z)
         self.dense_blocks = [
             DenseConvolutionalBlock(
-                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=xs,
-                conv_y=ys, conv_z=zs, block_size=block_size, activation=activation, normalization=normalization,
+                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size,
+                conv_y=[y]*block_size, conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
             )
-            for filters, xs, ys, zs in zip(filters_per_dense_block, dense_x, dense_y, dense_z)
+            for filters, x, y, z in zip(filters_per_dense_block, conv_x, conv_y, conv_z)
         ]
         conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map_out.activation, name=tensor_map_out.output_name())
@@ -859,19 +854,19 @@ def make_multimodal_multitask_model(
     dense_regularize_rate = dropout
     conv_regularize_rate = conv_dropout
 
-    # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) * block_size [ + len(conv_layers) if convolving input tensors]
-    num_dense = len(dense_blocks) * block_size
+    # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
+    num_dense = len(dense_blocks)
     num_res = len(conv_layers) if any(tm.axes() > 1 for tm in tensor_maps_in) else 0
-    num_layers = num_res + num_dense
+    num_filters_needed = num_res + num_dense
     def _repeat_dimension(dim: List[int], name: str) -> List[int]:
-        if len(dim) != num_layers:
+        if len(dim) != num_filters_needed:
             logging.warning(
                 f'Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) '
-                f'do not match number of convolutional layers ({num_layers}), '
-                f'matching values to fit {num_layers} convolutional layers.',
+                f'do not match number of convolutional layers/blocks ({num_filters_needed}), '
+                f'matching values to fit {num_filters_needed} convolutional layers/blocks.',
             )
-            repeat = num_layers // len(dim) + 1
-            dim = (dim * repeat)[:num_layers]
+            repeat = num_filters_needed // len(dim) + 1
+            dim = (dim * repeat)[:num_filters_needed]
         return dim
     conv_x = _repeat_dimension(conv_x, 'x')
     conv_y = _repeat_dimension(conv_y, 'y')
