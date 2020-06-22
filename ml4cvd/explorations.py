@@ -4,6 +4,7 @@
 import os
 import csv
 import math
+import copy
 import logging
 import operator
 import datetime
@@ -790,15 +791,28 @@ def _tensors_to_df(args):
     return df
 
 
+def _tmap_error_detect(tmap: TensorMap) -> TensorMap:
+    """Modifies tm so it returns 1 unless previous tensor from file fails"""
+    new_tm = copy.deepcopy(tmap)
+    new_tm.shape = (1,)
+    new_tm.interpretation = Interpretation.CONTINUOUS
+
+    def tff(_: TensorMap, hd5: h5py.File, dependents=None):
+        tmap.tensor_from_file(tmap, hd5, dependents)
+        return np.array([1.])
+    new_tm.tensor_from_file = tff
+    return new_tm
+
+
 def explore(args):
-    tmaps = args.tensor_maps_in
+    tmaps = [
+        tm if (tm.axes() == 1 or (tm.axes() == 2 and tm.shape[0] is None))
+        else _tmap_error_detect(tm) for tm in args.tensor_maps_in
+    ]
     fpath_prefix = "summary_stats"
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     out_ext = 'tsv' if tsv_style_is_genetics else 'csv'
     out_sep = '\t' if tsv_style_is_genetics else ','
-
-    if any([len(tm.shape) != 1 for tm in tmaps]) and any([(len(tm.shape) == 2) and (tm.shape[0] is not None) for tm in tmaps]):
-        raise ValueError("Explore only works for 1D tensor maps, but len(tm.shape) returned a value other than 1.")
 
     # Iterate through tensors, get tmaps, and save to dataframe
     df = _tensors_to_df(args)
