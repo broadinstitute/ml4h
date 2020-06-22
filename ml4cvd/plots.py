@@ -1321,7 +1321,6 @@ def _ecg_rest_traces_and_text(hd5):
     leads = list(ECG_REST_LEADS.keys())+list(ECG_REST_MEDIAN_LEADS.keys())
     oldest_instance = sorted([instance for instance in hd5[path_prefix][leads[0]]])[0]
     for lead in leads:
-        print(path_prefix, oldest_instance, lead)
         twelve_leads[lead]['raw'] = np.array(hd5[path_prefix][lead][oldest_instance], dtype=np.float32)
         if len(twelve_leads[lead]['raw']) == 5000:
             try:
@@ -1462,8 +1461,15 @@ def _remove_duplicate_rows(df, out_folder):
     return arr
 
 
-def plot_ecg_rest(tensor_paths, rows, out_folder, is_blind):
-    """Extracts and plots ECG resting waveforms"""
+def plot_ecg_rest(tensor_paths: List[str], rows: List[int], 
+                  out_folder: str, is_blind: bool) -> None:
+    """ Plots resting ECGs including annotations and LVH criteria
+    
+    :param tensor_paths: list of HDF5 file paths with ECG traces
+    :param rows: indices of the subset of tensor_paths to be plotted (used by multiprocessing)
+    :param out_folder: destination folder for the plots
+    :param is_blind: if True, the plot gets blinded (helpful for review and annotation)
+    """
     map_fields_to_tmaps = {
         'ramp': 'ecg_rest_ramplitude_raw', 
         'samp': 'ecg_rest_samplitude_raw',
@@ -1484,7 +1490,11 @@ def plot_ecg_rest(tensor_paths, rows, out_folder, is_blind):
             traces, text = _ecg_rest_traces_and_text(hd5)
             for field in map_fields_to_tmaps:
                 tm = TMAPS[map_fields_to_tmaps[field]]
-                patient_dic[field] = tm.tensor_from_file(tm, hd5)
+                patient_dic[field] = np.zeros(tm.shape)
+                try:
+                    patient_dic[field][:] = tm.tensor_from_file(tm, hd5)
+                except ValueError as e:
+                    logging.warning(e)
             is_female = 'Sex_Female_0_0' in hd5['categorical']
             patient_dic['sex'] = 'F' if is_female else 'M'
             patient_dic['ecg_text'] = text
@@ -1499,7 +1509,7 @@ def plot_ecg_rest(tensor_paths, rows, out_folder, is_blind):
             traces, raw_scale, time_interval, hertz, ECG_REST_PLOT_MEDIAN_LEADS, fig, ax, yrange,
             offset=0, pat_df=patient_dic, is_median=True, is_blind=is_blind,
         )
-        fig.savefig(os.path.join(out_folder, patient_dic['patient_id']+'.pdf'), bbox_inches = "tight")
+        fig.savefig(os.path.join(out_folder, patient_dic['patient_id']+'.svg'), bbox_inches = "tight")
 
 
 def plot_ecg_rest_mp(
@@ -1520,13 +1530,14 @@ def plot_ecg_rest_mp(
     :param is_blind: whether ECG interpretation should be included in the plot
     :return: None
     """
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
+    tensor_paths = [os.path.join(tensors, tp) for tp in os.listdir(tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
+    can_filter = True
     try:
-        tensor_sample_ids = np.array([os.path.basename(tensor_path).replace(TENSOR_EXT, '') for tensor_path in tensor_paths], dtype=int)
+        tensor_sample_ids = np.array([os.path.basename(tensor_path).replace(TENSOR_EXT, '') for tensor_path in tensor_paths], dtype=np.int)
         condition = (tensor_sample_ids > min_sample_id) & (tensor_sample_ids < max_sample_id)
         tensor_paths = [tensor_path for i, tensor_path in enumerate(tensor_paths) if condition[i]]
     except ValueError:
-        logging.WARNING('Cannot select subset of tensors based on sample ids. Probably filenames cannot be converted to integer')
+        logging.warning('Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id')        
     row_split = np.array_split(np.arange(len(tensor_paths)), num_workers)
     pool = Pool(num_workers)
     pool.starmap(plot_ecg_rest, zip([tensor_paths]*num_workers, row_split, [output_folder]*num_workers, [is_blind]*num_workers))
