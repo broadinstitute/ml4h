@@ -765,6 +765,18 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 
 
+def _repeat_dimension(dim: List[int], name: str, num_filters_needed: int) -> List[int]:
+        if len(dim) != num_filters_needed:
+            logging.warning(
+                f'Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) '
+                f'do not match number of convolutional layers/blocks ({num_filters_needed}), '
+                f'matching values to fit {num_filters_needed} convolutional layers/blocks.',
+            )
+            repeat = num_filters_needed // len(dim) + 1
+            dim = (dim * repeat)[:num_filters_needed]
+        return dim
+
+
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
@@ -858,19 +870,9 @@ def make_multimodal_multitask_model(
     num_dense = len(dense_blocks)
     num_res = len(conv_layers) if any(tm.axes() > 1 for tm in tensor_maps_in) else 0
     num_filters_needed = num_res + num_dense
-    def _repeat_dimension(dim: List[int], name: str) -> List[int]:
-        if len(dim) != num_filters_needed:
-            logging.warning(
-                f'Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) '
-                f'do not match number of convolutional layers/blocks ({num_filters_needed}), '
-                f'matching values to fit {num_filters_needed} convolutional layers/blocks.',
-            )
-            repeat = num_filters_needed // len(dim) + 1
-            dim = (dim * repeat)[:num_filters_needed]
-        return dim
-    conv_x = _repeat_dimension(conv_x, 'x')
-    conv_y = _repeat_dimension(conv_y, 'y')
-    conv_z = _repeat_dimension(conv_z, 'z')
+    conv_x = _repeat_dimension(conv_x, 'x', num_filters_needed)
+    conv_y = _repeat_dimension(conv_y, 'y', num_filters_needed)
+    conv_z = _repeat_dimension(conv_z, 'z', num_filters_needed)
 
     encoders: Dict[TensorMap: Layer] = {}
     for tm in tensor_maps_in:
