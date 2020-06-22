@@ -103,7 +103,7 @@ ${GPU_DEVICE} \
 -v /mnt/:/mnt/ \
 -v /data/:/data/ \
 -p 0.0.0.0:${PORT}:${PORT} \
-${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
+${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; pip install pylama; apt update; apt install git -y; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
 
 
 # Automatically back up any local notebooks and artifacts non-recursively (no subfolders)
