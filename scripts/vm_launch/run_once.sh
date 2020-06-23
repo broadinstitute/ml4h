@@ -13,3 +13,6 @@ docker-credential-gcr configure-docker
 sudo apt install python3-pip
 pip3 install pre-commit
 pre-commit install
+
+sudo mkdir -p /mnt/disks/sax-and-lax-zip-2019-09-30
+sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/sax-and-lax-zip-2019-09-30
