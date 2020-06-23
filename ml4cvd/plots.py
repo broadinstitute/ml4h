@@ -165,6 +165,8 @@ def evaluate_predictions(
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
+        if tm.axes() > 1:
+            _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
@@ -1975,6 +1977,27 @@ def _hash_string_to_color(string):
 def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t = axes.text(x, y, text)
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
+
+
+def _plot_reconstruction(tm: TensorMap, y_true, y_pred, folder: str, paths: List[str]):
+    num_samples = 3
+    if None in tm.shape:  # can't handle dynamic shapes
+        return
+    for i in range(num_samples):
+        title = f'{tm}_{paths[i]}_reconstruction'
+        y = y_true[i].reshape(tm.shape)
+        yp = y_pred[i].reshape(tm.shape)
+        if tm.axes() == 2:
+            fig = plt.figure(figsize=(SUBPLOT_SIZE * num_samples, SUBPLOT_SIZE))
+            fig.suptitle(title)
+            for j in range(tm.shape[1]):
+                plt.subplot(num_samples, 1, j + 1)
+                plt.plot(y[:, j], c='k', linestyle='--', label='original')
+                plt.plot(yp[:, j], c='b', label='reconstruction')
+            plt.tight_layout()
+        # TODO: implement 3d, 4d
+        plt.savefig(os.path.join(folder, title))
+        plt.clf()
 
 
 if __name__ == '__main__':
