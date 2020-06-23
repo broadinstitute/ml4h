@@ -157,6 +157,10 @@ def evaluate_predictions(
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
+        if tm.sentinel is not None:
+            y_predictions = y_predictions[y_truth != tm.sentinel]
+            y_truth = y_truth[y_truth != tm.sentinel]
+        _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
     elif tm.is_continuous():
@@ -165,8 +169,6 @@ def evaluate_predictions(
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
-        if tm.axes() > 1:
-            _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
 
@@ -1981,22 +1983,23 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
 
 def _plot_reconstruction(tm: TensorMap, y_true, y_pred, folder: str, paths: List[str]):
     num_samples = 3
+    logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
     if None in tm.shape:  # can't handle dynamic shapes
         return
     for i in range(num_samples):
-        title = f'{tm}_{paths[i]}_reconstruction'
+        title = f'{tm.name}_{os.path.basename(paths[i]).replace(TENSOR_EXT, "")}_reconstruction'
         y = y_true[i].reshape(tm.shape)
         yp = y_pred[i].reshape(tm.shape)
         if tm.axes() == 2:
-            fig = plt.figure(figsize=(SUBPLOT_SIZE * num_samples, SUBPLOT_SIZE))
+            fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * num_samples))
             fig.suptitle(title)
             for j in range(tm.shape[1]):
-                plt.subplot(num_samples, 1, j + 1)
+                plt.subplot(tm.shape[1], 1, j + 1)
                 plt.plot(y[:, j], c='k', linestyle='--', label='original')
                 plt.plot(yp[:, j], c='b', label='reconstruction')
             plt.tight_layout()
         # TODO: implement 3d, 4d
-        plt.savefig(os.path.join(folder, title))
+        plt.savefig(os.path.join(folder, title + IMAGE_EXT))
         plt.clf()
 
 
