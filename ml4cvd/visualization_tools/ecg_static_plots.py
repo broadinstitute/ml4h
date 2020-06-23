@@ -8,7 +8,6 @@ from ml4cvd.plots import plot_ecg_rest
 from ml4cvd.runtime_data_defines import get_resting_ecg_hd5_folder
 from ml4cvd.runtime_data_defines import get_resting_ecg_svg_folder
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 
 
@@ -51,14 +50,15 @@ def display_resting_ecg(sample_id, folder=None):
       Use the <kbd>folder</kbd> parameter to read from a different local directory or Cloud Storage bucket.
       </div>''')
 
-    df = pd.DataFrame([{'patient_id': sample_id, 'full_path': local_path}])
     try:
-      plot_ecg_rest(df=df, rows=[0], out_folder='/home/jupyter-user/notebooks', is_blind=False)
+      # We don't need the resulting SVG, so send it to a temporary directory.
+      with tempfile.TemporaryDirectory() as tmpdirname:
+        plot_ecg_rest(tensor_paths = [local_path], rows=[0], out_folder=tmpdirname, is_blind=False)
     except Exception as e:
       return HTML(f'''
         <div class="alert alert-block alert-danger">
         <b>Warning:</b> Unable to render static plot of resting ECG for sample {sample_id} from {hd5_folder}:
-        <hr><p><pre>{e.message}</pre></p>
+        <hr><p><pre>{e}</pre></p>
         </div>''')
 
 
