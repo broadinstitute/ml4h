@@ -140,9 +140,12 @@ def train_multimodal_multitask(args):
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
     )
-
     out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    train_data, train_labels, train_paths = big_batch_from_minibatch_generator(generate_train, args.training_steps)
+    if args.plot_train_curves:
+        print('plotting train curves')
+        _predict_and_evaluate(model, train_data, train_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path+'/train', test_paths, args.embed_visualization, args.alpha)
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha)
 
 
@@ -430,10 +433,12 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
-
+    print('len rocs', len(rocs))
     if len(rocs) > 1:
+        print('len rocs > 1', plot_path)
         subplot_rocs(rocs, plot_path)
     if len(scatters) > 1:
+        print('len scatters > 1', plot_path)
         subplot_scatters(scatters, plot_path)
 
     test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}

@@ -475,7 +475,9 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
+    print('generating mini batches')
     first_batch = next(generator)
+    print(first_batch)
     saved_tensors = {}
     batch_size = None
     for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
