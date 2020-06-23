@@ -289,27 +289,27 @@ def _infer_models(
             batch_size, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
             cache_size=0, keep_paths=True, mixup=0,
         )  # TODO: needs some more settings
-
-        inference_writer = csv.DictWriter(
-            inference_tsv, fieldnames=['sample_id'] + actual_cols + prediction_cols,
-            delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-        )
-        while True:
-            batch = next(generate_test)
-            rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
-            for model, model_id in zip(models, model_ids):
-                _handle_inference_batch(
-                    output_name_to_tmap=output_name_to_tmap, model=model, model_id=model_id,
-                    batch=batch, visited_paths=visited_paths, rows=rows,
-                )
-            inference_writer.writerows(rows)
-            if generate_test.stats_q.qsize() == generate_test.num_workers:
-                generate_test.aggregate_and_print_stats()
-                logging.info(
-                    f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
-                break
-            count += 1
-            logging.info(f"Wrote {count} batches of inference.")
+        with open(inference_tsv, 'w') as f:
+            inference_writer = csv.DictWriter(
+                f, fieldnames=['sample_id'] + actual_cols + prediction_cols,
+                delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+            )
+            while True:
+                batch = next(generate_test)
+                rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
+                for model, model_id in zip(models, model_ids):
+                    _handle_inference_batch(
+                        output_name_to_tmap=output_name_to_tmap, model=model, model_id=model_id,
+                        batch=batch, visited_paths=visited_paths, rows=rows,
+                    )
+                inference_writer.writerows(rows)
+                if generate_test.stats_q.qsize() == generate_test.num_workers:
+                    generate_test.aggregate_and_print_stats()
+                    logging.info(
+                        f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
+                    break
+                count += 1
+                logging.info(f"Wrote {count} batches of inference.")
     finally:
         if generate_test is not None:
             generate_test.kill_workers()
@@ -355,26 +355,27 @@ def _infer_hidden(
             batch_size, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
             cache_size=0, keep_paths=True, mixup=0,
         )  # TODO: needs some more settings
-        inference_writer = csv.DictWriter(
-            inference_tsv, fieldnames=['sample_id'] + prediction_cols,
-            delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-        )
-        while True:
-            batch = next(generate_test)
-            rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
-            for model, model_id in zip(models, model_ids):
-                _handle_hidden_inference_batch(
-                    model=model, model_id=model_id,
-                    batch=batch, visited_paths=visited_paths, rows=rows,
-                )
-            inference_writer.writerows(rows)
-            if generate_test.stats_q.qsize() == generate_test.num_workers:
-                generate_test.aggregate_and_print_stats()
-                logging.info(
-                    f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
-                break
-            count += 1
-            logging.info(f"Wrote {count} batches of inference.")
+        with open(inference_tsv, 'w') as f:
+            inference_writer = csv.DictWriter(
+                f, fieldnames=['sample_id'] + prediction_cols,
+                delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+            )
+            while True:
+                batch = next(generate_test)
+                rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
+                for model, model_id in zip(models, model_ids):
+                    _handle_hidden_inference_batch(
+                        model=model, model_id=model_id,
+                        batch=batch, visited_paths=visited_paths, rows=rows,
+                    )
+                inference_writer.writerows(rows)
+                if generate_test.stats_q.qsize() == generate_test.num_workers:  # TODO: does this work for num_workers == 0?
+                    generate_test.aggregate_and_print_stats()
+                    logging.info(
+                        f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
+                    break
+                count += 1
+                logging.info(f"Wrote {count} batches of inference.")
     finally:
         if generate_test is not None:
             generate_test.kill_workers()

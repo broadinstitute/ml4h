@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 
+from ml4cvd.defines import SAMPLE_ID
 from ml4cvd.recipes import inference_file_name, hidden_inference_file_name
 from ml4cvd.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
 from ml4cvd.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
@@ -23,10 +24,11 @@ class TestRecipes:
         tst_multimodal_scalar_tasks(default_arguments)
 
     def test_infer(self, default_arguments):
+        # TODO: needs existing model files to test
         infer_multimodal_multitask(default_arguments)
         tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
-        assert len(set(inferred['sample_id'])) == pytest.N_TENSORS
+        assert len(set(inferred[SAMPLE_ID])) == pytest.N_TENSORS
 
     def test_infer_genetics(self, default_arguments):
         default_arguments.tsv_style = 'genetics'
@@ -37,10 +39,11 @@ class TestRecipes:
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
 
     def test_infer_hidden(self, default_arguments):
+        # TODO: needs existing model files to test
         infer_hidden_layer_multimodal_multitask(default_arguments)
         tsv = hidden_inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
-        assert len(set(inferred['sample_id'])) == pytest.N_TENSORS
+        assert len(set(inferred[SAMPLE_ID])) == pytest.N_TENSORS
 
     def test_infer_hidden_genetics(self, default_arguments):
         default_arguments.tsv_style = 'genetics'
