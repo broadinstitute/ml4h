@@ -1,5 +1,5 @@
 ./scripts/tf.sh -d $GPU -m /media -t \
-    $HOME/ml_working/ml4cvd/recipes.py \
+    $HOME/ml/ml4cvd/recipes.py \
     --mode train \
     --logging_level INFO \
     --tensors /data/partners_ecg/mgh/hd5 \
@@ -11,23 +11,22 @@
     --output_tensors \
         sts_death \
     --inspect_model \
-    --conv_layers 16 64 128 \
-    --dense_blocks 32 24 16 \
-    --block_size 3 \
-    --conv_x 71 \
+    --conv_layers \
+    --dense_blocks 16 32 64 128 256 512 \
+    --block_size 1 \
+    --conv_x 80 \
     --pool_type max \
     --pool_x 2 \
     --bottleneck_type global_average_pool \
     --dense_layers 16 64 \
     --dropout 0.0 \
     --optimizer adam \
-    --epochs 5 \
+    --epochs 500 \
     --patience 8 \
     --batch_size 64 \
     --training_steps 400 \
     --validation_steps 60 \
     --test_steps 32 \
-    --output_folder $HOME/sts-ecg/ml_working \
+    --output_folder $HOME/sts-ecg/train-varied-filters \
     --id $BOOTSTRAP \
- 	--conv_normalize batch_norm \
-    --plot_train_curves
+    --conv_normalize batch_norm
