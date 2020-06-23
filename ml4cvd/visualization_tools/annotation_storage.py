@@ -30,13 +30,13 @@ class AnnotationStorage(abc.ABC):
       value_string: The string value of the field being annotated, if applicable.
       comment: The actual annotation.
     Returns:
-      Whether the submission was successful. Throws an Error on failure.
+      Whether the submission was successful. Throws an Exception on failure.
     """
     pass
 
   @abc.abstractmethod
   def view_recent_submissions(self, count=10):
-    """View a dataframe of up to [count] most recent submissions from the user.
+    """View a dataframe of up to [count] most recent submissions.
 
     Args:
       count: The number of the most recent submissions to return.
@@ -86,7 +86,7 @@ class TransientAnnotationStorage(AnnotationStorage):
     return True
 
   def view_recent_submissions(self, count=10):
-    """View a dataframe of up to [count] most recent submissions from the user.
+    """View a dataframe of up to [count] most recent submissions.
 
     Args:
       count: The number of the most recent submissions to return.
@@ -128,7 +128,7 @@ class BigQueryAnnotationStorage(AnnotationStorage):
       value_string: The string value of the field being annotated, if applicable.
       comment: The actual annotation.
     Returns:
-      Whether the submission is complete. Throws an Error on failure.
+      Whether the submission is complete. Throws an Exception on failure.
     """
     # Set up biquery client.
     bqclient = bigquery.Client(credentials=bqmagics.context.credentials)
@@ -151,7 +151,7 @@ class BigQueryAnnotationStorage(AnnotationStorage):
     return submission.done()
 
   def view_recent_submissions(self, count=10):
-    """View a dataframe of up to [count] most recent submissions from the user.
+    """View a dataframe of up to [count] most recent submissions.
 
     This is a convenience method for use within the annotation flow. For full access to the underlying annotations,
     connect to the table directly using the BigQuery client of your choice.
