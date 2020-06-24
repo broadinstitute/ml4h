@@ -5,6 +5,7 @@ import h5py
 import logging
 import seaborn as sns
 from ml4cvd.TensorMap import decompress_data
+from notebooks.ecg.waveform_plot import _ecg_rest_traces_and_text
 
 mgh_df = pd.read_csv('/home/paolo/mgh_mrns_to_extract/c3po_mgh_qc_outcomes_05192020.csv')
 mgh_df['acquisitiondatetime'] = pd.to_datetime(mgh_df['acquisitiondate'].apply(str)+ \
@@ -73,19 +74,23 @@ ff.close()
 
 
 # %%
+%matplotlib inline
 mgh_patients = pd.read_csv('/home/paolo/mgh_mrns_to_extract/c3po_mgh_lastbeforefu_age_sex.csv', sep='\t')
 mgh_patients['acquisitionyear'] = mgh_patients['acquisitiondate'].str.split('-').str[0].apply(str)
-# %%
 sns.distplot(mgh_patients['age'])
 
+
 # %%
+import matplotlib.pyplot as plt
 age = mgh_patients['age'].apply(int)
-prev_decade = 0
+prev_decade = -10
 for decade in range(30, 100, 10):
-    mgh_patients.loc[(age<=decade) & (age>prev_decade), 'age'] = str(decade-10)
+    print(decade)
+    mgh_patients.loc[(age<decade) & (age>=prev_decade), 'age'] = str(decade-10)
     prev_decade = decade
-mgh_patients.loc[age>80, 'age'] = '90'
+mgh_patients.loc[age>=80] = '80'
 mgh_patients['age'].describe()
+plt.hist(mgh_patients['age'].apply(int), bins=7)
 
 # %%
 bias_dic = {'acquisitiondevice': {'MAC': 0, 'MAC55': 1, 'MAC5K': 2, 'D3K': 3, 'MACVU': 4, 'S8500': 5, 'CASE': 6, 'MAC16': 7, 'MAC 8': 8, 'unspecified': 9},
@@ -114,12 +119,7 @@ bias_dic = {'acquisitiondevice': {'MAC': 0, 'MAC55': 1, 'MAC5K': 2, 'D3K': 3, 'M
            }
 
 bias_dic['acquisitionyear'] = {str(year): i for i, year in enumerate(range(1998, 2020))}
-bias_dic['age'] = {str(age): i for i, age in enumerate(range(20, 100, 10))}
-
-# %%
-import matplotlib.pyplot as plt
-%matplotlib inline
-plt.hist(mgh_patients['age'].apply(int))
+bias_dic['age'] = {str(age): i for i, age in enumerate(range(20, 89, 10))}
 
 # %%
 mgh_bias_dic = {}
@@ -191,6 +191,133 @@ for key in mgh_bias_dic:
     mgh_patients_numbers[key] = mgh_patients[key].apply(dec_convert(mgh_bias_dic[key]))
 mgh_patients_numbers['locationcardiology'] = mgh_patients['locationcardiology']
 mgh_patients_numbers['patientid'] = mgh_patients['patientid']
+
+# %%
+#from notebooks.ecg.waveform_plot import plot_ecg_rest
+samples = 2500
+nextract = 200
+filter=True
+patient_devices = {}
+for device in bias_dic['acquisitiondevice']:
+    patient_devices[device] = mgh_patients[(mgh_patients['acquisitiondevice']==device) & \
+                                           (mgh_patients['I_len']==samples) & \
+                                           (mgh_patients['I_nonzero']==10)]
+
+
+# # %%
+# import pathlib
+# pathlib.Path(f"/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_{samples}/").mkdir(parents=True, exist_ok=True)
+# mgh_patients_samples = mgh_patients[(mgh_patients['I_len']==samples) & \
+#                                     (mgh_patients['I_nonzero']==10)]
+# for i, row in mgh_patients_samples.iterrows():
+#     try:
+#         mrn = int(float(row['patientid']))
+#     except ValueError:
+#         pass
+#     path = f"/data/partners_ecg/mgh/hd5/{mrn}.hd5"
+#     with h5py.File(path, 'r') as hd5:
+#         hd5_out = h5py.File(f"/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_{samples}/{i}.hd5", 'w')
+#         hd5_out[f"partners_ecg_rest/{row['acquisitiondate']}T{row['acquisitiontime']}"] = h5py.ExternalLink(path, f"/partners_ecg_rest/{row['acquisitiondate']}T{row['acquisitiontime']}")
+
+# # %%
+# from sklearn.model_selection import train_test_split
+# ids = list(range(len(mgh_patients_samples)))
+# train, test = train_test_split(ids, test_size=0.10)
+# train, valid = train_test_split(train, test_size=0.30)
+# np.savetxt(f'/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_{samples}/train.csv',
+#            np.array(train, dtype=np.int), fmt="%i")
+# np.savetxt(f'/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_{samples}/valid.csv',
+#            np.array(valid, dtype=np.int), fmt="%i")
+# np.savetxt(f'/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_{samples}/test.csv',
+#            np.array(test, dtype=np.int), fmt="%i")
+
+
+# %%
+features = {}
+for device in patient_devices:
+    features[device] = {}
+    features[device]['max'] = np.zeros(nextract,)
+    features[device]['min'] = np.zeros(nextract,)
+    features[device]['firstbeat'] = np.zeros((nextract, 750))
+    features[device]['firstbeat_raw'] = np.zeros((nextract, samples))
+    features[device]['firstbeat_filter'] = np.zeros((nextract, samples))
+    features[device]['spectrum'] = np.zeros((nextract, samples))
+    features[device]['freqz'] = np.zeros((nextract, samples))
+    features[device]['hp'] = np.zeros(nextract)
+    features[device]['last'] = 0
+
+
+
+
+
+# %%
+from ml4cvd.tensor_maps_partners_ecg import _filter_voltage
+for device in patient_devices:
+    print(device)
+    cnt = 0
+    for (i, m) in patient_devices[device].iterrows():
+        try:
+            pid = int(m['patientid'])
+        except:
+            continue
+        tensor_path = f'/data/partners_ecg/mgh/hd5/{pid}.hd5'
+        tensor_date = 'T'.join(m['acquisitiondatetime'].split())
+        with h5py.File(tensor_path, 'r') as hd5:
+            leads, text = _ecg_rest_traces_and_text(hd5, tensor_date)
+        features[device]['max'][cnt] = np.max(leads['I']['raw'])
+        features[device]['min'][cnt] = np.max(leads['I']['raw'])
+        try:
+            features[device]['firstbeat'][cnt, :] = leads['I']['templates'][0:5].ravel()
+        except:
+            print('Skipping templates')
+        if filter:
+            leads['I']['raw'] = _filter_voltage(leads['I']['raw'])
+        features[device]['firstbeat_raw'][cnt, :] = leads['I']['raw']
+        features[device]['firstbeat_filtered'] = np.abs(np.fft.fft(leads['I']['filtered']))
+        features[device]['spectrum'][cnt, :] = np.abs(np.fft.fft(leads['I']['raw']))
+        features[device]['freqz'][cnt, :] = np.fft.fftfreq(samples, 10.0/samples)
+        # features[device]['hp'][cnt]= hp
+        features[device]['last'] = cnt
+        cnt += 1
+        if cnt == nextract : break
+
+# %%
+sub_devices = ['MAC55', 'MAC', 'MAC5K']
+colors = [[0.0, 0.0, 0.0],
+          [0.4, 0.4, 0.4],
+          [0.8, 0.8, 0.8]
+          ]
+f, ax = plt.subplots()
+freq = np.fft.fftfreq(samples, 10.0/samples)
+for i, device in enumerate(sub_devices):
+    ax.plot(np.fft.fftshift(np.median(features[device]['freqz'][:features[device]['last']], axis=0)), 
+            np.fft.fftshift(np.median(features[device]['spectrum'][:features[device]['last']], axis=0)),
+            color=colors[i], label=f'{device} n={features[device]["last"]}')
+    #ax.set_xlim([50.0, 70.0])
+    #ax.set_ylim([0.0, 2000.0])
+    ax.set_xlabel('Frequency (Hz)')
+    ax.set_ylabel('Magnitude spectrum')
+    ax.legend()
+f.savefig(f'/home/paolo/mgh_mrns_to_extract/waveform_analysis/device_frequency_notch_{samples}.png', dpi=500)
+
+# %%
+
+f, ax = plt.subplots()
+for i, device in enumerate(sub_devices):
+    ax.plot(np.median(features[device]['firstbeat'][:features[device]['last']], axis=0), 
+            label=f'{device} n={features[device]["last"]}', color=colors[i])
+ax.legend()
+ax.set_xlabel('Beat number')
+ax.set_xticks([50, 200, 350, 500, 650])
+ax.set_xticklabels(['1', '2', '3', '4', '5'])
+ax.set_ylabel('Amplitude (uV)')
+f.savefig(f'/home/paolo/mgh_mrns_to_extract/waveform_analysis/device_time_{samples}.png', dpi=500)
+
+f, ax = plt.subplots()
+for device in sub_devices:
+    ax.plot(np.median(features[device]['firstbeat_raw'][:features[device]['last']], axis=0), 
+                      label=f'{device} n={features[device]["last"]}', color=colors[i])
+ax.legend()
 
 # %%
 mgh_select_bias_keys = ['acquisitionyear', 'acquisitionsoftwareversion', 'acquisitiondevice', 
