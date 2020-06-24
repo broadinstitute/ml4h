@@ -79,7 +79,7 @@ def display_annotation_collector(sample_info, sample_id, annotation_storage: Ann
   )
 
   # Configure the submission button.
-  submit_button = widgets.Button(description='Submit annotation')
+  submit_button = widgets.Button(description='Submit annotation', button_style='success')
   output = widgets.Output()
 
   def on_button_clicked(b):
