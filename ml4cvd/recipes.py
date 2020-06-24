@@ -10,7 +10,7 @@ import numpy as np
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-from typing import Dict, Set, List, Callable
+from typing import Dict, Set, List, Callable, Tuple
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.optimizers import find_learning_rate
@@ -215,7 +215,7 @@ def hidden_column(model_id: str, index: int):
 
 def _handle_inference_batch(
         output_name_to_tmap: Dict[str, TensorMap], model: Callable, model_id: str, batch,
-        visited_paths: Set[str], rows: List[Dict[str, str]],
+        visited_paths: Set[Tuple[str, str]], rows: List[Dict[str, str]],
 ):
     input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
     pred = model.predict(input_data)
@@ -224,7 +224,7 @@ def _handle_inference_batch(
         scaled = tm.rescale(tm_pred)
         actual = output_data[tm.output_name()]
         for i, row in enumerate(rows):
-            if tensor_paths[i] in visited_paths:
+            if (model_id, tensor_paths[i]) in visited_paths:
                 continue
             actual_str = None
             if ((tm.sentinel is not None and tm.sentinel == actual[i][0])
@@ -235,12 +235,13 @@ def _handle_inference_batch(
                 if actual_str != 'NA':
                     actual_str = f'{tm.rescale(actual[i, 0]):.3f}'
             elif tm.is_categorical():
-                pred_str = tm.channel_map[np.argmax(scaled[i, 0])]
+                inv_map = {v: k for k, v in tm.channel_map.items()}
+                pred_str = inv_map[np.argmax(scaled[i])]
                 if actual_str != 'NA':
-                    actual_str = tm.channel_map[np.argmax(actual[i, 0])]
+                    actual_str = inv_map[np.argmax(actual[i])]
             else:
                 raise NotImplementedError(f'Inference not implemented for {tm}.')
-            visited_paths.add(tensor_paths[i])
+            visited_paths.add((model_id, tensor_paths[i]))
             row[tmap_inference_column_predicted(tm, model_id)] = pred_str
             row[SAMPLE_ID] = os.path.basename(tensor_paths[i]).replace(TENSOR_EXT, '')  # extract sample id
             row[tmap_inference_column_actual(tm)] = actual_str
@@ -291,9 +292,10 @@ def _infer_models(
         )  # TODO: needs some more settings
         with open(inference_tsv, 'w') as f:
             inference_writer = csv.DictWriter(
-                f, fieldnames=['sample_id'] + actual_cols + prediction_cols,
+                f, fieldnames=[SAMPLE_ID] + actual_cols + prediction_cols,
                 delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
             )
+            inference_writer.writeheader()
             while True:
                 batch = next(generate_test)
                 rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
@@ -302,7 +304,7 @@ def _infer_models(
                         output_name_to_tmap=output_name_to_tmap, model=model, model_id=model_id,
                         batch=batch, visited_paths=visited_paths, rows=rows,
                     )
-                inference_writer.writerows(rows)
+                inference_writer.writerows([row for row in rows if row])
                 if generate_test.stats_q.qsize() == generate_test.num_workers:
                     generate_test.aggregate_and_print_stats()
                     logging.info(

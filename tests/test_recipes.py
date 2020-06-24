@@ -18,7 +18,7 @@ from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar
 def init_models(args, num_models: int) -> List[str]:
     paths = []
     for i in range(num_models):
-        m = make_multimodal_multitask_model(**args)
+        m = make_multimodal_multitask_model(**args.__dict__)
         path = os.path.join(args.output_folder, f'test_model_{i}{MODEL_EXT}')
         m.save(path)
         paths.append(path)
