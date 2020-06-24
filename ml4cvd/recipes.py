@@ -139,7 +139,7 @@ def train_multimodal_multitask(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-        plot_train_curves=args.plot_train_curves
+        defer_worker_halt=args.plot_train_curves
     )
     out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -149,6 +149,7 @@ def train_multimodal_multitask(args):
         _predict_and_evaluate(model, train_data, train_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path_train, test_paths, args.embed_visualization, args.alpha)
     if args.plot_train_curves:
         generate_train.kill_workers()
+        generate_valid.kill_workers()
     return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha)
 
 
