@@ -5,6 +5,7 @@ import h5py
 import logging
 import datetime
 import numpy as np
+import scipy.signal
 from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
@@ -86,7 +87,19 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
         raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} with desired rate {desired_rate} and rate {rate}.')
 
 
-def make_voltage(population_normalize: float = None):
+def _filter_voltage(voltage):
+    fs = len(voltage) / 10.0
+    for f0 in [55.0, 60.0, 65.0]:
+        Q = 30.0
+        b, a = scipy.signal.iirnotch(f0, Q, fs)
+        voltage = scipy.signal.lfilter(b, a, voltage)
+    f0 = 0.5
+    b, a = scipy.signal.butter(5, f0, btype='highpass', fs=fs)
+    voltage = scipy.signal.lfilter(b, a, voltage)
+    return voltage
+
+
+def make_voltage(population_normalize: float = None, filter=False):
     def get_voltage_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -97,6 +110,8 @@ def make_voltage(population_normalize: float = None):
                     path = _make_hd5_path(tm, ecg_date, cm)
                     voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                     voltage = _resample_voltage(voltage, shape[1] if dynamic else shape[0])
+                    if filter:
+                        voltage = _filter_voltage(voltage)
                     slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
                     tensor[slices] = voltage
                 except KeyError:
@@ -145,6 +160,9 @@ TMAPS['partners_ecg_2500_raw_newest'] = TensorMap('ecg_rest_2500_raw_newest', sh
 TMAPS['partners_ecg_5000_raw_newest'] = TensorMap('ecg_rest_5000_raw_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_raw_oldest'] = TensorMap('ecg_rest_2500_raw_oldest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_raw_oldest'] = TensorMap('ecg_rest_5000_raw_oldest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500_raw_oldest_notch'] = TensorMap('ecg_rest_2500_raw_oldest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0, filter=True), channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_5000_raw_oldest_notch'] = TensorMap('ecg_rest_5000_raw_oldest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0, filter=True), channel_map=ECG_REST_AMP_LEADS)
+
 
 
 def make_voltage_attr(volt_attr: str = ""):
@@ -572,7 +590,6 @@ TMAPS[task] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="gender"),
     shape=(1, ),
-    time_series_limit=0,
     validator=validator_no_empty,
 )
 
