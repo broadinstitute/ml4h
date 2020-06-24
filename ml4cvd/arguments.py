@@ -26,7 +26,7 @@ from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps
+from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
@@ -139,9 +139,9 @@ def parse_args():
     parser.add_argument('--dropout', default=0.0, type=float, help='Dropout rate of dense layers must be in [0.0, 1.0].')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
-    parser.add_argument('--conv_x', default=3, type=int, help='X dimension of convolutional kernel.')
-    parser.add_argument('--conv_y', default=3, type=int, help='Y dimension of convolutional kernel.')
-    parser.add_argument('--conv_z', default=2, type=int, help='Z dimension of convolutional kernel.')
+    parser.add_argument('--conv_x', default=[3], nargs='*', type=int, help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument('--conv_y', default=[3], nargs='*', type=int, help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument('--conv_z', default=[2], nargs='*', type=int, help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
@@ -330,15 +330,17 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     if name in TMAPS:
         return TMAPS[name]
 
+    TMAPS.update(build_partners_time_series_tensor_maps(needed_tensor_maps))
+    if name in TMAPS:
+        return TMAPS[name]
+
     from ml4cvd.tensor_maps_partners_ecg import TMAPS as partners_tmaps
     TMAPS.update(partners_tmaps)
-
     if name in TMAPS:
         return TMAPS[name]
 
     from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
     TMAPS.update(partners_label_tmaps)
-
     if name in TMAPS:
         return TMAPS[name]
 
