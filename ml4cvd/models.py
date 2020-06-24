@@ -327,11 +327,11 @@ def _order_layers(
 
     def ordered_layers(x):
         for order in layer_order:
-            if order == 'a':
+            if order == 'activation':
                 x = activate(x)
-            elif order == 'n':
+            elif order == 'normalization':
                 x = normalize(x)
-            elif order == 'r':
+            elif order == 'regularization':
                 x = regularize(x)
             else:
                 pass
