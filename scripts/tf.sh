@@ -18,6 +18,7 @@ TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 GROUP_ID=$(id -g)
 USER_ID=$(id -u)
+CALL_DOCKER_AS_USER=""
 
 ################### HELP TEXT ############################################
 
@@ -40,6 +41,12 @@ usage()
 
         -t                  Run Docker container interactively.
 
+        -j                  Set up Jupyter directory
+
+        -r                  Call Python script as root. If this is *not* specified,
+                            the owner and group of the output directory will be that
+                            of the user who called the script.
+
         -h                  Print this help text.
 
         -i      <image>     Run Docker with the specified custom <image>. The default image is '${DOCKER_IMAGE}'.
@@ -49,7 +56,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:d:m:cthT" opt ; do
+while getopts ":i:d:m:j:ctjrhT" opt ; do
     case ${opt} in
         h)
             usage
@@ -70,6 +77,18 @@ while getopts ":i:d:m:cthT" opt ; do
             ;;
         t)
             INTERACTIVE="-it"
+            ;;
+        j)  # Set up Jupyter 
+            mkdir -p /home/${USER}/jupyter/
+            chmod o+w /home/${USER}/jupyter/
+            mkdir -p /home/${USER}/jupyter/root/
+            mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
+            ;;
+        r) # Call Python script as root
+            CALL_DOCKER_AS_USER="apt-get -y install sudo;
+                                 groupadd -f -g ${GROUP_ID} ${USER};
+                                 useradd -u ${USER_ID} -g ${GROUP_ID} ${USER};
+                                 sudo -u ${USER}"
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
@@ -116,10 +135,6 @@ WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
 # Let anyone run this script
 USER=$(whoami)
 WORKDIR=$(pwd)
-mkdir -p /home/${USER}/jupyter/
-chmod o+w /home/${USER}/jupyter/
-mkdir -p /home/${USER}/jupyter/root/
-mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
@@ -131,7 +146,8 @@ Attempting to run Docker with
     -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
-    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
+        eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
 docker run ${INTERACTIVE} \
@@ -142,7 +158,4 @@ ${GPU_DEVICE} \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
-    groupadd -f -g ${GROUP_ID} ${USER};
-    useradd -u ${USER_ID} -g ${GROUP_ID} ${USER};
-    ${PYTHON_COMMAND} ${PYTHON_ARGS};
-    chown -R ${USER}:${USER} ${HOME}"
+    eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS};"
