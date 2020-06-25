@@ -18,7 +18,10 @@ TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 GROUP_ID=$(id -g)
 USER_ID=$(id -u)
-CALL_DOCKER_AS_USER=""
+CALL_DOCKER_AS_USER="apt-get -y install sudo;
+                     groupadd -f -g ${GROUP_ID} ${USER};
+                     useradd -u ${USER_ID} -g ${GROUP_ID} ${USER};
+                     sudo -u ${USER}"
 
 ################### HELP TEXT ############################################
 
@@ -85,10 +88,7 @@ while getopts ":i:d:m:j:ctjrhT" opt ; do
             mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
             ;;
         r) # Call Python script as root
-            CALL_DOCKER_AS_USER="apt-get -y install sudo;
-                                 groupadd -f -g ${GROUP_ID} ${USER};
-                                 useradd -u ${USER_ID} -g ${GROUP_ID} ${USER};
-                                 sudo -u ${USER}"
+            PYTHON_SCRIPT_USER="root"
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
@@ -127,6 +127,10 @@ fi
 if [[ -d "/mnt" ]] ; then
     echo "Found /mnt folder will try to mount it."
     MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
+fi
+
+if [[ $PYTHON_SCRIPT_USER == "root" ]] ; then 
+    CALL_DOCKER_AS_USER=""                      
 fi
 
 # Get your external IP directly from a DNS provider
