@@ -335,7 +335,9 @@ def set_args_from_x(args, x):
     for k in args.__dict__:
         if k in x:
             logging.info(f"k is {k} and x[k] is {x[k]} args dict is:{args.__dict__[k]}")
-            if isinstance(args.__dict__[k], int):
+            if k in ['conv_x', 'conv_y', 'conv_z']:
+                args.__dict__[k] = [float(x[k])]
+            elif isinstance(args.__dict__[k], int):
                 args.__dict__[k] = int(x[k])
             elif isinstance(args.__dict__[k], float):
                 v = float(x[k])
