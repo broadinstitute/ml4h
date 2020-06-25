@@ -59,7 +59,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:d:m:j:ctjrhT" opt ; do
+while getopts ":i:d:m:ctjrhT" opt ; do
     case ${opt} in
         h)
             usage
