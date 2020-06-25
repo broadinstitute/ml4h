@@ -168,7 +168,7 @@ def optimize_architecture(args):
 
 
 def optimize_ecg_rest_architecture(args):
-    dense_blocks_sets = [[], [32], [32, 24], [32, 24, 16], [48, 48, 48], [48, 48, 48, 48], [32, 32, 24, 24, 16]]
+    dense_blocks_sets = [[], [32], [32, 24], [32, 24, 16], [48, 48, 48], [48, 48, 48, 48], [32, 32, 32, 32, 32], [48, 48, 48, 48, 48]]
     conv_layers_sets = [[], [32], [48], [32, 32], [48, 48], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
     dense_layers_sets = [[8], [16], [16, 64], [32, 128]]
     conv_dilate = [True, False]
@@ -186,8 +186,8 @@ def optimize_ecg_rest_architecture(args):
         'conv_normalize': hp.choice('conv_normalize', conv_normalize),
         'conv_type': hp.choice('conv_type', conv_type),
         'pool_type': hp.choice('pool_type', pool_type),
-        'conv_x': hp.loguniform('conv_x', 1, 3),
-        'conv_y': hp.loguniform('conv_y', 1, 3),
+        #'conv_x': hp.loguniform('conv_x', 1, 3),
+        #'conv_y': hp.loguniform('conv_y', 1, 3),
         'block_size': hp.quniform('block_size', 1, 6, 1),
     }
     param_lists = {
