@@ -20,7 +20,7 @@ import traceback
 import numpy as np
 import pandas as pd
 from collections import Counter
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Event
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union
 
@@ -125,7 +125,7 @@ class TensorGenerator:
 
     def _init_workers(self):
         self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
-        self.stats_q = Queue(len(self.worker_instances))
+        self.stats_q = Queue(self.num_workers)
         self._started = True
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
@@ -161,7 +161,7 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
-        if self.stats_q.qsize() == self.num_workers:
+        if all(worker.signal.is_set() for worker in self.worker_instances):
             self.aggregate_and_print_stats()
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
@@ -172,7 +172,7 @@ class TensorGenerator:
         stats = Counter()
         self.true_epochs += 1
         cur_worker = 0
-        while self.stats_q.qsize() != 0:
+        while not self.stats_q.empty():
             cur_worker += 1
             worker_stats = self.stats_q.get().copy()
             for k in worker_stats:
@@ -230,6 +230,9 @@ class TensorGenerator:
             f"{self.stats_string}",
         ])
         logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
+
+        for worker in self.worker_instances:
+            worker.signal.clear()
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -341,6 +344,7 @@ class _MultiModalMultiTaskWorker:
         self.cache_size = cache_size
         self.name = name
         self.augment = augment
+        self.signal = Event()
 
         self.stats = Counter()
         self.epoch_stats = Counter()
@@ -426,9 +430,11 @@ class _MultiModalMultiTaskWorker:
     def _on_epoch_end(self):
         self.stats['epochs'] += 1
         self.epoch_stats['epochs'] = self.stats['epochs']
-        while self.stats_q.qsize() == self.num_workers:
+        # wait until the previous signal is consumed, allows for 1 batch to be loaded in advance
+        while self.signal.is_set():
             continue
         self.stats_q.put(self.epoch_stats)
+        self.signal.set()
         if self.stats['Tensors presented'] == 0:
             logging.error(f"Completed an epoch but did not find any tensors to yield")
         if 'test' in self.name:
@@ -447,7 +453,7 @@ class _MultiModalMultiTaskWorker:
                 self.stats['batch_index'] = 0
                 self.in_batch = {tm.input_name(): np.zeros((self.batch_size,) + tm.static_shape()) for tm in self.input_maps}
                 self.out_batch = {tm.output_name(): np.zeros((self.batch_size,) + tm.static_shape()) for tm in self.output_maps}
-            if i > 0 and i % self.true_epoch_len == 0:
+            if (i + 1) % self.true_epoch_len == 0:
                 self._on_epoch_end()
 
     def __next__(self):
