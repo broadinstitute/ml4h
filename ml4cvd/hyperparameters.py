@@ -186,8 +186,8 @@ def optimize_ecg_rest_architecture(args):
         'conv_normalize': hp.choice('conv_normalize', conv_normalize),
         'conv_type': hp.choice('conv_type', conv_type),
         'pool_type': hp.choice('pool_type', pool_type),
-        'conv_x': hp.loguniform('conv_x', 1, 6),
-        'conv_y': hp.loguniform('conv_y', 1, 6),
+        'conv_x': hp.loguniform('conv_x', 1, 3),
+        'conv_y': hp.loguniform('conv_y', 1, 3),
         'block_size': hp.quniform('block_size', 1, 6, 1),
     }
     param_lists = {
