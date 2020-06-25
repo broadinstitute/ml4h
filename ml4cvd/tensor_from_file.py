@@ -589,6 +589,10 @@ TMAPS['ecg_rest_stft'] = TensorMap(
     'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
     tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32), normalization={'zero_mean_std1': 1.0},
 )
+TMAPS['ecg_rest_stft_raw'] = TensorMap(
+    'ecg_rest_stft_raw', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32),
+)
 TMAPS['ecg_rest_stft_512'] = TensorMap(
     'ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
     tensor_from_file=_make_ecg_rest(short_time_nperseg=512, short_time_noverlap=496), normalization={'zero_mean_std1': 1.0},
