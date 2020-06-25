@@ -340,10 +340,12 @@ class ResidualBlock:
         block_size = len(filters_per_conv)
         assert len(conv_x) == len(conv_y) == len(conv_z) == block_size
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
-        self.conv_layers = [
-            conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1)
-            for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels))
-        ]
+        self.conv_layers = []
+        logging.info(f'Conv layer is {conv_layer} and kernels {kernels}')
+        for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels)):
+            logging.info(f' Filters is {num_filters} and kernel is {kernel} at step {i}')
+            self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1))
+
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
