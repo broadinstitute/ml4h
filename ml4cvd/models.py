@@ -386,7 +386,10 @@ class DenseConvolutionalBlock:
             regularization_rate: float,
     ):
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
-        self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
+        if isinstance(conv_layer, DepthwiseConv2D):
+            self.conv_layers = [conv_layer(kernel_size=kernel, padding='same') for kernel in kernels]
+        else:
+            self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
