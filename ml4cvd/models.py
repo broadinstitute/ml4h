@@ -344,7 +344,10 @@ class ResidualBlock:
         logging.info(f'Conv layer is {conv_layer} and kernels {kernels}')
         for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels)):
             logging.info(f' Filters is {num_filters} and kernel is {kernel} at step {i}')
-            self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1))
+            if isinstance(conv_layer, DepthwiseConv2D):
+                self.conv_layers.append(conv_layer(kernel_size=kernel, padding='same', dilation_rate=2 ** i if dilate else 1))
+            else:
+                self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1))
 
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
