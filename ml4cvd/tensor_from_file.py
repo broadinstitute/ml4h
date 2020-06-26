@@ -688,7 +688,7 @@ TMAPS['ecg_rhythm'] = TensorMap(
 )
 TMAPS['ecg_rhythm_poor'] = TensorMap(
     'ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
-    #loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor'),
+    loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor'),
     channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
 )
 
@@ -763,7 +763,7 @@ TMAPS['lvh_fine'] = TensorMap(
 
 TMAPS['poor_data_quality'] = TensorMap(
     'poor_data_quality', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
-    #loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'),
+    loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'),
 )
 
 TMAPS['premature_atrial_complexes'] = TensorMap(
