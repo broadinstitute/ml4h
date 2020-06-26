@@ -763,7 +763,7 @@ TMAPS['lvh_fine'] = TensorMap(
 
 TMAPS['poor_data_quality'] = TensorMap(
     'poor_data_quality', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, channel_map={'no_poor_data_quality': 0, 'Poor data quality': 1},
-    loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'),
+    #loss=weighted_crossentropy([0.1, 3.0], 'poor_data_quality'),
 )
 
 TMAPS['premature_atrial_complexes'] = TensorMap(
