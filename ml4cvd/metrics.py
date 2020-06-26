@@ -429,7 +429,7 @@ def get_metric_dict(output_tensor_maps):
     def loss_fxn(y_true, y_pred):
         my_loss = 0
         for tm_loss_fxn, loss_weight in zip(losses, loss_weights):
-            my_loss += loss_weight * tm_loss_fxn(y_true, y_pred)
+            my_loss = K.sum([my_loss, tm_loss_fxn(y_true, y_pred)])
         return my_loss
     metrics['loss'] = loss_fxn
 
