@@ -172,7 +172,7 @@ class TensorGenerator:
         stats = Counter()
         self.true_epochs += 1
         cur_worker = 0
-        while not self.stats_q.empty():
+        for _ in range(len(self.worker_instances)):
             cur_worker += 1
             worker_stats = self.stats_q.get().copy()
             for k in worker_stats:
