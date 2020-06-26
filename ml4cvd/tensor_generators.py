@@ -372,7 +372,7 @@ class _MultiModalMultiTaskWorker:
             self.hd5 = h5py.File(path, 'r')
         tensor = tm.postprocess_tensor(tm.tensor_from_file(tm, self.hd5, self.dependents), augment=self.augment, hd5=self.hd5)
         slices = tuple(slice(min(tm.static_shape()[i], tensor.shape[i])) for i in range(len(tensor.shape)))
-        batch[name][(idx,)+slices] = tensor[slices]
+        batch[name][(idx,)+slices] = tensor[slices].copy()
         if tm.cacheable:
             self.cache[path, name] = batch[name][idx]
         self._collect_stats(tm, tensor)
