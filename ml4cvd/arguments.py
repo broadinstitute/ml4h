@@ -228,7 +228,7 @@ def parse_args():
     parser.add_argument('--num_workers', default=multiprocessing.cpu_count(), type=int, help="Number of workers to use for every tensor generator.")
     parser.add_argument('--cache_size', default=3.5e9/multiprocessing.cpu_count(), type=float, help="Tensor map cache size per worker.")
 
-    # Cross reference arguments
+    # Cross reference arguments and explore
     parser.add_argument(
         '--tensors_name', default='Tensors',
         help='Name of dataset at tensors, e.g. ECG. '
@@ -274,6 +274,11 @@ def parse_args():
         '--reference_label',
         help='TensorMap or column name of value in csv to report distribution on, e.g. mortality. '
              'Label distribution reporting is optional.',
+    )
+    parser.add_argument(
+        '--time_frequency',
+        help='Frequency string indicating resolution of counts over time. It can have multiples, e.g. "3M".',
+        default='3M',
     )
 
     args = parser.parse_args()

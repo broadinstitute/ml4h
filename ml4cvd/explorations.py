@@ -28,7 +28,7 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, plot_categorical_tmap_over_time
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -822,6 +822,25 @@ def explore(args):
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
+
+    # Plots counts of categorical TMAPs over time
+    if args.time_tensor:
+        freq = args.time_frequency  # Monthly frequency
+        time_tensors = pd.to_datetime(df[args.time_tensor])
+        min_date = time_tensors.min()
+        max_date = time_tensors.max()
+        date_range = pd.date_range(min_date, max_date, freq=freq)
+        for tm in tmaps:
+            if tm.interpretation is Interpretation.CATEGORICAL:
+                prev_date = min_date
+                tm_counts = defaultdict(list)
+                for i, date in enumerate(date_range[1:]):
+                    sub_df = df[(time_tensors >= prev_date) & (time_tensors < date)]
+                    for cm in tm.channel_map:
+                        tm_counts[cm].append(np.sum(sub_df[f'{tm.name} {cm}']))
+                    prev_date = date
+                fpath = os.path.join(args.output_folder, args.id, f'{tm.name}_over_time.png')
+                plot_categorical_tmap_over_time(tm_counts, tm.name, date_range, fpath)
 
     # Check if any tmaps are categorical
     if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
