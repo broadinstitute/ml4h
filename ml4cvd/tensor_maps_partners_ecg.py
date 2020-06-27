@@ -324,8 +324,8 @@ for lead in ECG_REST_AMP_LEADS:
         tmap_name,
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
-        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead),
-        channel_map={'_2500': 0, '_5000': 1, 'other': 2},
+        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead, cm_prefix='l'),
+        channel_map={'l2500': 0, 'l5000': 1, 'other': 2},
         time_series_limit=0,
         validator=validator_not_all_zero,
     )
@@ -335,8 +335,8 @@ for lead in ECG_REST_AMP_LEADS:
         tmap_name,
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
-        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead),
-        channel_map={'_2500': 0, '_5000': 1, 'other': 2},
+        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead, cm_prefix='l'),
+        channel_map={'l2500': 0, 'l5000': 1, 'other': 2},
         validator=validator_not_all_zero,
     )
 
