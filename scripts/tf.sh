@@ -16,12 +16,61 @@ MOUNTS=""
 PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
-GROUP_ID=$(id -g)
 USER_ID=$(id -u)
-CALL_DOCKER_AS_USER="apt-get -y install sudo;
-                     groupadd -f -g ${GROUP_ID} ${USER};
-                     useradd -u ${USER_ID} -g ${GROUP_ID} ${USER};
-                     sudo -u ${USER}"
+
+################### USERNAME & GROUPS ####################################
+# Note: export is necessary so the bash process inside docker can access
+# the environment variables
+
+# Get group names as array
+GROUP_NAMES_ARR=( $(groups ${USER} | sed -e 's/.*:\ //') )
+
+# Iterate through array, get group ID for each group name, append to string
+GROUP_IDS=""
+for GROUP_TO_ADD in "${GROUP_NAMES_ARR[@]}"
+do
+    GROUP_IDS="$GROUP_IDS $(getent group ${GROUP_TO_ADD} | grep -o -P '(?<=x:).*(?=:)')"
+done
+
+# Turn string into array
+GROUP_IDS_ARR=( $GROUP_IDS )
+
+
+printf "\n"
+echo "==== ITERATE THROUGH ARRAYS ===="
+for ((i=0;i<${#GROUP_NAMES_ARR[@]};++i)); do
+    echo ${GROUP_NAMES_ARR[i]} ${GROUP_IDS_ARR[i]};
+done
+printf "\n"
+
+echo "==== ECHO ENTIRE ARRAYS ===="
+echo "${GROUP_NAMES_ARR[@]}"
+echo "${GROUP_IDS_ARR[@]}"
+printf "\n"
+
+echo "==== TURN ARRAYS TO STR TO PASS INTO DOCKER ===="
+GROUP_NAMES=$(echo ${GROUP_NAMES_ARR[@]})
+#GROUP_IDS=$(echo ${GROUP_IDS_ARR[@]})
+echo ${GROUP_NAMES[@]}
+echo ${GROUP_IDS[@]}
+echo "========================"
+printf "\n"
+
+# Export environmnet variables so the bash process in dokcer can access them
+export GROUP_NAMES GROUP_IDS
+
+CALL_DOCKER_AS_USER="
+    apt-get -y install sudo;
+    useradd -u ${USER_ID} ${USER};
+    GROUP_NAMES_ARR=( \${GROUP_NAMES} );
+    GROUP_IDS_ARR=( \${GROUP_IDS} );
+    for (( i=0; i<\${#GROUP_NAMES_ARR[@]}; ++i )); do
+        echo \"Creating group\" \${GROUP_NAMES_ARR[i]} \"with gid\" \${GROUP_IDS_ARR[i]};
+        groupadd -f -g \${GROUP_IDS_ARR[i]} \${GROUP_NAMES_ARR[i]};
+        echo \"Adding user ${USER} to group\" \${GROUP_NAMES_ARR[i]}
+        usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
+    done;
+    sudo -u ${USER}"
 
 ################### HELP TEXT ############################################
 
@@ -130,14 +179,13 @@ if [[ -d "/mnt" ]] ; then
 fi
 
 if [[ $PYTHON_SCRIPT_USER == "root" ]] ; then 
-    CALL_DOCKER_AS_USER=""                      
+    CALL_DOCKER_AS_USER=""
 fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
 
 # Let anyone run this script
-USER=$(whoami)
 WORKDIR=$(pwd)
 
 PYTHON_ARGS="$@"
@@ -156,10 +204,13 @@ LAUNCH_MESSAGE
 
 docker run ${INTERACTIVE} \
 ${GPU_DEVICE} \
+--env GROUP_NAMES \
+--env GROUP_IDS \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
-    eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS};"
+${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; eval ${CALL_DOCKER_AS_USER}"
+
+#eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}
