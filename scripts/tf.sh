@@ -16,52 +16,29 @@ MOUNTS=""
 PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
-USER_ID=$(id -u)
 
 ################### USERNAME & GROUPS ####################################
-# Note: export is necessary so the bash process inside docker can access
-# the environment variables
 
-# Get group names as array
-GROUP_NAMES_ARR=( $(groups ${USER} | sed -e 's/.*:\ //') )
+# Get group names
+GROUP_NAMES=$(groups ${USER} | sed -e 's/.*:\ //')
+
+# Get group names as array to iterate through
+GROUP_NAMES_ARR=( $GROUP_NAMES )
 
 # Iterate through array, get group ID for each group name, append to string
 GROUP_IDS=""
-for GROUP_TO_ADD in "${GROUP_NAMES_ARR[@]}"
-do
+for GROUP_TO_ADD in "${GROUP_NAMES_ARR[@]}"; do
     GROUP_IDS="$GROUP_IDS $(getent group ${GROUP_TO_ADD} | grep -o -P '(?<=x:).*(?=:)')"
 done
 
-# Turn string into array
-GROUP_IDS_ARR=( $GROUP_IDS )
-
-
-printf "\n"
-echo "==== ITERATE THROUGH ARRAYS ===="
-for ((i=0;i<${#GROUP_NAMES_ARR[@]};++i)); do
-    echo ${GROUP_NAMES_ARR[i]} ${GROUP_IDS_ARR[i]};
-done
-printf "\n"
-
-echo "==== ECHO ENTIRE ARRAYS ===="
-echo "${GROUP_NAMES_ARR[@]}"
-echo "${GROUP_IDS_ARR[@]}"
-printf "\n"
-
-echo "==== TURN ARRAYS TO STR TO PASS INTO DOCKER ===="
-GROUP_NAMES=$(echo ${GROUP_NAMES_ARR[@]})
-#GROUP_IDS=$(echo ${GROUP_IDS_ARR[@]})
-echo ${GROUP_NAMES[@]}
-echo ${GROUP_IDS[@]}
-echo "========================"
-printf "\n"
-
-# Export environmnet variables so the bash process in dokcer can access them
+# Export environment variables so they can be passed into Docker and accessed in bash
 export GROUP_NAMES GROUP_IDS
 
+# Create string to be called in Docker's bash shell via eval;
+# this creates a user, adds groups, adds user to groups, then calls the Python script
 CALL_DOCKER_AS_USER="
     apt-get -y install sudo;
-    useradd -u ${USER_ID} ${USER};
+    useradd -u $(id -u) ${USER};
     GROUP_NAMES_ARR=( \${GROUP_NAMES} );
     GROUP_IDS_ARR=( \${GROUP_IDS} );
     for (( i=0; i<\${#GROUP_NAMES_ARR[@]}; ++i )); do
@@ -95,8 +72,8 @@ usage()
 
         -j                  Set up Jupyter directory
 
-        -r                  Call Python script as root. If this is *not* specified,
-                            the owner and group of the output directory will be that
+        -r                  Call Python script as root. If this flag is not specified,
+                            the owner and group of the output directory will be those
                             of the user who called the script.
 
         -h                  Print this help text.
@@ -130,14 +107,14 @@ while getopts ":i:d:m:ctjrhT" opt ; do
         t)
             INTERACTIVE="-it"
             ;;
-        j)  # Set up Jupyter 
+        j)  # Set up Jupyter
             mkdir -p /home/${USER}/jupyter/
             chmod o+w /home/${USER}/jupyter/
             mkdir -p /home/${USER}/jupyter/root/
             mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
             ;;
-        r) # Call Python script as root
-            PYTHON_SCRIPT_USER="root"
+        r) # Output owned by root
+            CALL_DOCKER_AS_USER=""
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
@@ -178,10 +155,6 @@ if [[ -d "/mnt" ]] ; then
     MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
 fi
 
-if [[ $PYTHON_SCRIPT_USER == "root" ]] ; then 
-    CALL_DOCKER_AS_USER=""
-fi
-
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
 
@@ -211,6 +184,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; eval ${CALL_DOCKER_AS_USER}"
-
-#eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}
+${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
