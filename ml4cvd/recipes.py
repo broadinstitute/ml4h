@@ -145,9 +145,9 @@ def train_multimodal_multitask(args):
     )
     out_path = os.path.join(args.output_folder, args.id + '/')
     if args.plot_train_curves:
-        train_data, train_labels, train_paths = big_batch_from_minibatch_generator(generate_train, args.training_steps)
+        train_data, train_labels = big_batch_from_minibatch_generator(generate_train, args.training_steps)
         out_path_train = os.path.join(args.output_folder, args.id + '/train_pr_roc_curves/')
-        _predict_and_evaluate(model, train_data, train_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path_train, train_paths, args.embed_visualization, args.alpha)
+        _predict_and_evaluate(model, train_data, train_labels, args.tensor_maps_in, args.tensor_maps_out, args.batch_size, args.hidden_layer, out_path_train, None, args.embed_visualization, args.alpha)
 
         generate_train.kill_workers()
         generate_valid.kill_workers()
