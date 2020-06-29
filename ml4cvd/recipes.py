@@ -263,9 +263,6 @@ def infer_multimodal_multitask(args):
                 next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
-            # for it in args.tensor_maps_in:
-            #     if it.axes() == 1:
-            #         logging.debug(f'input {it.name} is {it.rescale(input_data[it.input_name()])}')
             prediction = model.predict(input_data)
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
@@ -273,7 +270,7 @@ def infer_multimodal_multitask(args):
             csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
             if tsv_style_is_genetics:
                 csv_row *= 2
-            for y, tm in zip(reversed(prediction), no_fail_tmaps_out):
+            for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
