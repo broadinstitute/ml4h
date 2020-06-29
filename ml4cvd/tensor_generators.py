@@ -235,6 +235,7 @@ class TensorGenerator:
         if self._started and not self.run_on_main_thread:
             for worker in self.workers:
                 worker.terminate()
+            self._started = False
             logging.info(f'Stopped {len(self.workers)} {self.name.split("_")[0]} workers. {self.stats_string}')
         self.workers = []
 
