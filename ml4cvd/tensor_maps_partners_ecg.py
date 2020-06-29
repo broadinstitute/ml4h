@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import copy
 import h5py
@@ -582,17 +583,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
-task = "partners_ecg_sex"
-TMAPS[task] = TensorMap(
-    task,
-    interpretation=Interpretation.LANGUAGE,
-    path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=make_partners_ecg_tensor(key="gender"),
-    shape=(1, ),
-    validator=validator_no_empty,
-)
-
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(
     task,
@@ -604,7 +594,6 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
-
 task = "partners_ecg_date_newest"
 TMAPS[task] = TensorMap(
     task,
@@ -615,6 +604,16 @@ TMAPS[task] = TensorMap(
     validator=validator_no_empty,
 )
 
+task = "partners_ecg_date_oldest"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
+    time_series_order=TimeSeriesOrder.OLDEST,
+    shape=(1,),
+    validator=validator_no_empty,
+)
 
 task = "partners_ecg_time"
 TMAPS[task] = TensorMap(
@@ -1548,6 +1547,7 @@ def partners_ecg_age(tm, hd5, dependents={}):
 
 TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(None, 1), time_series_limit=0)
 TMAPS['partners_ecg_age_newest'] = TensorMap('partners_ecg_age_newest', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(1,))
+TMAPS['partners_ecg_age_oldest'] = TensorMap('partners_ecg_age_oldest', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(1,), time_series_order=TimeSeriesOrder.OLDEST)
 
 
 def partners_ecg_acquisition_year(tm, hd5, dependents={}):
@@ -1676,6 +1676,11 @@ TMAPS['partners_adult_gender'] = TensorMap(
 TMAPS['partners_adult_gender_newest'] = TensorMap(
     'adult_gender_newest', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
     tensor_from_file=_partners_adult('gender'),
+)
+
+TMAPS['partners_adult_gender_oldest'] = TensorMap(
+    'adult_gender_oldest', interpretation=Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map={'female': 0, 'male': 1},
+    tensor_from_file=_partners_adult('gender'), time_series_order=TimeSeriesOrder.OLDEST,
 )
 
 
@@ -2496,15 +2501,43 @@ bias_dic = {'acquisitionyear': {'2000': 0,
                            '2': 29,
                            'unspecified': 30}}
 
+
+def _clean_variable_name(s):
+    # Remove invalid characters
+    t = re.sub('[^0-9a-zA-Z_]', '', s)
+
+    # Remove leading characters until we find a letter or underscore
+    t = re.sub('^[^a-zA-Z_]+', '', t)
+
+    if not t:
+        t = _clean_variable_name('val'+s)
+    return t
+
+
 for bias_key in bias_dic:
     TMAPS[f'partners_ecg_bias_{bias_key}_oldest'] = TensorMap(
         f'partners_ecg_bias_{bias_key}_oldest',
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
         time_series_order=TimeSeriesOrder.OLDEST,
-        channel_map={f'val_{i}': i for i in set(bias_dic[bias_key].values())},
+        channel_map={_clean_variable_name(key): value for key, value in bias_dic[bias_key].items()},
         tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
 
+    TMAPS[f'partners_ecg_bias_{bias_key}_newest'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}_newest',
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_order=TimeSeriesOrder.NEWEST,
+        channel_map={_clean_variable_name(key): value for key, value in bias_dic[bias_key].items()},
+        tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
+
+    TMAPS[f'partners_ecg_bias_{bias_key}'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}',
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_limit=0,
+        channel_map={_clean_variable_name(key): value for key, value in bias_dic[bias_key].items()},
+        tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
 
 bias_waveform_dic = {'nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4},
                      'len': {'2500': 0, '5000': 1, 'unspecified': 2}}
@@ -2561,5 +2594,81 @@ for bias_key in bias_waveform_dic:
             interpretation=Interpretation.CATEGORICAL,
             path_prefix=PARTNERS_PREFIX,
             time_series_order=TimeSeriesOrder.OLDEST,
-            channel_map={f'val_{i}': i for i in set(bias_waveform_dic[bias_key].values())},
+            channel_map={_clean_variable_name(key): value for key, value in bias_waveform_dic[bias_key].items()},
             tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
+
+        TMAPS[f'partners_ecg_bias_{lead}_{bias_key}_newest'] = TensorMap(
+            f'partners_ecg_bias_{lead}_{bias_key}_newest',
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=PARTNERS_PREFIX,
+            time_series_order=TimeSeriesOrder.NEWEST,
+            channel_map={_clean_variable_name(key): value for key, value in bias_waveform_dic[bias_key].items()},
+            tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
+
+        TMAPS[f'partners_ecg_bias_{lead}_{bias_key}'] = TensorMap(
+            f'partners_ecg_bias_{lead}_{bias_key}',
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=PARTNERS_PREFIX,
+            time_series_limit=0,
+            channel_map={_clean_variable_name(key): value for key, value in bias_waveform_dic[bias_key].items()},
+            tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
+
+
+def build_toast_from_file(file_name: str, patient_column: str = 'MRN', toast_column: str = 'Toast', delimiter='\t'):
+    try:
+        with open(file_name, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            patient_index = header.index(patient_column)
+            toast_index = header.index(toast_column)
+            toast_table = {}
+            for row in reader:
+                try:
+                    patient_key = int(row[patient_index])
+                    toast_table[patient_key] = int(row[toast_index])
+                    if len(toast_table) % 2000 == 0:
+                        logging.debug(f'Processed: {len(toast_table)} patient rows.')
+                except ValueError as e:
+                    logging.warning(f'val err {e}')
+            logging.info(f'Done processing TOAST {len(toast_table)} patient rows.')
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
+        tensor = np.zeros(shape, dtype=np.float32)
+        tensor[..., toast_table[patient_key_from_ecg]-1] = 1.0
+        return tensor
+    return tensor_from_file
+
+TMAPS['toast_subtype'] = TensorMap(
+    'toast_subtype',
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    time_series_limit=0,
+    channel_map={f'toast_{d+1}': d for d in range(5)},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt')
+)
+
+TMAPS['toast_subtype_newest'] = TensorMap(
+    'toast_subtype_newest',
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    time_series_limit=1,
+    time_series_order=TimeSeriesOrder.NEWEST,
+    channel_map={f'toast_{d+1}': d for d in range(5)},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt')
+)
+
+TMAPS['toast_subtype_oldest'] = TensorMap(
+    'toast_subtype_oldest',
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    time_series_limit=1,
+    time_series_order=TimeSeriesOrder.OLDEST,
+    channel_map={f'toast_{d+1}': d for d in range(5)},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt'),
+    loss='categorical_cross_entropy'
+)

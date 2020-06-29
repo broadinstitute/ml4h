@@ -1091,6 +1091,40 @@ def plot_categorical_tmap_over_time(counts, tmap_name, dates, fpath):
     f.savefig(fpath, dpi=500)
 
 
+def plot_chi2_association(cramer_table, p_table, tmaps, fpath):
+    tmap_names = [tm.name for tm in tmaps]
+    cramer_array = np.zeros((len(tmap_names), len(tmap_names)))
+    p_array = np.zeros_like(cramer_array)
+    for i, tm1 in enumerate(tmap_names):
+        for j, tm2 in enumerate(tmap_names):
+            if tm1 == tm2:
+                cramer_array[i, j] = 1.0
+                p_array[i, j] = 0.0
+            else:
+                tmap_tuple = (tm1, tm2) if (tm1, tm2) in cramer_table else (tm2, tm1)
+                cramer_array[i, j] = cramer_table[tmap_tuple]
+                p_array[i, j] = p_table[tmap_tuple]
+    ax = sns.clustermap(cramer_array, xticklabels=tmap_names, yticklabels=tmap_names, cmap='gray')
+    ordered_labels = [d.get_text() for d in ax.ax_heatmap.get_yticklabels()]
+    ordered_indices = [tmap_names.index(tmap_label) for tmap_label in ordered_labels]
+    print(ordered_indices)
+    print(cramer_array)
+    cramer_array = cramer_array[:, ordered_indices]
+    cramer_array = cramer_array[ordered_indices, :]
+    print(cramer_array)
+    p_array = p_array[:, ordered_indices]
+    p_array = p_array[ordered_indices, :]
+    f, ax=plt.subplots(1, 2)
+    f.set_size_inches(14, 6)
+    sns.heatmap(cramer_array, xticklabels=ordered_labels, yticklabels=ordered_labels, cmap='gray', ax=ax[0])
+    ax[0].set_xticklabels(ordered_labels, rotation=45, ha='right')
+    sns.heatmap(p_array, xticklabels=ordered_labels, vmax=0.10, yticklabels=ordered_labels, cmap='gray', ax=ax[1])
+    ax[1].set_xticklabels(ordered_labels, rotation=45, ha='right')
+    ax[1].set_yticklabels([])
+    plt.tight_layout()
+    f.savefig(fpath)
+
+
 def _ecg_rest_traces(hd5):
     """Extracts ECG resting traces from HD5 and returns a dictionary based on biosppy template"""
     leads = {}
