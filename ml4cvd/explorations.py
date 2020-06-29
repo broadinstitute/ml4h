@@ -14,6 +14,7 @@ from collections import defaultdict, Counter, OrderedDict
 from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
 
 import h5py
+import scipy
 import numpy as np
 import pandas as pd
 import multiprocess
@@ -28,7 +29,7 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.plots import evaluate_predictions, subplot_rocs, subplot_scatters
-from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, plot_categorical_tmap_over_time
+from ml4cvd.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, plot_categorical_tmap_over_time, plot_chi2_association
 from ml4cvd.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4cvd.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
@@ -823,31 +824,12 @@ def explore(args):
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
-    # Plots counts of categorical TMAPs over time
-    if args.time_tensor:
-        freq = args.time_frequency  # Monthly frequency
-        time_tensors = pd.to_datetime(df[args.time_tensor])
-        min_date = time_tensors.min()
-        max_date = time_tensors.max()
-        date_range = pd.date_range(min_date, max_date, freq=freq)
-        for tm in tmaps:
-            if tm.interpretation is Interpretation.CATEGORICAL:
-                prev_date = min_date
-                tm_counts = defaultdict(list)
-                for i, date in enumerate(date_range[1:]):
-                    sub_df = df[(time_tensors >= prev_date) & (time_tensors < date)]
-                    for cm in tm.channel_map:
-                        tm_counts[cm].append(np.sum(sub_df[f'{tm.name} {cm}']))
-                    prev_date = date
-                fpath = os.path.join(args.output_folder, args.id, f'{tm.name}_over_time.png')
-                plot_categorical_tmap_over_time(tm_counts, tm.name, date_range, fpath)
-
     # Check if any tmaps are categorical
     if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
-
+        categorical_tmaps = [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
-            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]:
+            for tm in categorical_tmaps:
                 counts = []
                 counts_missing = []
                 if tm.channel_map:
@@ -883,6 +865,46 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}")
+
+        # Plot counts of categorical TMAPs over time
+        if args.time_tensor:
+            freq = args.time_frequency  # Monthly frequency
+            time_tensors = pd.to_datetime(df[args.time_tensor])
+            min_date = time_tensors.min()
+            max_date = time_tensors.max()
+            date_range = pd.date_range(min_date, max_date, freq=freq)
+            for tm in categorical_tmaps:
+                prev_date = min_date
+                tm_counts = defaultdict(list)
+                for i, date in enumerate(date_range[1:]):
+                    sub_df = df[(time_tensors >= prev_date) & (time_tensors < date)]
+                    for cm in tm.channel_map:
+                        tm_counts[cm].append(np.sum(sub_df[f'{tm.name} {cm}']))
+                    prev_date = date
+                fpath = os.path.join(args.output_folder, args.id, f'{tm.name}_over_time.png')
+                plot_categorical_tmap_over_time(tm_counts, tm.name, date_range, fpath)
+
+        # Chi-square test and Cramer's V
+        chi2_p_table = {}
+        chi2_cramer_table = {}
+        for tm1, tm2 in combinations(categorical_tmaps, 2):
+            keys1 = [f'{tm1.name} {cm}' for cm in tm1.channel_map]
+            keys2 = [f'{tm2.name} {cm}' for cm in tm2.channel_map]
+            sub_df = df.dropna()[keys1+keys2]
+            sub_df[tm1.name] = sub_df[keys1].idxmax(axis=1)
+            sub_df[tm2.name] = sub_df[keys2].idxmax(axis=1)
+            contingency = pd.crosstab(sub_df[tm1.name], sub_df[tm2.name])
+            min_dof = min(contingency.values.shape) - 1
+            contingency_margins = pd.crosstab(sub_df[tm1.name], sub_df[tm2.name], margins=True)
+            chi2_stats = scipy.stats.chi2_contingency(contingency)
+            chi2_p_table[(tm1.name, tm2.name)] = chi2_stats[1]
+            chi2_cramer_table[(tm1.name, tm2.name)] = np.sqrt(chi2_stats[0]/contingency_margins.values[-1, -1]/min_dof)
+            contingency_expected = pd.DataFrame(chi2_stats[-1], index=contingency.index, columns=list(contingency.keys()))
+            contingency_margins.to_csv(os.path.join(args.output_folder, args.id, f'contingency_{tm1.name}_{tm2.name}.{out_ext}'), sep=out_sep)
+            contingency_expected.to_csv(os.path.join(args.output_folder, args.id, f'contingency_expected_{tm1.name}_{tm2.name}.{out_ext}'), sep=out_sep)
+        if chi2_cramer_table:
+            fpath = os.path.join(args.output_folder, args.id, f'categorical_association_{categorical_tmaps[0].name}.png')
+            plot_chi2_association(chi2_cramer_table, chi2_p_table, categorical_tmaps, fpath)
 
     # Check if any tmaps are continuous
     if Interpretation.CONTINUOUS in [tm.interpretation for tm in tmaps]:
