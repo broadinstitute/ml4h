@@ -1974,6 +1974,9 @@ TMAPS['sax_all_diastole_192_weighted'] = TensorMap(
     'sax_all_diastole_192', shape=(192, 224, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
     dependent_map=TMAPS['sax_all_diastole_192_segmented_weighted'],
 )
+TMAPS['sax_all_diastole_192_3d'] = TensorMap(
+    'sax_all_diastole_192_3d', shape=(192, 224, 13), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
+)
 
 
 def all_sax_tensor(total_b_slices=13):
