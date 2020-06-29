@@ -36,7 +36,7 @@ def _get_ecg_dates(tm, hd5):
     dates = list(hd5[tm.path_prefix])
     if tm.time_series_lookup is not None:
         start, end = tm.time_series_lookup[mrn]
-        dates = [date for date in dates if start <= date <= end]
+        dates = [date for date in dates if start < date < end]
     if tm.time_series_order == TimeSeriesOrder.NEWEST:
         dates.sort()
     elif tm.time_series_order == TimeSeriesOrder.OLDEST:
