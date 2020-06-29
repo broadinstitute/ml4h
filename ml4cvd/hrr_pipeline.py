@@ -527,7 +527,7 @@ def make_pretest_model(load_model: True):
         pool_x=2,
         block_size=3,
         model_file=PRETEST_MODEL_PATH if load_model else None,
-    )
+    )  # TODO: reincorporate hyperopt?
 
 
 def _train_pretest_model(
@@ -746,6 +746,9 @@ if __name__ == '__main__':
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
     MAKE_PRETEST_LABELS = False or not os.path.exists(PRETEST_LABEL_FILE)
     EXPLORE_PRETEST_TMAPS = False or not os.path.exists(EXPLORE_OUTPUT_FOLDER)
+    MAKE_CSVS = False or not all((
+        os.path.exists(TRAIN_CSV), os.path.exists(VALID_CSV), os.path.exists(TEST_CSV)
+    ))
     TRAIN_PRETEST_MODEL = False or not os.path.exists(PRETEST_MODEL_PATH)
     INFER_PRETEST_MODEL = (
             False
@@ -762,7 +765,10 @@ if __name__ == '__main__':
     if EXPLORE_PRETEST_TMAPS:
         explore_pretest_tmaps()
     plot_pretest_label_summary_stats()
-
+    if MAKE_CSVS:
+        build_csvs()
+    if TRAIN_PRETEST_MODEL:
+        _train_pretest_model(PRETEST_MODEL_ID)
     if INFER_PRETEST_MODEL:  # TODO: does inference infer all results??
         logging.info('Running inference on pretest models.')
         _infer_models(
