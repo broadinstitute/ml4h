@@ -11,3 +11,9 @@ for i, patient in registry.iterrows():
 
 
 # %%
+from ml4cvd.tensor_maps_partners_ecg import TMAPS
+
+hd5 = h5py.File('/home/paolo/stroke_ecgs/1004775.hd5', 'r')
+tm = TMAPS['toast_subtype']
+tensor = tm.tensor_from_file(tm, hd5)
+hd5.close()
