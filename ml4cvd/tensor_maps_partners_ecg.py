@@ -7,6 +7,7 @@ import logging
 import datetime
 import numpy as np
 import scipy.signal
+from itertools import product
 from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
@@ -342,7 +343,7 @@ for lead in ECG_REST_AMP_LEADS:
         tmap_name,
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
-        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead, cm_prefix='l'),
+        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead, channel_prefix='l'),
         channel_map={'l2500': 0, 'l5000': 1, 'other': 2},
         time_series_limit=0,
         validator=validator_not_all_zero,
@@ -353,7 +354,7 @@ for lead in ECG_REST_AMP_LEADS:
         tmap_name,
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=PARTNERS_PREFIX,
-        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead, cm_prefix='l'),
+        tensor_from_file=make_voltage_len_categorical_tmap(lead=lead, channel_prefix='l'),
         channel_map={'l2500': 0, 'l5000': 1, 'other': 2},
         validator=validator_not_all_zero,
     )
@@ -516,7 +517,7 @@ TMAPS[task] = TensorMap(
 task = "partners_ecg_date"
 TMAPS[task] = TensorMap(
     task,
-    interpretation=Interpretation.CATEGORICAL,
+    interpretation=Interpretation.LANGUAGE,
     path_prefix=PARTNERS_PREFIX,
     tensor_from_file=make_partners_ecg_tensor(key="acquisitiondate"),
     shape=(None, 1),
