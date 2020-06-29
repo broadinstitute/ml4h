@@ -403,6 +403,9 @@ def make_pretest_labels():
         logging.info(f'Due to filter {name}, dropping {(idx & ~all_drop).sum()} values')
         all_drop |= idx
     new_df = new_df[~all_drop]
+    unknown_errors = new_df.isna().any(axis=1)
+    logging.info(f'Dropping {unknown_errors.sum()} due to unknown biosppy errors.')
+    new_df = new_df[~unknown_errors]  # TODO: why needed?
     assert new_df.notna().all().all()
     logging.info(f'There are {len(new_df)} pretest labels after filtering.')
     new_df.to_csv(PRETEST_LABEL_FILE, index=False)
@@ -479,6 +482,8 @@ def explore_pretest_tmaps():
         'test_ratio': .1,
         'valid_ratio': .05,
         'plot_hist': 'True',
+        'training_steps': 1,
+        'validation_steps': 1,
     })
     explore(args)
 
@@ -487,14 +492,14 @@ def build_csvs():
     df = pd.read_csv(EXPLORE_RESULT)
     df['sample_id'] = [_sample_id_from_path(p) for p in df['fpath']]
     df_error_cols = [col for col in df.columns if 'error' in col]
-    df = df[df_error_cols].isnull()
+    df = df[df[df_error_cols].isnull().all(axis=1)]
     train, valid, test = np.split(
         df.sample(frac=1),
         [int(TRAIN_RATIO * len(df)), int((TRAIN_RATIO + VALID_RATIO) * len(df))]
     )
-    train[['sample_id']].to_csv(TRAIN_CSV)
-    valid[['sample_id']].to_csv(VALID_CSV)
-    test[['sample_id']].to_csv(TEST_CSV)
+    train[['sample_id']].to_csv(TRAIN_CSV, index=False)
+    valid[['sample_id']].to_csv(VALID_CSV, index=False)
+    test[['sample_id']].to_csv(TEST_CSV, index=False)
     return train, test, valid
 
 
@@ -506,7 +511,7 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
 
 
 # Model training
-def make_pretest_model(load_model: True):
+def make_pretest_model(load_model: bool):
     pretest_tmap = make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)
     hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))
     return make_multimodal_multitask_model(
@@ -523,6 +528,8 @@ def make_pretest_model(load_model: True):
         conv_type='conv',
         conv_normalize='layer_norm',
         conv_x=[16],
+        conv_y=[1],
+        conv_z=[1],
         pool_type='max',
         pool_x=2,
         block_size=3,
@@ -561,7 +568,7 @@ def _train_pretest_model(
         training_steps=training_steps,
         validation_steps=validation_steps,
     )
-    model = make_pretest_model()
+    model = make_pretest_model(False)
     try:
         model, history = train_model_from_generators(
             model, generate_train, generate_valid, training_steps, validation_steps, batch_size,
@@ -744,8 +751,7 @@ if __name__ == '__main__':
     load_config('INFO', OUTPUT_FOLDER, 'log_' + now_string, USER)
 
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
-    MAKE_PRETEST_LABELS = False or not os.path.exists(PRETEST_LABEL_FILE)
-    EXPLORE_PRETEST_TMAPS = False or not os.path.exists(EXPLORE_OUTPUT_FOLDER)
+    EXPLORE_PRETEST_TMAPS = False or not os.path.exists(EXPLORE_RESULT)
     MAKE_CSVS = False or not all((
         os.path.exists(TRAIN_CSV), os.path.exists(VALID_CSV), os.path.exists(TEST_CSV)
     ))
@@ -760,8 +766,7 @@ if __name__ == '__main__':
         build_hr_biosppy_measurements_csv()
     plot_hr_from_biosppy_summary_stats()
     plt.close('all')
-    if MAKE_PRETEST_LABELS:
-        make_pretest_labels()
+    make_pretest_labels()
     if EXPLORE_PRETEST_TMAPS:
         explore_pretest_tmaps()
     plot_pretest_label_summary_stats()
@@ -781,3 +786,5 @@ if __name__ == '__main__':
     _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
 # TODO: bonus: bootstrapping for test set full size?
 # TODO: augmentations demonstrations
+# TODO: does explore result align with PRETEST_LABEL_FILE?
+# TODO: table explaining filtering
