@@ -615,22 +615,25 @@ def _handle_inference_batch(
         visited_paths: Set[str], rows: List[Dict[str, str]],
 ):
     input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
-    pred = model.predict(input_data)
-    for pred, out_name in zip(pred, model.output_names):
+    # TODO: compare with infer_multi branch
+    preds = model.predict(input_data)
+    if len(output_name_to_tmap) == 1:
+        preds = [preds]
+    for pred, out_name in zip(preds, model.output_names):
         tm = output_name_to_tmap[out_name]
         scaled = tm.rescale(pred)
         actual = output_data[tm.output_name()]
         for i, row in enumerate(rows):
             if tensor_paths[i] in visited_paths:
                 continue
-            visited_paths.add(tensor_paths[0])
-            row[tmap_to_pred_col(tm, model_id)] = f'{scaled[i, 0]:.3f}'
-            row['sample_id'] = os.path.basename(tensor_paths[i]).replace(TENSOR_EXT, '')  # extract sample id
+            visited_paths.add(tensor_paths[i])
+            row[tmap_to_pred_col(tm, model_id)] = f'{float(scaled[i]):.3f}'
+            row['sample_id'] = _sample_id_from_path(tensor_paths[i])
             if ((tm.sentinel is not None and tm.sentinel == actual[i][0])
                     or np.isnan(actual[i][0])):
                 row[tmap_to_actual_col(tm)] = 'NA'
             else:
-                row[tmap_to_actual_col(tm)] = f'{tm.rescale(actual[i, 0]):.3f}'
+                row[tmap_to_actual_col(tm)] = f'{float(tm.rescale(actual[i])):.3f}'
 
 
 def _infer_models(
@@ -671,7 +674,7 @@ def _infer_models(
                 rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
                 for model, model_id in zip(models, model_ids):
                     _handle_inference_batch(output_name_to_tmap, model, model_id, batch, visited_paths, rows)
-                inference_writer.writerows(rows)
+                inference_writer.writerows([row for row in rows if row])
                 if generate_test.stats_q.qsize() == generate_test.num_workers:
                     generate_test.aggregate_and_print_stats()
                     logging.info(f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
@@ -774,7 +777,7 @@ if __name__ == '__main__':
         build_csvs()
     if TRAIN_PRETEST_MODEL:
         _train_pretest_model(PRETEST_MODEL_ID)
-    if INFER_PRETEST_MODEL:  # TODO: does inference infer all results??
+    if INFER_PRETEST_MODEL:
         logging.info('Running inference on pretest models.')
         _infer_models(
             models=[make_pretest_model(True)],
@@ -788,3 +791,6 @@ if __name__ == '__main__':
 # TODO: augmentations demonstrations
 # TODO: does explore result align with PRETEST_LABEL_FILE?
 # TODO: table explaining filtering
+# TODO: explore necessary?
+# TODO: inference only works for one model
+# TODO: does inference infer all results??
