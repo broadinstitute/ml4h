@@ -16,7 +16,7 @@ CATEGORICAL_TMAPS = [
     TensorMap(
         f'{n}d_cat', shape=tuple(range(2, n + 2)),
         interpretation=Interpretation.CATEGORICAL,
-        channel_map={f'c_{i}': i for i in range(n)},
+        channel_map={f'c_{i}': i for i in range(n + 1)},
     )
     for n in range(1, 6)
 ]

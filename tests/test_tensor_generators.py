@@ -5,7 +5,15 @@ import numpy as np
 from collections import defaultdict
 
 from ml4cvd.defines import TENSOR_EXT
-from ml4cvd.tensor_generators import _sample_csv_to_set, get_train_valid_test_paths, get_train_valid_test_paths_split_by_csvs
+from ml4cvd.tensor_generators import _sample_csv_to_set, get_train_valid_test_paths, get_train_valid_test_paths_split_by_csvs, _ShufflePaths
+
+
+def test_shuffle_paths():
+    n = 10
+    paths = list(range(n))
+    path_iter = _ShufflePaths(paths)
+    assert sorted([next(path_iter) for _ in range(n)]) == sorted(paths)
+    assert sorted([next(path_iter) for _ in range(n)]) == sorted(paths)
 
 
 def _write_samples(csv_path, sample_ids, use_header=False, write_dupes=False):
