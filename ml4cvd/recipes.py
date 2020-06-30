@@ -267,7 +267,7 @@ def _handle_hidden_inference_batch(
 
 def _infer_models(
         models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
-        tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], batch_size: int,
+        tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
         num_workers: int,
 ):
     count = 0
@@ -326,7 +326,7 @@ def infer_multimodal_multitask(args):
         models=models, model_ids=args.model_ids,
         inference_tsv=inference_file_name(args.output_folder, args.id),
         tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, tensor_maps_out=args.tensor_maps_out,
-        batch_size=args.batch_size, num_workers=args.num_workers,
+        num_workers=args.num_workers,
     )
 
 
@@ -336,7 +336,7 @@ def hidden_inference_file_name(output_folder: str, id_: str) -> str:
 
 def _infer_hidden(
     models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
-    tensor_maps_in: List[TensorMap], hidden_shapes: List[int], batch_size: int,
+    tensor_maps_in: List[TensorMap], hidden_shapes: List[int],
     num_workers: int,
 ):
     count = 0
@@ -356,7 +356,7 @@ def _infer_hidden(
     )
     try:
         generate_test = TensorGenerator(
-            batch_size, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
+            1, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
             cache_size=0, keep_paths=True, mixup=0,
         )
         with open(inference_tsv, 'w') as f:
@@ -377,7 +377,7 @@ def _infer_hidden(
                 inference_writer.writerows([row for row in rows if row])
                 count += 1
                 logging.info(f"Wrote {count} batches of inference.")
-                if generate_test.stats_q.qsize() == generate_test.num_workers:  # TODO: does this work for num_workers == 0?
+                if generate_test.stats_q.qsize() == generate_test.num_workers:
                     generate_test.aggregate_and_print_stats()
                     logging.info(
                         f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
@@ -401,7 +401,7 @@ def infer_hidden_layer_multimodal_multitask(args):
         models=embed_models, model_ids=args.model_ids, hidden_shapes=hidden_shapes,
         inference_tsv=hidden_inference_file_name(args.output_folder, args.id),
         tensors=args.tensors, tensor_maps_in=args.tensor_maps_in,
-        batch_size=args.batch_size, num_workers=args.num_workers,
+        num_workers=args.num_workers,
     )
 
 
