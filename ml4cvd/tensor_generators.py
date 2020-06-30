@@ -161,12 +161,15 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
-        if all(worker.signal.is_set() for worker in self.worker_instances):
+        if self.epoch_is_finished():
             self.aggregate_and_print_stats()
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
             return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+
+    def epoch_is_finished(self):
+        return all(worker.signal.is_set() for worker in self.worker_instances)
 
     def aggregate_and_print_stats(self):
         stats = Counter()
