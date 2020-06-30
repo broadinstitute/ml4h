@@ -9,8 +9,9 @@ import logging
 import numpy as np
 from functools import reduce
 from timeit import default_timer as timer
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import Dict, Set, List, Callable, Tuple
+import pandas as pd
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.optimizers import find_learning_rate
@@ -319,15 +320,32 @@ def _infer_models(
             generate_test.kill_workers()
 
 
+def _convert_to_genetics_df(df: pd.DataFrame) -> pd.DataFrame:
+    new_cols = ['FID', 'IID']
+    df[new_cols[0]] = df[new_cols[1]] = df[SAMPLE_ID]
+    del df[SAMPLE_ID]
+    cols = [col for col in df.columns if col not in new_cols]
+    return df[new_cols + cols]
+
+
+def _convert_tsv_to_genetics(tsv_path: str):
+    df = pd.read_csv(tsv_path, sep='\t')
+    df = _convert_to_genetics_df(df)
+    df.to_csv(tsv_path, sep='\t', index=False)
+
+
 def infer_multimodal_multitask(args):
     assert len(args.model_files) == len(args.model_ids)
     models = [load_multimodal_multitask_model(model_file, args.tensor_maps_out) for model_file in args.model_files]
+    tsv_path = inference_file_name(args.output_folder, args.id)
     _infer_models(
         models=models, model_ids=args.model_ids,
-        inference_tsv=inference_file_name(args.output_folder, args.id),
+        inference_tsv=tsv_path,
         tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, tensor_maps_out=args.tensor_maps_out,
         num_workers=args.num_workers,
     )
+    if 'genetics' in args.tsv_style:
+        _convert_tsv_to_genetics(tsv_path)
 
 
 def hidden_inference_file_name(output_folder: str, id_: str) -> str:
@@ -397,12 +415,13 @@ def infer_hidden_layer_multimodal_multitask(args):
     hidden_shapes = [np.prod(embed_model.predict(dummy_input).shape) for embed_model in embed_models]
     for m_id, shape in zip(args.model_ids, hidden_shapes):
         logging.info(f'Hidden shape for model {m_id} is {shape}.')
+    tsv_path = hidden_inference_file_name(args.output_folder, args.id)
     _infer_hidden(
-        models=embed_models, model_ids=args.model_ids, hidden_shapes=hidden_shapes,
-        inference_tsv=hidden_inference_file_name(args.output_folder, args.id),
-        tensors=args.tensors, tensor_maps_in=args.tensor_maps_in,
-        num_workers=args.num_workers,
+        models=embed_models, model_ids=args.model_ids, hidden_shapes=hidden_shapes, inference_tsv=tsv_path,
+        tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, num_workers=args.num_workers,
     )
+    if 'genetics' in args.tsv_style:
+        _convert_tsv_to_genetics(tsv_path)
 
 
 def train_shallow_model(args):
