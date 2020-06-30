@@ -540,9 +540,16 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     if sample_csv is None:
         return None
 
-    # Load CSV into dataframe
-    df = pd.read_csv(sample_csv, header="infer")
+    # Read CSV to dataframe and assume no header
+    df = pd.read_csv(sample_csv, header=None)
 
+    # If the first row and column is castable to int, there is no header
+    try:
+        int(df.iloc[0].values[0])
+    # If fails, re-read CSV but infer header name from first row
+    except ValueError:
+        df = pd.read_csv(sample_csv, header='infer')
+    
     # Declare set of possible MRN column names
     possible_mrn_col_names = {"sampleid", "medrecn", "mrn", "patient_id"}
 
@@ -563,7 +570,7 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
 
     # Isolate this column from the dataframe, and cast to strings
     sample_ids = df[mrn_col_name].apply(str)
-
+    
     return set(sample_ids)
 
 
