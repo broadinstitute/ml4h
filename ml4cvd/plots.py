@@ -1992,12 +1992,13 @@ def _plot_reconstruction(tm: TensorMap, y_true, y_pred, folder: str, paths: List
         yp = y_pred[i].reshape(tm.shape)
         if tm.axes() == 2:
             fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * num_samples))
-            fig.suptitle(title)
             for j in range(tm.shape[1]):
                 plt.subplot(tm.shape[1], 1, j + 1)
                 plt.plot(y[:, j], c='k', linestyle='--', label='original')
                 plt.plot(yp[:, j], c='b', label='reconstruction')
-                plt.legend()
+                if j == 0:
+                    plt.title(title)
+                    plt.legend()
             plt.tight_layout()
         # TODO: implement 3d, 4d
         plt.savefig(os.path.join(folder, title + IMAGE_EXT))
