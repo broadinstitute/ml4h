@@ -671,6 +671,14 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
+def _continuous_explore_header(tm: TensorMap) -> str:
+    return tm.name
+
+
+def _categorical_explore_header(tm: TensorMap, channel: str) -> str:
+    return f'{tm.name} {channel}'
+
+
 def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
     with count.get_lock():
         i = count.value
@@ -704,18 +712,18 @@ def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
+                                    dict_of_tensor_dicts[i][_categorical_explore_header(tm, cm)] = tensor[tm.channel_map[cm]]
                             else:
                                 # If tensor is a scalar, isolate the value in the array;
                                 # otherwise, retain the value as array
                                 if shape[0] == 1:
                                     if type(tensor) == np.ndarray:
                                         tensor = tensor.item()
-                                dict_of_tensor_dicts[i][tm.name] = tensor
+                                dict_of_tensor_dicts[i][_continuous_explore_header(tm)] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
+                                    dict_of_tensor_dicts[i][_categorical_explore_header(tm, cm)] = np.nan
                             else:
                                 dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
                             error_type = type(e).__name__
@@ -725,7 +733,7 @@ def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
                     # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                     if tm.channel_map:
                         for cm in tm.channel_map:
-                            dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
+                            dict_of_tensor_dicts[0][_categorical_explore_header(tm, cm)] = np.nan
                     else:
                         dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
                     dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
@@ -796,6 +804,7 @@ def _tmap_error_detect(tmap: TensorMap) -> TensorMap:
     new_tm = copy.deepcopy(tmap)
     new_tm.shape = (1,)
     new_tm.interpretation = Interpretation.CONTINUOUS
+    new_tm.channel_map = None
 
     def tff(_: TensorMap, hd5: h5py.File, dependents=None):
         tmap.tensor_from_file(tmap, hd5, dependents)
@@ -976,13 +985,14 @@ def explore(args):
                 name = tm.name
                 arr = list(df[name])
                 plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-                plt.hist(arr, 50, rwidth = .9)
+                plt.hist(arr, 50, rwidth=.9)
                 plt.xlabel(name)
                 plt.ylabel('Fraction')
                 plt.rcParams.update({'font.size': 13})
                 figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
+
 
 def cross_reference(args):
     """Cross reference a source cohort with a reference cohort."""

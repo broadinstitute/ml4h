@@ -1,18 +1,21 @@
+import os
 import pytest
 import pandas as pd
+import numpy as np
 
 from ml4cvd.recipes import inference_file_name, hidden_inference_file_name
 from ml4cvd.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
 from ml4cvd.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
-from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
+from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate, explore
+from ml4cvd.explorations import _continuous_explore_header, _categorical_explore_header
 # Imports with test in their name
 from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
+from ml4cvd.test_utils import TMAPS_UP_TO_4D
+from ml4cvd.test_utils import build_hdf5s
 
 
 class TestRecipes:
-    """Smoke tests"""
-
     def test_train(self, default_arguments):
         train_multimodal_multitask(default_arguments)
 
@@ -52,3 +55,26 @@ class TestRecipes:
 
     def test_find_learning_rate(self, default_arguments):
         _find_learning_rate(default_arguments)
+
+    def test_explore(self, default_arguments, tmpdir_factory):
+        temp_dir = tmpdir_factory.mktemp('explore_tensors')
+        default_arguments.tensors = str(temp_dir)
+        explore_expected = build_hdf5s(temp_dir, TMAPS_UP_TO_4D.values(), n=pytest.N_TENSORS)
+        explore(default_arguments)
+        csv_path = os.path.join(
+            default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
+        )
+        explore_result = pd.read_csv(csv_path)
+        for row in explore_result.itertuples(index=False):
+            for tm in TMAPS_UP_TO_4D.values():
+                row_expected = explore_expected[(row['fpath'], tm)]
+                if tm.axes() > 1:  # multidimensional explore just checks if tensor produced
+                    actual = getattr(row, _continuous_explore_header(tm))
+                    assert not np.isnan(actual)
+                elif tm.is_continuous():
+                    actual = getattr(row, _continuous_explore_header(tm))
+                    assert actual == row_expected
+                if tm.is_categorical():
+                    for channel, idx in tm.channel_map.items():
+                        channel_val = getattr(row, _categorical_explore_header(tm, channel))
+                        assert channel_val == row_expected[idx]
