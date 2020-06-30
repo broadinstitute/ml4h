@@ -58,7 +58,7 @@ class TestRecipes:
         tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
-        assert inferred['FID'] == inferred['IID']
+        assert (inferred['FID'] == inferred['IID']).all()
         assert list(inferred.columns)[:2] == ['FID', 'IID']
 
     @pytest.mark.parametrize('num_workers', [0, 3])
@@ -80,7 +80,7 @@ class TestRecipes:
         tsv = hidden_inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
-        assert inferred['FID'] == inferred['IID']
+        assert (inferred['FID'] == inferred['IID']).all()
         assert list(inferred.columns)[:2] == ['FID', 'IID']
 
     def test_find_learning_rate(self, default_arguments):
