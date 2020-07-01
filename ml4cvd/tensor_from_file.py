@@ -1967,7 +1967,6 @@ def sax_tensor(b_series_prefix):
                 try:
                     tm_shape = (tm.shape[0], tm.shape[1])
                     tensor[:, :, b] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_frame_b{b}/instance_0'], dtype=np.float32))
-                    index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_mask_b{b}/instance_0'], dtype=np.float32))
                 except KeyError:
                     missing += 1
                     tensor[:, :, b] = 0
@@ -1986,7 +1985,7 @@ def sax_tensor(b_series_prefix):
                         dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
             if missing == tm.shape[-2]:
                 raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]} looked at: {tm.path_prefix}/{b_series_prefix}')
-            return tensor
+        return tensor
     return sax_tensor_from_file
 
 
