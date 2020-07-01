@@ -573,7 +573,7 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
 
     # Isolate this column from the dataframe, and cast to strings
     sample_ids = df[mrn_col_name].apply(str)
-    
+
     return set(sample_ids)
 
 

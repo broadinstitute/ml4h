@@ -28,28 +28,36 @@ def _process_args(args):
     now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
     # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-                        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
-                        handlers=[
-                            logging.FileHandler(f"{now_str}_organize_xmls_log.txt"),
-                            logging.StreamHandler()
-                            ])
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(f"{now_str}_organize_xmls_log.txt"),
+            logging.StreamHandler(),
+            ],
+    )
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--source_xml_folder",
-                        default="/data/partners_ecg/xml",
-                        help="Path to directory containing source XMLs")
+    parser.add_argument(
+        "--source_xml_folder",
+        default="/data/partners_ecg/xml",
+        help="Path to directory containing source XMLs",
+    )
 
-    parser.add_argument("--destination_xml_folder",
-                        default="/data/partners_ecg/dst",
-                        help="Path to dir to organize XMLs in yyyy-mm dirs")
+    parser.add_argument(
+        "--destination_xml_folder",
+        default="/data/partners_ecg/dst",
+        help="Path to dir to organize XMLs in yyyy-mm dirs",
+    )
 
-    parser.add_argument("--bad_xml_folder",
-                        default="/data/partners_ecg/xml_bad",
-                        help="Path to directory in which to store malformed XMLs")
+    parser.add_argument(
+        "--bad_xml_folder",
+        default="/data/partners_ecg/xml_bad",
+        help="Path to directory in which to store malformed XMLs",
+    )
 
     parser.add_argument("--method", default="copy", choices=["copy", "move"], help="Copy or move files from src to dst/yyyy-mm. Default: copy")
 
@@ -112,11 +120,13 @@ def run(args):
                 # 3. Look ahead postive A(?=B) finds expression A where B follows.
                 #    Here, our encoding value is right-bound by ""?>"
 
-                verbosePattern = re.compile("""
+                verbosePattern = re.compile(
+                    """
                     (?<=encoding\=\")
                     (.*?)
                     (?=\"\?\>)
-                    """, re.VERBOSE)
+                    """, re.VERBOSE,
+                )
 
                 # Extract XML encoding from first line of imported XML
                 xml_encoding = re.search(verbosePattern, xml_as_string)
@@ -153,9 +163,11 @@ def run(args):
                     # 1) has ten digits
                     # 2) has a dash at index 2
                     # 3) has a dash at index 5
-                    date_check = [len(ecg_date) == 10,
-                                  ecg_date[2] == "-",
-                                  ecg_date[5] == "-"]
+                    date_check = [
+                        len(ecg_date) == 10,
+                        ecg_date[2] == "-",
+                        ecg_date[5] == "-",
+                    ]
 
                     # If does not pass date check, inform user XML has bad date format
                     if not all(date_check):
