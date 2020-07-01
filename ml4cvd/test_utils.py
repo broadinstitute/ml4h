@@ -16,7 +16,7 @@ CATEGORICAL_TMAPS = [
     TensorMap(
         f'{n}d_cat', shape=tuple(range(2, n + 2)),
         interpretation=Interpretation.CATEGORICAL,
-        channel_map={f'c_{i}': i for i in range(n)},
+        channel_map={f'c_{i}': i for i in range(n + 1)},
     )
     for n in range(1, 6)
 ]
@@ -51,8 +51,8 @@ def build_hdf5s(path: str, tensor_maps: List[TensorMap], n=5) -> Dict[Tuple[str,
     """
     out = {}
     for i in range(n):
-        hd5_path = f'{i}{TENSOR_EXT}'
-        with h5py.File(os.path.join(path, hd5_path), 'w') as hd5:
+        hd5_path = os.path.join(path, f'{i}{TENSOR_EXT}')
+        with h5py.File(hd5_path, 'w') as hd5:
             for tm in tensor_maps:
                 if tm.is_continuous():
                     value = np.full(tm.shape, fill_value=i, dtype=np.float32)

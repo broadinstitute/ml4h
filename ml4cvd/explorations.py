@@ -807,17 +807,27 @@ def _tmap_error_detect(tmap: TensorMap) -> TensorMap:
     new_tm.channel_map = None
 
     def tff(_: TensorMap, hd5: h5py.File, dependents=None):
-        tmap.tensor_from_file(tmap, hd5, dependents)
-        return np.array([1.])
+        return tmap.tensor_from_file(tmap, hd5, dependents).mean()
     new_tm.tensor_from_file = tff
     return new_tm
 
 
+def _should_error_detect(tm: TensorMap) -> bool:
+    if tm.is_continuous():
+        return tm.shape not in {(1,), (None, 1)}
+    if tm.is_categorical():
+        if tm.shape[0] is None:
+            return tm.axes() > 2
+        else:
+            return tm.axes() > 1
+    return True
+
+
 def explore(args):
     tmaps = [
-        tm if (tm.axes() == 1 or (tm.axes() == 2 and tm.shape[0] is None))
-        else _tmap_error_detect(tm) for tm in args.tensor_maps_in
+        _tmap_error_detect(tm) if _should_error_detect(tm) else tm for tm in args.tensor_maps_in
     ]
+    args.tensor_maps_in = tmaps
     fpath_prefix = "summary_stats"
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     out_ext = 'tsv' if tsv_style_is_genetics else 'csv'
@@ -835,7 +845,6 @@ def explore(args):
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
         df.insert(0, 'FID', fid)
         df.insert(1, 'IID', fid)
-
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
