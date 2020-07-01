@@ -819,7 +819,7 @@ def _tensors_to_df(args):
 
 
 def _tmap_error_detect(tmap: TensorMap) -> TensorMap:
-    """Modifies tm so it returns 1 unless previous tensor from file fails"""
+    """Modifies tm so it returns it's mean unless previous tensor from file fails"""
     new_tm = copy.deepcopy(tmap)
     new_tm.shape = (1,)
     new_tm.interpretation = Interpretation.CONTINUOUS
@@ -832,6 +832,7 @@ def _tmap_error_detect(tmap: TensorMap) -> TensorMap:
 
 
 def _should_error_detect(tm: TensorMap) -> bool:
+    """Whether a tmap has to be modified to be used in explore"""
     if tm.is_continuous():
         return tm.shape not in {(1,), (None, 1)}
     if tm.is_categorical():

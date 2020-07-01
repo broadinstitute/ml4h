@@ -6,8 +6,8 @@ import numpy as np
 from ml4cvd.recipes import inference_file_name, hidden_inference_file_name
 from ml4cvd.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
 from ml4cvd.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
-from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate, explore
-from ml4cvd.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect
+from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
+from ml4cvd.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
 # Imports with test in their name
 from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
