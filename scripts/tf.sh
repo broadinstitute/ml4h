@@ -166,6 +166,8 @@ cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
     docker run ${INTERACTIVE} \
     ${GPU_DEVICE} \
+    --env GROUP_NAMES \
+    --env GROUP_IDS \
     --rm \
     --ipc=host \
     -v ${WORKDIR}/:${WORKDIR}/ \
