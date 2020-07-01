@@ -20,7 +20,7 @@ import traceback
 import numpy as np
 import pandas as pd
 from collections import Counter
-from multiprocessing import Process, Queue, Event
+from multiprocessing import Process, Queue, Event, Barrier
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union
 
@@ -126,6 +126,7 @@ class TensorGenerator:
     def _init_workers(self):
         self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
         self.stats_q = Queue(self.num_workers)
+        self.worker_batch_batter = Barrier(self.num_workers)
         self._started = True
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
@@ -139,6 +140,7 @@ class TensorGenerator:
                 self.cache_size,
                 name,
                 self.augment,
+                self.worker_batch_batter,
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
@@ -161,15 +163,19 @@ class TensorGenerator:
     def __next__(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
         if not self._started:
             self._init_workers()
-        if self.epoch_is_finished():
+        if self.true_epoch_is_finished():
             self.aggregate_and_print_stats()
         if self.run_on_main_thread:
             return next(self.worker_instances[0])
         else:
-            return self.q.get(TENSOR_GENERATOR_TIMEOUT)
+            return self.q.get(block=True, timeout=TENSOR_GENERATOR_TIMEOUT)
 
-    def epoch_is_finished(self):
-        return all(worker.signal.is_set() for worker in self.worker_instances)
+    def true_epoch_is_finished(self):
+        return all(worker.stats_signal.is_set() for worker in self.worker_instances)
+
+    def clear_worker_stats_signal(self):
+        for worker in self.worker_instances:
+            worker.stats_signal.clear()
 
     def aggregate_and_print_stats(self):
         stats = Counter()
@@ -234,8 +240,7 @@ class TensorGenerator:
         ])
         logging.info(f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}")
 
-        for worker in self.worker_instances:
-            worker.signal.clear()
+        self.clear_worker_stats_signal()
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
@@ -332,6 +337,7 @@ class _MultiModalMultiTaskWorker:
         cache_size: float,
         name: str,
         augment: bool,
+        batch_barrier: Barrier,
     ):
         self.q = q
         self.stats_q = stats_q
@@ -347,7 +353,8 @@ class _MultiModalMultiTaskWorker:
         self.cache_size = cache_size
         self.name = name
         self.augment = augment
-        self.signal = Event()
+        self.batch_barrier = batch_barrier
+        self.stats_signal = Event()
 
         self.stats = Counter()
         self.epoch_stats = Counter()
@@ -434,10 +441,10 @@ class _MultiModalMultiTaskWorker:
         self.stats['epochs'] += 1
         self.epoch_stats['epochs'] = self.stats['epochs']
         # wait until the previous signal is consumed, allows for 1 batch to be loaded in advance
-        while self.signal.is_set():
+        while self.stats_signal.is_set():
             continue
         self.stats_q.put(self.epoch_stats)
-        self.signal.set()
+        self.stats_signal.set()
         if self.stats['Tensors presented'] == 0:
             logging.error(f"Completed an epoch but did not find any tensors to yield")
         if 'test' in self.name:
@@ -449,8 +456,8 @@ class _MultiModalMultiTaskWorker:
         for i, path in enumerate(self.path_iter):
             self._handle_tensor_path(path)
             if self.stats['batch_index'] == self.batch_size:
-
                 out = self.batch_function(self.in_batch, self.out_batch, self.return_paths, self.paths_in_batch, **self.batch_func_kwargs)
+                self.batch_barrier.wait()
                 self.q.put(out)
                 self.paths_in_batch = []
                 self.stats['batch_index'] = 0
@@ -798,8 +805,13 @@ def test_train_valid_tensor_generators(
         )
         weights = None
 
-    num_train_workers = int(training_steps / (training_steps + validation_steps) * num_workers) or (1 if num_workers else 0)
-    num_valid_workers = int(validation_steps / (training_steps + validation_steps) * num_workers) or (1 if num_workers else 0)
+    if num_workers:
+        num_train, num_valid, num_test = len(train_paths), len(valid_paths), len(test_paths)
+        num_train_workers = math.ceil(num_train / batch_size)
+        num_valid_workers = math.ceil(num_valid / batch_size)
+    else:
+        num_train_workers = 0
+        num_valid_workers = 0
     generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_train_workers, cache_size, weights, keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
     generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_valid_workers, cache_size, weights, keep_paths, name='validation_worker', siamese=siamese, augment=False)
     generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, test_paths, num_workers, 0, weights, keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False)
