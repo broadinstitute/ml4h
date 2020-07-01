@@ -139,7 +139,7 @@ VALUES
         key=params['key'],
         value_numeric=params['value_numeric'],
         value_string=params['value_string'],
-        comment=params['comment'],
+        comment=params['comment']
     )
 
     # submit the insert request
@@ -161,7 +161,7 @@ def view_submissions(count=10, table='uk-biobank-sek-data.ml_results.annotations
 ORDER BY annotation_timestamp DESC
 LIMIT {count}'''.format(
         table=table,
-        count=str(count),
+        count=str(count)
     )
 
     # submit the query and store the result as a dataframe

@@ -45,7 +45,7 @@ def get_ranged_phecodes():
         SELECT REPLACE(icd10,'.','') as icd10, phecode
         FROM %(phecode_icd10)s
         WHERE regexp_contains(icd10,'-')
-        """ % PARAMS,
+        """ % PARAMS
     )
     for row in query_job:
         (low, high) = tuple(row['icd10'].split('-'))  # (start icd10,end icd10)
@@ -97,7 +97,7 @@ def create_phecode_match_file():
         SELECT replace(icd10,'.','') as icd10, phecode
         from %(phecode_icd10)s
         where regexp_contains(icd10,'-') = false
-        """ % PARAMS,
+        """ % PARAMS
     )
 
     for row in query_job:
@@ -120,7 +120,7 @@ def create_phecode_match_file():
         replace(diag_icd10,'.','') as icd10
         FROM %(pheno_dataset)s.hesin
         where diag_icd10 is not null
-        """ % PARAMS,
+        """ % PARAMS
     )
     count = 0
 

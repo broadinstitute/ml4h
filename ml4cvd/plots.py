@@ -256,10 +256,8 @@ def plot_rocs(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dic
     logging.info(f"Saved ROC curve at: {figure_path}")
 
 
-def plot_prediction_calibrations(
-    predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int],
-    title: str, prefix: str = './figures/', n_bins: int = 10,
-):
+def plot_prediction_calibrations(predictions: Dict[str, np.ndarray], truth: np.ndarray, labels: Dict[str, int],
+                                 title: str, prefix: str = './figures/', n_bins: int = 10):
     """Plot calibration performance and compute Brier Score.
 
     Typically this function is used to compare several models predictions across multiple labels.
@@ -305,10 +303,8 @@ def plot_prediction_calibrations(
     plt.clf()
 
 
-def plot_prediction_calibration(
-    prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
-    title: str, prefix: str = './figures/', n_bins: int = 10,
-):
+def plot_prediction_calibration(prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+                                title: str, prefix: str = './figures/', n_bins: int = 10):
     """Plot calibration performance and compute Brier Score.
 
     :param prediction: Array of probabilistic predictions with shape (num_samples, num_classes)
@@ -513,10 +509,8 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
-def plot_survivorship(
-    events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
-    title: str, prefix: str = './figures/', days_window: int = 1825,
-):
+def plot_survivorship(events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
+                      title: str, prefix: str = './figures/', days_window: int = 1825):
     """Plot Kaplan-Meier survivorship curves and stratify by median model prediction.
     All input arrays have the same shape: (num_samples,)
 
@@ -575,10 +569,8 @@ def plot_survivorship(
     return {}
 
 
-def plot_survival(
-    prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
-    prefix: str = './figures/',
-) -> Dict[str, float]:
+def plot_survival(prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
+                  prefix: str = './figures/') -> Dict[str, float]:
     """Plot Kaplan-Meier survivorship and predicted proportion surviving, calculate and return C-Index
 
     :param prediction: Array with model predictions of an event at each time step, with shape (num_samples, intervals*2).
@@ -611,8 +603,7 @@ def plot_survival(
     plt.ylabel('Proportion Surviving')
     plt.title(
         f'{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
-        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
-    )
+        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.legend(loc="upper right")
 
     figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
@@ -1470,24 +1461,22 @@ def _remove_duplicate_rows(df, out_folder):
     return arr
 
 
-def plot_ecg_rest(
-    tensor_paths: List[str], rows: List[int],
-    out_folder: str, is_blind: bool,
-) -> None:
+def plot_ecg_rest(tensor_paths: List[str], rows: List[int], 
+                  out_folder: str, is_blind: bool) -> None:
     """ Plots resting ECGs including annotations and LVH criteria
-
+    
     :param tensor_paths: list of HDF5 file paths with ECG traces
     :param rows: indices of the subset of tensor_paths to be plotted (used by multiprocessing)
     :param out_folder: destination folder for the plots
     :param is_blind: if True, the plot gets blinded (helpful for review and annotation)
     """
     map_fields_to_tmaps = {
-        'ramp': 'ecg_rest_ramplitude_raw',
+        'ramp': 'ecg_rest_ramplitude_raw', 
         'samp': 'ecg_rest_samplitude_raw',
         'aVL': 'ecg_rest_lvh_avl',
         'Sokolow_Lyon': 'ecg_rest_lvh_sokolow_lyon',
-        'Cornell': 'ecg_rest_lvh_cornell',
-        }
+        'Cornell': 'ecg_rest_lvh_cornell'
+        }    
     from ml4cvd.tensor_from_file import TMAPS
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
@@ -1548,7 +1537,7 @@ def plot_ecg_rest_mp(
         condition = (tensor_sample_ids > min_sample_id) & (tensor_sample_ids < max_sample_id)
         tensor_paths = [tensor_path for i, tensor_path in enumerate(tensor_paths) if condition[i]]
     except ValueError:
-        logging.warning('Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id')
+        logging.warning('Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id')        
     row_split = np.array_split(np.arange(len(tensor_paths)), num_workers)
     pool = Pool(num_workers)
     pool.starmap(plot_ecg_rest, zip([tensor_paths]*num_workers, row_split, [output_folder]*num_workers, [is_blind]*num_workers))
@@ -2007,7 +1996,7 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     plt.clf()
-
+    
 
 def _hash_string_to_color(string):
     """Hash a string to color (using hashlib and not the built-in hash for consistency between runs)"""
