@@ -1125,6 +1125,7 @@ TMAPS['t1_and_t2_flair_30_slices'] = TensorMap(
     tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
     normalization={'zero_mean_std1': True},
 )
+
 _dicom_keys = ['t1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1']
 TMAPS['t1_t2_dicom_30_slices'] = TensorMap(
     't1_t2_dicom_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',

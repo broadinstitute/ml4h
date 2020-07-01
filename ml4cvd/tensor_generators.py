@@ -616,7 +616,6 @@ def get_train_valid_test_paths(
 
     # parse csv's to disjoint sets, None if csv was None
     sample_set = _sample_csv_to_set(sample_csv)
-    logging.info(f'Sample set has {len(sample_set)}')
     train_set = _sample_csv_to_set(train_csv)
     valid_set = _sample_csv_to_set(valid_csv)
     test_set = _sample_csv_to_set(test_csv)
