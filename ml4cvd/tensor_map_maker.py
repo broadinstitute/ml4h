@@ -249,12 +249,12 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
     name = os.path.basename(text_file).split('.')[0]
     token_dictionary = _token_dictionary_from_text_file(text_file)
     shape = (window_size, len(token_dictionary)) if one_hot else (window_size,)
-    dependent_map1 = TensorMap(
+    burn_in = TensorMap(
         f'next_{name}', Interpretation.LANGUAGE, shape=shape,
         channel_map=token_dictionary,
         cacheable=False,
     )
-    dependent_map2 = TensorMap(
+    output_map = TensorMap(
         f'next_next_{name}', Interpretation.LANGUAGE, shape=shape,
         channel_map=token_dictionary,
         cacheable=False,
@@ -262,12 +262,12 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
     input_map = TensorMap(
         name, Interpretation.LANGUAGE, shape=shape,
         tensor_from_file=random_text_window_tensor(text_file, window_size, one_hot=one_hot),
-        dependent_map=[dependent_map1, dependent_map2],
+        dependent_map=[burn_in, output_map],
         channel_map=token_dictionary,
         annotation_units=128,
         cacheable=False,
     )
-    return input_map, dependent_map1, dependent_map2
+    return input_map, burn_in, output_map
 
 
 # TMAPS['lsd_text_next_char'] = TensorMap(
