@@ -108,6 +108,64 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
+def _preprocess_sentence(sentence):
+    sentence = sentence.strip()
+    # creating a space between a word and the punctuation following it
+    # eg: "he is a boy." => "he is a boy ."
+    # sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
+    # sentence = re.sub(r'[" "]+', " ", sentence)
+    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+    #sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+    #sentence = sentence.strip()
+    # adding a start and an end token to the sentence
+    return sentence
+
+
+def _load_text(path_to_text):
+    text = ""
+    with open(path_to_text) as file:
+        lines = file.readlines()
+    for line in lines:
+        text += _preprocess_sentence(line)
+    return text
+
+
+def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True):
+    error = None
+    try:
+        text = _load_text(text_file)
+    except FileNotFoundError as e:
+        error = e
+
+    def text_from_file(tm, _, dependents={}):
+        if error:
+            raise error
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        random_index = np.random.randint(window_size, len(text)-window_size)
+        for i, c in enumerate(text[random_index:random_index+window_size]):
+            if one_hot:
+                tensor[i, tm.channel_map[c]] = 1.0
+            else:
+                tensor[i] = tm.channel_map[c]
+        if tm.dependent_map is not None:
+            for i, dm in enumerate(tm.dependent_map):
+                start_next_window = random_index+1+i
+                dependents[dm] = np.zeros(dm.shape, dtype=np.float32)
+                if dm.axes() == 1 and one_hot:
+                    dependents[dm][dm.channel_map[text[start_next_window]]] = 1.0
+                elif dm.axes() == 2 or (not one_hot and dm.axes() == 1):
+                    for j, c in enumerate(text[start_next_window:start_next_window+dm.shape[0]]):
+                        if one_hot:
+                            dependents[dm][j, dm.channel_map[c]] = 1.0
+                        else:
+                            dependents[dm][j] = dm.channel_map[c]
+                else:
+                    raise ValueError(f'No method to process dependent map:{dm.name} of shape {dm.shape}.')
+                logging.debug(f'\nInput text: {text[random_index:random_index+window_size]}\n Dependent: {text[start_next_window:start_next_window+dm.shape[0]]}')
+        return tensor
+    return text_from_file
+
+
 def _survival_tensor(start_date_key: str, incidence_only: bool = False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
@@ -2125,101 +2183,4 @@ abbfc = _bounding_box_from_callable(MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aort
 TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap(
     'cine_segmented_ao_ascending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=abbfc,
     channel_map=_bounding_box_channel_map(3),
-)
-
-
-def _preprocess_sentence(sentence):
-    sentence = sentence.strip()
-    # creating a space between a word and the punctuation following it
-    # eg: "he is a boy." => "he is a boy ."
-    # sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
-    # sentence = re.sub(r'[" "]+', " ", sentence)
-    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
-    sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
-    sentence = sentence.strip()
-    # adding a start and an end token to the sentence
-    return sentence
-
-
-def _load_text(path_to_text):
-    text = ""
-    with open(path_to_text) as file:
-        lines = file.readlines()
-    for line in lines:
-        text += _preprocess_sentence(line)
-    return text
-
-
-def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True):
-    error = None
-    try:
-        text = _load_text(text_file)
-    except FileNotFoundError as e:
-        error = e
-
-    def text_from_file(tm, _, dependents={}):
-        if error:
-            raise error
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        random_index = np.random.randint(window_size, len(text)-window_size)
-        for i, c in enumerate(text[random_index:random_index+window_size]):
-            if one_hot:
-                tensor[i, tm.channel_map[c]] = 1.0
-            else:
-                tensor[i] = tm.channel_map[c]
-        if tm.dependent_map is not None:
-            for i, dm in enumerate(tm.dependent_map):
-                start_next_window = random_index+1+i
-                dependents[dm] = np.zeros(dm.shape, dtype=np.float32)
-                if dm.axes() == 1 and one_hot:
-                    dependents[dm][dm.channel_map[text[start_next_window]]] = 1.0
-                elif dm.axes() == 2 or (not one_hot and dm.axes() == 1):
-                    for j, c in enumerate(text[start_next_window:start_next_window+dm.shape[0]]):
-                        if one_hot:
-                            dependents[dm][j, dm.channel_map[c]] = 1.0
-                        else:
-                            dependents[dm][j] = dm.channel_map[c]
-                else:
-                    raise ValueError(f'No method to process dependent map:{dm.name} of shape {dm.shape}.')
-                logging.debug(f'\nInput text: {text[random_index:random_index+window_size]}\n Dependent: {text[start_next_window:start_next_window+dm.shape[0]]}')
-        return tensor
-    return text_from_file
-
-
-TMAPS['lsd_text_next_char'] = TensorMap(
-    'lsd_text_next_char', Interpretation.LANGUAGE, shape=(len(TESTIMONIAL_CHAR_2_IDX),), channel_map=TESTIMONIAL_CHAR_2_IDX, cacheable=False,
-)
-
-TMAPS['lsd_text_next_2_char'] = TensorMap(
-    'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(2, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX, annotation_units=32, cacheable=False,
-)
-
-TMAPS['lsd_text_32'] = TensorMap(
-    'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32, len(TESTIMONIAL_CHAR_2_IDX)),
-    tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32),
-    dependent_map=TMAPS['lsd_text_next_char'],
-    channel_map=TESTIMONIAL_CHAR_2_IDX,
-    annotation_units=128,
-    cacheable=False,
-)
-
-TMAPS['lsd_next_32_index'] = TensorMap(
-    'lsd_next_32_index', Interpretation.LANGUAGE, shape=(32,),
-    channel_map=TESTIMONIAL_CHAR_2_IDX,
-    cacheable=False,
-)
-
-TMAPS['lsd_next_next_32_index'] = TensorMap(
-    'lsd_next_next_32_index', Interpretation.LANGUAGE, shape=(32,),
-    channel_map=TESTIMONIAL_CHAR_2_IDX,
-    cacheable=False,
-)
-
-TMAPS['lsd_text_32_index'] = TensorMap(
-    'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32,),
-    tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32, one_hot=False),
-    dependent_map=[TMAPS['lsd_next_32_index'], TMAPS['lsd_next_next_32_index']],
-    channel_map=TESTIMONIAL_CHAR_2_IDX,
-    annotation_units=128,
-    cacheable=False,
 )

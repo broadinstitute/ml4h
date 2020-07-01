@@ -27,8 +27,7 @@ from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
-
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
@@ -78,6 +77,7 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
+    parser.add_argument('--text_file', default=None, help='Path to a file with text.',)
     parser.add_argument(
         '--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
@@ -91,6 +91,9 @@ def parse_args():
         '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
         help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
     )
+    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
+    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
+
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -374,12 +377,20 @@ def _process_args(args):
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect)
     needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
-    args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
+
+    args.tensor_maps_in = []
+    args.tensor_maps_out = []
+    if args.text_file is not None:
+        del args.input_tensors[0]
+        del args.output_tensors[:2]
+        input_map, output_map1, output_map2 = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
+        args.tensor_maps_in.append(input_map)
+        args.tensor_maps_out.extend([output_map1, output_map2])
+    args.tensor_maps_in.extend([_get_tmap(it, needed_tensor_maps) for it in args.input_tensors])
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     if args.sample_weight:
         assert args.sample_weight.shape == (1,)
 
-    args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
         args.tensor_maps_out.append(
