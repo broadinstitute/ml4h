@@ -543,14 +543,12 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     # Read CSV to dataframe and assume no header
     df = pd.read_csv(sample_csv, header=None)
 
-    # If the first row and column is castable to int, there is no header
+    # If first row and column is castable to int, there is no header
     try:
         int(df.iloc[0].values[0])
+    # If fails, must be header; overwrite column name with first row and remove first row
     except ValueError:
-        # Overwrite column names with first row
         df.columns = df.iloc[0]
-
-        # Remove first row
         df = df[1:]
 
     # Declare set of possible MRN column names
