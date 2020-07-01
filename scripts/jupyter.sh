@@ -54,7 +54,7 @@ while getopts ":ip:ch" opt ; do
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
-	    GPU_DEVICE=""
+            GPU_DEVICE=""
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
