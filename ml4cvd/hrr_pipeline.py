@@ -2,7 +2,6 @@ import os
 import csv
 import time
 import h5py
-import copy
 import biosppy
 import seaborn as sns
 import logging
@@ -12,7 +11,6 @@ from typing import List, Union, Tuple, Dict, Any, Set
 from itertools import combinations
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
-from types import SimpleNamespace
 from tensorflow.keras import Model
 import datetime
 import gc
@@ -23,13 +21,11 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, no_nans
 from ml4cvd.tensor_writer_ukbb import tensor_path, first_dataset_at_path
 from ml4cvd.normalizer import Standardize, Normalizer
 from ml4cvd.tensor_from_file import _get_tensor_at_first_date
-from ml4cvd.explorations import explore
 from ml4cvd.tensor_generators import test_train_valid_tensor_generators, TensorGenerator
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model, BottleneckType
 from ml4cvd.recipes import _make_tmap_nan_on_fail
 from ml4cvd.metrics import coefficient_of_determination
-
 
 
 PRETEST_DUR = 15  # DURs are measured in seconds
@@ -45,9 +41,6 @@ LEAD_NAMES = 'lead_I', 'lead_2', 'lead_3'
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors/2019-10-10/'
 USER = 'ndiamant'
 OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results'
-PRETEST_EXPLORE_ID = 'pretest_explore'
-EXPLORE_OUTPUT_FOLDER = os.path.join(OUTPUT_FOLDER, PRETEST_EXPLORE_ID)
-EXPLORE_RESULT = os.path.join(EXPLORE_OUTPUT_FOLDER, 'tensors_all_union.csv')
 TRAIN_CSV = os.path.join(OUTPUT_FOLDER, 'train_ids.csv')
 VALID_CSV = os.path.join(OUTPUT_FOLDER, 'valid_ids.csv')
 TEST_CSV = os.path.join(OUTPUT_FOLDER, 'test_ids.csv')
@@ -122,6 +115,7 @@ def _make_downsampled_rest_tff(downsample_rate: float):
 
 def _get_trace_recovery_start(hd5: h5py.File) -> int:
     _check_phase_full_len(hd5, 'rest')
+    _check_phase_full_len(hd5, 'pretest')
     pretest_dur = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', 'pretest_duration')
     exercise_dur = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', 'exercise_duration')
     return int(SAMPLING_RATE * (pretest_dur + exercise_dur - HR_SEGMENT_DUR / 2 - TREND_TRACE_DUR_DIFF))
@@ -379,7 +373,8 @@ def make_pretest_labels():
     biosppy_labels = pd.read_csv(BIOSPPY_MEASUREMENTS_FILE)
     new_df = pd.DataFrame()
     hr_0 = biosppy_labels[df_hr_col(HR_MEASUREMENT_TIMES[0])]
-    drop_idx = {'no ecg': biosppy_labels['error'].notnull()}
+    logging.info(f'Label error counts: {biosppy_labels["error"].value_counts()}')
+    drop_idx = {'ECG missing or incomplete': biosppy_labels['error'].notnull()}
     new_df['sample_id'] = biosppy_labels['sample_id']
     double_sided_quantile = (1 - PRETEST_QUANTILE_CUTOFF) / 2
     for t in HR_MEASUREMENT_TIMES:
@@ -451,48 +446,8 @@ def _make_hrr_tmap(
 
 
 # build cohort
-def tmap_error_detect(tmap: TensorMap) -> TensorMap:
-    """Modifies tm so it returns 1 unless previous tensor from file fails"""
-    new_tm = copy.deepcopy(tmap)
-    new_tm.shape = (1,)
-    new_tm.interpretation = Interpretation.CONTINUOUS
-
-    def tff(_: TensorMap, hd5: h5py.File, dependents=None):
-        tmap.tensor_from_file(tmap, hd5, dependents)
-        return np.array([1.])
-    new_tm.tensor_from_file = tff
-    return new_tm
-
-
-def explore_pretest_tmaps():
-    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE)
-    tmaps_in = [tmap_error_detect(make_pretest_tmap(1, PRETEST_MODEL_LEADS)), hrr_tmap]
-    args = SimpleNamespace(**{
-        'explore_export_errors': True,
-        'output_folder': OUTPUT_FOLDER,
-        'id': PRETEST_EXPLORE_ID,
-        'tensor_maps_in': tmaps_in,
-        'tensor_maps_out': [],
-        'tensors': TENSOR_FOLDER,
-        'batch_size': 1,
-        'num_workers': 4,
-        'cache_size': 0,
-        'tsv_style': '',
-        'balance_csvs': [],
-        'test_ratio': .1,
-        'valid_ratio': .05,
-        'plot_hist': 'True',
-        'training_steps': 1,
-        'validation_steps': 1,
-    })
-    explore(args)
-
-
 def build_csvs():
-    df = pd.read_csv(EXPLORE_RESULT)
-    df['sample_id'] = [_sample_id_from_path(p) for p in df['fpath']]
-    df_error_cols = [col for col in df.columns if 'error' in col]
-    df = df[df[df_error_cols].isnull().all(axis=1)]
+    df = pd.read_csv(PRETEST_LABEL_FILE)
     train, valid, test = np.split(
         df.sample(frac=1),
         [int(TRAIN_RATIO * len(df)), int((TRAIN_RATIO + VALID_RATIO) * len(df))]
@@ -749,12 +704,10 @@ if __name__ == '__main__':
     os.makedirs(FIGURE_FOLDER, exist_ok=True)
     os.makedirs(BIOSPPY_FIGURE_FOLDER, exist_ok=True)
     os.makedirs(PRETEST_LABEL_FIGURE_FOLDER, exist_ok=True)
-    os.makedirs(EXPLORE_OUTPUT_FOLDER, exist_ok=True)
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     load_config('INFO', OUTPUT_FOLDER, 'log_' + now_string, USER)
 
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
-    EXPLORE_PRETEST_TMAPS = False or not os.path.exists(EXPLORE_RESULT)
     MAKE_CSVS = False or not all((
         os.path.exists(TRAIN_CSV), os.path.exists(VALID_CSV), os.path.exists(TEST_CSV)
     ))
@@ -770,8 +723,6 @@ if __name__ == '__main__':
     plot_hr_from_biosppy_summary_stats()
     plt.close('all')
     make_pretest_labels()
-    if EXPLORE_PRETEST_TMAPS:
-        explore_pretest_tmaps()
     plot_pretest_label_summary_stats()
     if MAKE_CSVS:
         build_csvs()
@@ -789,7 +740,6 @@ if __name__ == '__main__':
     _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
 # TODO: bonus: bootstrapping for test set full size?
 # TODO: augmentations demonstrations
-# TODO: does explore result align with PRETEST_LABEL_FILE?
 # TODO: table explaining filtering
 # TODO: explore necessary?
 # TODO: inference only works for one model
