@@ -314,6 +314,31 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     return intermediate_layer_model
 
 
+def _order_layers(
+        layer_order: List[str],
+        activate: Layer = None,
+        normalize: Layer = None,
+        regularize: Layer = None,
+) -> Layer:
+    identity = lambda x: x
+    activate = activate or identity
+    normalize = normalize or identity
+    regularize = regularize or identity
+
+    def ordered_layers(x):
+        for order in layer_order:
+            if order == 'activation':
+                x = activate(x)
+            elif order == 'normalization':
+                x = normalize(x)
+            elif order == 'regularization':
+                x = regularize(x)
+            else:
+                pass
+        return x
+    return ordered_layers
+
+
 Tensor = tf.Tensor
 Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
 Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
@@ -334,6 +359,7 @@ class ResidualBlock:
             normalization: str,
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
             dilate: bool,
     ):
         block_size = len(filters_per_conv)
@@ -348,6 +374,7 @@ class ResidualBlock:
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
         residual_conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
         self.residual_convs = [residual_conv_layer(filters=filters_per_conv[0], kernel_size=_one_by_n_kernel(dimension)) for _ in range(block_size - 1)]
+        self.layer_order = layer_order
         logging.info(f'Residual Block Convolutional Layers (num_filters, kernel_size): {list(zip(filters_per_conv, kernels))}')
 
     def __call__(self, x: Tensor) -> Tensor:
@@ -355,7 +382,7 @@ class ResidualBlock:
         for convolve, activate, normalize, regularize, one_by_n_convolve in zip(
                 self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.residual_convs,
         ):
-            x = regularize(normalize(activate(convolve(x))))
+            x = _order_layers(self.layer_order, activate, normalize, regularize)(convolve(x))
             if one_by_n_convolve is not None:  # Do not residual add the input
                 x = Add()([one_by_n_convolve(x), previous])
             previous = x
@@ -377,12 +404,14 @@ class DenseConvolutionalBlock:
             normalization: str,
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
     ):
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
         self.conv_layers = [conv_layer(filters=filters, kernel_size=kernel, padding='same') for kernel in kernels]
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(normalization) for _ in range(block_size)]
         self.regularizations = [_regularization_layer(dimension, regularization, regularization_rate) for _ in range(block_size)]
+        self.layer_order = layer_order
         logging.info(f'Dense Block Convolutional Layers (num_filters, kernel_size): {list(zip([filters]*len(kernels), kernels))}')
 
     def __call__(self, x: Tensor) -> Tensor:
@@ -392,7 +421,7 @@ class DenseConvolutionalBlock:
                     self.conv_layers, self.activations, self.normalizations, self.regularizations,
             ),
         ):
-            x = normalize(regularize(activate(convolve(x))))
+            x = _order_layers(self.layer_order, activate, normalize, regularize)(convolve(x))
             if i < len(self.conv_layers) - 1:  # output of block does not get concatenated to
                 dense_connections.append(x)
                 x = Concatenate()(dense_connections[:])  # [:] is necessary because of tf weirdness
@@ -408,6 +437,7 @@ class FullyConnectedBlock:
             normalization: str,
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
             is_encoder: bool = False,
             name: str = None,
             parents: List[TensorMap] = None,
@@ -419,10 +449,11 @@ class FullyConnectedBlock:
         self.norms = [_normalization_layer(normalization) for _ in widths]
         self.is_encoder = is_encoder
         self.parents = parents or []
+        self.layer_order = layer_order
 
     def __call__(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
         for dense, normalize, activate, regularize in zip(self.denses, self.norms, self.activations, self.regularizations):
-            x = normalize(regularize(activate(dense(x))))
+            x = _order_layers(self.layer_order, activate, normalize, regularize)(dense(x))
         if self.is_encoder:
             return x, []
         return x
@@ -501,6 +532,7 @@ class VariationalBottleNeck:
             latent_size: int,
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
             pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]],
     ):
         self.fully_connected = FullyConnectedBlock(
@@ -509,9 +541,10 @@ class VariationalBottleNeck:
             normalization=normalization,
             regularization=regularization,
             regularization_rate=regularization_rate,
+            layer_order=layer_order,
         ) if fully_connected_widths else None
         self.restructures = {
-            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
+            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization, layer_order=layer_order)
             for tm, shape in pre_decoder_shapes.items() if shape is not None
         }
         self.latent_size = latent_size
@@ -546,6 +579,7 @@ class ConcatenateRestructure:
             widths: List[int],
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
             u_connect: DefaultDict[TensorMap, Set[TensorMap]],
             bottleneck_type: BottleneckType,
     ):
@@ -555,10 +589,11 @@ class ConcatenateRestructure:
             normalization=normalization,
             regularization=regularization,
             regularization_rate=regularization_rate,
+            layer_order=layer_order,
             name='embed',
         ) if widths else None
         self.restructures = {
-            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
+            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization, layer_order=layer_order)
             for tm, shape in pre_decoder_shapes.items() if shape is not None
         }
         self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
@@ -596,15 +631,17 @@ class FlatToStructure:
             output_shape: Tuple[int, ...],
             activation: str,
             normalization: str,
+            layer_order: List[str],
     ):
         self.input_shapes = output_shape
         self.dense = Dense(units=int(np.prod(output_shape)))
         self.activation = _activation_layer(activation)
         self.reshape = Reshape(output_shape)
         self.norm = _normalization_layer(normalization)
+        self.layer_order = layer_order
 
     def __call__(self, x: Tensor) -> Tensor:
-        return self.reshape(self.norm(self.activation(self.dense(x))))
+        return self.reshape(_order_layers(self.layer_order, self.activation, self.norm)(self.dense(x)))
 
 
 class ConvEncoder:
@@ -624,6 +661,7 @@ class ConvEncoder:
             normalization: str,
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
             dilate: bool,
             pool_type: str,
             pool_x: int,
@@ -635,7 +673,7 @@ class ConvEncoder:
         self.res_block = ResidualBlock(
             dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=res_x,
             conv_y=res_y, conv_z=res_z, activation=activation, normalization=normalization,
-            regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
+            regularization=regularization, regularization_rate=regularization_rate, dilate=dilate, layer_order=layer_order,
         )
 
         dense_x, dense_y, dense_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
@@ -643,7 +681,7 @@ class ConvEncoder:
             DenseConvolutionalBlock(
                 dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size, conv_y=[y]*block_size,
                 conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
-                regularization=regularization, regularization_rate=regularization_rate,
+                regularization=regularization, regularization_rate=regularization_rate, layer_order=layer_order,
             ) for filters, x, y, z in zip(filters_per_dense_block, dense_x, dense_y, dense_z)
         ]
         self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(filters_per_dense_block) + 1, pool_x, pool_y, pool_z)
@@ -705,6 +743,7 @@ class ConvDecoder:
             normalization: str,
             regularization: str,
             regularization_rate: float,
+            layer_order: List[str],
             upsample_x: int,
             upsample_y: int,
             upsample_z: int,
@@ -715,7 +754,7 @@ class ConvDecoder:
             DenseConvolutionalBlock(
                 dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size,
                 conv_y=[y]*block_size, conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
-                regularization=regularization, regularization_rate=regularization_rate,
+                regularization=regularization, regularization_rate=regularization_rate, layer_order=layer_order,
             )
             for filters, x, y, z in zip(filters_per_dense_block, conv_x, conv_y, conv_z)
         ]
@@ -792,6 +831,7 @@ def make_multimodal_multitask_model(
         conv_type: str = None,
         conv_normalize: str = None,
         conv_regularize: str = None,
+        layer_order: List[str] = None,
         conv_x: List[int] = None,
         conv_y: List[int] = None,
         conv_z: List[int] = None,
@@ -828,6 +868,7 @@ def make_multimodal_multitask_model(
     :param conv_type: Type of convolution to use, e.g. separable
     :param conv_normalize: Type of normalization layer for convolutions, e.g. batch norm
     :param conv_regularize: Type of regularization for convolutions, e.g. dropout
+    :param layer_order: Order of activation, normalization, and regularization layers
     :param conv_x: Size of X dimension for 2D and 3D convolutional kernels
     :param conv_y: Size of Y dimension for 2D and 3D convolutional kernels
     :param conv_z: Size of Z dimension for 3D convolutional kernels
@@ -889,6 +930,7 @@ def make_multimodal_multitask_model(
                 activation=activation,
                 normalization=conv_normalize,
                 regularization=conv_regularize,
+                layer_order=layer_order,
                 regularization_rate=conv_regularize_rate,
                 dilate=conv_dilate,
                 pool_type=pool_type,
@@ -902,6 +944,7 @@ def make_multimodal_multitask_model(
                 activation=activation,
                 normalization=dense_normalize,
                 regularization=dense_regularize,
+                layer_order=layer_order,
                 regularization_rate=dense_regularize_rate,
                 is_encoder=True,
             )
@@ -923,6 +966,7 @@ def make_multimodal_multitask_model(
             regularization=dense_regularize,
             regularization_rate=dense_regularize_rate,
             normalization=dense_normalize,
+            layer_order=layer_order,
             pre_decoder_shapes=pre_decoder_shapes,
             u_connect=u_connect,
             bottleneck_type=bottleneck_type,
@@ -935,6 +979,7 @@ def make_multimodal_multitask_model(
             regularization=dense_regularize,
             regularization_rate=dense_regularize_rate,
             normalization=dense_normalize,
+            layer_order=layer_order,
             pre_decoder_shapes=pre_decoder_shapes,
         )
     elif bottleneck_type == BottleneckType.NoBottleNeck:
@@ -960,6 +1005,7 @@ def make_multimodal_multitask_model(
                 normalization=conv_normalize,
                 regularization=conv_regularize,
                 regularization_rate=conv_regularize_rate,
+                layer_order=layer_order,
                 upsample_x=pool_x,
                 upsample_y=pool_y,
                 upsample_z=pool_z,
