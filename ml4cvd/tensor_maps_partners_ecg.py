@@ -12,6 +12,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
@@ -93,6 +94,10 @@ def _resample_voltage(voltage, desired_samples):
         return np.interp(x_interp, x, voltage)
     elif len(voltage) == 5000 and desired_samples == 2500:
         return voltage[::2]
+    elif len(voltage) == 2500 and desired_samples == 1250:
+        return voltage[::2]
+    elif len(voltage) == 5000 and desired_samples == 1250:
+        return voltage[::4]
     else:
         raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} and re-sampling method is unknown.')
 
@@ -211,12 +216,18 @@ TMAPS['partners_ecg_geisinger_5'] = TensorMap('ecg_geisinger_5', shape=(1248, 3)
 
 TMAPS['partners_ecg_2500'] = TensorMap('ecg_rest_2500', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
 TMAPS['partners_ecg_5000'] = TensorMap('ecg_rest_5000', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
-TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500_raw'] = TensorMap('ecg_rest_2500_raw', shape=(None, 2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), time_series_limit=0)
 TMAPS['partners_ecg_5000_raw'] = TensorMap('ecg_rest_5000_raw', shape=(None, 5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS, time_series_limit=0)
+TMAPS['partners_ecg_2500_I_newest'] = TensorMap('ecg_rest_2500_newest', shape=(2500, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map={'I': ECG_REST_AMP_LEADS['I']})
 TMAPS['partners_ecg_2500_newest'] = TensorMap('ecg_rest_2500_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_1250_newest'] = TensorMap('ecg_rest_1250_newest', shape=(1250, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_1250_I_newest'] = TensorMap('ecg_rest_1250_newest', shape=(1250, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map={'I': ECG_REST_AMP_LEADS['I']})
+TMAPS['partners_ecg_2500_random'] = TensorMap('ecg_rest_2500_random', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS, time_series_order=TimeSeriesOrder.RANDOM)
 TMAPS['partners_ecg_5000_newest'] = TensorMap('ecg_rest_5000_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_oldest'] = TensorMap('ecg_rest_2500_raw_oldest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_oldest'] = TensorMap('ecg_rest_5000_raw_oldest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(), normalization={'zero_mean_std1': True}, channel_map=ECG_REST_AMP_LEADS)
+TMAPS['partners_ecg_2500_raw_I_newest'] = TensorMap('ecg_rest_2500_raw', shape=(2500, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map={'I': ECG_REST_AMP_LEADS['I']})
+TMAPS['partners_ecg_1250_raw_I_newest'] = TensorMap('ecg_rest_1250_raw', shape=(1250, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map={'I': ECG_REST_AMP_LEADS['I']})
 TMAPS['partners_ecg_2500_raw_newest'] = TensorMap('ecg_rest_2500_raw_newest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_5000_raw_newest'] = TensorMap('ecg_rest_5000_raw_newest', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
 TMAPS['partners_ecg_2500_raw_oldest'] = TensorMap('ecg_rest_2500_raw_oldest', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, time_series_order=TimeSeriesOrder.OLDEST, tensor_from_file=make_voltage(population_normalize=2000.0), channel_map=ECG_REST_AMP_LEADS)
@@ -442,6 +453,21 @@ TMAPS[task] = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
     shape=(None, 1),
     time_series_limit=0,
+    validator=validator_no_empty,
+)
+
+
+task = "partners_ecg_read_pc_newest"
+TMAPS[task] = TensorMap(
+    task,
+    #annotation_units=128,
+    #channel_map=PARTNERS_CHAR_2_IDX,
+    interpretation=Interpretation.LANGUAGE,
+    #tensor_from_file=make_partners_language_tensor(key="read_pc_clean"),
+    #shape=(512, len(PARTNERS_CHAR_2_IDX)),
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="read_pc_clean"),
+    shape=(None, 1),    
     validator=validator_no_empty,
 )
 
@@ -2024,7 +2050,7 @@ def build_toast_from_file(file_name: str, patient_column: str = 'MRN', toast_col
             for row in reader:
                 try:
                     patient_key = int(row[patient_index])
-                    toast_table[patient_key] = int(row[toast_index])
+                    toast_table[patient_key] = row[toast_index]
                     if len(toast_table) % 2000 == 0:
                         logging.debug(f'Processed: {len(toast_table)} patient rows.')
                 except ValueError as e:
@@ -2038,7 +2064,11 @@ def build_toast_from_file(file_name: str, patient_column: str = 'MRN', toast_col
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
         tensor = np.zeros(shape, dtype=np.float32)
-        tensor[..., toast_table[patient_key_from_ecg]-1] = 1.0
+        idx = toast_table[patient_key_from_ecg]
+        if tm.interpretation == Interpretation.CATEGORICAL:
+            tensor[..., int(idx)-1] = 1.0
+        elif tm.interpretation == Interpretation.CONTINUOUS:
+            tensor[0] = idx
         return tensor
     return tensor_from_file
 
@@ -2047,7 +2077,12 @@ TMAPS['toast_subtype'] = TensorMap(
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=PARTNERS_PREFIX,
     time_series_limit=0,
-    channel_map={f'toast_{d+1}': d for d in range(5)},
+    shape=(None, 5),
+    channel_map={'DefCE': 0,
+                 'PosCE': 1,
+                 'LAA': 2,
+                 'SAO': 3,
+                 'Undet': 4},
     tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt')
 )
 
@@ -2057,9 +2092,36 @@ TMAPS['toast_subtype_newest'] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     time_series_limit=1,
     time_series_order=TimeSeriesOrder.NEWEST,
-    channel_map={f'toast_{d+1}': d for d in range(5)},
-    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt')
+    shape=(5,),
+    channel_map={'DefCE': 0,
+                 'PosCE': 1,
+                 'LAA': 2,
+                 'SAO': 3,
+                 'Undet': 4},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_afib.csv'),
+    loss=weighted_crossentropy([0.11955995212662704,
+                                0.16872962940814032,
+                                0.12452570093699813,
+                                0.24825824454318735,
+                                0.3389264729850471], 'toast_subtype_newest')
+    # loss='categorical_crossentropy'
 )
+
+registry_keys = {'afib': 'afib',
+                 'bmi': 'BMI',
+                 'dbp': 'Diastolic_BP',
+                 'sbp': 'Systolic_BP'}
+
+for key in registry_keys:
+    TMAPS[f'toast_{key}_newest'] = TensorMap(
+        f'toast_{key}_newest',
+        interpretation=Interpretation.CONTINUOUS,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_limit=1,
+        time_series_order=TimeSeriesOrder.NEWEST,
+        shape=(1,),
+        tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_afib.csv', toast_column=registry_keys[key]),
+    )
 
 TMAPS['toast_subtype_oldest'] = TensorMap(
     'toast_subtype_oldest',
@@ -2067,7 +2129,35 @@ TMAPS['toast_subtype_oldest'] = TensorMap(
     path_prefix=PARTNERS_PREFIX,
     time_series_limit=1,
     time_series_order=TimeSeriesOrder.OLDEST,
+    shape=(5,),
     channel_map={f'toast_{d+1}': d for d in range(5)},
     tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt'),
-    loss='categorical_cross_entropy'
+    loss='categorical_crossentropy'
 )
+
+
+partners_ecg_features_dic = {
+    'atrialrate_md': 0,
+    'paxis_md': 1,
+    'poffset_md': 2,
+    'ponset_md': 3,
+    'qoffset_md': 4,
+    'qonset_md': 5,
+    'qrscount_md': 6,
+    'qrsduration_md': 7,
+    'qtcorrected_md': 8,
+    'qtinterval_md': 9,
+    'raxis_md': 10,
+    'taxis_md': 11,
+    'toffset_md': 12,
+    'ventricularrate_md': 13
+}
+
+for feature in partners_ecg_features_dic:
+    TMAPS['partners_feat_'+feature] = TensorMap(
+        'partners_feat_'+feature,
+        interpretation=Interpretation.CONTINUOUS,
+        path_prefix=PARTNERS_PREFIX,
+        tensor_from_file=make_partners_ecg_tensor(key=feature),
+        shape=(1,)
+    )
