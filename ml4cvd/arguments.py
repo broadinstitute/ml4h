@@ -245,7 +245,7 @@ def parse_args():
              'Can be more than 1 join value.',
     )
     parser.add_argument(
-        '--time_tensor', default='partners_ecg_datetime',
+        '--time_tensor',
         help='TensorMap or column name in csv of value in tensors to perform time cross-ref on. '
              'Time cross referencing is optional.',
     )
