@@ -539,7 +539,7 @@ def _get_train_valid_test_discard_ratios(
 def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
     if sample_csv is None:
         return None
-    
+
     # Read CSV to dataframe and assume no header
     df = pd.read_csv(sample_csv, header=None)
 
