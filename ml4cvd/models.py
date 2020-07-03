@@ -1090,6 +1090,7 @@ def train_model_from_generators(
     inspect_show_labels: bool,
     return_history: bool = False,
     plot: bool = True,
+    defer_worker_halt: bool = False
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
@@ -1125,8 +1126,9 @@ def train_model_from_generators(
         validation_steps=validation_steps, validation_data=generate_valid,
         callbacks=_get_callbacks(patience, model_file),
     )
-    generate_train.kill_workers()
-    generate_valid.kill_workers()
+    if not defer_worker_halt:
+        generate_train.kill_workers()
+        generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
     if plot:
