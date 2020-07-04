@@ -322,6 +322,26 @@ class TensorMap(object):
                 tensor = augmentation(tensor)
         return tensor
 
+    def infer_metrics(self):
+        if self.metrics is None and self.is_categorical():
+            self.metrics = ['categorical_accuracy']
+            if self.axes() == 1:
+                self.metrics += per_class_precision(self.channel_map)
+                self.metrics += per_class_recall(self.channel_map)
+            elif self.axes() == 2:
+                self.metrics += per_class_precision_3d(self.channel_map)
+                self.metrics += per_class_recall_3d(self.channel_map)
+            elif self.axes() == 3:
+                self.metrics += per_class_precision_4d(self.channel_map)
+                self.metrics += per_class_recall_4d(self.channel_map)
+            elif self.axes() == 4:
+                self.metrics += per_class_precision_5d(self.channel_map)
+                self.metrics += per_class_recall_5d(self.channel_map)
+        elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
+            self.metrics = [pearson]
+        elif self.metrics is None:
+            self.metrics = []
+
 
     def infer_metrics(self):
         if self.metrics is None and self.is_categorical():
@@ -410,7 +430,7 @@ def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map
     if tm.hd5_key_guess() in hd5:
         missing = False
         data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-        if tm.axes() > 1:
+        if tm.axes() > 1 or tm.shape[0] > 1:
             continuous_data = np.array(data)
         elif hasattr(data, "__shape__"):
             continuous_data[0] = data[0]
