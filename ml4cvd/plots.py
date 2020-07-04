@@ -15,7 +15,7 @@ from datetime import datetime
 from multiprocessing import Pool
 from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
-from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional
+from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,6 @@ from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
-from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import NullFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
@@ -931,7 +930,7 @@ def plot_ecg(data, label, prefix='./figures/'):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
-def _plot_partners_ecg_text(data, fig, w, h):
+def _plot_partners_text(data: Dict[str, Union[np.ndarray, str, Dict]], fig: plt.Figure, w: float, h: float) -> None:
     # top text
     dt = datetime.strptime(data['datetime'], PARTNERS_DATETIME_FORMAT)
     dob = data['dob']
@@ -980,7 +979,7 @@ def _plot_partners_ecg_text(data, fig, w, h):
     fig.text(7.63 / w, 6.25 / h, f"Electronically Signed By: {''}", weight='bold')
 
 
-def _plot_partners_full(voltage, ax):
+def _plot_partners_full(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
     full_voltage = np.full((12, 2500), np.nan)
     for i, lead in enumerate(voltage):
         full_voltage[i] = voltage[lead]
@@ -1005,7 +1004,7 @@ def _plot_partners_full(voltage, ax):
         )
 
 
-def _plot_partners_clinical(voltage, ax):
+def _plot_partners_clinical(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
     # get voltage in clinical chunks
     clinical_voltage = np.full((6, 2500), np.nan)
     halfgap = 5
@@ -1113,7 +1112,13 @@ def _plot_partners_clinical(voltage, ax):
             )
 
 
-def _plot_partners_ecg(data, args, plot_signal):
+def _plot_partners_figure(
+        data: Dict[str, Union[np.ndarray, str, Dict]],
+        plot_signal_function: Callable[[Dict[str, np.ndarray], plt.Axes], None],
+        plot_mode: str,
+        output_folder: str,
+        run_id: str,
+) -> None:
     plt.rcParams["font.family"] = "Times New Roman"
     plt.rcParams["font.size"] = 9.5
 
@@ -1124,7 +1129,7 @@ def _plot_partners_ecg(data, args, plot_signal):
     )
 
     # patient info and ecg text
-    _plot_partners_ecg_text(data, fig, w, h)
+    _plot_partners_text(data, fig, w, h)
 
     # define plot area in inches
     left = 0.17
@@ -1177,15 +1182,15 @@ def _plot_partners_ecg(data, args, plot_signal):
 
     # signal plot
     voltage = data['2500_raw']
-    plot_signal(voltage, ax)
+    plot_signal_function(voltage, ax)
 
     # bottom text
     fig.text(0.17 / w, 0.46 / h, f"{x_res}mm/s    {y_res}mm/mV    {sampling_frequency}Hz", ha='left', va='center', weight='bold')
 
     # save both pdf and png
-    title = re.sub(r'[:/. ]', '', f'{args.plot_mode}_{data["patientid"]}_{data["datetime"]}')
-    plt.savefig(os.path.join(args.output_folder, args.id, f'{title}{PDF_EXT}'))
-    plt.savefig(os.path.join(args.output_folder, args.id, f'{title}{IMAGE_EXT}'))
+    title = re.sub(r'[:/. ]', '', f'{plot_mode}_{data["patientid"]}_{data["datetime"]}')
+    plt.savefig(os.path.join(output_folder, run_id, f'{title}{PDF_EXT}'))
+    plt.savefig(os.path.join(output_folder, run_id, f'{title}{IMAGE_EXT}'))
     plt.close(fig)
 
 
@@ -1204,12 +1209,13 @@ def plot_partners_ecgs(args):
     tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
 
     if 'clinical' == args.plot_mode:
-        plot_middle = _plot_partners_clinical
+        plot_signal_function = _plot_partners_clinical
     elif 'full' == args.plot_mode:
-        plot_middle = _plot_partners_full
+        plot_signal_function = _plot_partners_full
     else:
         raise ValueError(f'Unsupported plot mode: {args.plot_mode}')
 
+    # TODO use TensorGenerator here
     # Get tensors for all hd5
     for tp in tensor_paths:
         try:
@@ -1241,7 +1247,13 @@ def plot_partners_ecgs(args):
 
                 # plot each ecg
                 for i in tdict:
-                    _plot_partners_ecg(tdict[i], args, plot_middle)
+                    _plot_partners_figure(
+                        data=tdict[i],
+                        plot_signal_function=plot_signal_function,
+                        plot_mode=args.plot_mode,
+                        output_folder=args.output_folder,
+                        run_id=args.id,
+                    )
         except:
             logging.exception(f"Broken tensor at: {tp}")
 
