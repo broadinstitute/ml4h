@@ -14,6 +14,7 @@ from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
+from ml4cvd.metrics import weighted_crossentropy
 
 
 YEAR_DAYS = 365.26
@@ -1552,6 +1553,7 @@ def build_cardiac_surgery_tensor_maps(
     name2tensormap: Dict[str, TensorMap] = {}
     outcome2column = {
         "sts_death": "mtopd",
+        "sts_death_weighted_loss": "mtopd",
         "sts_stroke": "cnstrokp",
         "sts_renal_failure": "crenfail",
         "sts_prolonged_ventilation": "cpvntlng",
@@ -1575,6 +1577,7 @@ def build_cardiac_surgery_tensor_maps(
                 tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(cardiac_surgery_dict, outcome2column[needed_name]),
                 channel_map=channel_map,
                 validator=validator_not_all_zero,
+                loss=weighted_crossentropy([1.0, 2.0], 'sts_death_weighted_loss') if needed_name == 'sts_death_weighted_loss' else None,
             )
         else:
             if not needed_name.endswith('_sts'):

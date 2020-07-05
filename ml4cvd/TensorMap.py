@@ -343,27 +343,6 @@ class TensorMap(object):
             self.metrics = []
 
 
-    def infer_metrics(self):
-        if self.metrics is None and self.is_categorical():
-            self.metrics = ['categorical_accuracy']
-            if self.axes() == 1:
-                self.metrics += per_class_precision(self.channel_map)
-                self.metrics += per_class_recall(self.channel_map)
-            elif self.axes() == 2:
-                self.metrics += per_class_precision_3d(self.channel_map)
-                self.metrics += per_class_recall_3d(self.channel_map)
-            elif self.axes() == 3:
-                self.metrics += per_class_precision_4d(self.channel_map)
-                self.metrics += per_class_recall_4d(self.channel_map)
-            elif self.axes() == 4:
-                self.metrics += per_class_precision_5d(self.channel_map)
-                self.metrics += per_class_recall_5d(self.channel_map)
-        elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
-            self.metrics = [pearson]
-        elif self.metrics is None:
-            self.metrics = []
-
-
 def make_range_validator(minimum: float, maximum: float):
     def _range_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         if not ((tensor > minimum).all() and (tensor < maximum).all()):
