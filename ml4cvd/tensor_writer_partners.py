@@ -223,14 +223,12 @@ def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
 
 
 def _get_amplitude_from_amplitude_tags(amplitude_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
+    wave_ids = set()
     amplitude_data = {}
     amplitude_features = ['peak', 'start', 'duration', 'area']
     ecg_rest_amp_leads = {k.upper(): v for k, v in ECG_REST_AMP_LEADS.items()}
-    wave_ids = set()
     for amplitude_tag in amplitude_tags:
         lead_id = amplitude_tag.find('amplitudemeasurementleadid').text
-        if 'a' in lead_id:
-            lead_id = lead_id[0].lower() + lead_id[1:]
         wave_id = amplitude_tag.find('amplitudemeasurementwaveid').text
         if wave_id not in wave_ids:
             wave_ids.add(wave_id)
