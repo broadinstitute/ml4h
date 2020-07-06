@@ -62,7 +62,7 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
+DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -161,7 +161,7 @@ def write_tensors(
 
 
 def write_tensors_from_dicom_pngs(
-    tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
+    tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id,
     sample_header='sample_id', dicom_header='dicom_file',
     instance_header='instance_number', png_postfix='.png.mask.png',
     path_prefix='ukb_cardiac_mri',
@@ -181,20 +181,18 @@ def write_tensors_from_dicom_pngs(
         dicom_file = row[dicom_index]
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
-            full_tensor = np.zeros((x, y), dtype=np.float32)
-            full_tensor[:png.shape[0], :png.shape[1]] = png
             tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
-                tensor_name = series + '_annotated_' + row[instance_index]
+                tensor_name = series.lower() + '_annotated_' + row[instance_index]
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
-                    tensor[:] = full_tensor
+                    tensor[:] = png
                     stats['updated'] += 1
                 else:
-                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, full_tensor, stats)
+                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, png, stats)
                     stats['created'] += 1
 
         except FileNotFoundError:
