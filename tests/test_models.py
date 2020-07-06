@@ -33,6 +33,7 @@ DEFAULT_PARAMS = {
     'pool_z': 1,
     'dropout': 0,
     'bottleneck_type': BottleneckType.FlattenRestructure,
+    'layer_order': ['activation', 'regularization', 'normalization'],
 }
 
 
