@@ -70,6 +70,7 @@ class TestRecipes:
             default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
         )
         explore_result = pd.read_csv(csv_path)
+        assert len(explore_result) == pytest.N_TENSORS
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:

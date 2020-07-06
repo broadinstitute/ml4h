@@ -12,7 +12,7 @@ from operator import itemgetter
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
-from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
+from typing import Dict, List, Tuple, Generator, Optional, DefaultDict, Union
 
 import h5py
 import numpy as np
@@ -687,14 +687,15 @@ def _channel_explore_error_header(tm: TensorMap, channel: str) -> str:
     return f'{tm.name} {channel}'
 
 
-def _flatten_multidimensional_tensor(tmap: TensorMap, tensor: np.ndarray) -> np.ndarray:
-    tensor = tensor.mean(axis=tuple(range(len(tmap.shape) - 2)))
+def _flatten_multidimensional_tensor(tmap: TensorMap, tensor: np.ndarray) -> Union[float, np.ndarray]:
+    if tensor.ndim > 0:
+        tensor = tensor.mean(axis=tuple(range(tensor.ndim - 1)))
     if tmap.channel_map is None:
-        return tensor.mean().reshape((1,))
+        return float(tensor.mean())
     return tensor.reshape((len(tmap.channel_map),))
 
 
-def _explore_all_headers(tmaps: List[TensorMap]) -> List[str]:
+def _explore_all_tmap_headers(tmaps: List[TensorMap]) -> List[str]:
     keys = []
     for tmap in tmaps:
         if tmap.channel_map:
@@ -735,25 +736,24 @@ class ExploreParallelWrapper:
                 for tm in self.tmaps:
                     # get tensor
                     try:
-                        tensors = tm.tensor_from_file(tm, hd5)
-                        for i, tensor in enumerate(tensors):
-                            if tensor is None:
-                                break
+                        tensor = tm.tensor_from_file(tm, hd5)
+                        if tensor is None:
+                            break
 
-                            error_type = ''
-                            try:
-                                tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
-                                tensor = _flatten_multidimensional_tensor(tm, tensor)
-                                # Append tensor to dict
-                                if tm.channel_map:
-                                    for cm in tm.channel_map:
-                                        col_name = _channel_explore_header(tm, cm)
-                                        dict_of_tensor_dicts[i][col_name] = tensor[tm.channel_map[cm]]
-                                else:
-                                    dict_of_tensor_dicts[i][_tmap_explore_header(tm)] = tensor
-                            except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                                error_type = f'{type(e).__name__}: {e}'
-                            dict_of_tensor_dicts[i][_tmap_explore_error_header(tm)] = error_type
+                        error_type = ''
+                        try:
+                            tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                            tensor = _flatten_multidimensional_tensor(tm, tensor)
+                            # Append tensor to dict
+                            if tm.channel_map:
+                                for cm in tm.channel_map:
+                                    col_name = _channel_explore_header(tm, cm)
+                                    dict_of_tensor_dicts[i][col_name] = tensor[tm.channel_map[cm]]
+                            else:
+                                dict_of_tensor_dicts[i][_tmap_explore_header(tm)] = tensor
+                        except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                            error_type = f'{type(e).__name__}: {e}'
+                        dict_of_tensor_dicts[i][_tmap_explore_error_header(tm)] = error_type
 
                     except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                         # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
@@ -765,7 +765,7 @@ class ExploreParallelWrapper:
 
                 # write tensors to disk
                 if len(dict_of_tensor_dicts) > 0:
-                    keys = _explore_all_headers(self.tmaps)
+                    keys = _explore_all_tmap_headers(self.tmaps) + ['fpath', 'generator']
                     with open(fpath, 'a') as output_file:
                         dict_writer = csv.DictWriter(output_file, keys)
                         if write_header:
@@ -802,7 +802,7 @@ def _tensors_to_df(args):
     str_cols = ['fpath', 'generator']
     for tm in tmaps:
         if tm.interpretation == Interpretation.LANGUAGE:
-            str_cols.extend(_explore_all_headers([tm]))
+            str_cols.extend(_explore_all_tmap_headers([tm]))
         else:
             str_cols.append(_tmap_explore_error_header(tm))
     str_cols = {key: 'string' for key in str_cols}
