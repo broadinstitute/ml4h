@@ -218,7 +218,7 @@ def hidden_column(model_id: str, index: int):
 
 def _handle_inference_batch(
         output_name_to_tmap: Dict[str, TensorMap], model: Callable, model_id: str, batch,
-        visited_paths: Set[Tuple[str, str]], rows: List[Dict[str, str]],
+        rows: List[Dict[str, str]],
 ):
     input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
     pred = model.predict(input_data)
@@ -229,8 +229,6 @@ def _handle_inference_batch(
         scaled = tm.rescale(tm_pred)
         actual = output_data[tm.output_name()]
         for i, row in enumerate(rows):
-            if (model_id, tensor_paths[i]) in visited_paths:
-                continue
             actual_str = None
             if ((tm.sentinel is not None and tm.sentinel == actual[i][0])
                     or np.isnan(actual[i][0])):
@@ -246,39 +244,49 @@ def _handle_inference_batch(
                     actual_str = inv_map[np.argmax(actual[i])]
             else:
                 raise NotImplementedError(f'Inference not implemented for {tm}.')
-            visited_paths.add((model_id, tensor_paths[i]))
             row[tmap_inference_column_predicted(tm, model_id)] = pred_str
             row[SAMPLE_ID] = os.path.basename(tensor_paths[i]).replace(TENSOR_EXT, '')  # extract sample id
             row[tmap_inference_column_actual(tm)] = actual_str
 
 
 def _handle_hidden_inference_batch(
-        model: Callable, model_id: str, batch,
-        visited_paths: Set[Tuple[str, str]], rows: List[Dict[str, str]],
+        model: Callable, model_id: str, batch, rows: List[Dict[str, str]],
 ):
     input_data, _, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
     pred = model.predict(input_data)
     pred = pred.reshape(pred.shape[0], np.prod(pred.shape[1:]))
     for i, row in enumerate(rows):
-        if (model_id, tensor_paths[i]) in visited_paths:
-            continue
-        visited_paths.add((model_id, tensor_paths[i]))
         for idx in range(pred.shape[1]):
             row[hidden_column(model_id, idx)] = pred[i, idx]
         row[SAMPLE_ID] = os.path.basename(tensor_paths[i]).replace(TENSOR_EXT, '')  # extract sample id
 
 
+def _unseen_batch(batch, visited_paths: Set[str]):
+    input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+    unseen_paths, unseen_path_idx = [], []
+    for i, path in enumerate(tensor_paths):
+        if path not in visited_paths:
+            visited_paths.add(path)
+            unseen_paths.append(path)
+            unseen_path_idx.append(i)
+    for k, v in input_data.items():
+        input_data[k] = v[unseen_path_idx]
+    for k, v in output_data.items():
+        input_data[k] = v[unseen_path_idx]
+    return unseen_paths
+
+
 def _infer_models(
         models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
         tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
-        num_workers: int,
+        num_workers: int, batch_size: int,
 ):
     count = 0
-    visited_paths = set()
     tensor_paths = [
         os.path.join(tensors, tp) for tp in sorted(os.listdir(tensors))
         if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
     ]
+    tensor_paths_set = set(tensor_paths)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in tensor_maps_out]
     generate_test = None
     output_name_to_tmap = {tm.output_name(): tm for tm in tensor_maps_out}
@@ -290,36 +298,44 @@ def _infer_models(
         ],
         [],
     )
-    try:
-        generate_test = TensorGenerator(
-            1, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
-            cache_size=0, keep_paths=True, mixup=0,
+    with open(inference_tsv, 'w') as f:
+        inference_writer = csv.DictWriter(
+            f, fieldnames=[SAMPLE_ID] + actual_cols + prediction_cols,
+            delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
         )
-        with open(inference_tsv, 'w') as f:
-            inference_writer = csv.DictWriter(
-                f, fieldnames=[SAMPLE_ID] + actual_cols + prediction_cols,
-                delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+        inference_writer.writeheader()
+        visited_paths = set()
+        try:
+            generate_test = TensorGenerator(
+                batch_size, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
+                cache_size=0, keep_paths=True, mixup=0,
             )
-            inference_writer.writeheader()
-            while True:
+            while visited_paths < tensor_paths_set:
                 batch = next(generate_test)
-                rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
+                paths = _unseen_batch(batch, visited_paths)
+                if not paths:
+                    continue
+                rows = [{} for _ in range(len(paths))]
                 for model, model_id in zip(models, model_ids):
                     _handle_inference_batch(
                         output_name_to_tmap=output_name_to_tmap, model=model, model_id=model_id,
-                        batch=batch, visited_paths=visited_paths, rows=rows,
+                        batch=batch, rows=rows,
                     )
                 inference_writer.writerows([row for row in rows if row])
                 count += 1
                 logging.info(f"Wrote {count} batches of inference.")
                 if generate_test.stats_q.qsize() == generate_test.num_workers:
                     generate_test.aggregate_and_print_stats()
-                    logging.info(
-                        f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
-                    break
-    finally:
-        if generate_test is not None:
-            generate_test.kill_workers()
+                    generate_test.kill_workers()
+                    generate_test = TensorGenerator(
+                        1, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
+                        cache_size=0, keep_paths=True, mixup=0,
+                    )
+        finally:
+            logging.info(
+                f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
+            if generate_test is not None:
+                generate_test.kill_workers()
 
 
 def _convert_to_genetics_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -344,7 +360,7 @@ def infer_multimodal_multitask(args):
         models=models, model_ids=args.model_ids,
         inference_tsv=tsv_path,
         tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, tensor_maps_out=args.tensor_maps_out,
-        num_workers=args.num_workers,
+        num_workers=args.num_workers, batch_size=args.batch_size,
     )
     if 'genetics' in args.tsv_style:
         _convert_tsv_to_genetics(tsv_path)
@@ -357,7 +373,7 @@ def hidden_inference_file_name(output_folder: str, id_: str) -> str:
 def _infer_hidden(
     models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
     tensor_maps_in: List[TensorMap], hidden_shapes: List[int],
-    num_workers: int,
+    num_workers: int, batch_size: int,
 ):
     count = 0
     visited_paths = set()
@@ -365,6 +381,7 @@ def _infer_hidden(
         os.path.join(tensors, tp) for tp in sorted(os.listdir(tensors))
         if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
     ]
+    tensor_paths_set = set(tensor_paths)
     generate_test = None
 
     prediction_cols = sum(
@@ -374,37 +391,43 @@ def _infer_hidden(
         ],
         [],
     )
-    try:
-        generate_test = TensorGenerator(
-            1, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
-            cache_size=0, keep_paths=True, mixup=0,
+    with open(inference_tsv, 'w') as f:
+        inference_writer = csv.DictWriter(
+            f, fieldnames=['sample_id'] + prediction_cols,
+            delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
         )
-        with open(inference_tsv, 'w') as f:
-            inference_writer = csv.DictWriter(
-                f, fieldnames=['sample_id'] + prediction_cols,
-                delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+        inference_writer.writeheader()
+        try:
+            generate_test = TensorGenerator(
+                batch_size, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
+                cache_size=0, keep_paths=True, mixup=0,
             )
-            inference_writer.writeheader()
-            v = set()
-            while True:
+            while visited_paths < tensor_paths_set:
                 batch = next(generate_test)
-                rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
+                paths = _unseen_batch(batch, visited_paths)
+                if not paths:
+                    continue
+                rows = [{} for _ in range(len(paths))]
                 for model, model_id in zip(models, model_ids):
                     _handle_hidden_inference_batch(
                         model=model, model_id=model_id,
-                        batch=batch, visited_paths=visited_paths, rows=rows,
+                        batch=batch, rows=rows,
                     )
                 inference_writer.writerows([row for row in rows if row])
                 count += 1
                 logging.info(f"Wrote {count} batches of inference.")
                 if generate_test.stats_q.qsize() == generate_test.num_workers:
                     generate_test.aggregate_and_print_stats()
-                    logging.info(
-                        f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
-                    break
-    finally:
-        if generate_test is not None:
-            generate_test.kill_workers()
+                    generate_test.kill_workers()
+                    generate_test = TensorGenerator(
+                        1, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
+                        cache_size=0, keep_paths=True, mixup=0,
+                    )
+        finally:
+            logging.info(
+                f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
+            if generate_test is not None:
+                generate_test.kill_workers()
 
 
 def infer_hidden_layer_multimodal_multitask(args):
@@ -421,6 +444,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     _infer_hidden(
         models=embed_models, model_ids=args.model_ids, hidden_shapes=hidden_shapes, inference_tsv=tsv_path,
         tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, num_workers=args.num_workers,
+        batch_size=args.batch_size,
     )
     if 'genetics' in args.tsv_style:
         _convert_tsv_to_genetics(tsv_path)

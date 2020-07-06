@@ -42,6 +42,7 @@ class TestRecipes:
     @pytest.mark.parametrize('num_workers', [0, 3])
     def test_infer(self, default_arguments, num_workers):
         default_arguments.num_workers = num_workers
+        default_arguments.batch_size = 3
         default_arguments.model_files = init_models(default_arguments, 2)
         default_arguments.model_ids = ['m0', 'm1']
         infer_multimodal_multitask(default_arguments)
@@ -64,6 +65,7 @@ class TestRecipes:
     @pytest.mark.parametrize('num_workers', [0, 3])
     def test_infer_hidden(self, default_arguments, num_workers):
         default_arguments.num_workers = num_workers
+        default_arguments.batch_size = 3
         default_arguments.model_files = init_models(default_arguments, 2)
         default_arguments.model_ids = ['m0', 'm1']
         infer_hidden_layer_multimodal_multitask(default_arguments)
