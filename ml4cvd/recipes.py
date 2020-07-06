@@ -52,7 +52,7 @@ def run(args):
                 args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values,
             )
         elif 'tensorize_pngs' == args.mode:
-            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id)
+            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id, args.x, args.y)
         elif 'tensorize_ecg_pngs' == args.mode:
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'tensorize_partners' == args.mode:

@@ -161,7 +161,7 @@ def write_tensors(
 
 
 def write_tensors_from_dicom_pngs(
-    tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id,
+    tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
     sample_header='sample_id', dicom_header='dicom_file',
     instance_header='instance_number', png_postfix='.png.mask.png',
     path_prefix='ukb_cardiac_mri',
@@ -181,6 +181,8 @@ def write_tensors_from_dicom_pngs(
         dicom_file = row[dicom_index]
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
+            full_tensor = np.zeros((x, y), dtype=np.float32)
+            full_tensor[:png.shape[0], :png.shape[1]] = png
             tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
@@ -189,10 +191,10 @@ def write_tensors_from_dicom_pngs(
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
-                    tensor[:] = png
+                    tensor[:] = full_tensor
                     stats['updated'] += 1
                 else:
-                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, png, stats)
+                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, full_tensor, stats)
                     stats['created'] += 1
 
         except FileNotFoundError:
