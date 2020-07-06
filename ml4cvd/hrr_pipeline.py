@@ -21,10 +21,9 @@ from ml4cvd.TensorMap import TensorMap, Interpretation, no_nans
 from ml4cvd.tensor_writer_ukbb import tensor_path, first_dataset_at_path
 from ml4cvd.normalizer import Standardize, Normalizer
 from ml4cvd.tensor_from_file import _get_tensor_at_first_date
-from ml4cvd.tensor_generators import test_train_valid_tensor_generators, TensorGenerator
-from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
+from ml4cvd.tensor_generators import test_train_valid_tensor_generators
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model, BottleneckType
-from ml4cvd.recipes import _make_tmap_nan_on_fail
+from ml4cvd.recipes import _infer_models
 from ml4cvd.metrics import coefficient_of_determination
 
 
@@ -565,82 +564,6 @@ def time_to_actual_hrr_col(t: int):
     return f'{df_hrr_col(t)}{ACTUAL_POSTFIX}'
 
 
-def _handle_inference_batch(
-        output_name_to_tmap: Dict[str, TensorMap], model: Model, model_id: str, batch,
-        visited_paths: Set[str], rows: List[Dict[str, str]],
-):
-    input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
-    # TODO: compare with infer_multi branch
-    preds = model.predict(input_data)
-    if len(output_name_to_tmap) == 1:
-        preds = [preds]
-    for pred, out_name in zip(preds, model.output_names):
-        tm = output_name_to_tmap[out_name]
-        scaled = tm.rescale(pred)
-        actual = output_data[tm.output_name()]
-        for i, row in enumerate(rows):
-            if tensor_paths[i] in visited_paths:
-                continue
-            visited_paths.add(tensor_paths[i])
-            row[tmap_to_pred_col(tm, model_id)] = f'{float(scaled[i]):.3f}'
-            row['sample_id'] = _sample_id_from_path(tensor_paths[i])
-            if ((tm.sentinel is not None and tm.sentinel == actual[i][0])
-                    or np.isnan(actual[i][0])):
-                row[tmap_to_actual_col(tm)] = 'NA'
-            else:
-                row[tmap_to_actual_col(tm)] = f'{float(tm.rescale(actual[i])):.3f}'
-
-
-def _infer_models(
-        models: List[Model], model_ids: List[str], inference_tsv: str,
-        input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], transfer: bool = False,
-):
-    count = 0
-    visited_paths = set()
-    tensor_paths = [
-        os.path.join(TENSOR_FOLDER, tp) for tp in sorted(os.listdir(TENSOR_FOLDER))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
-    ]
-    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in output_tmaps]
-    generate_test = None
-    try:
-        generate_test = TensorGenerator(
-            128, input_tmaps, no_fail_tmaps_out, tensor_paths, num_workers=8,
-            cache_size=0, keep_paths=True, mixup=0,
-        )
-
-        output_name_to_tmap = {tm.output_name(): tm for tm in output_tmaps}
-        actual_cols = list(map(tmap_to_actual_col, no_fail_tmaps_out))
-        prediction_cols = sum(
-            [
-                [tmap_to_pred_col(output_name_to_tmap[out_name], m_id) for out_name in m.output_names]
-                for m, m_id in zip(models, model_ids)
-            ],
-            [],
-        )
-        with open(inference_tsv, mode='w') as inference_file:
-            inference_writer = csv.DictWriter(
-                inference_file, fieldnames=['sample_id'] + actual_cols + prediction_cols,
-                delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-            )
-            inference_writer.writeheader()
-            while True:
-                batch = next(generate_test)
-                rows = [{} for _ in range(len(batch[BATCH_PATHS_INDEX]))]
-                for model, model_id in zip(models, model_ids):
-                    _handle_inference_batch(output_name_to_tmap, model, model_id, batch, visited_paths, rows)
-                inference_writer.writerows([row for row in rows if row])
-                if generate_test.stats_q.qsize() == generate_test.num_workers:
-                    generate_test.aggregate_and_print_stats()
-                    logging.info(f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
-                    break
-                count += 1
-                logging.info(f"Wrote:{count} batches of inference.")
-    finally:
-        if generate_test:
-            generate_test.kill_workers()
-
-
 def _scatter_plot(ax, truth, prediction, title):
     ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
@@ -733,9 +656,9 @@ if __name__ == '__main__':
         _infer_models(
             models=[make_pretest_model(True)],
             model_ids=[PRETEST_MODEL_ID],
-            input_tmaps=[make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)],
-            output_tmaps=[_make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))],
-            inference_tsv=PRETEST_INFERENCE_FILE,
+            tensor_maps_in=[make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)],
+            tensor_maps_out=[_make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))],
+            inference_tsv=PRETEST_INFERENCE_FILE, num_workers=8, batch_size=128, tensors=TENSOR_FOLDER,
         )
     _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
 # TODO: bonus: bootstrapping for test set full size?
