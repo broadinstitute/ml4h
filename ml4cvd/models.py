@@ -765,6 +765,11 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 
 
+def load_multimodal_multitask_model(model_file: str, tensor_maps_out: List[TensorMap]) -> Model:
+    custom_dict = _get_custom_objects(tensor_maps_out)
+    return load_model(model_file, custom_objects=custom_dict, compile=False)
+
+
 def _repeat_dimension(dim: List[int], name: str, num_filters_needed: int) -> List[int]:
         if len(dim) != num_filters_needed:
             logging.warning(
@@ -855,7 +860,7 @@ def make_multimodal_multitask_model(
     )
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
-        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
+        m = load_multimodal_multitask_model(kwargs['model_file'], tensor_maps_out)
         m.compile(optimizer=opt, loss=custom_dict['loss'])
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
