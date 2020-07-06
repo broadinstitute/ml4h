@@ -1547,13 +1547,40 @@ def make_cardiac_surgery_outcome_tensor_from_file(
     return tensor_from_file
 
 
-def build_cardiac_surgery_tensor_maps(
+def build_sts_tensor_maps(
     needed_tensor_maps: List[str],
 ) -> Dict[str, TensorMap]:
+    """
+    Create tmaps for the Society of Thoracic Surgeons (STS) project.
+    Tensor Maps returned by this function fall into two categories:
+     1. cardiac surgery outcomes defined by the outcome tmaps defined below.
+        The outcome tmaps can be loaded to use a weighted loss function
+        by appending '_weighted_loss_x' to the end of the outcome tmap name
+        where the weight of the negative outcome (e.g. no_death) remains 1.0
+        and the weight of the positive outcome (e.g. death) = float(x).
+        examples of valid tmaps in category 1:
+            'sts_death'
+            'sts_death_weighted_loss_2'
+            'sts_death_weighted_loss_25.7'
+     2. ecg tensors defined by any of the tmaps defined at top level in this file,
+        including dynamically generated time series tmaps like '_newest', '_oldest', '_random' tmaps.
+        The ecg tmaps are modified to only load tensors within a given time window
+        defined relative to the surgery date. The modification is made by appending
+        '_sts' to the end of the ecg tensor name.
+        examples of valid tmaps in category 2:
+            'partners_ecg_2500_std_newest_sts'
+            'partners_ecg_datetime_oldest_sts'
+            'partners_ecg_age_sts'
+
+    :param needed_tensor_maps: A list of tmap names to try to create tensor map objects for
+    :return: A dictionary of tmap names to tensor map objects
+    """
     name2tensormap: Dict[str, TensorMap] = {}
+    if not any('sts' in needed_name for needed_name in needed_tensor_maps):
+        return name2tensormap
+
     outcome2column = {
         "sts_death": "mtopd",
-        "sts_death_weighted_loss": "mtopd",
         "sts_stroke": "cnstrokp",
         "sts_renal_failure": "crenfail",
         "sts_prolonged_ventilation": "cpvntlng",
@@ -1563,21 +1590,30 @@ def build_cardiac_surgery_tensor_maps(
         "sts_long_stay": "llos",
     }
 
-    cardiac_surgery_dict = None
-    date_interval_lookup = None
+    needed_outcome_columns = {}
     for needed_name in needed_tensor_maps:
-        if needed_name in outcome2column:
-            if cardiac_surgery_dict is None:
-                cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
-            channel_map = _outcome_channels(needed_name)
+        for outcome, column in outcome2column.items():
+            if outcome in needed_name:
+                needed_outcome_columns[needed_name] = column
+    cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=list(needed_outcome_columns.values()))
+    date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
+
+    for needed_name in needed_tensor_maps:
+        if needed_name in needed_outcome_columns:
+            clean_name = needed_name.replace('.', '_')
+            channel_map = _outcome_channels(clean_name)
+            loss_function = None
+            if '_weighted_loss_' in needed_name:
+                positive_outcome_weight = float(needed_name.split('_weighted_loss_')[1])
+                loss_function = weighted_crossentropy([1.0, positive_outcome_weight], clean_name)
             sts_tmap = TensorMap(
-                needed_name,
+                clean_name,
                 Interpretation.CATEGORICAL,
                 path_prefix=PARTNERS_PREFIX,
-                tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(cardiac_surgery_dict, outcome2column[needed_name]),
+                tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(cardiac_surgery_dict, needed_outcome_columns[needed_name]),
                 channel_map=channel_map,
                 validator=validator_not_all_zero,
-                loss=weighted_crossentropy([1.0, 2.0], 'sts_death_weighted_loss') if needed_name == 'sts_death_weighted_loss' else None,
+                loss=loss_function,
             )
         else:
             if not needed_name.endswith('_sts'):
@@ -1589,10 +1625,6 @@ def build_cardiac_surgery_tensor_maps(
                 if base_name not in TMAPS:
                     continue
 
-            if cardiac_surgery_dict is None:
-                cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
-            if date_interval_lookup is None:
-                date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
             sts_tmap = copy.deepcopy(TMAPS[base_name])
             sts_tmap.name = needed_name
             sts_tmap.time_series_lookup = date_interval_lookup
