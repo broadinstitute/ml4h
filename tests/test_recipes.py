@@ -60,6 +60,7 @@ class TestRecipes:
     def test_explore(self, default_arguments, tmpdir_factory):
         temp_dir = tmpdir_factory.mktemp('explore_tensors')
         default_arguments.tensors = str(temp_dir)
+        default_arguments.explore_export_errors = True
         tmaps = TMAPS_UP_TO_4D[:]
         tmaps.append(TensorMap(f'scalar', shape=(1,), interpretation=Interpretation.CONTINUOUS))
         explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS)
@@ -70,7 +71,12 @@ class TestRecipes:
             default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
         )
         explore_result = pd.read_csv(csv_path)
+        intersect_csv_path = os.path.join(
+            default_arguments.output_folder, default_arguments.id, 'tensors_all_intersect.csv'
+        )
+        intersect_explore_result = pd.read_csv(csv_path)
         assert len(explore_result) == pytest.N_TENSORS
+        assert intersect_explore_result.equals(explore_result)  # no errors make this true
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:

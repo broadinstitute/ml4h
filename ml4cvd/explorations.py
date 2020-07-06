@@ -840,9 +840,10 @@ def explore(args):
     df = _tensors_to_df(args)
 
     # By default, remove columns with error_type
+    error_cols = [c for c in df.columns if c.startswith('error_type_')]
+    non_error_cols = [col for col in df.columns if col not in error_cols]
     if not args.explore_export_errors:
-        cols = [c for c in df.columns if not c.startswith('error_type_')]
-        df = df[cols]
+        df = df[non_error_cols]
 
     if tsv_style_is_genetics:
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
@@ -852,7 +853,7 @@ def explore(args):
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
-    df.dropna().to_csv(fpath, index=False, sep=out_sep)
+    df.dropna(subset=non_error_cols).to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
 
     # Check if any tmaps are categorical
