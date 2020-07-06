@@ -315,10 +315,10 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
 
 
 def _order_layers(
-        layer_order: List[str],
-        activate: Layer = None,
-        normalize: Layer = None,
-        regularize: Layer = None,
+    layer_order: List[str],
+    activate: Layer = None,
+    normalize: Layer = None,
+    regularize: Layer = None,
 ) -> Layer:
     identity = lambda x: x
     activate = activate or identity
@@ -1090,7 +1090,7 @@ def train_model_from_generators(
     inspect_show_labels: bool,
     return_history: bool = False,
     plot: bool = True,
-    defer_worker_halt: bool = False
+    defer_worker_halt: bool = False,
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
