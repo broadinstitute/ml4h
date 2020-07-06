@@ -9,22 +9,25 @@ import logging
 import numpy as np
 from functools import reduce
 from timeit import default_timer as timer
-from collections import Counter, defaultdict
+from collections import defaultdict
+from typing import Dict, Set, List, Callable, Tuple
+import pandas as pd
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.optimizers import find_learning_rate
-from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
+from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.defines import TENSOR_EXT, MODEL_EXT, SAMPLE_ID
 from ml4cvd.tensor_writer_partners import write_tensors_partners
 from ml4cvd.explorations import sample_from_char_model, mri_dates, ecg_dates, predictions_to_pngs
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels, explore
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4cvd.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
+from ml4cvd.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model, load_multimodal_multitask_model
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs
+from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 
@@ -78,6 +81,8 @@ def run(args):
             plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
         elif 'plot_heatmap' == args.mode:
             plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
+        elif 'plot_resting_ecgs' == args.mode:
+            plot_ecg_rest_mp(args.tensors, args.min_sample_id, args.max_sample_id, args.output_folder, args.num_workers)
         elif 'plot_partners_ecgs' == args.mode:
             plot_partners_ecgs(args)
         elif 'tabulate_correlations' == args.mode:
@@ -199,119 +204,250 @@ def inference_file_name(output_folder: str, id_: str) -> str:
     return os.path.join(output_folder, id_, 'inference_' + id_ + '.tsv')
 
 
-def infer_multimodal_multitask(args):
-    stats = Counter()
-    tensor_paths_inferred = set()
-    inference_tsv = inference_file_name(args.output_folder, args.id)
-    tsv_style_is_genetics = 'genetics' in args.tsv_style
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    model = make_multimodal_multitask_model(**args.__dict__)
-    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
-    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(
-        1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
-        cache_size=0, keep_paths=True, mixup=args.mixup_alpha,
+def tmap_inference_column_actual(tm: TensorMap):
+    return f'{tm.name}_actual'
+
+
+def tmap_inference_column_predicted(tm: TensorMap, model_id: str):
+    return f'{tm.name}_{model_id}_prediction'
+
+
+def hidden_column(model_id: str, index: int):
+    return f'{model_id}_latent_{index}'
+
+
+def _handle_inference_batch(
+        output_name_to_tmap: Dict[str, TensorMap], model: Callable, model_id: str, batch,
+        rows: List[Dict[str, str]],
+):
+    input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+    pred = model.predict(input_data)
+    if type(pred) != list:
+        pred = [pred]
+    for tm_pred, out_name in zip(pred, model.output_names):
+        tm = output_name_to_tmap[out_name]
+        scaled = tm.rescale(tm_pred)
+        actual = output_data[tm.output_name()]
+        for i, row in enumerate(rows):
+            actual_str = None
+            if ((tm.sentinel is not None and tm.sentinel == actual[i][0])
+                    or np.isnan(actual[i][0])):
+                actual_str = 'NA'
+            if tm.is_continuous():
+                pred_str = f'{scaled[i, 0]:.3f}'
+                if actual_str != 'NA':
+                    actual_str = f'{tm.rescale(actual[i, 0]):.3f}'
+            elif tm.is_categorical():
+                inv_map = {v: k for k, v in tm.channel_map.items()}
+                pred_str = inv_map[np.argmax(scaled[i])]
+                if actual_str != 'NA':
+                    actual_str = inv_map[np.argmax(actual[i])]
+            else:
+                raise NotImplementedError(f'Inference not implemented for {tm}.')
+            row[tmap_inference_column_predicted(tm, model_id)] = pred_str
+            row[SAMPLE_ID] = os.path.basename(tensor_paths[i]).replace(TENSOR_EXT, '')  # extract sample id
+            row[tmap_inference_column_actual(tm)] = actual_str
+
+
+def _handle_hidden_inference_batch(
+        model: Callable, model_id: str, batch, rows: List[Dict[str, str]],
+):
+    input_data, _, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+    pred = model.predict(input_data)
+    pred = pred.reshape(pred.shape[0], np.prod(pred.shape[1:]))
+    for i, row in enumerate(rows):
+        for idx in range(pred.shape[1]):
+            row[hidden_column(model_id, idx)] = pred[i, idx]
+        row[SAMPLE_ID] = os.path.basename(tensor_paths[i]).replace(TENSOR_EXT, '')  # extract sample id
+
+
+def _unseen_batch(batch, visited_paths: Set[str]):
+    input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+    unseen_paths, unseen_path_idx = [], []
+    for i, path in enumerate(tensor_paths):
+        if path not in visited_paths:
+            visited_paths.add(path)
+            unseen_paths.append(path)
+            unseen_path_idx.append(i)
+    for k, v in input_data.items():
+        input_data[k] = v[unseen_path_idx]
+    for k, v in output_data.items():
+        input_data[k] = v[unseen_path_idx]
+    return unseen_paths
+
+
+def _infer_models(
+        models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
+        tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
+        num_workers: int, batch_size: int,
+):
+    count = 0
+    tensor_paths = [
+        os.path.join(tensors, tp) for tp in sorted(os.listdir(tensors))
+        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
+    ]
+    tensor_paths_set = set(tensor_paths)
+    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in tensor_maps_out]
+    generate_test = None
+    output_name_to_tmap = {tm.output_name(): tm for tm in tensor_maps_out}
+    actual_cols = list(map(tmap_inference_column_actual, no_fail_tmaps_out))
+    prediction_cols = sum(
+        [
+            [tmap_inference_column_predicted(output_name_to_tmap[out_name], m_id) for out_name in m.output_names]
+            for m, m_id in zip(models, model_ids)
+        ],
+        [],
     )
-    generate_test.set_worker_paths(tensor_paths)
-    with open(inference_tsv, mode='w') as inference_file:
-        # TODO: csv.DictWriter is much nicer for this
-        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        header = ['sample_id']
-        if tsv_style_is_genetics:
-            header = ['FID', 'IID']
-        for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
-            if len(otm.shape) == 1 and otm.is_continuous():
-                header.extend([ot+'_prediction', ot+'_actual'])
-            elif len(otm.shape) == 1 and otm.is_categorical():
-                channel_columns = []
-                for k in otm.channel_map:
-                    channel_columns.append(ot + '_' + k + '_prediction')
-                    channel_columns.append(ot + '_' + k + '_actual')
-                header.extend(channel_columns)
-        inference_writer.writerow(header)
+    with open(inference_tsv, 'w') as f:
+        inference_writer = csv.DictWriter(
+            f, fieldnames=[SAMPLE_ID] + actual_cols + prediction_cols,
+            delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+        )
+        inference_writer.writeheader()
+        visited_paths = set()
+        try:
+            generate_test = TensorGenerator(
+                batch_size, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
+                cache_size=0, keep_paths=True, mixup=0,
+            )
+            while visited_paths < tensor_paths_set:
+                batch = next(generate_test)
+                paths = _unseen_batch(batch, visited_paths)
+                if not paths:
+                    continue
+                rows = [{} for _ in range(len(paths))]
+                for model, model_id in zip(models, model_ids):
+                    _handle_inference_batch(
+                        output_name_to_tmap=output_name_to_tmap, model=model, model_id=model_id,
+                        batch=batch, rows=rows,
+                    )
+                inference_writer.writerows([row for row in rows if row])
+                count += 1
+                logging.info(f"Wrote {count} batches of inference.")
+                if generate_test.stats_q.qsize() == generate_test.num_workers:
+                    generate_test.aggregate_and_print_stats()
+                    generate_test.kill_workers()
+                    generate_test = TensorGenerator(
+                        1, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
+                        cache_size=0, keep_paths=True, mixup=0,
+                    )
+        finally:
+            logging.info(
+                f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
+            if generate_test is not None:
+                generate_test.kill_workers()
 
-        while True:
-            batch = next(generate_test)
-            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
-            if tensor_paths[0] in tensor_paths_inferred:
-                next(generate_test)  # this prints end of epoch info
-                logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
-                break
 
-            prediction = model.predict(input_data)
-            if len(no_fail_tmaps_out) == 1:
-                prediction = [prediction]
+def _convert_to_genetics_df(df: pd.DataFrame) -> pd.DataFrame:
+    new_cols = ['FID', 'IID']
+    df[new_cols[0]] = df[new_cols[1]] = df[SAMPLE_ID]
+    del df[SAMPLE_ID]
+    cols = [col for col in df.columns if col not in new_cols]
+    return df[new_cols + cols]
 
-            csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
-            if tsv_style_is_genetics:
-                csv_row *= 2
-            for y, tm in zip(prediction, no_fail_tmaps_out):
-                if len(tm.shape) == 1 and tm.is_continuous():
-                    csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
-                            or np.isnan(output_data[tm.output_name()][0][0])):
-                        csv_row.append("NA")
-                    else:
-                        csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
-                elif len(tm.shape) == 1 and tm.is_categorical():
-                    for k, i in tm.channel_map.items():
-                        csv_row.append(str(y[0][tm.channel_map[k]]))
-                        actual = output_data[tm.output_name()][0][i]
-                        csv_row.append("NA" if np.isnan(actual) else str(actual))
 
-            inference_writer.writerow(csv_row)
-            tensor_paths_inferred.add(tensor_paths[0])
-            stats['count'] += 1
-            if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
+def _convert_tsv_to_genetics(tsv_path: str):
+    df = pd.read_csv(tsv_path, sep='\t')
+    df = _convert_to_genetics_df(df)
+    df.to_csv(tsv_path, sep='\t', index=False)
+
+
+def infer_multimodal_multitask(args):
+    assert len(args.model_files) == len(args.model_ids)
+    models = [load_multimodal_multitask_model(model_file, args.tensor_maps_out) for model_file in args.model_files]
+    tsv_path = inference_file_name(args.output_folder, args.id)
+    _infer_models(
+        models=models, model_ids=args.model_ids,
+        inference_tsv=tsv_path,
+        tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, tensor_maps_out=args.tensor_maps_out,
+        num_workers=args.num_workers, batch_size=args.batch_size,
+    )
+    if 'genetics' in args.tsv_style:
+        _convert_tsv_to_genetics(tsv_path)
 
 
 def hidden_inference_file_name(output_folder: str, id_: str) -> str:
     return os.path.join(output_folder, id_, 'hidden_inference_' + id_ + '.tsv')
 
 
-def infer_hidden_layer_multimodal_multitask(args):
-    stats = Counter()
-    args.num_workers = 0
-    inference_tsv = hidden_inference_file_name(args.output_folder, args.id)
-    tsv_style_is_genetics = 'genetics' in args.tsv_style
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(
-        1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-        cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+def _infer_hidden(
+    models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
+    tensor_maps_in: List[TensorMap], hidden_shapes: List[int],
+    num_workers: int, batch_size: int,
+):
+    count = 0
+    visited_paths = set()
+    tensor_paths = [
+        os.path.join(tensors, tp) for tp in sorted(os.listdir(tensors))
+        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
+    ]
+    tensor_paths_set = set(tensor_paths)
+    generate_test = None
+
+    prediction_cols = sum(
+        [
+            [hidden_column(m_id, idx) for idx in range(hidden)]
+            for hidden, m_id in zip(hidden_shapes, model_ids)
+        ],
+        [],
     )
-    generate_test.set_worker_paths(tensor_paths)
-    full_model = make_multimodal_multitask_model(**args.__dict__)
-    embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
-    dummy_out = embed_model.predict(dummy_input)
-    latent_dimensions = int(np.prod(dummy_out.shape[1:]))
-    logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
-    with open(inference_tsv, mode='w') as inference_file:
-        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
-        header += [f'latent_{i}' for i in range(latent_dimensions)]
-        inference_writer.writerow(header)
+    with open(inference_tsv, 'w') as f:
+        inference_writer = csv.DictWriter(
+            f, fieldnames=['sample_id'] + prediction_cols,
+            delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+        )
+        inference_writer.writeheader()
+        try:
+            generate_test = TensorGenerator(
+                batch_size, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
+                cache_size=0, keep_paths=True, mixup=0,
+            )
+            while visited_paths < tensor_paths_set:
+                batch = next(generate_test)
+                paths = _unseen_batch(batch, visited_paths)
+                if not paths:
+                    continue
+                rows = [{} for _ in range(len(paths))]
+                for model, model_id in zip(models, model_ids):
+                    _handle_hidden_inference_batch(
+                        model=model, model_id=model_id,
+                        batch=batch, rows=rows,
+                    )
+                inference_writer.writerows([row for row in rows if row])
+                count += 1
+                logging.info(f"Wrote {count} batches of inference.")
+                if generate_test.stats_q.qsize() == generate_test.num_workers:
+                    generate_test.aggregate_and_print_stats()
+                    generate_test.kill_workers()
+                    generate_test = TensorGenerator(
+                        1, tensor_maps_in, [], tensor_paths, num_workers=num_workers,
+                        cache_size=0, keep_paths=True, mixup=0,
+                    )
+        finally:
+            logging.info(
+                f"Inference on {len(visited_paths)} tensors finished. Inference TSV file at: {inference_tsv}")
+            if generate_test is not None:
+                generate_test.kill_workers()
 
-        while True:
-            batch = next(generate_test)
-            input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
-            if tensor_paths[0] in stats:
-                next(generate_test)  # this prints end of epoch info
-                logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
-                break
 
-            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-            prediction = embed_model.predict(input_data)
-            prediction = np.reshape(prediction, (latent_dimensions,))
-            csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
-            csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
-            inference_writer.writerow(csv_row)
-            stats[tensor_paths[0]] += 1
-            stats['count'] += 1
-            if stats['count'] % 500 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
+def infer_hidden_layer_multimodal_multitask(args):
+    assert len(args.model_files) == len(args.model_ids)
+    full_models = [load_multimodal_multitask_model(model_file, args.tensor_maps_out) for model_file in args.model_files]
+    embed_models = [
+        make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer) for full_model in full_models
+    ]
+    dummy_input = {tm.input_name(): np.zeros((1,) + tm.shape) for tm in args.tensor_maps_in}
+    hidden_shapes = [np.prod(embed_model.predict(dummy_input).shape) for embed_model in embed_models]
+    for m_id, shape in zip(args.model_ids, hidden_shapes):
+        logging.info(f'Hidden shape for model {m_id} is {shape}.')
+    tsv_path = hidden_inference_file_name(args.output_folder, args.id)
+    _infer_hidden(
+        models=embed_models, model_ids=args.model_ids, hidden_shapes=hidden_shapes, inference_tsv=tsv_path,
+        tensors=args.tensors, tensor_maps_in=args.tensor_maps_in, num_workers=args.num_workers,
+        batch_size=args.batch_size,
+    )
+    if 'genetics' in args.tsv_style:
+        _convert_tsv_to_genetics(tsv_path)
 
 
 def train_shallow_model(args):
