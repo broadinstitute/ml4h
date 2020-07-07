@@ -363,6 +363,8 @@ class TestModelPerformance:
             num_workers=cpu_count(),
             cache_size=1e9 / cpu_count(),
             balance_csvs=[],
+            training_steps=64,
+            validation_steps=18,
             test_modulo=0,
         )
         try:
