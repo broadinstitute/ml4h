@@ -31,7 +31,12 @@ DEFAULT_PARAMS = {
     'pool_x': 1,
     'pool_y': 1,
     'pool_z': 1,
-    'dropout': 0,
+    'conv_regularize': 'spatial_dropout',
+    'conv_regularize_rate': .1,
+    'conv_normalize': 'batch_norm',
+    'dense_regularize': 'dropout',
+    'dense_regularize_rate': .1,
+    'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
 }
 
