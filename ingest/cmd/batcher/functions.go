@@ -1,9 +1,8 @@
 package main
 
-import (
-	"math/rand"
-	"time"
-)
+# Imports: third party
+import "time"
+import "math/rand"
 
 func init() {
 	// Ensure different folder names on each run

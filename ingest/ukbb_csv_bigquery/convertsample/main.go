@@ -1,15 +1,13 @@
 package main
 
-import (
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"os"
-
-	"github.com/carbocation/genomisc"
-)
+# Imports: third party
+import "io"
+import "os"
+import "fmt"
+import "log"
+import "flag"
+import "encoding/csv"
+import "github.com/carbocation/genomisc"
 
 const (
 	// .sample file field columns

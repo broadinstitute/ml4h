@@ -1,10 +1,9 @@
 package bulkprocess
 
-import (
-	"fmt"
-	"path/filepath"
-	"strings"
-)
+# Imports: third party
+import "fmt"
+import "strings"
+import "path/filepath"
 
 type ZipMetadata struct {
 	SampleID string

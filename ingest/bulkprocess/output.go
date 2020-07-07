@@ -1,11 +1,9 @@
 package bulkprocess
 
-import (
-	"fmt"
-	"time"
-
-	"github.com/araddon/dateparse"
-)
+# Imports: third party
+import "fmt"
+import "time"
+import "github.com/araddon/dateparse"
 
 type DicomOutput struct {
 	SampleID  string

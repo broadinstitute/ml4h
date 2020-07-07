@@ -1,22 +1,20 @@
 package main
 
-import (
-	"archive/zip"
-	"bytes"
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"image/png"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-
-	"github.com/broadinstitute/ml4cvd/go/bulkprocess"
-)
+# Imports: third party
+import "io"
+import "os"
+import "fmt"
+import "log"
+import "flag"
+import "bytes"
+import "strconv"
+import "strings"
+import "image/png"
+import "io/ioutil"
+import "archive/zip"
+import "encoding/csv"
+import "path/filepath"
+import "github.com/broadinstitute/ml4cvd/go/bulkprocess"
 
 var (
 	ZipColumn   = -1

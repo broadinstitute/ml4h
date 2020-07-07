@@ -1,20 +1,22 @@
+# Imports: standard library
 import os
 import re
 import base64
 import struct
 import logging
 import multiprocessing
+from typing import Dict, List, Tuple, Union
 from datetime import datetime
 from collections import defaultdict
-from typing import List, Dict, Tuple, Union
 
+# Imports: third party
 import bs4
 import h5py
-import numcodecs
 import numpy as np
+import numcodecs
 
-from ml4cvd.defines import TENSOR_EXT, XML_EXT
-
+# Imports: first party
+from ml4cvd.defines import XML_EXT, TENSOR_EXT
 
 ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
 
@@ -31,21 +33,21 @@ def write_tensors_partners(xml_folder: str, tensors: str, num_workers: int) -> N
     :return: None
     """
 
-    logging.info('Mapping XMLs to MRNs')
+    logging.info("Mapping XMLs to MRNs")
     mrn_xmls_map = _get_mrn_xmls_map(xml_folder, num_workers)
 
-    logging.info('Converting XMLs into HD5s')
+    logging.info("Converting XMLs into HD5s")
     _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map, tensors, num_workers)
 
 
 def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[str, str], None]:
-    with open(fpath_xml, 'r') as f:
+    with open(fpath_xml, "r") as f:
         for line in f:
-            match = re.match(r'.*<PatientID>(.*)</PatientID>.*', line)
+            match = re.match(r".*<PatientID>(.*)</PatientID>.*", line)
             if match:
-                mrn = _clean_mrn(match.group(1), fallback='bad_mrn')
+                mrn = _clean_mrn(match.group(1), fallback="bad_mrn")
                 return (mrn, fpath_xml)
-    logging.warning(f'No PatientID found at {fpath_xml}')
+    logging.warning(f"No PatientID found at {fpath_xml}")
     return None
 
 
@@ -58,13 +60,12 @@ def _get_mrn_xmls_map(xml_folder: str, num_workers: int) -> Dict[str, List[str]]
             if os.path.splitext(file)[-1].lower() != XML_EXT:
                 continue
             fpath_xmls.append(os.path.join(root, file))
-    logging.info(f'Found {len(fpath_xmls)} XMLs at {xml_folder}')
+    logging.info(f"Found {len(fpath_xmls)} XMLs at {xml_folder}")
 
     # Read through xmls to get MRN in parallel
     with multiprocessing.Pool(processes=num_workers) as pool:
         mrn_xml_list = pool.starmap(
-            _map_mrn_to_xml,
-            [(fpath_xml,) for fpath_xml in fpath_xmls],
+            _map_mrn_to_xml, [(fpath_xml,) for fpath_xml in fpath_xmls],
         )
 
     # Build dict of MRN to XML files with that MRN
@@ -72,7 +73,7 @@ def _get_mrn_xmls_map(xml_folder: str, num_workers: int) -> Dict[str, List[str]]
     for mrn_xml in mrn_xml_list:
         if mrn_xml:
             mrn_xml_dict[mrn_xml[0]].append(mrn_xml[1])
-    logging.info(f'Found {len(mrn_xml_dict)} distinct MRNs')
+    logging.info(f"Found {len(mrn_xml_dict)} distinct MRNs")
 
     return mrn_xml_dict
 
@@ -80,13 +81,15 @@ def _get_mrn_xmls_map(xml_folder: str, num_workers: int) -> Dict[str, List[str]]
 def _clean_mrn(mrn: str, fallback: str) -> str:
     # TODO additional cleaning like o->0, |->1
     try:
-        clean = re.sub(r'[^0-9]', '', mrn)
+        clean = re.sub(r"[^0-9]", "", mrn)
         clean = int(clean)
         if not clean:
             raise ValueError()
         return str(clean)
     except ValueError:
-        logging.warning(f'Could not clean MRN "{mrn}" to an int. Falling back to "{fallback}".')
+        logging.warning(
+            f'Could not clean MRN "{mrn}" to an int. Falling back to "{fallback}".',
+        )
         return fallback
 
 
@@ -95,13 +98,13 @@ def _clean_read_text(text: str) -> str:
     text = text.lower()
 
     # Replace newline character with space
-    text = re.sub(r'\n', ' ', text)
+    text = re.sub(r"\n", " ", text)
 
     # Remove punctuation
-    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r"[^\w\s]", "", text)
 
     # Replace two+ spaces with one space
-    text = re.sub(r'  +', ' ', text)
+    text = re.sub(r"  +", " ", text)
 
     # Remove all leading and trailing whitespace
     text = text.strip()
@@ -114,41 +117,41 @@ def _data_from_xml(fpath_xml: str) -> Dict[str, Union[str, Dict[str, np.ndarray]
 
     # define tags that we want to find and use SoupStrainer to speed up search
     tags = [
-        'patientdemographics',
-        'testdemographics',
-        'order',
-        'restingecgmeasurements',
-        'originalrestingecgmeasurements',
-        'diagnosis',
-        'originaldiagnosis',
-        'intervalmeasurementtimeresolution',
-        'intervalmeasurementamplituderesolution',
-        'intervalmeasurementfilter',
-        'waveform',
+        "patientdemographics",
+        "testdemographics",
+        "order",
+        "restingecgmeasurements",
+        "originalrestingecgmeasurements",
+        "diagnosis",
+        "originaldiagnosis",
+        "intervalmeasurementtimeresolution",
+        "intervalmeasurementamplituderesolution",
+        "intervalmeasurementfilter",
+        "waveform",
     ]
     strainer = bs4.SoupStrainer(tags)
 
     # lxml parser makes all tags lower case
-    with open(fpath_xml, 'r') as f:
-        soup = bs4.BeautifulSoup(f, 'lxml', parse_only=strainer)
+    with open(fpath_xml, "r") as f:
+        soup = bs4.BeautifulSoup(f, "lxml", parse_only=strainer)
 
     for tag in tags:
-        tag_suffix = ''
-        if tag == 'restingecgmeasurements':
-            tag_suffix = '_md'
-        elif tag == 'originalrestingecgmeasurements':
-            tag_suffix = '_pc'
-        elif tag == 'diagnosis':
+        tag_suffix = ""
+        if tag == "restingecgmeasurements":
+            tag_suffix = "_md"
+        elif tag == "originalrestingecgmeasurements":
+            tag_suffix = "_pc"
+        elif tag == "diagnosis":
             soup_tag = soup.find(tag)
             if soup_tag is not None:
-                ecg_data['diagnosis_md'] = _parse_soup_diagnosis(soup_tag)
+                ecg_data["diagnosis_md"] = _parse_soup_diagnosis(soup_tag)
             continue
-        elif tag == 'originaldiagnosis':
+        elif tag == "originaldiagnosis":
             soup_tag = soup.find(tag)
             if soup_tag is not None:
-                ecg_data['diagnosis_pc'] = _parse_soup_diagnosis(soup_tag)
+                ecg_data["diagnosis_pc"] = _parse_soup_diagnosis(soup_tag)
             continue
-        elif tag == 'waveform':
+        elif tag == "waveform":
             voltage_data = _get_voltage_from_waveform_tags(soup.find_all(tag))
             ecg_data.update(voltage_data)
             continue
@@ -170,9 +173,9 @@ def _data_from_xml(fpath_xml: str) -> Dict[str, Union[str, Dict[str, np.ndarray]
 
 def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
 
-    parsed_text = ''
+    parsed_text = ""
 
-    parts = input_from_soup.find_all('diagnosisstatement')
+    parts = input_from_soup.find_all("diagnosisstatement")
 
     # Check for edge case where <diagnosis> </diagnosis> does not encompass
     # <DiagnosisStatement> sub-element, which results in parts being length 0
@@ -180,10 +183,10 @@ def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
         for part in parts:
 
             # Create list of all <stmtflag> entries
-            flags = part.find_all('stmtflag')
+            flags = part.find_all("stmtflag")
 
             # Isolate text from part
-            text_to_append = part.find('stmttext').text
+            text_to_append = part.find("stmttext").text
 
             # Initialize flag to ignore sentence, e.g. do not append it
             flag_ignore_sentence = False
@@ -197,47 +200,57 @@ def _parse_soup_diagnosis(input_from_soup: bs4.Tag) -> str:
 
                 # Loop through flags and if 'ENDSLINE' found anywhere, mark flag
                 for flag in flags:
-                    if flag.text == 'ENDSLINE':
+                    if flag.text == "ENDSLINE":
                         endline_flag = True
 
                 # If 'ENDSLINE' was found anywhere, append newline
                 if endline_flag:
-                    parsed_text += '\n'
+                    parsed_text += "\n"
 
                 # Else append space
                 else:
-                    parsed_text += ' '
+                    parsed_text += " "
 
         # Remove final newline character in diagnosis
-        if parsed_text[-1] == '\n':
+        if parsed_text[-1] == "\n":
             parsed_text = parsed_text[:-1]
 
     return parsed_text
 
 
-def _get_voltage_from_waveform_tags(waveform_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
+def _get_voltage_from_waveform_tags(
+    waveform_tags: bs4.ResultSet,
+) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
     voltage_data = dict()
-    metadata_tags = ['samplebase', 'sampleexponent', 'highpassfilter', 'lowpassfilter', 'acfilter']
+    metadata_tags = [
+        "samplebase",
+        "sampleexponent",
+        "highpassfilter",
+        "lowpassfilter",
+        "acfilter",
+    ]
 
     for waveform_tag in waveform_tags:
         # only use full rhythm waveforms, do not use median waveforms
-        if waveform_tag.find('waveformtype').text != 'Rhythm':
+        if waveform_tag.find("waveformtype").text != "Rhythm":
             continue
 
         # get voltage metadata
         for metadata_tag in metadata_tags:
             mt = waveform_tag.find(metadata_tag)
             if mt is not None:
-                voltage_data[f'waveform_{metadata_tag}'] = mt.text
+                voltage_data[f"waveform_{metadata_tag}"] = mt.text
 
         # get voltage leads and lead metadata
-        lead_data = _get_voltage_from_lead_tags(waveform_tag.find_all('leaddata'))
+        lead_data = _get_voltage_from_lead_tags(waveform_tag.find_all("leaddata"))
         voltage_data.update(lead_data)
         break
     return voltage_data
 
 
-def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
+def _get_voltage_from_lead_tags(
+    lead_tags: bs4.ResultSet,
+) -> Dict[str, Union[str, Dict[str, np.ndarray]]]:
     lead_data = dict()
     voltage = dict()
     all_lead_lengths = []
@@ -245,7 +258,10 @@ def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str
 
     def _decode_waveform(waveform_raw: str, scale: float) -> np.ndarray:
         decoded = base64.b64decode(waveform_raw)
-        waveform = [struct.unpack("h", bytes([decoded[t], decoded[t + 1]]))[0] for t in range(0, len(decoded), 2)]
+        waveform = [
+            struct.unpack("h", bytes([decoded[t], decoded[t + 1]]))[0]
+            for t in range(0, len(decoded), 2)
+        ]
         return np.array(waveform) * scale
 
     try:
@@ -253,16 +269,16 @@ def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str
             # for each lead, we make sure all leads use 2 bytes per sample,
             # the decoded lead length is the same as the lead length tag,
             # the lead lengths are all the same, and the units are all the same
-            lead_sample_size = int(lead_tag.find('leadsamplesize').text)
+            lead_sample_size = int(lead_tag.find("leadsamplesize").text)
             assert lead_sample_size == 2
 
-            lead_id = lead_tag.find('leadid').text
-            lead_scale = lead_tag.find('leadamplitudeunitsperbit').text
-            lead_waveform_raw = lead_tag.find('waveformdata').text
+            lead_id = lead_tag.find("leadid").text
+            lead_scale = lead_tag.find("leadamplitudeunitsperbit").text
+            lead_waveform_raw = lead_tag.find("waveformdata").text
             lead_waveform = _decode_waveform(lead_waveform_raw, float(lead_scale))
 
-            lead_length = lead_tag.find('leadsamplecounttotal').text
-            lead_units = lead_tag.find('leadamplitudeunits').text
+            lead_length = lead_tag.find("leadsamplecounttotal").text
+            lead_units = lead_tag.find("leadamplitudeunits").text
 
             assert int(lead_length) == len(lead_waveform)
             all_lead_lengths.append(lead_length)
@@ -272,18 +288,18 @@ def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str
 
         # vector math to get remaining leads
         assert len(voltage) == 8
-        voltage['III'] = voltage['II'] - voltage['I']
-        voltage['aVR'] = -1 * (voltage['I'] + voltage['II']) / 2
-        voltage['aVL'] = voltage['I'] - voltage['II'] / 2
-        voltage['aVF'] = voltage['II'] - voltage['I'] / 2
+        voltage["III"] = voltage["II"] - voltage["I"]
+        voltage["aVR"] = -1 * (voltage["I"] + voltage["II"]) / 2
+        voltage["aVL"] = voltage["I"] - voltage["II"] / 2
+        voltage["aVF"] = voltage["II"] - voltage["I"] / 2
 
         # add voltage length and units to metadata
         assert len(set(all_lead_lengths)) == 1
         assert len(set(all_lead_units)) == 1
-        lead_data['voltagelength'] = all_lead_lengths[0]
-        lead_data['voltageunits'] = all_lead_units[0]
+        lead_data["voltagelength"] = all_lead_lengths[0]
+        lead_data["voltageunits"] = all_lead_units[0]
 
-        lead_data['voltage'] = voltage
+        lead_data["voltage"] = voltage
         return lead_data
     except (AssertionError, AttributeError, ValueError) as e:
         logging.exception(e)
@@ -291,16 +307,20 @@ def _get_voltage_from_lead_tags(lead_tags: bs4.ResultSet) -> Dict[str, Union[str
 
 
 def _compress_and_save_data(
-    hd5: h5py.Group, name: str, data: Union[str, np.ndarray],
-    dtype: str, method: str = 'zstd', compression_opts: int = 19,
+    hd5: h5py.Group,
+    name: str,
+    data: Union[str, np.ndarray],
+    dtype: str,
+    method: str = "zstd",
+    compression_opts: int = 19,
 ) -> None:
     # Define codec
     codec = numcodecs.zstd.Zstd(level=compression_opts)
 
     # If data is string, encode to bytes
-    if dtype == 'str':
+    if dtype == "str":
         # do not save empty string, cannot be decoded
-        if data == '':
+        if data == "":
             return
         data_compressed = codec.encode(data.encode())
         dsize = len(data.encode())
@@ -312,12 +332,12 @@ def _compress_and_save_data(
     dat = hd5.create_dataset(name=name, data=np.void(data_compressed))
 
     # Set attributes
-    dat.attrs['method'] = method
-    dat.attrs['compression_level'] = compression_opts
-    dat.attrs['len'] = len(data)
-    dat.attrs['uncompressed_length'] = dsize
-    dat.attrs['compressed_length'] = len(data_compressed)
-    dat.attrs['dtype'] = dtype
+    dat.attrs["method"] = method
+    dat.attrs["compression_level"] = compression_opts
+    dat.attrs["len"] = len(data)
+    dat.attrs["uncompressed_length"] = dsize
+    dat.attrs["compressed_length"] = len(data_compressed)
+    dat.attrs["dtype"] = dtype
 
 
 def _get_max_voltage(voltage: Dict[str, np.ndarray]) -> float:
@@ -335,25 +355,32 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
 
     # Extract data from XML into dict
     ecg_data = _data_from_xml(fpath_xml)
-    dt = datetime.strptime(f"{ecg_data['acquisitiondate']} {ecg_data['acquisitiontime']}", '%m-%d-%Y %H:%M:%S')
+    dt = datetime.strptime(
+        f"{ecg_data['acquisitiondate']} {ecg_data['acquisitiontime']}",
+        "%m-%d-%Y %H:%M:%S",
+    )
     ecg_dt = dt.isoformat()
 
-    if (os.stat(fpath_xml).st_size == 0 or not ecg_data):
+    if os.stat(fpath_xml).st_size == 0 or not ecg_data:
         # If XML is empty, remove the XML file and do not convert
         os.remove(fpath_xml)
         convert = 0
-        logging.warning(f'Conversion of {fpath_xml} failed! XML is empty.')
+        logging.warning(f"Conversion of {fpath_xml} failed! XML is empty.")
     elif ecg_dt in hd5.keys():
         # If patient already has an ECG at given date and time, skip duplicate
-        logging.warning(f'Conversion of {fpath_xml} skipped. Converted XML already exists in HD5.')
+        logging.warning(
+            f"Conversion of {fpath_xml} skipped. Converted XML already exists in HD5.",
+        )
         convert = -1
     elif "voltage" not in ecg_data:
         # If we could not get voltage, do not convert (see _get_voltage_from_lead_tags)
-        logging.warning(f'Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.')
+        logging.warning(
+            f"Conversion of {fpath_xml} failed! Voltage is empty or badly formatted.",
+        )
         convert = 0
     elif _get_max_voltage(ecg_data["voltage"]) == 0:
         # If the max voltage value is 0, do not convert
-        logging.warning(f'Conversion of {fpath_xml} failed! Maximum voltage is 0.')
+        logging.warning(f"Conversion of {fpath_xml} failed! Maximum voltage is 0.")
         convert = 0
 
     # If all prior checks passed, write hd5 group for ECG
@@ -361,47 +388,61 @@ def _convert_xml_to_hd5(fpath_xml: str, fpath_hd5: str, hd5: h5py.Group) -> int:
         gp = hd5.create_group(ecg_dt)
 
         # Save voltage leads
-        voltage = ecg_data.pop('voltage')
+        voltage = ecg_data.pop("voltage")
         for lead in voltage:
-            _compress_and_save_data(hd5=gp, name=lead, data=voltage[lead].astype('int16'), dtype='int16')
+            _compress_and_save_data(
+                hd5=gp, name=lead, data=voltage[lead].astype("int16"), dtype="int16",
+            )
 
         # Save everything else
         for key in ecg_data:
-            _compress_and_save_data(hd5=gp, name=key, data=ecg_data[key], dtype='str')
+            _compress_and_save_data(hd5=gp, name=key, data=ecg_data[key], dtype="str")
 
         # Clean Patient MRN to only numbers
-        key_mrn_clean = 'patientid_clean'
-        if 'patientid' in ecg_data:
-            mrn_clean = _clean_mrn(ecg_data['patientid'], fallback='')
-            _compress_and_save_data(hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype='str')
+        key_mrn_clean = "patientid_clean"
+        if "patientid" in ecg_data:
+            mrn_clean = _clean_mrn(ecg_data["patientid"], fallback="")
+            _compress_and_save_data(
+                hd5=gp, name=key_mrn_clean, data=mrn_clean, dtype="str",
+            )
 
         # Clean cardiologist read
-        key_read_md = 'diagnosis_md'
-        key_read_md_clean = 'read_md_clean'
+        key_read_md = "diagnosis_md"
+        key_read_md_clean = "read_md_clean"
         if key_read_md in ecg_data:
             read_md_clean = _clean_read_text(text=ecg_data[key_read_md])
-            _compress_and_save_data(hd5=gp, name=key_read_md_clean, data=read_md_clean, dtype='str')
+            _compress_and_save_data(
+                hd5=gp, name=key_read_md_clean, data=read_md_clean, dtype="str",
+            )
 
         # Clean MUSE read
-        key_read_pc = 'diagnosis_pc'
-        key_read_pc_clean = 'read_pc_clean'
+        key_read_pc = "diagnosis_pc"
+        key_read_pc_clean = "read_pc_clean"
         if key_read_pc in ecg_data:
             read_pc_clean = _clean_read_text(text=ecg_data[key_read_pc])
-            _compress_and_save_data(hd5=gp, name=key_read_pc_clean, data=read_pc_clean, dtype='str')
+            _compress_and_save_data(
+                hd5=gp, name=key_read_pc_clean, data=read_pc_clean, dtype="str",
+            )
 
-        logging.info(f'Wrote {fpath_xml} to {fpath_hd5}')
+        logging.info(f"Wrote {fpath_xml} to {fpath_hd5}")
     return convert
 
 
-def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str) -> Tuple[int, int, int]:
-    fpath_hd5 = os.path.join(dir_hd5, f'{mrn}{TENSOR_EXT}')
+def _convert_mrn_xmls_to_hd5(
+    mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_prefix: str,
+) -> Tuple[int, int, int]:
+    fpath_hd5 = os.path.join(dir_hd5, f"{mrn}{TENSOR_EXT}")
     num_xml_converted = 0
     num_dupe_skipped = 0
     num_src_in_hd5 = 0
     num_ecg_in_hd5 = 0
 
-    with h5py.File(fpath_hd5, 'a') as hd5:
-        hd5_ecg = hd5[hd5_prefix] if hd5_prefix in hd5.keys() else hd5.create_group(hd5_prefix)
+    with h5py.File(fpath_hd5, "a") as hd5:
+        hd5_ecg = (
+            hd5[hd5_prefix]
+            if hd5_prefix in hd5.keys()
+            else hd5.create_group(hd5_prefix)
+        )
         for fpath_xml in fpath_xmls:
             converted = _convert_xml_to_hd5(fpath_xml, fpath_hd5, hd5_ecg)
             if converted == 1:
@@ -413,7 +454,8 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_
         # If there are no ECGs in HD5, delete ECG group
         # There may be prior ECGs in HD5
         # num_xml_converted != num_ecg_in_hd5
-        if not num_ecg_in_hd5: del hd5[hd5_prefix]
+        if not num_ecg_in_hd5:
+            del hd5[hd5_prefix]
 
         num_src_in_hd5 = len(hd5.keys())
 
@@ -422,21 +464,29 @@ def _convert_mrn_xmls_to_hd5(mrn: str, fpath_xmls: List[str], dir_hd5: str, hd5_
         try:
             os.remove(fpath_hd5)
         except:
-            logging.warning(f'Could not delete empty HD5 at {fpath_hd5}')
+            logging.warning(f"Could not delete empty HD5 at {fpath_hd5}")
 
     num_hd5_written = 1 if num_xml_converted else 0
 
     return (num_hd5_written, num_xml_converted, num_dupe_skipped)
 
 
-def _convert_mrn_xmls_to_hd5_wrapper(mrn_xmls_map: Dict[str, List[str]], dir_hd5: str, num_workers: int, hd5_prefix: str = 'partners_ecg_rest'):
+def _convert_mrn_xmls_to_hd5_wrapper(
+    mrn_xmls_map: Dict[str, List[str]],
+    dir_hd5: str,
+    num_workers: int,
+    hd5_prefix: str = "partners_ecg_rest",
+):
     tot_xml = sum([len(v) for k, v in mrn_xmls_map.items()])
     os.makedirs(dir_hd5, exist_ok=True)
 
     with multiprocessing.Pool(processes=num_workers) as pool:
         converted = pool.starmap(
             _convert_mrn_xmls_to_hd5,
-            [(mrn, fpath_xmls, dir_hd5, hd5_prefix) for mrn, fpath_xmls in mrn_xmls_map.items()],
+            [
+                (mrn, fpath_xmls, dir_hd5, hd5_prefix)
+                for mrn, fpath_xmls in mrn_xmls_map.items()
+            ],
         )
     num_hd5 = sum([x[0] for x in converted])
     num_xml = sum([x[1] for x in converted])

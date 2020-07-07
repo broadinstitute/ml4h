@@ -1,6 +1,8 @@
-from abc import abstractmethod, ABC
-
+# Imports: standard library
 import sqlite3
+from abc import ABC, abstractmethod
+
+# Imports: third party
 from google.cloud.bigquery import Client
 
 
@@ -26,7 +28,9 @@ class BigQueryDatabaseClient(DatabaseClient):
             if credentials_file is not None:
                 bigquery_client = Client.from_service_account_json(credentials_file)
             else:
-                raise ValueError("BigQueryDatabaseClient requires a client or a credentials_file.")
+                raise ValueError(
+                    "BigQueryDatabaseClient requires a client or a credentials_file.",
+                )
             super(BigQueryDatabaseClient, self).__init__(bigquery_client)
 
     def execute(self, query: str):
@@ -41,7 +45,9 @@ class SqLiteDatabaseClient(DatabaseClient):
             super(SqLiteDatabaseClient, self).__init__(client)
         else:
             if db_file is not None:
-                super(SqLiteDatabaseClient, self).__init__(sqlite3.connect(db_file).cursor())
+                super(SqLiteDatabaseClient, self).__init__(
+                    sqlite3.connect(db_file).cursor(),
+                )
             else:
                 raise ValueError("SqLiteDatabaseClient requires a client or a db_file.")
 
@@ -49,11 +55,11 @@ class SqLiteDatabaseClient(DatabaseClient):
         return self.client.execute(query)
 
 
-if '__main__' == __name__:
-    credentials_file = '/Users/kyuksel/ml4cvd/bigquery-viewer-credentials.json'
+if "__main__" == __name__:
+    credentials_file = "/Users/kyuksel/ml4cvd/bigquery-viewer-credentials.json"
     db_client = BigQueryDatabaseClient(credentials_file=credentials_file)
 
-    dataset = 'broad-ml4cvd.ukbb7089_r10data'
+    dataset = "broad-ml4cvd.ukbb7089_r10data"
 
     dictionary_table = f"`{dataset}.dictionary`"
     phenotype_table = f"`{dataset}.phenotype`"
@@ -65,8 +71,7 @@ if '__main__' == __name__:
 
     job_title_field_id = 22600
     icd10_field = 41202
-    query = \
-        f"SELECT value FROM {phenotype_table} WHERE fieldid={icd10_field} AND sample_id={sample_id}"
+    query = f"SELECT value FROM {phenotype_table} WHERE fieldid={icd10_field} AND sample_id={sample_id}"
 
     rows = db_client.execute(query.format())
     for row in rows:

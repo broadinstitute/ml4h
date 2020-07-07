@@ -1,9 +1,8 @@
 package main
 
-import (
-	"fmt"
-	"time"
-)
+# Imports: third party
+import "fmt"
+import "time"
 
 func TimeToUKBDate(t time.Time) string {
 	if t.Equal(time.Time{}) {

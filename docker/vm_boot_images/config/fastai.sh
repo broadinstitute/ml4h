@@ -4,7 +4,7 @@
 git clone https://github.com/fastai/fastai
 cd fastai
 
-# Peg our version to a known-working SHA, since they make 
+# Peg our version to a known-working SHA, since they make
 # post-1.0 breaking changes literally every day...
 git reset --hard 14868ca69483afbaa8e28d4e281c148d1dad1c89
 

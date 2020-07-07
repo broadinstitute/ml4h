@@ -2,7 +2,7 @@
 `ml4cvd` is a project aimed at using machine learning to model multi-modal cardiovascular
 time series and imaging data. `ml4cvd` began as a set of tools to make it easy to work
 with the UK Biobank on the Google Cloud and has since expanded to include other data sources
-and functionality.   
+and functionality.
 
 
 Getting Started
@@ -57,7 +57,7 @@ You may now run code on your `Terminal`, like so
 python recipes.py --mode ...
 ```
 **Note** that *recipe*s require having the right input files in place and running them without proper inputs will not
-yield meaningful results.   
+yield meaningful results.
 
 ### PyCharm (Python IDE if interested)
 * Install PyCharm either directly from [here](https://www.jetbrains.com/pycharm/download/#section=mac), or download
@@ -79,7 +79,7 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
         * Open `recipes.py` (shortcut `Shift+Cmd+N` if you imported the custom settings).
         * Right-click on `if __name__=='__main__'` and select `Run recipes`.
         * You can specify input arguments by expanding the `Parameters` text box on the window
-         that can be opened using the menu `Run -> Edit Configurations...`.    
+         that can be opened using the menu `Run -> Edit Configurations...`.
 
 ## Setting up a remote VM
 To create a VM without a GPU run:
@@ -90,7 +90,7 @@ With GPU (not recommended unless you need something beefy and expensive)
 ```
 ./scripts/vm_launch/launch_dl_instance.sh ${USER}-gpu
 ```
-This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or [console](https://console.cloud.google.com/compute/instances?project=broad-ml4cvd) when you are not using it!  
+This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or [console](https://console.cloud.google.com/compute/instances?project=broad-ml4cvd) when you are not using it!
 
 Now ssh onto your instance (replace with proper machine name, note that you can also use regular old ssh if you have the external IP provided by the script or if you login from the GCP console)
 ```
@@ -139,7 +139,7 @@ Copy the line that looks like this:
 ```
 ssh -i ~/.ssh/google_compute_engine -nNT -L 8888:localhost:8888 <YOUR VM's IP ADDRESS>
 ```
-Open a terminal on your local machine and paste that command.  
+Open a terminal on your local machine and paste that command.
 
 If you get a public key error run: `gcloud compute config-ssh`
 
@@ -148,9 +148,9 @@ Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
 ### Installing git-secrets
 
-```git-secrets``` helps us avoid committing secrets (e.g. private keys) and other critical data (e.g. PHI) to our 
-repositories. ```git-secrets``` can be obtained via [github](https://github.com/awslabs/git-secrets) or on MacOS can be 
-installed with Homebrew by running ```brew install git-secrets```. 
+```git-secrets``` helps us avoid committing secrets (e.g. private keys) and other critical data (e.g. PHI) to our
+repositories. ```git-secrets``` can be obtained via [github](https://github.com/awslabs/git-secrets) or on MacOS can be
+installed with Homebrew by running ```brew install git-secrets```.
 
 To add hooks to all repositories that you initialize or clone in the future:
 
@@ -163,9 +163,9 @@ git secrets --install ~/.git-templates/git-secrets
 git config --global init.templateDir ~/.git-templates/git-secrets
 ```
 
-We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid 
-committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to 
-```git_secrets_provider_ml4cvd.txt``` to match types of critical data that are not currently covered by the patterns in that 
+We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid
+committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to
+```git_secrets_provider_ml4cvd.txt``` to match types of critical data that are not currently covered by the patterns in that
 file. To register the patterns in this file with ```git-secrets```:
 
 ```

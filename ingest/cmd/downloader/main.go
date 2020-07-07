@@ -1,14 +1,13 @@
 package main
 
-import (
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"log"
-	"os"
-	"os/exec"
-	"time"
-)
+# Imports: third party
+import "os"
+import "fmt"
+import "log"
+import "flag"
+import "time"
+import "os/exec"
+import "encoding/csv"
 
 func main() {
 	// Consume a .bulk file

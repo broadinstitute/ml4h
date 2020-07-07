@@ -1,9 +1,8 @@
 package main
 
-import (
-	"fmt"
-	"time"
-)
+# Imports: third party
+import "fmt"
+import "time"
 
 const NullMarker = "NULL"
 

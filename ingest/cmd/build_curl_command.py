@@ -25,11 +25,11 @@ test = """
 def get_fields(txt):
     i = txt.find('''name="fetch"''')
     if i == -1:
-        print('Fetch form not in text')
+        print("Fetch form not in text")
         return
     action, i = get_field(txt, i, '''action="''')
-    fields = {'action': action}
-    for field in ['id', 's', 't', 'i', 'v']:
+    fields = {"action": action}
+    for field in ["id", "s", "t", "i", "v"]:
         fields[field], i = get_field(txt, i)
     return fields
 
@@ -37,7 +37,7 @@ def get_fields(txt):
 def get_field(txt, start, target='''value="'''):
     start = txt.find(target, start)
     end = txt.find('''"''', start + len(target))
-    return txt[start + len(target): end], end
+    return txt[start + len(target) : end], end
 
 
 def fields_to_curl(name, action, id, s, t, i, v):

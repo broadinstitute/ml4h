@@ -18,7 +18,7 @@ like
     ```
 * Make sure you have installed the
 [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install) on your laptop.
-With [Homebrew](https://brew.sh/), you can use 
+With [Homebrew](https://brew.sh/), you can use
     ```
     brew cask install google-cloud-sdk
     ```
@@ -26,7 +26,7 @@ With [Homebrew](https://brew.sh/), you can use
 * Set up some environment variables to use throughout the rest of the section:
     ```
     export PROJECT=broad-ml4cvd
-    export SERVICE_ACCOUNT=783282864357-compute@developer.gserviceaccount.com 
+    export SERVICE_ACCOUNT=783282864357-compute@developer.gserviceaccount.com
     export ZONE=us-central1-a
     export DATE=`date +%Y-%m-%d`
     export BOOT_DISK_SIZE=10GB
@@ -57,11 +57,11 @@ With [Homebrew](https://brew.sh/), you can use
     export IMAGE=${GPU_IMAGE}
     export IMAGE_PROJECT=${PROJECT}
     ```
-  
 
-* If you're creating a CPU image, create a fresh VM using an `Ubuntu` image such as `Ubuntu 18.04`. Note that not all `Ubuntu` 
+
+* If you're creating a CPU image, create a fresh VM using an `Ubuntu` image such as `Ubuntu 18.04`. Note that not all `Ubuntu`
 images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
-    ```    
+    ```
     gcloud compute instances create ${VM} \
         --project=${PROJECT} \
         --zone=${ZONE} \
@@ -74,7 +74,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
         --boot-disk-type=${BOOT_DISK_TYPE} \
         --boot-disk-device-name=${VM} \
         --image-project=${IMAGE_PROJECT} \
-        --image=${BASE_IMAGE}        
+        --image=${BASE_IMAGE}
     ```
   If you're creating a GPU image, create a fresh VM via the command below (note that the last two lines differ from above):
     ```
@@ -109,7 +109,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
     gcloud --project ${PROJECT} compute ssh ${VM} --zone ${ZONE}
     ```
 
-* If you're creating a **CPU** image, run the following script (**without sudo**):  
+* If you're creating a **CPU** image, run the following script (**without sudo**):
     ```
     ./ml4cvd-image.sh
     ```
@@ -139,7 +139,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
     ```
 
 * Create the image:
-    ```    
+    ```
     gcloud compute images create ${IMAGE}-${DATE} \
         --project=${PROJECT} \
         --family=${IMAGE} \
@@ -163,7 +163,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
   If you built a GPU image, run the following script instead:
     ```
     scripts/vm_launch/launch_dl_instance.sh ${TEST_VM}
-    ``` 
+    ```
 
 * Login to `TEST_VM`:
     ```
@@ -174,15 +174,15 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
   one in the specified image family. Now, verify that the correct disk(s) are mounted and bucket(s) are `gcsfuse`d.
     ```
     ls /mnt/ml4cvd && ls /mnt/disks/*
-    ``` 
-    
+    ```
+
 * Set up your SSH keys on the VM for GitHub to be able to clone the `ml` repo.
 
 * Clone and go to the `ml` repo on your laptop:
     ```
     git clone git@github.com:broadinstitute/ml.git && cd ml
     ```
-    
+
 * Because we don't know everyone's username, you need to run one more script to make sure
 that you are added as a docker user and that you have permission to pull down our docker
 instances from GCP's gcr.io. Run this while you're logged into your VM:
@@ -207,4 +207,3 @@ instances from GCP's gcr.io. Run this while you're logged into your VM:
             --project=${PROJECT} \
             --zone=${ZONE}
     ```
-

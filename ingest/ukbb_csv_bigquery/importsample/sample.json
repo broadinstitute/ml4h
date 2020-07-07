@@ -1,12 +1,12 @@
 [
   {
-    "mode": "REQUIRED", 
-    "name": "sample_id", 
+    "mode": "REQUIRED",
+    "name": "sample_id",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "REQUIRED", 
-    "name": "file_row", 
+    "mode": "REQUIRED",
+    "name": "file_row",
     "type": "INTEGER"
   }
 ]

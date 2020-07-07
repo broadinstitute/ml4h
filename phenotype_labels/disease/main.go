@@ -1,16 +1,14 @@
 package main
 
-import (
-	"bufio"
-	"context"
-	"flag"
-	"log"
-	"os"
-	"path"
-	"strings"
-
-	"cloud.google.com/go/bigquery"
-)
+# Imports: third party
+import "os"
+import "log"
+import "flag"
+import "path"
+import "bufio"
+import "context"
+import "strings"
+import "cloud.google.com/go/bigquery"
 
 type WrappedBigQuery struct {
 	Context  context.Context

@@ -1,14 +1,13 @@
 package main
 
-import (
-	"encoding/csv"
-	"errors"
-	"fmt"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-)
+# Imports: third party
+import "os"
+import "fmt"
+import "log"
+import "errors"
+import "strconv"
+import "strings"
+import "encoding/csv"
 
 type TabEntry struct {
 	FieldID int

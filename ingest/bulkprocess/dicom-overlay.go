@@ -1,16 +1,14 @@
 package bulkprocess
 
-import (
-	"fmt"
-	"image"
-	"image/color"
-	"io"
-	"io/ioutil"
-	"log"
-
-	"github.com/gradienthealth/dicom"
-	"github.com/gradienthealth/dicom/dicomtag"
-)
+# Imports: third party
+import "io"
+import "fmt"
+import "log"
+import "image"
+import "io/ioutil"
+import "image/color"
+import "github.com/gradienthealth/dicom"
+import "github.com/gradienthealth/dicom/dicomtag"
 
 // DicomMeta holds a small subset of the available metadata which we consider to
 // be useful from dicom images.

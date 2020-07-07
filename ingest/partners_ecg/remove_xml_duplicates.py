@@ -1,3 +1,4 @@
+# Imports: standard library
 import os
 import hashlib
 import logging
@@ -18,7 +19,7 @@ def _parse_args():
     args = parser.parse_args()
 
     # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
-    now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
@@ -32,9 +33,9 @@ def _parse_args():
 
 
 def _sha256sum_of_xml(fname: str) -> str:
-    with open(fname, 'rb', buffering=0) as f:
+    with open(fname, "rb", buffering=0) as f:
         h = hashlib.sha256()
-        b = bytearray(128*1024)
+        b = bytearray(128 * 1024)
         mv = memoryview(b)
         for n in iter(lambda: f.readinto(mv), 0):
             h.update(mv[:n])
@@ -72,7 +73,9 @@ def run(args):
         # hash: SHA-256 of the XML file contents; duplicate XMLs have same hash
         xml_fpaths_hashes_yyyy_mm = _hash_xmls(fpath_dir)
         xml_fpaths_hashes += xml_fpaths_hashes_yyyy_mm
-        logging.info(f"Computed hashes for {len(xml_fpaths_hashes_yyyy_mm)} XMLs in {fpath_dir}")
+        logging.info(
+            f"Computed hashes for {len(xml_fpaths_hashes_yyyy_mm)} XMLs in {fpath_dir}",
+        )
 
     end = timer()
     logging.info(f"Hashing {len(xml_fpaths_hashes)} XML files took {end-start:.2f} sec")
@@ -81,7 +84,9 @@ def run(args):
     start = timer()
     xml_fpaths_hashes = sorted(xml_fpaths_hashes, key=lambda x: x[1])
     end = timer()
-    logging.info(f"Sorting list of (fpath_xml, xml_hash) by hash took {(end-start):.2f} sec")
+    logging.info(
+        f"Sorting list of (fpath_xml, xml_hash) by hash took {(end-start):.2f} sec",
+    )
 
     # Find all duplicate hashes
 
@@ -112,8 +117,10 @@ def run(args):
             prev_hash = xml_and_hash[1]
 
     end = timer()
-    logging.info(f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs \
-                   ({dup_count / len(xml_fpaths_hashes) * 100:.2f}%) took {end-start:.2f} sec")
+    logging.info(
+        f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs \
+                   ({dup_count / len(xml_fpaths_hashes) * 100:.2f}%) took {end-start:.2f} sec",
+    )
 
 
 if __name__ == "__main__":

@@ -1,18 +1,32 @@
+# Imports: standard library
 import os
 import csv
 import logging
 import operator
-import numpy as np
 from typing import List
 from typing.io import TextIO
 
-from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.tensor_from_file import _build_tensor_from_file
-from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
-from ml4cvd.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
-from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
-from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
+# Imports: third party
+import numpy as np
 
+# Imports: first party
+from ml4cvd.defines import (
+    JOIN_CHAR,
+    CODING_TABLE,
+    PHENOTYPE_TABLE,
+    DICTIONARY_TABLE,
+    TENSOR_MAPS_FILE_NAME,
+    dataset_name_from_meaning,
+)
+from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.DatabaseClient import DatabaseClient, BigQueryDatabaseClient
+from ml4cvd.tensor_from_file import _build_tensor_from_file
+from ml4cvd.tensor_writer_ukbb import (
+    get_disease2tsv,
+    disease_censor_status,
+    disease_incidence_status,
+    disease_prevalence_status,
+)
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
 
@@ -22,14 +36,14 @@ def write_tensor_maps(args) -> None:
 
     tensor_maps_file = f"{args.output_folder}/{TENSOR_MAPS_FILE_NAME}.py"
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
-    with open(tensor_maps_file, 'w') as f:
+    with open(tensor_maps_file, "w") as f:
         f.write(_get_tensor_map_file_imports())
         _write_disease_tensor_maps(args.phenos_folder, f)
         _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
         _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
         _write_continuous_tensor_maps(f, db_client)
 
-        f.write('\n')
+        f.write("\n")
         logging.info(f"Wrote the tensor maps to {tensor_maps_file}.")
 
 
@@ -62,7 +76,9 @@ def _write_disease_tensor_maps(phenos_folder: str, f: TextIO) -> None:
     logging.info(f"Done writing TensorMaps for diseases.")
 
 
-def _write_disease_tensor_maps_incident_prevalent(phenos_folder: str, f: TextIO) -> None:
+def _write_disease_tensor_maps_incident_prevalent(
+    phenos_folder: str, f: TextIO,
+) -> None:
     f.write(f"\n\n#  TensorMaps for prevalent and incident MPG disease phenotypes\n")
     disease2tsv = get_disease2tsv(phenos_folder)
     logging.info(f"Got:{len(disease2tsv)} disease TSVs from:{phenos_folder}")
@@ -89,24 +105,24 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
     total_samples = 500000
     remove_chars = ";.,/()-[]&' "
     phecode2phenos = {}
-    with open(phecode_csv, 'r') as my_csv:
-        lol = list(csv.reader(my_csv, delimiter=','))
+    with open(phecode_csv, "r") as my_csv:
+        lol = list(csv.reader(my_csv, delimiter=","))
         for row in lol[1:]:
             pheno = row[1].strip().replace("'s", "s")
             for c in remove_chars:
-                pheno = pheno.replace(c, '_')
-            pheno = pheno.lower().strip('_').replace('___', '_').replace('__', '_')
-            phecode2phenos['phecode_'+row[0].lstrip('0').strip()] = pheno
+                pheno = pheno.replace(c, "_")
+            pheno = pheno.lower().strip("_").replace("___", "_").replace("__", "_")
+            phecode2phenos["phecode_" + row[0].lstrip("0").strip()] = pheno
     query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` GROUP BY disease"
     count_result = db_client.execute(query)
     phecode2counts = {}
     for row in count_result:
-        phecode2counts[row['disease']] = float(row['total'])
+        phecode2counts[row["disease"]] = float(row["total"])
 
     f.write(f"\n\n#  TensorMaps for Phecode disease phenotypes\n")
     for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
         if k in phecode2counts:
-            factor = int(total_samples / (1+phecode2counts[k]))
+            factor = int(total_samples / (1 + phecode2counts[k]))
             f.write(
                 f"TMAPS['{p}_phe'] = TensorMap('{k}', Interpretation.CATEGORICAL, channel_map={{'no_{p}':0, '{p}':1}}, path_prefix='categorical', "
                 f"storage_type=StorageType.CATEGORICAL_FLAG, loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n",
@@ -116,15 +132,17 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
     count_result = db_client.execute(query)
     phecode2prevalent = {}
     for row in count_result:
-        phecode2prevalent[row['disease']] = float(row['total'])
+        phecode2prevalent[row["disease"]] = float(row["total"])
 
     query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE incident_disease=1 GROUP BY disease"
     count_result = db_client.execute(query)
     phecode2incident = {}
     for row in count_result:
-        phecode2incident[row['disease']] = float(row['total'])
+        phecode2incident[row["disease"]] = float(row["total"])
 
-    f.write(f"\n\n#  TensorMaps for prevalent and incident Phecode disease phenotypes\n")
+    f.write(
+        f"\n\n#  TensorMaps for prevalent and incident Phecode disease phenotypes\n",
+    )
     for k, p in sorted(phecode2phenos.items(), key=operator.itemgetter(1)):
         if k in phecode2incident and k in phecode2prevalent:
             factor_i = int(total_samples / (1 + phecode2incident[k]))
@@ -186,25 +204,33 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
 
     f.write(f"\n\n#  Continuous tensor maps\n")
     for row in field_data_for_tensor_maps:
-        name = dataset_name_from_meaning(None, [str(row.FieldID), row.Field, str(row.instance)])
+        name = dataset_name_from_meaning(
+            None, [str(row.FieldID), row.Field, str(row.instance)],
+        )
         channel_map = "channel_map={"
         for i in range(0, row.max_array + 1):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         channel_map += "}"
-        f.write(f"TMAPS['{row.FieldID}_{row.instance}'] = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ")
-        f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
+        f.write(
+            f"TMAPS['{row.FieldID}_{row.instance}'] = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ",
+        )
+        f.write(
+            f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n",
+        )
 
 
 def _get_pkl_path_for_field(field_id: int, pyukbb_data_path: str):
     """Returns the path to the .pkl file that contained `UKBioBankParsedField` for a given FieldID."""
     for _, _, files in os.walk(pyukbb_data_path):
         for file in files:
-            if file.find(f'FieldID_{field_id}.pkl') > -1:
+            if file.find(f"FieldID_{field_id}.pkl") > -1:
                 return os.path.join(pyukbb_data_path, file)
-    raise FileNotFoundError('Cannot find pyukbb .pkl file for field ID {field_id}!')
+    raise FileNotFoundError("Cannot find pyukbb .pkl file for field ID {field_id}!")
 
 
-def _get_all_available_fields(available_fields_pd, keyword: str = None, category: int = None):
+def _get_all_available_fields(
+    available_fields_pd, keyword: str = None, category: int = None,
+):
     filtered = available_fields_pd
     if category is not None:
         filtered = filtered[filtered.Category == category]
@@ -222,12 +248,19 @@ def generate_continuous_tensor_map_from_file(
 ) -> TensorMap:
     if discretization_bounds:
         return TensorMap(
-            f'{tensor_map_name}', Interpretation.DISCRETIZED, channel_map={tensor_map_name: 0},
-            tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
+            f"{tensor_map_name}",
+            Interpretation.DISCRETIZED,
+            channel_map={tensor_map_name: 0},
+            tensor_from_file=_build_tensor_from_file(
+                file_name, column_name, normalization,
+            ),
             discretization_bounds=discretization_bounds,
         )
     else:
         return TensorMap(
-            f'{tensor_map_name}', channel_map={tensor_map_name: 0},
-            tensor_from_file=_build_tensor_from_file(file_name, column_name, normalization),
+            f"{tensor_map_name}",
+            channel_map={tensor_map_name: 0},
+            tensor_from_file=_build_tensor_from_file(
+                file_name, column_name, normalization,
+            ),
         )

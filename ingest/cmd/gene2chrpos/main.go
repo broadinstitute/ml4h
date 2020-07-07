@@ -1,16 +1,14 @@
 package main
 
-import (
-	"bytes"
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"strings"
-
-	"github.com/gobuffalo/packr"
-)
+# Imports: third party
+import "io"
+import "fmt"
+import "log"
+import "flag"
+import "bytes"
+import "strings"
+import "encoding/csv"
+import "github.com/gobuffalo/packr"
 
 const (
 	GeneStableID int = iota

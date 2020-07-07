@@ -1,13 +1,11 @@
 package main
 
-import (
-	"context"
-	"flag"
-	"log"
-	"os"
-
-	"cloud.google.com/go/bigquery"
-)
+# Imports: third party
+import "os"
+import "log"
+import "flag"
+import "context"
+import "cloud.google.com/go/bigquery"
 
 const NullMarker = "NA"
 

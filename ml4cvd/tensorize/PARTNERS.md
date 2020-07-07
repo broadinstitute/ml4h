@@ -11,16 +11,16 @@ Organizing and Tensorizing MUSE 12-lead ECGs
 ## Organizing XMLs and Removing Duplicates
 `ingest/partners_ecg/organize_xml.py` moves XML files from a single directory into the appropriate yyyy-mm directory.
 
-`ingest/partners_ecg/remove_xml_duplicates.py` finds and removes exact duplicate XML files, as defined by every bit of two files being identical, determined via SHA-256 hashing.  
+`ingest/partners_ecg/remove_xml_duplicates.py` finds and removes exact duplicate XML files, as defined by every bit of two files being identical, determined via SHA-256 hashing.
 
 ## Tensorizing XMLs to HDF5
-`tensorize_partners` mode in `recipes.py` extracts data from all XML files and saves as [HDF5 files](https://www.hdfgroup.org). Tensorization also removes duplicates that contain nearly the same information, except for minor differences, for example minor version changes in acquisition software. This duplicate detection is done by matching patient-date-time fields.  
+`tensorize_partners` mode in `recipes.py` extracts data from all XML files and saves as [HDF5 files](https://www.hdfgroup.org). Tensorization also removes duplicates that contain nearly the same information, except for minor differences, for example minor version changes in acquisition software. This duplicate detection is done by matching patient-date-time fields.
 
-This mode is called with the following arguments:  
-`--xml_folder` to specify the directory containing ECG XMLs.  
-`--tensors` to specify the directory where tensorized HD5 files should be saved.  
+This mode is called with the following arguments:
+`--xml_folder` to specify the directory containing ECG XMLs.
+`--tensors` to specify the directory where tensorized HD5 files should be saved.
 
-All the ECGs belonging to one patient, identified by medical record number (MRN), will be saved to one HD5, indexed by ECG acquisition date and time:  
+All the ECGs belonging to one patient, identified by medical record number (MRN), will be saved to one HD5, indexed by ECG acquisition date and time:
 ```
 <MRN>.hd5
 └--partners_ecg_rest
@@ -81,7 +81,7 @@ weightlbs
 
 ## Extracting ECG metadata
 
-`explore` mode in `recipes.py` extracts data specified by `--input_tensors` from all HD5 files given to `--tensors` and calculates summary statistics. Additionally, all metadata is saved to a large CSV file:  
+`explore` mode in `recipes.py` extracts data specified by `--input_tensors` from all HD5 files given to `--tensors` and calculates summary statistics. Additionally, all metadata is saved to a large CSV file:
 
 This CSV file will be used to construct a performant, queryable database to identify future cohorts for research projects.
 

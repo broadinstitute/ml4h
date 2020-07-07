@@ -1,15 +1,14 @@
 package main
 
-import (
-	"bytes"
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"strings"
-)
+# Imports: third party
+import "io"
+import "fmt"
+import "log"
+import "flag"
+import "bytes"
+import "strings"
+import "net/http"
+import "encoding/csv"
 
 const (
 	ExpectedRows = 17

@@ -1,16 +1,14 @@
 package main
 
-import (
-	"fmt"
-
-	"cloud.google.com/go/bigquery"
-	"google.golang.org/api/iterator"
-)
+# Imports: third party
+import "fmt"
+import "cloud.google.com/go/bigquery"
+import "google.golang.org/api/iterator"
 
 func BigQuerySingleFieldFirst(wbq *WrappedBigQuery, fieldID int64) (map[int64]string, error) {
 	out := make(map[int64]string)
 
-	query := wbq.Client.Query(fmt.Sprintf(`SELECT * 
+	query := wbq.Client.Query(fmt.Sprintf(`SELECT *
 FROM %s.phenotype
 WHERE 1=1
 AND FieldID=@FieldID

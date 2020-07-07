@@ -16,7 +16,7 @@ HESIN_FOLDER="" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/hesin_files" #fo
 DEATH_CENSOR="" #2018-01-31" #lookup at https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=Data_providers_and_dates
 PHENO_CENSOR="" #2017-03-31" #lookup at https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=Data_providers_and_dates
 
-if [ "${BUCKET_ROOT}" == "" ] || [ "${DATASET}" == "" ] || [ "${PHENO_FOLDER}" == "" ] || \ 
+if [ "${BUCKET_ROOT}" == "" ] || [ "${DATASET}" == "" ] || [ "${PHENO_FOLDER}" == "" ] || \
     [ "${HESIN_FOLDER}" == "" ] || [ "${DEATH_CENSOR}" == "" ] || [ "${PHENO_CENSOR}" == "" ]; then
         echo "set all parameters, please"
         exit 1
@@ -24,7 +24,7 @@ fi
 
 #print out all pheno files being loaded
 pheno_files=$( ls ${PHENO_FOLDER})
-echo "loading pheno csvs: 
+echo "loading pheno csvs:
 ${pheno_files}"
 
 hesin_files="hesin.tsv.gz
@@ -38,7 +38,7 @@ do
     if [ -f ${HESIN_FOLDER}/${file} ]; then
         echo "${file} exists"
     else
-        echo "${file} missing" 
+        echo "${file} missing"
         exit 1
     fi
 done
@@ -55,13 +55,13 @@ echo "storing data locally in ${LOCAL_DATA_FOLDER}"
 #dictionary
 file=dictionary.tsv.gz
 go run ${__dir}/convertdict/main.go | pigz > ${LOCAL_DATA_FOLDER}/${file}
-gsutil cp ${LOCAL_DATA_FOLDER}/${file} ${BUCKET}/${file} 
+gsutil cp ${LOCAL_DATA_FOLDER}/${file} ${BUCKET}/${file}
 bash ${__dir}/importdict/import.sh ${BUCKET} ${DATASET}
 
 #coding
 file=coding.tsv.gz
 go run ${__dir}/convertcoding/main.go | pigz > ${LOCAL_DATA_FOLDER}/${file}
-gsutil cp ${LOCAL_DATA_FOLDER}/${file} ${BUCKET}/${file} 
+gsutil cp ${LOCAL_DATA_FOLDER}/${file} ${BUCKET}/${file}
 bash ${__dir}/importcoding/import.sh ${BUCKET} ${DATASET}
 
 #pheno

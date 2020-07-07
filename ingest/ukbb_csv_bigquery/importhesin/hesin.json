@@ -1,202 +1,202 @@
 [
   {
-    "mode": "REQUIRED", 
-    "name": "eid", 
+    "mode": "REQUIRED",
+    "name": "eid",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "REQUIRED", 
-    "name": "record_id", 
+    "mode": "REQUIRED",
+    "name": "record_id",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "admidate", 
+    "mode": "NULLABLE",
+    "name": "admidate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "admimeth", 
+    "mode": "NULLABLE",
+    "name": "admimeth",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "admisorc", 
+    "mode": "NULLABLE",
+    "name": "admisorc",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "bedyear", 
+    "mode": "NULLABLE",
+    "name": "bedyear",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "category", 
+    "mode": "NULLABLE",
+    "name": "category",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "cause_icd10", 
+    "mode": "NULLABLE",
+    "name": "cause_icd10",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "cause_icd10_nb", 
+    "mode": "NULLABLE",
+    "name": "cause_icd10_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "classpat", 
+    "mode": "NULLABLE",
+    "name": "classpat",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd10", 
+    "mode": "NULLABLE",
+    "name": "diag_icd10",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd10_nb", 
+    "mode": "NULLABLE",
+    "name": "diag_icd10_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd9", 
+    "mode": "NULLABLE",
+    "name": "diag_icd9",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd9_nb", 
+    "mode": "NULLABLE",
+    "name": "diag_icd9_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "disdate", 
+    "mode": "NULLABLE",
+    "name": "disdate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "disdest", 
+    "mode": "NULLABLE",
+    "name": "disdest",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "dismeth", 
+    "mode": "NULLABLE",
+    "name": "dismeth",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "elecdate", 
+    "mode": "NULLABLE",
+    "name": "elecdate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "elecdur", 
+    "mode": "NULLABLE",
+    "name": "elecdur",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epidur", 
+    "mode": "NULLABLE",
+    "name": "epidur",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epiend", 
+    "mode": "NULLABLE",
+    "name": "epiend",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epiorder", 
+    "mode": "NULLABLE",
+    "name": "epiorder",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epistart", 
+    "mode": "NULLABLE",
+    "name": "epistart",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epistat", 
+    "mode": "NULLABLE",
+    "name": "epistat",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epitype", 
+    "mode": "NULLABLE",
+    "name": "epitype",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "firstreg", 
+    "mode": "NULLABLE",
+    "name": "firstreg",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "gpprpct", 
+    "mode": "NULLABLE",
+    "name": "gpprpct",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "intmanag", 
+    "mode": "NULLABLE",
+    "name": "intmanag",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "mainspef", 
+    "mode": "NULLABLE",
+    "name": "mainspef",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "opdate", 
+    "mode": "NULLABLE",
+    "name": "opdate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "oper4", 
+    "mode": "NULLABLE",
+    "name": "oper4",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "oper4_nb", 
+    "mode": "NULLABLE",
+    "name": "oper4_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "operstat", 
+    "mode": "NULLABLE",
+    "name": "operstat",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "pctcode", 
+    "mode": "NULLABLE",
+    "name": "pctcode",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "posopdur", 
+    "mode": "NULLABLE",
+    "name": "posopdur",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "preopdur", 
+    "mode": "NULLABLE",
+    "name": "preopdur",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "spelbgin", 
+    "mode": "NULLABLE",
+    "name": "spelbgin",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "speldur", 
+    "mode": "NULLABLE",
+    "name": "speldur",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "spelend", 
+    "mode": "NULLABLE",
+    "name": "spelend",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "tretspef", 
+    "mode": "NULLABLE",
+    "name": "tretspef",
     "type": "STRING"
   }
 ]

@@ -1,23 +1,20 @@
 package main
 
-import (
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"strconv"
-
-	"image"
-	"image/color"
-	"image/jpeg"
-	"math"
-	"os"
-	"sync"
-
-	"github.com/gradienthealth/dicom"
-	"github.com/gradienthealth/dicom/dicomlog"
-	"github.com/gradienthealth/dicom/dicomtag"
-)
+# Imports: third party
+import "os"
+import "fmt"
+import "log"
+import "flag"
+import "math"
+import "sync"
+import "image"
+import "strconv"
+import "io/ioutil"
+import "image/jpeg"
+import "image/color"
+import "github.com/gradienthealth/dicom"
+import "github.com/gradienthealth/dicom/dicomlog"
+import "github.com/gradienthealth/dicom/dicomtag"
 
 // See 'batcher' for a process that can convert dicoms to jpegs in bulk fashion
 

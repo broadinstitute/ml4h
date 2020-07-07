@@ -15,6 +15,6 @@ Download data
     * Atttempt #2: Try to get all MRI fields at once. `ukbconv ukb21481.enc_ukb bulk -ifields.list`
 1. Inspect: `wc -l ukb21481.bulk` and you can see that there is one entry per person for whom this data exists
 1. You cannot download more than 1,000 samples' bulk files at a time. So, iteratively do it:
-    * For now, just take 50 
+    * For now, just take 50
     * `head -n 50 ukb21481.bulk > heart.50`
     * `ukbfetch -bheart.50` *(Note: no space between `-b` and `heart.50`)*

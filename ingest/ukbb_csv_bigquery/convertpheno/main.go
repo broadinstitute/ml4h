@@ -1,22 +1,20 @@
 package main
 
-import (
-	"bufio"
-	"context"
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"os"
-	"sort"
-	"strconv"
-	"strings"
-
-	"cloud.google.com/go/bigquery"
-	"github.com/carbocation/genomisc"
-	"google.golang.org/api/iterator"
-)
+# Imports: third party
+import "io"
+import "os"
+import "fmt"
+import "log"
+import "flag"
+import "sort"
+import "bufio"
+import "context"
+import "strconv"
+import "strings"
+import "encoding/csv"
+import "cloud.google.com/go/bigquery"
+import "google.golang.org/api/iterator"
+import "github.com/carbocation/genomisc"
 
 const (
 	// pheno file field columns
@@ -83,8 +81,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "!! -- !!")
 		fmt.Fprintln(os.Stderr, "NOTE")
 		fmt.Fprintln(os.Stderr, "!! -- !!")
-		fmt.Fprintf(os.Stderr, `This tool checks the %s:%s.phenotype table to avoid duplicating data. 
-However, it only looks at data that is already present in the BigQuery table. 
+		fmt.Fprintf(os.Stderr, `This tool checks the %s:%s.phenotype table to avoid duplicating data.
+However, it only looks at data that is already present in the BigQuery table.
 Any data that has been emitted to disk but not yet loaded into BigQuery cannot be seen by this tool.
 If you pass multiple files to this tool, it will behave as expected.
 If you run this tool multiple times (once per file) without first loading the output from the last round into BigQuery, you may get duplicated data.

@@ -17,5 +17,5 @@ bq --location=${GEO} load \
  --quote "" \
  --source_format=CSV \
  --skip_leading_rows 1 \
- ${DATASET}.${NAME} ${TABLE_LOC}/${NAME}.tsv.gz 
+ ${DATASET}.${NAME} ${TABLE_LOC}/${NAME}.tsv.gz
  ${NAME}.json

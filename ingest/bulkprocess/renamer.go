@@ -1,20 +1,18 @@
 package bulkprocess
 
-import (
-	"archive/zip"
-	"bufio"
-	"bytes"
-	"encoding/csv"
-	"fmt"
-	"io"
-	"log"
-	"os"
-	"path"
-	"strings"
-
-	"github.com/davecgh/go-spew/spew"
-	"github.com/jmoiron/sqlx"
-)
+# Imports: third party
+import "io"
+import "os"
+import "fmt"
+import "log"
+import "path"
+import "bufio"
+import "bytes"
+import "strings"
+import "archive/zip"
+import "encoding/csv"
+import "github.com/jmoiron/sqlx"
+import "github.com/davecgh/go-spew/spew"
 
 // Many of the manifest.csv files are invalid. They use commas as delimiters and
 // do not use quotes, and yet they have fields (like date) that use commas. Some

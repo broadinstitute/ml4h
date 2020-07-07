@@ -1,16 +1,15 @@
 package main
 
-import (
-	"bytes"
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"path/filepath"
-	"strings"
-)
+# Imports: third party
+import "io"
+import "fmt"
+import "log"
+import "flag"
+import "bytes"
+import "strings"
+import "io/ioutil"
+import "encoding/csv"
+import "path/filepath"
 
 func main() {
 	// Need:

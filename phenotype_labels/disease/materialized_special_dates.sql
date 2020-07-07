@@ -17,7 +17,7 @@ WITH dated_fields AS (
       OR (p.FieldID=42001 AND d.FieldID=42000)
     )
   LEFT JOIN `broad-ml4cvd.ukbb7089_201904.coding` cod ON cod.coding_file_id = d.coding_file_id AND cod.coding = d.value
-), 
+),
 dated_fields_fractional AS (
   SELECT p.FieldID, p.sample_id eid, p.value code, cod.meaning,
   CASE
@@ -37,7 +37,7 @@ dated_fields_fractional AS (
   LEFT JOIN `broad-ml4cvd.ukbb7089_201904.coding` cod ON cod.coding_file_id = d.coding_file_id AND cod.coding = d.value
 )
 
-SELECT 
+SELECT
   diagnostics.eid sample_id, diagnostics.FieldID, diagnostics.code value, MIN(vdate) first_date
 FROM (
   SELECT * FROM dated_fields

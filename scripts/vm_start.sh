@@ -26,7 +26,3 @@ while [[ $COUNTER -lt $(( $MAX_TRIES )) ]]; do
       sleep 1s
     fi
 done
-
-
-
-

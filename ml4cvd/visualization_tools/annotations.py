@@ -1,17 +1,21 @@
 """Methods for collecting and submitting annotations within notebooks."""
+# Imports: standard library
 import os
 import socket
+
+# Imports: third party
 import ipywidgets as widgets
-from IPython.display import display
 from google.cloud import bigquery
+from IPython.display import display
 
 
 def get_df_sample(sample_info, sample_id):
     """ return a dataframe containing only the row for the indicated sample_id
     """
 
-    df_sample = sample_info[sample_info['sample_id'] == str(sample_id)]
-    if 0 == df_sample.shape[0]: df_sample = sample_info.query('sample_id == ' + str(sample_id))
+    df_sample = sample_info[sample_info["sample_id"] == str(sample_id)]
+    if 0 == df_sample.shape[0]:
+        df_sample = sample_info.query("sample_id == " + str(sample_id))
     return df_sample
 
 
@@ -29,53 +33,60 @@ def display_annotation_collector(sample_info, sample_id):
 
     # allow the user to pick a key about which to comment
     key = widgets.Dropdown(
-        options=sample_info.keys(),
-        description='Key:',
-        disabled=False,
+        options=sample_info.keys(), description="Key:", disabled=False,
     )
 
     # return the sample's value for that key
-    valuelabel = widgets.Label(value='Value: ')
+    valuelabel = widgets.Label(value="Value: ")
     keyvalue = widgets.Label(value=str(df_sample[key.value].iloc[0]))
 
     box1 = widgets.HBox(
-        [key, valuelabel, keyvalue],
-        layout=widgets.Layout(width='50%'),
+        [key, valuelabel, keyvalue], layout=widgets.Layout(width="50%"),
     )
 
     # have keyvalue auto update depending on the selected key
     def handle_key_change(change):
         keyvalue.value = str(df_sample[key.value].iloc[0])
 
-    key.observe(handle_key_change, names='value')
+    key.observe(handle_key_change, names="value")
 
     # allow the user to leave a text comment
     comment = widgets.Textarea(
-        value='',
-        placeholder='Type your comment here',
-        description=f'Comment:',
+        value="",
+        placeholder="Type your comment here",
+        description=f"Comment:",
         disabled=False,
-        layout=widgets.Layout(width='80%', height='50px'),
-        style={'description_width': 'initial'},
+        layout=widgets.Layout(width="80%", height="50px"),
+        style={"description_width": "initial"},
     )
 
     # configure submission button
     submit_button = widgets.Button(description="Submit annotation")
     output = widgets.Output()
 
-    def get_key(): return key
-    def get_keyvalue(): return keyvalue
-    def get_comment(): return comment
+    def get_key():
+        return key
+
+    def get_keyvalue():
+        return keyvalue
+
+    def get_comment():
+        return comment
 
     def on_button_clicked(b):
-        params = format_annotation(sample_id, [get_key(), get_keyvalue(), get_comment()])
-        success = bq_submission(params) # returns boolean True if submission succeeded
+        params = format_annotation(
+            sample_id, [get_key(), get_keyvalue(), get_comment()],
+        )
+        success = bq_submission(params)  # returns boolean True if submission succeeded
         with output:
-            if success: # show the information that was submitted
-                print('Submission successful:')
+            if success:  # show the information that was submitted
+                print("Submission successful:")
                 display(view_submissions(1))
             else:
-                print('Annotation not submitted. Please try again.\n') # TODO give more information on failure
+                print(
+                    "Annotation not submitted. Please try again.\n",
+                )  # TODO give more information on failure
+
     submit_button.on_click(on_button_clicked)
 
     # display everything
@@ -89,10 +100,12 @@ def format_annotation(sample_id, annotation_data):
     comment = annotation_data[2].value
 
     # Programmatically get the identity of the person running this Terra notebook.
-    USER = os.getenv('OWNER_EMAIL')
+    USER = os.getenv("OWNER_EMAIL")
     # Also support other environments such as AI Platform Notebooks.
     if USER is None:
-        USER = socket.gethostname() # By convention, we prefix the hostname with our username.
+        USER = (
+            socket.gethostname()
+        )  # By convention, we prefix the hostname with our username.
 
     # check whether the value is string or numeric
     if keyvalue is None:
@@ -108,18 +121,18 @@ def format_annotation(sample_id, annotation_data):
 
     # format into a dictionary
     params = {
-        'sample_id': str(sample_id),
-        'annotator': USER,
-        'key': key,
-        'value_numeric': value_numeric,
-        'value_string': value_string,
-        'comment': comment,
+        "sample_id": str(sample_id),
+        "annotator": USER,
+        "key": key,
+        "value_numeric": value_numeric,
+        "value_string": value_string,
+        "comment": comment,
     }
 
     return params
 
 
-def bq_submission(params, table='uk-biobank-sek-data.ml_results.annotations'):
+def bq_submission(params, table="uk-biobank-sek-data.ml_results.annotations"):
     """ call a bigquery insert statement to add a row containing annotation information containing
     params (a dict created/formatted by format_annotation)
     """
@@ -127,19 +140,19 @@ def bq_submission(params, table='uk-biobank-sek-data.ml_results.annotations'):
     bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)
 
     # format the insert string
-    query_string = '''
+    query_string = """
 INSERT INTO `{table}`
 (sample_id, annotator, annotation_timestamp, key, value_numeric, value_string, comment)
 VALUES
 ('{sample_id}', '{annotator}', CURRENT_TIMESTAMP(), '{key}', SAFE_CAST('{value_numeric}' as NUMERIC), '{value_string}', '{comment}')
-'''.format(
+""".format(
         table=table,
-        sample_id=params['sample_id'],
-        annotator=params['annotator'],
-        key=params['key'],
-        value_numeric=params['value_numeric'],
-        value_string=params['value_string'],
-        comment=params['comment'],
+        sample_id=params["sample_id"],
+        annotator=params["annotator"],
+        key=params["key"],
+        value_numeric=params["value_numeric"],
+        value_string=params["value_string"],
+        comment=params["comment"],
     )
 
     # submit the insert request
@@ -149,7 +162,7 @@ VALUES
     return submission.done()
 
 
-def view_submissions(count=10, table='uk-biobank-sek-data.ml_results.annotations'):
+def view_submissions(count=10, table="uk-biobank-sek-data.ml_results.annotations"):
     """ view a list of up to [count] most recent submissions from the user
     """
 
@@ -157,11 +170,10 @@ def view_submissions(count=10, table='uk-biobank-sek-data.ml_results.annotations
     bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)
 
     # format the query string
-    query_string = '''SELECT * FROM `{table}`
+    query_string = """SELECT * FROM `{table}`
 ORDER BY annotation_timestamp DESC
-LIMIT {count}'''.format(
-        table=table,
-        count=str(count),
+LIMIT {count}""".format(
+        table=table, count=str(count),
     )
 
     # submit the query and store the result as a dataframe

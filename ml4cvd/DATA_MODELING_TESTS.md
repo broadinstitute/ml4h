@@ -29,7 +29,7 @@ The data can also be accessed through [BigQuery](https://console.cloud.google.co
 
 `/mnt/disks/data/raw/ecgs/*.xml`
 
-### Direct Genotypes 
+### Direct Genotypes
 ~800k/person:
 
 `/mnt/imputed_v2`
@@ -41,7 +41,7 @@ The data can also be accessed through [BigQuery](https://console.cloud.google.co
 
 ## Modeling with TensorFlow
 Once you have a virtual machine and an environment setup it is time to start learning.
-The first step is to create training data by writing tensors to the disk.  
+The first step is to create training data by writing tensors to the disk.
 
 To write tensors with default categorical and continuous phenotypes, and no MRI or EKG data
 ```
@@ -95,4 +95,3 @@ pytest can also run specific tests using `::`. For example
 python -m pytest ${HOME}/ml/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
 ```
 For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
-

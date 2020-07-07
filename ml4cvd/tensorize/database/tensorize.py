@@ -1,46 +1,58 @@
+# Imports: standard library
 import logging
 import tempfile
 from typing import Dict, List
 
+# Imports: third party
 import h5py
 import apache_beam as beam
 from apache_beam import Pipeline
 from google.cloud import storage
 
-from ml4cvd.defines import TENSOR_EXT, GCS_BUCKET, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, dataset_name_from_meaning
+# Imports: first party
+from ml4cvd.defines import (
+    JOIN_CHAR,
+    GCS_BUCKET,
+    TENSOR_EXT,
+    CONCAT_CHAR,
+    HD5_GROUP_CHAR,
+    dataset_name_from_meaning,
+)
 
 
-def tensorize_sql_fields(pipeline: Pipeline, output_path: str, sql_dataset: str, tensor_type: str):
+def tensorize_sql_fields(
+    pipeline: Pipeline, output_path: str, sql_dataset: str, tensor_type: str,
+):
 
-    if tensor_type == 'categorical':
+    if tensor_type == "categorical":
         query = _get_categorical_query(sql_dataset)
-    elif tensor_type == 'continuous':
+    elif tensor_type == "continuous":
         query = _get_continuous_query(sql_dataset)
-    elif tensor_type == 'icd':
+    elif tensor_type == "icd":
         query = _get_icd_query(sql_dataset)
-    elif tensor_type == 'disease':
+    elif tensor_type == "disease":
         query = _get_disease_query(sql_dataset)
-    elif tensor_type == 'phecode_disease':
+    elif tensor_type == "phecode_disease":
         query = _get_phecode_query(sql_dataset)
-    elif tensor_type == 'death':
+    elif tensor_type == "death":
         query = _get_death_and_censor_query(sql_dataset)
     else:
-        raise ValueError("Can tensorize only categorical or continuous fields, got ", tensor_type)
+        raise ValueError(
+            "Can tensorize only categorical or continuous fields, got ", tensor_type,
+        )
 
     bigquery_source = beam.io.BigQuerySource(query=query, use_standard_sql=True)
     # Query table in BQ
     steps = (
-            pipeline
-            | 'QueryTables' >> beam.io.Read(bigquery_source)
-
-            # Each row is a dictionary where the keys are the BigQuery columns
-            | 'CreateKey' >> beam.Map(lambda row: (row['sample_id'], row))
-
-            # Group by key
-            | 'GroupByKey' >> beam.GroupByKey()
-
-            # Format into hd5 files and upload to GCS
-            | 'CreateHd5sAndUploadToGCS' >> beam.Map(write_tensor_from_sql, output_path, tensor_type)
+        pipeline
+        | "QueryTables" >> beam.io.Read(bigquery_source)
+        # Each row is a dictionary where the keys are the BigQuery columns
+        | "CreateKey" >> beam.Map(lambda row: (row["sample_id"], row))
+        # Group by key
+        | "GroupByKey" >> beam.GroupByKey()
+        # Format into hd5 files and upload to GCS
+        | "CreateHd5sAndUploadToGCS"
+        >> beam.Map(write_tensor_from_sql, output_path, tensor_type)
     )
 
     result = pipeline.run()
@@ -55,7 +67,7 @@ try:
     output_bucket = gcs_client.get_bucket(GCS_BUCKET)
 # except OSError:
 except:
-    output_bucket ='nope'
+    output_bucket = "nope"
     logging.warning(f"no GCS storage client")
 
 
@@ -71,30 +83,79 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
             tensor_path = f"{temp_dir}/{tensor_file}"
             gcs_blob = output_bucket.blob(f"{output_path}/{tensor_file}")
             logging.info(f"Writing tensor {tensor_file} to {gcs_blob.public_url} ...")
-            with h5py.File(tensor_path, 'w') as hd5:
-                if tensor_type == 'icd':
-                    icds = sorted(list(set([row['value'] for row in rows])))
-                    hd5.create_dataset('icd', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
-                elif tensor_type == 'categorical':
+            with h5py.File(tensor_path, "w") as hd5:
+                if tensor_type == "icd":
+                    icds = sorted(list(set([row["value"] for row in rows])))
+                    hd5.create_dataset(
+                        "icd",
+                        (1,),
+                        data=JOIN_CHAR.join(icds),
+                        dtype=h5py.special_dtype(vlen=str),
+                    )
+                elif tensor_type == "categorical":
                     for row in rows:
-                        hd5_dataset_name = dataset_name_from_meaning('categorical', [row['field'], row['meaning'], str(row['instance']), str(row['array_idx'])])
+                        hd5_dataset_name = dataset_name_from_meaning(
+                            "categorical",
+                            [
+                                row["field"],
+                                row["meaning"],
+                                str(row["instance"]),
+                                str(row["array_idx"]),
+                            ],
+                        )
                         _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
-                elif tensor_type == 'continuous':
+                elif tensor_type == "continuous":
                     for row in rows:
-                        hd5_dataset_name = dataset_name_from_meaning('continuous', [str(row['fieldid']), row['field'], str(row['instance']), str(row['array_idx'])])
+                        hd5_dataset_name = dataset_name_from_meaning(
+                            "continuous",
+                            [
+                                str(row["fieldid"]),
+                                row["field"],
+                                str(row["instance"]),
+                                str(row["array_idx"]),
+                            ],
+                        )
                         _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
-                elif tensor_type in ['disease', 'phecode_disease']:
+                elif tensor_type in ["disease", "phecode_disease"]:
                     for row in rows:
-                        hd5.create_dataset('categorical' + HD5_GROUP_CHAR + row['disease'].lower(), data=[float(row['has_disease'])])
-                        hd5_date = 'dates' + HD5_GROUP_CHAR + row['disease'].lower() + '_date'
-                        hd5.create_dataset(hd5_date, (1,), data=str(row['censor_date']), dtype=h5py.special_dtype(vlen=str))
-                elif tensor_type == 'death':
+                        hd5.create_dataset(
+                            "categorical" + HD5_GROUP_CHAR + row["disease"].lower(),
+                            data=[float(row["has_disease"])],
+                        )
+                        hd5_date = (
+                            "dates" + HD5_GROUP_CHAR + row["disease"].lower() + "_date"
+                        )
+                        hd5.create_dataset(
+                            hd5_date,
+                            (1,),
+                            data=str(row["censor_date"]),
+                            dtype=h5py.special_dtype(vlen=str),
+                        )
+                elif tensor_type == "death":
                     for row in rows:
-                        hd5.create_dataset('categorical' + HD5_GROUP_CHAR + 'death', data=[float(row['has_died'])])
-                        d = 'dates' + HD5_GROUP_CHAR
-                        hd5.create_dataset(d+'enroll_date', (1,), data=str(row['enroll_date']), dtype=h5py.special_dtype(vlen=str))
-                        hd5.create_dataset(d+'death_censor', (1,), data=str(row['death_censor_date']), dtype=h5py.special_dtype(vlen=str))
-                        hd5.create_dataset(d+'phenotype_censor', (1,), data=str(row['phenotype_censor_date']), dtype=h5py.special_dtype(vlen=str))
+                        hd5.create_dataset(
+                            "categorical" + HD5_GROUP_CHAR + "death",
+                            data=[float(row["has_died"])],
+                        )
+                        d = "dates" + HD5_GROUP_CHAR
+                        hd5.create_dataset(
+                            d + "enroll_date",
+                            (1,),
+                            data=str(row["enroll_date"]),
+                            dtype=h5py.special_dtype(vlen=str),
+                        )
+                        hd5.create_dataset(
+                            d + "death_censor",
+                            (1,),
+                            data=str(row["death_censor_date"]),
+                            dtype=h5py.special_dtype(vlen=str),
+                        )
+                        hd5.create_dataset(
+                            d + "phenotype_censor",
+                            (1,),
+                            data=str(row["phenotype_censor_date"]),
+                            dtype=h5py.special_dtype(vlen=str),
+                        )
             gcs_blob.upload_from_filename(tensor_path)
     except:
         logging.exception(f"Problem with processing sample id '{sample_id}'")
@@ -102,10 +163,12 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
 
 def _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5):
     try:
-        float_value = float(row['value'])
+        float_value = float(row["value"])
         hd5.create_dataset(hd5_dataset_name, data=[float_value])
     except ValueError:
-        logging.warning(f"Cannot cast to float from '{row['value']}' for field id '{row['fieldid']}' and sample id '{sample_id}'")
+        logging.warning(
+            f"Cannot cast to float from '{row['value']}' for field id '{row['fieldid']}' and sample id '{sample_id}'",
+        )
 
 
 def _get_categorical_query(dataset):

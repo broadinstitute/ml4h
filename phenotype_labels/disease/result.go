@@ -1,17 +1,14 @@
 package main
 
-import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/carbocation/pfx"
-
-	"cloud.google.com/go/bigquery"
-	"google.golang.org/api/iterator"
-)
+# Imports: third party
+import "os"
+import "fmt"
+import "time"
+import "strconv"
+import "strings"
+import "github.com/carbocation/pfx"
+import "cloud.google.com/go/bigquery"
+import "google.golang.org/api/iterator"
 
 type Result struct {
 	SampleID                int64                `bigquery:"sample_id"`
@@ -238,25 +235,25 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  %%s
 		GROUP BY p.FieldID, p.sample_id, p.value
 	  ), included_only AS (
-	  SELECT sample_id, has_disease, incident_disease, prevalent_disease, date_censor, DATE_DIFF(date_censor,birthdate, DAY)/365.0 age_censor, 
+	  SELECT sample_id, has_disease, incident_disease, prevalent_disease, date_censor, DATE_DIFF(date_censor,birthdate, DAY)/365.0 age_censor,
         birthdate, enroll_date, enroll_age, death_date, death_age, computed_date, missing_fields
 	  FROM (
-		SELECT c.sample_id, 
-		  CASE 
+		SELECT c.sample_id,
+		  CASE
 			WHEN MIN(hd.first_date) IS NOT NULL THEN 1
 			ELSE 0
 		  END has_disease,
-		  CASE 
+		  CASE
 			WHEN MIN(hd.first_date) > MIN(c.enroll_date) THEN 1
 			WHEN MIN(hd.first_date) IS NOT NULL THEN NULL
 			ELSE 0
 		  END incident_disease,
-		  CASE 
+		  CASE
 			WHEN MIN(hd.first_date) > MIN(c.enroll_date) THEN 0
 			WHEN MIN(hd.first_date) IS NOT NULL THEN 1
 			ELSE 0
 		  END prevalent_disease,
-		  CASE 
+		  CASE
 			WHEN MIN(hd.first_date) IS NOT NULL THEN MIN(hd.first_date)
 			ELSE MIN(c.phenotype_censor_date)
 		  END date_censor,
@@ -283,25 +280,25 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		GROUP BY sample_id
 	  )
 	  ),excluded_only AS (
-		SELECT sample_id, has_disease, incident_disease, prevalent_disease, date_censor, DATE_DIFF(date_censor,birthdate, DAY)/365.0 age_censor, 
+		SELECT sample_id, has_disease, incident_disease, prevalent_disease, date_censor, DATE_DIFF(date_censor,birthdate, DAY)/365.0 age_censor,
 		  birthdate, enroll_date, enroll_age, death_date, death_age, computed_date, missing_fields
 		FROM (
-		  SELECT c.sample_id, 
-			CASE 
+		  SELECT c.sample_id,
+			CASE
 			  WHEN MIN(excl.first_date) IS NOT NULL THEN 1
 			  ELSE 0
 			END has_disease,
-			CASE 
+			CASE
 			  WHEN MIN(excl.first_date) > MIN(c.enroll_date) THEN 1
 			  WHEN MIN(excl.first_date) IS NOT NULL THEN NULL
 			  ELSE 0
 			END incident_disease,
-			CASE 
+			CASE
 			  WHEN MIN(excl.first_date) > MIN(c.enroll_date) THEN 0
 			  WHEN MIN(excl.first_date) IS NOT NULL THEN 1
 			  ELSE 0
 			END prevalent_disease,
-			CASE 
+			CASE
 			  WHEN MIN(excl.first_date) IS NOT NULL THEN MIN(excl.first_date)
 			  ELSE MIN(c.phenotype_censor_date)
 			END date_censor,
@@ -327,22 +324,22 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  GROUP BY sample_id
 		)
 		)
-	  
-	  SELECT c.sample_id, 
-		CASE 
+
+	  SELECT c.sample_id,
+		CASE
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
 		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after disease onset; we'll allow it:
-		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.has_disease 
+		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN io.has_disease
 			-- Met exclusion but no inclusion
 			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN NULL
 			-- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN 0
 		  ELSE io.has_disease
-		END has_disease, 
-		CASE 
+		END has_disease,
+		CASE
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
@@ -354,8 +351,8 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN 0
 		  ELSE io.incident_disease
-		END incident_disease, 
-		CASE 
+		END incident_disease,
+		CASE
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN NULL
 		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
@@ -367,8 +364,8 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN 0
 		  ELSE io.prevalent_disease
-		END prevalent_disease, 
-		CASE 
+		END prevalent_disease,
+		CASE
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN eo.date_censor
 		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
@@ -380,27 +377,27 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN c.phenotype_censor_date
 		  ELSE io.date_censor
-		END date_censor, 
+		END date_censor,
 		CASE
 		  -- Enrollment occurred after exclusion:
 		  WHEN eo.has_disease = 1 AND SAFE.DATE_DIFF(c.enroll_date, eo.date_censor, DAY) > 0 THEN DATE_DIFF(eo.date_censor,c.birthdate, DAY)/365.0
 		  -- Exclusion occurred after enrollment and prior to disease onset; we will exclude:
 		  WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(io.date_censor,eo.date_censor, DAY) > 0 THEN DATE_DIFF(eo.date_censor,c.birthdate, DAY)/365.0
 		  -- Exclusion occurred after disease onset; we'll allow it:
-			WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0 
+			WHEN eo.has_disease = 1 AND io.has_disease = 1 AND SAFE.DATE_DIFF(eo.date_censor,io.date_censor, DAY) > 0 THEN DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0
 			-- Met exclusion but no inclusion
 			WHEN eo.has_disease = 1 AND (io.has_disease = 0 OR io.has_disease IS NULL) THEN DATE_DIFF(eo.date_censor,c.birthdate, DAY)/365.0
 		  -- Didn't meet exclusion or inclusion means we censor at the date given by UKBB:
 		  WHEN io.has_disease IS NULL THEN c.phenotype_censor_age
-		  ELSE DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0 
-		END age_censor, 
-		c.birthdate, 
-		c.enroll_date, 
-		c.enroll_age, 
+		  ELSE DATE_DIFF(io.date_censor,c.birthdate, DAY)/365.0
+		END age_censor,
+		c.birthdate,
+		c.enroll_date,
+		c.enroll_age,
 		CASE WHEN c.death_date IS NULL THEN 0 ELSE 1 END has_died,
-		CASE WHEN c.death_date IS NULL THEN c.death_censor_date ELSE c.death_date END death_date, 
-		CASE WHEN c.death_date IS NULL THEN c.death_censor_age ELSE c.death_age END death_age, 
-		c.computed_date, 
+		CASE WHEN c.death_date IS NULL THEN c.death_censor_date ELSE c.death_date END death_date,
+		CASE WHEN c.death_date IS NULL THEN c.death_censor_age ELSE c.death_age END death_age,
+		c.computed_date,
 		c.missing_fields
 	  FROM `+"`%s.censor`"+` c
 	  LEFT JOIN included_only io ON io.sample_id=c.sample_id

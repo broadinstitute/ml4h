@@ -7,29 +7,32 @@ inputs in BQ
 outputs in BQ:
     <OUTPUT_TABLE> with fields <sampleid, datetime, ICD10, Phecode>.
 """
-from collections import defaultdict
+# Imports: standard library
+import os
 import csv
-from google.cloud import bigquery, storage
 import gzip
 import json
-import os
+from collections import defaultdict
+
+# Imports: third party
+from google.cloud import storage, bigquery
 
 # CONSTANTS
 CWD = os.getcwd()
-PHECODES_DATASET = 'shared_data'
-PHENO_DATASET = 'ukbb7089_201904'  # TODO: replace with an argument
+PHECODES_DATASET = "shared_data"
+PHENO_DATASET = "ukbb7089_201904"  # TODO: replace with an argument
 PARAMS = {
-    'phecodes_dataset': PHECODES_DATASET,
-    'pheno_dataset': PHENO_DATASET,
-    'phecode_dict': PHECODES_DATASET + '.phecode_dictionary',
-    'phecode_icd10': PHECODES_DATASET + '.phecode_icd10',
-    'gs_bucket': 'ml4cvd',
-    'gs_location': 'data/tmp/',
-    'output_schema': os.path.join(CWD, 'phecode_mapping.json'),
-    'output_file': PHENO_DATASET + '_phecode_mapping.csv.gz',
-    'output_table': PHENO_DATASET + '.phecode_mapping',
+    "phecodes_dataset": PHECODES_DATASET,
+    "pheno_dataset": PHENO_DATASET,
+    "phecode_dict": PHECODES_DATASET + ".phecode_dictionary",
+    "phecode_icd10": PHECODES_DATASET + ".phecode_icd10",
+    "gs_bucket": "ml4cvd",
+    "gs_location": "data/tmp/",
+    "output_schema": os.path.join(CWD, "phecode_mapping.json"),
+    "output_file": PHENO_DATASET + "_phecode_mapping.csv.gz",
+    "output_table": PHENO_DATASET + ".phecode_mapping",
 }
-client = bigquery.Client() #should already be hooked up to your default project
+client = bigquery.Client()  # should already be hooked up to your default project
 
 
 def get_ranged_phecodes():
@@ -45,18 +48,19 @@ def get_ranged_phecodes():
         SELECT REPLACE(icd10,'.','') as icd10, phecode
         FROM %(phecode_icd10)s
         WHERE regexp_contains(icd10,'-')
-        """ % PARAMS,
+        """
+        % PARAMS,
     )
     for row in query_job:
-        (low, high) = tuple(row['icd10'].split('-'))  # (start icd10,end icd10)
-        ranged_lookups.append((low, high, row['phecode']))
+        (low, high) = tuple(row["icd10"].split("-"))  # (start icd10,end icd10)
+        ranged_lookups.append((low, high, row["phecode"]))
     # convert to sorted list [(lowest, high, phecode), (...), (...),...]
     return sorted(ranged_lookups, key=lambda x: (x[0], x[1]))
 
 
 def identify_phecode_from_ranged_list(sorted_ranged_list, icd10):
     """turns icd10 into a set of phecodes from sorted, ranged phecode list"""
-    icd10 = icd10.replace('.', '')
+    icd10 = icd10.replace(".", "")
 
     phecodes = set()
     for (low, high, phecode) in sorted_ranged_list:
@@ -68,8 +72,7 @@ def identify_phecode_from_ranged_list(sorted_ranged_list, icd10):
             continue
         else:
             raise Exception(
-                "not catching icd10 %s in range %s, %s" %
-                (icd10, low, high),
+                "not catching icd10 %s in range %s, %s" % (icd10, low, high),
             )
     return phecodes
 
@@ -97,68 +100,66 @@ def create_phecode_match_file():
         SELECT replace(icd10,'.','') as icd10, phecode
         from %(phecode_icd10)s
         where regexp_contains(icd10,'-') = false
-        """ % PARAMS,
+        """
+        % PARAMS,
     )
 
     for row in query_job:
         matched_phecodes = identify_phecode_from_ranged_list(
-                           ranged_sorted_phecodes,
-                           row['icd10'],
+            ranged_sorted_phecodes, row["icd10"],
         )
-        if row['phecode'] in matched_phecodes:
+        if row["phecode"] in matched_phecodes:
             print(
-                '(%s,%s) icd10, phecode redundantly found in range'
-                % (row['icd10'], row['phecode']),
+                "(%s,%s) icd10, phecode redundantly found in range"
+                % (row["icd10"], row["phecode"]),
             )
         else:
-            exact_phecodes[row['icd10']].add(row['phecode'])
+            exact_phecodes[row["icd10"]].add(row["phecode"])
 
-    #read row from hesin table, match to phecode, dump to file
+    # read row from hesin table, match to phecode, dump to file
     query_job = client.query(
         """
         SELECT eid, record_id, admidate, diag_icd10,
         replace(diag_icd10,'.','') as icd10
         FROM %(pheno_dataset)s.hesin
         where diag_icd10 is not null
-        """ % PARAMS,
+        """
+        % PARAMS,
     )
     count = 0
 
-    #read schema from json to make sure we get the ordering right
-    with open(PARAMS['output_schema']) as f:
+    # read schema from json to make sure we get the ordering right
+    with open(PARAMS["output_schema"]) as f:
         schema = json.load(f)
-    #pass ordering into fieldnames for writing
-    fieldnames = [fn['name'] for fn in schema]
+    # pass ordering into fieldnames for writing
+    fieldnames = [fn["name"] for fn in schema]
 
-    #find phecode matches, write to a file
-    with gzip.open(PARAMS['output_file'], mode='wt') as csv_file:
+    # find phecode matches, write to a file
+    with gzip.open(PARAMS["output_file"], mode="wt") as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         for row in query_job:
             count += 1
             if count % 1000 == 0:
                 print(count)
-            #one at a time, should be slow as hell
+            # one at a time, should be slow as hell
             matched_phecodes = identify_phecode_from_ranged_list(
-                            ranged_sorted_phecodes,
-                            row['icd10'],
+                ranged_sorted_phecodes, row["icd10"],
             )
-            all_matches = matched_phecodes | exact_phecodes.get(
-                row['icd10'],
-                set(),
-            )
+            all_matches = matched_phecodes | exact_phecodes.get(row["icd10"], set())
             if len(all_matches):
                 output_dict = {}
                 for fn in fieldnames:
-                    if fn == 'phecode':
+                    if fn == "phecode":
                         continue
                     else:
                         output_dict[fn] = row[fn]
                 for match in all_matches:
-                    output_dict['phecode'] = match
+                    output_dict["phecode"] = match
                 csv_writer.writerow(output_dict)
 
-#not operational
-#def upload_file_to_db():
+
+# not operational
+# def upload_file_to_db():
 #    with open(PARAMS['output_schema']) as f:
 #        schema = json.load(f)
 #    #pass ordering into fieldnames for writing
@@ -175,19 +176,25 @@ def create_phecode_match_file():
 #            f,table)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test = {
-        ('a', 'b'): 2, ('a', 'c'): 3, ('a1', 'b'): 2,
-        ('a',  'b1'): 2, ('a1', 'b1'): 3,
+        ("a", "b"): 2,
+        ("a", "c"): 3,
+        ("a1", "b"): 2,
+        ("a", "b1"): 2,
+        ("a1", "b1"): 3,
     }
     correct = [
-        ('a', 'b', 2), ('a', 'b1', 2), ('a', 'c', 3),
-        ('a1', 'b', 2), ('a1', 'b1', 3),
+        ("a", "b", 2),
+        ("a", "b1", 2),
+        ("a", "c", 3),
+        ("a1", "b", 2),
+        ("a1", "b1", 3),
     ]
     test_list = [(k[0], k[1], v) for k, v in test.items()]
     sorted_test_list = sorted(test_list, key=lambda x: (x[0], x[1]))
     print(sorted_test_list)
     assert sorted_test_list == correct
-    print(identify_phecode_from_ranged_list(sorted_test_list, 'a'))
+    print(identify_phecode_from_ranged_list(sorted_test_list, "a"))
     create_phecode_match_file()
-    #upload_file_to_db()
+    # upload_file_to_db()

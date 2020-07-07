@@ -1,0 +1,11 @@
+[tool.isort]
+length_sort = true
+multi_line_output = "3"
+include_trailing_comma = true
+force_grid_wrap = "0"
+use_parentheses = true
+import_heading_stdlib = "Imports: standard library"
+import_heading_firstparty = "Imports: first party"
+import_heading_thirdparty = "Imports: third party"
+default_section = "THIRDPARTY"
+known_first_party = "ml4cvd"

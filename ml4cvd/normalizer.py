@@ -1,6 +1,10 @@
-import numpy as np
+# Imports: standard library
 from abc import ABC, abstractmethod
 
+# Imports: third party
+import numpy as np
+
+# Imports: first party
 from ml4cvd.defines import EPS
 
 
@@ -16,7 +20,6 @@ class Normalizer(ABC):
 
 
 class Standardize(Normalizer):
-
     def __init__(self, mean: float, std: float):
         self.mean, self.std = mean, std
 
@@ -28,7 +31,6 @@ class Standardize(Normalizer):
 
 
 class ZeroMeanStd1(Normalizer):
-
     def normalize(self, tensor: np.ndarray) -> np.ndarray:
         tensor -= np.mean(tensor)
         tensor /= np.std(tensor) + EPS

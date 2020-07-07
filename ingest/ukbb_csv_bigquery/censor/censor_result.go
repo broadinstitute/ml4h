@@ -1,12 +1,10 @@
 package main
 
-import (
-	"fmt"
-	"strings"
-	"time"
-
-	"gopkg.in/guregu/null.v3"
-)
+# Imports: third party
+import "fmt"
+import "time"
+import "strings"
+import "gopkg.in/guregu/null.v3"
 
 type CensorResult struct {
 	SampleID int64

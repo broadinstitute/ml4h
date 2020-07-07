@@ -1,17 +1,15 @@
 package main
 
-import (
-	"bytes"
-	"fmt"
-	"image"
-	"image/color"
-	"image/jpeg"
-	"io"
-	"io/ioutil"
-
-	"github.com/gradienthealth/dicom"
-	"github.com/gradienthealth/dicom/dicomtag"
-)
+# Imports: third party
+import "io"
+import "fmt"
+import "bytes"
+import "image"
+import "io/ioutil"
+import "image/jpeg"
+import "image/color"
+import "github.com/gradienthealth/dicom"
+import "github.com/gradienthealth/dicom/dicomtag"
 
 // Takes in a dicom file (in bytes), outputs one or more jpeg file equivalents
 // (in bytes)

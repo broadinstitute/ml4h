@@ -1,13 +1,11 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"time"
-
-	"cloud.google.com/go/bigquery"
-)
+# Imports: third party
+import "fmt"
+import "log"
+import "time"
+import "context"
+import "cloud.google.com/go/bigquery"
 
 func Censor(BQ *WrappedBigQuery, deathCensorDateString, phenoCensorDateString string) error {
 	var err error

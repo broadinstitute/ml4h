@@ -1,87 +1,87 @@
 [
   {
-    "mode": "REQUIRED", 
-    "name": "eid", 
+    "mode": "REQUIRED",
+    "name": "eid",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "REQUIRED", 
-    "name": "record_id", 
+    "mode": "REQUIRED",
+    "name": "record_id",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "admidate", 
+    "mode": "NULLABLE",
+    "name": "admidate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "cause_icd10", 
+    "mode": "NULLABLE",
+    "name": "cause_icd10",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "cause_icd10_nb", 
+    "mode": "NULLABLE",
+    "name": "cause_icd10_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd10", 
+    "mode": "NULLABLE",
+    "name": "diag_icd10",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd10_nb", 
+    "mode": "NULLABLE",
+    "name": "diag_icd10_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd9", 
+    "mode": "NULLABLE",
+    "name": "diag_icd9",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "diag_icd9_nb", 
+    "mode": "NULLABLE",
+    "name": "diag_icd9_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "disdate", 
+    "mode": "NULLABLE",
+    "name": "disdate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epiend", 
+    "mode": "NULLABLE",
+    "name": "epiend",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "epistart", 
+    "mode": "NULLABLE",
+    "name": "epistart",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "opdate", 
+    "mode": "NULLABLE",
+    "name": "opdate",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "oper4", 
+    "mode": "NULLABLE",
+    "name": "oper4",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "oper4_nb", 
+    "mode": "NULLABLE",
+    "name": "oper4_nb",
     "type": "STRING"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "operstat", 
+    "mode": "NULLABLE",
+    "name": "operstat",
     "type": "INTEGER"
-  }, 
+  },
   {
-    "mode": "NULLABLE", 
-    "name": "source", 
+    "mode": "NULLABLE",
+    "name": "source",
     "type": "STRING"
   }
 ]

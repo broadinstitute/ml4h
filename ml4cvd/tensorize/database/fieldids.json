@@ -1,6 +1,6 @@
 [
   {
-    "mode": "REQUIRED", 
+    "mode": "REQUIRED",
     "name": "fieldid",
     "type": "INTEGER"
   }

@@ -1,16 +1,19 @@
+# Imports: standard library
 import os
 import re
 import shutil
 import logging
-import datetime
 import argparse
-import xmltodict
+import datetime
 from timeit import default_timer as timer
 
+# Imports: third party
+import xmltodict
 
-def _format_date(input_date, day_flag, sep_char='-'):
-    '''Format input date from `mm-dd-yyyy` into `yyyy-mm`, or `yyyy-mm-dd`
-    This is the ISO 8601 standard for date'''
+
+def _format_date(input_date, day_flag, sep_char="-"):
+    """Format input date from `mm-dd-yyyy` into `yyyy-mm`, or `yyyy-mm-dd`
+    This is the ISO 8601 standard for date"""
     date_iso = input_date[6:10] + sep_char + input_date[0:2]
     if day_flag:
         date_iso = date_iso + sep_char + input_date[3:5]
@@ -25,7 +28,7 @@ def _process_args(args):
     if not os.path.exists(args.bad_xml_folder):
         os.mkdir(args.bad_xml_folder)
 
-    now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
 
     # This is temporary becuase I can't figure out how to import load_config from ml4cvd.logger
     logging.basicConfig(
@@ -34,7 +37,7 @@ def _process_args(args):
         handlers=[
             logging.FileHandler(f"{now_str}_organize_xmls_log.txt"),
             logging.StreamHandler(),
-            ],
+        ],
     )
 
 
@@ -59,9 +62,18 @@ def parse_args():
         help="Path to directory in which to store malformed XMLs",
     )
 
-    parser.add_argument("--method", default="copy", choices=["copy", "move"], help="Copy or move files from src to dst/yyyy-mm. Default: copy")
+    parser.add_argument(
+        "--method",
+        default="copy",
+        choices=["copy", "move"],
+        help="Copy or move files from src to dst/yyyy-mm. Default: copy",
+    )
 
-    parser.add_argument("--verbose", action="store_true", help="Print more information as each file is processed. Default: False")
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print more information as each file is processed. Default: False",
+    )
 
     args = parser.parse_args()
     _process_args(args)
@@ -125,7 +137,8 @@ def run(args):
                     (?<=encoding\=\")
                     (.*?)
                     (?=\"\?\>)
-                    """, re.VERBOSE,
+                    """,
+                    re.VERBOSE,
                 )
 
                 # Extract XML encoding from first line of imported XML
@@ -138,10 +151,14 @@ def run(args):
 
                 # If xml_encoding is not among the accepted XML encodings, fix it
                 if xml_encoding not in valid_encodings or not valid_xml:
-                    logging.debug(f"Bad XML encoding found: {xml_encoding}. Replacing with ISO-8859-1.")
+                    logging.debug(
+                        f"Bad XML encoding found: {xml_encoding}. Replacing with ISO-8859-1.",
+                    )
 
                     # Replace the bad encoding in xml_as_string with ISO-8859-1
-                    xml_as_string = re.sub(verbosePattern, "ISO-8859-1", xml_as_string, count=1)
+                    xml_as_string = re.sub(
+                        verbosePattern, "ISO-8859-1", xml_as_string, count=1,
+                    )
 
                     # Increment counter to track bad encodings
                     num_bad_encodings += 1
@@ -178,12 +195,16 @@ def run(args):
 
                         # Define full path to new directory in yyyy-mm format
                         yyyymm = _format_date(ecg_date, day_flag=False)
-                        args.dst_yyyymm = os.path.join(args.destination_xml_folder, yyyymm)
+                        args.dst_yyyymm = os.path.join(
+                            args.destination_xml_folder, yyyymm,
+                        )
 
                         # If directory does not exist, create it
                         if not os.path.exists(args.dst_yyyymm):
                             os.makedirs(args.dst_yyyymm)
-                            logging.debug(f"No valid yyyy-mm directory exists. Creating: {args.dst_yyyymm}")
+                            logging.debug(
+                                f"No valid yyyy-mm directory exists. Creating: {args.dst_yyyymm}",
+                            )
 
                 # If there is any parsing error, set flag to False
                 except xmltodict.expat.ExpatError:
@@ -193,7 +214,9 @@ def run(args):
             # If the XML is not valid, set the final path to bad xml path
             if not valid_xml:
                 args.dst_yyyymm = args.bad_xml_folder
-                logging.debug("Missing or invalid acquisition date, or other XML error.")
+                logging.debug(
+                    "Missing or invalid acquisition date, or other XML error.",
+                )
 
             # If new directory does not exist, create it
             if not os.path.exists(args.dst_yyyymm):
@@ -201,10 +224,10 @@ def run(args):
 
             # Copy or move XML file into new directory
             fpath_xml_newdir = args.dst_yyyymm + "/" + filename
-            if 'copy' == args.method:
+            if "copy" == args.method:
                 shutil.copy(fpath, fpath_xml_newdir)
                 logging.debug(f"XML copied to {args.dst_yyyymm}")
-            elif 'move' == args.method:
+            elif "move" == args.method:
                 shutil.move(fpath, fpath_xml_newdir)
                 logging.debug(f"XML moved to {args.dst_yyyymm}")
 
@@ -212,13 +235,17 @@ def run(args):
 
             # Log progress every 100 files
             if num_processed % 100 == 0:
-                logging.info(f"processed {num_processed} / {num_files} XML files ({num_processed/num_files*100:.1f}% done)")
+                logging.info(
+                    f"processed {num_processed} / {num_files} XML files ({num_processed/num_files*100:.1f}% done)",
+                )
 
     # Log final results
     num_valid = num_processed - num_bad_encodings - num_parsing_err
     logging.info(f"Number files found in src: {num_files}")
     logging.info(f"Number valid files now in dst: {num_valid}")
-    logging.info(f"Number files with bad encodings or parsing errors: {num_bad_encodings + num_parsing_err}")
+    logging.info(
+        f"Number files with bad encodings or parsing errors: {num_bad_encodings + num_parsing_err}",
+    )
 
     end_time = timer()
     elapsed_time = end_time - start_time

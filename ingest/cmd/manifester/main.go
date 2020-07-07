@@ -1,16 +1,14 @@
 package main
 
-import (
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"runtime"
-	"strings"
-
-	"github.com/broadinstitute/ml4cvd/go/bulkprocess"
-)
+# Imports: third party
+import "os"
+import "fmt"
+import "log"
+import "flag"
+import "runtime"
+import "strings"
+import "io/ioutil"
+import "github.com/broadinstitute/ml4cvd/go/bulkprocess"
 
 func main() {
 	// Makes one big combined manifest
