@@ -7,29 +7,29 @@ TODO(everyone):
 """
 
 import collections
-import enum
+from enum import Enum, auto
 import os
 
 
-class Runtime(enum.Enum):
-  TERRA = 1
-  ML4CVD_VM = 2
-  DEFAULT = 3  # Such as an AI Platform Notebooks VM.
+class Runtime(Enum):
+  TERRA = auto()
+  ML4CVD_VM = auto()
+  DEFAULT = auto()  # Such as an AI Platform Notebooks VM.
   # TODO(sam): PARTNERS = 4
 
 
-class Dataset(enum.Enum):
-  FAKE = 1
-  UKB = 2
+class Dataset(Enum):
+  FAKE = auto()
+  UKB = auto()
 
 
-class DataType(enum.Enum):
-  RESTING_ECG_HD5 = 1
-  RESTING_ECG_SVG = 2
-  EXERCISE_ECG_HD5 = 3
-  BRAIN_MRI_DICOM = 4
-  CARDIAC_MRI_DICOM = 5
-  MRI_HD5 = 6
+class DataType(Enum):
+  RESTING_ECG_HD5 = auto()
+  RESTING_ECG_SVG = auto()
+  EXERCISE_ECG_HD5 = auto()
+  BRAIN_MRI_DICOM = auto()
+  CARDIAC_MRI_DICOM = auto()
+  MRI_HD5 = auto()
 
 # Three-level dictionary of data locations.
 FOLDERS = collections.defaultdict(lambda: collections.defaultdict(dict))

@@ -48,7 +48,7 @@ class AnnotationStorage(abc.ABC):
 
 
 class TransientAnnotationStorage(AnnotationStorage):
-  """Store annotations in temporarily in memory.
+  """Store annotations temporarily in memory.
 
   This is useful for demonstration purposes.
   """
@@ -167,9 +167,11 @@ class BigQueryAnnotationStorage(AnnotationStorage):
     bqclient = bigquery.Client(credentials=bqmagics.context.credentials)
 
     # Format the query string.
-    query_string = f'''SELECT * FROM `{self.table}`
-ORDER BY annotation_timestamp DESC
-LIMIT {count}'''
+    query_string = f'''
+        SELECT * FROM `{self.table}`
+        ORDER BY annotation_timestamp DESC
+        LIMIT {count}
+        '''
 
     # submit the query and store the result as a dataframe
     df = bqclient.query(query_string).result().to_dataframe()

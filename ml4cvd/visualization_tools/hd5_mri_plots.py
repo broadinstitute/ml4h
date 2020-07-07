@@ -1,6 +1,6 @@
 """Methods for integration of plots of mri data processed to 3D tensors from within notebooks."""
 
-import enum
+from enum import Enum, auto
 import os
 import tempfile
 
@@ -16,14 +16,14 @@ import numpy as np
 import tensorflow as tf
 
 # Discover applicable TMAPS.
-CARDIAC_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if ('_lax_' in k or '_sax_' in k) and len(TMAPS[k].shape) == 3]
+CARDIAC_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if ('_lax_' in k or '_sax_' in k) and TMAPS[k].axes() == 3]
 CARDIAC_MRI_TMAP_NAMES.extend(
-    [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_cardiac_mri' and len(TMAPS[k].shape) == 3],
+    [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_cardiac_mri' and TMAPS[k].axes() == 3],
 )
-LIVER_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_liver_mri' and len(TMAPS[k].shape) == 3]
-BRAIN_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_brain_mri' and len(TMAPS[k].shape) == 3]
+LIVER_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_liver_mri' and TMAPS[k].axes() == 3]
+BRAIN_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_brain_mri' and TMAPS[k].axes() == 3]
 # This includes more than just MRI TMAPS, it is a best effort.
-BEST_EFFORT_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].interpretation == Interpretation.CONTINUOUS and len(TMAPS[k].shape) == 3]
+BEST_EFFORT_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].interpretation == Interpretation.CONTINUOUS and TMAPS[k].axes() == 3]
 
 MIN_IMAGE_WIDTH = 8
 DEFAULT_IMAGE_WIDTH = 12
@@ -33,9 +33,9 @@ MIN_COLOR_RANGE = 0
 MAX_COLOR_RANGE = 6000
 
 
-class PlotType(enum.Enum):
-  INTERACTIVE = 1
-  PANEL = 2
+class PlotType(Enum):
+  INTERACTIVE = auto()
+  PANEL = auto()
 
 
 class TensorMapCache:
