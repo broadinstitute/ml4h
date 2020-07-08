@@ -2,7 +2,9 @@
 import gc
 import os
 import logging
+import argparse
 from timeit import default_timer as timer
+from typing import List
 from collections import Counter
 
 # Imports: third party
@@ -14,7 +16,7 @@ from skimage.filters import threshold_otsu
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
-from ml4cvd.defines import IMAGE_EXT, MODEL_EXT
+from ml4cvd.defines import IMAGE_EXT, MODEL_EXT, Arguments
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
@@ -33,30 +35,12 @@ from matplotlib import pyplot as plt    # isort:skip
 MAX_LOSS = 9e9
 
 
-def run(args):
+def run(args: Arguments):
     # Keep track of elapsed execution time
     start_time = timer()
     try:
-        if "conv" == args.mode:
-            optimize_conv_layers_multimodal_multitask(args)
-        elif "dense_layers" == args.mode:
-            optimize_dense_layers_multimodal_multitask(args)
-        elif "lr" == args.mode:
-            optimize_lr_multimodal_multitask(args)
-        elif "inputs" == args.mode:
-            optimize_input_tensor_maps(args)
-        elif "optimizer" == args.mode:
-            optimize_optimizer(args)
-        elif "architecture" == args.mode:
-            optimize_architecture(args)
-        elif "ecg_rest" == args.mode:
-            optimize_ecg_rest_architecture(args)
-        elif "ecg_rest_unet" == args.mode:
-            optimize_ecg_rest_unet_architecture(args)
-        elif "mri_sax" == args.mode:
-            optimize_mri_sax_architecture(args)
-        elif "conv_x" == args.mode:
-            optimize_conv_x(args)
+        if "ecg_architecture" == args.mode:
+            optimize_ecg_architecture(args)
         else:
             raise ValueError("Unknown hyper-parameter optimization mode:", args.mode)
 
@@ -68,6 +52,77 @@ def run(args):
     logging.info(
         "Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time),
     )
+
+
+def optimize_ecg_architecture(args):
+    block_size_sets = [2, 3, 4]
+    conv_layers_sets = [[32]]  # Baseline
+    conv_normalize_sets = ["", "batch_norm"]
+    dense_layers_sets = [
+        [256],
+        [1000],  # Collin's suggestion
+        [16, 64],  # Baseline
+    ]
+    dense_blocks_sets = [
+        [64, 128],  # Collin's suggestion
+        [32, 24, 16],  # Baseline
+        [48, 36, 24, 16],
+    ]
+    pool_types = ["max", "average"]
+
+    """
+    conv_x_sets = _generate_conv1D_filter_widths(
+        num_unique_filters=25,
+        list_len_bounds=[1, 4],
+        first_filter_width_bounds=[60, 150],
+        probability_vary_filter_width=0.75,
+        vary_filter_scale_bounds=[1.25, 1.75],
+    )
+    """
+    conv_x_sets = [
+        [50],
+        [71],
+        [100],
+        [80, 40, 20, 10],
+    ]
+    conv_dropout_sets = [0, 0.25, 0.5]
+    dropout_sets = [0, 0.25, 0.5]
+    learning_rate_sets = [0.0001, 0.0002, 0.0003]
+
+    # Generate weighted loss tmaps for STS death
+    weighted_losses = [val for val in range(1, 20, 2)]
+    input_tensors_sets = _generate_weighted_loss_tmaps(
+        base_tmap_name="sts_death", weighted_losses=weighted_losses,
+    )
+
+    space = {
+        "block_size": hp.choice("block_size", block_size_sets),
+        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
+        "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
+        "conv_x": hp.choice("conv_x", conv_x_sets),
+        "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
+        "dropout": hp.choice("dropout", dropout_sets),
+        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
+        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
+        "input_tensors": hp.choice("input_tensors", input_tensors_sets),
+        "learning_rate": hp.choice("learning_rate", learning_rate_sets),
+        "dropout": hp.choice("dropout", dropout_sets),
+        "pool_type": hp.choice("pool_type", pool_types),
+        "u_connect": hp.choice("u_connect", [True, False]),
+    }
+    param_lists = {
+        "block_size": block_size_sets,
+        "conv_layers": conv_layers_sets,
+        "conv_normalize": conv_normalize_sets,
+        "conv_x": conv_x_sets,
+        "dense_blocks": dense_blocks_sets,
+        "dense_layers": dense_layers_sets,
+        "dropout": dropout_sets,
+        "input_tensors": input_tensors_sets,
+        "learning_rate": learning_rate_sets,
+        "pool_type": pool_types,
+    }
+    hyperparameter_optimizer(args, space, param_lists)
 
 
 def hyperparameter_optimizer(args, space, param_lists={}):
@@ -133,7 +188,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
                 f" size: {model.count_params()}.",
             )
             logging.info(
-                f"Iteration {i} out of maximum {args.max_models}\nTest Loss:"
+                f"Iteration {i} out of maximum {args.max_evals}\nTest Loss:"
                 f" {loss_and_metrics[0]}",
             )
             generate_train.kill_workers()
@@ -164,296 +219,24 @@ def hyperparameter_optimizer(args, space, param_lists={}):
                 )
 
     trials = hyperopt.Trials()
+
     fmin(
-        loss_from_multimodal_multitask,
+        fn=loss_from_multimodal_multitask,
         space=space,
         algo=tpe.suggest,
-        max_evals=args.max_models,
+        max_evals=args.max_evals,
         trials=trials,
     )
     plot_trials(trials, histories, fig_path, param_lists)
     logging.info("Saved learning plot to:{}".format(fig_path))
 
 
-def optimize_architecture(args):
-    dense_blocks_sets = [
-        [16],
-        [32],
-        [48],
-        [32, 16],
-        [32, 32],
-        [32, 24, 16],
-        [48, 32, 24],
-        [48, 48, 48],
-    ]
-    conv_layers_sets = [[64], [48], [32], [24]]
-    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
-    u_connect = [True, False]
-    conv_dilate = [True, False]
-    activation = ["leaky", "prelu", "elu", "thresh_relu", "relu"]
-    conv_bn = [True, False]
-    pool_type = ["max", "average"]
-    space = {
-        "pool_x": hp.quniform("pool_x", 1, 4, 1),
-        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-        "u_connect": hp.choice("u_connect", u_connect),
-        "conv_dilate": hp.choice("conv_dilate", conv_dilate),
-        "activation": hp.choice("activation", activation),
-        "conv_bn": hp.choice("conv_bn", conv_bn),
-        "pool_type": hp.choice("pool_type", pool_type),
-        "dropout": hp.uniform("dropout", 0, 0.2),
-        "conv_dropout": hp.uniform("conv_dropout", 0, 0.2),
-        "conv_width": hp.quniform("conv_width", 2, 128, 1),
-        "block_size": hp.quniform("block_size", 1, 4, 1),
-    }
-    param_lists = {
-        "conv_layers": conv_layers_sets,
-        "dense_blocks": dense_blocks_sets,
-        "dense_layers": dense_layers_sets,
-        "u_connect": u_connect,
-        "conv_dilate": conv_dilate,
-        "activation": activation,
-        "conv_bn": conv_bn,
-        "pool_type": pool_type,
-    }
-    hyperparameter_optimizer(args, space, param_lists)
-
-
-def optimize_ecg_rest_architecture(args):
-    dense_blocks_sets = [
-        [],
-        [32],
-        [32, 24],
-        [32, 24, 16],
-        [48, 48, 48],
-        [48, 48, 48, 48],
-    ]
-    conv_layers_sets = [
-        [],
-        [32],
-        [48],
-        [32, 32],
-        [48, 48],
-        [48, 32, 24],
-        [48, 48, 48],
-        [32, 32, 32, 32],
-        [48, 48, 48, 48],
-    ]
-    dense_layers_sets = [[8], [16], [16, 64], [32, 128]]
-    conv_dilate = [True, False]
-    activation = ["leaky", "prelu", "relu"]
-    conv_normalize = ["", "batch_norm"]
-    pool_type = ["max", "average"]
-    space = {
-        "pool_x": hp.quniform("pool_x", 1, 8, 1),
-        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-        "conv_dilate": hp.choice("conv_dilate", conv_dilate),
-        "activation": hp.choice("activation", activation),
-        #'conv_normalize': hp.choice('conv_normalize', conv_normalize),
-        "pool_type": hp.choice("pool_type", pool_type),
-        "conv_width": hp.loguniform("conv_width", 1, 5),
-        "block_size": hp.quniform("block_size", 1, 6, 1),
-    }
-    param_lists = {
-        "conv_layers": conv_layers_sets,
-        "dense_blocks": dense_blocks_sets,
-        "dense_layers": dense_layers_sets,
-        "conv_dilate": conv_dilate,
-        "activation": activation,
-        #'conv_normalize': conv_normalize,
-        "pool_type": pool_type,
-    }
-    hyperparameter_optimizer(args, space, param_lists)
-
-
-def optimize_ecg_rest_unet_architecture(args):
-    dense_blocks_sets = [
-        [32],
-        [48],
-        [32, 16],
-        [32, 32],
-        [32, 24, 16],
-        [48, 32, 24],
-        [48, 48, 48],
-        [32, 32, 32, 32],
-        [48, 48, 48, 48],
-    ]
-    conv_layers_sets = [
-        [16],
-        [32],
-        [48],
-        [32, 32],
-        [48, 32],
-        [48, 32, 24],
-        [48, 48, 48],
-        [32, 32, 32, 32],
-        [48, 48, 48, 48],
-    ]
-    dense_layers_sets = [
-        [32, 32],
-        [16, 64],
-        [8, 128],
-        [16, 16],
-        [8, 8],
-        [48],
-        [32],
-        [24],
-        [16],
-        [8],
-    ]
-    conv_dilate = [True, False]
-    activation = ["leaky", "prelu", "relu"]
-    conv_normalize = ["", "batch_norm"]
-    pool_type = ["max", "average"]
-    pool_xs = [1, 5, 10, 25]
-    space = {
-        "pool_x": hp.choice("pool_x", pool_xs),
-        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-        "conv_dilate": hp.choice("conv_dilate", conv_dilate),
-        "activation": hp.choice("activation", activation),
-        "conv_normalize": hp.choice("conv_normalize", conv_normalize),
-        "pool_type": hp.choice("pool_type", pool_type),
-        "conv_width": hp.loguniform("conv_width", 1, 5),
-        "block_size": hp.quniform("block_size", 1, 6, 1),
-    }
-    param_lists = {
-        "conv_layers": conv_layers_sets,
-        "dense_blocks": dense_blocks_sets,
-        "dense_layers": dense_layers_sets,
-        "conv_dilate": conv_dilate,
-        "activation": activation,
-        "conv_normalize": conv_normalize,
-        "pool_type": pool_type,
-    }
-    hyperparameter_optimizer(args, space, param_lists)
-
-
-def optimize_mri_sax_architecture(args):
-    dense_blocks_sets = [
-        [],
-        [16],
-        [32],
-        [48],
-        [32, 16],
-        [32, 32],
-        [32, 24, 16],
-        [48, 32, 24],
-        [48, 48, 48],
-    ]
-    conv_layers_sets = [[], [16], [32], [48], [32, 32], [48, 32], [48, 32, 24]]
-    dense_layers_sets = [[16], [24], [32], [48], [16, 64], [8, 128], [16, 64, 128]]
-    activation = ["leaky", "prelu", "relu", "elu"]
-    conv_dilate = [True, False]
-    conv_normalize = ["", "batch_norm"]
-    conv_type = ["conv", "separable", "depth"]
-    pool_type = ["max", "average"]
-    space = {
-        "pool_x": hp.quniform("pool_x", 2, 8, 2),
-        "pool_y": hp.quniform("pool_y", 2, 8, 2),
-        "pool_z": hp.quniform("pool_z", 1, 2, 1),
-        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-        "conv_dilate": hp.choice("conv_dilate", conv_dilate),
-        "conv_normalize": hp.choice("conv_normalize", conv_normalize),
-        "conv_type": hp.choice("conv_type", conv_type),
-        "activation": hp.choice("activation", activation),
-        "pool_type": hp.choice("pool_type", pool_type),
-        "block_size": hp.quniform("block_size", 1, 6, 1),
-    }
-    param_lists = {
-        "conv_layers": conv_layers_sets,
-        "dense_blocks": dense_blocks_sets,
-        "dense_layers": dense_layers_sets,
-        "conv_dilate": conv_dilate,
-        "conv_normalize": conv_normalize,
-        "conv_type": conv_type,
-        "activation": activation,
-        "pool_type": pool_type,
-    }
-    hyperparameter_optimizer(args, space, param_lists)
-
-
-def optimize_conv_x(args):
-    space = {
-        "conv_x": hp.loguniform("conv_x", 1, 6),
-    }
-    hyperparameter_optimizer(args, space, {})
-
-
-def optimize_conv_layers_multimodal_multitask(args):
-    dense_blocks_sets = [
-        [16],
-        [32],
-        [48],
-        [32, 16],
-        [32, 32],
-        [32, 24, 16],
-        [48, 32, 24],
-        [48, 48, 48],
-    ]
-    conv_layers_sets = [[64], [48], [32], [24]]
-    dense_layers_sets = [[16, 64], [8, 128], [48], [32], [24], [16]]
-    space = {
-        "pool_x": hp.choice("pool_x", list(range(1, 5))),
-        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-    }
-    param_lists = {
-        "conv_layers": conv_layers_sets,
-        "dense_blocks": dense_blocks_sets,
-        "dense_layers": dense_layers_sets,
-    }
-    hyperparameter_optimizer(args, space, param_lists)
-
-
-def optimize_dense_layers_multimodal_multitask(args):
-    space = {"num_layers": hp.choice(list(range(2, 42)))}
-    hyperparameter_optimizer(args, space)
-
-
-def optimize_lr_multimodal_multitask(args):
-    space = {"learning_rate": hp.loguniform("learning_rate", -10, -2)}
-    hyperparameter_optimizer(args, space)
-
-
-def optimize_input_tensor_maps(args):
-    input_tensor_map_sets = [
-        ["categorical-phenotypes-72"],
-        ["mri-slice"],
-        ["sax_inlinevf_zoom"],
-        ["cine_segmented_sax_inlinevf"],
-        ["ekg-leads"],
-    ]
-    space = {"input_tensor_maps": hp.choice("input_tensor_maps", input_tensor_map_sets)}
-    param_lists = {"input_tensor_maps": input_tensor_map_sets}
-    hyperparameter_optimizer(args, space, param_lists)
-
-
-def optimize_optimizer(args):
-    optimizers = [
-        "adam",
-        "radam",
-        "sgd",
-    ]
-    space = {
-        "learning_rate": hp.loguniform("learning_rate", -10, -2),
-        "optimizer": hp.choice("optimizer", optimizers),
-    }
-    hyperparameter_optimizer(args, space, {"optimizer": optimizers})
-
-
-def set_args_from_x(args, x):
+def set_args_from_x(args: argparse.Namespace, x: Arguments):
     for k in args.__dict__:
         if k in x:
-            print(k, x[k], args.__dict__[k])
+            logging.info(f"arg: {k}")
+            logging.info(f"value from hyperopt: {x[k]}")
+            logging.info(f"original value in args: {args.__dict__[k]}")
             if isinstance(args.__dict__[k], int):
                 args.__dict__[k] = int(x[k])
             elif isinstance(args.__dict__[k], float):
@@ -461,11 +244,111 @@ def set_args_from_x(args, x):
                 if v == int(v):
                     v = int(v)
                 args.__dict__[k] = v
+            elif isinstance(args.__dict__[k], list):
+                if isinstance(x[k], tuple):
+                    args.__dict__[k] = list(x[k])
             else:
                 args.__dict__[k] = x[k]
+            logging.info(f"value in args is now: {args.__dict__[k]}\n")
     logging.info(f"Set arguments to: {args}")
     args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+
+
+def _ensure_even_number(x: int) -> int:
+    if x % 2 == 1:
+        x += 1
+    return x
+
+
+def _generate_conv1D_filter_widths(
+    num_unique_filters: int = 50,
+    list_len_bounds: List[int] = [1, 4],
+    first_filter_width_bounds: List[int] = [60, 150],
+    probability_vary_filter_width: float = 0.75,
+    vary_filter_scale_bounds: List[float] = [1.25, 2.00],
+) -> List[List[int]]:
+    """Generate a list of 1D convolutional filter widths that are lists of even ints.
+
+    :param num_unique_filters: number of unique lists of filters to generate, e.g. 10 will
+           result in a list of 10 lists of filter widths.
+
+    :param list_len_bounds: bounds of the number of elements in each list of filters;
+            the number of elements is a randomly selected integer in these bounds. e.g.
+           [1, 4] will choose a random int from among 1, 2, 3, or 4.
+
+    :param first_filter_width_bounds: bounds of the first filter width; randomly selected
+           integer in these bounds similar to 'list_len_bounds'.
+
+    :param probability_vary_filter_width: probability of choosing to vary filter size; a
+           randomly generated float between 0-1 is compared to this value. If <=, then
+           the filter size is varied.
+
+    :param vary_filter_scale_bounds: bounds of the scale factor for decreasing filter
+           width in subsequent layers; the scale is a randomly selected float in these
+           bounds. The filter width of the next layer = filter width of prior layer / filter_scale.
+           This is applied to all layers, e.g. if filter size is set to vary, and:
+               ```
+               list_len = 4
+               first_filter_width = 100
+               filter_scale = 1.5
+               ```
+               `this_filter` would be `[100, 66, 44, 30]`
+    """
+    list_of_filters = []
+
+    while len(list_of_filters) < num_unique_filters:
+
+        # Generate length of filter sizes
+        list_len = np.random.randint(
+            low=list_len_bounds[0], high=list_len_bounds[1] + 1, size=1, dtype=int,
+        )[0]
+
+        # Generate first filter size
+        first_filter_width = np.random.randint(
+            low=first_filter_width_bounds[0],
+            high=first_filter_width_bounds[1] + 1,
+            size=1,
+            dtype=int,
+        )[0]
+        first_filter_width = _ensure_even_number(first_filter_width)
+
+        # Randomly determine if filter size varies or not
+        vary_filter_width = probability_vary_filter_width >= np.random.rand()
+
+        # Randomly generate filter scale value by which to divide subsequent filter sizes
+        vary_filter_scale = np.random.uniform(
+            low=vary_filter_scale_bounds[0], high=vary_filter_scale_bounds[1],
+        )
+
+        # Iterate through list of filter sizes
+        this_filter = []
+        for i in range(list_len):
+            this_filter.append(first_filter_width)
+
+            # Check if we want to vary filter size
+            if vary_filter_width:
+                current_filter_width = first_filter_width
+                first_filter_width = int(first_filter_width / vary_filter_scale)
+                first_filter_width = _ensure_even_number(first_filter_width)
+
+                # If reducing filter size makes it 0, reset to prior filter size
+                if first_filter_width == 0:
+                    first_filter_width = current_filter_width
+
+        if this_filter not in list_of_filters:
+            list_of_filters.append(this_filter)
+
+    return list_of_filters
+
+
+def _generate_weighted_loss_tmaps(
+    base_tmap_name: str, weighted_losses: List[int],
+) -> List[str]:
+    new_tmap_names = [
+        base_tmap_name + "_weighted_loss_" + str(weight) for weight in weighted_losses
+    ]
+    return new_tmap_names
 
 
 def string_from_arch_dict(x):

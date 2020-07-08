@@ -1,6 +1,6 @@
 # Imports: standard library
 from enum import Enum, auto
-from typing import List
+from typing import Dict, List, Union
 
 
 class StorageType(Enum):
@@ -15,6 +15,8 @@ class StorageType(Enum):
         """StorageType.FLOAT_ARRAY becomes float_array"""
         return str.lower(super().__str__().split(".")[1])
 
+ArgumentList = List[Union[int, float]]
+Arguments = Dict[str, Union[int, float, ArgumentList]]
 
 DATE_FORMAT = "%Y-%m-%d_%H-%M-%S"
 PARTNERS_DATE_FORMAT = "%m-%d-%Y"

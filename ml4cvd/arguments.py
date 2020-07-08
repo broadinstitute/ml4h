@@ -573,22 +573,22 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--test_steps",
-        default=32,
-        type=int,
-        help="Number of batches to use for testing.",
-    )
-    parser.add_argument(
         "--training_steps",
         default=400,
         type=int,
-        help="Number of training batches to examine in an epoch.",
+        help="Number of minibatches to examine in an epoch: train split",
     )
     parser.add_argument(
         "--validation_steps",
         default=40,
         type=int,
-        help="Number of validation batches to examine in an epoch validation.",
+        help="Number of minibatches to examine in an epoch: validation split",
+    )
+    parser.add_argument(
+        "--test_steps",
+        default=32,
+        type=int,
+        help="Number of minibatches to examine in an epoch: test split",
     )
     parser.add_argument(
         "--learning_rate",
@@ -624,7 +624,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--max_models",
+        "--max_evals",
         default=16,
         type=int,
         help=(
