@@ -1,5 +1,11 @@
 # ml4cvd
-Machine Learning for CardioVascular Disease
+Machine Learning for CardioVascular Disease - MGH/MIT edition!
+
+## Contents
+- Setup
+- Run scripts
+- [Tensorize ECGs](documentation/tensorize_ecgs.md)
+- Contribute
 
 ## Setup
 TODO
@@ -30,7 +36,7 @@ python dispatch.py \
     ~/dropbox/ml4cvd_run_scripts/sts-ecg/train-deeper.sh
 ```
 
-## Contributing
+## Contribute
 
 Submit a new feature request, bug report, etc. by creating a [new issue with the ml4cvd template](https://github.com/aguirre-lab/ml/issues/new/choose).
 

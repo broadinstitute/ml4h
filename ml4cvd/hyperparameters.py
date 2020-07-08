@@ -87,10 +87,10 @@ def optimize_ecg_architecture(args):
     ]
     conv_dropout_sets = [0, 0.25, 0.5]
     dropout_sets = [0, 0.25, 0.5]
-    learning_rate_sets = [0.0001, 0.0002, 0.0003]
+    learning_rate_sets = [0.0002, 0.0004]
 
     # Generate weighted loss tmaps for STS death
-    weighted_losses = [val for val in range(1, 20, 2)]
+    weighted_losses = [val for val in range(1, 20, 4)]
     input_tensors_sets = _generate_weighted_loss_tmaps(
         base_tmap_name="sts_death", weighted_losses=weighted_losses,
     )
@@ -108,7 +108,6 @@ def optimize_ecg_architecture(args):
         "learning_rate": hp.choice("learning_rate", learning_rate_sets),
         "dropout": hp.choice("dropout", dropout_sets),
         "pool_type": hp.choice("pool_type", pool_types),
-        "u_connect": hp.choice("u_connect", [True, False]),
     }
     param_lists = {
         "block_size": block_size_sets,
