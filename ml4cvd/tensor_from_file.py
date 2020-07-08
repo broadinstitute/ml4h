@@ -100,7 +100,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
         if error:
             raise error
         if normalization:
-            tm.normalization = {'mean': mean, 'std': std}
+            tm.normalization = Standardize(mean=mean, std=std)
         try:
             return table[os.path.basename(hd5.filename).replace('.hd5', '')].copy()
         except KeyError:
