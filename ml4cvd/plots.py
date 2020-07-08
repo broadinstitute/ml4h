@@ -1981,7 +1981,10 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def _plot_reconstruction(tm: TensorMap, y_true, y_pred, folder: str, paths: List[str]):
+def _plot_reconstruction(
+        tm: TensorMap, y_true: np.ndarray, y_pred: np.ndarray,
+        folder: str, paths: List[str]
+):
     num_samples = 3
     logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
     if None in tm.shape:  # can't handle dynamic shapes
