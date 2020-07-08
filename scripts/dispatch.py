@@ -1,4 +1,4 @@
-#!/bin/python
+#!/bin/python3
 #
 # usage:
 # python dispatch.py \
@@ -12,8 +12,11 @@
 # Imports: standard library
 import os
 import re
+import sys
 import time
+import logging
 import argparse
+import datetime
 import subprocess
 import multiprocessing as mp
 
@@ -48,7 +51,7 @@ def run(args):
             process = mp.Process(target=worker, args=(script, bootstrap, gpu))
             process.start()
             processes.append(process)
-            print(
+            logging.info(
                 f"Dispatched {os.path.basename(script)} with bootstrap {bootstrap} on"
                 f" GPU {gpu}",
             )
@@ -56,36 +59,80 @@ def run(args):
     for process in processes:
         process.join()
 
-    print(f"Dispatched {len(processes)} jobs in {time.time() - start:.0f} seconds")
+    logging.info(
+        f"Dispatched {len(processes)} jobs in {time.time() - start:.0f} seconds",
+    )
 
 
-if __name__ == "__main__":
+def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gpus", help="range of gpu devices to run on, e.g. 0-4")
+    parser.add_argument(
+        "--gpus",
+        nargs="+",
+        required=True,
+        help="list of gpu devices to run on, specified by indices or intervals. for example, to use gpu 0, 3, 4, 5: --gpus 0 3-5",
+    )
     parser.add_argument(
         "--bootstraps",
-        default="0-9",
-        help="range of bootstraps to run on, default: 0-9",
+        nargs="+",
+        default=["0-9"],
+        help="list of bootstraps to run on, same specification as gpus. default: 0-9",
     )
-    parser.add_argument("--scripts", nargs="+", help="list of paths to scripts to run")
+    parser.add_argument(
+        "--scripts", nargs="+", required=True, help="list of paths to scripts to run",
+    )
+    parser.add_argument(
+        "--log_file",
+        default=f"dispatch-{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.log",
+        help="name of log file to write dispatcher logs to",
+    )
     args = parser.parse_args()
+
+    log_formatter = logging.Formatter(
+        "%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
+    )
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    file_handler = logging.FileHandler(args.log_file)
+    file_handler.setFormatter(log_formatter)
+    logger.addHandler(file_handler)
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(log_formatter)
+    logger.addHandler(stdout_handler)
 
     interval = re.compile(r"^\d+-\d+$")
     if args.gpus is None or args.bootstraps is None or args.scripts is None:
         raise ValueError(f"Missing arguments")
-    if not interval.match(args.gpus):
-        raise ValueError(f'Invalid range for GPUs: "{args.gpus}"')
-    if not interval.match(args.bootstraps):
-        raise ValueError(f'Invalid range for Bootstraps: "{args.bootstraps}"')
+
+    def _parse_index_list(idxs, name):
+        _idxs = set()
+        for idx in idxs:
+            if idx.isdigit():
+                start = int(idx)
+                end = start + 1
+            elif interval.match(idx):
+                start, end = map(int, idx.split("-"))
+                end += 1
+            else:
+                raise ValueError(f"Invalid {name}: {idx}")
+            _idxs = _idxs.union(set(range(start, end)))
+        return list(map(str, _idxs))
+
+    args.gpus = _parse_index_list(args.gpus, "gpu")
+    args.bootstraps = _parse_index_list(args.bootstraps, "bootstrap")
+
     for script in args.scripts:
         if not os.path.isfile(script):
             raise ValueError(f"No script found at: {script}")
 
-    args.gpus = [int(n) for n in args.gpus.split("-")]
-    args.gpus = [str(n) for n in range(args.gpus[0], args.gpus[1] + 1)]
-    args.bootstraps = [int(n) for n in args.bootstraps.split("-")]
-    args.bootstraps = [
-        str(n) for n in range(args.bootstraps[0], args.bootstraps[1] + 1)
-    ]
+    return args
 
-    run(args)
+
+if __name__ == "__main__":
+    try:
+        args = parse_args()
+        run(args)
+    except Exception as e:
+        logging.exception(e)
