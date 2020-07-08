@@ -47,6 +47,34 @@ class BottleneckType(Enum):
     NoBottleNeck = auto()  # only works when everything is u_connected
 
 
+ACTIVATION_CLASSES = {
+    'leaky': LeakyReLU(),
+    'prelu': PReLU(),
+    'elu': ELU(),
+    'thresh_relu': ThresholdedReLU,
+}
+ACTIVATION_FUNCTIONS = {
+    'swish': tf.nn.swish,
+    'gelu': tfa.activations.gelu,
+    'lisht': tfa.activations.lisht,
+    'mish': tfa.activations.mish,
+}
+NORMALIZATION_CLASSES = {
+    'batch_norm': BatchNormalization,
+    'layer_norm': LayerNormalization,
+    'instance_norm': tfa.layers.InstanceNormalization,
+    'poincare_norm': tfa.layers.PoincareNormalize,
+}
+CONV_REGULARIZATION_CLASSES = {
+    # class name -> (dimension -> class)
+    'spatial_dropout': {2: SpatialDropout1D, 3: SpatialDropout2D, 4: SpatialDropout3D},
+    'dropout': defaultdict(lambda _: Dropout),
+}
+DENSE_REGULARIZATION_CLASSES = {
+    'dropout': Dropout,  # TODO: add l1, l2
+}
+
+
 def make_shallow_model(
     tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
     learning_rate: float, model_file: str = None, model_layers: str = None,
@@ -1167,34 +1195,6 @@ def _upsampler(dimension, pool_x, pool_y, pool_z):
         return UpSampling2D(size=(pool_x, pool_y))
     elif dimension == 2:
         return UpSampling1D(size=pool_x)
-
-
-ACTIVATION_CLASSES = {
-    'leaky': LeakyReLU(),
-    'prelu': PReLU(),
-    'elu': ELU(),
-    'thresh_relu': ThresholdedReLU,
-}
-ACTIVATION_FUNCTIONS = {
-    'swish': tf.nn.swish,
-    'gelu': tfa.activations.gelu,
-    'lisht': tfa.activations.lisht,
-    'mish': tfa.activations.mish,
-}
-NORMALIZATION_CLASSES = {
-    'batch_norm': BatchNormalization,
-    'layer_norm': LayerNormalization,
-    'instance_norm': tfa.layers.InstanceNormalization,
-    'poincare_norm': tfa.layers.PoincareNormalize,
-}
-CONV_REGULARIZATION_CLASSES = {
-    # class name -> (dimension -> class)
-    'spatial_dropout': {2: SpatialDropout1D, 3: SpatialDropout2D, 4: SpatialDropout3D},
-    'dropout': defaultdict(lambda _: Dropout),
-}
-DENSE_REGULARIZATION_CLASSES = {
-    'dropout': Dropout,  # TODO: add l1, l2
-}
 
 
 def _activation_layer(activation: str) -> Activation:
