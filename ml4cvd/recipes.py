@@ -62,7 +62,6 @@ from ml4cvd.explorations import (
     tabulate_correlations_of_tensors,
     plot_histograms_of_tensors_in_pdf,
 )
-from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_PATHS_INDEX,
@@ -186,8 +185,6 @@ def run(args):
             train_char_model(args)
         elif "train_siamese" == args.mode:
             train_siamese_model(args)
-        elif "write_tensor_maps" == args.mode:
-            write_tensor_maps(args)
         elif "append_continuous_csv" == args.mode:
             append_fields_from_csv(args.tensors, args.app_csv, "continuous", ",")
         elif "append_categorical_csv" == args.mode:

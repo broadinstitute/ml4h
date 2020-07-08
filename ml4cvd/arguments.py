@@ -17,7 +17,6 @@ from ml4cvd.logger import load_config
 from ml4cvd.models import BottleneckType, parent_sort, check_no_bottleneck
 from ml4cvd.defines import IMPUTATION_MEAN, IMPUTATION_RANDOM
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.tensor_maps_partners_ecg import (
     build_sts_tensor_maps,
@@ -990,17 +989,6 @@ def _process_args(args):
         assert args.sample_weight.shape == (1,)
 
     args.tensor_maps_out = []
-    if args.continuous_file is not None:
-        # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
-        args.tensor_maps_out.append(
-            generate_continuous_tensor_map_from_file(
-                args.continuous_file,
-                args.continuous_file_column,
-                args.output_tensors.pop(0),
-                args.continuous_file_normalize,
-                args.continuous_file_discretization_bounds,
-            ),
-        )
     args.tensor_maps_out.extend(
         [_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors],
     )
