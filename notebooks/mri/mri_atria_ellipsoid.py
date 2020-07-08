@@ -1,3 +1,4 @@
+# %%
 import h5py
 import sys
 import glob
@@ -8,19 +9,25 @@ from vtk.util import numpy_support as ns
 import vtk
 import numpy as np
 import pandas as pd
-from pypoisson import poisson_reconstruction
+# from pypoisson import poisson_reconstruction
 import os
 import imageio
 
 XDMF_TRIANGLE=4
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {}
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'] = 11
-petersen = pd.read_csv('/mnt/ml4cvd/jamesp/lvmass/returned_lv_mass.tsv', sep='\t')
+petersen = pd.read_csv('returned_lv_mass.tsv', sep='\t')
 petersen_idxs = petersen['sample_id'].values
 
 # %%
 for t in range(MRI_FRAMES):
-    petersen[f'LA_ellipsoid_{t}'] = 0.0
+    petersen[f'LA_ellipsoid_vol_{t}'] = 0.0
+    for i in range(9):
+      petersen[f'LA_ellipsoid_evecs_{t}_{i}'] = 0.0
+    for i in range(3):
+      petersen[f'LA_ellipsoid_radii_{t}_{i}'] = 0.0
+    for i in range(3):
+      petersen[f'LA_ellipsoid_center_{t}_{i}'] = 0.0
 
 
 def ellipsoid_fit(X):
@@ -152,21 +159,21 @@ for i, idx in enumerate(petersen_idxs):
     if i > int(sys.argv[1]): 
         break
     
-    with h5py.File(f'/mnt/disks/sax-and-lax-zip-2019-09-30/unzip-sax-and-lax-44k-2020-06-05/{idx}.hd5', 'r') as ff:
+    with h5py.File(f'/mnt/disks/segmented-sax-lax/2020-07-07/{idx}.hd5', 'r') as ff:
         dss = []
         for view in ['2ch', '3ch', '4ch']:
             dss.append(_mri_hd5_to_structured_grids(ff, f'cine_segmented_lax_{view}_annotated_',
                                                     view_name=f'cine_segmented_lax_{view}', concatenate=True,
                                                     save_path=None, order='F'))
-            to_xdmf(dss[-1][0], f'{idx}_{view}')            
+            # to_xdmf(dss[-1][0], f'{idx}_{view}')            
 
         for t in range(MRI_FRAMES):
             pts = []
             normals = []
             for ds, view, la_value in zip(dss, ['2ch', '3ch', '4ch'],
                                             [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                            MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                            MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
+                                             MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                                             MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
                 centers = vtk.vtkCellCenters()
                 centers.SetInputData(ds[0])
                 centers.Update()
@@ -264,13 +271,15 @@ for i, idx in enumerate(petersen_idxs):
             
             append = False if (t == 0) else True
             write_footer = True if (t == MRI_FRAMES - 1) else False
-            to_xdmf(transform_filter.GetOutput(), f'{idx}_atrium_ellipsoid', append=append, 
-                    append_time=t, write_footer=write_footer)
+            # to_xdmf(transform_filter.GetOutput(), f'{idx}_atrium_ellipsoid', append=append, 
+            #         append_time=t, write_footer=write_footer)
 
             mass = vtk.vtkMassProperties()
             mass.SetInputConnection(transform_filter.GetOutputPort())
             mass.Update()
-            petersen.loc[i, f'LA_ellipsoid_{t}'] = mass.GetVolume()
+            petersen.loc[i, f'LA_ellipsoid_vol_{t}'] = mass.GetVolume()
+            petersen.loc[i, [f'LA_ellipsoid_evecs_{t}_{j}' for j in range(9)]] = np.ravel(evecs)
+            petersen.loc[i, [f'LA_ellipsoid_radii_{t}_{j}' for j in range(3)]] = np.ravel(radii)
+            petersen.loc[i, [f'LA_ellipsoid_center_{t}_{j}' for j in range(3)]] = np.ravel(center)       
     petersen_processed.append(i)
 petersen.loc[petersen_processed].to_csv(f'petersen_processed_{i-1}.csv', sep='\t', index=False)
-
