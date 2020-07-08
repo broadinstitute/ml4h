@@ -1360,7 +1360,7 @@ def build_legacy_ecg(
             raise KeyError(f'{tm.name} mrn not in legacy csv.')
 
         ecg_dates = list(hd5[tm.path_prefix])
-        ecg_date_key = _date_from_dates(ecg_dates, patient_table[patient_key], earliest_table[patient_key])
+        ecg_date_key = _date_from_dates(ecg_dates)#, patient_table[patient_key], earliest_table[patient_key])
 
         if check_birthday:
             path = _make_hd5_path(tm, ecg_date_key, 'dateofbirth')
