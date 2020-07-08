@@ -334,16 +334,22 @@ class TestModelPerformance:
         tensor_path = "/mnt/disks/brains-all-together/2020-02-11/"
         if not os.path.exists(tensor_path):
             pytest.skip(
-                "To test brain segmentation performance, attach disk brains-all-together",
+                "To test brain segmentation performance, attach disk"
+                " brains-all-together",
             )
 
+        # Imports: standard library
+        from multiprocessing import cpu_count
+
+        # Imports: third party
+        from sklearn.metrics import average_precision_score
+
+        # Imports: first party
         from ml4cvd.tensor_from_file import TMAPS
         from ml4cvd.tensor_generators import (
-            test_train_valid_tensor_generators,
             big_batch_from_minibatch_generator,
+            test_train_valid_tensor_generators,
         )
-        from multiprocessing import cpu_count
-        from sklearn.metrics import average_precision_score
 
         tmaps_in = [TMAPS["t1_30_slices_4d"]]
         tmaps_out = [TMAPS["t1_seg_30_slices"]]

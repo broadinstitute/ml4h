@@ -72,7 +72,10 @@ NON_KERAS_OPTIMIZERS = {
 
 
 def find_learning_rate(
-    model: Model, generate_train: TensorGenerator, steps: int, output_folder: str = None,
+    model: Model,
+    generate_train: TensorGenerator,
+    steps: int,
+    output_folder: str = None,
 ) -> Optional[float]:
     """
     Finds the learning rate for the model that will decrease the loss most quickly.

@@ -167,7 +167,8 @@ def _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5):
         hd5.create_dataset(hd5_dataset_name, data=[float_value])
     except ValueError:
         logging.warning(
-            f"Cannot cast to float from '{row['value']}' for field id '{row['fieldid']}' and sample id '{sample_id}'",
+            f"Cannot cast to float from '{row['value']}' for field id"
+            f" '{row['fieldid']}' and sample id '{sample_id}'",
         )
 
 

@@ -46,7 +46,6 @@ from ml4cvd.TensorMap import (
 )
 from ml4cvd.tensor_writer_ukbb import tensor_path
 
-
 """
 For now, all we will map `group` in TensorMap to `source` in tensor_path and `name` to `name`
 """
@@ -145,8 +144,8 @@ def _build_tensor_from_file(
                 mean = value_array.mean()
                 std = value_array.std()
                 logging.info(
-                    f"Normalizing TensorMap from file {file_name}, column {target_column} with mean: "
-                    f"{mean:.2f}, std: {std:.2f}",
+                    f"Normalizing TensorMap from file {file_name}, column"
+                    f" {target_column} with mean: {mean:.2f}, std: {std:.2f}",
                 )
     except FileNotFoundError as e:
         error = e
@@ -254,7 +253,8 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
             categorical_data[index] = 1.0
         else:
             raise ValueError(
-                f"No HD5 Key at prefix {tm.path_prefix} found for tensor map: {tm.name}.",
+                f"No HD5 Key at prefix {tm.path_prefix} found for tensor map:"
+                f" {tm.name}.",
             )
 
         if index != 0:
@@ -1059,7 +1059,8 @@ def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
         return categorical_data
     else:
         raise ValueError(
-            f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}",
+            "ECG categorical interpretation could not find any of these keys:"
+            f" {tm.channel_map.keys()}",
         )
 
 
@@ -1284,7 +1285,8 @@ def _make_ukb_ecg_rest_lvh():
             ),
         ):
             raise ValueError(
-                "Missing some of the R and S amplitude readings needed to evaluate LVH criteria",
+                "Missing some of the R and S amplitude readings needed to evaluate LVH"
+                " criteria",
             )
         is_female = "Genetic-sex_Female_0_0" in hd5["categorical"]
         is_male = "Genetic-sex_Male_0_0" in hd5["categorical"]
@@ -2086,7 +2088,8 @@ def _select_tensor_from_file(selection_predicate: Callable):
     def selected_tensor_from_file(tm, hd5, dependents={}):
         if not selection_predicate(hd5):
             raise ValueError(
-                f"Tensor did not meet selection criteria:{selection_predicate.__name__} with Tensor Map:{tm.name}",
+                f"Tensor did not meet selection criteria:{selection_predicate.__name__}"
+                f" with Tensor Map:{tm.name}",
             )
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in tm.channel_map:
@@ -2960,7 +2963,8 @@ def preprocess_with_function(fxn, hd5_key=None):
             continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, my_key)[0]
         if missing and tm.sentinel is None:
             raise ValueError(
-                f"No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.",
+                f"No value found for {tm.name}, a continuous TensorMap with no sentinel"
+                f" value, and channel keys:{list(tm.channel_map.keys())}.",
             )
         elif missing:
             continuous_data[:] = tm.sentinel

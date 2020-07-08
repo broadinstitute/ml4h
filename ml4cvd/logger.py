@@ -8,6 +8,7 @@ import logging
 
 
 def load_config(log_level, log_dir, log_file_basename, log_file_suffix):
+    # Imports: standard library
     from logging import config as logging_config
 
     try:
@@ -37,7 +38,9 @@ def _create_config(log_level, log_file):
         "disable_existing_loggers": False,
         "formatters": {
             "simple": {
-                "format": "%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
+                "format": (
+                    "%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s"
+                ),
             },
             "detailed": {
                 "format": "%(name)s:%(levelname)s %(module)s:%(lineno)d:  %(message)s",

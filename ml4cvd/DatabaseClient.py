@@ -17,7 +17,7 @@ class DatabaseClient(ABC):
 
 
 class BigQueryDatabaseClient(DatabaseClient):
-    """ If running locally, run the following commandline to authenticate yourself:
+    """If running locally, run the following commandline to authenticate yourself:
     gcloud auth application-default login
     """
 
@@ -71,7 +71,10 @@ if "__main__" == __name__:
 
     job_title_field_id = 22600
     icd10_field = 41202
-    query = f"SELECT value FROM {phenotype_table} WHERE fieldid={icd10_field} AND sample_id={sample_id}"
+    query = (
+        f"SELECT value FROM {phenotype_table} WHERE fieldid={icd10_field} AND"
+        f" sample_id={sample_id}"
+    )
 
     rows = db_client.execute(query.format())
     for row in rows:

@@ -44,7 +44,9 @@ FOLDERS[Runtime.TERRA] = {
         DataType.EXERCISE_ECG_HD5: "gs://ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_HD5: "gs://ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_SVG: "gs://ml4cvd/ecg_views_11_04_2019_svg/",
-        DataType.BRAIN_MRI: "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/",
+        DataType.BRAIN_MRI: (
+            "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/"
+        ),
         DataType.CARDIAC_MRI: "gs://ml4cvd/data/mris/cardiac/",
     },
     Dataset.FAKE: {
@@ -53,7 +55,9 @@ FOLDERS[Runtime.TERRA] = {
         DataType.EXERCISE_ECG_HD5: "gs://ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_HD5: "gs://ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_SVG: "gs://ml4cvd/ecg_views_fake/",
-        DataType.BRAIN_MRI: "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/",
+        DataType.BRAIN_MRI: (
+            "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/"
+        ),
         DataType.CARDIAC_MRI: "gs://ml4cvd/projects/fake_mris/",
     },
 }
@@ -66,7 +70,9 @@ FOLDERS[Runtime.ML4CVD_VM] = {
         DataType.EXERCISE_ECG_HD5: "/mnt/ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_HD5: "/mnt/ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_SVG: "/mnt/ml4cvd/ecg_views_11_04_2019_svg/",
-        DataType.BRAIN_MRI: "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/",
+        DataType.BRAIN_MRI: (
+            "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/"
+        ),
         DataType.CARDIAC_MRI: "/mnt/ml4cvd/data/mris/cardiac/",
     },
     Dataset.FAKE: {
@@ -75,7 +81,9 @@ FOLDERS[Runtime.ML4CVD_VM] = {
         DataType.EXERCISE_ECG_HD5: "/mnt/ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_HD5: "/mnt/ml4cvd/deflaux/ukbb_tensors",
         DataType.RESTING_ECG_SVG: "/mnt/ml4cvd/ecg_views_fake/",
-        DataType.BRAIN_MRI: "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/",
+        DataType.BRAIN_MRI: (
+            "gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/"
+        ),
         DataType.CARDIAC_MRI: "/mnt/ml4cvd/projects/fake_mris/",
     },
 }

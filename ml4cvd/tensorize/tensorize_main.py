@@ -24,9 +24,11 @@ def parse_args():
     parser.add_argument(
         "--id",
         default=f"run_{now_string}",
-        help="User-defined identifier for this pipeline run. "
-        "Per Google: the name must consist of only the characters [-a-z0-9], "
-        "starting with a letter and ending with a letter or number.",
+        help=(
+            "User-defined identifier for this pipeline run. "
+            "Per Google: the name must consist of only the characters [-a-z0-9], "
+            "starting with a letter and ending with a letter or number."
+        ),
     )
     parser.add_argument(
         "--tensor_type",
@@ -67,8 +69,11 @@ def parse_args():
     #                     help='Name of the Google Cloud Storage bucket where tensors will be written to')
     parser.add_argument(
         "--gcs_output_path",
-        help="gs:// folder path excluding the bucket name where tensors will be written to "
-        "e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder",
+        help=(
+            "gs:// folder path excluding the bucket name where tensors will be written"
+            " to e.g. specifying /path/to/folder will write to"
+            " gs://<gcs_bucket>/path/to/folder"
+        ),
     )
     parser.add_argument(
         "--logging_level",

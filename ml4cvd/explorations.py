@@ -17,8 +17,6 @@ from collections import Counter, OrderedDict, defaultdict
 import h5py
 import numpy as np
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from tensorflow.keras.models import Model
 
 # Imports: first party
@@ -54,7 +52,12 @@ from ml4cvd.tensor_generators import (
     test_train_valid_tensor_generators,
 )
 
-matplotlib.use("Agg")  # Need this to write images from the GSA servers.  Order matters:
+# fmt: off
+# need matplotlib -> Agg -> pyplot
+import matplotlib                       # isort:skip
+matplotlib.use("Agg")                   # isort:skip
+from matplotlib import pyplot as plt    # isort:skip
+# fmt: on
 
 
 CSV_EXT = ".tsv"
@@ -84,7 +87,8 @@ def predictions_to_pngs(
             elif len(tm.shape) == len(im.shape):
                 input_map = im
         logging.info(
-            f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}",
+            f"Write predictions as PNGs y:{y.shape}"
+            f" labels:{labels[tm.output_name()].shape} folder:{folder}",
         )
         if tm.is_mesh():
             vmin = np.min(data[input_map.input_name()])
@@ -97,7 +101,9 @@ def predictions_to_pngs(
                     rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}"
                     logging.info(
-                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}",
+                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows}"
+                        f" Predicted BBox: {y[i]}, True BBox:"
+                        f" {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}",
                     )
                     _plot_3d_tensor_slices_as_gray(
                         sample_data,
@@ -147,7 +153,8 @@ def predictions_to_pngs(
                         ),
                     )
                     logging.info(
-                        f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}",
+                        f"True BBox: {corner}, {width}, {height} Predicted BBox:"
+                        f" {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}",
                     )
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif len(tm.shape) in [1, 2]:
@@ -161,7 +168,9 @@ def predictions_to_pngs(
                     rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}"
                     logging.info(
-                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}",
+                        f"sample_data shape: {sample_data.shape} cols {cols}, {rows}"
+                        f" Predicted BBox: {y[i]}, True BBox:"
+                        f" {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}",
                     )
                     _plot_3d_tensor_slices_as_gray(
                         sample_data,
@@ -211,7 +220,8 @@ def predictions_to_pngs(
                         ),
                     )
                     logging.info(
-                        f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}",
+                        f"True BBox: {corner}, {width}, {height} Predicted BBox:"
+                        f" {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}",
                     )
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif len(tm.shape) == 3:
@@ -363,7 +373,8 @@ def plot_while_learning(
                 vmin = np.min(mri_in)
                 vmax = np.max(mri_in)
                 logging.info(
-                    f"epoch:{i} write segmented mris y shape:{y.shape} label shape:{test_labels[tm.output_name()].shape} to folder:{folder}",
+                    f"epoch:{i} write segmented mris y shape:{y.shape} label"
+                    f" shape:{test_labels[tm.output_name()].shape} to folder:{folder}",
                 )
                 if tm.is_categorical() and len(tm.shape) == 3:
                     for yi in range(y.shape[0]):
@@ -467,7 +478,8 @@ def plot_histograms_of_tensors_in_pdf(
         tensor_folder, max_samples,
     )
     logging.info(
-        f"Collected continuous stats for {len(stats)} fields. Now plotting histograms of them...",
+        f"Collected continuous stats for {len(stats)} fields. Now plotting histograms"
+        " of them...",
     )
     plot_histograms_in_pdf(stats, num_tensor_files, run_id, output_folder)
 
@@ -490,7 +502,8 @@ def plot_heatmap_of_tensors(
         tensor_folder, max_samples, ["0"], 0,
     )
     logging.info(
-        f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of their correlations...",
+        f"Collected continuous stats for {len(stats)} fields. Now plotting a heatmap of"
+        " their correlations...",
     )
     plot_heatmap(stats, id, min_samples, output_folder)
 
@@ -511,7 +524,8 @@ def tabulate_correlations_of_tensors(
     """
     stats, _ = _collect_continuous_stats_from_tensor_files(tensor_folder, max_samples)
     logging.info(
-        f"Collected continuous stats for {len(stats)} fields. Now tabulating their cross-correlations...",
+        f"Collected continuous stats for {len(stats)} fields. Now tabulating their"
+        " cross-correlations...",
     )
     _tabulate_correlations(stats, run_id, min_samples, output_folder)
 
@@ -660,7 +674,8 @@ def sample_from_char_model(
             next_char = index_map[_sample_with_heat(y_pred[0, :], 0.7)]
             sentence += next_char
             burn_in = np.zeros(
-                (1,) + test_batch[language_map.input_name()].shape[1:], dtype=np.float32,
+                (1,) + test_batch[language_map.input_name()].shape[1:],
+                dtype=np.float32,
             )
             for j, c in enumerate(reversed(sentence)):
                 if j == window_size:
@@ -785,7 +800,8 @@ def infer_with_pixels(args):
             )
             if tensor_paths[0] in tensor_paths_inferred:
                 logging.info(
-                    f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}",
+                    f"Inference on {stats['count']} tensors finished. Inference TSV"
+                    f" file at: {inference_tsv}",
                 )
                 break
 
@@ -856,7 +872,8 @@ def infer_with_pixels(args):
             stats["count"] += 1
             if stats["count"] % 250 == 0:
                 logging.info(
-                    f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}",
+                    f"Wrote:{stats['count']} rows of inference.  Last"
+                    f" tensor:{tensor_paths[0]}",
                 )
 
 
@@ -964,8 +981,10 @@ def _tabulate_correlations(
                 if len(field1_values) == len(field2_values):
                     if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
                         logging.debug(
-                            f"Not calculating correlation for fields {field1} and {field2} because at least one of "
-                            f"the fields has all the same values for the {num_common_samples} common samples.",
+                            f"Not calculating correlation for fields {field1} and"
+                            f" {field2} because at least one of the fields has all the"
+                            f" same values for the {num_common_samples} common"
+                            " samples.",
                         )
                         continue
                     corr = np.corrcoef(field1_values, field2_values)[1, 0]
@@ -975,12 +994,14 @@ def _tabulate_correlations(
                         )
                     else:
                         logging.warning(
-                            f"Pearson correlation for fields {field1} and {field2} is NaN.",
+                            f"Pearson correlation for fields {field1} and {field2} is"
+                            " NaN.",
                         )
                 else:
                     logging.debug(
-                        f"Not calculating correlation for fields '{field1}' and '{field2}' "
-                        f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).",
+                        f"Not calculating correlation for fields '{field1}' and"
+                        f" '{field2}' because they have different number of values"
+                        f" ({len(field1_values)} vs. {len(field2_values)}).",
                     )
         else:
             continue
@@ -992,7 +1013,8 @@ def _tabulate_correlations(
     fields_with_nans = nan_counter.keys()
     if len(fields_with_nans) != 0:
         logging.warning(
-            f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.",
+            f"The {len(fields_with_nans)} fields containing NaNs are:"
+            f" {', '.join(fields_with_nans)}.",
         )
 
     table_path = os.path.join(output_folder_path, output_file_name + CSV_EXT)
@@ -1017,8 +1039,9 @@ def _collect_continuous_stats_from_tensor_files(
     if max_samples is not None:
         if len(all_tensor_files) < max_samples:
             logging.warning(
-                f"{max_samples} was specified as number of samples to use but there are only "
-                f"{len(all_tensor_files)} tensor files in directory '{tensor_folder}'. Proceeding with those...",
+                f"{max_samples} was specified as number of samples to use but there are"
+                f" only {len(all_tensor_files)} tensor files in directory"
+                f" '{tensor_folder}'. Proceeding with those...",
             )
             max_samples = len(all_tensor_files)
         tensor_files = np.random.choice(all_tensor_files, max_samples, replace=False)
@@ -1027,7 +1050,8 @@ def _collect_continuous_stats_from_tensor_files(
 
     num_tensor_files = len(tensor_files)
     logging.info(
-        f"Collecting continuous stats from {num_tensor_files} of {len(all_tensor_files)} tensors at {tensor_folder}...",
+        f"Collecting continuous stats from {num_tensor_files} of"
+        f" {len(all_tensor_files)} tensors at {tensor_folder}...",
     )
 
     # Declare the container to hold {field_1: {sample_1: [values], sample_2: [values], field_2:...}}
@@ -1270,7 +1294,8 @@ def _tensors_to_df(args):
             temp_files.append(fpath)
 
     logging.info(
-        f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {len(paths)} hd5 files into DataFrame",
+        f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {len(paths)} hd5"
+        " files into DataFrame",
     )
 
     # remove temporary files
@@ -1384,7 +1409,8 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(
-                    f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}",
+                    f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name}"
+                    f" tmaps to {fpath}",
                 )
 
     # Check if any tmaps are continuous
@@ -1395,8 +1421,8 @@ def explore(args):
             df_stats = pd.DataFrame()
             if df_cur.empty:
                 logging.info(
-                    f"{df_str} of tensors results in empty dataframe."
-                    f" Skipping calculations of {Interpretation.CONTINUOUS} summary statistics",
+                    f"{df_str} of tensors results in empty dataframe. Skipping"
+                    f" calculations of {Interpretation.CONTINUOUS} summary statistics",
                 )
             else:
                 for tm in [
@@ -1454,7 +1480,8 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(
-                    f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to {fpath}",
+                    f"Saved summary stats of {Interpretation.CONTINUOUS} tmaps to"
+                    f" {fpath}",
                 )
 
     # Check if any tmaps are language (strings)
@@ -1463,8 +1490,8 @@ def explore(args):
             df_stats = pd.DataFrame()
             if df_cur.empty:
                 logging.info(
-                    f"{df_str} of tensors results in empty dataframe."
-                    f" Skipping calculations of {Interpretation.LANGUAGE} summary statistics",
+                    f"{df_str} of tensors results in empty dataframe. Skipping"
+                    f" calculations of {Interpretation.LANGUAGE} summary statistics",
                 )
             else:
                 for tm in [
@@ -1510,7 +1537,8 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(
-                    f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to {fpath}",
+                    f"Saved summary stats of {Interpretation.LANGUAGE} tmaps to"
+                    f" {fpath}",
                 )
 
     if args.plot_hist == "True":
@@ -1567,7 +1595,8 @@ def cross_reference(args):
     if use_time:
         if len(ref_start) != len(ref_end):
             raise ValueError(
-                f"Invalid time windows, got {len(ref_start)} starts and {len(ref_end)} ends",
+                f"Invalid time windows, got {len(ref_start)} starts and {len(ref_end)}"
+                " ends",
             )
 
         if order_in_window is None:
@@ -1576,14 +1605,16 @@ def cross_reference(args):
             order_in_window = [""] * len(ref_start)
         elif len(order_in_window) != len(ref_start):
             raise ValueError(
-                f"Ambiguous time selection in time windows, got {len(order_in_window)} order_in_window for {len(ref_start)} windows",
+                f"Ambiguous time selection in time windows, got {len(order_in_window)}"
+                f" order_in_window for {len(ref_start)} windows",
             )
 
         if window_names is None:
             window_names = [str(i) for i in range(len(ref_start))]
         elif len(window_names) != len(ref_start):
             raise ValueError(
-                f"Ambiguous time window names, got {len(window_names)} names for {len(ref_start)} windows",
+                f"Ambiguous time window names, got {len(window_names)} names for"
+                f" {len(ref_start)} windows",
             )
 
         # get time columns and ensure time windows are defined
@@ -1618,6 +1649,7 @@ def cross_reference(args):
     def _load_data(name, path, cols):
         if os.path.isdir(path):
             logging.debug(f"Assuming {name} is directory of hd5 at {path}")
+            # Imports: first party
             from ml4cvd.arguments import _get_tmap
 
             args.tensor_maps_in = [_get_tmap(it, cols) for it in cols]
@@ -1753,13 +1785,16 @@ def cross_reference(args):
                     start = start.replace("_", " ")
                     end = end.replace("_", " ")
                     cohort_counts[
-                        f"Number of {order}{window_name} ({start}; {end}) {src_name} from patients with {title}"
+                        f"Number of {order}{window_name} ({start}; {end}) {src_name}"
+                        f" from patients with {title}"
                     ] = len(df)
                     cohort_counts[
-                        f"Number of distinct {order}{window_name} ({start}; {end}) {src_name} from patients with {title}"
+                        f"Number of distinct {order}{window_name} ({start}; {end})"
+                        f" {src_name} from patients with {title}"
                     ] = len(df.drop_duplicates(subset=src_cols))
                     cohort_counts[
-                        f'Number of distinct {order}{window_name} ({start}; {end}) {" + ".join(src_join)} from patients with {title}'
+                        f"Number of distinct {order}{window_name} ({start}; {end})"
+                        f' {" + ".join(src_join)} from patients with {title}'
                     ] = len(df.drop_duplicates(subset=src_join))
             else:
                 # Number of ECGs from patients with 1+ ECG in all windows
@@ -1773,7 +1808,8 @@ def cross_reference(args):
                     f"Number of distinct {src_name} from patients with {title}"
                 ] = len(df.drop_duplicates(subset=src_cols))
                 cohort_counts[
-                    f'Number of distinct {" + ".join(src_join)} from patients with {title}'
+                    f'Number of distinct {" + ".join(src_join)} from patients with'
+                    f" {title}"
                 ] = len(df.drop_duplicates(subset=src_join))
 
         # aggregate all time windows back into one dataframe with indicator for time window index
@@ -1828,7 +1864,8 @@ def cross_reference(args):
                 dfs_min_in_any_time_window, window_names,
             )
             logging.info(
-                f"Cross referenced so unique event occurs {number_in_window}+ times in any time window",
+                f"Cross referenced so unique event occurs {number_in_window}+ times in"
+                " any time window",
             )
             title = f"{number_in_window}+ in any window"
             _report_cross_reference(min_in_any_time_window, title)
@@ -1845,7 +1882,8 @@ def cross_reference(args):
                 dfs_min_in_every_time_window, window_names,
             )
             logging.info(
-                f"Cross referenced so unique event occurs {number_in_window}+ times in all time windows",
+                f"Cross referenced so unique event occurs {number_in_window}+ times in"
+                " all time windows",
             )
             title = f"{number_in_window}+ in all windows"
             _report_cross_reference(min_in_every_time_window, title)
@@ -1882,7 +1920,8 @@ def cross_reference(args):
                 dfs_exact_in_any_time_window, window_names,
             )
             logging.info(
-                f"Cross referenced so unique event occurs exactly {number_in_window} times in any time window",
+                f"Cross referenced so unique event occurs exactly {number_in_window}"
+                " times in any time window",
             )
             title = f"{number_in_window} in any window"
             _report_cross_reference(exact_in_any_time_window, title)
@@ -1899,7 +1938,8 @@ def cross_reference(args):
                 dfs_exact_in_every_time_window, window_names,
             )
             logging.info(
-                f"Cross referenced so unique event occurs exactly {number_in_window} times in all time windows",
+                f"Cross referenced so unique event occurs exactly {number_in_window}"
+                " times in all time windows",
             )
             title = f"{number_in_window} in all windows"
             _report_cross_reference(exact_in_every_time_window, title)

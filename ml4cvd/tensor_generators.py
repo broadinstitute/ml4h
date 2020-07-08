@@ -11,17 +11,7 @@ import math
 import time
 import logging
 import traceback
-from typing import (
-    Any,
-    Set,
-    Dict,
-    List,
-    Tuple,
-    Union,
-    Callable,
-    Iterator,
-    Optional,
-)
+from typing import Any, Set, Dict, List, Tuple, Union, Callable, Iterator, Optional
 from itertools import chain
 from collections import Counter
 from multiprocessing import Queue, Process
@@ -193,7 +183,8 @@ class TensorGenerator:
                 process.start()
                 self.workers.append(process)
         logging.info(
-            f"Started {i + 1} {self.name.replace('_', ' ')}s with cache size {self.cache_size/1e9}GB.",
+            f"Started {i + 1} {self.name.replace('_', ' ')}s with cache size"
+            f" {self.cache_size/1e9}GB.",
         )
 
     def set_worker_paths(self, paths: List[Path]):
@@ -253,39 +244,65 @@ class TensorGenerator:
                 break
             if tm.is_categorical() and tm.axes() == 1:
                 n = stats[f"{tm.name}_n"] + eps
-                self.stats_string = f"{self.stats_string}\nCategorical TensorMap: {tm.name} has {n:.0f} total examples."
+                self.stats_string = (
+                    f"{self.stats_string}\nCategorical TensorMap: {tm.name} has {n:.0f}"
+                    " total examples."
+                )
                 for channel, index in tm.channel_map.items():
                     examples = stats[f"{tm.name}_index_{index:.0f}"]
-                    self.stats_string = f"{self.stats_string}\n\tLabel {channel} {examples} examples, {100 * (examples / n):0.2f}% of total."
+                    self.stats_string = (
+                        f"{self.stats_string}\n\tLabel {channel} {examples} examples,"
+                        f" {100 * (examples / n):0.2f}% of total."
+                    )
             elif tm.is_continuous() and tm.axes() == 1:
                 sum_squared = stats[f"{tm.name}_sum_squared"]
                 n = stats[f"{tm.name}_n"] + eps
                 n_sum = stats[f"{tm.name}_sum"]
                 mean = n_sum / n
                 std = np.sqrt((sum_squared / n) - (mean * mean))
-                self.stats_string = f"{self.stats_string}\nContinuous TensorMap: {tm.name} has {n:.0f} total examples.\n\tMean: {mean:0.2f}, "
-                self.stats_string = f"{self.stats_string}Standard Deviation: {std:0.2f}, Max: {stats[f'{tm.name}_max']:0.2f}, Min: {stats[f'{tm.name}_min']:0.2f}"
+                self.stats_string = (
+                    f"{self.stats_string}\nContinuous TensorMap: {tm.name} has {n:.0f}"
+                    f" total examples.\n\tMean: {mean:0.2f}, "
+                )
+                self.stats_string = (
+                    f"{self.stats_string}Standard Deviation: {std:0.2f}, Max:"
+                    f" {stats[f'{tm.name}_max']:0.2f}, Min:"
+                    f" {stats[f'{tm.name}_min']:0.2f}"
+                )
             elif tm.is_time_to_event():
                 sum_squared = stats[f"{tm.name}_sum_squared"]
                 n = stats[f"{tm.name}_n"] + eps
                 n_sum = stats[f"{tm.name}_sum"]
                 mean = n_sum / n
                 std = np.sqrt((sum_squared / n) - (mean * mean))
-                self.stats_string = f"{self.stats_string}\nTime to event TensorMap: {tm.name} Total events: {stats[f'{tm.name}_events']}, "
-                self.stats_string = f"{self.stats_string}\n\tMean Follow Up: {mean:0.2f}, Standard Deviation: {std:0.2f}, "
-                self.stats_string = f"{self.stats_string}\n\tMax Follow Up: {stats[f'{tm.name}_max']:0.2f}, Min Follow Up: {stats[f'{tm.name}_min']:0.2f}"
+                self.stats_string = (
+                    f"{self.stats_string}\nTime to event TensorMap: {tm.name} Total"
+                    f" events: {stats[f'{tm.name}_events']}, "
+                )
+                self.stats_string = (
+                    f"{self.stats_string}\n\tMean Follow Up: {mean:0.2f}, Standard"
+                    f" Deviation: {std:0.2f}, "
+                )
+                self.stats_string = (
+                    f"{self.stats_string}\n\tMax Follow Up:"
+                    f" {stats[f'{tm.name}_max']:0.2f}, Min Follow Up:"
+                    f" {stats[f'{tm.name}_min']:0.2f}"
+                )
 
         info_string = "\n\t".join(
             [
-                f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths. Epoch: {self.true_epochs:.0f}",
+                f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths."
+                f" Epoch: {self.true_epochs:.0f}",
                 f"{stats['Tensors presented']:0.0f} tensors were presented.",
-                f"{stats['skipped_paths']} paths were skipped because they previously failed.",
+                f"{stats['skipped_paths']} paths were skipped because they previously"
+                " failed.",
                 f"{error_info}",
                 f"{self.stats_string}",
             ],
         )
         logging.info(
-            f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs} ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}",
+            f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs}"
+            f" ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}",
         )
 
     def kill_workers(self):
@@ -294,7 +311,8 @@ class TensorGenerator:
                 worker.terminate()
             self._started = False
             logging.info(
-                f'Stopped {len(self.workers)} {self.name.split("_")[0]} workers. {self.stats_string}',
+                f'Stopped {len(self.workers)} {self.name.split("_")[0]} workers.'
+                f" {self.stats_string}",
             )
         self.workers = []
 
@@ -527,7 +545,8 @@ class _MultiModalMultiTaskWorker:
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
             error_name = type(e).__name__
             self.stats[
-                f"{error_name} while attempting to generate tensor:\n{traceback.format_exc()}\n"
+                f"{error_name} while attempting to generate"
+                f" tensor:\n{traceback.format_exc()}\n"
             ] += 1
             self.epoch_stats[f"{error_name}: {e}"] += 1
             self.cache.failed_paths.add(path)
@@ -546,7 +565,8 @@ class _MultiModalMultiTaskWorker:
             logging.error(f"Completed an epoch but did not find any tensors to yield")
         if "test" in self.name:
             logging.warning(
-                f"Test worker {self.name} completed a full epoch. Test results may be double counting samples.",
+                f"Test worker {self.name} completed a full epoch. Test results may be"
+                " double counting samples.",
             )
         self.start = time.time()
         self.epoch_stats = Counter()
@@ -671,10 +691,12 @@ def _get_train_valid_test_discard_ratios(
 
     if not math.isclose(train_ratio + valid_ratio + test_ratio + discard_ratio, 1.0):
         raise ValueError(
-            f"ratios do not sum to 1, train/valid/test/discard = {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}",
+            "ratios do not sum to 1, train/valid/test/discard ="
+            f" {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}",
         )
     logging.debug(
-        f"train/valid/test/discard ratios: {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}",
+        "train/valid/test/discard ratios:"
+        f" {train_ratio}/{valid_ratio}/{test_ratio}/{discard_ratio}",
     )
 
     return train_ratio, valid_ratio, test_ratio, discard_ratio
@@ -710,7 +732,8 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
 
     if len(matches) > 1:
         logging.warning(
-            f"{sample_csv} has more than one potential column for MRNs. Inferring most likely column name, but recommend explicitly setting MRN column name.",
+            f"{sample_csv} has more than one potential column for MRNs. Inferring most"
+            " likely column name, but recommend explicitly setting MRN column name.",
         )
 
     # Isolate this column from the dataframe, and cast to strings
@@ -821,13 +844,16 @@ def get_train_valid_test_paths(
                 choices[choice][0].append(path)
 
     logging.info(
-        f"Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}",
+        f"Found {len(train_paths)} train, {len(valid_paths)} validation, and"
+        f" {len(test_paths)} testing tensors at: {tensors}",
     )
     logging.debug(f"Discarded {len(discard_paths)} tensors due to given ratios")
     if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
         raise ValueError(
             f"Not enough tensors at {tensors}\n"
-            f"Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors\n"
+            f"Found {len(train_paths)} training,"
+            f" {len(valid_paths)} validation, and"
+            f" {len(test_paths)} testing tensors\n"
             f"Discarded {len(discard_paths)} tensors",
         )
 
@@ -890,15 +916,20 @@ def get_train_valid_test_paths_split_by_csvs(
             or len(valid_paths[i]) == 0
             or len(test_paths[i]) == 0
         ):
-            my_error = f"Not enough tensors at {tensors}\nGot {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test."
+            my_error = (
+                f"Not enough tensors at {tensors}\nGot {len(train_paths[i])} train"
+                f" {len(valid_paths[i])} valid and {len(test_paths[i])} test."
+            )
             raise ValueError(my_error)
         if i == 0:
             logging.info(
-                f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and {len(test_paths[i])} test tensors outside the CSVs.",
+                f"Found {len(train_paths[i])} train {len(valid_paths[i])} valid and"
+                f" {len(test_paths[i])} test tensors outside the CSVs.",
             )
         else:
             logging.info(
-                f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.",
+                f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train,"
+                f" {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.",
             )
     return train_paths, valid_paths, test_paths
 
@@ -926,7 +957,7 @@ def test_train_valid_tensor_generators(
     sample_weight: TensorMap = None,
     **kwargs,
 ) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
-    """ Get 3 tensor generator functions for training, validation and testing data.
+    """Get 3 tensor generator functions for training, validation and testing data.
 
     :param tensor_maps_in: list of TensorMaps that are input names to a model
     :param tensor_maps_out: list of TensorMaps that are output from a model

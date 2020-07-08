@@ -243,7 +243,9 @@ class TestGetTrainValidTestPaths:
         ) = train_valid_test_csv
         with pytest.raises(
             ValueError,
-            match=r"(train|validation|test) and (train|validation|test) samples overlap",
+            match=(
+                r"(train|validation|test) and (train|validation|test) samples overlap"
+            ),
         ):
             train_paths, valid_paths, test_paths = get_train_valid_test_paths(
                 tensors=args.tensors,

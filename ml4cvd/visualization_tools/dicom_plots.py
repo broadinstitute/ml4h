@@ -26,7 +26,7 @@ import numpy as np
 import pydicom
 import ipywidgets as widgets
 import tensorflow as tf
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 from IPython.display import HTML, display
 from scipy.ndimage.morphology import binary_closing, binary_erosion
 
@@ -47,32 +47,32 @@ MRI_SEGMENTED_CHANNEL_MAP = {"background": 0, "ventricle": 1, "myocardium": 2}
 def _is_mitral_valve_segmentation(d):  # -> bool:
     """Determine whether a dicom has mitral valve segmentation.
 
-  This is used for visualization of CINE_segmented_SAX_InlineVF.
+    This is used for visualization of CINE_segmented_SAX_InlineVF.
 
-  Args:
-    d: the dicom file
+    Args:
+      d: the dicom file
 
-  Returns:
-    Whether or not the dicom has mitral valve segmentation
-  """
+    Returns:
+      Whether or not the dicom has mitral valve segmentation
+    """
     return d.SliceThickness == 6
 
 
 def _get_overlay_from_dicom(d):
     """Get an overlay from a DICOM file.
 
-  Morphological operators are used to transform the pixel outline of the
-  myocardium to the labeled pixel masks for myocardium and left ventricle. This
-  is used for visualization of CINE_segmented_SAX_InlineVF.
+    Morphological operators are used to transform the pixel outline of the
+    myocardium to the labeled pixel masks for myocardium and left ventricle. This
+    is used for visualization of CINE_segmented_SAX_InlineVF.
 
-  Args:
-    d: the dicom file
+    Args:
+      d: the dicom file
 
-  Returns:
-    Raw overlay array with myocardium outline, anatomical mask (a pixel
-    mask with 0 for background 1 for myocardium and 2 for ventricle), and
-    ventrical pixels.
-  """
+    Returns:
+      Raw overlay array with myocardium outline, anatomical mask (a pixel
+      mask with 0 for background 1 for myocardium and 2 for ventricle), and
+      ventrical pixels.
+    """
     i_overlay = 0
     dicom_tag = 0x6000 + 2 * i_overlay
     overlay_raw = d[dicom_tag, 0x3000].value
@@ -127,14 +127,14 @@ def _get_overlay_from_dicom(d):
 def _unit_disk(r):  # -> np.ndarray:
     """Get the unit disk for a radius.
 
-  This is used for visualization of CINE_segmented_SAX_InlineVF.
+    This is used for visualization of CINE_segmented_SAX_InlineVF.
 
-  Args:
-    r: the radius
+    Args:
+      r: the radius
 
-  Returns:
-    The unit disk.
-  """
+    Returns:
+      The unit disk.
+    """
     y, x = np.ogrid[-r : r + 1, -r : r + 1]
     return (x ** 2 + y ** 2 <= r ** 2).astype(np.int)
 
@@ -142,13 +142,13 @@ def _unit_disk(r):  # -> np.ndarray:
 def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=""):
     """Visualize CINE_segmented_SAX_InlineVF series.
 
-  Args:
-    b_series: the DICOM
-    sides: the number of sides to display
-    fig_width: the desired width of the figure, note that height computed as
-      the proportion of the width based on the data to be plotted
-    title_prefix: text to display as the initial portion of the plot title
-  """
+    Args:
+      b_series: the DICOM
+      sides: the number of sides to display
+      fig_width: the desired width of the figure, note that height computed as
+        the proportion of the width based on the data to be plotted
+      title_prefix: text to display as the initial portion of the plot title
+    """
     height = b_series[0].pixel_array.shape[0]
     width = b_series[0].pixel_array.shape[1]
     fig_height = int(np.ceil(fig_width * (height / width)))
@@ -202,13 +202,13 @@ def plot_cardiac_short_axis(
 ):
     """Visualize CINE_segmented_LAX series.
 
-  Args:
-    series: the DICOM
-    transpose: whether or not to transpose the image
-    fig_width: the desired width of the figure, note that height computed as
-      the proportion of the width based on the data to be plotted
-    title_prefix: text to display as the initial portion of the plot title
-  """
+    Args:
+      series: the DICOM
+      transpose: whether or not to transpose the image
+      fig_width: the desired width of the figure, note that height computed as
+        the proportion of the width based on the data to be plotted
+      title_prefix: text to display as the initial portion of the plot title
+    """
     cols = 5
     rows = 10
     if transpose:
@@ -263,17 +263,20 @@ def plot_mri_series(
 ):
     """Visualize the applicable series within this DICOM.
 
-  Args:
-    sample_mri: The local or Cloud Storage path to the MRI file.
-    dicoms: A dictionary of dicoms.
-    series_name: The name of the chosen series.
-    sax_sides: How many sides to display for CINE_segmented_SAX_InlineVF.
-    lax_transpose: Whether to transpose when plotting CINE_segmented_LAX.
-    fig_width: The desired width of the figure. Note that height computed as
-      the proportion of the width based on the data to be plotted.
+    Args:
+      sample_mri: The local or Cloud Storage path to the MRI file.
+      dicoms: A dictionary of dicoms.
+      series_name: The name of the chosen series.
+      sax_sides: How many sides to display for CINE_segmented_SAX_InlineVF.
+      lax_transpose: Whether to transpose when plotting CINE_segmented_LAX.
+      fig_width: The desired width of the figure. Note that height computed as
+        the proportion of the width based on the data to be plotted.
 
-  """
-    title_prefix = f"{dicoms[series_name][0].SeriesDescription}  from MRI {os.path.basename(sample_mri)}"
+    """
+    title_prefix = (
+        f"{dicoms[series_name][0].SeriesDescription}  from MRI"
+        f" {os.path.basename(sample_mri)}"
+    )
     print(f"Rendering {title_prefix}.")
     if "cine_segmented_lax" in series_name:
         plot_cardiac_short_axis(
@@ -297,15 +300,15 @@ def plot_mri_series(
 def choose_mri_series(sample_mri):
     """Render widgets and plots for cardiac MRIs.
 
-  Visualization is supported for CINE_segmented_SAX_InlineVF series and
-  CINE_segmented_LAX series.
+    Visualization is supported for CINE_segmented_SAX_InlineVF series and
+    CINE_segmented_LAX series.
 
-  Args:
-    sample_mri: The local or Cloud Storage path to the MRI file.
+    Args:
+      sample_mri: The local or Cloud Storage path to the MRI file.
 
-  Returns:
-    ipywidget or HTML upon error.
-  """
+    Returns:
+      ipywidget or HTML upon error.
+    """
     with tempfile.TemporaryDirectory() as tmpdirname:
         local_path = os.path.join(tmpdirname, os.path.basename(sample_mri))
         try:
@@ -337,7 +340,8 @@ def choose_mri_series(sample_mri):
                 ].append(dcm)
 
         print(
-            f"{os.path.basename(sample_mri)} contains: {str(sorted(set(series_descriptions)))}.",
+            f"{os.path.basename(sample_mri)} contains:"
+            f" {str(sorted(set(series_descriptions)))}.",
         )
 
         if filtered_dicoms:
@@ -352,7 +356,9 @@ def choose_mri_series(sample_mri):
                 continuous_update=False,
                 value=18,
                 min=8,
-                description="Desired width of figure (height will be computed using input data)",
+                description=(
+                    "Desired width of figure (height will be computed using input data)"
+                ),
                 style={"description_width": "initial"},
                 layout=widgets.Layout(width="800px"),
             )
@@ -365,7 +371,9 @@ def choose_mri_series(sample_mri):
                 layout=fig_width_chooser.layout,
             )
             lax_transpose_chooser = widgets.Checkbox(
-                description="Whether to transpose the images when plotting CINE_segmented_LAX",
+                description=(
+                    "Whether to transpose the images when plotting CINE_segmented_LAX"
+                ),
                 style=fig_width_chooser.style,
                 layout=fig_width_chooser.layout,
             )
@@ -393,7 +401,8 @@ def choose_mri_series(sample_mri):
             display(viz_controls_ui, viz_controls_output)
         else:
             print(
-                f"\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX available in MRI for sample {os.path.basename(sample_mri)}.",
+                "\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX"
+                f" available in MRI for sample {os.path.basename(sample_mri)}.",
                 "\n\nTry a different MRI.",
             )
             return None
@@ -402,13 +411,13 @@ def choose_mri_series(sample_mri):
 def choose_cardiac_mri(sample_id, folder=None):
     """Render widget to choose the cardiac MRI to plot.
 
-  Args:
-    sample_id: The id of the ECG sample to retrieve.
-    folder: The local or Cloud Storage folder under which the files reside.
+    Args:
+      sample_id: The id of the ECG sample to retrieve.
+      folder: The local or Cloud Storage folder under which the files reside.
 
-  Returns:
-    ipywidget or HTML upon error.
-  """
+    Returns:
+      ipywidget or HTML upon error.
+    """
     if folder is None:
         folder = get_cardiac_mri_folder(sample_id)
 

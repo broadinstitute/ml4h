@@ -1,9 +1,5 @@
 # Imports: first party
-from ml4cvd.defines import (
-    ECG_CHAR_2_IDX,
-    MRI_SEGMENTED_CHANNEL_MAP,
-    StorageType,
-)
+from ml4cvd.defines import ECG_CHAR_2_IDX, MRI_SEGMENTED_CHANNEL_MAP, StorageType
 from ml4cvd.metrics import (
     y_true_times_mse,
     ignore_zeros_logcosh,
@@ -47,7 +43,9 @@ TMAPS["rs2042995_weighted"] = TensorMap(
 
 
 TMAPS["akap9_lof"] = TensorMap(
-    "AKAP9", Interpretation.CATEGORICAL, channel_map={"no_akap9_lof": 0, "akap9_lof": 1},
+    "AKAP9",
+    Interpretation.CATEGORICAL,
+    channel_map={"no_akap9_lof": 0, "akap9_lof": 1},
 )
 TMAPS["dsc2_lof"] = TensorMap(
     "DSC2", Interpretation.CATEGORICAL, channel_map={"no_dsc2_lof": 0, "dsc2_lof": 1},
@@ -1286,7 +1284,9 @@ TMAPS["shmolli_192i_12bit"] = TensorMap(
     "shmolli_192i_12bit", shape=(288, 384, 7), normalization={"zero_mean_std1": 1.0},
 )
 TMAPS["shmolli_192i_fitparams"] = TensorMap(
-    "shmolli_192i_fitparams", shape=(288, 384, 7), normalization={"zero_mean_std1": 1.0},
+    "shmolli_192i_fitparams",
+    shape=(288, 384, 7),
+    normalization={"zero_mean_std1": 1.0},
 )
 TMAPS["shmolli_192i_t1map"] = TensorMap(
     "shmolli_192i_t1map", shape=(288, 384, 2), normalization={"zero_mean_std1": 1.0},

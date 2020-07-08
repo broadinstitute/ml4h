@@ -1,7 +1,4 @@
-# plots.py
-
 # Imports: standard library
-# Imports
 import os
 import re
 import glob
@@ -9,16 +6,7 @@ import math
 import hashlib
 import logging
 import operator
-from typing import (
-    Dict,
-    List,
-    Tuple,
-    Union,
-    Callable,
-    Iterable,
-    Optional,
-    DefaultDict,
-)
+from typing import Dict, List, Tuple, Union, Callable, Iterable, Optional, DefaultDict
 from datetime import datetime
 from textwrap import wrap
 from functools import reduce
@@ -31,8 +19,6 @@ import h5py
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib
-import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from scipy import stats
 from sklearn import manifold
 from sksurv.metrics import concordance_index_censored
@@ -68,7 +54,12 @@ from ml4cvd.defines import (
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
 from ml4cvd.TensorMap import TensorMap
 
-matplotlib.use("Agg")  # Need this to write images from the GSA servers.  Order matters:
+# fmt: off
+# need matplotlib -> Agg -> pyplot
+import matplotlib  # isort:skip
+matplotlib.use("Agg")  # isort:skip
+from matplotlib import pyplot as plt  # isort:skip
+# fmt: on
 
 
 RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
@@ -156,7 +147,7 @@ def evaluate_predictions(
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
-    """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
+    """Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
 
     :param tm: The TensorMap predictions to evaluate
@@ -173,10 +164,12 @@ def evaluate_predictions(
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
-            f"For tm:{tm.name} with channel map:{tm.channel_map} examples:{y_predictions.shape[0]}",
+            f"For tm:{tm.name} with channel map:{tm.channel_map}"
+            f" examples:{y_predictions.shape[0]}",
         )
         logging.info(
-            f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}",
+            f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred"
+            f" :{np.sum(y_predictions, axis=0)}",
         )
         plot_precision_recall_per_class(
             y_predictions, y_truth, tm.channel_map, title, folder,
@@ -260,7 +253,11 @@ def evaluate_predictions(
     elif tm.is_survival_curve():
         performance_metrics.update(
             plot_survival(
-                y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder,
+                y_predictions,
+                y_truth,
+                title,
+                days_window=tm.days_window,
+                prefix=folder,
             ),
         )
         plot_survival_curves(
@@ -279,7 +276,9 @@ def evaluate_predictions(
         events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
         follow_up = np.cumsum(y_truth[:, :time_steps], axis=-1)[:, -1] * days_per_step
         logging.info(
-            f"Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}",
+            f"Shapes event {events_at_end.shape}, preds shape"
+            f" {predictions_at_end.shape} new ax shape"
+            f" {events_at_end[:, np.newaxis].shape}",
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
         plot_prediction_calibration(
@@ -308,9 +307,14 @@ def evaluate_predictions(
             "Tied Predicted Risk",
             "Tied Event Time",
         ]
+
         logging.info(
-            f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}",
+            [
+                f"{label}: {value:.3f}"
+                for label, value in zip(concordance_return_values, c_index)
+            ],
         )
+
         new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
         performance_metrics.update(
             plot_roc_per_class(
@@ -454,9 +458,16 @@ def plot_rocs(
             if "no_" in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p + key)
-            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+            label_text = (
+                f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+                f" n={true_sums[labels[key]]:.0f}"
+            )
             plt.plot(
-                fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+                fpr[labels[key]],
+                tpr[labels[key]],
+                color=color,
+                lw=lw,
+                label=label_text,
             )
             logging.info(f"ROC Label {label_text}")
 
@@ -529,7 +540,8 @@ def plot_prediction_calibrations(
                 color=color,
             )
             logging.info(
-                f"{p} {k} n={true_sums[labels[k]]:.0f}\nBrier score: {brier_score:0.3f}",
+                f"{p} {k} n={true_sums[labels[k]]:.0f}\nBrier score:"
+                f" {brier_score:0.3f}",
             )
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
@@ -655,7 +667,10 @@ def plot_scatter(
     ax1.scatter(
         prediction,
         truth,
-        label=f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}",
+        label=(
+            f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f}"
+            f" R^2:{big_r_squared:0.3f}"
+        ),
         marker=".",
         alpha=alpha,
     )
@@ -936,7 +951,9 @@ def plot_survivorship(
             real_survivorship[cur_day] * (1 - (events[day_index] / alive_per_step)),
         )
     logging.info(
-        f"Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}",
+        f"Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First"
+        f" day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored"
+        f" {censored}",
     )
     plt.plot(
         [0] + days_sorted[: cur_day + 1],
@@ -957,7 +974,9 @@ def plot_survivorship(
         predicted_sick[group] += events[day_index]
         predicted_survival[group].append(
             1
-            - (predicted_sick[group] / (predicted_alive[group] + predicted_sick[group])),
+            - (
+                predicted_sick[group] / (predicted_alive[group] + predicted_sick[group])
+            ),
         )
         predicted_alive[group] -= events[day_index]
         predicted_days[group].append(days_follow_up[day_index])
@@ -971,7 +990,10 @@ def plot_survivorship(
             label=f"{group} group had {predicted_sick[group]} events",
         )
     plt.title(
-        f"{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, {100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.",
+        f"{title}\nEnrolled: {len(events)}, Censored: {censored:.0f},"
+        f" {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f},"
+        f" {100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window}"
+        f" days, {days_window // 365} years.",
     )
     plt.xlabel("Follow up time (days)")
     plt.ylabel("Proportion Surviving")
@@ -1008,7 +1030,8 @@ def plot_survival(
         prediction, truth,
     )
     logging.info(
-        f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}",
+        f"C-index:{c_index} concordant:{concordant} discordant:{discordant}"
+        f" tied_risk:{tied_risk} tied_time:{tied_time}",
     )
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
@@ -1022,11 +1045,14 @@ def plot_survival(
     survivorship = np.cumprod(1 - (sick_per_step / alive_per_step))
     logging.info(f"Sick per step is: {sick_per_step} out of {truth.shape[0]}")
     logging.info(
-        f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}",
+        "Predicted sick per step is:"
+        f" {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of"
+        f" {truth.shape[0]}",
     )
     logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
     logging.info(
-        f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}",
+        f"Cumulative Censored: {cumulative_censored} or"
+        f" {np.max(truth[:, :intervals]+truth[:, intervals:])}",
     )
     predicted_proportion = (
         np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
@@ -1047,8 +1073,11 @@ def plot_survival(
     plt.xlabel("Follow up time (days)")
     plt.ylabel("Proportion Surviving")
     plt.title(
-        f"{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, "
-        f"Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.",
+        f"{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f},"
+        f" {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, Events:"
+        f" {cumulative_sick[-1]:.0f},"
+        f" {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up:"
+        f" {days_window} days, {days_window // 365} years.",
     )
     plt.legend(loc="upper right")
 
@@ -1107,7 +1136,9 @@ def plot_survival_curves(
             plt.plot(
                 x_days[: censor_periods[i]],
                 predicted_survivals[i, : censor_periods[i]],
-                label=f"Censored:{p} p:{predicted_survivals[i, censor_periods[i]]:0.2f}",
+                label=(
+                    f"Censored:{p} p:{predicted_survivals[i, censor_periods[i]]:0.2f}"
+                ),
                 color="blue",
             )
         elif cur_healthy < num_curves:
@@ -1272,7 +1303,9 @@ def plot_histograms_in_pdf(
                 title_text = "\n".join(wrap(field, title_line_width))
                 title_stats = "\n".join(
                     wrap(
-                        f"Mean:{np.mean(field_values):.2f} STD:{np.std(field_values):.2f} Missing:{missingness}% #Samples:{field_sample_count}",
+                        f"Mean:{np.mean(field_values):.2f}"
+                        f" STD:{np.std(field_values):.2f} Missing:{missingness}%"
+                        f" #Samples:{field_sample_count}",
                         title_line_width,
                     ),
                 )
@@ -1352,8 +1385,10 @@ def plot_heatmap(
                     if len(field1_values) == len(field2_values):
                         if len(set(field1_values)) == 1 or len(set(field2_values)) == 1:
                             logging.debug(
-                                f"Not calculating correlation for fields {field1} and {field2} because at least one of "
-                                f"the fields has all the same values for the {num_common_samples} common samples.",
+                                f"Not calculating correlation for fields {field1} and"
+                                f" {field2} because at least one of the fields has all"
+                                f" the same values for the {num_common_samples} common"
+                                " samples.",
                             )
                             continue
                         corr = np.corrcoef(field1_values, field2_values)[1, 0]
@@ -1361,12 +1396,14 @@ def plot_heatmap(
                             correlations_by_field_pairs[(field1, field2)] = corr
                         else:
                             logging.warning(
-                                f"Pearson correlation for fields {field1} and {field2} is NaN.",
+                                f"Pearson correlation for fields {field1} and {field2}"
+                                " is NaN.",
                             )
                     else:
                         logging.debug(
-                            f"Not calculating correlation for fields '{field1}' and '{field2}' "
-                            f"because they have different number of values ({len(field1_values)} vs. {len(field2_values)}).",
+                            f"Not calculating correlation for fields '{field1}' and"
+                            f" '{field2}' because they have different number of values"
+                            f" ({len(field1_values)} vs. {len(field2_values)}).",
                         )
         else:
             continue
@@ -1376,7 +1413,8 @@ def plot_heatmap(
     fields_with_nans = nan_counter.keys()
     if len(fields_with_nans) != 0:
         logging.warning(
-            f"The {len(fields_with_nans)} fields containing NaNs are: {', '.join(fields_with_nans)}.",
+            f"The {len(fields_with_nans)} fields containing NaNs are:"
+            f" {', '.join(fields_with_nans)}.",
         )
 
     # correlations_by_field_pairs = dict(random.sample(correlations_by_field_pairs.items(), 15))
@@ -1817,6 +1855,7 @@ def plot_partners_ecgs(args):
         "partners_ecg_qtc_md",
     ]
     voltage_tensor = "partners_ecg_2500_raw"
+    # Imports: first party
     from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS
 
     tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
@@ -1873,7 +1912,8 @@ def plot_partners_ecgs(args):
                         RuntimeError,
                     ) as e:
                         logging.warning(
-                            f"Could not obtain {tm.name}. Skipping plotting for all ECGs at {tp}",
+                            f"Could not obtain {tm.name}. Skipping plotting for all"
+                            f" ECGs at {tp}",
                         )
                         skip_hd5 = True
                     if skip_hd5:
@@ -2137,7 +2177,7 @@ def _remove_duplicate_rows(df, out_folder):
 def plot_ecg_rest(
     tensor_paths: List[str], rows: List[int], out_folder: str, is_blind: bool,
 ) -> None:
-    """ Plots resting ECGs including annotations and LVH criteria
+    """Plots resting ECGs including annotations and LVH criteria
 
     :param tensor_paths: list of HDF5 file paths with ECG traces
     :param rows: indices of the subset of tensor_paths to be plotted (used by multiprocessing)
@@ -2151,6 +2191,7 @@ def plot_ecg_rest(
         "Sokolow_Lyon": "ecg_rest_lvh_sokolow_lyon",
         "Cornell": "ecg_rest_lvh_cornell",
     }
+    # Imports: first party
     from ml4cvd.tensor_from_file import TMAPS
 
     raw_scale = 0.005  # Conversion from raw to mV
@@ -2252,7 +2293,8 @@ def plot_ecg_rest_mp(
         ]
     except ValueError:
         logging.warning(
-            "Cannot select subset of tensors based on sample ids. Discarding min_ and max_sample_id",
+            "Cannot select subset of tensors based on sample ids. Discarding min_ and"
+            " max_sample_id",
         )
     row_split = np.array_split(np.arange(len(tensor_paths)), num_workers)
     pool = Pool(num_workers)
@@ -2342,9 +2384,16 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
             if "no_" in key and len(labels) == 2:
                 continue
             color = _hash_string_to_color(p + key)
-            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+            label_text = (
+                f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+                f" n={true_sums[labels[key]]:.0f}"
+            )
             plt.plot(
-                fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+                fpr[labels[key]],
+                tpr[labels[key]],
+                color=color,
+                lw=lw,
+                label=label_text,
             )
             logging.info(f"ROC Label {label_text}")
 
@@ -2389,7 +2438,11 @@ def subplot_rocs(
                 f"{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
             )
             axes[row, col].plot(
-                fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+                fpr[labels[key]],
+                tpr[labels[key]],
+                color=color,
+                lw=lw,
+                label=label_text,
             )
             logging.info(f"ROC Label {label_text}")
         axes[row, col].set_xlim([0.0, 1.0])
@@ -2435,7 +2488,10 @@ def subplot_comparison_rocs(
                 if "no_" in key and len(labels) == 2:
                     continue
                 color = _hash_string_to_color(p + key)
-                label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+                label_text = (
+                    f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
+                    f" n={true_sums[labels[key]]:.0f}"
+                )
                 axes[row, col].plot(
                     fpr[labels[key]],
                     tpr[labels[key]],
@@ -2521,7 +2577,10 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
             average_precision = average_precision_score(
                 truth[:, labels[k]], predictions[p][:, labels[k]],
             )
-            label_text = f"{p}_{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}"
+            label_text = (
+                f"{p}_{k} mean precision:{average_precision:.3f}"
+                f" n={true_sums[labels[k]]:.0f}"
+            )
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
             logging.info(f"prAUC Label {label_text}")
 

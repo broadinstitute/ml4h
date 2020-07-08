@@ -4,8 +4,8 @@ import logging
 # Imports: third party
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as K
 from sklearn.metrics import auc, roc_curve, average_precision_score
+from tensorflow.keras import backend as K
 from tensorflow.keras.losses import (
     logcosh,
     cosine_similarity,
@@ -347,8 +347,14 @@ def per_class_recall_3d(labels):
         label_idx = labels[label_key]
         fxn_prefix = label_key.replace("-", "_").replace(" ", "_")
         string_fxn = "def " + fxn_prefix + "_recall(y_true, y_pred):\n"
-        string_fxn += "\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0)\n"
-        string_fxn += "\tpossible_positives = K.sum(K.sum(K.round(K.clip(y_true, 0, 1)), axis=0), axis=0)\n"
+        string_fxn += (
+            "\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)),"
+            " axis=0), axis=0)\n"
+        )
+        string_fxn += (
+            "\tpossible_positives = K.sum(K.sum(K.round(K.clip(y_true, 0, 1)), axis=0),"
+            " axis=0)\n"
+        )
         string_fxn += (
             "\treturn true_positives["
             + str(label_idx)
@@ -371,8 +377,14 @@ def per_class_precision_3d(labels):
         label_idx = labels[label_key]
         fxn_prefix = label_key.replace("-", "_").replace(" ", "_")
         string_fxn = "def " + fxn_prefix + "_precision(y_true, y_pred):\n"
-        string_fxn += "\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0)\n"
-        string_fxn += "\tpredicted_positives = K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0), axis=0)\n"
+        string_fxn += (
+            "\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)),"
+            " axis=0), axis=0)\n"
+        )
+        string_fxn += (
+            "\tpredicted_positives = K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)),"
+            " axis=0), axis=0)\n"
+        )
         string_fxn += (
             "\treturn true_positives["
             + str(label_idx)
@@ -395,8 +407,14 @@ def per_class_recall_4d(labels):
         label_idx = labels[label_key]
         fxn_prefix = label_key.replace("-", "_").replace(" ", "_")
         string_fxn = "def " + fxn_prefix + "_recall(y_true, y_pred):\n"
-        string_fxn += "\ttrue_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0), axis=0)\n"
-        string_fxn += "\tpossible_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_true, 0, 1)), axis=0), axis=0), axis=0)\n"
+        string_fxn += (
+            "\ttrue_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)),"
+            " axis=0), axis=0), axis=0)\n"
+        )
+        string_fxn += (
+            "\tpossible_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_true, 0, 1)),"
+            " axis=0), axis=0), axis=0)\n"
+        )
         string_fxn += (
             "\treturn true_positives["
             + str(label_idx)
@@ -419,8 +437,14 @@ def per_class_precision_4d(labels):
         label_idx = labels[label_key]
         fxn_prefix = label_key.replace("-", "_").replace(" ", "_")
         string_fxn = "def " + fxn_prefix + "_precision(y_true, y_pred):\n"
-        string_fxn += "\ttrue_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0), axis=0)\n"
-        string_fxn += "\tpredicted_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0), axis=0), axis=0)\n"
+        string_fxn += (
+            "\ttrue_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)),"
+            " axis=0), axis=0), axis=0)\n"
+        )
+        string_fxn += (
+            "\tpredicted_positives = K.sum(K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)),"
+            " axis=0), axis=0), axis=0)\n"
+        )
         string_fxn += (
             "\treturn true_positives["
             + str(label_idx)
@@ -443,8 +467,14 @@ def per_class_recall_5d(labels):
         label_idx = labels[label_key]
         fxn_prefix = label_key.replace("-", "_").replace(" ", "_")
         string_fxn = "def " + fxn_prefix + "_recall(y_true, y_pred):\n"
-        string_fxn += "\ttrue_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0), axis=0), axis=0)\n"
-        string_fxn += "\tpossible_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_true, 0, 1)), axis=0), axis=0), axis=0), axis=0)\n"
+        string_fxn += (
+            "\ttrue_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred,"
+            " 0, 1)), axis=0), axis=0), axis=0), axis=0)\n"
+        )
+        string_fxn += (
+            "\tpossible_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_true, 0,"
+            " 1)), axis=0), axis=0), axis=0), axis=0)\n"
+        )
         string_fxn += (
             "\treturn true_positives["
             + str(label_idx)
@@ -467,8 +497,14 @@ def per_class_precision_5d(labels):
         label_idx = labels[label_key]
         fxn_prefix = label_key.replace("-", "_").replace(" ", "_")
         string_fxn = "def " + fxn_prefix + "_precision(y_true, y_pred):\n"
-        string_fxn += "\ttrue_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0), axis=0), axis=0)\n"
-        string_fxn += "\tpredicted_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0), axis=0), axis=0), axis=0)\n"
+        string_fxn += (
+            "\ttrue_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_true*y_pred,"
+            " 0, 1)), axis=0), axis=0), axis=0), axis=0)\n"
+        )
+        string_fxn += (
+            "\tpredicted_positives = K.sum(K.sum(K.sum(K.sum(K.round(K.clip(y_pred, 0,"
+            " 1)), axis=0), axis=0), axis=0), axis=0)\n"
+        )
         string_fxn += (
             "\treturn true_positives["
             + str(label_idx)

@@ -9,17 +9,13 @@ import pytest
 # Imports: first party
 # Imports with test in their name
 from ml4cvd.recipes import _find_learning_rate, inference_file_name
-from ml4cvd.recipes import (
-    test_multimodal_multitask as tst_multimodal_multitask,
-)
+from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4cvd.recipes import (
     hidden_inference_file_name,
     infer_multimodal_multitask,
     train_multimodal_multitask,
 )
-from ml4cvd.recipes import (
-    test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks,
-)
+from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
 from ml4cvd.recipes import (
     compare_multimodal_multitask_models,
     compare_multimodal_scalar_task_models,

@@ -1,8 +1,3 @@
-# Command Line Arguments for Machine Learning 4 CardioVascular Disease
-# Shared by recipes.py and other command-line runnable files.
-# These arguments are a bit of a hodge-podge and are used promiscuously throughout these files.
-# Sometimes code overwrites user-provided arguments to enforce assumptions or sanity.
-
 # Imports: standard library
 import os
 import sys
@@ -48,7 +43,10 @@ def parse_args():
         "--logging_level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level. Overrides any configuration given in the logging configuration file.",
+        help=(
+            "Logging level. Overrides any configuration given in the logging"
+            " configuration file."
+        ),
     )
 
     # Tensor Map arguments
@@ -113,11 +111,17 @@ def parse_args():
         "--tsv_style",
         default="standard",
         choices=["standard", "genetics"],
-        help="Format choice for the TSV file produced in output by infer and explore modes.",
+        help=(
+            "Format choice for the TSV file produced in output by infer and explore"
+            " modes."
+        ),
     )
     parser.add_argument(
         "--app_csv",
-        help="Path to file used to link sample IDs between UKBB applications 17488 and 7089",
+        help=(
+            "Path to file used to link sample IDs between UKBB applications 17488 and"
+            " 7089"
+        ),
     )
     parser.add_argument(
         "--tensors",
@@ -139,7 +143,10 @@ def parse_args():
     )
     parser.add_argument(
         "--model_layers",
-        help="Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.",
+        help=(
+            "Path to a model file (hd5) which will be loaded by layer, useful for"
+            " transfer learning."
+        ),
     )
     parser.add_argument(
         "--freeze_model_layers",
@@ -150,9 +157,11 @@ def parse_args():
     parser.add_argument(
         "--continuous_file",
         default=None,
-        help="Path to a file containing continuous values from which a output TensorMap will be made."
-        "Note that setting this argument has the effect of linking the first output_tensors"
-        "argument to the TensorMap made from this file.",
+        help=(
+            "Path to a file containing continuous values from which a output TensorMap"
+            " will be made.Note that setting this argument has the effect of linking"
+            " the first output_tensorsargument to the TensorMap made from this file."
+        ),
     )
 
     # Data selection parameters
@@ -172,7 +181,10 @@ def parse_args():
         default=[],
         nargs="*",
         type=float,
-        help="Bin boundaries to use to discretize a continuous TensorMap read from a file.",
+        help=(
+            "Bin boundaries to use to discretize a continuous TensorMap read from a"
+            " file."
+        ),
     )
     parser.add_argument(
         "--categorical_field_ids",
@@ -186,7 +198,10 @@ def parse_args():
         nargs="*",
         default=[],
         type=int,
-        help="List of field ids from which continuous real-valued input features will be collected.",
+        help=(
+            "List of field ids from which continuous real-valued input features will be"
+            " collected."
+        ),
     )
     parser.add_argument(
         "--include_array",
@@ -213,7 +228,10 @@ def parse_args():
         "--max_samples",
         type=int,
         default=None,
-        help="Max number of samples to use for tensor reporting -- all samples are used if not specified.",
+        help=(
+            "Max number of samples to use for tensor reporting -- all samples are used"
+            " if not specified."
+        ),
     )
     parser.add_argument(
         "--mri_field_ids",
@@ -259,7 +277,10 @@ def parse_args():
     parser.add_argument(
         "--b_slice_force",
         default=None,
-        help="If set, will only load specific b slice for short axis MRI diastole systole tensor maps (i.e b0, b1, b2, ... b10).",
+        help=(
+            "If set, will only load specific b slice for short axis MRI diastole"
+            " systole tensor maps (i.e b0, b1, b2, ... b10)."
+        ),
     )
     parser.add_argument(
         "--include_missing_continuous_channel",
@@ -327,21 +348,33 @@ def parse_args():
         default=[3],
         nargs="*",
         type=int,
-        help="X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.",
+        help=(
+            "X dimension of convolutional kernel. Filter sizes are specified per layer"
+            " given by conv_layers and per block given by dense_blocks. Filter sizes"
+            " are repeated if there are less than the number of layers/blocks."
+        ),
     )
     parser.add_argument(
         "--conv_y",
         default=[3],
         nargs="*",
         type=int,
-        help="Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.",
+        help=(
+            "Y dimension of convolutional kernel. Filter sizes are specified per layer"
+            " given by conv_layers and per block given by dense_blocks. Filter sizes"
+            " are repeated if there are less than the number of layers/blocks."
+        ),
     )
     parser.add_argument(
         "--conv_z",
         default=[2],
         nargs="*",
         type=int,
-        help="Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.",
+        help=(
+            "Z dimension of convolutional kernel. Filter sizes are specified per layer"
+            " given by conv_layers and per block given by dense_blocks. Filter sizes"
+            " are repeated if there are less than the number of layers/blocks."
+        ),
     )
     parser.add_argument(
         "--conv_dilate",
@@ -378,7 +411,10 @@ def parse_args():
         nargs=3,
         default=["activation", "regularization", "normalization"],
         choices=["activation", "normalization", "regularization"],
-        help="Order of activation, regularization, and normalization layers following convolutional layers.",
+        help=(
+            "Order of activation, regularization, and normalization layers following"
+            " convolutional layers."
+        ),
     )
     parser.add_argument(
         "--max_pools",
@@ -433,19 +469,27 @@ def parse_args():
         "--u_connect",
         nargs=2,
         action="append",
-        help="U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.",
+        help=(
+            "U-Net connect first TensorMap to second TensorMap. They must be the same"
+            " shape except for number of channels. Can be provided multiple times."
+        ),
     )
     parser.add_argument(
         "--aligned_dimension",
         default=16,
         type=int,
-        help="Dimensionality of aligned embedded space for multi-modal alignment models.",
+        help=(
+            "Dimensionality of aligned embedded space for multi-modal alignment models."
+        ),
     )
     parser.add_argument(
         "--max_parameters",
         default=9000000,
         type=int,
-        help="Maximum number of trainable parameters in a model during hyperparameter optimization.",
+        help=(
+            "Maximum number of trainable parameters in a model during hyperparameter"
+            " optimization."
+        ),
     )
     parser.add_argument(
         "--bottleneck_type",
@@ -466,7 +510,9 @@ def parse_args():
     parser.add_argument(
         "--language_prefix",
         default="ukb_ecg_rest",
-        help="Path prefix for a TensorMap to learn language models (eg train_char_model)",
+        help=(
+            "Path prefix for a TensorMap to learn language models (eg train_char_model)"
+        ),
     )
 
     # Training and Hyper-Parameter Optimization Parameters
@@ -484,27 +530,41 @@ def parse_args():
     )
     parser.add_argument(
         "--valid_csv",
-        help="Path to CSV with Sample IDs to reserve for validation. Takes precedence over valid_ratio.",
+        help=(
+            "Path to CSV with Sample IDs to reserve for validation. Takes precedence"
+            " over valid_ratio."
+        ),
     )
     parser.add_argument(
         "--test_csv",
-        help="Path to CSV with Sample IDs to reserve for testing. Takes precedence over test_ratio.",
+        help=(
+            "Path to CSV with Sample IDs to reserve for testing. Takes precedence over"
+            " test_ratio."
+        ),
     )
     parser.add_argument(
         "--valid_ratio",
         default=0.2,
         type=float,
-        help="Rate of training tensors to save for validation must be in [0.0, 1.0]. "
-        "If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. "
-        "If not specified, default 0.2 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.",
+        help=(
+            "Rate of training tensors to save for validation must be in [0.0, 1.0]. If"
+            " any of train/valid/test csv is specified, split by ratio is applied on"
+            " the remaining tensors after reserving tensors given by csvs. If not"
+            " specified, default 0.2 is used. If default ratios are used with"
+            " train_csv, some tensors may be ignored because ratios do not sum to 1."
+        ),
     )
     parser.add_argument(
         "--test_ratio",
         default=0.1,
         type=float,
-        help="Rate of training tensors to save for testing must be in [0.0, 1.0]. "
-        "If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. "
-        "If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.",
+        help=(
+            "Rate of training tensors to save for testing must be in [0.0, 1.0]. If any"
+            " of train/valid/test csv is specified, split by ratio is applied on the"
+            " remaining tensors after reserving tensors given by csvs. If not"
+            " specified, default 0.1 is used. If default ratios are used with"
+            " train_csv, some tensors may be ignored because ratios do not sum to 1."
+        ),
     )
     parser.add_argument(
         "--test_steps",
@@ -534,31 +594,45 @@ def parse_args():
         "--mixup_alpha",
         default=0,
         type=float,
-        help="If positive apply mixup and sample from a Beta with this value as shape parameter alpha.",
+        help=(
+            "If positive apply mixup and sample from a Beta with this value as shape"
+            " parameter alpha."
+        ),
     )
     parser.add_argument(
         "--label_weights",
         nargs="*",
         type=float,
-        help="List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.",
+        help=(
+            "List of per-label weights for weighted categorical cross entropy. If"
+            " provided, must map 1:1 to number of labels."
+        ),
     )
     parser.add_argument(
         "--patience",
         default=8,
         type=int,
-        help="Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.",
+        help=(
+            "Early Stopping parameter: Maximum number of epochs to run without"
+            " validation loss improvements."
+        ),
     )
     parser.add_argument(
         "--max_models",
         default=16,
         type=int,
-        help="Maximum number of models for the hyper-parameter optimizer to evaluate before returning.",
+        help=(
+            "Maximum number of models for the hyper-parameter optimizer to evaluate"
+            " before returning."
+        ),
     )
     parser.add_argument(
         "--balance_csvs",
         default=[],
         nargs="*",
-        help="Balances batches with representation from sample IDs in this list of CSVs",
+        help=(
+            "Balances batches with representation from sample IDs in this list of CSVs"
+        ),
     )
     parser.add_argument(
         "--optimizer", default="radam", type=str, help="Optimizer for model training",
@@ -590,7 +664,10 @@ def parse_args():
     parser.add_argument(
         "--id",
         default="no_id",
-        help="Identifier for this run, user-defined string to keep experiments organized.",
+        help=(
+            "Identifier for this run, user-defined string to keep experiments"
+            " organized."
+        ),
     )
     parser.add_argument(
         "--random_seed",
@@ -599,7 +676,10 @@ def parse_args():
         help="Random seed to use throughout run.  Always use np.random.",
     )
     parser.add_argument(
-        "--write_pngs", default=False, action="store_true", help="Write pngs of slices.",
+        "--write_pngs",
+        default=False,
+        action="store_true",
+        help="Write pngs of slices.",
     )
     parser.add_argument(
         "--debug", default=False, action="store_true", help="Run in debug mode.",
@@ -608,7 +688,9 @@ def parse_args():
         "--eager",
         default=False,
         action="store_true",
-        help="Run tensorflow functions in eager execution mode (helpful for debugging).",
+        help=(
+            "Run tensorflow functions in eager execution mode (helpful for debugging)."
+        ),
     )
     parser.add_argument(
         "--inspect_model",
@@ -678,21 +760,27 @@ def parse_args():
     parser.add_argument(
         "--tensors_name",
         default="Tensors",
-        help="Name of dataset at tensors, e.g. ECG. "
-        "Adds contextual detail to summary CSV and plots.",
+        help=(
+            "Name of dataset at tensors, e.g. ECG. "
+            "Adds contextual detail to summary CSV and plots."
+        ),
     )
     parser.add_argument(
         "--join_tensors",
         default=["partners_ecg_patientid_clean"],
         nargs="+",
-        help="TensorMap or column name in csv of value in tensors used in join with reference. "
-        "Can be more than 1 join value.",
+        help=(
+            "TensorMap or column name in csv of value in tensors used in join with"
+            " reference. Can be more than 1 join value."
+        ),
     )
     parser.add_argument(
         "--time_tensor",
         default="partners_ecg_datetime",
-        help="TensorMap or column name in csv of value in tensors to perform time cross-ref on. "
-        "Time cross referencing is optional.",
+        help=(
+            "TensorMap or column name in csv of value in tensors to perform time"
+            " cross-ref on. Time cross referencing is optional."
+        ),
     )
     parser.add_argument(
         "--reference_tensors",
@@ -701,71 +789,92 @@ def parse_args():
     parser.add_argument(
         "--reference_name",
         default="Reference",
-        help="Name of dataset at reference, e.g. STS. "
-        "Adds contextual detail to summary CSV and plots.",
+        help=(
+            "Name of dataset at reference, e.g. STS. "
+            "Adds contextual detail to summary CSV and plots."
+        ),
     )
     parser.add_argument(
         "--reference_join_tensors",
         nargs="+",
-        help="TensorMap or column name in csv of value in reference used in join in tensors. "
-        "Can be more than 1 join value.",
+        help=(
+            "TensorMap or column name in csv of value in reference used in join in"
+            " tensors. Can be more than 1 join value."
+        ),
     )
     parser.add_argument(
         "--reference_start_time_tensor",
         action="append",
         nargs="+",
-        help="TensorMap or column name in csv of start of time window in reference. "
-        "Define multiple time windows by using this argument more than once. "
-        "The number of time windows must match across all time window arguments. "
-        "An integer can be provided as a second argument to specify an offset to the start time. "
-        "e.g. tStart -30",
+        help=(
+            "TensorMap or column name in csv of start of time window in reference."
+            " Define multiple time windows by using this argument more than once. The"
+            " number of time windows must match across all time window arguments. An"
+            " integer can be provided as a second argument to specify an offset to the"
+            " start time. e.g. tStart -30"
+        ),
     )
     parser.add_argument(
         "--reference_end_time_tensor",
         action="append",
         nargs="+",
-        help="TensorMap or column name in csv of end of time window in reference. "
-        "Define multiple time windows by using this argument more than once. "
-        "The number of time windows must match across all time window arguments. "
-        "An integer can be provided as a second argument to specify an offset to the end time. "
-        "e.g. tEnd 30",
+        help=(
+            "TensorMap or column name in csv of end of time window in reference. Define"
+            " multiple time windows by using this argument more than once. The number"
+            " of time windows must match across all time window arguments. An integer"
+            " can be provided as a second argument to specify an offset to the end"
+            " time. e.g. tEnd 30"
+        ),
     )
     parser.add_argument(
         "--window_name",
         action="append",
-        help="Name of time window. By default, the name of the window is the index of the window. "
-        "Define multiple time windows by using this argument more than once. "
-        "The number of time windows must match across all time window arguments.",
+        help=(
+            "Name of time window. By default, the name of the window is the index of"
+            " the window. Define multiple time windows by using this argument more than"
+            " once. The number of time windows must match across all time window"
+            " arguments."
+        ),
     )
     parser.add_argument(
         "--order_in_window",
         action="append",
         choices=["newest", "oldest", "random"],
-        help="If specified, exactly --number_in_window rows with join tensor are used in time window. "
-        "Defines which source tensors in a time series to use in time window. "
-        "Define multiple time windows by using this argument more than once. "
-        "The number of time windows must match across all time window arguments.",
+        help=(
+            "If specified, exactly --number_in_window rows with join tensor are used in"
+            " time window. Defines which source tensors in a time series to use in time"
+            " window. Define multiple time windows by using this argument more than"
+            " once. The number of time windows must match across all time window"
+            " arguments."
+        ),
     )
     parser.add_argument(
         "--number_per_window",
         type=int,
         default=1,
-        help="Minimum number of rows with join tensor to use in each time window. "
-        "By default, 1 tensor is used for each window.",
+        help=(
+            "Minimum number of rows with join tensor to use in each time window. "
+            "By default, 1 tensor is used for each window."
+        ),
     )
     parser.add_argument(
         "--match_any_window",
         action="store_true",
         default=False,
-        help="If specified, join tensor does not need to be found in every time window. "
-        "Join tensor needs only be found in at least 1 time window. "
-        "Default only use rows with join tensor that appears across all time windows.",
+        help=(
+            "If specified, join tensor does not need to be found in every time window."
+            " Join tensor needs only be found in at least 1 time window. Default only"
+            " use rows with join tensor that appears across all time windows."
+        ),
     )
     parser.add_argument(
         "--reference_labels",
         nargs="+",
-        help="TensorMap or column name of values in csv to report distribution on, e.g. mortality. "
-        "Label distribution reporting is optional. Can list multiple labels to report.",
+        help=(
+            "TensorMap or column name of values in csv to report distribution on, e.g."
+            " mortality. Label distribution reporting is optional. Can list multiple"
+            " labels to report."
+        ),
     )
 
     args = parser.parse_args()
@@ -792,22 +901,26 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     if name in TMAPS:
         return TMAPS[name]
 
+    # Imports: first party
     from ml4cvd.tensor_maps_partners_ecg import TMAPS as partners_tmaps
 
     TMAPS.update(partners_tmaps)
     if name in TMAPS:
         return TMAPS[name]
 
+    # Imports: first party
     from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
 
     TMAPS.update(partners_label_tmaps)
     if name in TMAPS:
         return TMAPS[name]
 
+    # Imports: first party
     from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
 
     TMAPS.update(script_tmaps)
 
+    # Imports: first party
     from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
 
     TMAPS.update(script_tmaps)
@@ -825,7 +938,8 @@ def _process_u_connect_args(
         tmap_in, tmap_out = _get_tmap(tmap_key_in, []), _get_tmap(tmap_key_out, [])
         if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
             raise TypeError(
-                f"u_connect of {tmap_in} {tmap_out} requires matching shapes besides channel dimension.",
+                f"u_connect of {tmap_in} {tmap_out} requires matching shapes besides"
+                " channel dimension.",
             )
         if tmap_in.axes() < 2 or tmap_out.axes() < 2:
             raise TypeError(f"Cannot u_connect 1d TensorMaps ({tmap_in} {tmap_out}).")
@@ -891,7 +1005,8 @@ def _process_args(args):
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(
-            f"learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.",
+            f"learning_rate_schedule is not compatible with ReduceLROnPlateau. Set"
+            f" patience > epochs.",
         )
 
     np.random.seed(args.random_seed)
@@ -900,11 +1015,13 @@ def _process_args(args):
     logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
 
     if args.eager:
+        # Imports: third party
         import tensorflow as tf
 
         tf.config.experimental_run_functions_eagerly(True)
 
     if len(set(args.layer_order)) != 3:
         raise ValueError(
-            f"Activation, normalization, and regularization layers must each be listed exactly once for valid ordering. Got : {args.layer_order}",
+            "Activation, normalization, and regularization layers must each be listed"
+            f" exactly once for valid ordering. Got : {args.layer_order}",
         )

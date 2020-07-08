@@ -8,17 +8,12 @@ from collections import Counter
 # Imports: third party
 import numpy as np
 import hyperopt
-import matplotlib
-import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from hyperopt import hp, tpe, fmin
 from skimage.filters import threshold_otsu
 
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
-from ml4cvd.models import (
-    train_model_from_generators,
-    make_multimodal_multitask_model,
-)
+from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.defines import IMAGE_EXT, MODEL_EXT
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_generators import (
@@ -27,7 +22,12 @@ from ml4cvd.tensor_generators import (
 )
 from ml4cvd.tensor_maps_by_script import TMAPS
 
-matplotlib.use("Agg")  # Need this to write images from the GSA servers.  Order matters:
+# fmt: off
+# need matplotlib -> Agg -> pyplot
+import matplotlib                       # isort:skip
+matplotlib.use("Agg")                   # isort:skip
+from matplotlib import pyplot as plt    # isort:skip
+# fmt: on
 
 
 MAX_LOSS = 9e9
@@ -156,7 +156,11 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             gc.collect()
             if history is None:
                 histories.append(
-                    {"loss": [MAX_LOSS], "val_loss": [MAX_LOSS], "parameter_count": [0]},
+                    {
+                        "loss": [MAX_LOSS],
+                        "val_loss": [MAX_LOSS],
+                        "parameter_count": [0],
+                    },
                 )
 
     trials = hyperopt.Trials()

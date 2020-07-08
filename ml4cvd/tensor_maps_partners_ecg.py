@@ -63,7 +63,8 @@ def _get_ecg_dates(tm, hd5):
         np.random.shuffle(dates)
     else:
         raise NotImplementedError(
-            f'Unknown option "{tm.time_series_order}" passed for which tensors to use in multi tensor HD5',
+            f'Unknown option "{tm.time_series_order}" passed for which tensors to use'
+            " in multi tensor HD5",
         )
     start_idx = tm.time_series_limit if tm.time_series_limit is not None else 1
     dates = dates[-start_idx:]  # If num_tensors is 0, get all tensors
@@ -108,7 +109,8 @@ def _resample_voltage(voltage, desired_samples):
         return voltage[::2]
     else:
         raise ValueError(
-            f"Voltage length {len(voltage)} is not desired {desired_samples} and re-sampling method is unknown.",
+            f"Voltage length {len(voltage)} is not desired {desired_samples} and"
+            " re-sampling method is unknown.",
         )
 
 
@@ -127,7 +129,8 @@ def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
         return voltage[: len(voltage) // 2]
     else:
         raise ValueError(
-            f"Voltage length {len(voltage)} is not desired {desired_samples} with desired rate {desired_rate} and rate {rate}.",
+            f"Voltage length {len(voltage)} is not desired {desired_samples} with"
+            f" desired rate {desired_rate} and rate {rate}.",
         )
 
 
@@ -155,7 +158,8 @@ def make_voltage(exact_length=False):
                     tensor[slices] = voltage
                 except (KeyError, AssertionError, ValueError):
                     logging.debug(
-                        f"Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}",
+                        f"Could not get voltage for lead {cm} with {voltage_length}"
+                        f" samples in {hd5.filename}",
                     )
         return tensor
 
@@ -367,7 +371,8 @@ def make_voltage_len_categorical_tmap(
                     tensor[slices] = 1.0
             except KeyError:
                 logging.debug(
-                    f"Could not get voltage length for lead {lead} from ECG on {ecg_date} in {hd5.filename}",
+                    f"Could not get voltage length for lead {lead} from ECG on"
+                    f" {ecg_date} in {hd5.filename}",
                 )
         return tensor
 
@@ -436,7 +441,8 @@ def make_partners_ecg_tensor(
                     tensor[i] = data
             except (KeyError, ValueError):
                 logging.debug(
-                    f"Could not obtain tensor {tm.name} from ECG on {ecg_date} in {hd5.filename}",
+                    f"Could not obtain tensor {tm.name} from ECG on {ecg_date} in"
+                    f" {hd5.filename}",
                 )
 
         if tm.interpretation == Interpretation.LANGUAGE:
@@ -449,13 +455,16 @@ def make_partners_ecg_tensor(
 def make_partners_language_tensor(key: str):
     def language_tensor(tm, hd5, dependents={}):
         words = str(
-            decompress_data(data_compressed=hd5[key][()], dtype=hd5[key].attrs["dtype"]),
+            decompress_data(
+                data_compressed=hd5[key][()], dtype=hd5[key].attrs["dtype"],
+            ),
         )
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i, c in enumerate(words):
             if i >= tm.shape[0]:
                 logging.debug(
-                    f"Text {words} is longer than {tm.name} can store in shape:{tm.shape}, truncating...",
+                    f"Text {words} is longer than {tm.name} can store in"
+                    f" shape:{tm.shape}, truncating...",
                 )
                 break
             tensor[i, tm.channel_map[c]] = 1.0
@@ -671,7 +680,8 @@ def make_sampling_frequency_from_file(
                     tensor[i] = sampling_frequency
             except (KeyError, ValueError):
                 logging.debug(
-                    f"Could not calculate sampling frequency from ECG on {ecg_date} in {hd5.filename}",
+                    f"Could not calculate sampling frequency from ECG on {ecg_date} in"
+                    f" {hd5.filename}",
                 )
         return tensor
 
@@ -1107,7 +1117,8 @@ def partners_ecg_age(tm, hd5, dependents={}):
                 )
             except KeyError:
                 logging.debug(
-                    f"Could not get patient date of birth or age from ECG on {ecg_date} in {hd5.filename}",
+                    f"Could not get patient date of birth or age from ECG on {ecg_date}"
+                    f" in {hd5.filename}",
                 )
     return tensor
 
@@ -1211,7 +1222,8 @@ def partners_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
                 if unspecified_key is None:
                     # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
                     raise ValueError(
-                        f"No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.",
+                        f"No channel keys found in {hd5_string} for {tm.name} with"
+                        f" channel map {tm.channel_map}.",
                     )
                 slices = (
                     (i, tm.channel_map[unspecified_key])
@@ -1268,7 +1280,8 @@ def _partners_adult(hd5_key, minimum_age=18):
             if not found:
                 # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
                 raise ValueError(
-                    f"No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.",
+                    f"No channel keys found in {hd5_string} for {tm.name} with channel"
+                    f" map {tm.channel_map}.",
                 )
         return tensor
 
@@ -1416,7 +1429,8 @@ def build_incidence_tensor_from_file(
                 except ValueError as e:
                     logging.warning(f"val err {e}")
             logging.info(
-                f"Done processing {diagnosis_column} Got {len(patient_table)} patient rows and {len(date_table)} events.",
+                f"Done processing {diagnosis_column} Got {len(patient_table)} patient"
+                f" rows and {len(date_table)} events.",
             )
     except FileNotFoundError as e:
         error = e
@@ -1449,7 +1463,8 @@ def build_incidence_tensor_from_file(
                 )
                 if birth_date != birth_table[mrn_int]:
                     raise ValueError(
-                        f"Birth dates do not match! CSV had {birth_table[patient_key]} but HD5 has {birth_date}",
+                        f"Birth dates do not match! CSV had {birth_table[patient_key]}"
+                        f" but HD5 has {birth_date}",
                     )
 
             assess_date = _partners_str2date(
@@ -1472,7 +1487,8 @@ def build_incidence_tensor_from_file(
                 else:
                     index = 1 if disease_date < assess_date else 2
                 logging.debug(
-                    f"mrn: {mrn_int}  Got disease_date: {disease_date} assess  {assess_date} index  {index}.",
+                    f"mrn: {mrn_int}  Got disease_date: {disease_date} assess "
+                    f" {assess_date} index  {index}.",
                 )
             slices = (i, index) if dynamic else (index,)
             categorical_data[slices] = 1.0
@@ -1540,12 +1556,15 @@ def loyalty_time_to_event(
                     )
                     if len(disease_dicts["follow_up_start"]) % 2000 == 0:
                         logging.debug(
-                            f"Processed: {len(disease_dicts['follow_up_start'])} patient rows.",
+                            f"Processed: {len(disease_dicts['follow_up_start'])}"
+                            " patient rows.",
                         )
                 except ValueError as e:
                     logging.warning(f"val err {e}")
             logging.info(
-                f"Done processing {diagnosis_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.",
+                f"Done processing {diagnosis_column} Got"
+                f" {len(disease_dicts['follow_up_start'])} patient rows and"
+                f" {len(disease_dicts['diagnosis_dates'])} events.",
             )
     except FileNotFoundError as e:
         error = e
@@ -1648,12 +1667,15 @@ def _survival_from_file(
                     )
                     if len(disease_dicts["follow_up_start"]) % 2000 == 0:
                         logging.debug(
-                            f"Processed: {len(disease_dicts['follow_up_start'])} patient rows.",
+                            f"Processed: {len(disease_dicts['follow_up_start'])}"
+                            " patient rows.",
                         )
                 except ValueError as e:
                     logging.warning(f"val err {e}")
             logging.info(
-                f"Done processing {diagnosis_column} Got {len(disease_dicts['follow_up_start'])} patient rows and {len(disease_dicts['diagnosis_dates'])} events.",
+                f"Done processing {diagnosis_column} Got"
+                f" {len(disease_dicts['follow_up_start'])} patient rows and"
+                f" {len(disease_dicts['diagnosis_dates'])} events.",
             )
     except FileNotFoundError as e:
         error = e
@@ -1720,8 +1742,13 @@ def _survival_from_file(
                     if has_disease and incidence_only:
                         raise ValueError(f"{tm.name} is skipping prevalent cases.")
             logging.debug(
-                f"Got survival disease {has_disease}, censor: {censor_date}, assess {assess_date}, fu start {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]} tensor:{(survival_then_censor[ed] if dynamic else survival_then_censor)[:4]} mid tense: {(survival_then_censor[ed] if dynamic else survival_then_censor)[intervals:intervals+4]} ",
+                f"Got survival disease {has_disease}, censor: {censor_date}, assess"
+                f" {assess_date}, fu start"
+                f" {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
+                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]}"
+                f" tensor:{(survival_then_censor[ed] if dynamic else survival_then_censor)[:4]}"
+                " mid tense:"
+                f" {(survival_then_censor[ed] if dynamic else survival_then_censor)[intervals:intervals+4]} ",
             )
         return survival_then_censor
 
@@ -1900,13 +1927,15 @@ def make_cardiac_surgery_outcome_tensor_from_file(
 
         if type(outcome) is float and not outcome.is_integer():
             raise ValueError(
-                f"Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got non-discrete value: {outcome}",
+                f"Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got"
+                f" non-discrete value: {outcome}",
             )
 
         # ensure binary outcome
         if outcome != 0 and outcome != 1:
             raise ValueError(
-                f"Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got non-binary value: {outcome}",
+                f"Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got"
+                f" non-binary value: {outcome}",
             )
 
         tensor[outcome] = 1

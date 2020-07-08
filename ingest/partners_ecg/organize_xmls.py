@@ -152,7 +152,8 @@ def run(args):
                 # If xml_encoding is not among the accepted XML encodings, fix it
                 if xml_encoding not in valid_encodings or not valid_xml:
                     logging.debug(
-                        f"Bad XML encoding found: {xml_encoding}. Replacing with ISO-8859-1.",
+                        f"Bad XML encoding found: {xml_encoding}. Replacing with"
+                        " ISO-8859-1.",
                     )
 
                     # Replace the bad encoding in xml_as_string with ISO-8859-1
@@ -203,7 +204,8 @@ def run(args):
                         if not os.path.exists(args.dst_yyyymm):
                             os.makedirs(args.dst_yyyymm)
                             logging.debug(
-                                f"No valid yyyy-mm directory exists. Creating: {args.dst_yyyymm}",
+                                "No valid yyyy-mm directory exists. Creating:"
+                                f" {args.dst_yyyymm}",
                             )
 
                 # If there is any parsing error, set flag to False
@@ -236,7 +238,8 @@ def run(args):
             # Log progress every 100 files
             if num_processed % 100 == 0:
                 logging.info(
-                    f"processed {num_processed} / {num_files} XML files ({num_processed/num_files*100:.1f}% done)",
+                    f"processed {num_processed} / {num_files} XML files"
+                    f" ({num_processed/num_files*100:.1f}% done)",
                 )
 
     # Log final results
@@ -244,7 +247,8 @@ def run(args):
     logging.info(f"Number files found in src: {num_files}")
     logging.info(f"Number valid files now in dst: {num_valid}")
     logging.info(
-        f"Number files with bad encodings or parsing errors: {num_bad_encodings + num_parsing_err}",
+        "Number files with bad encodings or parsing errors:"
+        f" {num_bad_encodings + num_parsing_err}",
     )
 
     end_time = timer()

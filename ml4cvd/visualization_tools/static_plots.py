@@ -15,13 +15,13 @@ from ml4cvd.runtime_data_defines import get_resting_ecg_svg_folder
 def display_resting_ecg(sample_id, folder=None):
     """Retrieve and display the SVG of the resting ECG.
 
-  Args:
-    sample_id: The id of the ECG SVG to retrieve.
-    folder: The local or Cloud Storage path under which the files reside.
+    Args:
+      sample_id: The id of the ECG SVG to retrieve.
+      folder: The local or Cloud Storage path under which the files reside.
 
-  Returns:
-    An IPython SVG object or a notebook-friendly error.
-  """
+    Returns:
+      An IPython SVG object or a notebook-friendly error.
+    """
     if folder is None:
         folder = get_resting_ecg_svg_folder(sample_id)
 
@@ -45,12 +45,12 @@ def display_resting_ecg(sample_id, folder=None):
 def major_breaks_x_resting_ecg(limits):
     """Method to compute breaks for plotnine plots of ECG resting data.
 
-  Args:
-    limits: The approximate limits.
+    Args:
+      limits: The approximate limits.
 
-  Returns:
-    The desired limits.
-  """
+    Returns:
+      The desired limits.
+    """
     step = 0.2
     if limits[0] <= 0:
         min_break = 0.0

@@ -82,7 +82,8 @@ def build_hdf5s(
                     value[..., i % tm.shape[-1]] = 1
                 else:
                     raise NotImplementedError(
-                        f'Cannot automatically build hdf5 from interpretation "{tm.interpretation}"',
+                        "Cannot automatically build hdf5 from interpretation"
+                        f' "{tm.interpretation}"',
                     )
                 hd5.create_dataset(tm.hd5_key_guess(), data=value)
                 out[(hd5_path, tm)] = value

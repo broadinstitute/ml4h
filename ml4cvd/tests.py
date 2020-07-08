@@ -5,10 +5,7 @@ import unittest
 from tensorflow.keras.losses import logcosh
 
 # Imports: first party
-from ml4cvd.recipes import (
-    test_multimodal_multitask,
-    train_multimodal_multitask,
-)
+from ml4cvd.recipes import test_multimodal_multitask, train_multimodal_multitask
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_by_script import TMAPS

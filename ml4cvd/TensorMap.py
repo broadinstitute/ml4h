@@ -22,12 +22,7 @@ from tensorflow.keras import Model
 from tensorflow.keras.utils import to_categorical
 
 # Imports: first party
-from ml4cvd.defines import (
-    JOIN_CHAR,
-    STOP_CHAR,
-    PARTNERS_READ_TEXT,
-    StorageType,
-)
+from ml4cvd.defines import JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT, StorageType
 from ml4cvd.metrics import (
     pearson,
     cox_hazard_loss,
@@ -95,12 +90,12 @@ def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normal
 class TensorMap(object):
     """Tensor maps encode the semantics, shapes and types of tensors available
 
-        The mapping can be to numpy nd arrays, categorical labels, or continuous values.
-        The tensor shapes can be inferred for categorical TensorMaps which provide a channel mapping dictionary.
-        The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
-        For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
-        In general, new data sources require new TensorMaps and new tensor writers.
-        Input and output names are treated differently to allow self mappings, for example auto-encoders
+    The mapping can be to numpy nd arrays, categorical labels, or continuous values.
+    The tensor shapes can be inferred for categorical TensorMaps which provide a channel mapping dictionary.
+    The channel map is a dict mapping a description string to an index into a numpy array i.e the tensor.
+    For categorical data the resulting tensor is a one hot vector with a 1 at the channel index and zeros elsewhere.
+    In general, new data sources require new TensorMaps and new tensor writers.
+    Input and output names are treated differently to allow self mappings, for example auto-encoders
     """
 
     def __hash__(self):
@@ -264,7 +259,8 @@ class TensorMap(object):
                     return False
                 if not _is_equal_field(self_value, other_value):
                     logging.debug(
-                        f"Comparing two '{self.name}' tensor maps: '{self_field}' values '{self_value}' and '{other_value}' are not equal.",
+                        f"Comparing two '{self.name}' tensor maps: '{self_field}'"
+                        f" values '{self_value}' and '{other_value}' are not equal.",
                     )
                     return False
             return True
@@ -409,10 +405,10 @@ def str2date(d):
 
 def _is_equal_field(field1: Any, field2: Any) -> bool:
     """We consider two fields equal if
-            a. they are not functions and they are equal, or
-            b. one or both are functions and their names match
-        If the fields are lists, we check for the above equality for corresponding
-        elements from the list.
+        a. they are not functions and they are equal, or
+        b. one or both are functions and their names match
+    If the fields are lists, we check for the above equality for corresponding
+    elements from the list.
     """
     if isinstance(field1, list) and isinstance(field2, list):
         if len(field1) != len(field2):
@@ -437,7 +433,7 @@ def _get_name_if_function(field: Any) -> Any:
 
 
 def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map):
-    """ input_shape and input_channel_map are supplied as arguments rather than accessed as attributes of tm
+    """input_shape and input_channel_map are supplied as arguments rather than accessed as attributes of tm
     so that this function can be applied to TensorMaps that are to be discretized for which tm.input_shape and
     tm.input_channel_map reflect the state of the TensorMap post-discretization
     """
@@ -459,7 +455,8 @@ def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map
                 continuous_data[input_channel_map[k]] = hd5[tm.path_prefix][k][0]
     if missing and tm.sentinel is None:
         raise ValueError(
-            f"No value found for {tm.name}, channel map is {input_channel_map} hd5_key_guess:{tm.hd5_key_guess()}",
+            f"No value found for {tm.name}, channel map is {input_channel_map}"
+            f" hd5_key_guess:{tm.hd5_key_guess()}",
         )
     elif missing:
         continuous_data[:] = tm.sentinel
@@ -503,7 +500,8 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
                     missing = False
         if missing:
             raise ValueError(
-                f"No HD5 data found at prefix {tm.path_prefix} found for tensor map: {tm.name}.",
+                f"No HD5 data found at prefix {tm.path_prefix} found for tensor map:"
+                f" {tm.name}.",
             )
         return categorical_data
     elif tm.is_continuous():
@@ -542,14 +540,16 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
             for i, k in enumerate(range(char_idx - tm.shape[0], char_idx)):
                 if caption[k] not in tm.dependent_map.channel_map:
                     logging.warning(
-                        f"Could not find character {caption[k]} in channel map: {tm.dependent_map.channel_map}",
+                        f"Could not find character {caption[k]} in channel map:"
+                        f" {tm.dependent_map.channel_map}",
                     )
                     continue
                 tensor[i, tm.dependent_map.channel_map[caption[k]]] = 1.0
         return tensor
     else:
         raise ValueError(
-            f"No default tensor_from_file for TensorMap {tm.name} with interpretation: {tm.interpretation}",
+            f"No default tensor_from_file for TensorMap {tm.name} with interpretation:"
+            f" {tm.interpretation}",
         )
 
 

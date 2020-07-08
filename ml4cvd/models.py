@@ -1,6 +1,3 @@
-# This file defines model factories.
-# Model factories connect input TensorMaps to output TensorMaps with computational graphs.
-
 # Imports: standard library
 import os
 import time
@@ -24,11 +21,10 @@ from collections import Counter, defaultdict
 
 # Imports: third party
 import numpy as np
-# Keras imports
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow_probability as tfp
-import tensorflow.keras.backend as K
+from tensorflow.keras import backend as K
 from tensorflow.keras.utils import model_to_dot
 from tensorflow.keras.layers import (
     ELU,
@@ -350,7 +346,8 @@ def make_character_model(
             repeater = RepeatVector(it.shape[0])
         else:
             logging.warning(
-                f"character model can not handle input TensorMap:{it.name} with interpretation:{it.interpretation}",
+                f"character model can not handle input TensorMap:{it.name} with"
+                f" interpretation:{it.interpretation}",
             )
 
     logging.info(f"inputs: {[il.name for il in input_layers]}")
@@ -541,7 +538,8 @@ class ResidualBlock:
         ]
         self.layer_order = layer_order
         logging.info(
-            f"Residual Block Convolutional Layers (num_filters, kernel_size): {list(zip(filters_per_conv, kernels))}",
+            "Residual Block Convolutional Layers (num_filters, kernel_size):"
+            f" {list(zip(filters_per_conv, kernels))}",
         )
 
     def __call__(self, x: Tensor) -> Tensor:
@@ -596,7 +594,8 @@ class DenseConvolutionalBlock:
         ]
         self.layer_order = layer_order
         logging.info(
-            f"Dense Block Convolutional Layers (num_filters, kernel_size): {list(zip([filters]*len(kernels), kernels))}",
+            "Dense Block Convolutional Layers (num_filters, kernel_size):"
+            f" {list(zip([filters]*len(kernels), kernels))}",
         )
 
     def __call__(self, x: Tensor) -> Tensor:
@@ -1109,7 +1108,8 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
         visited[tm] += 1
         if visited[tm] > len(tms):
             raise ValueError(
-                "Problem detected in parent structure. Could be cycle or missing parent.",
+                "Problem detected in parent structure. Could be cycle or missing"
+                " parent.",
             )
         if not tm.parents or set(tm.parents) <= set(final):
             final.append(tm)
@@ -1134,9 +1134,10 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
 def _repeat_dimension(dim: List[int], name: str, num_filters_needed: int) -> List[int]:
     if len(dim) != num_filters_needed:
         logging.warning(
-            f"Number of {name} dimensions for convolutional kernel sizes ({len(dim)}) "
-            f"do not match number of convolutional layers/blocks ({num_filters_needed}), "
-            f"matching values to fit {num_filters_needed} convolutional layers/blocks.",
+            f"Number of {name} dimensions for convolutional kernel sizes ({len(dim)})"
+            " do not match number of convolutional layers/blocks"
+            f" ({num_filters_needed}), matching values to fit {num_filters_needed}"
+            " convolutional layers/blocks.",
         )
         repeat = num_filters_needed // len(dim) + 1
         dim = (dim * repeat)[:num_filters_needed]
@@ -1322,7 +1323,8 @@ def make_multimodal_multitask_model(
     elif bottleneck_type == BottleneckType.NoBottleNeck:
         if not check_no_bottleneck(u_connect, tensor_maps_out):
             raise ValueError(
-                f"To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.",
+                f"To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be"
+                " u-connected to.",
             )
         bottleneck = UConnectBottleNeck(u_connect)
     else:
@@ -1378,14 +1380,16 @@ def make_multimodal_multitask_model(
                         target_layer.trainable = False
                 except (ValueError, KeyError):
                     logging.warning(
-                        f"Error loading layer {other_layer.name} from model: {model_layers}. Will still try to load other layers.",
+                        f"Error loading layer {other_layer.name} from model:"
+                        f" {model_layers}. Will still try to load other layers.",
                     )
         except ValueError as e:
             logging.info(
                 f"Loaded model weights, but got ValueError in model loading: {str(e)}",
             )
         logging.info(
-            f'Loaded {"and froze " if freeze else ""}{loaded} layers from {model_layers}.',
+            f'Loaded {"and froze " if freeze else ""}{loaded} layers from'
+            f" {model_layers}.",
         )
     m.compile(
         optimizer=opt,
@@ -1689,19 +1693,22 @@ def _inspect_model(
     n = batch_size * training_steps
     train_speed = (t1 - t0) / n
     logging.info(
-        f"Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample training speed:{train_speed:0.3f} seconds.",
+        f"Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample"
+        f" training speed:{train_speed:0.3f} seconds.",
     )
     t0 = time.time()
     _ = model.predict(generate_valid, steps=training_steps, verbose=1)
     t1 = time.time()
     inference_speed = (t1 - t0) / n
     logging.info(
-        f"Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample inference speed:{inference_speed:0.4f} seconds.",
+        f"Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample"
+        f" inference speed:{inference_speed:0.4f} seconds.",
     )
     return model
 
 
 def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
+    # Imports: third party
     import pydot
 
     legend = {}
@@ -1907,10 +1914,12 @@ def get_model_inputs_outputs(
                 tensor_maps_out.extend(char_maps_out)
                 got_tensor_maps_for_characters = True
                 logging.info(
-                    f"Doing char model dance:{[tm.input_name() for tm in tensor_maps_in]}",
+                    "Doing char model"
+                    f" dance:{[tm.input_name() for tm in tensor_maps_in]}",
                 )
                 logging.info(
-                    f"Doing char model dance out:{[tm.output_name() for tm in tensor_maps_out]}",
+                    "Doing char model dance"
+                    f" out:{[tm.output_name() for tm in tensor_maps_out]}",
                 )
             except ValueError:
                 pass

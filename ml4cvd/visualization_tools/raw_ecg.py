@@ -47,13 +47,13 @@ def examine_available_keys(hd5):
 def reshape_resting_ecg_to_tidy(sample_id, folder=None):
     """Wrangle raw resting ECG data to tidy.
 
-  Args:
-    sample_id: The id of the ECG sample to retrieve.
-    folder: The local or Cloud Storage folder under which the files reside.
+    Args:
+      sample_id: The id of the ECG sample to retrieve.
+      folder: The local or Cloud Storage folder under which the files reside.
 
-  Returns:
-    A pandas dataframe in tidy format or a notebook-friendly error.
-  """
+    Returns:
+      A pandas dataframe in tidy format or a notebook-friendly error.
+    """
     if folder is None:
         folder = get_resting_ecg_hd5_folder(sample_id)
 
@@ -73,7 +73,8 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
             tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
         except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
             print(
-                f"Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e.message}",
+                "Warning: Resting ECG raw signal not available for sample"
+                f" {sample_id}\n\n{e.message}",
             )
             return pd.DataFrame(data)
 
@@ -84,7 +85,8 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
                 )
             except (KeyError, ValueError) as e:
                 print(
-                    f"Warning: Resting ECG raw signal not available for sample {sample_id}\n\n{e}",
+                    "Warning: Resting ECG raw signal not available for sample"
+                    f" {sample_id}\n\n{e}",
                 )
                 examine_available_keys(hd5)
                 return pd.DataFrame(data)
@@ -169,15 +171,15 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None):
 def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
     """Wrangle raw exercise ECG signal data to tidy format.
 
-  Args:
-    sample_id: The id of the ECG sample to retrieve.
-    folder: The local or Cloud Storage folder under which the files reside.
+    Args:
+      sample_id: The id of the ECG sample to retrieve.
+      folder: The local or Cloud Storage folder under which the files reside.
 
-  Returns:
-    A tuple of pandas dataframesor a notebook-friendly error.
-    * first tuple element is trend data in wide format
-    * second tuple element is signal data in tidy format
-  """
+    Returns:
+      A tuple of pandas dataframesor a notebook-friendly error.
+      * first tuple element is trend data in wide format
+      * second tuple element is signal data in tidy format
+    """
     if folder is None:
         folder = get_exercise_ecg_hd5_folder(sample_id)
 
@@ -188,7 +190,8 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
             tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
         except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
             print(
-                f"Error: Exercise ECG raw signal not available for sample {sample_id}\n\n{e.message}",
+                "Error: Exercise ECG raw signal not available for sample"
+                f" {sample_id}\n\n{e.message}",
             )
             return (pd.DataFrame({}), pd.DataFrame({}))
 
@@ -200,7 +203,8 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
                     trend_data[tmap.name.replace("trend_", "")] = tensor
                 except (KeyError, ValueError) as e:
                     print(
-                        f"Warning: Exercise ECG trend not available for sample {sample_id}\n\n{e}",
+                        "Warning: Exercise ECG trend not available for sample"
+                        f" {sample_id}\n\n{e}",
                     )
                     examine_available_keys(hd5)
                     return (pd.DataFrame({}), pd.DataFrame({}))
@@ -210,7 +214,8 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
                 )
             except (KeyError, ValueError) as e:
                 print(
-                    f"Warning: Exercise ECG raw signal not available for sample {sample_id}\n\n{e}",
+                    "Warning: Exercise ECG raw signal not available for sample"
+                    f" {sample_id}\n\n{e}",
                 )
                 examine_available_keys(hd5)
                 return (pd.DataFrame({}), pd.DataFrame({}))
@@ -245,15 +250,15 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
 def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
     """Wrangle raw exercise ECG signal and trend data to tidy format.
 
-  Args:
-    sample_id: The id of the ECG sample to retrieve.
-    folder: The local or Cloud Storage folder under which the files reside.
+    Args:
+      sample_id: The id of the ECG sample to retrieve.
+      folder: The local or Cloud Storage folder under which the files reside.
 
-  Returns:
-    A tuple of pandas dataframesor a notebook-friendly error.
-    * first tuple element is trend data in tidy format
-    * second tuple element is signal data in tidy format
-  """
+    Returns:
+      A tuple of pandas dataframesor a notebook-friendly error.
+      * first tuple element is trend data in tidy format
+      * second tuple element is signal data in tidy format
+    """
 
     # Get the trend data in wide format and pivot it to tidy.
     (trend_df, tidy_signal_df) = reshape_exercise_ecg_to_tidy(sample_id, folder)

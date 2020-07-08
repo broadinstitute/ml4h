@@ -2,10 +2,7 @@
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.tensor_maps_partners_ecg import (
-    v6_zeros_validator,
-    make_partners_ecg_label,
-)
+from ml4cvd.tensor_maps_partners_ecg import v6_zeros_validator, make_partners_ecg_label
 
 TMAPS["partners_ecg_read_md_clean_supranodal_rhythms"] = TensorMap(
     "partners_ecg_read_md_clean_supranodal_rhythms",

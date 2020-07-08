@@ -18,11 +18,11 @@ import datetime
 import operator
 import tempfile
 import traceback
-import xml.etree.ElementTree as et
 from timeit import default_timer as timer
 from typing import Any, Dict, List, Tuple, Optional
 from functools import partial
 from itertools import product
+from xml.etree import ElementTree as et
 from collections import Counter, defaultdict
 
 # Imports: third party
@@ -32,8 +32,8 @@ import imageio
 import nibabel as nib
 import pydicom
 import matplotlib
-import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
+from matplotlib import pyplot as plt
 from scipy.ndimage.morphology import (  # Morphological operator
     binary_closing,
     binary_erosion,
@@ -357,7 +357,8 @@ def write_tensors_from_dicom_pngs(
 
         except FileNotFoundError:
             logging.warning(
-                f"Could not find file: {os.path.join(png_path, dicom_file + png_postfix)}",
+                "Could not find file:"
+                f" {os.path.join(png_path, dicom_file + png_postfix)}",
             )
             stats["File not found error"] += 1
     for k in stats:
@@ -386,7 +387,8 @@ def write_tensors_from_ecg_pngs(
         stats[f"png shape {png.shape}"] += 1
         ecg_1d_segmentation = png[0, :, 0]
         logging.info(
-            f" ecg1d segmentation unique: {np.unique(ecg_1d_segmentation)} \nstart {ecg_1d_segmentation[:60]} ",
+            f" ecg1d segmentation unique: {np.unique(ecg_1d_segmentation)} \nstart"
+            f" {ecg_1d_segmentation[:60]} ",
         )
         stats[f"ecg_1d_segmentation shape {ecg_1d_segmentation.shape}"] += 1
         tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
@@ -417,7 +419,7 @@ def write_tensors_from_ecg_pngs(
 def _load_meta_data_for_tensor_writing(
     volume_csv: str, lv_mass_csv: str, min_sample_id: int, max_sample_id: int,
 ) -> Tuple[Dict[int, Dict[str, float]], List[int]]:
-    """ Gather metadata necessary to write tensors from UK biobank
+    """Gather metadata necessary to write tensors from UK biobank
 
     Loads the field IDs of survey data, dates of assessment, diagnosis of diseases,
     ejection fractions, diastolic volumes, systolic volumes, and sample IDs to make tensors from.
@@ -616,7 +618,8 @@ def _write_tensors_from_zipped_niftis(
         mris = glob.glob(os.path.join(zip_folder, f"{sample_id}_{mri_field}*.zip"))
         for zipped in mris:
             logging.info(
-                f"Got zipped niftis for sample: {sample_id} with MRI field: {mri_field}",
+                f"Got zipped niftis for sample: {sample_id} with MRI field:"
+                f" {mri_field}",
             )
             with tempfile.TemporaryDirectory() as temp_folder, zipfile.ZipFile(
                 zipped, "r",
@@ -709,7 +712,8 @@ def _write_tensors_from_dicoms(
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
             mri_data = np.zeros(
-                (views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32,
+                (views[v][0].Rows, views[v][0].Columns, len(views[v])),
+                dtype=np.float32,
             )
             for slicer in views[v]:
                 _save_pixel_dimensions_if_missing(slicer, v, hd5)
@@ -835,7 +839,8 @@ def _tensorize_short_axis_segmented_cardiac_mri(
 
     for angle in diastoles:
         logging.info(
-            f"Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}",
+            f"Found systole, instance:{systoles[angle].InstanceNumber} ventricle"
+            f" pixels:{systoles_pix[angle]}",
         )
         full_slice = diastoles[angle].pixel_array.astype(np.float32)
         create_tensor_in_hd5(
@@ -958,7 +963,8 @@ def _save_series_orientation_and_position_if_missing(
         + MRI_LIVER_SERIES_12BIT
     ):
         hd5.create_dataset(
-            orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient],
+            orientation_ds_name,
+            data=[float(x) for x in slicer.ImageOrientationPatient],
         )
     if (
         position_ds_name not in hd5
@@ -1172,7 +1178,12 @@ def _write_ecg_rest_tensors(
                     continue
                 values = list(map(_to_float_or_nan, child.text.strip().split(",")))
                 create_tensor_in_hd5(
-                    hd5, "ukb_ecg_rest", child.tag.lower(), values, stats, date=ecg_date,
+                    hd5,
+                    "ukb_ecg_rest",
+                    child.tag.lower(),
+                    values,
+                    stats,
+                    date=ecg_date,
                 )
 
 
@@ -1411,7 +1422,8 @@ def _write_tensors_from_niftis(
         recursive=True,
     )
     logging.info(
-        f"Found {len(niftis)} NIFTI files at {os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id])} ",
+        f"Found {len(niftis)} NIFTI files at"
+        f" {os.path.join(folder, MRI_NIFTI_FIELD_ID_TO_ROOT[field_id])} ",
     )
     for nifti in niftis:  # iterate through all nii.gz files and add them to the hd5
         nifti_mri = nib.load(nifti)
@@ -1553,7 +1565,8 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                                 value = float(value.strip())
                             except ValueError:
                                 stats[
-                                    f"could not cast field: {field} with value: {value} to float"
+                                    f"could not cast field: {field} with value: {value}"
+                                    " to float"
                                 ] += 1
                                 continue
                         elif group == "categorical":
@@ -1571,7 +1584,9 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                                         hd5.create_dataset(
                                             hd5_key,
                                             data=[
-                                                categorical_channel_maps[cm_name][value],
+                                                categorical_channel_maps[cm_name][
+                                                    value
+                                                ],
                                             ],
                                         )
                                         stats["created"] += 1
@@ -1585,7 +1600,8 @@ def append_fields_from_csv(tensors, csv_file, group, delimiter):
                                 value = 1
                             else:
                                 stats[
-                                    f"Could not parse categorical field: {field} with value: {value}"
+                                    f"Could not parse categorical field: {field} with"
+                                    f" value: {value}"
                                 ] += 1
                                 continue
 
@@ -1763,7 +1779,8 @@ def _print_disease_tensor_maps(phenos_folder) -> None:
         diseased = np.sum(list(status[d].values()))
         factor = int(total / (diseased * 2))
         print(
-            "'{}': TensorMap('{}', group='categorical_index', channel_map={{'no_{}':0, '{}':1}}, loss=weighted_crossentropy([1.0, {}], '{}')),".format(
+            "'{}': TensorMap('{}', group='categorical_index', channel_map={{'no_{}':0,"
+            " '{}':1}}, loss=weighted_crossentropy([1.0, {}], '{}')),".format(
                 d, d, d, d, factor, d,
             ),
         )
@@ -1780,7 +1797,9 @@ def _print_disease_tensor_maps_incident_prevalent(phenos_folder) -> None:
         diseased_i = np.sum(list(status_i[d].values()))
         factor_i = int(total / (1 + (diseased_i * 3)))
         print(
-            "'{}_prevalent_incident': TensorMap('{}', group='categorical_date', channel_map={{'no_{}':0, 'prevalent_{}':1, 'incident_{}':2}}, loss=weighted_crossentropy([1.0, {}, {}], '{}_prevalent_incident')),".format(
+            "'{}_prevalent_incident': TensorMap('{}', group='categorical_date',"
+            " channel_map={{'no_{}':0, 'prevalent_{}':1, 'incident_{}':2}},"
+            " loss=weighted_crossentropy([1.0, {}, {}], '{}_prevalent_incident')),".format(
                 d, d, d, d, d, factor_p, factor_i, d,
             ),
         )
@@ -1788,7 +1807,10 @@ def _print_disease_tensor_maps_incident_prevalent(phenos_folder) -> None:
 
 def _print_disease_tensor_maps_time(phenos_folder) -> None:
     disease2tsv = get_disease2tsv(phenos_folder)
-    disease_tm_str = "'{}_time': TensorMap('{}', group='diagnosis_time', channel_map={{'{}_time':0}}, loss='mse'),"
+    disease_tm_str = (
+        "'{}_time': TensorMap('{}', group='diagnosis_time',"
+        " channel_map={{'{}_time':0}}, loss='mse'),"
+    )
     for d in sorted(list(disease2tsv.keys())):
         print(disease_tm_str.format(d, d, d))
 
@@ -1796,7 +1818,11 @@ def _print_disease_tensor_maps_time(phenos_folder) -> None:
 def _plot_mi_hospital_only(db, run_id, output_folder) -> None:
     conn = sqlite3.connect(db)
     sql_cursor = conn.cursor()
-    q = "SELECT datething.value FROM phenotype datething where datething.fieldid=42000 and sample_id in  (select sample_id from phenotype where FieldID=42001 and value=0);"
+    q = (
+        "SELECT datething.value FROM phenotype datething where datething.fieldid=42000"
+        " and sample_id in  (select sample_id from phenotype where FieldID=42001 and"
+        " value=0);"
+    )
     dates = []
     for data_row in sql_cursor.execute(q):
         dates.append(_str2date(data_row[0]))

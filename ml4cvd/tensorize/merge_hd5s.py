@@ -11,7 +11,6 @@ import h5py
 # Imports: first party
 from ml4cvd.defines import TENSOR_EXT, HD5_GROUP_CHAR
 
-
 """
 This script copies all the hd5 datasets from all hd5 files within the 'sources'
 directories to the same-named files within the 'destination' directory.
@@ -85,7 +84,8 @@ def _copy_hd5_datasets(
                 stats[group_path + k] += 1
             except (OSError, KeyError, RuntimeError) as e:
                 logging.warning(
-                    f"Error trying to write:{k} at group path:{group_path} error:{e}\n{traceback.format_exc()}\n",
+                    f"Error trying to write:{k} at group path:{group_path}"
+                    f" error:{e}\n{traceback.format_exc()}\n",
                 )
         else:
             logging.debug(f"copying group {group_path + k}")
@@ -133,7 +133,10 @@ def parse_args():
         "--intersect",
         default=False,
         action="store_true",
-        help="Only merge files if the sample id is in every source directory (and if destination if destination is not empty",
+        help=(
+            "Only merge files if the sample id is in every source directory (and if"
+            " destination if destination is not empty"
+        ),
     )
     return parser.parse_args()
 

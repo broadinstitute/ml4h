@@ -10,8 +10,7 @@ from IPython.display import display
 
 
 def get_df_sample(sample_info, sample_id):
-    """ return a dataframe containing only the row for the indicated sample_id
-    """
+    """return a dataframe containing only the row for the indicated sample_id"""
 
     df_sample = sample_info[sample_info["sample_id"] == str(sample_id)]
     if 0 == df_sample.shape[0]:
@@ -21,10 +20,10 @@ def get_df_sample(sample_info, sample_id):
 
 def display_annotation_collector(sample_info, sample_id):
     """Method to create a gui (set of widgets) through which the user can create an annotation
-  Args:
-    sample_info: dataframe containing all the samples and data
-    sample_id: The selected sample for which the values will be displayed.
-  """
+    Args:
+      sample_info: dataframe containing all the samples and data
+      sample_id: The selected sample for which the values will be displayed.
+    """
 
     df_sample = get_df_sample(sample_info, sample_id)
 
@@ -133,7 +132,7 @@ def format_annotation(sample_id, annotation_data):
 
 
 def bq_submission(params, table="uk-biobank-sek-data.ml_results.annotations"):
-    """ call a bigquery insert statement to add a row containing annotation information containing
+    """call a bigquery insert statement to add a row containing annotation information containing
     params (a dict created/formatted by format_annotation)
     """
     # set up biquery client
@@ -163,8 +162,7 @@ VALUES
 
 
 def view_submissions(count=10, table="uk-biobank-sek-data.ml_results.annotations"):
-    """ view a list of up to [count] most recent submissions from the user
-    """
+    """view a list of up to [count] most recent submissions from the user"""
 
     # set up biquery client
     bqclient = bigquery.Client(credentials=bigquery.magics.context.credentials)

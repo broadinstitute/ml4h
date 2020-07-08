@@ -118,8 +118,9 @@ def run(args):
 
     end = timer()
     logging.info(
-        f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs \
-                   ({dup_count / len(xml_fpaths_hashes) * 100:.2f}%) took {end-start:.2f} sec",
+        f"Removing {dup_count} duplicates / {len(xml_fpaths_hashes)} ECGs"
+        f" ({dup_count / len(xml_fpaths_hashes) * 100:.2f}%) took"
+        f" {end-start:.2f} sec",
     )
 
 

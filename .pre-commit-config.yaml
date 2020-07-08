@@ -1,7 +1,7 @@
 repos:
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: master
+  rev: v3.1.0
   hooks:
     - id: check-executables-have-shebangs
       exclude: ".py"
@@ -15,25 +15,30 @@ repos:
     - id: trailing-whitespace
 
 - repo: https://github.com/kynan/nbstripout
-  rev: master
+  rev: 0.3.9
   hooks:
     - id: nbstripout
       files: ".ipynb"
 
 - repo: https://github.com/Lucas-C/pre-commit-hooks
-  rev: master
+  rev: v1.1.7
   hooks:
     - id: remove-tabs
       files: ".py"
 
 - repo: https://github.com/asottile/add-trailing-comma
-  rev: master
+  rev: v2.0.1
   hooks:
     - id: add-trailing-comma
       exclude: "ml4cvd/tensor_maps_by_script.py"
 
 - repo: https://github.com/timothycrosley/isort
-  rev: master
+  rev: 5.0.5
   hooks:
     - id: isort
       additional_dependencies: [toml]
+
+- repo: https://github.com/ambv/black
+  rev: 19.10b0
+  hooks:
+    - id: black

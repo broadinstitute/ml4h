@@ -302,7 +302,10 @@ def train_multimodal_multitask(args):
         args.alpha,
     )
     logging.info(
-        f"True Epochs Completed:\n\t{generate_train.true_epochs} Training Epochs\n\t{generate_valid.true_epochs} Validation Epochs\n\t{generate_test.true_epochs} Test Epochs",
+        f"True Epochs Completed:\n"
+        f"\t{generate_train.true_epochs} Training Epochs\n"
+        f"\t{generate_valid.true_epochs} Validation\n"
+        f"\t{generate_test.true_epochs} Test Epochs",
     )
     logging.info(
         f'{generate_train.name.split("_")[0].upper()}\n{generate_train.stats_string}',
@@ -455,7 +458,8 @@ def infer_multimodal_multitask(args):
             if tensor_paths[0] in tensor_paths_inferred:
                 next(generate_test)  # this prints end of epoch info
                 logging.info(
-                    f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}",
+                    f"Inference on {stats['count']} tensors finished. Inference TSV"
+                    f" file at: {inference_tsv}",
                 )
                 break
 
@@ -493,7 +497,8 @@ def infer_multimodal_multitask(args):
             stats["count"] += 1
             if stats["count"] % 250 == 0:
                 logging.info(
-                    f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}",
+                    f"Wrote:{stats['count']} rows of inference.  Last"
+                    f" tensor:{tensor_paths[0]}",
                 )
 
 
@@ -536,7 +541,8 @@ def infer_hidden_layer_multimodal_multitask(args):
     dummy_out = embed_model.predict(dummy_input)
     latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(
-        f"Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}",
+        f"Dummy output shape is: {dummy_out.shape} latent dimensions:"
+        f" {latent_dimensions}",
     )
     with open(inference_tsv, mode="w") as inference_file:
         inference_writer = csv.writer(
@@ -555,7 +561,8 @@ def infer_hidden_layer_multimodal_multitask(args):
             if tensor_paths[0] in stats:
                 next(generate_test)  # this prints end of epoch info
                 logging.info(
-                    f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}",
+                    f"Latent space inference on {stats['count']} tensors finished."
+                    f" Inference TSV file at: {inference_tsv}",
                 )
                 break
 
@@ -569,7 +576,8 @@ def infer_hidden_layer_multimodal_multitask(args):
             stats["count"] += 1
             if stats["count"] % 500 == 0:
                 logging.info(
-                    f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}",
+                    f"Wrote:{stats['count']} rows of latent space inference.  Last"
+                    f" tensor:{tensor_paths[0]}",
                 )
 
 
@@ -754,6 +762,7 @@ def plot_while_training(args):
 
 
 def saliency_maps(args):
+    # Imports: third party
     import tensorflow as tf
 
     tf.compat.v1.disable_eager_execution()
@@ -887,7 +896,8 @@ def _predict_scalars_and_evaluate_from_generator(
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
 
     logging.info(
-        f" in scalar predict {model_predictions} scalar predict names: {scalar_predictions.keys()} test labels: {test_labels.keys()}",
+        f" in scalar predict {model_predictions} scalar predict names:"
+        f" {scalar_predictions.keys()} test labels: {test_labels.keys()}",
     )
     embeddings = []
     test_paths = []
@@ -1090,7 +1100,8 @@ def _scalar_predictions_from_generator(
         test_labels[tm.output_name()] = np.array(test_labels[tm.output_name()])
         for m in predictions[tm]:
             logging.info(
-                f"{tm.output_name()} model: {m} prediction length:{len(predictions[tm][m])}",
+                f"{tm.output_name()} model: {m} prediction"
+                f" length:{len(predictions[tm][m])}",
             )
             predictions[tm][m] = np.array(predictions[tm][m])
 

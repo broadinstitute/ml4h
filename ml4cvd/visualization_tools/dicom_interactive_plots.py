@@ -24,7 +24,7 @@ import numpy as np
 import pydicom
 import ipywidgets as widgets
 import tensorflow as tf
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 from IPython.display import HTML, display
 
 # Imports: first party
@@ -41,13 +41,13 @@ MAX_COLOR_RANGE = 6000
 def choose_mri(sample_id, folder=None):
     """Render widget to choose the MRI to plot.
 
-  Args:
-    sample_id: The id of the sample to retrieve.
-    folder: The local or Cloud Storage folder under which the files reside.
+    Args:
+      sample_id: The id of the sample to retrieve.
+      folder: The local or Cloud Storage folder under which the files reside.
 
-  Returns:
-    ipywidget or HTML upon error.
-  """
+    Returns:
+      ipywidget or HTML upon error.
+    """
     if folder is None:
         folders = get_mri_folders(sample_id)
     else:
@@ -97,12 +97,12 @@ def choose_mri(sample_id, folder=None):
 def choose_mri_series(sample_mri):
     """Render widgets and interactive plots for MRIs.
 
-  Args:
-    sample_mri: The local or Cloud Storage path to the MRI file.
+    Args:
+      sample_mri: The local or Cloud Storage path to the MRI file.
 
-  Returns:
-    ipywidget or HTML upon error.
-  """
+    Returns:
+      ipywidget or HTML upon error.
+    """
     with tempfile.TemporaryDirectory() as tmpdirname:
         local_path = os.path.join(tmpdirname, os.path.basename(sample_mri))
         try:
@@ -128,13 +128,15 @@ def choose_mri_series(sample_mri):
             if key2 in unordered_dicoms[key1]:
                 # Notice invalid input, but don't throw an error.
                 print(
-                    f"WARNING: Duplicate instances: {dcm.SeriesDescription} {dcm.SeriesNumber} {dcm.InstanceNumber}.",
+                    f"WARNING: Duplicate instances: {dcm.SeriesDescription}"
+                    f" {dcm.SeriesNumber} {dcm.InstanceNumber}.",
                 )
             unordered_dicoms[key1][key2] = dcm
 
     if not unordered_dicoms:
         print(
-            f"\n\nNo series available in MRI for sample {os.path.basename(sample_mri)}\n\nTry a different MRI.",
+            "\n\nNo series available in MRI for sample"
+            f" {os.path.basename(sample_mri)}\n\nTry a different MRI.",
         )
         return None
 
@@ -263,28 +265,30 @@ def dicom_animation(
 ):
     """Render one frame of a dicom animation.
 
-  Args:
-    dicoms: the dictionary DICOM series and instances lists
-    series_name: the name of the series to be displayed
-    instance: the particular instance to display
-    vmin: minimum value for the color range
-    vmax: maximum value for the color range
-    transpose: whether or not to transpose the image
-    fig_width: the desired width of the figure, note that height computed as
-      the proportion of the width based on the data to be plotted
-    title_prefix: text to display as the initial portion of the plot title
-  """
+    Args:
+      dicoms: the dictionary DICOM series and instances lists
+      series_name: the name of the series to be displayed
+      instance: the particular instance to display
+      vmin: minimum value for the color range
+      vmax: maximum value for the color range
+      transpose: whether or not to transpose the image
+      fig_width: the desired width of the figure, note that height computed as
+        the proportion of the width based on the data to be plotted
+      title_prefix: text to display as the initial portion of the plot title
+    """
     if len(dicoms[series_name]) < instance:
         dcm = dicoms[series_name][-1]
         print(
-            f"Instance {str(instance)} not available for {series_name}, using final instance instead.",
+            f"Instance {str(instance)} not available for {series_name}, using final"
+            " instance instead.",
         )
     else:
         dcm = dicoms[series_name][instance - 1]
         if instance != dcm.InstanceNumber:
             # Notice invalid input, but don't throw an error.
             print(
-                f"WARNING: Instance parameter {str(instance)} and dicom instance number {str(dcm.InstanceNumber)} do not match.",
+                f"WARNING: Instance parameter {str(instance)} and dicom instance number"
+                f" {str(dcm.InstanceNumber)} do not match.",
             )
 
     if transpose:
