@@ -424,6 +424,12 @@ def parse_args():
         help="List of maxpooling layers.",
     )
     parser.add_argument(
+        "--pool_after_final_dense_block",
+        default=False,
+        action="store_true",
+        help="Pool after final dense block.",
+    )
+    parser.add_argument(
         "--pool_type",
         default="max",
         choices=["max", "average"],
@@ -729,12 +735,13 @@ def parse_args():
     parser.add_argument(
         "--plot_hist",
         default=True,
+        action="store_false",
         help="Plot histograms of continuous tensors in explore mode.",
     )
     parser.add_argument(
         "--plot_train_curves",
-        type=bool,
         default=False,
+        action="store_true",
         help="Plot PR and ROC curves for training set.",
     )
 

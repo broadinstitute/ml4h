@@ -914,11 +914,13 @@ class ConvEncoder:
         regularization_rate: float,
         layer_order: List[str],
         dilate: bool,
+        pool_after_final_dense_block: bool,
         pool_type: str,
         pool_x: int,
         pool_y: int,
         pool_z: int,
     ):
+
         num_res = len(res_filters)
         res_x, res_y, res_z = conv_x[:num_res], conv_y[:num_res], conv_z[:num_res]
         self.res_block = ResidualBlock(
@@ -956,6 +958,9 @@ class ConvEncoder:
                 filters_per_dense_block, dense_x, dense_y, dense_z,
             )
         ]
+
+        self.pool_after_final_dense_block = pool_after_final_dense_block
+
         self.pools = _pool_layers_from_kind_and_dimension(
             dimension,
             pool_type,
@@ -970,12 +975,19 @@ class ConvEncoder:
         x = self.res_block(x)
         intermediates.append(x)
         x = self.pools[0](x)
+
         for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools[1:])):
             x = dense_block(x)
             intermediates.append(x)
-            x = (
-                pool(x) if i < len(self.dense_blocks) - 1 else x
-            )  # don't pool after final dense block
+
+            # Add pooling layer for every dense block
+            if self.pool_after_final_dense_block:
+                x = pool(x)
+
+            # Do not pool after final dense block
+            else:
+                x = pool(x) if i < len(self.dense_blocks) - 1 else x
+
         return x, intermediates
 
 
@@ -1166,10 +1178,11 @@ def make_multimodal_multitask_model(
     conv_dropout: float = None,
     conv_dilate: bool = None,
     u_connect: DefaultDict[TensorMap, Set[TensorMap]] = None,
+    pool_after_final_dense_block: bool = None,
+    pool_type: str = None,
     pool_x: int = None,
     pool_y: int = None,
     pool_z: int = None,
-    pool_type: str = None,
     training_steps: int = None,
     learning_rate_schedule: str = None,
     **kwargs,
@@ -1203,10 +1216,11 @@ def make_multimodal_multitask_model(
     :param conv_dropout: Dropout rate in convolutional layers
     :param conv_dilate: whether to use dilation in conv layers
     :param u_connect: dictionary of input TensorMap -> output TensorMaps to u connect to
+    :param pool_after_final_dense_block: Add pooling layer after final dense block
+    :param pool_type: Max or average pooling following convolutional blocks
     :param pool_x: Pooling in the X dimension for Convolutional models.
     :param pool_y: Pooling in the Y dimension for Convolutional models.
     :param pool_z: Pooling in the Z dimension for 3D Convolutional models.
-    :param pool_type: max or average pooling following convolutional blocks
     :param optimizer: which optimizer to use. See optimizers.py.
     :return: a compiled keras model
     :param learning_rate_schedule: learning rate schedule to train with, e.g. triangular
@@ -1266,6 +1280,7 @@ def make_multimodal_multitask_model(
                 layer_order=layer_order,
                 regularization_rate=conv_regularize_rate,
                 dilate=conv_dilate,
+                pool_after_final_dense_block=pool_after_final_dense_block,
                 pool_type=pool_type,
                 pool_x=pool_x,
                 pool_y=pool_y,

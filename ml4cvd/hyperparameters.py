@@ -584,4 +584,4 @@ def plot_trials(trials, histories, figure_path, param_lists={}):
 
 if __name__ == "__main__":
     args = parse_args()
-    run(args)  # back to the top
+    run(args)
