@@ -11,20 +11,22 @@ hd5 = h5py.File(fpath, 'r')
 views_of_interest = [
     'cine_segmented_lax_2ch', 'cine_segmented_lax_3ch', 'cine_segmented_lax_4ch', 
     'cine_segmented_ao_dist', 'cine_segmented_lvot',
-    'cine_segmented_lax_inlinevf', 'cine_segmented_sax_inlinevf_segmented'
+    'cine_segmented_lax_inlinevf', 'cine_segmented_lax_inlinevf_segmented', 
+    'cine_segmented_sax_inlinevf', 'cine_segmented_sax_inlinevf_segmented'
     ]
 
-views_of_interest = ['cine_segmented_lax_inlinevf']
+# views_of_interest = ['cine_segmented_lax_inlinevf']
 
 for view in views_of_interest:
     print(view)
-    concatenate = False if 'inlinevf' in view else False
+    concatenate = True if 'inlinevf' in view else False
     dss = _mri_hd5_to_structured_grids(hd5, view,
                                        view_name=view,
                                        concatenate=concatenate,
                                        save_path=None,
                                        order='F')
-    to_xdmf(dss[0], f'2922335_{view}')
+    for i, ds in enumerate(dss):
+        to_xdmf(ds, f'2922335_{view}_{i}')
 
 
 
