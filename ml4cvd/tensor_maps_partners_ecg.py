@@ -1371,6 +1371,45 @@ def build_legacy_ecg(
         return _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
     return tensor_from_file
 
+def build_ukb_ecg2(
+    file_name: str, patient_column: str = 'MGH_MRN', birth_column: str = 'dob', start_column: str = 'start_fu_age',
+    delimiter: str = ',', check_birthday: bool = True, population_normalize: int = 2000,
+) -> Callable:
+    """Build a tensor_from_file function for ECGs in the legacy cohort.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param birth_column: The header name of the column of dates of birth
+    :param start_column: The header name of the column of enrollment dates
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    with open(file_name, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        header = next(reader)
+        patient_ecg_date = header.index(patient_column)
+        birth_table = {}
+        patient_table = {}
+        earliest_table = {}
+        for row in reader:
+            try:
+                patient_key = int(row[header.index(patient_column)])
+                birth_table[patient_key] = _loyalty_str2date(row[birth_index])
+                patient_table[patient_key] = birth_table[patient_key] + datetime.timedelta(days=float(row[start_index])*YEAR_DAYS)
+                earliest_table[patient_key] = patient_table[patient_key] - datetime.timedelta(days=3*YEAR_DAYS)
+            except ValueError as e:
+                logging.debug(f'val err {e}')
+        logging.info(f'Done processing. Got {len(patient_table)} patient rows.')
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in patient_table:
+            raise KeyError(f'{tm.name} mrn not in legacy csv.')
+
+        ecg_dates = list(hd5[tm.path_prefix])
+        ecg_date_key = _date_from_dates(ecg_dates)
+        return _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
+    retur
 
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',

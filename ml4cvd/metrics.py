@@ -401,6 +401,8 @@ def get_metric_dict(output_tensor_maps):
     losses = []
     loss_weights = []
     for tm in output_tensor_maps:
+        if tm.output_name() not in layer_names:
+            continue
         loss_weights.append(tm.loss_weight)
         for m in tm.metrics:
             if isinstance(m, str):
@@ -426,7 +428,7 @@ def get_metric_dict(output_tensor_maps):
             metrics[tm.loss.__name__] = tm.loss
             losses.append(tm.loss)
 
-    metrics['loss'] = losses
+    metrics['loss'] = 1# losses
 
     return metrics
 
