@@ -1,5 +1,4 @@
 import os
-import csv
 import time
 import h5py
 import biosppy
@@ -7,8 +6,9 @@ import seaborn as sns
 import logging
 import numpy as np
 import pandas as pd
-from typing import List, Union, Tuple, Dict, Any, Set
+from typing import List, Union, Tuple, Dict, Any
 from itertools import combinations
+from sklearn.model_selection import KFold, train_test_split
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
 from tensorflow.keras import Model
@@ -40,9 +40,9 @@ LEAD_NAMES = 'lead_I', 'lead_2', 'lead_3'
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors/2019-10-10/'
 USER = 'ndiamant'
 OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results'
-TRAIN_CSV = os.path.join(OUTPUT_FOLDER, 'train_ids.csv')
-VALID_CSV = os.path.join(OUTPUT_FOLDER, 'valid_ids.csv')
-TEST_CSV = os.path.join(OUTPUT_FOLDER, 'test_ids.csv')
+TRAIN_CSV_NAME = 'train_ids.csv'
+VALID_CSV_NAME = 'valid_ids.csv'
+TEST_CSV_NAME = 'test_ids.csv'
 
 BIOSPPY_MEASUREMENTS_FILE = os.path.join(OUTPUT_FOLDER, 'biosppy_hr_recovery_measurements.csv')
 FIGURE_FOLDER = os.path.join(OUTPUT_FOLDER, 'figures')
@@ -52,16 +52,14 @@ PRETEST_LABEL_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'pretest_labels')
 PRETEST_QUANTILE_CUTOFF = .99
 PRETEST_LABEL_FILE = os.path.join(OUTPUT_FOLDER, f'hr_pretest_training_data.csv')
 PRETEST_TRAINING_DUR = 10  # number of seconds of pretest ECG used for prediction
-
-VALID_RATIO = .05
-TEST_RATIO = .15
-TRAIN_RATIO = 1 - VALID_RATIO - TEST_RATIO
+VALIDATION_SPLIT = .1
 
 PRETEST_MODEL_ID = 'pretest_model'
 PRETEST_MODEL_PATH = os.path.join(OUTPUT_FOLDER, PRETEST_MODEL_ID, PRETEST_MODEL_ID + MODEL_EXT)
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
 PRETEST_INFERENCE_FILE = os.path.join(OUTPUT_FOLDER, 'pretest_model_inference.tsv')
+K_SPLIT = 5
 
 
 # Tensor from file helpers
@@ -444,17 +442,30 @@ def _make_hrr_tmap(
         )
 
 
+def split_folder_name(split_idx: int) -> str:
+    return os.path.join(OUTPUT_FOLDER, f'split_{split_idx}')
+
+
+def _split_train_name(split_idx: int) -> str:
+    return os.path.join(split_folder_name(split_idx), TRAIN_CSV_NAME)
+
+
+def _split_valid_name(split_idx: int) -> str:
+    return os.path.join(split_folder_name(split_idx), VALID_CSV_NAME)
+
+
+def _split_test_name(split_idx: int) -> str:
+    return os.path.join(split_folder_name(split_idx), TEST_CSV_NAME)
+
+
 # build cohort
 def build_csvs():
-    df = pd.read_csv(PRETEST_LABEL_FILE)
-    train, valid, test = np.split(
-        df.sample(frac=1),
-        [int(TRAIN_RATIO * len(df)), int((TRAIN_RATIO + VALID_RATIO) * len(df))]
-    )
-    train[['sample_id']].to_csv(TRAIN_CSV, index=False)
-    valid[['sample_id']].to_csv(VALID_CSV, index=False)
-    test[['sample_id']].to_csv(TEST_CSV, index=False)
-    return train, test, valid
+    sample_ids = pd.read_csv(PRETEST_LABEL_FILE)['sample_id']
+    split_ids = _split_ids(ids=sample_ids, n_split=K_SPLIT, validation_frac=.1)
+    for i, (train_ids, valid_ids, test_ids) in enumerate(split_ids):
+        pd.DataFrame({'sample_id': train_ids}).to_csv(_split_train_name(i), index=False)
+        pd.DataFrame({'sample_id': valid_ids}).to_csv(_split_valid_name(i), index=False)
+        pd.DataFrame({'sample_id': test_ids}).to_csv(_split_test_name(i), index=False)
 
 
 def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
@@ -467,7 +478,7 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
 # Model training
 def make_pretest_model(load_model: bool):
     pretest_tmap = make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)
-    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))
+    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE)
     return make_multimodal_multitask_model(
         tensor_maps_in=[pretest_tmap],
         tensor_maps_out=[hrr_tmap],
@@ -491,20 +502,35 @@ def make_pretest_model(load_model: bool):
     )  # TODO: reincorporate hyperopt?
 
 
+def _split_ids(ids: np.ndarray, n_split: int, validation_frac: float) -> List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """output is [(train_ids, valid_ids, test_ids)]"""
+    validation_frac = validation_frac * n_split / (n_split - 1)
+    kf = KFold(n_splits=n_split, random_state=SEED, shuffle=True)
+    out = []
+    for train_idx, test_idx in kf.split(ids):
+        train, valid = train_test_split(ids[train_idx], test_size=validation_frac)
+        out.append((train, valid, ids[test_idx]))
+    return out
+
+
 def _train_pretest_model(
-        model_id: str,
+        model_id: str, split_idx: int,
 ) -> Tuple[Any, Dict]:
     workers = cpu_count() * 2
     patience = 8
     epochs = 200
     batch_size = 128
 
+    train_csv = _split_train_name(split_idx)
+    valid_csv = _split_valid_name(split_idx)
+    test_csv = _split_test_name(split_idx)
+
     pretest_tmap = make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)
-    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))
+    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(train_csv)))
 
     # TODO: this could be 5 fold cross val
-    train_len = len(pd.read_csv(TRAIN_CSV))
-    valid_len = len(pd.read_csv(VALID_CSV))
+    train_len = len(pd.read_csv(train_csv))
+    valid_len = len(pd.read_csv(valid_csv))
     training_steps = train_len // batch_size
     validation_steps = valid_len // batch_size
 
@@ -516,9 +542,9 @@ def _train_pretest_model(
         num_workers=workers,
         cache_size=1e7,
         balance_csvs=[],
-        train_csv=TRAIN_CSV,
-        valid_csv=VALID_CSV,
-        test_csv=TEST_CSV,
+        train_csv=train_csv,
+        valid_csv=valid_csv,
+        test_csv=test_csv,
         training_steps=training_steps,
         validation_steps=validation_steps,
     )
@@ -526,7 +552,7 @@ def _train_pretest_model(
     try:
         model, history = train_model_from_generators(
             model, generate_train, generate_valid, training_steps, validation_steps, batch_size,
-            epochs, patience, OUTPUT_FOLDER, model_id, True, True, return_history=True,
+            epochs, patience, split_folder_name(split_idx), model_id, True, True, return_history=True,
         )
     finally:
         generate_train.kill_workers()
@@ -585,7 +611,7 @@ def _dist_plot(ax, truth, prediction, title):
     ax.legend(loc="upper left")
 
 
-def _evaluate_model(m_id: str, inference_file: str):
+def _evaluate_model(m_id: str, inference_file: str):  # TODO: fix
     logging.info(f'Plotting {m_id} model results.')
     inference_results = pd.read_csv(inference_file, sep='\t', dtype={'sample_id': str})
     test_ids = pd.read_csv(TEST_CSV, names=['sample_id'], dtype={'sample_id': str})
@@ -631,8 +657,11 @@ if __name__ == '__main__':
     load_config('INFO', OUTPUT_FOLDER, 'log_' + now_string, USER)
 
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
+    for i in range(K_SPLIT):
+        os.makedirs(split_folder_name(i), exist_ok=True)
+
     MAKE_CSVS = False or not all((
-        os.path.exists(TRAIN_CSV), os.path.exists(VALID_CSV), os.path.exists(TEST_CSV)
+        os.path.exists(_split_train_name(i)) for i in range(K_SPLIT)
     ))
     TRAIN_PRETEST_MODEL = False or not os.path.exists(PRETEST_MODEL_PATH)
     INFER_PRETEST_MODEL = (
@@ -651,19 +680,15 @@ if __name__ == '__main__':
         build_csvs()
     if TRAIN_PRETEST_MODEL:
         _train_pretest_model(PRETEST_MODEL_ID)
-    if INFER_PRETEST_MODEL:
-        logging.info('Running inference on pretest models.')
-        _infer_models(
-            models=[make_pretest_model(True)],
-            model_ids=[PRETEST_MODEL_ID],
-            tensor_maps_in=[make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)],
-            tensor_maps_out=[_make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))],
-            inference_tsv=PRETEST_INFERENCE_FILE, num_workers=8, batch_size=128, tensors=TENSOR_FOLDER,
-        )
-    _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
-# TODO: bonus: bootstrapping for test set full size?
+    # if INFER_PRETEST_MODEL:
+    #     logging.info('Running inference on pretest models.')
+    #     _infer_models(
+    #         models=[make_pretest_model(True)],
+    #         model_ids=[PRETEST_MODEL_ID],
+    #         tensor_maps_in=[make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)],
+    #         tensor_maps_out=[_make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))],
+    #         inference_tsv=PRETEST_INFERENCE_FILE, num_workers=8, batch_size=128, tensors=TENSOR_FOLDER,
+    #     )
+    # _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
 # TODO: augmentations demonstrations
-# TODO: table explaining filtering
-# TODO: explore necessary?
-# TODO: inference only works for one model
-# TODO: does inference infer all results??
+# TODO: inference on cross validation
