@@ -4,7 +4,7 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import List
+from typing import Dict, List
 from collections import Counter
 
 # Imports: third party
@@ -35,7 +35,7 @@ from matplotlib import pyplot as plt    # isort:skip
 MAX_LOSS = 9e9
 
 
-def run(args: Arguments):
+def run(args: argparse.Namespace):
     # Keep track of elapsed execution time
     start_time = timer()
     try:
@@ -54,7 +54,7 @@ def run(args: Arguments):
     )
 
 
-def optimize_ecg_architecture(args):
+def optimize_ecg_architecture(args: argparse.Namespace):
     block_size_sets = [2, 3, 4]
     conv_layers_sets = [[32]]  # Baseline
     conv_normalize_sets = ["", "batch_norm"]
@@ -109,6 +109,7 @@ def optimize_ecg_architecture(args):
         "dropout": hp.choice("dropout", dropout_sets),
         "pool_type": hp.choice("pool_type", pool_types),
     }
+
     param_lists = {
         "block_size": block_size_sets,
         "conv_layers": conv_layers_sets,
@@ -124,7 +125,11 @@ def optimize_ecg_architecture(args):
     hyperparameter_optimizer(args, space, param_lists)
 
 
-def hyperparameter_optimizer(args, space, param_lists={}):
+def hyperparameter_optimizer(
+    args: argparse.Namespace,
+    space: Dict[str, hyperopt.pyll.base.Apply],
+    param_lists: Arguments,
+):
     args.keep_paths = False
     args.keep_paths_test = False
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
@@ -136,7 +141,7 @@ def hyperparameter_optimizer(args, space, param_lists={}):
     fig_path = os.path.join(args.output_folder, args.id, "plots")
     i = 0
 
-    def loss_from_multimodal_multitask(x):
+    def loss_from_multimodal_multitask(x: Arguments):
         model = None
         history = None
         nonlocal i
@@ -183,8 +188,8 @@ def hyperparameter_optimizer(args, space, param_lists={}):
                 test_data, test_labels, batch_size=args.batch_size,
             )
             logging.info(
-                f"Current architecture:\n{string_from_arch_dict(x)}\nCurrent model"
-                f" size: {model.count_params()}.",
+                f"Current architecture:\n{_string_from_architecture_dict(x)}\nCurrent"
+                f" model size: {model.count_params()}.",
             )
             logging.info(
                 f"Iteration {i} out of maximum {args.max_evals}\nTest Loss:"
@@ -254,10 +259,10 @@ def set_args_from_x(args: argparse.Namespace, x: Arguments):
     args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
 
-def _ensure_even_number(x: int) -> int:
-    if x % 2 == 1:
-        x += 1
-    return x
+def _ensure_even_number(num: int) -> int:
+    if num % 2 == 1:
+        num += 1
+    return num
 
 
 def _generate_conv1D_filter_widths(
@@ -269,30 +274,30 @@ def _generate_conv1D_filter_widths(
 ) -> List[List[int]]:
     """Generate a list of 1D convolutional filter widths that are lists of even ints.
 
-    :param num_unique_filters: number of unique lists of filters to generate, e.g. 10 will
-           result in a list of 10 lists of filter widths.
+    :param num_unique_filters: number of unique lists of filters to generate,
+        e.g. 10 will result in a list of 10 lists of filter widths.
 
     :param list_len_bounds: bounds of the number of elements in each list of filters;
-            the number of elements is a randomly selected integer in these bounds. e.g.
-           [1, 4] will choose a random int from among 1, 2, 3, or 4.
+        the number of elements is a randomly selected integer in these bounds.
+        e.g. [1, 4] will choose a random int from among 1, 2, 3, or 4.
 
-    :param first_filter_width_bounds: bounds of the first filter width; randomly selected
-           integer in these bounds similar to 'list_len_bounds'.
+    :param first_filter_width_bounds: bounds of the first filter width; randomly
+        selected integer in these bounds similar to 'list_len_bounds'.
 
-    :param probability_vary_filter_width: probability of choosing to vary filter size; a
-           randomly generated float between 0-1 is compared to this value. If <=, then
-           the filter size is varied.
+    :param probability_vary_filter_width: probability of choosing to vary filter size;
+        a randomly generated float between 0-1 is compared to this value. If <=, then
+        the filter size is varied.
 
     :param vary_filter_scale_bounds: bounds of the scale factor for decreasing filter
-           width in subsequent layers; the scale is a randomly selected float in these
-           bounds. The filter width of the next layer = filter width of prior layer / filter_scale.
-           This is applied to all layers, e.g. if filter size is set to vary, and:
-               ```
-               list_len = 4
-               first_filter_width = 100
-               filter_scale = 1.5
-               ```
-               `this_filter` would be `[100, 66, 44, 30]`
+        width in subsequent layers; the scale is a randomly selected float in these
+        bounds. The filter width of the next layer equals the filter width of the prior
+        layer divided by the filter_scale. This scale factor is applied to all layers:
+           ```
+           list_len = 4
+           first_filter_width = 100
+           filter_scale = 1.5
+           ```
+        These settings would result in the following filter widths: [100, 66, 44, 30]
     """
     list_of_filters = []
 
@@ -350,11 +355,11 @@ def _generate_weighted_loss_tmaps(
     return new_tmap_names
 
 
-def string_from_arch_dict(x):
+def _string_from_architecture_dict(x: Arguments):
     return "\n".join([f"{k} = {x[k]}" for k in x])
 
 
-def _string_from_trials(trials, index, param_lists={}):
+def _string_from_trials(trials: hyperopt.Trials, index: int, param_lists: Dict = {}):
     s = ""
     x = trials.trials[index]["misc"]["vals"]
     for k in x:
@@ -372,7 +377,11 @@ def _string_from_trials(trials, index, param_lists={}):
 
 
 def _model_label_from_losses_and_histories(
-    i, all_losses, histories, trials, param_lists,
+    i: int,
+    all_losses: np.array,
+    histories: List[Dict],
+    trials: hyperopt.Trials,
+    param_lists: dict,
 ):
     label = (
         f"Trial {i}: \nTest Loss:{all_losses[i]:.3f}\nTrain"
@@ -384,7 +393,12 @@ def _model_label_from_losses_and_histories(
     return label
 
 
-def plot_trials(trials, histories, figure_path, param_lists={}):
+def plot_trials(
+    trials: hyperopt.Trials,
+    histories: List[Dict],
+    figure_path: str,
+    param_lists: Dict = {},
+):
     all_losses = np.array(trials.losses())  # the losses we will put in the text
     real_losses = all_losses[all_losses != MAX_LOSS]
     cutoff = MAX_LOSS
