@@ -426,7 +426,7 @@ def get_metric_dict(output_tensor_maps):
             metrics[tm.loss.__name__] = tm.loss
             losses.append(tm.loss)
 
-    metrics['loss'] = 1# losses
+    metrics['loss'] = lambda x: 1
 
     return metrics
 
