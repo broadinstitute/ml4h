@@ -14,7 +14,7 @@ import traceback
 from typing import Any, Set, Dict, List, Tuple, Union, Callable, Iterator, Optional
 from itertools import chain
 from collections import Counter
-from multiprocessing import Event, Queue, Barrier, Process
+from multiprocessing import Event, Queue, Process
 
 # Imports: third party
 import h5py
@@ -101,7 +101,6 @@ class TensorGenerator:
         self._started = False
         self.workers = []
         self.worker_instances = []
-        self.worker_batch_barrier = None
         if num_workers == 0:
             num_workers = 1  # The one worker is the main thread
         (
@@ -155,7 +154,6 @@ class TensorGenerator:
     def _init_workers(self):
         self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
         self.stats_q = Queue(self.num_workers)
-        self.worker_batch_barrier = Barrier(self.num_workers)
         self._started = True
         for i, (path_iter, iter_len) in enumerate(
             zip(self.path_iters, self.true_epoch_lens),
@@ -176,7 +174,6 @@ class TensorGenerator:
                 self.cache_size,
                 name,
                 self.augment,
-                self.worker_batch_barrier,
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
@@ -444,7 +441,6 @@ class _MultiModalMultiTaskWorker:
         cache_size: float,
         name: str,
         augment: bool,
-        batch_barrier: Barrier,
     ):
         self.q = q
         self.stats_q = stats_q
@@ -460,7 +456,6 @@ class _MultiModalMultiTaskWorker:
         self.cache_size = cache_size
         self.name = name
         self.augment = augment
-        self.batch_barrier = batch_barrier
         self.stats_signal = Event()
 
         self.stats = Counter()
@@ -599,7 +594,6 @@ class _MultiModalMultiTaskWorker:
                     self.paths_in_batch,
                     **self.batch_func_kwargs,
                 )
-                self.batch_barrier.wait()
                 self.q.put(out)
                 self.paths_in_batch = []
                 self.stats["batch_index"] = 0
