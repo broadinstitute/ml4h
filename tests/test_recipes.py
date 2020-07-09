@@ -7,7 +7,7 @@ from ml4cvd.recipes import inference_file_name, hidden_inference_file_name
 from ml4cvd.recipes import train_multimodal_multitask, compare_multimodal_multitask_models
 from ml4cvd.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4cvd.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
-from ml4cvd.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
+from ml4cvd.explorations import _tmap_explore_header, _channel_explore_header, explore, _flatten_multidimensional_tensor
 # Imports with test in their name
 from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
@@ -60,6 +60,7 @@ class TestRecipes:
     def test_explore(self, default_arguments, tmpdir_factory):
         temp_dir = tmpdir_factory.mktemp('explore_tensors')
         default_arguments.tensors = str(temp_dir)
+        default_arguments.explore_export_errors = True
         tmaps = TMAPS_UP_TO_4D[:]
         tmaps.append(TensorMap(f'scalar', shape=(1,), interpretation=Interpretation.CONTINUOUS))
         explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS)
@@ -70,19 +71,21 @@ class TestRecipes:
             default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
         )
         explore_result = pd.read_csv(csv_path)
+        intersect_csv_path = os.path.join(
+            default_arguments.output_folder, default_arguments.id, 'tensors_all_intersect.csv'
+        )
+        intersect_explore_result = pd.read_csv(csv_path)
+        assert len(explore_result) == pytest.N_TENSORS
+        assert intersect_explore_result.equals(explore_result)  # no errors make this true
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
-                row_expected = explore_expected[(row['fpath'], tm)]
-                if _should_error_detect(tm):
-                    actual = getattr(row, _continuous_explore_header(tm))
-                    assert not np.isnan(actual)
-                    continue
-                if tm.is_continuous():
-                    actual = getattr(row, _continuous_explore_header(tm))
+                row_expected = _flatten_multidimensional_tensor(tm, explore_expected[(row['fpath'], tm)])
+                if not tm.channel_map:
+                    actual = getattr(row, _tmap_explore_header(tm))
                     assert actual == row_expected
                     continue
-                if tm.is_categorical():
+                else:
                     for channel, idx in tm.channel_map.items():
-                        channel_val = getattr(row, _categorical_explore_header(tm, channel))
+                        channel_val = getattr(row, _channel_explore_header(tm, channel))
                         assert channel_val == row_expected[idx]
