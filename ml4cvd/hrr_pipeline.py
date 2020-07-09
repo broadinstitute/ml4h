@@ -55,7 +55,6 @@ PRETEST_LABEL_FILE = os.path.join(OUTPUT_FOLDER, f'hr_pretest_training_data.csv'
 PRETEST_TRAINING_DUR = 10  # number of seconds of pretest ECG used for prediction
 VALIDATION_SPLIT = .1
 
-PRETEST_MODEL_ID = 'pretest_model'
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
 PRETEST_INFERENCE_NAME = 'pretest_model_inference.tsv'
@@ -447,13 +446,12 @@ ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augme
 
 
 MODEL_SETTINGS = [
-    {'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'conv_dropout': False, 'shift': False},
-    {'model_id': 'dropout_noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': False},
-    {'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True},
-    {'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True},
-    {'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True},
+    ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'conv_dropout': False, 'shift': False}),
+    ModelSetting(**{'model_id': 'dropout_noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': False}),
+    ModelSetting(**{'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True}),
+    ModelSetting(**{'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True}),
+    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True}),
 ]
-MODEL_SETTINGS = [ModelSetting(**setting) for setting in MODEL_SETTINGS]
 
 
 # Model training
@@ -604,15 +602,16 @@ def time_to_actual_hrr_col(t: int):
 
 def _infer_models_split_idx(split_idx: int):
     tensor_paths = [
-        _path_from_sample_id(sample_id) for
+        _path_from_sample_id(str(sample_id)) for
         sample_id in pd.read_csv(_split_test_name(split_idx))['sample_id']
     ]
     models = [make_pretest_model(setting, split_idx, True) for setting in MODEL_SETTINGS]
+    model_ids = [setting.model_id for setting in MODEL_SETTINGS]
     tmaps_in = [_make_ecg_tmap(setting) for setting in MODEL_SETTINGS]
     tmaps_out = [_make_hrr_tmap(split_idx)]
     _infer_models(
         models=models,
-        model_ids=[PRETEST_MODEL_ID],
+        model_ids=model_ids,
         tensor_maps_in=tmaps_in,
         tensor_maps_out=tmaps_out,
         inference_tsv=_inference_file(split_idx), num_workers=8, batch_size=128, tensor_paths=tensor_paths,
@@ -641,38 +640,48 @@ def _dist_plot(ax, truth, prediction, title):
     ax.legend(loc="upper left")
 
 
-def _evaluate_model(m_id: str, inference_file: str):  # TODO: fix
-    logging.info(f'Plotting {m_id} model results.')
-    inference_results = pd.read_csv(inference_file, sep='\t', dtype={'sample_id': str})
-    test_ids = pd.read_csv(TEST_CSV, names=['sample_id'], dtype={'sample_id': str})
-    test_results = inference_results.merge(test_ids, on='sample_id')
-    figure_folder = os.path.join(FIGURE_FOLDER, f'{m_id}_results')
-    os.makedirs(figure_folder, exist_ok=True)
-    # negative HRR measurements
-    name = time_to_pred_hrr_col(HRR_TIME, m_id)
-    col = test_results[name].dropna()
-    logging.info(f'HRR_{HRR_TIME} had {(col < 0).mean() * 100:.2f}% negative predictions in hold out data.')
-    logging.info(f'HRR_{HRR_TIME} had {(col < -5).mean() * 100:.2f}% predictions < -5 in hold out data.')
+def _evaluate_models():
+    inference_dfs = []
+    for i in range(K_SPLIT):
+        inference_df = pd.read_csv(_inference_file(i), sep='\t')
+        inference_df['split_idx'] = i
+    inference_df = pd.concat(inference_dfs)
+    inference_df.to_csv(os.path.join(OUTPUT_FOLDER, PRETEST_INFERENCE_NAME), sep='\t', index=False)
 
-    # correlations with actual measurements
+    R2_dfs = []
     ax_size = 10
-    _, ax = plt.subplots(figsize=(ax_size, ax_size))
-    pred = test_results[time_to_pred_hrr_col(HRR_TIME, m_id)]
-    actual = test_results[time_to_actual_hrr_col(HRR_TIME)]
-    not_na = ~np.isnan(pred) & ~np.isnan(actual)
-    _scatter_plot(ax, actual[not_na], pred[not_na], f'HRR at recovery time {HRR_TIME}')
-    plt.tight_layout()
-    plt.savefig(os.path.join(figure_folder, 'model_correlations.png'))
-    plt.clf()
+    figure_folder = os.path.join(FIGURE_FOLDER, f'model_results')
+    os.makedirs(figure_folder, exist_ok=True)
+    for setting in MODEL_SETTINGS:
+        m_id = setting.model_id
+        _, ax = plt.subplots(figsize=(ax_size, ax_size))
+        pred = inference_df[time_to_pred_hrr_col(HRR_TIME, m_id)]
+        actual = inference_df[time_to_actual_hrr_col(HRR_TIME)]
+        _scatter_plot(ax, actual, pred, f'HRR at recovery time {HRR_TIME}')
+        plt.tight_layout()
+        plt.savefig(os.path.join(figure_folder, f'{m_id}_model_correlations.png'))
+        plt.clf()
 
-    # distributions of predicted and actual measurements
-    _, ax = plt.subplots(figsize=(ax_size, ax_size))
-    pred = test_results[time_to_pred_hrr_col(HRR_TIME, m_id)]
-    actual = test_results[time_to_actual_hrr_col(HRR_TIME)]
-    not_na = ~np.isnan(pred) & ~np.isnan(actual)
-    _dist_plot(ax, actual[not_na], pred[not_na], f'HRR at recovery time {HRR_TIME}')
-    plt.tight_layout()
-    plt.savefig(os.path.join(figure_folder, 'distributions.png'))
+        # distributions of predicted and actual measurements
+        _, ax = plt.subplots(figsize=(ax_size, ax_size))
+        _dist_plot(ax, actual, pred, f'HRR at recovery time {HRR_TIME}')
+        plt.tight_layout()
+        plt.savefig(os.path.join(figure_folder, f'{m_id}_distributions.png'))
+        plt.clf()
+
+        R2s = [
+            coefficient_of_determination(
+                actual[inference_df['split_idx'] == i], pred[inference_df['split_idx'] == i]
+            ) for i in range(K_SPLIT)
+        ]
+        R2_df = pd.DataFrame({'R2': R2s})
+        R2_df['model'] = m_id
+        R2_dfs.append(R2_df)
+
+    R2_df = pd.concat(R2_dfs)
+    plt.figure(figsize=(ax_size, ax_size))
+    sns.violinplot(x='model', y='R2', data=R2_df)
+    plt.savefig(os.path.join(figure_folder, f'model_violin.png'))
     plt.clf()
 
 
@@ -694,7 +703,7 @@ if __name__ == '__main__':
         os.path.exists(_split_train_name(i)) for i in range(K_SPLIT)
     )
     TRAIN_PRETEST_MODELS = False or not all(
-        os.path.exists(pretest_model_file(i, PRETEST_MODEL_ID))
+        os.path.exists(pretest_model_file(i, pretest_model_file(i, MODEL_SETTINGS[0].model_id)))
         for i in range(K_SPLIT)
     )
     INFER_PRETEST_MODELS = (
@@ -722,5 +731,3 @@ if __name__ == '__main__':
 
     # TODO: augmentations demonstrations
     # combine inference tsvs into bootstrapped predictions for genetics
-    # infer on non randomly offset ecgs?
-    # do random offsets only for some models
