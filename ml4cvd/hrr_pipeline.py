@@ -501,7 +501,7 @@ def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
         pool_x=2,
         block_size=3,
         model_file=model_path if load_model else None,
-        conv_regularize='conv_dropout' if setting.conv_dropout else None,
+        conv_regularize='spatial_dropout' if setting.conv_dropout else None,
         conv_regularize_rate=.5 if setting.conv_dropout else 0,
     )
 
@@ -722,3 +722,5 @@ if __name__ == '__main__':
 
     # TODO: augmentations demonstrations
     # combine inference tsvs into bootstrapped predictions for genetics
+    # infer on non randomly offset ecgs?
+    # do random offsets only for some models

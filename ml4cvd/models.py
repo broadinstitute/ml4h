@@ -807,6 +807,11 @@ def _repeat_dimension(dim: List[int], name: str, num_filters_needed: int) -> Lis
         return dim
 
 
+def load_multimodal_multitask_model(model_file: str, tensor_maps_out: List[TensorMap]) -> Model:
+    custom_dict = _get_custom_objects(tensor_maps_out)
+    return load_model(model_file, custom_objects=custom_dict, compile=False)
+
+
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
