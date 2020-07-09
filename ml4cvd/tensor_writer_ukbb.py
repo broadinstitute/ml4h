@@ -54,7 +54,7 @@ MRI_CARDIAC_SERIES = [
     'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
     'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
     'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist',
-    'cine_segmented_lvot', 'flow_250_tp_aov_bh_epat@c_p'
+    'cine_segmented_lvot', 'flow_250_tp_aov_bh_epat@c'
 ]
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
