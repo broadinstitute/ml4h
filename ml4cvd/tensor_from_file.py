@@ -1403,7 +1403,10 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
                 hd5_path = f'{path_prefix}/{name}{t+1}/instance_{instance}'
                 arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
             else:
-                arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
+                try:
+                    arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
+                except ValueError:
+                    logging.warning(f'Series {name} has less than {MRI_FRAMES} frames')
     else:
         raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
