@@ -12,6 +12,7 @@ from sklearn.model_selection import KFold, train_test_split
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
 from tensorflow.keras import Model
+from collections import namedtuple
 import datetime
 import gc
 
@@ -57,7 +58,7 @@ VALIDATION_SPLIT = .1
 PRETEST_MODEL_ID = 'pretest_model'
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
-PRETEST_INFERENCE_FILE = os.path.join(OUTPUT_FOLDER, 'pretest_model_inference.tsv')
+PRETEST_INFERENCE_NAME = 'pretest_model_inference.tsv'
 K_SPLIT = 5
 
 
@@ -96,16 +97,6 @@ def _make_pretest_ecg_tff(downsample_rate: float, leads: Union[List[int], slice]
         _check_phase_full_len(hd5, 'pretest')
         start = np.random.randint(0, SAMPLING_RATE * PRETEST_DUR - tm.shape[0] * downsample_rate) if random_start else 0
         return _get_downsampled_bike_ecg(tm.shape[0], hd5, start, downsample_rate, leads)
-    return tff
-
-
-def _make_downsampled_rest_tff(downsample_rate: float):
-    def tff(tm: TensorMap, hd5: h5py.File, dependents=None):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for k, idx in tm.channel_map.items():
-            data = np.array(tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}/{k}/'))[:, np.newaxis]
-            tensor[:, tm.channel_map[k]] = _downsample_ecg(data, downsample_rate)[0]
-        return tensor
     return tff
 
 
@@ -157,16 +148,6 @@ def _downsample_ecg(ecg, rate: float):
 def _rand_add_noise(ecg):
     noise_frac = np.random.rand() * .1  # max of 10% noise
     return ecg + noise_frac * ecg.mean(axis=0) * np.random.randn(*ecg.shape)
-
-
-def make_pretest_tmap(downsample_rate: float, leads) -> TensorMap:
-    return TensorMap(
-        'pretest_ecg', shape=(int(PRETEST_TRAINING_DUR * SAMPLING_RATE // downsample_rate), len(leads)),
-        interpretation=Interpretation.CONTINUOUS,
-        validator=no_nans, normalization=Standardize(0, 100),
-        tensor_from_file=_make_pretest_ecg_tff(downsample_rate, leads),
-        cacheable=False, augmentations=[_warp_ecg, _rand_add_noise, _random_crop_ecg],
-    )
 
 
 # HR measurements from biosppy
@@ -429,18 +410,6 @@ def _hr_file(file_name: str, t: int, hrr=False):
     return tensor_from_file
 
 
-def _make_hrr_tmap(
-        file_name: str,
-        normalizer: Normalizer = None,
-) -> TensorMap:
-    return TensorMap(
-            df_hrr_col(HRR_TIME), shape=(1,), metrics=[],
-            interpretation=Interpretation.CONTINUOUS,
-            tensor_from_file=_hr_file(file_name, HRR_TIME, hrr=True),
-            normalization=normalizer,
-        )
-
-
 def split_folder_name(split_idx: int) -> str:
     return os.path.join(OUTPUT_FOLDER, f'split_{split_idx}')
 
@@ -474,10 +443,45 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
     return hrr.mean(), hrr.std()
 
 
+ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'conv_dropout'])
+
+
+MODEL_SETTINGS = [
+    {'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'conv_dropout': False},
+    {'model_id': 'dropout_noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
+    {'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
+    {'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
+    {'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
+]
+MODEL_SETTINGS = [ModelSetting(**setting) for setting in MODEL_SETTINGS]
+
+
 # Model training
-def make_pretest_model(load_model: bool):
-    pretest_tmap = make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)
-    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE)
+def _make_ecg_tmap(setting: ModelSetting) -> TensorMap:
+    return TensorMap(
+        f'pretest_ecg_downsample_{setting.downsample_rate}',
+        shape=(int(PRETEST_TRAINING_DUR * SAMPLING_RATE // setting.downsample_rate), len(PRETEST_MODEL_LEADS)),
+        interpretation=Interpretation.CONTINUOUS,
+        validator=no_nans, normalization=Standardize(0, 100),
+        tensor_from_file=_make_pretest_ecg_tff(setting.downsample_rate, PRETEST_MODEL_LEADS),
+        cacheable=len(setting.augmentations) == 1, augmentations=setting.augmentations,
+    )
+
+
+def _make_hrr_tmap(split_idx: int) -> TensorMap:
+    normalizer = Standardize(*_get_hrr_summary_stats(_split_train_name(split_idx)))
+    return TensorMap(
+        df_hrr_col(HRR_TIME), shape=(1,), metrics=[],
+        interpretation=Interpretation.CONTINUOUS,
+        tensor_from_file=_hr_file(PRETEST_LABEL_FILE, HRR_TIME, hrr=True),
+        normalization=normalizer,
+    )
+
+
+def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
+    pretest_tmap = _make_ecg_tmap(setting)
+    hrr_tmap = _make_hrr_tmap(split_idx)
+    model_path = pretest_model_file(split_idx, setting.model_id)
     return make_multimodal_multitask_model(
         tensor_maps_in=[pretest_tmap],
         tensor_maps_out=[hrr_tmap],
@@ -486,7 +490,6 @@ def make_pretest_model(load_model: bool):
         bottleneck_type=BottleneckType.FlattenRestructure,
         optimizer='radam',
         dense_layers=[16, 64],
-        dropout=0,
         conv_layers=[32],
         dense_blocks=[32, 24, 16],
         conv_type='conv',
@@ -497,8 +500,10 @@ def make_pretest_model(load_model: bool):
         pool_type='max',
         pool_x=2,
         block_size=3,
-        model_file=PRETEST_MODEL_PATH if load_model else None,  # TODO: wrong path
-    )  # TODO: reincorporate hyperopt?
+        model_file=model_path if load_model else None,
+        conv_regularize='conv_dropout' if setting.conv_dropout else None,
+        conv_regularize_rate=.5 if setting.conv_dropout else 0,
+    )
 
 
 def _split_ids(ids: np.ndarray, n_split: int, validation_frac: float) -> List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
@@ -517,7 +522,7 @@ def pretest_model_file(split_idx: int, model_id: str) -> str:
 
 
 def _train_pretest_model(
-        model_id: str, split_idx: int,
+        setting: ModelSetting, split_idx: int,
 ) -> Tuple[Any, Dict]:
     workers = cpu_count() * 2
     patience = 8
@@ -528,8 +533,8 @@ def _train_pretest_model(
     valid_csv = _split_valid_name(split_idx)
     test_csv = _split_test_name(split_idx)
 
-    pretest_tmap = make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)
-    hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(train_csv)))
+    pretest_tmap = _make_ecg_tmap(setting)
+    hrr_tmap = _make_hrr_tmap(split_idx)
 
     train_len = len(pd.read_csv(train_csv))
     valid_len = len(pd.read_csv(valid_csv))
@@ -550,11 +555,12 @@ def _train_pretest_model(
         training_steps=training_steps,
         validation_steps=validation_steps,
     )
-    model = make_pretest_model(False)
+
+    model = make_pretest_model(setting, split_idx, False)
     try:
         model, history = train_model_from_generators(
             model, generate_train, generate_valid, training_steps, validation_steps, batch_size,
-            epochs, patience, split_folder_name(split_idx), model_id, True, True, return_history=True,
+            epochs, patience, split_folder_name(split_idx), setting.model_id, True, True, return_history=True,
         )
     finally:
         generate_train.kill_workers()
@@ -565,7 +571,11 @@ def _train_pretest_model(
 
 # Inference
 ACTUAL_POSTFIX = '_actual'
-PRED_POSTFIX = '_predicted'
+PRED_POSTFIX = '_prediction'
+
+
+def _inference_file(split_idx: int) -> str:
+    return os.path.join(split_folder_name(split_idx), PRETEST_INFERENCE_NAME)
 
 
 def tmap_to_actual_col(tmap: TensorMap):
@@ -592,6 +602,24 @@ def time_to_actual_hrr_col(t: int):
     return f'{df_hrr_col(t)}{ACTUAL_POSTFIX}'
 
 
+def _infer_models_split_idx(split_idx: int):
+    tensor_paths = [
+        _path_from_sample_id(sample_id) for
+        sample_id in pd.read_csv(_split_test_name(split_idx))['sample_id']
+    ]
+    models = [make_pretest_model(setting, split_idx, True) for setting in MODEL_SETTINGS]
+    tmaps_in = [_make_ecg_tmap(setting) for setting in MODEL_SETTINGS]
+    tmaps_out = [_make_hrr_tmap(split_idx)]
+    _infer_models(
+        models=models,
+        model_ids=[PRETEST_MODEL_ID],
+        tensor_maps_in=tmaps_in,
+        tensor_maps_out=tmaps_out,
+        inference_tsv=_inference_file(split_idx), num_workers=8, batch_size=128, tensor_paths=tensor_paths,
+    )
+
+
+# result plotting
 def _scatter_plot(ax, truth, prediction, title):
     ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
@@ -665,13 +693,13 @@ if __name__ == '__main__':
     MAKE_CSVS = False or not all(
         os.path.exists(_split_train_name(i)) for i in range(K_SPLIT)
     )
-    TRAIN_PRETEST_MODEL = False or not all(
+    TRAIN_PRETEST_MODELS = False or not all(
         os.path.exists(pretest_model_file(i, PRETEST_MODEL_ID))
         for i in range(K_SPLIT)
     )
-    INFER_PRETEST_MODEL = (
-            False
-            or not os.path.exists(PRETEST_INFERENCE_FILE) or TRAIN_PRETEST_MODEL  # TODO different model settings
+    INFER_PRETEST_MODELS = (
+            False or TRAIN_PRETEST_MODELS
+            or not all(os.path.exists(_inference_file(split_idx)) for split_idx in range(K_SPLIT))
     )
 
     if MAKE_LABELS:
@@ -683,19 +711,14 @@ if __name__ == '__main__':
     plot_pretest_label_summary_stats()
     if MAKE_CSVS:
         build_csvs()
-    if TRAIN_PRETEST_MODEL:
+    if TRAIN_PRETEST_MODELS:
         for i in range(K_SPLIT):
-            _train_pretest_model(PRETEST_MODEL_ID, i)
-    # if INFER_PRETEST_MODEL:
-    #     logging.info('Running inference on pretest models.')
-    #     _infer_models(
-    #         models=[make_pretest_model(True)],
-    #         model_ids=[PRETEST_MODEL_ID],
-    #         tensor_maps_in=[make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)],
-    #         tensor_maps_out=[_make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(TRAIN_CSV)))],
-    #         inference_tsv=PRETEST_INFERENCE_FILE, num_workers=8, batch_size=128, tensors=TENSOR_FOLDER,
-    #     )
-    # _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
-# TODO: augmentations demonstrations
-# TODO: inference on cross validation
-# TODO: different model settings (shift, downsample, warp, noise)
+            for setting in MODEL_SETTINGS:
+                _train_pretest_model(setting, i)
+    if INFER_PRETEST_MODELS:
+        for i in range(K_SPLIT):
+            logging.info(f'Running inference on pretest model {i}.')
+            _infer_models_split_idx(i)
+
+    # TODO: augmentations demonstrations
+    # combine inference tsvs into bootstrapped predictions for genetics
