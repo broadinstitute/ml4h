@@ -321,10 +321,12 @@ def _infer_models(
                 count += 1
                 logging.info(f"Wrote {count} batches of inference.")
                 if generate_test.stats_q.qsize() == generate_test.num_workers:
+                    remaining = len(tensor_paths_set - visited_paths)
+                    logging.info(f'{remaining} samples remaining.')
                     generate_test.aggregate_and_print_stats()
                     generate_test.kill_workers()
                     generate_test = TensorGenerator(
-                        1, tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=num_workers,
+                        min(batch_size, remaining), tensor_maps_in, no_fail_tmaps_out, list(tensor_paths_set - visited_paths), num_workers=1,
                         cache_size=0, keep_paths=True, mixup=0,
                     )
         finally:
