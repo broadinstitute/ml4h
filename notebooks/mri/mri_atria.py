@@ -3,7 +3,6 @@ import sys
 import glob
 from ml4cvd.tensor_from_file import _mri_tensor_4d, _mri_hd5_to_structured_grids
 from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
-from ml4cvd.tensor_from_file import _mri_project_grids
 from vtk.util import numpy_support as ns
 import vtk
 import numpy as np
@@ -15,7 +14,7 @@ import imageio
 XDMF_TRIANGLE=4
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {}
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'] = 11
-petersen = pd.read_csv('/mnt/ml4cvd/jamesp/lvmass/returned_lv_mass.tsv', sep='\t')
+petersen = pd.read_csv('/home/pdiachil/ml/atria/returned_lv_mass.tsv', sep='\t')
 petersen_idxs = petersen['sample_id'].values
 for t in range(MRI_FRAMES):
     petersen[f'LA_poisson_{t}'] = 0.0
