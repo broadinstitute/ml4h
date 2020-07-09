@@ -849,10 +849,8 @@ TMAPS[task] = TensorMap(
 )
 
 # Creates TMaps for interval measurements.
-# Creates TMaps with no suffix, _md, and _pc suffix.
-# No suffix uses the _md value in hd5.
+# Creates TMaps with _md and _pc suffix.
 # Examples:
-#     ecg_rate    (uses _md value)
 #     ecg_rate_md
 #     ecg_rate_pc
 
@@ -877,7 +875,7 @@ interval_key_map = {
 # fmt: on
 
 for interval, (key, fill, validator, normalization) in interval_key_map.items():
-    for suffix in ["", "_md", "_pc"]:
+    for suffix in ["_md", "_pc"]:
         name = f"{interval}{suffix}"
         _key = f"{key}{suffix}"
         TMAPS[name] = TensorMap(
