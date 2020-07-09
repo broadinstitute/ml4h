@@ -581,15 +581,15 @@ def tmap_to_actual_col(tmap: TensorMap):
 
 
 def tmap_to_pred_col(tmap: TensorMap, model_id: str):
-    return f'{model_id}_{tmap.name}{PRED_POSTFIX}'
+    return f'{tmap.name}_{model_id}{PRED_POSTFIX}'
 
 
 def time_to_pred_hr_col(t: int, model_id: str):
-    return f'{model_id}_{df_hr_col(t)}{PRED_POSTFIX}'
+    return f'{df_hr_col(t)}_{model_id}{PRED_POSTFIX}'
 
 
 def time_to_pred_hrr_col(t: int, model_id: str):
-    return f'{model_id}_{df_hrr_col(t)}{PRED_POSTFIX}'
+    return f'{df_hrr_col(t)}_{model_id}{PRED_POSTFIX}'
 
 
 def time_to_actual_hr_col(t: int):
@@ -645,6 +645,7 @@ def _evaluate_models():
     for i in range(K_SPLIT):
         inference_df = pd.read_csv(_inference_file(i), sep='\t')
         inference_df['split_idx'] = i
+        inference_dfs.append(inference_df)
     inference_df = pd.concat(inference_dfs)
     inference_df.to_csv(os.path.join(OUTPUT_FOLDER, PRETEST_INFERENCE_NAME), sep='\t', index=False)
 
@@ -680,8 +681,8 @@ def _evaluate_models():
 
     R2_df = pd.concat(R2_dfs)
     plt.figure(figsize=(ax_size, ax_size))
-    sns.violinplot(x='model', y='R2', data=R2_df)
-    plt.savefig(os.path.join(figure_folder, f'model_violin.png'))
+    sns.violinplot(x='model', y='R2', data=R2_df, inner='box')
+    plt.savefig(os.path.join(figure_folder, f'all_models_violin.png'))
     plt.clf()
 
 
@@ -703,7 +704,7 @@ if __name__ == '__main__':
         os.path.exists(_split_train_name(i)) for i in range(K_SPLIT)
     )
     TRAIN_PRETEST_MODELS = False or not all(
-        os.path.exists(pretest_model_file(i, pretest_model_file(i, MODEL_SETTINGS[0].model_id)))
+        os.path.exists(pretest_model_file(i, MODEL_SETTINGS[0].model_id))
         for i in range(K_SPLIT)
     )
     INFER_PRETEST_MODELS = (
@@ -726,8 +727,7 @@ if __name__ == '__main__':
                 _train_pretest_model(setting, i)
     if INFER_PRETEST_MODELS:
         for i in range(K_SPLIT):
-            logging.info(f'Running inference on pretest model {i}.')
+            logging.info(f'Running inference on split {i}.')
             _infer_models_split_idx(i)
-
+    _evaluate_models()
     # TODO: augmentations demonstrations
-    # combine inference tsvs into bootstrapped predictions for genetics
