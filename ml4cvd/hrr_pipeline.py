@@ -443,15 +443,15 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
     return hrr.mean(), hrr.std()
 
 
-ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'conv_dropout'])
+ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'conv_dropout', 'shift'])
 
 
 MODEL_SETTINGS = [
-    {'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'conv_dropout': False},
-    {'model_id': 'dropout_noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
-    {'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
-    {'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
-    {'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True},
+    {'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'conv_dropout': False, 'shift': False},
+    {'model_id': 'dropout_noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': False},
+    {'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True},
+    {'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True},
+    {'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True},
 ]
 MODEL_SETTINGS = [ModelSetting(**setting) for setting in MODEL_SETTINGS]
 
@@ -463,7 +463,7 @@ def _make_ecg_tmap(setting: ModelSetting) -> TensorMap:
         shape=(int(PRETEST_TRAINING_DUR * SAMPLING_RATE // setting.downsample_rate), len(PRETEST_MODEL_LEADS)),
         interpretation=Interpretation.CONTINUOUS,
         validator=no_nans, normalization=Standardize(0, 100),
-        tensor_from_file=_make_pretest_ecg_tff(setting.downsample_rate, PRETEST_MODEL_LEADS),
+        tensor_from_file=_make_pretest_ecg_tff(setting.downsample_rate, PRETEST_MODEL_LEADS, random_start=setting.shift),
         cacheable=len(setting.augmentations) == 1, augmentations=setting.augmentations,
     )
 
