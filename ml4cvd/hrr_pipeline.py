@@ -55,7 +55,6 @@ PRETEST_TRAINING_DUR = 10  # number of seconds of pretest ECG used for predictio
 VALIDATION_SPLIT = .1
 
 PRETEST_MODEL_ID = 'pretest_model'
-PRETEST_MODEL_PATH = os.path.join(OUTPUT_FOLDER, PRETEST_MODEL_ID, PRETEST_MODEL_ID + MODEL_EXT)
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
 PRETEST_INFERENCE_FILE = os.path.join(OUTPUT_FOLDER, 'pretest_model_inference.tsv')
@@ -498,7 +497,7 @@ def make_pretest_model(load_model: bool):
         pool_type='max',
         pool_x=2,
         block_size=3,
-        model_file=PRETEST_MODEL_PATH if load_model else None,
+        model_file=PRETEST_MODEL_PATH if load_model else None,  # TODO: wrong path
     )  # TODO: reincorporate hyperopt?
 
 
@@ -511,6 +510,10 @@ def _split_ids(ids: np.ndarray, n_split: int, validation_frac: float) -> List[Tu
         train, valid = train_test_split(ids[train_idx], test_size=validation_frac)
         out.append((train, valid, ids[test_idx]))
     return out
+
+
+def pretest_model_file(split_idx: int, model_id: str) -> str:
+    return os.path.join(split_folder_name(split_idx), model_id, model_id + MODEL_EXT)
 
 
 def _train_pretest_model(
@@ -528,7 +531,6 @@ def _train_pretest_model(
     pretest_tmap = make_pretest_tmap(BIOSPPY_DOWNSAMPLE_RATE, PRETEST_MODEL_LEADS)
     hrr_tmap = _make_hrr_tmap(PRETEST_LABEL_FILE, Standardize(*_get_hrr_summary_stats(train_csv)))
 
-    # TODO: this could be 5 fold cross val
     train_len = len(pd.read_csv(train_csv))
     valid_len = len(pd.read_csv(valid_csv))
     training_steps = train_len // batch_size
@@ -660,13 +662,16 @@ if __name__ == '__main__':
     for i in range(K_SPLIT):
         os.makedirs(split_folder_name(i), exist_ok=True)
 
-    MAKE_CSVS = False or not all((
+    MAKE_CSVS = False or not all(
         os.path.exists(_split_train_name(i)) for i in range(K_SPLIT)
-    ))
-    TRAIN_PRETEST_MODEL = False or not os.path.exists(PRETEST_MODEL_PATH)
+    )
+    TRAIN_PRETEST_MODEL = False or not all(
+        os.path.exists(pretest_model_file(i, PRETEST_MODEL_ID))
+        for i in range(K_SPLIT)
+    )
     INFER_PRETEST_MODEL = (
             False
-            or not os.path.exists(PRETEST_INFERENCE_FILE) or TRAIN_PRETEST_MODEL
+            or not os.path.exists(PRETEST_INFERENCE_FILE) or TRAIN_PRETEST_MODEL  # TODO different model settings
     )
 
     if MAKE_LABELS:
@@ -679,7 +684,8 @@ if __name__ == '__main__':
     if MAKE_CSVS:
         build_csvs()
     if TRAIN_PRETEST_MODEL:
-        _train_pretest_model(PRETEST_MODEL_ID)
+        for i in range(K_SPLIT):
+            _train_pretest_model(PRETEST_MODEL_ID, i)
     # if INFER_PRETEST_MODEL:
     #     logging.info('Running inference on pretest models.')
     #     _infer_models(
@@ -692,3 +698,4 @@ if __name__ == '__main__':
     # _evaluate_model(PRETEST_MODEL_ID, PRETEST_INFERENCE_FILE)
 # TODO: augmentations demonstrations
 # TODO: inference on cross validation
+# TODO: different model settings (shift, downsample, warp, noise)
