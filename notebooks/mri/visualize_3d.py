@@ -13,7 +13,7 @@ views_of_interest = [
     'cine_segmented_ao_dist', 'cine_segmented_lvot',
     'cine_segmented_lax_inlinevf', 'cine_segmented_lax_inlinevf_zoom_segmented', 
     'cine_segmented_sax_inlinevf', 'cine_segmented_sax_inlinevf_zoom_segmented',
-    'flow_250_tp_aov_bh_epat@c_p'
+    'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag'
     ]
 
 # views_of_interest = ['cine_segmented_lax_inlinevf']
