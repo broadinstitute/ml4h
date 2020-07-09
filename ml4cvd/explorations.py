@@ -1773,11 +1773,11 @@ def cross_reference(args):
             if type(dfs) is list:
                 # Number of pre-op (surgdt -180 days; surgdt) ECG from patients with 1+ ECG in all windows
                 # Number of distinct pre-op (surgdt -180 days; surgdt) ECG from patients with 1+ ECG in all windows
-                # Number of distinct pre-op (surgdt -180 days; surgdt) partners_ecg_patientid_clean from patients with 1+ ECG in all windows
+                # Number of distinct pre-op (surgdt -180 days; surgdt) ecg_patientid_clean from patients with 1+ ECG in all windows
 
                 # Number of newest pre-op (surgdt -180 days; surgdt) ECG from patients with 1 ECG in all windows
                 # Number of distinct newest pre-op (surgdt -180 days; surgdt) ECG from patients with 1 ECG in all windows
-                # Number of distinct newest pre-op (surgdt -180 days; surgdt) partners_ecg_patientid_clean from patients with 1 ECG in all windows
+                # Number of distinct newest pre-op (surgdt -180 days; surgdt) ecg_patientid_clean from patients with 1 ECG in all windows
                 for df, window_name, order, (start, end) in zip(
                     dfs, window_names, order_in_window, time_windows,
                 ):
@@ -1799,7 +1799,7 @@ def cross_reference(args):
             else:
                 # Number of ECGs from patients with 1+ ECG in all windows
                 # Number of distinct ECGs from patients with 1+ ECG in all windows
-                # Number of distinct partners_ecg_patientid_clean from patients with 1+ ECG in all windows
+                # Number of distinct ecg_patientid_clean from patients with 1+ ECG in all windows
                 df = dfs
                 cohort_counts[f"Number of {src_name} from patients with {title}"] = len(
                     df,

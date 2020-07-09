@@ -6,9 +6,9 @@ from getpass import getuser
 from collections import defaultdict
 
 JOIN_CHAR = "_"
-SCRIPT_NAME = "tensor_maps_partners_ecg_labels.py"
-TENSOR_FUNC_NAME = "make_partners_ecg_label"
-PREFIX = "partners_ecg"
+SCRIPT_NAME = "tensor_maps_ecg_labels.py"
+TENSOR_FUNC_NAME = "make_ecg_label"
+PREFIX = "ecg"
 TENSOR_PATH_PREFIX = "partners_ecg_rest"
 
 
@@ -34,9 +34,7 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
     if write_imports:
         py_file.write(f"from ml4cvd.TensorMap import TensorMap, Interpretation\n")
         py_file.write(f"from ml4cvd.tensor_maps_by_hand import TMAPS\n")
-        py_file.write(
-            f"from ml4cvd.tensor_maps_partners_ecg import {TENSOR_FUNC_NAME}\n\n",
-        )
+        py_file.write(f"from ml4cvd.tensor_maps_ecg import {TENSOR_FUNC_NAME}\n\n")
 
     for label in label_maps:
         cm = "{"
@@ -69,12 +67,12 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
             )
 
 
-def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
+def _write_ecg_tmap_script(py_file, ecg_label_dir, keys_in_hd5):
     # Set flag for writing import statements to true
     write_imports = True
 
-    # Iterate through all files in the partners CSV labels folder
-    for file in os.listdir(partners_ecg_label_dir):
+    # Iterate through all files in the ecg CSV labels folder
+    for file in os.listdir(ecg_label_dir):
 
         # Ignore files that do not end in .csv
         if not file.endswith(".csv"):
@@ -88,7 +86,7 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5
         # inner list is columns; idx 0 is source phrase
         #                        idx 1 is label (level 1 of hierarchy)
         #                        idx 2 is label (level 2 of hierarchy) etc.
-        fpath_this_task = os.path.join(partners_ecg_label_dir, file)
+        fpath_this_task = os.path.join(ecg_label_dir, file)
         lol = list(csv.reader(open(fpath_this_task), delimiter=","))
 
         # Associate labels with source phrases in dict of dicts:
@@ -158,7 +156,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--label_maps_dir",
-        default=f"/home/{getuser()}/partners_ecg_labeling",
+        default=f"/home/{getuser()}/ecg_labeling",
         help="Path to directory with c_task.csv label maps.",
     )
     parser.add_argument(
@@ -172,4 +170,4 @@ if __name__ == "__main__":
     # Open the python script, parse the .csv label maps,
     # and create code that creates TensorMaps
     with open(SCRIPT_NAME, "w") as py_file:
-        _write_partners_ecg_tmap_script(py_file, fpath_csv_dir, keys_in_hd5)
+        _write_ecg_tmap_script(py_file, fpath_csv_dir, keys_in_hd5)

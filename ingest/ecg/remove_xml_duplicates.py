@@ -12,7 +12,7 @@ def _parse_args():
 
     parser.add_argument(
         "--src",
-        default="/data/partners_ecg/xml",
+        default="/data/ecg/xml",
         help="Path to directory containing organized source XMLs",
     )
 

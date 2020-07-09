@@ -17,12 +17,12 @@ from ml4cvd.logger import load_config
 from ml4cvd.models import BottleneckType, parent_sort, check_no_bottleneck
 from ml4cvd.defines import IMPUTATION_MEAN, IMPUTATION_RANDOM
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.tensor_maps_partners_ecg import (
+from ml4cvd.tensor_maps_ecg import (
+    build_ecg_tensor_maps,
     build_sts_tensor_maps,
-    build_partners_tensor_maps,
-    build_partners_time_series_tensor_maps,
+    build_ecg_time_series_tensor_maps,
 )
+from ml4cvd.tensor_maps_by_hand import TMAPS
 
 BOTTLENECK_STR_TO_ENUM = {
     "flatten_restructure": BottleneckType.FlattenRestructure,
@@ -719,7 +719,7 @@ def parse_args():
         "--plot_mode",
         default="clinical",
         choices=["clinical", "full"],
-        help="ECG view to plot for partners ECGs.",
+        help="ECG view to plot.",
     )
     parser.add_argument(
         "--embed_visualization",
@@ -773,7 +773,7 @@ def parse_args():
     )
     parser.add_argument(
         "--join_tensors",
-        default=["partners_ecg_patientid_clean"],
+        default=["ecg_patientid_clean"],
         nargs="+",
         help=(
             "TensorMap or column name in csv of value in tensors used in join with"
@@ -782,7 +782,7 @@ def parse_args():
     )
     parser.add_argument(
         "--time_tensor",
-        default="partners_ecg_datetime",
+        default="ecg_datetime",
         help=(
             "TensorMap or column name in csv of value in tensors to perform time"
             " cross-ref on. Time cross referencing is optional."
@@ -895,7 +895,7 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     if name in TMAPS:
         return TMAPS[name]
 
-    TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
+    TMAPS.update(build_ecg_tensor_maps(needed_tensor_maps))
     if name in TMAPS:
         return TMAPS[name]
 
@@ -903,21 +903,21 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     if name in TMAPS:
         return TMAPS[name]
 
-    TMAPS.update(build_partners_time_series_tensor_maps(needed_tensor_maps))
+    TMAPS.update(build_ecg_time_series_tensor_maps(needed_tensor_maps))
     if name in TMAPS:
         return TMAPS[name]
 
     # Imports: first party
-    from ml4cvd.tensor_maps_partners_ecg import TMAPS as partners_tmaps
+    from ml4cvd.tensor_maps_ecg import TMAPS as _ecg_tmaps
 
-    TMAPS.update(partners_tmaps)
+    TMAPS.update(_ecg_tmaps)
     if name in TMAPS:
         return TMAPS[name]
 
     # Imports: first party
-    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
+    from ml4cvd.tensor_maps_ecg_labels import TMAPS as _ecg_label_tmaps
 
-    TMAPS.update(partners_label_tmaps)
+    TMAPS.update(_ecg_label_tmaps)
     if name in TMAPS:
         return TMAPS[name]
 

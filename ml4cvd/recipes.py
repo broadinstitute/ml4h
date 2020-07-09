@@ -16,10 +16,10 @@ from ml4cvd.plots import (
     plot_rocs,
     plot_tsne,
     subplot_rocs,
+    plot_muse_ecg,
     plot_scatters,
     plot_ecg_rest_mp,
     subplot_scatters,
-    plot_partners_ecgs,
     plot_roc_per_class,
     plot_saliency_maps,
     evaluate_predictions,
@@ -169,8 +169,8 @@ def run(args):
                 args.output_folder,
                 args.num_workers,
             )
-        elif "plot_partners_ecgs" == args.mode:
-            plot_partners_ecgs(args)
+        elif "plot_muse_ecg" == args.mode:
+            plot_muse_ecg(args)
         elif "tabulate_correlations" == args.mode:
             tabulate_correlations_of_tensors(
                 args.id,

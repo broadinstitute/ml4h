@@ -20,9 +20,9 @@ ArgumentList = List[Union[int, float]]
 Arguments = Dict[str, Union[int, float, ArgumentList]]
 
 DATE_FORMAT = "%Y-%m-%d_%H-%M-%S"
-PARTNERS_DATE_FORMAT = "%m-%d-%Y"
-PARTNERS_TIME_FORMAT = "%H:%M:%S"
-PARTNERS_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
+ECG_DATE_FORMAT = "%m-%d-%Y"
+ECG_TIME_FORMAT = "%H:%M:%S"
+ECG_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 CARDIAC_SURGERY_DATE_FORMAT = "%Y-%m-%d"
 
 EPS = 1e-7

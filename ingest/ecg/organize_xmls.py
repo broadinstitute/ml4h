@@ -46,19 +46,19 @@ def parse_args():
 
     parser.add_argument(
         "--source_xml_folder",
-        default="/data/partners_ecg/xml",
+        default="/data/ecg/xml",
         help="Path to directory containing source XMLs",
     )
 
     parser.add_argument(
         "--destination_xml_folder",
-        default="/data/partners_ecg/dst",
+        default="/data/ecg/xml_organized",
         help="Path to dir to organize XMLs in yyyy-mm dirs",
     )
 
     parser.add_argument(
         "--bad_xml_folder",
-        default="/data/partners_ecg/xml_bad",
+        default="/data/ecg/xml_bad",
         help="Path to directory in which to store malformed XMLs",
     )
 

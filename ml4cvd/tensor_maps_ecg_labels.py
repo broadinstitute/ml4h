@@ -1,14 +1,14 @@
 # Imports: first party
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.tensor_maps_ecg import make_ecg_label, v6_zeros_validator
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.tensor_maps_partners_ecg import v6_zeros_validator, make_partners_ecg_label
 
-TMAPS["partners_ecg_read_md_clean_supranodal_rhythms"] = TensorMap(
-    "partners_ecg_read_md_clean_supranodal_rhythms",
+TMAPS["ecg_read_md_clean_supranodal_rhythms"] = TensorMap(
+    "ecg_read_md_clean_supranodal_rhythms",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -20,7 +20,7 @@ TMAPS["partners_ecg_read_md_clean_supranodal_rhythms"] = TensorMap(
         "atrial_flutter": 7,
         "sinus_rhythm": 8,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "atrial_fibrillation": [
@@ -150,11 +150,11 @@ TMAPS["partners_ecg_read_md_clean_supranodal_rhythms"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_supranodal_rhythms"] = TensorMap(
-    "partners_ecg_read_pc_clean_supranodal_rhythms",
+TMAPS["ecg_read_pc_clean_supranodal_rhythms"] = TensorMap(
+    "ecg_read_pc_clean_supranodal_rhythms",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -166,7 +166,7 @@ TMAPS["partners_ecg_read_pc_clean_supranodal_rhythms"] = TensorMap(
         "atrial_flutter": 7,
         "sinus_rhythm": 8,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "atrial_fibrillation": [
@@ -296,13 +296,13 @@ TMAPS["partners_ecg_read_pc_clean_supranodal_rhythms"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_sinus_rhythm"] = TensorMap(
-    "partners_ecg_read_md_clean_sinus_rhythm",
+TMAPS["ecg_read_md_clean_sinus_rhythm"] = TensorMap(
+    "ecg_read_md_clean_sinus_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"sinus_arrhythmia": 0, "unspecified": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "sinus_arrhythmia": [
@@ -315,13 +315,13 @@ TMAPS["partners_ecg_read_md_clean_sinus_rhythm"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_sinus_rhythm"] = TensorMap(
-    "partners_ecg_read_pc_clean_sinus_rhythm",
+TMAPS["ecg_read_pc_clean_sinus_rhythm"] = TensorMap(
+    "ecg_read_pc_clean_sinus_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"sinus_arrhythmia": 0, "unspecified": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "sinus_arrhythmia": [
@@ -334,13 +334,13 @@ TMAPS["partners_ecg_read_pc_clean_sinus_rhythm"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_atrial_flutter"] = TensorMap(
-    "partners_ecg_read_md_clean_atrial_flutter",
+TMAPS["ecg_read_md_clean_atrial_flutter"] = TensorMap(
+    "ecg_read_md_clean_atrial_flutter",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"fixed_block": 0, "variable_block": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "unspecified": [
@@ -364,13 +364,13 @@ TMAPS["partners_ecg_read_md_clean_atrial_flutter"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_atrial_flutter"] = TensorMap(
-    "partners_ecg_read_pc_clean_atrial_flutter",
+TMAPS["ecg_read_pc_clean_atrial_flutter"] = TensorMap(
+    "ecg_read_pc_clean_atrial_flutter",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"fixed_block": 0, "variable_block": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "unspecified": [
@@ -394,13 +394,13 @@ TMAPS["partners_ecg_read_pc_clean_atrial_flutter"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_ectopic_atrial_rhythm"] = TensorMap(
-    "partners_ecg_read_md_clean_ectopic_atrial_rhythm",
+TMAPS["ecg_read_md_clean_ectopic_atrial_rhythm"] = TensorMap(
+    "ecg_read_md_clean_ectopic_atrial_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"wandering": 0, "unifocal": 1, "multifocal": 2, "unspecified": 3},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "unifocal": [
@@ -463,13 +463,13 @@ TMAPS["partners_ecg_read_md_clean_ectopic_atrial_rhythm"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_rhythm"] = TensorMap(
-    "partners_ecg_read_pc_clean_ectopic_atrial_rhythm",
+TMAPS["ecg_read_pc_clean_ectopic_atrial_rhythm"] = TensorMap(
+    "ecg_read_pc_clean_ectopic_atrial_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"wandering": 0, "unifocal": 1, "multifocal": 2, "unspecified": 3},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "unifocal": [
@@ -532,13 +532,13 @@ TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_rhythm"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_ectopic_atrial_tachycardia"] = TensorMap(
-    "partners_ecg_read_md_clean_ectopic_atrial_tachycardia",
+TMAPS["ecg_read_md_clean_ectopic_atrial_tachycardia"] = TensorMap(
+    "ecg_read_md_clean_ectopic_atrial_tachycardia",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"unifocal": 0, "multifocal": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "unspecified": [
@@ -565,13 +565,13 @@ TMAPS["partners_ecg_read_md_clean_ectopic_atrial_tachycardia"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_tachycardia"] = TensorMap(
-    "partners_ecg_read_pc_clean_ectopic_atrial_tachycardia",
+TMAPS["ecg_read_pc_clean_ectopic_atrial_tachycardia"] = TensorMap(
+    "ecg_read_pc_clean_ectopic_atrial_tachycardia",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"unifocal": 0, "multifocal": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "unspecified": [
@@ -598,13 +598,13 @@ TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_tachycardia"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_svt"] = TensorMap(
-    "partners_ecg_read_md_clean_svt",
+TMAPS["ecg_read_md_clean_svt"] = TensorMap(
+    "ecg_read_md_clean_svt",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"avrt": 0, "avnrt": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "avnrt": [
@@ -627,13 +627,13 @@ TMAPS["partners_ecg_read_md_clean_svt"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_svt"] = TensorMap(
-    "partners_ecg_read_pc_clean_svt",
+TMAPS["ecg_read_pc_clean_svt"] = TensorMap(
+    "ecg_read_pc_clean_svt",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"avrt": 0, "avnrt": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "avnrt": [
@@ -656,13 +656,13 @@ TMAPS["partners_ecg_read_pc_clean_svt"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_afib"] = TensorMap(
-    "partners_ecg_afib",
+TMAPS["ecg_afib"] = TensorMap(
+    "ecg_afib",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"no_atrial_fibrillation": 0, "atrial_fibrillation": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         not_found_key="no_atrial_fibrillation",
         dict_of_list={
@@ -676,13 +676,13 @@ TMAPS["partners_ecg_afib"] = TensorMap(
         },
     ),
 )
-TMAPS["partners_ecg_afib_all"] = TensorMap(
-    "partners_ecg_afib_all",
+TMAPS["ecg_afib_all"] = TensorMap(
+    "ecg_afib_all",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"no_atrial_fibrillation": 0, "atrial_fibrillation": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         not_found_key="no_atrial_fibrillation",
         dict_of_list={
@@ -696,13 +696,13 @@ TMAPS["partners_ecg_afib_all"] = TensorMap(
         },
     ),
 )
-TMAPS["partners_ecg_sinus_rhythm"] = TensorMap(
-    "partners_sinus_rhythm",
+TMAPS["ecg_sinus_rhythm"] = TensorMap(
+    "ecg_sinus_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"sinus_arrhythmia": 0, "unspecified": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "sinus_arrhythmia": [
@@ -714,11 +714,11 @@ TMAPS["partners_ecg_sinus_rhythm"] = TensorMap(
         },
     ),
 )
-TMAPS["partners_ecg_supranodal"] = TensorMap(
-    "partners_ecg_supranodal",
+TMAPS["ecg_supranodal"] = TensorMap(
+    "ecg_supranodal",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -730,7 +730,7 @@ TMAPS["partners_ecg_supranodal"] = TensorMap(
         "atrial_flutter": 7,
         "sinus_rhythm": 8,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -860,11 +860,11 @@ TMAPS["partners_ecg_supranodal"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_supranodal_weighted"] = TensorMap(
-    "partners_ecg_supranodal",
+TMAPS["ecg_supranodal_weighted"] = TensorMap(
+    "ecg_supranodal",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -877,9 +877,9 @@ TMAPS["partners_ecg_supranodal_weighted"] = TensorMap(
         "sinus_rhythm": 8,
     },
     loss=weighted_crossentropy(
-        [20.0, 20.0, 10.0, 20.0, 20.0, 4.0, 1.0, 10.0, 1.0], "partners_supranodal",
+        [20.0, 20.0, 10.0, 20.0, 20.0, 4.0, 1.0, 10.0, 1.0], "ecg_supranodal",
     ),
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -1010,11 +1010,11 @@ TMAPS["partners_ecg_supranodal_weighted"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_supranodal_6"] = TensorMap(
-    "partners_ecg_supranodal_6",
+TMAPS["ecg_supranodal_6"] = TensorMap(
+    "ecg_supranodal_6",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "supraventricular_tachycardia": 0,
         "ectopic_atrial_rhythm": 1,
@@ -1023,7 +1023,7 @@ TMAPS["partners_ecg_supranodal_6"] = TensorMap(
         "sinus_rhythm": 4,
         "unspecified": 5,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -1138,11 +1138,11 @@ TMAPS["partners_ecg_supranodal_6"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_supranodal_6_v6_valid"] = TensorMap(
-    "partners_ecg_supranodal_6",
+TMAPS["ecg_supranodal_6_v6_valid"] = TensorMap(
+    "ecg_supranodal_6",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     validator=v6_zeros_validator,
     channel_map={
         "supraventricular_tachycardia": 0,
@@ -1152,7 +1152,7 @@ TMAPS["partners_ecg_supranodal_6_v6_valid"] = TensorMap(
         "sinus_rhythm": 4,
         "unspecified": 5,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean", "testreason"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -1267,11 +1267,11 @@ TMAPS["partners_ecg_supranodal_6_v6_valid"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_supranodal_6_weighted"] = TensorMap(
-    "partners_ecg_supranodal_6",
+TMAPS["ecg_supranodal_6_weighted"] = TensorMap(
+    "ecg_supranodal_6",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "supraventricular_tachycardia": 0,
         "ectopic_atrial_rhythm": 1,
@@ -1280,10 +1280,8 @@ TMAPS["partners_ecg_supranodal_6_weighted"] = TensorMap(
         "sinus_rhythm": 4,
         "unspecified": 5,
     },
-    loss=weighted_crossentropy(
-        [70.0, 10.0, 50.0, 7.0, 1.0, 10.0], "partners_supranodal_6",
-    ),
-    tensor_from_file=make_partners_ecg_label(
+    loss=weighted_crossentropy([70.0, 10.0, 50.0, 7.0, 1.0, 10.0], "ecg_supranodal_6"),
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -1398,10 +1396,10 @@ TMAPS["partners_ecg_supranodal_6_weighted"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_read_md_clean_supranodal_rhythms_newest"] = TensorMap(
-    "partners_ecg_read_md_clean_supranodal_rhythms_newest",
+TMAPS["ecg_read_md_clean_supranodal_rhythms_newest"] = TensorMap(
+    "ecg_read_md_clean_supranodal_rhythms_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -1413,7 +1411,7 @@ TMAPS["partners_ecg_read_md_clean_supranodal_rhythms_newest"] = TensorMap(
         "atrial_flutter": 7,
         "sinus_rhythm": 8,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "atrial_fibrillation": [
@@ -1543,10 +1541,10 @@ TMAPS["partners_ecg_read_md_clean_supranodal_rhythms_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_supranodal_rhythms_newest"] = TensorMap(
-    "partners_ecg_read_pc_clean_supranodal_rhythms_newest",
+TMAPS["ecg_read_pc_clean_supranodal_rhythms_newest"] = TensorMap(
+    "ecg_read_pc_clean_supranodal_rhythms_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -1558,7 +1556,7 @@ TMAPS["partners_ecg_read_pc_clean_supranodal_rhythms_newest"] = TensorMap(
         "atrial_flutter": 7,
         "sinus_rhythm": 8,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "atrial_fibrillation": [
@@ -1688,12 +1686,12 @@ TMAPS["partners_ecg_read_pc_clean_supranodal_rhythms_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_sinus_rhythm_newest"] = TensorMap(
-    "partners_ecg_read_md_clean_sinus_rhythm_newest",
+TMAPS["ecg_read_md_clean_sinus_rhythm_newest"] = TensorMap(
+    "ecg_read_md_clean_sinus_rhythm_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"sinus_arrhythmia": 0, "unspecified": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "sinus_arrhythmia": [
@@ -1706,12 +1704,12 @@ TMAPS["partners_ecg_read_md_clean_sinus_rhythm_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_sinus_rhythm_newest"] = TensorMap(
-    "partners_ecg_read_pc_clean_sinus_rhythm_newest",
+TMAPS["ecg_read_pc_clean_sinus_rhythm_newest"] = TensorMap(
+    "ecg_read_pc_clean_sinus_rhythm_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"sinus_arrhythmia": 0, "unspecified": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "sinus_arrhythmia": [
@@ -1724,12 +1722,12 @@ TMAPS["partners_ecg_read_pc_clean_sinus_rhythm_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_atrial_flutter_newest"] = TensorMap(
-    "partners_ecg_read_md_clean_atrial_flutter_newest",
+TMAPS["ecg_read_md_clean_atrial_flutter_newest"] = TensorMap(
+    "ecg_read_md_clean_atrial_flutter_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"fixed_block": 0, "variable_block": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "unspecified": [
@@ -1753,12 +1751,12 @@ TMAPS["partners_ecg_read_md_clean_atrial_flutter_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_atrial_flutter_newest"] = TensorMap(
-    "partners_ecg_read_pc_clean_atrial_flutter_newest",
+TMAPS["ecg_read_pc_clean_atrial_flutter_newest"] = TensorMap(
+    "ecg_read_pc_clean_atrial_flutter_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"fixed_block": 0, "variable_block": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "unspecified": [
@@ -1782,12 +1780,12 @@ TMAPS["partners_ecg_read_pc_clean_atrial_flutter_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_ectopic_atrial_rhythm_newest"] = TensorMap(
-    "partners_ecg_read_md_clean_ectopic_atrial_rhythm_newest",
+TMAPS["ecg_read_md_clean_ectopic_atrial_rhythm_newest"] = TensorMap(
+    "ecg_read_md_clean_ectopic_atrial_rhythm_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"wandering": 0, "unifocal": 1, "multifocal": 2, "unspecified": 3},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "unifocal": [
@@ -1850,12 +1848,12 @@ TMAPS["partners_ecg_read_md_clean_ectopic_atrial_rhythm_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_rhythm_newest"] = TensorMap(
-    "partners_ecg_read_pc_clean_ectopic_atrial_rhythm_newest",
+TMAPS["ecg_read_pc_clean_ectopic_atrial_rhythm_newest"] = TensorMap(
+    "ecg_read_pc_clean_ectopic_atrial_rhythm_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"wandering": 0, "unifocal": 1, "multifocal": 2, "unspecified": 3},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "unifocal": [
@@ -1918,12 +1916,12 @@ TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_rhythm_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_ectopic_atrial_tachycardia_newest"] = TensorMap(
-    "partners_ecg_read_md_clean_ectopic_atrial_tachycardia_newest",
+TMAPS["ecg_read_md_clean_ectopic_atrial_tachycardia_newest"] = TensorMap(
+    "ecg_read_md_clean_ectopic_atrial_tachycardia_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"unifocal": 0, "multifocal": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "unspecified": [
@@ -1950,12 +1948,12 @@ TMAPS["partners_ecg_read_md_clean_ectopic_atrial_tachycardia_newest"] = TensorMa
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_tachycardia_newest"] = TensorMap(
-    "partners_ecg_read_pc_clean_ectopic_atrial_tachycardia_newest",
+TMAPS["ecg_read_pc_clean_ectopic_atrial_tachycardia_newest"] = TensorMap(
+    "ecg_read_pc_clean_ectopic_atrial_tachycardia_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"unifocal": 0, "multifocal": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "unspecified": [
@@ -1982,12 +1980,12 @@ TMAPS["partners_ecg_read_pc_clean_ectopic_atrial_tachycardia_newest"] = TensorMa
     ),
 )
 
-TMAPS["partners_ecg_read_md_clean_svt_newest"] = TensorMap(
-    "partners_ecg_read_md_clean_svt_newest",
+TMAPS["ecg_read_md_clean_svt_newest"] = TensorMap(
+    "ecg_read_md_clean_svt_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"avrt": 0, "avnrt": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "avnrt": [
@@ -2010,12 +2008,12 @@ TMAPS["partners_ecg_read_md_clean_svt_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_read_pc_clean_svt_newest"] = TensorMap(
-    "partners_ecg_read_pc_clean_svt_newest",
+TMAPS["ecg_read_pc_clean_svt_newest"] = TensorMap(
+    "ecg_read_pc_clean_svt_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"avrt": 0, "avnrt": 1, "unspecified": 2},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "avnrt": [
@@ -2038,12 +2036,12 @@ TMAPS["partners_ecg_read_pc_clean_svt_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_afib_newest"] = TensorMap(
-    "partners_ecg_afib_newest",
+TMAPS["ecg_afib_newest"] = TensorMap(
+    "ecg_afib_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"no_atrial_fibrillation": 0, "atrial_fibrillation": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         not_found_key="no_atrial_fibrillation",
         dict_of_list={
@@ -2057,12 +2055,12 @@ TMAPS["partners_ecg_afib_newest"] = TensorMap(
         },
     ),
 )
-TMAPS["partners_ecg_afib_all_newest"] = TensorMap(
-    "partners_ecg_afib_all_newest",
+TMAPS["ecg_afib_all_newest"] = TensorMap(
+    "ecg_afib_all_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"no_atrial_fibrillation": 0, "atrial_fibrillation": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         not_found_key="no_atrial_fibrillation",
         dict_of_list={
@@ -2076,12 +2074,12 @@ TMAPS["partners_ecg_afib_all_newest"] = TensorMap(
         },
     ),
 )
-TMAPS["partners_ecg_sinus_rhythm_newest"] = TensorMap(
-    "partners_sinus_rhythm_newest",
+TMAPS["ecg_sinus_rhythm_newest"] = TensorMap(
+    "ecg_sinus_rhythm_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={"sinus_arrhythmia": 0, "unspecified": 1},
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "sinus_arrhythmia": [
@@ -2093,10 +2091,10 @@ TMAPS["partners_ecg_sinus_rhythm_newest"] = TensorMap(
         },
     ),
 )
-TMAPS["partners_ecg_supranodal_newest"] = TensorMap(
-    "partners_ecg_supranodal_newest",
+TMAPS["ecg_supranodal_newest"] = TensorMap(
+    "ecg_supranodal_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -2108,7 +2106,7 @@ TMAPS["partners_ecg_supranodal_newest"] = TensorMap(
         "atrial_flutter": 7,
         "sinus_rhythm": 8,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -2238,10 +2236,10 @@ TMAPS["partners_ecg_supranodal_newest"] = TensorMap(
     ),
 )
 
-TMAPS["partners_ecg_supranodal_weighted_newest"] = TensorMap(
-    "partners_ecg_supranodal_newest",
+TMAPS["ecg_supranodal_weighted_newest"] = TensorMap(
+    "ecg_supranodal_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "retrograde_atrial_activation": 0,
         "narrow_qrs_tachycardia": 1,
@@ -2254,9 +2252,9 @@ TMAPS["partners_ecg_supranodal_weighted_newest"] = TensorMap(
         "sinus_rhythm": 8,
     },
     loss=weighted_crossentropy(
-        [20.0, 20.0, 10.0, 20.0, 20.0, 4.0, 1.0, 10.0, 1.0], "partners_supranodal",
+        [20.0, 20.0, 10.0, 20.0, 20.0, 4.0, 1.0, 10.0, 1.0], "ecg_supranodal",
     ),
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -2387,10 +2385,10 @@ TMAPS["partners_ecg_supranodal_weighted_newest"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_supranodal_6_newest"] = TensorMap(
-    "partners_ecg_supranodal_6_newest",
+TMAPS["ecg_supranodal_6_newest"] = TensorMap(
+    "ecg_supranodal_6_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "supraventricular_tachycardia": 0,
         "ectopic_atrial_rhythm": 1,
@@ -2399,7 +2397,7 @@ TMAPS["partners_ecg_supranodal_6_newest"] = TensorMap(
         "sinus_rhythm": 4,
         "unspecified": 5,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -2514,10 +2512,10 @@ TMAPS["partners_ecg_supranodal_6_newest"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_supranodal_6_v6_valid_newest"] = TensorMap(
-    "partners_ecg_supranodal_6_newest",
+TMAPS["ecg_supranodal_6_v6_valid_newest"] = TensorMap(
+    "ecg_supranodal_6_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     validator=v6_zeros_validator,
     channel_map={
         "supraventricular_tachycardia": 0,
@@ -2527,7 +2525,7 @@ TMAPS["partners_ecg_supranodal_6_v6_valid_newest"] = TensorMap(
         "sinus_rhythm": 4,
         "unspecified": 5,
     },
-    tensor_from_file=make_partners_ecg_label(
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean", "testreason"],
         dict_of_list={
             "atrial_fibrillation": [
@@ -2642,10 +2640,10 @@ TMAPS["partners_ecg_supranodal_6_v6_valid_newest"] = TensorMap(
 )
 
 
-TMAPS["partners_ecg_supranodal_6_weighted_newest"] = TensorMap(
-    "partners_ecg_supranodal_6_newest",
+TMAPS["ecg_supranodal_6_weighted_newest"] = TensorMap(
+    "ecg_supranodal_6_newest",
     interpretation=Interpretation.CATEGORICAL,
-    path_prefix="partners_ecg_rest",
+    path_prefix="ecg_rest",
     channel_map={
         "supraventricular_tachycardia": 0,
         "ectopic_atrial_rhythm": 1,
@@ -2654,10 +2652,8 @@ TMAPS["partners_ecg_supranodal_6_weighted_newest"] = TensorMap(
         "sinus_rhythm": 4,
         "unspecified": 5,
     },
-    loss=weighted_crossentropy(
-        [70.0, 10.0, 50.0, 7.0, 1.0, 10.0], "partners_supranodal_6",
-    ),
-    tensor_from_file=make_partners_ecg_label(
+    loss=weighted_crossentropy([70.0, 10.0, 50.0, 7.0, 1.0, 10.0], "ecg_supranodal_6"),
+    tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "atrial_fibrillation": [

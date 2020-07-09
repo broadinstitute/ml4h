@@ -47,9 +47,9 @@ from ml4cvd.defines import (
     TENSOR_EXT,
     ECG_REST_LEADS,
     HD5_GROUP_CHAR,
-    PARTNERS_DATE_FORMAT,
+    ECG_DATE_FORMAT,
+    ECG_DATETIME_FORMAT,
     ECG_REST_MEDIAN_LEADS,
-    PARTNERS_DATETIME_FORMAT,
 )
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
 from ml4cvd.TensorMap import TensorMap
@@ -1471,14 +1471,14 @@ def plot_ecg(data, label, prefix="./figures/"):
     logging.info(f"Saved ECG plot at: {figure_path}")
 
 
-def _plot_partners_text(
+def _plot_ecg_text(
     data: Dict[str, Union[np.ndarray, str, Dict]], fig: plt.Figure, w: float, h: float,
 ) -> None:
     # top text
-    dt = datetime.strptime(data["datetime"], PARTNERS_DATETIME_FORMAT)
+    dt = datetime.strptime(data["datetime"], ECG_DATETIME_FORMAT)
     dob = data["dob"]
     if dob != "":
-        dob = datetime.strptime(dob, PARTNERS_DATE_FORMAT)
+        dob = datetime.strptime(dob, ECG_DATE_FORMAT)
         dob = f"{dob:%d-%b-%Y}".upper()
     age = -1
     if not np.isnan(data["age"]):
@@ -1536,7 +1536,7 @@ def _plot_partners_text(
     fig.text(7.63 / w, 6.25 / h, f"Electronically Signed By: {''}", weight="bold")
 
 
-def _plot_partners_full(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
+def _plot_ecg_full(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
     full_voltage = np.full((12, 2500), np.nan)
     for i, lead in enumerate(voltage):
         full_voltage[i] = voltage[lead]
@@ -1565,7 +1565,7 @@ def _plot_partners_full(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
         )
 
 
-def _plot_partners_clinical(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
+def _plot_ecg_clinical(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> None:
     # get voltage in clinical chunks
     clinical_voltage = np.full((6, 2500), np.nan)
     halfgap = 5
@@ -1745,7 +1745,7 @@ def _plot_partners_clinical(voltage: Dict[str, np.ndarray], ax: plt.Axes) -> Non
             )
 
 
-def _plot_partners_figure(
+def _plot_ecg_figure(
     data: Dict[str, Union[np.ndarray, str, Dict]],
     plot_signal_function: Callable[[Dict[str, np.ndarray], plt.Axes], None],
     plot_mode: str,
@@ -1759,7 +1759,7 @@ def _plot_partners_figure(
     fig = plt.figure(figsize=(w, h), dpi=100)
 
     # patient info and ecg text
-    _plot_partners_text(data, fig, w, h)
+    _plot_ecg_text(data, fig, w, h)
 
     # define plot area in inches
     left = 0.17
@@ -1833,30 +1833,30 @@ def _plot_partners_figure(
     plt.close(fig)
 
 
-def plot_partners_ecgs(args):
+def plot_muse_ecg(args):
     plot_tensors = [
-        "partners_ecg_patientid",
-        "partners_ecg_firstname",
-        "partners_ecg_lastname",
-        "partners_ecg_sex",
-        "partners_ecg_dob",
-        "partners_ecg_age",
-        "partners_ecg_datetime",
-        "partners_ecg_sitename",
-        "partners_ecg_location",
-        "partners_ecg_read_md",
-        "partners_ecg_taxis_md",
-        "partners_ecg_rate_md",
-        "partners_ecg_pr_md",
-        "partners_ecg_qrs_md",
-        "partners_ecg_qt_md",
-        "partners_ecg_paxis_md",
-        "partners_ecg_raxis_md",
-        "partners_ecg_qtc_md",
+        "ecg_patientid",
+        "ecg_firstname",
+        "ecg_lastname",
+        "ecg_sex",
+        "ecg_dob",
+        "ecg_age",
+        "ecg_datetime",
+        "ecg_sitename",
+        "ecg_location",
+        "ecg_read_md",
+        "ecg_taxis_md",
+        "ecg_rate_md",
+        "ecg_pr_md",
+        "ecg_qrs_md",
+        "ecg_qt_md",
+        "ecg_paxis_md",
+        "ecg_raxis_md",
+        "ecg_qtc_md",
     ]
-    voltage_tensor = "partners_ecg_2500_raw"
+    voltage_tensor = "ecg_2500_raw"
     # Imports: first party
-    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS
+    from ml4cvd.tensor_maps_ecg import TMAPS
 
     tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
     tensor_paths = [
@@ -1866,9 +1866,9 @@ def plot_partners_ecgs(args):
     ]
 
     if "clinical" == args.plot_mode:
-        plot_signal_function = _plot_partners_clinical
+        plot_signal_function = _plot_ecg_clinical
     elif "full" == args.plot_mode:
-        plot_signal_function = _plot_partners_full
+        plot_signal_function = _plot_ecg_full
     else:
         raise ValueError(f"Unsupported plot mode: {args.plot_mode}")
 
@@ -1880,7 +1880,7 @@ def plot_partners_ecgs(args):
                 skip_hd5 = False
                 tdict = defaultdict(dict)
                 for tm in tensor_maps_in:
-                    key = tm.name.split("partners_ecg_")[1]
+                    key = tm.name.split("ecg_")[1]
                     try:
                         tensors = tm.tensor_from_file(tm, hd5)
 
@@ -1923,7 +1923,7 @@ def plot_partners_ecgs(args):
 
                 # plot each ecg
                 for i in tdict:
-                    _plot_partners_figure(
+                    _plot_ecg_figure(
                         data=tdict[i],
                         plot_signal_function=plot_signal_function,
                         plot_mode=args.plot_mode,
