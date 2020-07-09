@@ -58,7 +58,7 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
     <Grid CollectionType="Temporal" GridType="Collection" Name="Collection">""")
     if isinstance(vtk_object, vtk.vtkStructuredGrid):
         extent = vtk_object.GetExtent()
-        arr_name = vtk_object.GetCellData().GetArray(0).GetName().split('__')[0]
+        arr_name = '_'.join(vtk_object.GetCellData().GetArray(0).GetName().split('_')[:-1])
         ff_hd5.create_dataset('points', data=arr_pts, compression="gzip", compression_opts=9)
         for t in range(MRI_FRAMES):
             ff_xml.write(f"""
@@ -72,7 +72,7 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
           <DataItem DataType="Float" Dimensions="{extent[5]} {extent[1]} {extent[3]}" Format="HDF" Precision="8">{filename}.hd5:{arr_name}_{t}</DataItem>
         </Attribute>
       </Grid>""")
-            arr = vtk.util.numpy_support.vtk_to_numpy(vtk_object.GetCellData().GetArray(f'{arr_name}__{t}'))
+            arr = vtk.util.numpy_support.vtk_to_numpy(vtk_object.GetCellData().GetArray(f'{arr_name}_{t}'))
             arr = arr.reshape(extent[5], extent[1], extent[3])
             ff_hd5.create_dataset(f'{arr_name}_{t}', data=arr, compression="gzip", compression_opts=9)        
     elif isinstance(vtk_object, vtk.vtkPolyData):
@@ -100,107 +100,110 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
     ff_xml.close()
     ff_hd5.close()         
 
-from scipy.spatial import ConvexHull
-volumes = []
-petersen_processed = []
-for i, idx in enumerate(petersen_idxs):
-    if i < int(sys.argv[1]): 
-        continue
-    if i > int(sys.argv[1]): 
-        break
-    
-    with h5py.File(f'/mnt/disks/sax-and-lax-zip-2019-09-30/unzip-sax-and-lax-44k-2020-06-05/{idx}.hd5', 'r') as ff:
-        dss = []
-        for view in ['2ch', '3ch', '4ch']:
-            dss.append(_mri_hd5_to_structured_grids(ff, f'cine_segmented_lax_{view}_annotated_',
-                                                    view_name=f'cine_segmented_lax_{view}', concatenate=True,
-                                                    save_path=None, order='F'))
-            to_xdmf(dss[-1][0], f'{idx}_{view}')            
 
-        for t in range(MRI_FRAMES):
-            pts = []
-            normals = []
-            for ds, view, la_value in zip(dss, ['2ch', '3ch', '4ch'],
-                                            [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                            MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                            MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
-                centers = vtk.vtkCellCenters()
-                centers.SetInputData(ds[0])
-                centers.Update()
-                arr_annot = ns.vtk_to_numpy(ds[0].GetCellData().GetArray(f'cine_segmented_lax_{view}_annotated__{t}'))
-                idx_view = np.where(arr_annot == la_value)
-                pts_view = ns.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())[idx_view]
-                pts_view_2d = project_3dpts_plane(pts_view)
-                n_view = np.cross(pts_view[10] - pts_view[0], pts_view[-1] - pts_view[0])
-                n_view /= np.linalg.norm(n_view)
-                hull_view = ConvexHull(pts_view_2d[:, :-1])
-                pts_hull_view = pts_view[hull_view.vertices]
-                pts1_hull_view = np.zeros_like(pts_hull_view)
-                pts1_hull_view[:-1] = pts_hull_view[1:]
-                pts1_hull_view[-1] = pts_hull_view[0]
-                n_hull_view = np.cross(pts1_hull_view-pts_hull_view, n_view)
-                n_hull_view /= np.linalg.norm(n_hull_view, axis=1).reshape(-1, 1)
-                n1_hull_view = np.zeros_like(n_hull_view)
-                n1_hull_view[1:] = n_hull_view[:-1]
-                n1_hull_view[0] = n_hull_view[-1]
-                n_hull_view = -0.5*(n_hull_view + n1_hull_view)    
-                pts.append(pts_hull_view)
-                normals.append(n_hull_view)
-            pts = np.vstack(pts)
-            normals = np.vstack(normals)
-            faces, vertices = poisson_reconstruction(pts, normals, depth=16)
-            faces_tmp = np.zeros((len(faces), 4), dtype=np.int64)
-            faces_tmp[:, 0] = 3
-            faces_tmp[:, 1:] = faces 
-            polydata_points = vtk.vtkPoints()
-            polydata_points.SetData(ns.numpy_to_vtk(vertices))
-            polydata_cells = vtk.vtkCellArray()
-            polydata_cells.SetNumberOfCells(len(faces))
-            polydata_cells.SetCells(len(faces), ns.numpy_to_vtkIdTypeArray(faces_tmp.ravel()))
-            polydata = vtk.vtkPolyData()
-            polydata.SetPoints(polydata_points)
-            polydata.SetPolys(polydata_cells)
-            boundary_edges = vtk.vtkFeatureEdges()
-            boundary_edges.SetInputData(polydata)
-            boundary_edges.BoundaryEdgesOn()
-            boundary_edges.FeatureEdgesOff()
-            boundary_edges.NonManifoldEdgesOff()
-            boundary_edges.ManifoldEdgesOff()    
-            boundary_strips = vtk.vtkStripper()
-            boundary_strips.SetInputConnection(boundary_edges.GetOutputPort())
-            boundary_strips.Update()
-            boundary_poly = vtk.vtkPolyData()
-            boundary_poly.SetPoints(boundary_strips.GetOutput().GetPoints())
-            boundary_poly.SetPolys(boundary_strips.GetOutput().GetLines())
-            
-            append = vtk.vtkAppendPolyData()
-            append.UserManagedInputsOn()
-            append.SetNumberOfInputs(2)
-            append.SetInputDataByNumber(0, polydata)
-            append.SetInputDataByNumber(1, boundary_poly)
-            append.Update()
-            
-            clean = vtk.vtkCleanPolyData()
-            clean.ConvertLinesToPointsOff()
-            clean.ConvertPolysToLinesOff()
-            clean.ConvertStripsToPolysOff()
-            clean.PointMergingOn()
-            clean.SetInputConnection(append.GetOutputPort())
-            clean.Update()
-            triangle_filter = vtk.vtkTriangleFilter()
-            triangle_filter.SetInputConnection(clean.GetOutputPort())
-            triangle_filter.Update()
-            
-            append = False if (t == 0) else True
-            write_footer = True if (t == MRI_FRAMES - 1) else False
-            to_xdmf(triangle_filter.GetOutput(), f'{idx}_atrium', append=append, 
-                    append_time=t, write_footer=write_footer)
-
-            mass = vtk.vtkMassProperties()
-            mass.SetInputConnection(triangle_filter.GetOutputPort())
-            mass.Update()
-            petersen.loc[i, f'LA_poisson_{t}'] = mass.GetVolume()
-    petersen_processed.append(i)
-
-petersen.loc[petersen_processed].to_csv(f'petersen_processed_{i-1}.csv', sep='\t', index=False)
+if __name__ == '__main__':
+    from scipy.spatial import ConvexHull
+    volumes = []
+    petersen_processed = []
+    for i, idx in enumerate(petersen_idxs):
         
+        if i < int(sys.argv[1]): 
+            continue
+        if i > int(sys.argv[1]): 
+            break
+        
+        with h5py.File(f'/mnt/disks/sax-and-lax-zip-2019-09-30/unzip-sax-and-lax-44k-2020-06-05/{idx}.hd5', 'r') as ff:
+            dss = []
+            for view in ['2ch', '3ch', '4ch']:
+                dss.append(_mri_hd5_to_structured_grids(ff, f'cine_segmented_lax_{view}_annotated_',
+                                                        view_name=f'cine_segmented_lax_{view}', concatenate=True,
+                                                        save_path=None, order='F'))
+                to_xdmf(dss[-1][0], f'{idx}_{view}')            
+
+            for t in range(MRI_FRAMES):
+                pts = []
+                normals = []
+                for ds, view, la_value in zip(dss, ['2ch', '3ch', '4ch'],
+                                                [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                                                MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                                                MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
+                    centers = vtk.vtkCellCenters()
+                    centers.SetInputData(ds[0])
+                    centers.Update()
+                    arr_annot = ns.vtk_to_numpy(ds[0].GetCellData().GetArray(f'cine_segmented_lax_{view}_annotated__{t}'))
+                    idx_view = np.where(arr_annot == la_value)
+                    pts_view = ns.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())[idx_view]
+                    pts_view_2d = project_3dpts_plane(pts_view)
+                    n_view = np.cross(pts_view[10] - pts_view[0], pts_view[-1] - pts_view[0])
+                    n_view /= np.linalg.norm(n_view)
+                    hull_view = ConvexHull(pts_view_2d[:, :-1])
+                    pts_hull_view = pts_view[hull_view.vertices]
+                    pts1_hull_view = np.zeros_like(pts_hull_view)
+                    pts1_hull_view[:-1] = pts_hull_view[1:]
+                    pts1_hull_view[-1] = pts_hull_view[0]
+                    n_hull_view = np.cross(pts1_hull_view-pts_hull_view, n_view)
+                    n_hull_view /= np.linalg.norm(n_hull_view, axis=1).reshape(-1, 1)
+                    n1_hull_view = np.zeros_like(n_hull_view)
+                    n1_hull_view[1:] = n_hull_view[:-1]
+                    n1_hull_view[0] = n_hull_view[-1]
+                    n_hull_view = -0.5*(n_hull_view + n1_hull_view)    
+                    pts.append(pts_hull_view)
+                    normals.append(n_hull_view)
+                pts = np.vstack(pts)
+                normals = np.vstack(normals)
+                faces, vertices = poisson_reconstruction(pts, normals, depth=16)
+                faces_tmp = np.zeros((len(faces), 4), dtype=np.int64)
+                faces_tmp[:, 0] = 3
+                faces_tmp[:, 1:] = faces 
+                polydata_points = vtk.vtkPoints()
+                polydata_points.SetData(ns.numpy_to_vtk(vertices))
+                polydata_cells = vtk.vtkCellArray()
+                polydata_cells.SetNumberOfCells(len(faces))
+                polydata_cells.SetCells(len(faces), ns.numpy_to_vtkIdTypeArray(faces_tmp.ravel()))
+                polydata = vtk.vtkPolyData()
+                polydata.SetPoints(polydata_points)
+                polydata.SetPolys(polydata_cells)
+                boundary_edges = vtk.vtkFeatureEdges()
+                boundary_edges.SetInputData(polydata)
+                boundary_edges.BoundaryEdgesOn()
+                boundary_edges.FeatureEdgesOff()
+                boundary_edges.NonManifoldEdgesOff()
+                boundary_edges.ManifoldEdgesOff()    
+                boundary_strips = vtk.vtkStripper()
+                boundary_strips.SetInputConnection(boundary_edges.GetOutputPort())
+                boundary_strips.Update()
+                boundary_poly = vtk.vtkPolyData()
+                boundary_poly.SetPoints(boundary_strips.GetOutput().GetPoints())
+                boundary_poly.SetPolys(boundary_strips.GetOutput().GetLines())
+                
+                append = vtk.vtkAppendPolyData()
+                append.UserManagedInputsOn()
+                append.SetNumberOfInputs(2)
+                append.SetInputDataByNumber(0, polydata)
+                append.SetInputDataByNumber(1, boundary_poly)
+                append.Update()
+                
+                clean = vtk.vtkCleanPolyData()
+                clean.ConvertLinesToPointsOff()
+                clean.ConvertPolysToLinesOff()
+                clean.ConvertStripsToPolysOff()
+                clean.PointMergingOn()
+                clean.SetInputConnection(append.GetOutputPort())
+                clean.Update()
+                triangle_filter = vtk.vtkTriangleFilter()
+                triangle_filter.SetInputConnection(clean.GetOutputPort())
+                triangle_filter.Update()
+                
+                append = False if (t == 0) else True
+                write_footer = True if (t == MRI_FRAMES - 1) else False
+                to_xdmf(triangle_filter.GetOutput(), f'{idx}_atrium', append=append, 
+                        append_time=t, write_footer=write_footer)
+
+                mass = vtk.vtkMassProperties()
+                mass.SetInputConnection(triangle_filter.GetOutputPort())
+                mass.Update()
+                petersen.loc[i, f'LA_poisson_{t}'] = mass.GetVolume()
+        petersen_processed.append(i)
+
+    petersen.loc[petersen_processed].to_csv(f'petersen_processed_{i-1}.csv', sep='\t', index=False)
+            
