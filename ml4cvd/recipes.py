@@ -277,15 +277,11 @@ def _unseen_batch(batch, visited_paths: Set[str]):
 
 
 def _infer_models(
-        models: List[Callable], model_ids: List[str], inference_tsv: str, tensors: str,
+        models: List[Callable], model_ids: List[str], inference_tsv: str, tensor_paths: List[str],
         tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
         num_workers: int, batch_size: int,
 ):
     count = 0
-    tensor_paths = [
-        os.path.join(tensors, tp) for tp in sorted(os.listdir(tensors))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
-    ]
     tensor_paths_set = set(tensor_paths)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in tensor_maps_out]
     generate_test = None
