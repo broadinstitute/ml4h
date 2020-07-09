@@ -640,7 +640,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--optimizer", default="radam", type=str, help="Optimizer for model training",
+        "--optimizer", default="adam", type=str, help="Optimizer for model training",
     )
     parser.add_argument(
         "--learning_rate_schedule",
