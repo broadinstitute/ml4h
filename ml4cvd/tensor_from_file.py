@@ -1393,7 +1393,7 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
     elif isinstance(hd5[hd5_path], h5py.Dataset):
         img_shape = hd5[hd5_path].shape
         if dest_shape is None:
-            dest_shape = img_shape
+            dest_shape = (max(img_shape), max(img_shape))
         nslices = 1
         shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
