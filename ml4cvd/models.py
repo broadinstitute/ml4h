@@ -1006,9 +1006,11 @@ def make_multimodal_multitask_model(
             pre_decoder_shapes=pre_decoder_shapes,
         )
     elif bottleneck_type == BottleneckType.NoBottleNeck:
-        # if not check_no_bottleneck(u_connect, tensor_maps_out):
-        #     raise ValueError(f'To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.')
-        bottleneck = UConnectBottleNeck(u_connect)
+        if not check_no_bottleneck(u_connect, tensor_maps_out):
+            bottleneck = lambda x: x
+            #raise ValueError(f'To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.')
+        else:
+            bottleneck = UConnectBottleNeck(u_connect)
     else:
         raise NotImplementedError(f'Unknown BottleneckType {bottleneck_type}.')
 
