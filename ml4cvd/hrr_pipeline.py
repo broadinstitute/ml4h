@@ -55,6 +55,9 @@ PRETEST_LABEL_FILE = os.path.join(OUTPUT_FOLDER, f'hr_pretest_training_data.csv'
 PRETEST_TRAINING_DUR = 10  # number of seconds of pretest ECG used for prediction
 VALIDATION_SPLIT = .1
 
+DROPOUT = True
+BATCH_NORM = True
+
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
 PRETEST_INFERENCE_NAME = 'pretest_model_inference.tsv'
@@ -442,15 +445,15 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
     return hrr.mean(), hrr.std()
 
 
-ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'conv_dropout', 'shift'])
+ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift'])
 
 
 MODEL_SETTINGS = [
-    ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'conv_dropout': False, 'shift': False}),
-    ModelSetting(**{'model_id': 'dropout_noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': False}),
-    ModelSetting(**{'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True}),
-    ModelSetting(**{'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True}),
-    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'conv_dropout': True, 'shift': True}),
+    ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False}),
+    ModelSetting(**{'model_id': 'noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': False}),
+    ModelSetting(**{'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': True}),
+    ModelSetting(**{'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
+    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
 ]
 
 
@@ -487,20 +490,20 @@ def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
         learning_rate=1e-3,
         bottleneck_type=BottleneckType.FlattenRestructure,
         optimizer='radam',
-        dense_layers=[16, 64],
+        dense_layers=[64],
         conv_layers=[32],
-        dense_blocks=[32, 24, 16],
+        dense_blocks=[16, 24, 32],
         conv_type='conv',
-        conv_normalize='layer_norm',
-        conv_x=[16],
+        conv_normalize='batch_norm' if BATCH_NORM else None,
+        conv_x=[64],
         conv_y=[1],
         conv_z=[1],
         pool_type='max',
         pool_x=2,
         block_size=3,
         model_file=model_path if load_model else None,
-        conv_regularize='spatial_dropout' if setting.conv_dropout else None,
-        conv_regularize_rate=.5 if setting.conv_dropout else 0,
+        conv_regularize='spatial_dropout' if DROPOUT else None,
+        conv_regularize_rate=.1 if DROPOUT else 0,
     )
 
 
@@ -523,9 +526,9 @@ def _train_pretest_model(
         setting: ModelSetting, split_idx: int,
 ) -> Tuple[Any, Dict]:
     workers = cpu_count() * 2
-    patience = 8
+    patience = 5
     epochs = 200
-    batch_size = 128
+    batch_size = 256
 
     train_csv = _split_train_name(split_idx)
     valid_csv = _split_valid_name(split_idx)
