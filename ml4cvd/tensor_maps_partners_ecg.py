@@ -1371,6 +1371,7 @@ def build_legacy_ecg(
         return _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
     return tensor_from_file
 
+
 def build_ukb_ecg2(
     file_name: str, patient_column: str = 'MGH_MRN', birth_column: str = 'dob', start_column: str = 'start_fu_age',
     delimiter: str = ',', check_birthday: bool = True, population_normalize: int = 2000,
@@ -1394,7 +1395,6 @@ def build_ukb_ecg2(
         for row in reader:
             try:
                 patient_key = int(row[header.index(patient_column)])
-                birth_table[patient_key] = _loyalty_str2date(row[birth_index])
                 patient_table[patient_key] = birth_table[patient_key] + datetime.timedelta(days=float(row[start_index])*YEAR_DAYS)
                 earliest_table[patient_key] = patient_table[patient_key] - datetime.timedelta(days=3*YEAR_DAYS)
             except ValueError as e:
@@ -1409,7 +1409,8 @@ def build_ukb_ecg2(
         ecg_dates = list(hd5[tm.path_prefix])
         ecg_date_key = _date_from_dates(ecg_dates)
         return _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
-    retur
+    return tensor_from_file
+
 
 def build_incidence_tensor_from_file(
     file_name: str, patient_column: str = 'Mrn', birth_column: str = 'birth_date',
