@@ -751,10 +751,7 @@ class LanguageDecoder:
             self,
             tensor_map_out: TensorMap,
     ):
-        if tensor_map_out.axes == 1:
-            self.dense = Dense(tensor_map_out.shape[-1], activation=tensor_map_out.activation, name=tensor_map_out.output_name())
-        elif tensor_map_out.axes == 2:
-            self.dense = Dense(tensor_map_out.shape, activation=tensor_map_out.activation, name=tensor_map_out.output_name())
+        self.dense = Dense(tensor_map_out.shape, activation=tensor_map_out.activation, name=tensor_map_out.output_name())
 
     def __call__(self, x: Tensor, _, decoder_outputs: Dict[TensorMap, Tensor]) -> Tensor:
         return self.dense(x)
