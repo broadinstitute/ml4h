@@ -2,7 +2,6 @@ import os
 import csv
 import logging
 import datetime
-import re
 from typing import List, Dict, Tuple, Callable
 
 import vtk
@@ -12,15 +11,14 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.normalizer import ZeroMeanStd1, Standardize
-from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
+from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path
+from ml4cvd.normalizer import ZeroMeanStd1, Standardize
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, \
-    TESTIMONIAL_CHAR_2_IDX, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
 
 
 """
