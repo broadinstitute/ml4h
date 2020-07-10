@@ -976,7 +976,7 @@ def make_multimodal_multitask_model(
 
     pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
     for tm in tensor_maps_out:
-        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
+        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1 or tm.is_language():
             pre_decoder_shapes[tm] = None
         else:
             pre_decoder_shapes[tm] = _calc_start_shape(
@@ -1007,8 +1007,7 @@ def make_multimodal_multitask_model(
         )
     elif bottleneck_type == BottleneckType.NoBottleNeck:
         if not check_no_bottleneck(u_connect, tensor_maps_out):
-            bottleneck = lambda x: x
-            #raise ValueError(f'To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.')
+            bottleneck = None
         else:
             bottleneck = UConnectBottleNeck(u_connect)
     else:
