@@ -383,7 +383,7 @@ class ResidualBlock:
         for convolve, activate, normalize, regularize, one_by_n_convolve in zip(
                 self.conv_layers, self.activations, self.normalizations, self.regularizations, [None] + self.residual_convs,
         ):
-            x = regularize(normalize(activate(convolve(x))))
+            x = regularize(activate(normalize(convolve(x))))
             if one_by_n_convolve is not None:  # Do not residual add the input
                 x = Add()([one_by_n_convolve(x), previous])
             previous = x
@@ -420,7 +420,7 @@ class DenseConvolutionalBlock:
                     self.conv_layers, self.activations, self.normalizations, self.regularizations,
             ),
         ):
-            x = normalize(regularize(activate(convolve(x))))
+            x = regularize(activate(normalize(convolve(x))))
             if i < len(self.conv_layers) - 1:  # output of block does not get concatenated to
                 dense_connections.append(x)
                 x = Concatenate()(dense_connections[:])  # [:] is necessary because of tf weirdness
