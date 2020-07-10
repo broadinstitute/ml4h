@@ -29,9 +29,9 @@ python scripts/dispatch.py \
 --gpus 0-3 \
 --bootstraps 0-9 \
 --scripts \
-    ~/dropbox/ml4cvd_run_scripts/sts-ecg/train-simple.sh
-    ~/dropbox/ml4cvd_run_scripts/sts-ecg/train-varied.sh
-    ~/dropbox/ml4cvd_run_scripts/sts-ecg/train-deeper.sh
+    ~/dropbox/ml4cvd_run_scripts/sts_ecg/train-simple.sh
+    ~/dropbox/ml4cvd_run_scripts/sts_ecg/train-varied.sh
+    ~/dropbox/ml4cvd_run_scripts/sts_ecg/train-deeper.sh
 ```
 
 ## Contribute
