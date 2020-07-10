@@ -391,7 +391,10 @@ def _process_args(args):
         del args.input_tensors[:2]
         del args.output_tensors[0]
         input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
-        args.tensor_maps_in.extend([input_map, burn_in])
+        if args.text_one_hot:
+            args.tensor_maps_in.append(input_map)
+        else:
+            args.tensor_maps_in.extend([input_map, burn_in])
         args.tensor_maps_out.append(output_map)
     args.tensor_maps_in.extend([_get_tmap(it, needed_tensor_maps) for it in args.input_tensors])
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
