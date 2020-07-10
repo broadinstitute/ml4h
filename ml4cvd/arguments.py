@@ -398,7 +398,6 @@ def _process_args(args):
     if args.sample_weight:
         assert args.sample_weight.shape == (1,)
 
-    args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
         args.tensor_maps_out.append(
