@@ -255,7 +255,9 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
         cacheable=False,
     )
     output_map = TensorMap(
-        f'next_next_{name}', Interpretation.LANGUAGE, shape=shape, loss='categorical_crossentropy',
+        f'next_next_{name}', Interpretation.LANGUAGE,
+        shape=(len(token_dictionary),) if one_hot else shape,
+        loss='categorical_crossentropy',
         channel_map=token_dictionary,
         cacheable=False,
     )
