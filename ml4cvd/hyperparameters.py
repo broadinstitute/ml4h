@@ -115,6 +115,7 @@ def optimize_ecg_architecture(args: argparse.Namespace):
         "conv_layers": conv_layers_sets,
         "conv_normalize": conv_normalize_sets,
         "conv_x": conv_x_sets,
+        "conv_dropout": conv_dropout_sets,
         "dense_blocks": dense_blocks_sets,
         "dense_layers": dense_layers_sets,
         "dropout": dropout_sets,
