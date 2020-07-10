@@ -22,12 +22,10 @@ Run scripts are stored in [this Dropbox folder](https://www.dropbox.com/sh/hjz7a
 
 ### Script dispatcher
 
-To train models across several bootstrap samples and GPUs, use [`dispatch.py`](https://github.com/aguirre-lab/ml/blob/er_dispatcher/scripts/dispatch.py).
-
-For example, to run several training scripts across four GPUs and ten bootstraps:
+To distribute training scripts across bootstraps and GPUs, use [`scripts/dispatch.py`](https://github.com/aguirre-lab/ml/blob/er_dispatcher/scripts/dispatch.py):
 
 ```zsh
-python dispatch.py \
+python scripts/dispatch.py \
 --gpus 0-3 \
 --bootstraps 0-9 \
 --scripts \
