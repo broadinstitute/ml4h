@@ -70,12 +70,14 @@ def hyperparameter_optimizer(args, space, param_lists={}):
     test_data, test_labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     generate_test.kill_workers()
     histories = []
-    fig_path = os.path.join(args.output_folder, args.id, 'plots')
+    plot_path = os.path.join(args.output_folder, args.id, 'plots')
     i = 0
 
     def loss_from_multimodal_multitask(x):
         model = None
         history = None
+        generate_train = None
+        generate_valid = None
         nonlocal i
         i += 1
         try:
@@ -86,19 +88,22 @@ def hyperparameter_optimizer(args, space, param_lists={}):
                 logging.info(f"Model too big, max parameters is:{args.max_parameters}, model has:{model.count_params()}. Return max loss.")
                 return MAX_LOSS
             generate_train, generate_valid, _ = test_train_valid_tensor_generators(**args.__dict__)
+            title = f'architecture_{i}'  # refer to loss_by_params.txt to find the params for this trial
             model, history = train_model_from_generators(
                 model, generate_train, generate_valid, args.training_steps, args.validation_steps,
-                args.batch_size, args.epochs, args.patience, args.output_folder, args.id,
+                args.batch_size, args.epochs, args.patience, plot_path, title,
                 args.inspect_model, args.inspect_show_labels, True, False,
             )
             history.history['parameter_count'] = [model.count_params()]
             histories.append(history.history)
-            title = f'trial_{i}'  # refer to loss_by_params.txt to find the params for this trial
-            plot_metric_history(history, args.training_steps, title, fig_path)
-            model.load_weights(os.path.join(args.output_folder, args.id, args.id + MODEL_EXT))
+
+            plot_metric_history(history, args.training_steps, title, plot_path)
+            model.load_weights(os.path.join(plot_path, title, title + MODEL_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
+            if isinstance(loss_and_metrics, np.float64):  # Models without metrics return scalar loss, otherwise they return loss followed by metric values
+                loss_and_metrics = [loss_and_metrics]
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
-            logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
+            logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]:0.3f}")
             generate_train.kill_workers()
             generate_valid.kill_workers()
             return loss_and_metrics[0]
@@ -110,6 +115,10 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             logging.exception('Error trying hyperparameter optimization. Returning max loss.')
             return MAX_LOSS
         finally:
+            if generate_train is not None:
+                generate_train.kill_workers()
+            if generate_valid is not None:
+                generate_valid.kill_workers()
             del model
             gc.collect()
             if history is None:
@@ -117,8 +126,8 @@ def hyperparameter_optimizer(args, space, param_lists={}):
 
     trials = hyperopt.Trials()
     fmin(loss_from_multimodal_multitask, space=space, algo=tpe.suggest, max_evals=args.max_models, trials=trials)
-    plot_trials(trials, histories, fig_path, param_lists)
-    logging.info('Saved learning plot to:{}'.format(fig_path))
+    plot_trials(trials, histories, plot_path, param_lists)
+    logging.info('Saved learning plot to:{}'.format(plot_path))
 
 
 def optimize_architecture(args):
@@ -159,12 +168,13 @@ def optimize_architecture(args):
 
 
 def optimize_ecg_rest_architecture(args):
-    dense_blocks_sets = [[], [32], [32, 24], [32, 24, 16], [48, 48, 48], [48, 48, 48, 48]]
+    dense_blocks_sets = [[], [32], [32, 24], [32, 24, 16], [48, 48, 48], [48, 48, 48, 48], [32, 32, 32, 32, 32], [48, 48, 48, 48, 48]]
     conv_layers_sets = [[], [32], [48], [32, 32], [48, 48], [48, 32, 24], [48, 48, 48], [32, 32, 32, 32], [48, 48, 48, 48]]
     dense_layers_sets = [[8], [16], [16, 64], [32, 128]]
     conv_dilate = [True, False]
     activation = ['leaky', 'prelu', 'relu']
     conv_normalize = ['', 'batch_norm']
+    conv_type = ['conv', 'separable', 'depth']
     pool_type = ['max', 'average']
     space = {
         'pool_x': hp.quniform('pool_x', 1, 8, 1),
@@ -173,9 +183,11 @@ def optimize_ecg_rest_architecture(args):
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
         'conv_dilate': hp.choice('conv_dilate', conv_dilate),
         'activation': hp.choice('activation', activation),
-        #'conv_normalize': hp.choice('conv_normalize', conv_normalize),
+        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
+        'conv_type': hp.choice('conv_type', conv_type),
         'pool_type': hp.choice('pool_type', pool_type),
-        'conv_width': hp.loguniform('conv_width', 1, 5),
+        #'conv_x': hp.loguniform('conv_x', 1, 3),
+        #'conv_y': hp.loguniform('conv_y', 1, 3),
         'block_size': hp.quniform('block_size', 1, 6, 1),
     }
     param_lists = {
@@ -184,10 +196,18 @@ def optimize_ecg_rest_architecture(args):
         'dense_layers': dense_layers_sets,
         'conv_dilate': conv_dilate,
         'activation': activation,
-        #'conv_normalize': conv_normalize,
+        'conv_normalize': conv_normalize,
+        'conv_type': conv_type,
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)
+
+
+def optimize_conv_x(args):
+    space = {
+        'conv_x': hp.loguniform('conv_x', 1, 6),
+    }
+    hyperparameter_optimizer(args, space, {})
 
 
 def optimize_ecg_rest_unet_architecture(args):
@@ -291,9 +311,9 @@ def optimize_lr_multimodal_multitask(args):
 
 
 def optimize_input_tensor_maps(args):
-    input_tensor_map_sets = [['categorical-phenotypes-72'], ['mri-slice'], ['sax_inlinevf_zoom'], ['cine_segmented_sax_inlinevf'], ['ekg-leads']]
-    space = {'input_tensor_maps': hp.choice('input_tensor_maps', input_tensor_map_sets)}
-    param_lists = {'input_tensor_maps': input_tensor_map_sets}
+    input_tensor_map_sets = [['ecg_rest'], ['ecg_rest_raw'], ['ecg_rest_stft']]
+    space = {'input_tensors': hp.choice('input_tensors', input_tensor_map_sets)}
+    param_lists = {'input_tensors': input_tensor_map_sets}
     hyperparameter_optimizer(args, space, param_lists)
 
 
@@ -311,10 +331,13 @@ def optimize_optimizer(args):
 
 
 def set_args_from_x(args, x):
+    logging.info(f"\n\n\n\nx is {x}")
     for k in args.__dict__:
         if k in x:
-            print(k, x[k], args.__dict__[k])
-            if isinstance(args.__dict__[k], int):
+            logging.info(f"k is {k} and x[k] is {x[k]} args dict is:{args.__dict__[k]}")
+            if k in ['conv_x', 'conv_y', 'conv_z']:
+                args.__dict__[k] = [int(x[k])]
+            elif isinstance(args.__dict__[k], int):
                 args.__dict__[k] = int(x[k])
             elif isinstance(args.__dict__[k], float):
                 v = float(x[k])
