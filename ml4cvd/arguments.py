@@ -28,8 +28,7 @@ from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DE
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
-
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
@@ -382,7 +381,16 @@ def _process_args(args):
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect)
     needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
-    args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
+
+    args.tensor_maps_in = []
+    args.tensor_maps_out = []
+    if args.text_file is not None:
+        del args.input_tensors[:2]
+        del args.output_tensors[0]
+        input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
+        args.tensor_maps_in.extend([input_map, burn_in])
+        args.tensor_maps_out.append(output_map)
+    args.tensor_maps_in.extend([_get_tmap(it, needed_tensor_maps) for it in args.input_tensors])
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     if args.sample_weight:
         assert args.sample_weight.shape == (1,)
