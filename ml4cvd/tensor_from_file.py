@@ -1366,12 +1366,14 @@ TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap(
 )
 
 
-def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, dest_shape=None):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, dest_shape=None):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
     hd5_path = f'{path_prefix}/{name}/instance_{instance}'
-    if concatenate:
+    if annotation:
+        hd5_path = f'{path_prefix}/{name}_1/instance_{instance}'
+    if (not annotation) and concatenate:
         hd5_path = f'{path_prefix}/{name}/'    
     if isinstance(hd5[hd5_path], h5py.Group):
         for img in hd5[hd5_path]:
@@ -1400,7 +1402,7 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
             if concatenate:
-                hd5_path = f'{path_prefix}/{name}{t+1}/instance_{instance}'
+                hd5_path = f'{path_prefix}/{name}_{t+1}/instance_{instance}'
                 arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
             else:
                 try:
@@ -1412,11 +1414,11 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
     return arr
 
 
-def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, save_path=None, order='F'):
+def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, save_path=None, order='F'):
     """
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
-    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate)
+    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate, annotation)
     width = hd5['_'.join([MRI_PIXEL_WIDTH, view_name])]
     height = hd5['_'.join([MRI_PIXEL_HEIGHT, view_name])]
     positions = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, view_name]))
