@@ -117,6 +117,8 @@ PRETEST_STD_COL = 'pretest_std'
 
 
 def _pretest_mean_std(sample_id: int) -> Dict[str, float]:
+    if str(sample_id).endswith('000'):
+        logging.info(f'Processing sample_id {sample_id}.')
     with h5py.File(_path_from_sample_id(str(sample_id)), 'r') as hd5:
         pretest = _get_bike_ecg(hd5, 0, PRETEST_DUR * SAMPLING_RATE, PRETEST_MODEL_LEADS)
         return {'sample_id': sample_id, PRETEST_MEAN_COL: pretest.mean(), PRETEST_STD_COL: pretest.std()}
@@ -411,13 +413,13 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
         pretest_df.to_csv(PRETEST_ECG_SUMMARY_STATS_CSV, index=False)
     else:
         pretest_df = pd.read_csv(PRETEST_ECG_SUMMARY_STATS_CSV)
-    new_df.merge(pretest_df, on='sample_id')
+    new_df = new_df.merge(pretest_df, on='sample_id')
 
-    mean_low, mean_high = np.quantile(new_df[PRETEST_MEAN_COL], [1 - double_sided_quantile, double_sided_quantile])
+    mean_low, mean_high = np.quantile(new_df[PRETEST_MEAN_COL], [double_sided_quantile, 1 - double_sided_quantile])
     mean_drop = (new_df[PRETEST_MEAN_COL] < mean_high) & (new_df[PRETEST_MEAN_COL] > mean_low)
     logging.info(f'Due to pretest mean outside center {PRETEST_QUANTILE_CUTOFF:.2%}, dropping {(~mean_drop).sum()}.')
     new_df = new_df[mean_drop]
-    std_low, std_high = np.quantile(new_df[PRETEST_STD_COL], [1 - double_sided_quantile, double_sided_quantile])
+    std_low, std_high = np.quantile(new_df[PRETEST_STD_COL], [double_sided_quantile, 1 - double_sided_quantile])
     std_drop = (new_df[PRETEST_STD_COL] < std_high) & (new_df[PRETEST_STD_COL] > std_low)
     logging.info(f'Due to pretest std outside center {PRETEST_QUANTILE_CUTOFF:.2%}, dropping {(~std_drop).sum()}.')
     new_df = new_df[std_drop]
