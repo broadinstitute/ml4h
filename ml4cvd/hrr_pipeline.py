@@ -49,6 +49,8 @@ BIOSPPY_MEASUREMENTS_FILE = os.path.join(OUTPUT_FOLDER, 'biosppy_hr_recovery_mea
 FIGURE_FOLDER = os.path.join(OUTPUT_FOLDER, 'figures')
 BIOSPPY_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'biosppy')
 
+PRETEST_ECG_SUMMARY_STATS_CSV = os.path.join(OUTPUT_FOLDER, 'pretest_ecg_summary_stats.csv')
+
 PRETEST_LABEL_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'pretest_labels')
 PRETEST_QUANTILE_CUTOFF = .99
 PRETEST_LABEL_FILE = os.path.join(OUTPUT_FOLDER, f'hr_pretest_training_data.csv')
@@ -108,6 +110,16 @@ def _get_trace_recovery_start(hd5: h5py.File) -> int:
     pretest_dur = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', 'pretest_duration')
     exercise_dur = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', 'exercise_duration')
     return int(SAMPLING_RATE * (pretest_dur + exercise_dur - HR_SEGMENT_DUR / 2 - TREND_TRACE_DUR_DIFF))
+
+
+PRETEST_MEAN_COL = 'pretest_mean'
+PRETEST_STD_COL = 'pretest_std'
+
+
+def _pretest_mean_std(sample_id: int) -> Dict[str, float]:
+    with h5py.File(_path_from_sample_id(str(sample_id)), 'r') as hd5:
+        pretest = _get_bike_ecg(hd5, 0, PRETEST_DUR * SAMPLING_RATE, PRETEST_MODEL_LEADS)
+        return {'sample_id': sample_id, PRETEST_MEAN_COL: pretest.mean(), PRETEST_STD_COL: pretest.std()}
 
 
 # ECG transformations
@@ -348,7 +360,18 @@ def build_hr_biosppy_measurements_csv():
     df.to_csv(BIOSPPY_MEASUREMENTS_FILE, index=False)
 
 
-def make_pretest_labels():
+def build_pretest_summary_stats_csv(sample_ids: List[int]) -> pd.DataFrame:
+    pool = Pool()
+    logging.info('Beginning to get pretest ecg means and stds.')
+    now = time.time()
+    measures = pool.map(_pretest_mean_std, sample_ids)
+    df = pd.DataFrame(measures)
+    delta_t = time.time() - now
+    logging.info(f'Getting pretest ecg means and stds took {delta_t // 60} minutes at {delta_t / len(sample_ids):.2f}s per path.')
+    return df
+
+
+def make_pretest_labels(make_ecg_summary_stats: bool):
     biosppy_labels = pd.read_csv(BIOSPPY_MEASUREMENTS_FILE)
     new_df = pd.DataFrame()
     hr_0 = biosppy_labels[df_hr_col(HR_MEASUREMENT_TIMES[0])]
@@ -381,7 +404,25 @@ def make_pretest_labels():
     logging.info(f'Dropping {unknown_errors.sum()} due to unknown biosppy errors.')
     new_df = new_df[~unknown_errors]  # TODO: why needed?
     assert new_df.notna().all().all()
-    logging.info(f'There are {len(new_df)} pretest labels after filtering.')
+    logging.info(f'There are {len(new_df)} pretest labels after filtering hr measures.')
+
+    if make_ecg_summary_stats:
+        pretest_df = build_pretest_summary_stats_csv(new_df['sample_id'])
+        pretest_df.to_csv(PRETEST_ECG_SUMMARY_STATS_CSV, index=False)
+    else:
+        pretest_df = pd.read_csv(PRETEST_ECG_SUMMARY_STATS_CSV)
+    new_df.merge(pretest_df, on='sample_id')
+
+    mean_low, mean_high = np.quantile(new_df[PRETEST_MEAN_COL], [1 - double_sided_quantile, double_sided_quantile])
+    mean_drop = (new_df[PRETEST_MEAN_COL] < mean_high) & (new_df[PRETEST_MEAN_COL] > mean_low)
+    logging.info(f'Due to pretest mean outside center {PRETEST_QUANTILE_CUTOFF:.2%}, dropping {(~mean_drop).sum()}.')
+    new_df = new_df[mean_drop]
+    std_low, std_high = np.quantile(new_df[PRETEST_STD_COL], [1 - double_sided_quantile, double_sided_quantile])
+    std_drop = (new_df[PRETEST_STD_COL] < std_high) & (new_df[PRETEST_STD_COL] > std_low)
+    logging.info(f'Due to pretest std outside center {PRETEST_QUANTILE_CUTOFF:.2%}, dropping {(~std_drop).sum()}.')
+    new_df = new_df[std_drop]
+    logging.info(f'There are {len(new_df)} pretest labels after filtering ecg ranges.')
+
     new_df.to_csv(PRETEST_LABEL_FILE, index=False)
 
 
@@ -445,6 +486,14 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
     return hrr.mean(), hrr.std()
 
 
+def _get_pretest_summary_stats(id_csv: str) -> Tuple[float, float]:
+    df = pd.read_csv(PRETEST_LABEL_FILE)
+    ids = pd.read_csv(id_csv)
+    mean = df[PRETEST_MEAN_COL][df['sample_id'].isin(ids['sample_id'])].mean()
+    std = df[PRETEST_STD_COL][df['sample_id'].isin(ids['sample_id'])].mean()
+    return mean, std
+
+
 ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift'])
 
 
@@ -458,14 +507,15 @@ MODEL_SETTINGS = [
 
 
 # Model training
-def _make_ecg_tmap(setting: ModelSetting) -> TensorMap:
+def _make_ecg_tmap(setting: ModelSetting, split_idx: int) -> TensorMap:
+    normalizer = Standardize(*_get_pretest_summary_stats(_split_train_name(split_idx)))
     return TensorMap(
         f'pretest_ecg_downsample_{setting.downsample_rate}',
         shape=(int(PRETEST_TRAINING_DUR * SAMPLING_RATE // setting.downsample_rate), len(PRETEST_MODEL_LEADS)),
         interpretation=Interpretation.CONTINUOUS,
-        validator=no_nans, normalization=Standardize(0, 100),
+        validator=no_nans, normalization=normalizer,
         tensor_from_file=_make_pretest_ecg_tff(setting.downsample_rate, PRETEST_MODEL_LEADS, random_start=setting.shift),
-        cacheable=len(setting.augmentations) == 1, augmentations=setting.augmentations,
+        cacheable=False, augmentations=setting.augmentations,
     )
 
 
@@ -480,7 +530,7 @@ def _make_hrr_tmap(split_idx: int) -> TensorMap:
 
 
 def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
-    pretest_tmap = _make_ecg_tmap(setting)
+    pretest_tmap = _make_ecg_tmap(setting, split_idx)
     hrr_tmap = _make_hrr_tmap(split_idx)
     model_path = pretest_model_file(split_idx, setting.model_id)
     return make_multimodal_multitask_model(
@@ -488,7 +538,7 @@ def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
         tensor_maps_out=[hrr_tmap],
         activation='swish',
         learning_rate=1e-3,
-        bottleneck_type=BottleneckType.FlattenRestructure,
+        bottleneck_type=BottleneckType.GlobalAveragePoolStructured,
         optimizer='radam',
         dense_layers=[64],
         conv_layers=[32],
@@ -534,7 +584,7 @@ def _train_pretest_model(
     valid_csv = _split_valid_name(split_idx)
     test_csv = _split_test_name(split_idx)
 
-    pretest_tmap = _make_ecg_tmap(setting)
+    pretest_tmap = _make_ecg_tmap(setting, split_idx)
     hrr_tmap = _make_hrr_tmap(split_idx)
 
     train_len = len(pd.read_csv(train_csv))
@@ -610,7 +660,7 @@ def _infer_models_split_idx(split_idx: int):
     ]
     models = [make_pretest_model(setting, split_idx, True) for setting in MODEL_SETTINGS]
     model_ids = [setting.model_id for setting in MODEL_SETTINGS]
-    tmaps_in = [_make_ecg_tmap(setting) for setting in MODEL_SETTINGS]
+    tmaps_in = [_make_ecg_tmap(setting, split_idx) for setting in MODEL_SETTINGS]
     tmaps_out = [_make_hrr_tmap(split_idx)]
     _infer_models(
         models=models,
@@ -702,8 +752,8 @@ if __name__ == '__main__':
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
     for i in range(K_SPLIT):
         os.makedirs(split_folder_name(i), exist_ok=True)
-
-    MAKE_CSVS = False or not all(
+    MAKE_ECG_SUMMARY_STATS = False or not os.path.exists(PRETEST_ECG_SUMMARY_STATS_CSV)
+    MAKE_SPLIT_CSVS = False or not all(
         os.path.exists(_split_train_name(i)) for i in range(K_SPLIT)
     )
     TRAIN_PRETEST_MODELS = False or not all(
@@ -720,9 +770,9 @@ if __name__ == '__main__':
         build_hr_biosppy_measurements_csv()
     plot_hr_from_biosppy_summary_stats()
     plt.close('all')
-    make_pretest_labels()
+    make_pretest_labels(MAKE_ECG_SUMMARY_STATS)
     plot_pretest_label_summary_stats()
-    if MAKE_CSVS:
+    if MAKE_SPLIT_CSVS:
         build_csvs()
     if TRAIN_PRETEST_MODELS:
         for i in range(K_SPLIT):
