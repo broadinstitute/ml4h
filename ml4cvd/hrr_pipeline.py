@@ -504,7 +504,8 @@ MODEL_SETTINGS = [
     ModelSetting(**{'model_id': 'noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': False}),
     ModelSetting(**{'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': True}),
     ModelSetting(**{'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
-    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
+    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': True}),
+    ModelSetting(**{'model_id': 'downsample_model_warp', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
 ]
 
 
@@ -727,7 +728,7 @@ def _evaluate_models():
 
         R2s = [
             coefficient_of_determination(
-                actual[inference_df['split_idx'] == i], pred[inference_df['split_idx'] == i]
+                actual[inference_df['split_idx'] == i], pred[inference_df['split_idx'] == i],
             ) for i in range(K_SPLIT)
         ]
         R2_df = pd.DataFrame({'R2': R2s})
