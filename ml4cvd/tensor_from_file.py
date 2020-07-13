@@ -121,8 +121,9 @@ def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bo
     characters = set()
     with open(text_file) as file:
         for line in file.readlines():
-            text += _preprocess_sentence(line, remove_special_chars)
-            [characters.add(char) for char in line]
+            cur_line = _preprocess_sentence(line, remove_special_chars)
+            [characters.add(char) for char in cur_line]
+            text = f'{text}{cur_line}'
     logging.info(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
