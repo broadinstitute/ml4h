@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import logging
 import datetime
@@ -106,32 +107,28 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
-def _preprocess_sentence(sentence):
+def _preprocess_sentence(sentence, remove_special_chars):
     sentence = sentence.strip()
-    # creating a space between a word and the punctuation following it
-    # eg: "he is a boy." => "he is a boy ."
-    # sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
-    # sentence = re.sub(r'[" "]+', " ", sentence)
-    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
-    #sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
-    #sentence = sentence.strip()
-    # adding a start and an end token to the sentence
+    if remove_special_chars:
+        #replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+        sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+        sentence = sentence.strip()
     return sentence
 
 
-def _load_text(path_to_text):
+def _load_text(path_to_text, remove_special_chars):
     text = ""
     with open(path_to_text) as file:
         lines = file.readlines()
     for line in lines:
-        text += _preprocess_sentence(line)
+        text += _preprocess_sentence(line, remove_special_chars)
     return text
 
 
-def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True):
+def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True, remove_special_chars: bool = True):
     error = None
     try:
-        text = _load_text(text_file)
+        text = _load_text(text_file, remove_special_chars)
     except FileNotFoundError as e:
         error = e
 
