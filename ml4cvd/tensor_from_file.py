@@ -116,7 +116,7 @@ def _preprocess_sentence(sentence, remove_special_chars):
     return sentence
 
 
-def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bool) -> Tuple[str, Dict[str, int]]:
+def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bool = True) -> Tuple[str, Dict[str, int]]:
     text = ""
     characters = set()
     with open(text_file) as file:
