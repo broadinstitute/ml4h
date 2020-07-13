@@ -118,18 +118,20 @@ def _preprocess_sentence(sentence, remove_special_chars):
 
 
 def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bool = True) -> Tuple[str, Dict[str, int]]:
-    text = ""
+    texts = []
     characters = set()
     with open(text_file) as file:
-        for line in file.readlines():
+        for i, line in enumerate(file.readlines()):
             cur_line = _preprocess_sentence(line, remove_special_chars)
             [characters.add(char) for char in cur_line]
-            text = f'{text}{cur_line}'
+            texts.append(cur_line)
+            if i % 1000 == 0:
+                logging.info(f'Read {i} lines from {text_file}')
     logging.info(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
     index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
     logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
-    return text, char2index
+    return ''.join(texts), char2index
 
 
 def random_text_window_tensor(text: str, window_size: int, one_hot: bool = True):
