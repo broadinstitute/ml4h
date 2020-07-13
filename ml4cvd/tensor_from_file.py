@@ -125,7 +125,7 @@ def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bo
             cur_line = _preprocess_sentence(line, remove_special_chars)
             [characters.add(char) for char in cur_line]
             texts.append(cur_line)
-            if i % 1000 == 0:
+            if i % 50000 == 0:
                 logging.info(f'Read {i} lines from {text_file}')
     logging.info(f'Total characters: {len(characters)}')
     char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
