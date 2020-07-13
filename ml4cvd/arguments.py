@@ -94,8 +94,6 @@ def parse_args():
         '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
         help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
     )
-    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
-
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
