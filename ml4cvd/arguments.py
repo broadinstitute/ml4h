@@ -78,7 +78,11 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
+<<<<<<< HEAD
     parser.add_argument('--text_file', default=None, help='Path to a file with text.',)
+=======
+    parser.add_argument('--text_file', default=None, help='Path to a file with text.')
+>>>>>>> sf_lstms
     parser.add_argument(
         '--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
@@ -86,6 +90,8 @@ def parse_args():
     )
 
     # Data selection parameters
+    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
+    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
@@ -387,7 +393,10 @@ def _process_args(args):
         del args.input_tensors[:2]
         del args.output_tensors[0]
         input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
-        args.tensor_maps_in.extend([input_map, burn_in])
+        if args.text_one_hot:
+            args.tensor_maps_in.append(input_map)
+        else:
+            args.tensor_maps_in.extend([input_map, burn_in])
         args.tensor_maps_out.append(output_map)
     args.tensor_maps_in.extend([_get_tmap(it, needed_tensor_maps) for it in args.input_tensors])
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None

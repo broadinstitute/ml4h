@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import logging
 import datetime
@@ -12,15 +13,14 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.normalizer import ZeroMeanStd1, Standardize
-from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
+from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.tensor_writer_ukbb import tensor_path
+from ml4cvd.normalizer import ZeroMeanStd1, Standardize
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, \
-    TESTIMONIAL_CHAR_2_IDX, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
 
 
 """
@@ -108,38 +108,32 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
     return tensor_from_file
 
 
-def _preprocess_sentence(sentence):
+def _preprocess_sentence(sentence, remove_special_chars):
     sentence = sentence.strip()
-    # creating a space between a word and the punctuation following it
-    # eg: "he is a boy." => "he is a boy ."
-    # sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
-    # sentence = re.sub(r'[" "]+', " ", sentence)
-    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
-    #sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
-    #sentence = sentence.strip()
-    # adding a start and an end token to the sentence
+    if remove_special_chars:
+        #replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
+        sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
+        sentence = sentence.strip()
     return sentence
 
 
-def _load_text(path_to_text):
+def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bool = True) -> Tuple[str, Dict[str, int]]:
     text = ""
-    with open(path_to_text) as file:
-        lines = file.readlines()
-    for line in lines:
-        text += _preprocess_sentence(line)
-    return text
+    characters = set()
+    with open(text_file) as file:
+        for line in file.readlines():
+            cur_line = _preprocess_sentence(line, remove_special_chars)
+            [characters.add(char) for char in cur_line]
+            text = f'{text}{cur_line}'
+    logging.info(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
+    return text, char2index
 
 
-def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True):
-    error = None
-    try:
-        text = _load_text(text_file)
-    except FileNotFoundError as e:
-        error = e
-
+def random_text_window_tensor(text: str, window_size: int, one_hot: bool = True):
     def text_from_file(tm, _, dependents={}):
-        if error:
-            raise error
         tensor = np.zeros(tm.shape, dtype=np.float32)
         random_index = np.random.randint(window_size, len(text)-window_size)
         for i, c in enumerate(text[random_index:random_index+window_size]):

@@ -369,11 +369,8 @@ class ResidualBlock:
         assert len(conv_x) == len(conv_y) == len(conv_z) == block_size
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(dimension, conv_layer_type, conv_x, conv_y, conv_z)
         self.conv_layers = []
-        logging.info(f'Conv layer is {conv_layer} and kernels {kernels}')
         for i, (num_filters, kernel) in enumerate(zip(filters_per_conv, kernels)):
-            logging.info(f' Filters is {num_filters} and kernel is {kernel} at step {i}')
             if isinstance(conv_layer, DepthwiseConv2D):
-                logging.info(f'GOT DEPTHTHTHTHTH {conv_layer} and kernels {kernels}')
                 self.conv_layers.append(conv_layer(kernel_size=kernel, padding='same', dilation_rate=2 ** i if dilate else 1))
             else:
                 self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, padding='same', dilation_rate=2**i if dilate else 1))
@@ -976,7 +973,7 @@ def make_multimodal_multitask_model(
 
     pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
     for tm in tensor_maps_out:
-        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
+        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1 or tm.is_language():
             pre_decoder_shapes[tm] = None
         else:
             pre_decoder_shapes[tm] = _calc_start_shape(
@@ -1007,8 +1004,9 @@ def make_multimodal_multitask_model(
         )
     elif bottleneck_type == BottleneckType.NoBottleNeck:
         if not check_no_bottleneck(u_connect, tensor_maps_out):
-            raise ValueError(f'To use {BottleneckType.NoBottleNeck}, all output TensorMaps must be u-connected to.')
-        bottleneck = UConnectBottleNeck(u_connect)
+            bottleneck = None
+        else:
+            bottleneck = UConnectBottleNeck(u_connect)
     else:
         raise NotImplementedError(f'Unknown BottleneckType {bottleneck_type}.')
 
