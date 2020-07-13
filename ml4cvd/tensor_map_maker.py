@@ -4,13 +4,13 @@ import logging
 import operator
 import numpy as np
 from typing.io import TextIO
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.tensor_from_file import _build_tensor_from_file, random_text_window_tensor
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4cvd.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
+from ml4cvd.tensor_from_file import _build_tensor_from_file, random_text_window_tensor, token_dictionary_and_text_from_file
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 
@@ -233,21 +233,9 @@ def generate_continuous_tensor_map_from_file(
         )
 
 
-def _token_dictionary_from_text_file(text_file: str) -> Dict[str, int]:
-    characters = set()
-    with open(text_file) as file:
-        for line in file.readlines():
-            [characters.add(char) for char in line]
-    logging.info(f'Total characters: {len(characters)}')
-    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
-    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
-    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
-    return char2index
-
-
 def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: bool = True) -> Tuple[TensorMap, TensorMap]:
     name = os.path.basename(text_file).split('.')[0]
-    token_dictionary = _token_dictionary_from_text_file(text_file)
+    text, token_dictionary = token_dictionary_and_text_from_file(text_file)
     shape = (window_size, len(token_dictionary)) if one_hot else (window_size,)
     burn_in = TensorMap(
         f'next_{name}', Interpretation.LANGUAGE, shape=shape,
@@ -263,7 +251,7 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
     )
     input_map = TensorMap(
         name, Interpretation.LANGUAGE, shape=shape,
-        tensor_from_file=random_text_window_tensor(text_file, window_size, one_hot=one_hot),
+        tensor_from_file=random_text_window_tensor(text, window_size, one_hot=one_hot),
         dependent_map=[burn_in, output_map],
         channel_map=token_dictionary,
         annotation_units=128,

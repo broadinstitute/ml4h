@@ -116,25 +116,22 @@ def _preprocess_sentence(sentence, remove_special_chars):
     return sentence
 
 
-def _load_text(path_to_text, remove_special_chars):
+def token_dictionary_and_text_from_file(text_file: str, remove_special_chars: bool) -> Tuple[str, Dict[str, int]]:
     text = ""
-    with open(path_to_text) as file:
-        lines = file.readlines()
-    for line in lines:
-        text += _preprocess_sentence(line, remove_special_chars)
-    return text
+    characters = set()
+    with open(text_file) as file:
+        for line in file.readlines():
+            text += _preprocess_sentence(line, remove_special_chars)
+            [characters.add(char) for char in line]
+    logging.info(f'Total characters: {len(characters)}')
+    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
+    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
+    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
+    return text, char2index
 
 
-def random_text_window_tensor(text_file: str, window_size: int, one_hot: bool = True, remove_special_chars: bool = True):
-    error = None
-    try:
-        text = _load_text(text_file, remove_special_chars)
-    except FileNotFoundError as e:
-        error = e
-
+def random_text_window_tensor(text: str, window_size: int, one_hot: bool = True):
     def text_from_file(tm, _, dependents={}):
-        if error:
-            raise error
         tensor = np.zeros(tm.shape, dtype=np.float32)
         random_index = np.random.randint(window_size, len(text)-window_size)
         for i, c in enumerate(text[random_index:random_index+window_size]):
