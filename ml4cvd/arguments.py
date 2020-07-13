@@ -18,11 +18,10 @@ from ml4cvd.models import BottleneckType, parent_sort, check_no_bottleneck
 from ml4cvd.defines import IMPUTATION_MEAN, IMPUTATION_RANDOM
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_ecg import (
-    build_ecg_tensor_maps,
-    build_sts_tensor_maps,
+    TMAPS,
+    build_cardiac_surgery_tensor_maps,
     build_ecg_time_series_tensor_maps,
 )
-from ml4cvd.tensor_maps_by_hand import TMAPS
 
 BOTTLENECK_STR_TO_ENUM = {
     "flatten_restructure": BottleneckType.FlattenRestructure,
@@ -423,10 +422,10 @@ def parse_args():
         help="List of maxpooling layers.",
     )
     parser.add_argument(
-        "--pool_after_final_dense_block",
-        default=False,
-        action="store_true",
-        help="Pool after final dense block.",
+        "--pool_last_layer_dense_blocks",
+        default=True,
+        action="store_false",
+        help="Pool the last layer of all dense blocks.",
     )
     parser.add_argument(
         "--pool_type",
@@ -890,16 +889,12 @@ def parse_args():
 
 def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     """
-    This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
+    Only import necessary TMaps
     """
     if name in TMAPS:
         return TMAPS[name]
 
-    TMAPS.update(build_ecg_tensor_maps(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_sts_tensor_maps(needed_tensor_maps))
+    TMAPS.update(build_cardiac_surgery_tensor_maps(needed_tensor_maps))
     if name in TMAPS:
         return TMAPS[name]
 
@@ -908,28 +903,12 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
         return TMAPS[name]
 
     # Imports: first party
-    from ml4cvd.tensor_maps_ecg import TMAPS as _ecg_tmaps
-
-    TMAPS.update(_ecg_tmaps)
-    if name in TMAPS:
-        return TMAPS[name]
-
-    # Imports: first party
     from ml4cvd.tensor_maps_ecg_labels import TMAPS as _ecg_label_tmaps
 
     TMAPS.update(_ecg_label_tmaps)
+
     if name in TMAPS:
         return TMAPS[name]
-
-    # Imports: first party
-    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
-
-    TMAPS.update(script_tmaps)
-
-    # Imports: first party
-    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
-
-    TMAPS.update(script_tmaps)
 
     return TMAPS[name]
 

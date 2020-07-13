@@ -18,11 +18,11 @@ from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.defines import IMAGE_EXT, MODEL_EXT, Arguments
 from ml4cvd.arguments import parse_args
+from ml4cvd.tensor_maps_ecg import TMAPS
 from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
     test_train_valid_tensor_generators,
 )
-from ml4cvd.tensor_maps_by_script import TMAPS
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot
@@ -38,9 +38,10 @@ MAX_LOSS = 9e9
 def run(args: argparse.Namespace):
     # Keep track of elapsed execution time
     start_time = timer()
+
     try:
-        if "ecg_architecture" == args.mode:
-            optimize_ecg_architecture(args)
+        if "hyperoptimize" == args.mode:
+            hyperoptimize(args)
         else:
             raise ValueError("Unknown hyperparameter optimization mode:", args.mode)
 
@@ -54,10 +55,12 @@ def run(args: argparse.Namespace):
     )
 
 
-def optimize_ecg_architecture(args: argparse.Namespace):
+def hyperoptimize(args: argparse.Namespace):
+    """
     block_size_sets = [2, 3, 4]
     conv_layers_sets = [[32]]  # Baseline
     conv_normalize_sets = ["", "batch_norm"]
+    """
     dense_layers_sets = [
         [256],
         [1000],  # Collin's suggestion
@@ -65,63 +68,54 @@ def optimize_ecg_architecture(args: argparse.Namespace):
     ]
     dense_blocks_sets = [
         [64, 128],  # Collin's suggestion
+        [24, 12],  # Baseline
         [32, 24, 16],  # Baseline
-        [48, 36, 24, 16],
     ]
-    pool_types = ["max", "average"]
-
-    """
-    conv_x_sets = _generate_conv1D_filter_widths(
-        num_unique_filters=25,
-        list_len_bounds=[1, 4],
-        first_filter_width_bounds=[60, 150],
-        probability_vary_filter_width=0.75,
-        vary_filter_scale_bounds=[1.25, 1.75],
-    )
-    """
-    conv_x_sets = [
-        [50],
-        [71],
-        [100],
-        [80, 40, 20, 10],
-    ]
+    # pool_types = ["max", "average"]
+    conv_x_sets = _generate_conv1D_filter_widths()
     conv_dropout_sets = [0, 0.25, 0.5]
     dropout_sets = [0, 0.25, 0.5]
     learning_rate_sets = [0.0002, 0.0004]
 
     # Generate weighted loss tmaps for STS death
     weighted_losses = [val for val in range(1, 20, 4)]
-    input_tensors_sets = _generate_weighted_loss_tmaps(
+    output_tensors_sets = _generate_weighted_loss_tmaps(
         base_tmap_name="sts_death", weighted_losses=weighted_losses,
     )
 
+    """
     space = {
         "block_size": hp.choice("block_size", block_size_sets),
         "conv_layers": hp.choice("conv_layers", conv_layers_sets),
         "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
-        "conv_x": hp.choice("conv_x", conv_x_sets),
-        "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
-        "dropout": hp.choice("dropout", dropout_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-        "input_tensors": hp.choice("input_tensors", input_tensors_sets),
         "learning_rate": hp.choice("learning_rate", learning_rate_sets),
         "dropout": hp.choice("dropout", dropout_sets),
         "pool_type": hp.choice("pool_type", pool_types),
     }
-
     param_lists = {
         "block_size": block_size_sets,
         "conv_layers": conv_layers_sets,
         "conv_normalize": conv_normalize_sets,
+        "learning_rate": learning_rate_sets,
+        "pool_type": pool_types,
+    }
+    """
+
+    space = {
+        "conv_x": hp.choice("conv_x", conv_x_sets),
+        "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
+        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
+        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
+        "dropout": hp.choice("dropout", dropout_sets),
+        "output_tensors": hp.choice("output_tensors", output_tensors_sets),
+    }
+    param_lists = {
         "conv_x": conv_x_sets,
         "conv_dropout": conv_dropout_sets,
         "dense_blocks": dense_blocks_sets,
         "dense_layers": dense_layers_sets,
         "dropout": dropout_sets,
-        "input_tensors": input_tensors_sets,
-        "learning_rate": learning_rate_sets,
-        "pool_type": pool_types,
+        "output_tensors": output_tensors_sets,
     }
     hyperparameter_optimizer(args, space, param_lists)
 
@@ -267,11 +261,11 @@ def _ensure_even_number(num: int) -> int:
 
 
 def _generate_conv1D_filter_widths(
-    num_unique_filters: int = 50,
-    list_len_bounds: List[int] = [1, 4],
-    first_filter_width_bounds: List[int] = [60, 150],
-    probability_vary_filter_width: float = 0.75,
-    vary_filter_scale_bounds: List[float] = [1.25, 2.00],
+    num_unique_filters: int = 25,
+    list_len_bounds: List[int] = [5, 5],
+    first_filter_width_bounds: List[int] = [50, 150],
+    probability_vary_filter_width: float = 0.5,
+    vary_filter_scale_bounds: List[float] = [1.25, 1.75],
 ) -> List[List[int]]:
     """Generate a list of 1D convolutional filter widths that are lists of even ints.
 
@@ -319,20 +313,20 @@ def _generate_conv1D_filter_widths(
         first_filter_width = _ensure_even_number(first_filter_width)
 
         # Randomly determine if filter size varies or not
-        vary_filter_width = probability_vary_filter_width >= np.random.rand()
+        if probability_vary_filter_width >= np.random.rand():
 
-        # Randomly generate filter scale value by which to divide subsequent filter sizes
-        vary_filter_scale = np.random.uniform(
-            low=vary_filter_scale_bounds[0], high=vary_filter_scale_bounds[1],
-        )
+            # Randomly generate filter scale value by which to divide subsequent filter sizes
+            vary_filter_scale = np.random.uniform(
+                low=vary_filter_scale_bounds[0], high=vary_filter_scale_bounds[1],
+            )
 
-        # Iterate through list of filter sizes
-        this_filter = []
-        for i in range(list_len):
-            this_filter.append(first_filter_width)
+            # Iterate through list of filter sizes
+            this_filter = []
 
-            # Check if we want to vary filter size
-            if vary_filter_width:
+            for i in range(list_len):
+                this_filter.append(first_filter_width)
+
+                # Check if we want to vary filter size
                 current_filter_width = first_filter_width
                 first_filter_width = int(first_filter_width / vary_filter_scale)
                 first_filter_width = _ensure_even_number(first_filter_width)
@@ -341,8 +335,12 @@ def _generate_conv1D_filter_widths(
                 if first_filter_width == 0:
                     first_filter_width = current_filter_width
 
-        if this_filter not in list_of_filters:
-            list_of_filters.append(this_filter)
+            if this_filter not in list_of_filters:
+                list_of_filters.append(this_filter)
+
+        # Else the filter size is constant
+        else:
+            list_of_filters.append([first_filter_width])
 
     return list_of_filters
 

@@ -16,14 +16,11 @@ import numpy as np
 import numcodecs
 
 # Imports: first party
-from ml4cvd.defines import XML_EXT, TENSOR_EXT
-
-ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
+from ml4cvd.defines import XML_EXT, TENSOR_EXT, ECG_REST_INDEPENDENT_LEADS
 
 
-def write_tensors_partners(xml_folder: str, tensors: str, num_workers: int) -> None:
-    """Write tensors as HD5 files containing data from Partners dataset
-
+def write_tensors_ecg(xml_folder: str, tensors: str, num_workers: int) -> None:
+    """Convert data from GE Muse XMLs into HD5 files
     One HD5 is generated per patient. One HD5 may contain multiple ECGs.
 
     :param xml_folder: Path to folder containing ECG XML files organized in

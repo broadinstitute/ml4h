@@ -39,6 +39,8 @@ JOIN_CHAR = "_"
 CONCAT_CHAR = "-"
 HD5_GROUP_CHAR = "/"
 
+ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
+
 MRI_FRAMES = 50
 MRI_TO_SEGMENT = "cine_segmented_sax_inlinevf"
 MRI_LAX_TO_SEGMENT = "cine_segmented_lax_inlinevf"

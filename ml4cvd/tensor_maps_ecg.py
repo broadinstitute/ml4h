@@ -5,7 +5,7 @@ import copy
 import logging
 import datetime
 from typing import Dict, List, Tuple, Union, Callable
-from itertools import product
+from itertools import product, combinations
 from collections import defaultdict
 
 # Imports: third party
@@ -33,7 +33,6 @@ from ml4cvd.TensorMap import (
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 
 YEAR_DAYS = 365.26
-INCIDENCE_CSV = "/media/erisone_snf13/lc_outcomes.csv"
 CARDIAC_SURGERY_OUTCOMES_CSV = "/data/sts-data/mgh-preop-ecg-outcome-labels.csv"
 ECG_PREFIX = "partners_ecg_rest"
 TMAPS = dict()
@@ -98,38 +97,28 @@ def _make_hd5_path(tm, ecg_date, value_key):
 
 
 def _resample_voltage(voltage, desired_samples):
+    length_mismatch = False
     if len(voltage) == desired_samples:
         return voltage
-    elif len(voltage) == 2500 and desired_samples == 5000:
-        x = np.arange(2500)
-        x_interp = np.linspace(0, 2500, 5000)
-        return np.interp(x_interp, x, voltage)
-    elif len(voltage) == 5000 and desired_samples == 2500:
-        return voltage[::2]
-    else:
-        raise ValueError(
-            f"Voltage length {len(voltage)} is not desired {desired_samples} and"
-            " re-sampling method is unknown.",
-        )
+    # Upsample
+    elif len(voltage) < desired_samples:
+        if desired_samples % len(voltage) == 0:
+            x = np.arange(len(voltage))
+            x_interp = np.linspace(0, len(voltage), len(desired_samples))
+            return np.interp(x_interp, x, voltage)
+        else:
+            length_mismatch = True
+    # Downsample
+    else:  # len(voltage) > desired_samples
+        if len(voltage) % desired_samples == 0:
+            return voltage[:: int(len(voltage) / desired_samples)]
+        else:
+            length_mismatch = True
 
-
-def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
-    if len(voltage) == desired_samples and rate == desired_rate:
-        return voltage
-    elif desired_samples / len(voltage) == 2 and desired_rate / rate == 2:
-        x = np.arange(len(voltage))
-        x_interp = np.linspace(0, len(voltage), desired_samples)
-        return np.interp(x_interp, x, voltage)
-    elif desired_samples / len(voltage) == 0.5 and desired_rate / rate == 0.5:
-        return voltage[::2]
-    elif desired_samples / len(voltage) == 2 and desired_rate == rate:
-        return np.pad(voltage, (0, len(voltage)))
-    elif desired_samples / len(voltage) == 0.5 and desired_rate == rate:
-        return voltage[: len(voltage) // 2]
-    else:
+    if length_mismatch:
         raise ValueError(
-            f"Voltage length {len(voltage)} is not desired {desired_samples} with"
-            f" desired rate {desired_rate} and rate {rate}.",
+            f"Cannot cleanly resample voltage length {len(voltage)} to desired samples"
+            f" {desired_samples}",
         )
 
 
@@ -165,20 +154,117 @@ def make_voltage(exact_length=False):
     return get_voltage_from_file
 
 
-# Creates 12 TMaps:
-# ecg_2500      ecg_2500_exact      ecg_5000      5000_exact
-# ecg_2500_std  ecg_2500_std_exact  ecg_5000_std  5000_std_exact
-# ecg_2500_raw  ecg_2500_raw_exact  ecg_5000_raw  5000_raw_exact
+# ECG augmentations
+def _crop_ecg(ecg: np.array):
+    cropped_ecg = ecg.copy()
+    for j in range(ecg.shape[1]):
+        crop_len = np.random.randint(len(ecg)) // 3
+        crop_start = max(0, np.random.randint(-crop_len, len(ecg)))
+        cropped_ecg[:, j][crop_start : crop_start + crop_len] = np.random.randn()
+    return cropped_ecg
+
+
+def _noise_ecg(ecg: np.array):
+    noise_frac = np.random.rand() * 0.1  # max of 10% noise
+    return ecg + noise_frac * ecg.mean(axis=0) * np.random.randn(
+        ecg.shape[0], ecg.shape[1],
+    )
+
+
+def _warp_ecg(ecg: np.array):
+    warp_strength = 0.02
+    i = np.linspace(0, 1, len(ecg))
+    envelope = warp_strength * (0.5 - np.abs(0.5 - i))
+    warped = i + envelope * (
+        np.sin(np.random.rand() * 5 + np.random.randn() * 5)
+        + np.cos(np.random.rand() * 5 + np.random.randn() * 5)
+    )
+    warped_ecg = np.zeros_like(ecg)
+    for j in range(ecg.shape[1]):
+        warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
+    return warped_ecg
+
+
+# Dict[str, Callable]
+augmentations = {
+    "crop": _crop_ecg,
+    "noise": _noise_ecg,
+    "warp": _warp_ecg,
+}
+
+
+def _make_augmentation_combinations(
+    augmentations: Dict[str, Callable],
+) -> Dict[str, List[Callable]]:
+    """Iterate through all combinations of augmentations, and return a dictionary
+    of callables that are keyed by the concatenated names"""
+    # Initialize dict in which to store augmentation combos
+    unique_augmentations = dict()
+
+    # Iterate through all possible lengths, e.g. 1, 2, 3-augment combos
+    for r in range(1, len(augmentations) + 1):
+
+        # Iterate through unique augmentation sets
+        for aug_set in list(combinations(augmentations, r)):
+
+            # Get list of augmentation functions for this set
+            aug_funcs = [augmentations[aug] for aug in aug_set if aug in augmentations]
+
+            # Get single string of name to append to TMap name
+            aug_name = "_" + "_".join(sorted(aug_set))
+
+            unique_augmentations[aug_name] = aug_funcs
+
+    # Add empty entry for no augmentation
+    unique_augmentations[""] = None
+
+    return unique_augmentations
+
+
+# Generates a diverse family of ECG TMaps with name modifications:
 #
-# default normalizes with ZeroMeanStd1 and resamples
-# _std normalizes with Standardize mean = 0, std = 2000
-# _raw does not normalize
-# _exact does not resample
-length_options = [2500, 5000]
+# ecg_625     ecg_625_std     ecg_625_std_exact     ecg_625_raw     ecg_625_raw_exact
+# ecg_1250    ecg_1250_std    ecg_1250_std_exact    ecg_1250_raw    ecg_1250_raw_exact
+# ecg_2500    ecg_2500_std    ecg_2500_std_exact    ecg_2500_raw    ecg_2500_raw_exact
+# ecg_5000    ecg_5000_std    ecg_5000_std_exact    ecg_5000_raw    ecg_5000_raw_exact
+#
+# plus all permutations of above with 1-3 augmentations per TMap (see below).
+#
+# Generated TMaps have modifications in order:
+#     ecg_{length}{_normalization}{_exact}{_augmentations}
+#
+# length: number of samples in ECG voltage array
+#    625
+#    1250
+#    2500
+#    5000
+#
+# normalization (which also handles resampling):
+#    None:      resample input to length, and normalize with ZeroMeanStd1
+#    exact:     only return array with len(array) == length
+#    std:       resample input to length; normalize with Standardize mean = 0, std = 2000
+#    std_exact: normalize with Standardize mean = 0, std = 2000;
+#               only return array with len(array) == length0
+#    raw:       resample input to length; original voltage values; does not normalize
+#    raw_exact: does not normalize; only return array with len(array) == length
+#
+# augmentations: modifications to arrays
+#    crop:  isolate a random subsection of the ECG
+#    noise: add Gaussian noise
+#    warp:  add bendiness
+#
+# When using these generated TMaps, you must use the exact name;
+#     valid:     ecg_2500_std_exact_crop_noise
+#     not valid: ecg_2500_std_exact_noise_crop
+#     not valid: ecg_2500_exact_std_noise_crop
+#
+length_options = [625, 1250, 2500, 5000]
 exact_options = [True, False]
+augmentation_options = _make_augmentation_combinations(augmentations)
 normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
-for length, exact_length, normalization in product(
-    length_options, exact_options, normalize_options,
+
+for length, exact_length, normalization, augmentation in product(
+    length_options, exact_options, normalize_options, augmentation_options,
 ):
     norm = (
         ""
@@ -188,7 +274,8 @@ for length, exact_length, normalization in product(
         else "_raw"
     )
     exact = "_exact" if exact_length else ""
-    name = f"ecg_{length}{norm}{exact}"
+
+    name = f"ecg_{length}{norm}{exact}{augmentation}"
     TMAPS[name] = TensorMap(
         name,
         shape=(None, length, 12),
@@ -198,6 +285,7 @@ for length, exact_length, normalization in product(
         channel_map=ECG_REST_AMP_LEADS,
         time_series_limit=0,
         validator=validator_not_all_zero,
+        augmentations=augmentation_options[augmentation],
     )
 
 
@@ -1178,13 +1266,8 @@ def build_ecg_time_series_tensor_maps(
     return name2tensormap
 
 
-# Date formatting
 def _ecg_str2date(d) -> datetime.date:
     return datetime.datetime.strptime(d, ECG_DATE_FORMAT).date()
-
-
-def _loyalty_str2date(date_string: str) -> datetime.date:
-    return str2date(date_string.split(" ")[0])
 
 
 def _cardiac_surgery_str2date(
@@ -1193,378 +1276,8 @@ def _cardiac_surgery_str2date(
     return datetime.datetime.strptime(input_date, date_format)
 
 
-def build_incidence_tensor_from_file(
-    file_name: str,
-    patient_column: str = "Mrn",
-    birth_column: str = "birth_date",
-    diagnosis_column: str = "first_stroke",
-    start_column: str = "start_fu",
-    delimiter: str = ",",
-    incidence_only: bool = False,
-    check_birthday: bool = True,
-) -> Callable:
-    """Build a tensor_from_file function for future (and prior) diagnoses given a TSV of patients and diagnosis dates.
-
-    The tensor_from_file function returned here should be used
-    with CATEGORICAL TensorMaps to classify patients by disease state.
-
-    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
-    :param patient_column: The header name of the column of patient ids
-    :param diagnosis_column: The header name of the column of disease diagnosis dates
-    :param start_column: The header name of the column of enrollment dates
-    :param delimiter: The delimiter separating columns of the TSV or CSV
-    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
-    :return: The tensor_from_file function to provide to TensorMap constructors
-    """
-    error = None
-    try:
-        with open(file_name, "r", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            header = next(reader)
-            patient_index = header.index(patient_column)
-            birth_index = header.index(birth_column)
-            start_index = header.index(start_column)
-            date_index = header.index(diagnosis_column)
-            date_table = {}
-            birth_table = {}
-            patient_table = {}
-            for row in reader:
-                try:
-                    patient_key = int(row[patient_index])
-                    patient_table[patient_key] = _loyalty_str2date(row[start_index])
-                    birth_table[patient_key] = _loyalty_str2date(row[birth_index])
-                    if row[date_index] == "" or row[date_index] == "NULL":
-                        continue
-                    date_table[patient_key] = _loyalty_str2date(row[date_index])
-                    if len(patient_table) % 2000 == 0:
-                        logging.debug(f"Processed: {len(patient_table)} patient rows.")
-                except ValueError as e:
-                    logging.warning(f"val err {e}")
-            logging.info(
-                f"Done processing {diagnosis_column} Got {len(patient_table)} patient"
-                f" rows and {len(date_table)} events.",
-            )
-    except FileNotFoundError as e:
-        error = e
-
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        if error:
-            raise error
-
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        if len(ecg_dates) > 1:
-            raise NotImplementedError(
-                "Diagnosis models for multiple ECGs are not implemented.",
-            )
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        categorical_data = np.zeros(shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            path = lambda key: _make_hd5_path(tm, ecg_date, key)
-            mrn = _hd5_filename_to_mrn_int(hd5.filename)
-            mrn_int = int(mrn)
-
-            if mrn_int not in patient_table:
-                raise KeyError(f"{tm.name} mrn not in incidence csv")
-
-            if check_birthday:
-                birth_date = _ecg_str2date(
-                    decompress_data(
-                        data_compressed=hd5[path("dateofbirth")][()],
-                        dtype=hd5[path("dateofbirth")].attrs["dtype"],
-                    ),
-                )
-                if birth_date != birth_table[mrn_int]:
-                    raise ValueError(
-                        f"Birth dates do not match! CSV had {birth_table[patient_key]}"
-                        f" but HD5 has {birth_date}",
-                    )
-
-            assess_date = _ecg_str2date(
-                decompress_data(
-                    data_compressed=hd5[path("acquisitiondate")][()],
-                    dtype=hd5[path("acquisitiondate")].attrs["dtype"],
-                ),
-            )
-            if assess_date < patient_table[mrn_int]:
-                raise ValueError(f"{tm.name} Assessed earlier than enrollment")
-            if mrn_int not in date_table:
-                index = 0
-            else:
-                disease_date = date_table[mrn_int]
-
-                if incidence_only and disease_date < assess_date:
-                    raise ValueError(f"{tm.name} is skipping prevalent cases.")
-                elif incidence_only and disease_date >= assess_date:
-                    index = 1
-                else:
-                    index = 1 if disease_date < assess_date else 2
-                logging.debug(
-                    f"mrn: {mrn_int}  Got disease_date: {disease_date} assess "
-                    f" {assess_date} index  {index}.",
-                )
-            slices = (i, index) if dynamic else (index,)
-            categorical_data[slices] = 1.0
-        return categorical_data
-
-    return tensor_from_file
-
-
-def _diagnosis_channels(disease: str, incidence_only: bool = False):
-    if incidence_only:
-        return {f"no_{disease}": 0, f"future_{disease}": 1}
-    return {f"no_{disease}": 0, f"prior_{disease}": 1, f"future_{disease}": 2}
-
-
 def _outcome_channels(outcome: str):
     return {f"no_{outcome}": 0, f"{outcome}": 1}
-
-
-def loyalty_time_to_event(
-    file_name: str,
-    incidence_only: bool = False,
-    patient_column: str = "Mrn",
-    follow_up_start_column: str = "start_fu",
-    follow_up_total_column: str = "total_fu",
-    diagnosis_column: str = "first_stroke",
-    delimiter: str = ",",
-):
-    """Build a tensor_from_file function for modeling relative time to event of diagnoses given a TSV of patients and dates.
-
-    The tensor_from_file function returned here should be used
-    with TIME_TO_EVENT TensorMaps to model relative time free from a diagnosis for a given disease.
-
-    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
-    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
-    :param patient_column: The header name of the column of patient ids
-    :param follow_up_start_column: The header name of the column of enrollment dates
-    :param follow_up_total_column: The header name of the column with total enrollment time (in years)
-    :param diagnosis_column: The header name of the column of disease diagnosis dates
-    :param delimiter: The delimiter separating columns of the TSV or CSV
-    :return: The tensor_from_file function to provide to TensorMap constructors
-    """
-    error = None
-    disease_dicts = defaultdict(dict)
-    try:
-        with open(file_name, "r", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            header = next(reader)
-            follow_up_start_index = header.index(follow_up_start_column)
-            follow_up_total_index = header.index(follow_up_total_column)
-            patient_index = header.index(patient_column)
-            date_index = header.index(diagnosis_column)
-            for row in reader:
-                try:
-                    patient_key = int(row[patient_index])
-                    disease_dicts["follow_up_start"][patient_key] = _loyalty_str2date(
-                        row[follow_up_start_index],
-                    )
-                    disease_dicts["follow_up_total"][patient_key] = float(
-                        row[follow_up_total_index],
-                    )
-                    if row[date_index] == "" or row[date_index] == "NULL":
-                        continue
-                    disease_dicts["diagnosis_dates"][patient_key] = _loyalty_str2date(
-                        row[date_index],
-                    )
-                    if len(disease_dicts["follow_up_start"]) % 2000 == 0:
-                        logging.debug(
-                            f"Processed: {len(disease_dicts['follow_up_start'])}"
-                            " patient rows.",
-                        )
-                except ValueError as e:
-                    logging.warning(f"val err {e}")
-            logging.info(
-                f"Done processing {diagnosis_column} Got"
-                f" {len(disease_dicts['follow_up_start'])} patient rows and"
-                f" {len(disease_dicts['diagnosis_dates'])} events.",
-            )
-    except FileNotFoundError as e:
-        error = e
-
-    def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        if error:
-            raise error
-
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        if len(ecg_dates) > 1:
-            raise NotImplementedError(
-                "Cox hazard models for multiple ECGs are not implemented.",
-            )
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
-            if patient_key_from_ecg not in disease_dicts["follow_up_start"]:
-                raise KeyError(f"{tm.name} mrn not in incidence csv")
-
-            path = _make_hd5_path(tm, ecg_date, "acquisitiondate")
-            assess_date = _ecg_str2date(
-                decompress_data(
-                    data_compressed=hd5[path][()], dtype=hd5[path].attrs["dtype"],
-                ),
-            )
-            if assess_date < disease_dicts["follow_up_start"][patient_key_from_ecg]:
-                raise ValueError(f"Assessed earlier than enrollment.")
-
-            if patient_key_from_ecg not in disease_dicts["diagnosis_dates"]:
-                has_disease = 0
-                censor_date = disease_dicts["follow_up_start"][
-                    patient_key_from_ecg
-                ] + datetime.timedelta(
-                    days=YEAR_DAYS
-                    * disease_dicts["follow_up_total"][patient_key_from_ecg],
-                )
-            else:
-                has_disease = 1
-                censor_date = disease_dicts["diagnosis_dates"][patient_key_from_ecg]
-
-            if incidence_only and censor_date <= assess_date and has_disease:
-                raise ValueError(f"{tm.name} only considers incident diagnoses")
-
-            tensor[(i, 0) if dynamic else 0] = has_disease
-            tensor[(i, 1) if dynamic else 1] = (censor_date - assess_date).days
-        return tensor
-
-    return _cox_tensor_from_file
-
-
-def _survival_from_file(
-    day_window: int,
-    file_name: str,
-    incidence_only: bool = False,
-    patient_column: str = "Mrn",
-    follow_up_start_column: str = "start_fu",
-    follow_up_total_column: str = "total_fu",
-    diagnosis_column: str = "first_stroke",
-    delimiter: str = ",",
-) -> Callable:
-    """Build a tensor_from_file function for modeling survival curves of diagnoses given a TSV of patients and dates.
-
-    The tensor_from_file function returned here should be used
-    with SURVIVAL_CURVE TensorMaps to model survival curves of patients for a given disease.
-
-    :param day_window: Total number of days of follow up the length of the survival curves to learn.
-    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
-    :param incidence_only: Flag to skip patients whose diagnosis date is prior to acquisition date of input data
-    :param patient_column: The header name of the column of patient ids
-    :param follow_up_start_column: The header name of the column of enrollment dates
-    :param follow_up_total_column: The header name of the column with total enrollment time (in years)
-    :param diagnosis_column: The header name of the column of disease diagnosis dates
-    :param delimiter: The delimiter separating columns of the TSV or CSV
-    :return: The tensor_from_file function to provide to TensorMap constructors
-    """
-    error = None
-    disease_dicts = defaultdict(dict)
-    try:
-        with open(file_name, "r", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            header = next(reader)
-            follow_up_start_index = header.index(follow_up_start_column)
-            follow_up_total_index = header.index(follow_up_total_column)
-            patient_index = header.index(patient_column)
-            date_index = header.index(diagnosis_column)
-            for row in reader:
-                try:
-                    patient_key = int(row[patient_index])
-                    disease_dicts["follow_up_start"][patient_key] = _loyalty_str2date(
-                        row[follow_up_start_index],
-                    )
-                    disease_dicts["follow_up_total"][patient_key] = float(
-                        row[follow_up_total_index],
-                    )
-                    if row[date_index] == "" or row[date_index] == "NULL":
-                        continue
-                    disease_dicts["diagnosis_dates"][patient_key] = _loyalty_str2date(
-                        row[date_index],
-                    )
-                    if len(disease_dicts["follow_up_start"]) % 2000 == 0:
-                        logging.debug(
-                            f"Processed: {len(disease_dicts['follow_up_start'])}"
-                            " patient rows.",
-                        )
-                except ValueError as e:
-                    logging.warning(f"val err {e}")
-            logging.info(
-                f"Done processing {diagnosis_column} Got"
-                f" {len(disease_dicts['follow_up_start'])} patient rows and"
-                f" {len(disease_dicts['diagnosis_dates'])} events.",
-            )
-    except FileNotFoundError as e:
-        error = e
-
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        if error:
-            raise error
-
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        if len(ecg_dates) > 1:
-            raise NotImplementedError(
-                "Survival curve models for multiple ECGs are not implemented.",
-            )
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        survival_then_censor = np.zeros(shape, dtype=np.float32)
-        for ed, ecg_date in enumerate(ecg_dates):
-            patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
-            if patient_key_from_ecg not in disease_dicts["follow_up_start"]:
-                raise KeyError(f"{tm.name} mrn not in incidence csv")
-
-            path = _make_hd5_path(tm, ecg_date, "acquisitiondate")
-            assess_date = _ecg_str2date(
-                decompress_data(
-                    data_compressed=hd5[path][()], dtype=hd5[path].attrs["dtype"],
-                ),
-            )
-            if assess_date < disease_dicts["follow_up_start"][patient_key_from_ecg]:
-                raise ValueError(f"Assessed earlier than enrollment.")
-
-            if patient_key_from_ecg not in disease_dicts["diagnosis_dates"]:
-                has_disease = 0
-                censor_date = disease_dicts["follow_up_start"][
-                    patient_key_from_ecg
-                ] + datetime.timedelta(
-                    days=YEAR_DAYS
-                    * disease_dicts["follow_up_total"][patient_key_from_ecg],
-                )
-            else:
-                has_disease = 1
-                censor_date = disease_dicts["diagnosis_dates"][patient_key_from_ecg]
-
-            intervals = int(shape[1] if dynamic else shape[0] / 2)
-            days_per_interval = day_window / intervals
-
-            for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
-                cur_date = assess_date + datetime.timedelta(days=day_delta)
-                survival_then_censor[(ed, i) if dynamic else i] = float(
-                    cur_date < censor_date,
-                )
-                survival_then_censor[
-                    (ed, intervals + i) if dynamic else intervals + i
-                ] = (
-                    has_disease
-                    * float(
-                        censor_date
-                        <= cur_date
-                        < censor_date + datetime.timedelta(days=days_per_interval),
-                    )
-                )
-                if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
-                    survival_then_censor[
-                        (ed, intervals) if dynamic else intervals
-                    ] = has_disease
-                    if has_disease and incidence_only:
-                        raise ValueError(f"{tm.name} is skipping prevalent cases.")
-            logging.debug(
-                f"Got survival disease {has_disease}, censor: {censor_date}, assess"
-                f" {assess_date}, fu start"
-                f" {disease_dicts['follow_up_start'][patient_key_from_ecg]} "
-                f"fu total {disease_dicts['follow_up_total'][patient_key_from_ecg]}"
-                f" tensor:{(survival_then_censor[ed] if dynamic else survival_then_censor)[:4]}"
-                " mid tense:"
-                f" {(survival_then_censor[ed] if dynamic else survival_then_censor)[intervals:intervals+4]} ",
-            )
-        return survival_then_censor
-
-    return tensor_from_file
 
 
 def build_ecg_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
@@ -1756,7 +1469,9 @@ def make_cardiac_surgery_outcome_tensor_from_file(
     return tensor_from_file
 
 
-def build_sts_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
+def build_cardiac_surgery_tensor_maps(
+    needed_tensor_maps: List[str],
+) -> Dict[str, TensorMap]:
     """
     Create tmaps for the Society of Thoracic Surgeons (STS) project.
     Tensor Maps returned by this function fall into two categories:
