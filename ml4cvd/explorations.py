@@ -12,12 +12,12 @@ from operator import itemgetter
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
-from typing import Dict, List, Tuple, Generator, Optional, DefaultDict
+from typing import Dict, List, Tuple, Generator, Optional, DefaultDict, Union
 
 import h5py
 import numpy as np
 import pandas as pd
-import multiprocess
+import multiprocessing as mp
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -671,102 +671,140 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
-def _hd5_to_disk(tmaps, path, gen_name, tot, output_folder, id):
-    with count.get_lock():
-        i = count.value
-        if i % 500 == 0:
-            logging.info(f"Parsing {i}/{tot} ({i/tot*100:.1f}%) done")
-        count.value += 1
+def _tmap_explore_header(tm: TensorMap) -> str:
+    return tm.name
 
-    # each worker should write to it's own file
-    pid = multiprocess.current_process().pid
-    fpath = os.path.join(output_folder, id, f'tensors_all_union_{pid}.csv')
-    write_header = not os.path.isfile(fpath)
 
-    try:
-        with h5py.File(path, "r") as hd5:
-            dict_of_tensor_dicts = defaultdict(dict)
-            # Iterate through each tmap
-            for tm in tmaps:
-                shape = tm.shape if tm.shape[0] is not None else tm.shape[1:]
-                try:
-                    tensors = tm.tensor_from_file(tm, hd5)
-                    if tm.shape[0] is not None:
-                        # If not a multi-tensor tensor, wrap in array to loop through
-                        tensors = np.array([tensors])
-                    for i, tensor in enumerate(tensors):
+def _channel_explore_header(tm: TensorMap, channel: str) -> str:
+    return f'{tm.name} {channel}'
+
+
+def _tmap_explore_error_header(tm: TensorMap) -> str:
+    return f'error_type_{tm.name}'
+
+
+def _channel_explore_error_header(tm: TensorMap, channel: str) -> str:
+    return f'{tm.name} {channel}'
+
+
+def _flatten_multidimensional_tensor(tmap: TensorMap, tensor: np.ndarray) -> Union[float, np.ndarray]:
+    if tensor.ndim > 0:
+        tensor = tensor.mean(axis=tuple(range(tensor.ndim - 1)))
+    if tmap.channel_map is None:
+        return float(tensor.mean())
+    return tensor.reshape((len(tmap.channel_map),))
+
+
+def _explore_all_tmap_headers(tmaps: List[TensorMap]) -> List[str]:
+    keys = []
+    for tmap in tmaps:
+        if tmap.channel_map:
+            keys += [_channel_explore_header(tmap, cm) for cm in tmap.channel_map]
+        else:
+            keys.append(_tmap_explore_header(tmap))
+        keys.append(_tmap_explore_error_header(tmap))
+    return keys
+
+
+class ExploreParallelWrapper:
+    def __init__(self, tmaps, paths,  num_workers, output_folder, run_id):
+        self.tmaps = tmaps
+        self.paths = paths
+        self.num_workers = num_workers
+        self.total = len(paths)
+        self.output_folder = output_folder
+        self.run_id = run_id
+        self.chunksize = self.total // num_workers
+        self.counter = mp.Value('l', 1)
+
+    def _hd5_to_disk(self, path, gen_name):
+        with self.counter.get_lock():
+            i = self.counter.value
+            if i % 500 == 0:
+                logging.info(f"Parsing {i}/{self.total} ({i/self.total*100:.1f}%) done")
+            self.counter.value += 1
+
+        # each worker should write to it's own file
+        pid = mp.current_process().pid
+        fpath = os.path.join(self.output_folder, self.run_id, f'tensors_all_union_{pid}.csv')
+        write_header = not os.path.isfile(fpath)
+
+        try:
+            with h5py.File(path, "r") as hd5:
+                dict_of_tensor_dicts = defaultdict(dict)
+                # Iterate through each tmap
+                for tm in self.tmaps:
+                    # get tensor
+                    try:
+                        tensor = tm.tensor_from_file(tm, hd5)
                         if tensor is None:
                             break
 
                         error_type = ''
                         try:
                             tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                            tensor = _flatten_multidimensional_tensor(tm, tensor)
                             # Append tensor to dict
                             if tm.channel_map:
                                 for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
+                                    col_name = _channel_explore_header(tm, cm)
+                                    dict_of_tensor_dicts[i][col_name] = tensor[tm.channel_map[cm]]
                             else:
-                                # If tensor is a scalar, isolate the value in the array;
-                                # otherwise, retain the value as array
-                                if shape[0] == 1:
-                                    if type(tensor) == np.ndarray:
-                                        tensor = tensor.item()
-                                dict_of_tensor_dicts[i][tm.name] = tensor
+                                dict_of_tensor_dicts[i][_tmap_explore_header(tm)] = tensor
                         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                            if tm.channel_map:
-                                for cm in tm.channel_map:
-                                    dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
-                            else:
-                                dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
-                            error_type = type(e).__name__
-                        dict_of_tensor_dicts[i][f'error_type_{tm.name}'] = error_type
+                            error_type = f'{type(e).__name__}: {e}'
+                        dict_of_tensor_dicts[i][_tmap_explore_error_header(tm)] = error_type
 
-                except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-                    # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
-                    if tm.channel_map:
-                        for cm in tm.channel_map:
-                            dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
-                    else:
-                        dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
-                    dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
+                    except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
+                        # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
+                        dict_of_tensor_dicts[0][_tmap_explore_error_header(tm)] = f'{type(e).__name__}: {e}'
 
-            for i in dict_of_tensor_dicts:
-                dict_of_tensor_dicts[i]['fpath'] = path
-                dict_of_tensor_dicts[i]['generator'] = gen_name
+                for i in dict_of_tensor_dicts:
+                    dict_of_tensor_dicts[i]['fpath'] = path
+                    dict_of_tensor_dicts[i]['generator'] = gen_name
 
-            # write tdicts to disk
-            if len(dict_of_tensor_dicts) > 0:
-                keys = dict_of_tensor_dicts[0].keys()
-                with open(fpath, 'a') as output_file:
-                    dict_writer = csv.DictWriter(output_file, keys)
-                    if write_header:
-                        dict_writer.writeheader()
-                    dict_writer.writerows(dict_of_tensor_dicts.values())
-    except OSError as e:
-        logging.info(f"OSError {e}")
+                # write tensors to disk
+                if len(dict_of_tensor_dicts) > 0:
+                    keys = _explore_all_tmap_headers(self.tmaps) + ['fpath', 'generator']
+                    with open(fpath, 'a') as output_file:
+                        dict_writer = csv.DictWriter(output_file, keys)
+                        if write_header:
+                            dict_writer.writeheader()
+                        dict_writer.writerows(dict_of_tensor_dicts.values())
+        except OSError as e:
+            logging.info(f"OSError {e}")
+
+    def mp_worker(self, worker_idx):
+        start = worker_idx * self.chunksize
+        end = start + self.chunksize
+        if worker_idx == self.num_workers - 1:
+            end = self.total
+        for path, gen in self.paths[start:end]:
+            self._hd5_to_disk(path, gen)
+
+    def run(self):
+        workers = []
+        for i in range(self.num_workers):
+            worker = mp.Process(target=self.mp_worker, args=(i,))
+            worker.start()
+            workers.append(worker)
+        for worker in workers:
+            worker.join()
 
 
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    global count # TODO figure out how to not use global
-    count = multiprocess.Value('l', 1)
     paths = [(path, gen.name.replace('_worker', '')) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
-    num_hd5 = len(paths)
-    chunksize = num_hd5 // args.num_workers
-    with multiprocess.Pool(processes=args.num_workers) as pool:
-        pool.starmap(
-            _hd5_to_disk,
-            [(tmaps, path, gen_name, num_hd5, args.output_folder, args.id) for path, gen_name in paths],
-            chunksize=chunksize,
-        )
+    ExploreParallelWrapper(tmaps, paths, args.num_workers, args.output_folder, args.id).run()
 
     # get columns that should have dtype 'string' instead of dtype 'O'
     str_cols = ['fpath', 'generator']
     for tm in tmaps:
         if tm.interpretation == Interpretation.LANGUAGE:
-            str_cols.extend([f'{tm.name} {cm}' for cm in tm.channel_map] if tm.channel_map else [tm.name])
-        str_cols.append(f'error_type_{tm.name}')
+            str_cols.extend(_explore_all_tmap_headers([tm]))
+        else:
+            str_cols.append(_tmap_explore_error_header(tm))
     str_cols = {key: 'string' for key in str_cols}
 
     # read all temporary files to df
@@ -782,7 +820,7 @@ def _tensors_to_df(args):
             logging.debug(f'Appended {fpath} to overall dataframe')
             temp_files.append(fpath)
 
-    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {num_hd5} hd5 files into DataFrame")
+    logging.info(f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {len(paths)} hd5 files into DataFrame")
 
     # remove temporary files
     for fpath in temp_files:
@@ -826,7 +864,6 @@ def explore(args):
         fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
         df.insert(0, 'FID', fid)
         df.insert(1, 'IID', fid)
-
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
@@ -844,7 +881,7 @@ def explore(args):
                 counts_missing = []
                 if tm.channel_map:
                     for cm in tm.channel_map:
-                        key = f'{tm.name} {cm}'
+                        key = _channel_explore_header(tm, cm)
                         counts.append(df_cur[key].sum())
                         counts_missing.append(df_cur[key].isna().sum())
                 else:
@@ -892,7 +929,7 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f'{tm.name} {cm}'
+                            key = _channel_explore_header(tm, cm)
                             stats["min"] = df_cur[key].min()
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
@@ -944,22 +981,22 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f'{tm.name} {cm}'
+                            key = _channel_explore_header(tm, cm)
                             stats["count"] = df_cur[key].count()
                             stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[key])])
                     else:
                         stats = dict()
-                        key = tm.name
+                        key = _tmap_explore_header(tm)
                         stats["count"] = df_cur[key].count()
                         stats["count_unique"] = len(df_cur[key].value_counts())
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
                         stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                        df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[tm.name])])
+                        df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[key])])
 
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(
@@ -973,16 +1010,17 @@ def explore(args):
     if args.plot_hist == "True":
         for tm in args.tensor_maps_in:
             if tm.interpretation == Interpretation.CONTINUOUS:
-                name = tm.name
+                name = _tmap_explore_header(tm)
                 arr = list(df[name])
                 plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-                plt.hist(arr, 50, rwidth = .9)
+                plt.hist(arr, 50, rwidth=.9)
                 plt.xlabel(name)
                 plt.ylabel('Fraction')
                 plt.rcParams.update({'font.size': 13})
                 figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
+
 
 def cross_reference(args):
     """Cross reference a source cohort with a reference cohort."""
