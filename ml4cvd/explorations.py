@@ -1099,8 +1099,9 @@ def cross_reference(args):
     def _load_data(name, path, cols):
         if os.path.isdir(path):
             logging.debug(f'Assuming {name} is directory of hd5 at {path}')
-            from ml4cvd.arguments import _get_tmap
-            args.tensor_maps_in = [_get_tmap(it, cols) for it in cols]
+            from ml4cvd.arguments import tensormap_lookup
+            # TODO: check if this works!
+            args.tensor_maps_in = [tensormap_lookup(it) for it in cols]
             df = _tensors_to_df(args)[cols]
         else:
             logging.debug(f'Assuming {name} is a csv at {path}')

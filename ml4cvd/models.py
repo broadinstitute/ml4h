@@ -1425,6 +1425,7 @@ def get_model_inputs_outputs(
         if not got_tensor_maps_for_characters:
             try:
                 m.get_layer('input_ecg_rest_text_ecg_text')
+                # TODO: Is this broken?
                 char_maps_in, char_maps_out = _get_tensor_maps_for_characters(tensor_maps_in, m)
                 model_inputs_outputs[input_prefix].extend(char_maps_in)
                 tensor_maps_in.extend(char_maps_in)

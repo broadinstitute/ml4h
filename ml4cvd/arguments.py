@@ -25,10 +25,10 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
-from ml4cvd.tensor_maps_by_hand import TMAPS
+# from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
+# from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
+# from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
 BOTTLENECK_STR_TO_ENUM = {
@@ -311,56 +311,51 @@ def parse_args():
         help='TensorMap or column name of values in csv to report distribution on, e.g. mortality. '
              'Label distribution reporting is optional. Can list multiple labels to report.',
     )
+    # TensorMap prefix for convenience
+    parser.add_argument('--tensormap_prefix', default="ml4cvd.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4cvd.tensormap\"")
+
 
     args = parser.parse_args()
     _process_args(args)
     return args
 
 
-def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
-    """
-    This allows tensor_maps_by_script to only be imported if necessary, because it's slow.
-    """
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_partners_tensor_maps(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_cardiac_surgery_tensor_maps(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_partners_time_series_tensor_maps(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    from ml4cvd.tensor_maps_partners_ecg import TMAPS as partners_tmaps
-    TMAPS.update(partners_tmaps)
-    if name in TMAPS:
-        return TMAPS[name]
-
-    from ml4cvd.tensor_maps_partners_ecg_labels import TMAPS as partners_label_tmaps
-    TMAPS.update(partners_label_tmaps)
-    if name in TMAPS:
-        return TMAPS[name]
-
-    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
-    TMAPS.update(script_tmaps)
-
-    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
-    TMAPS.update(script_tmaps)
-
-    return TMAPS[name]
+def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
+    if isinstance(module_string, str) == False:
+        raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
+    if len(module_string) == 0:
+        raise ValueError(f"Input name cannot be empty.")
+    path_string = module_string
+    if prefix:
+        if isinstance(prefix, str) == False:
+            raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
+        if len(prefix) == 0:
+            raise ValueError(f"Prefix cannot be set to an emtpy string.")
+        path_string = '.'.join([prefix,module_string])
+    else:
+        if '.'.join(path_string.split('.')[0:2]) != 'ml4cvd.tensormap':
+            raise ValueError(f"TensorMaps must reside in the path 'ml4cvd.tensormap.*'. Given: {module_string}")
+    import importlib
+    try:
+        i = importlib.import_module('.'.join(path_string.split('.')[:-1]))
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(f"Could not resolve library {'.'.join(path_string.split('.')[:-1])} for target tensormap {module_string}")
+    try:
+        tm = getattr(i,path_string.split('.')[-1])
+    except AttributeError:
+        raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
+    from ml4cvd.TensorMap import TensorMap
+    if isinstance(tm, TensorMap) == False:
+        raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
+    return tm
 
 
-def _process_u_connect_args(u_connect: Optional[List[List]]) -> Dict[TensorMap, Set[TensorMap]]:
+def _process_u_connect_args(u_connect: Optional[List[List]], tensormap_prefix) -> Dict[TensorMap, Set[TensorMap]]:
     u_connect = u_connect or []
     new_u_connect = defaultdict(set)
     for connect_pair in u_connect:
         tmap_key_in, tmap_key_out = connect_pair[0], connect_pair[1]
-        tmap_in, tmap_out = _get_tmap(tmap_key_in, []), _get_tmap(tmap_key_out, [])
+        tmap_in, tmap_out = tensormap_lookup(tmap_key_in, tensormap_prefix), tensormap_lookup(tmap_key_out, args.tensormap_prefix)
         if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
             raise TypeError(f'u_connect of {tmap_in} {tmap_out} requires matching shapes besides channel dimension.')
         if tmap_in.axes() < 2 or tmap_out.axes() < 2:
@@ -380,10 +375,13 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    args.u_connect = _process_u_connect_args(args.u_connect)
+    args.u_connect = _process_u_connect_args(args.u_connect, args.tensormap_prefix)
     needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
-    args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
-    args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
+    # args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
+    # args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
+    args.tensor_maps_in = [tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors]
+    args.sample_weight = tensormap_lookup(args.sample_weight, args.tensormap_prefix) if args.sample_weight else None
+    
     if args.sample_weight:
         assert args.sample_weight.shape == (1,)
 
@@ -399,7 +397,9 @@ def _process_args(args):
                 args.continuous_file_discretization_bounds,
             ),
         )
-    args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
+    # args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
+    # args.tensor_maps_out = parent_sort(args.tensor_maps_out)
+    args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
@@ -412,7 +412,7 @@ def _process_args(args):
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was: {command_line}")
-    logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
+    # logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
 
     if args.eager:
         import tensorflow as tf
