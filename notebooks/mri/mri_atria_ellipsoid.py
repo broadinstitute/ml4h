@@ -72,8 +72,8 @@ def ellipsoid_fit(X):
 
 def project_3dpts_plane(pts):
     
-    N = np.cross(pts[10] - pts[0], pts[-1] - pts[0])
-    U = (pts[10] - pts[0])/np.linalg.norm(pts[10] - pts[0])
+    N = np.cross(pts[len(pts)//2] - pts[0], pts[-1] - pts[0])
+    U = (pts[len(pts)//2] - pts[0])/np.linalg.norm(pts[len(pts)//2] - pts[0])
     uN = N / np.linalg.norm(N)
     u = pts[0] + U  
     V = np.cross(U, uN)
