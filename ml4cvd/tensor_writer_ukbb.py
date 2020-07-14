@@ -191,9 +191,8 @@ def write_tensors_from_csv(
                     continue
                 tp = tensor_path(path_prefix, column_header)
                 if tp in hd5:
-                    tensor = first_dataset_at_path(hd5, tp)
-                    tensor[:] = value
-                    stats['updated'] += 1
+                    stats['skipped'] += 1
+                    continue
                 else:
                     storage_type = StorageType.STRING
                     if column_header.startswith('c_'):
