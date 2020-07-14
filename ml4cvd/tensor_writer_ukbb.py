@@ -198,10 +198,13 @@ def write_tensors_from_csv(
                     storage_type = StorageType.STRING
                     if column_header.startswith('c_'):
                         storage_type=StorageType.CATEGORICAL_FLAG
+                        value = float(value)
                     elif column_header.startswith('d_'):
                         storage_type=StorageType.CONTINUOUS
+                        value = float(value)
                     elif column_header.startswith('incident_') or column_header.startswith('prevalent_'):
                         storage_type=StorageType.CATEGORICAL_FLAG
+                        value = float(value)
                     create_tensor_in_hd5(hd5, path_prefix, column_header, value, stats, storage_type=storage_type)
                     stats['created'] += 1
 
