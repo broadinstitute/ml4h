@@ -79,8 +79,6 @@ def _make_hd5_path(tm, ecg_date, value_key):
 
 
 def _resample_voltage(voltage, desired_samples):
-    if len(voltage) != 5000:
-        raise ValueError(f'skipping not 5ks')
     if len(voltage) == desired_samples:
         return voltage
     elif len(voltage) == 2500 and desired_samples == 5000:
