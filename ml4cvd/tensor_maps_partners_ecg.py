@@ -155,7 +155,7 @@ def make_voltage(population_normalize: float = None, filter=False):
 # Creates 12 TMaps:
 # partners_ecg_2500      partners_ecg_2500_exact      partners_ecg_5000      partners_ecg_5000_exact
 # partners_ecg_2500_std  partners_ecg_2500_std_exact  partners_ecg_5000_std  partners_ecg_5000_std_exact
-# partners_ecg_2500_raw  partners_ecg_2500_raw_exact  partners_ecg_5000_raw  partners_ecg_5000_raw_exact
+# partners_ecg_2500  partners_ecg_2500_exact  partners_ecg_5000_raw  partners_ecg_5000_raw_exact
 #
 # default normalizes with ZeroMeanStd1 and resamples
 # _std normalizes with Standardize mean = 0, std = 2000
@@ -2137,20 +2137,20 @@ TMAPS['toast_subtype_oldest'] = TensorMap(
 
 
 partners_ecg_features_dic = {
-    'atrialrate_md': 0,
-    'paxis_md': 1,
-    'poffset_md': 2,
-    'ponset_md': 3,
-    'qoffset_md': 4,
-    'qonset_md': 5,
-    'qrscount_md': 6,
-    'qrsduration_md': 7,
-    'qtcorrected_md': 8,
-    'qtinterval_md': 9,
-    'raxis_md': 10,
-    'taxis_md': 11,
-    'toffset_md': 12,
-    'ventricularrate_md': 13
+    'atrialrate_md': [79.958490, 41.526322],
+    'paxis_md': [44.447618, 30.149715],
+    'poffset_md': [137.660674, 62.846951],
+    'ponset_md': [2355.778680, 11844.168609],
+    'qoffset_md': [211.344796, 65.183171],
+    'qonset_md': [173.726931, 53.417421],
+    'qrscount_md': [12.418957, 3.192442],
+    'qrsduration_md': [95.192446, 22.307156],
+    'qtcorrected_md': [432.750401, 59.467004],
+    'qtinterval_md': [395.786748, 48.109634],
+    'raxis_md': [24.924176, 46.946210],
+    'taxis_md': [48.100464, 47.254585],
+    'toffset_md': [330.698266, 104.930466],
+    'ventricularrate_md': [74.553214, 18.791369]
 }
 
 for feature in partners_ecg_features_dic:
@@ -2158,6 +2158,9 @@ for feature in partners_ecg_features_dic:
         'partners_feat_'+feature,
         interpretation=Interpretation.CONTINUOUS,
         path_prefix=PARTNERS_PREFIX,
+        loss='logcosh',
+        normalization=Standardize(mean=partners_ecg_features_dic[feature][0],
+                                  std=partners_ecg_features_dic[feature][1]),
         tensor_from_file=make_partners_ecg_tensor(key=feature),
         shape=(1,)
     )
