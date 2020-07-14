@@ -14,6 +14,7 @@ from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, EPS
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1, Normalizer
+from ml4cvd.metrics import sum_squared_error
 
 
 YEAR_DAYS = 365.26
@@ -178,10 +179,11 @@ class ZeroMeanStd1Scale(Normalizer):
         return tensor * self.scale
 
 
-for scale in [10, 1, 1e-1, 1e-2]:
+for scale in [1000, 100, 10, 1, 1e-1, 1e-2]:
     TMAPS[f'partners_ecg_5000_only_scale_{scale}'] = TensorMap(
-        'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample,
+        'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
         normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
+        cacheable=False,
     )
 
 
