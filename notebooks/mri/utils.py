@@ -16,17 +16,18 @@ import imageio
 XDMF_TRIANGLE=4
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {}
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'] = 11
+
 def project_3dpts_plane(pts):
-    
-    N = np.cross(pts[10] - pts[0], pts[-1] - pts[0])
-    U = (pts[10] - pts[0])/np.linalg.norm(pts[10] - pts[0])
+    pt0, pt1, pt2 = [pts[idx] for idx in [0, len(pts)//2, -1]]
+    N = np.cross(pt0 - pt1, pt2 - pt0)
+    U = (pt1 - pt0)/np.linalg.norm(pt1 - pt0)
     uN = N / np.linalg.norm(N)
-    u = pts[0] + U  
+    u = pt0 + U  
     V = np.cross(U, uN)
-    v = pts[0] + V
-    n = pts[0] + uN
+    v = pt0 + V
+    n = pt0 + uN
     S = np.ones((4, 4))
-    S[:-1, 0] = pts[0]
+    S[:-1, 0] = pt0
     S[:-1, 1] = u
     S[:-1, 2] = v
     S[:-1, 3] = n
