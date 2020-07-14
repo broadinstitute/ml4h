@@ -1412,7 +1412,7 @@ def build_ecg_from_date(
 
         if target == 'ecg':
             ecg_dates = list(hd5[tm.path_prefix])
-            target_date = datetime.datetime.strptime(patient_data[mrn_int]['ecg_date'], PARTNERS_DATE_FORMAT).date()
+            target_date = datetime.datetime.strptime(patient_data[mrn_int]['ecg_date'], CARDIAC_SURGERY_DATE_FORMAT).date()
             target_date_time = None
             for d in ecg_dates:
                 if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT).date() == target_date:
