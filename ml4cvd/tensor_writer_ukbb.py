@@ -198,7 +198,10 @@ def write_tensors_from_csv(
                     storage_type = StorageType.STRING
                     if column_header.startswith('c_'):
                         storage_type=StorageType.CATEGORICAL_FLAG
-                        value = float(value)
+                        try:
+                            value = float(value)
+                        except ValueError:
+                            value = 1.0 if 'true' in value.lower() else 0.0
                     elif column_header.startswith('d_'):
                         storage_type=StorageType.CONTINUOUS
                         value = float(value)
