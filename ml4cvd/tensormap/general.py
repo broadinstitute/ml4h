@@ -6,6 +6,8 @@ import numpy as np
 from typing import List, Tuple
 # from ml4cvd.tensor_writer_ukbb import tensor_path
 from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
+from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 
 
 def tensor_path(path_prefix: str, name: str) -> str:
