@@ -67,6 +67,7 @@ from ml4cvd.tensor_generators import (
     BATCH_PATHS_INDEX,
     BATCH_OUTPUT_INDEX,
     TensorGenerator,
+    get_verbose_stats_string,
     big_batch_from_minibatch_generator,
     test_train_valid_tensor_generators,
 )
@@ -233,7 +234,7 @@ def train_multimodal_multitask(args):
         **args.__dict__
     )
     model = make_multimodal_multitask_model(**args.__dict__)
-    model = train_model_from_generators(
+    model, history = train_model_from_generators(
         model,
         generate_train,
         generate_valid,
@@ -246,6 +247,7 @@ def train_multimodal_multitask(args):
         args.id,
         args.inspect_model,
         args.inspect_show_labels,
+        return_history=True,
         defer_worker_halt=args.plot_train_curves,
     )
     out_path = os.path.join(args.output_folder, args.id + "/")
@@ -278,6 +280,18 @@ def train_multimodal_multitask(args):
     )
     generate_test.kill_workers()
 
+    logging.info(f"Model trained for {len(history.history['loss'])} epochs")
+    if isinstance(generate_train, TensorGenerator):
+        logging.info(
+            get_verbose_stats_string(
+                {
+                    "train": generate_train,
+                    "valid": generate_valid,
+                    "test": generate_test,
+                },
+            ),
+        )
+
     performance_metrics = _predict_and_evaluate(
         model,
         test_data,
@@ -290,21 +304,6 @@ def train_multimodal_multitask(args):
         test_paths,
         args.embed_visualization,
         args.alpha,
-    )
-    logging.info(
-        f"True Epochs Completed:\n"
-        f"\t{generate_train.true_epochs} Training Epochs\n"
-        f"\t{generate_valid.true_epochs} Validation\n"
-        f"\t{generate_test.true_epochs} Test Epochs",
-    )
-    logging.info(
-        f'{generate_train.name.split("_")[0].upper()}\n{generate_train.stats_string}',
-    )
-    logging.info(
-        f'{generate_valid.name.split("_")[0].upper()}\n{generate_valid.stats_string}',
-    )
-    logging.info(
-        f'{generate_test.name.split("_")[0].upper()}\n{generate_test.stats_string}',
     )
     return performance_metrics
 

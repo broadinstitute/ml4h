@@ -112,7 +112,7 @@ class TensorMap(object):
         parents: Optional[List["TensorMap"]] = None,
         sentinel: Optional[float] = None,
         validator: Optional[Callable] = None,
-        cacheable: Optional[bool] = True,
+        cacheable: Optional[bool] = False,
         activation: Optional[Union[str, Callable]] = None,
         days_window: int = 1825,
         path_prefix: Optional[str] = None,
@@ -141,7 +141,7 @@ class TensorMap(object):
         :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
         :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
-        :param cacheable: boolean true if tensors made by this TensorMap can be cached.  Avoid this if there is randomness in tensor construction.
+        :param cacheable: boolean true if tensors made by this TensorMap can be cached. Avoid this if there is randomness in tensor construction. Only compatible with legacy TensorGenerator.
         :param activation: String specifying activation function
         :param days_window: Number of days to consider for survival curve TensorMaps, the longest possible follow up.
         :param path_prefix: Path prefix of HD5 file groups where the data we are tensor mapping is located inside hd5 files

@@ -754,7 +754,7 @@ def parse_args():
         "--cache_size",
         default=3.5e9 / multiprocessing.cpu_count(),
         type=float,
-        help="Tensor map cache size per worker.",
+        help="Tensor map cache size per worker. Only compatible with legacy TensorGenerator.",
     )
 
     # Cross reference arguments
@@ -880,6 +880,12 @@ def parse_args():
             " mortality. Label distribution reporting is optional. Can list multiple"
             " labels to report."
         ),
+    )
+    parser.add_argument(
+        "--legacy_tensor_generator",
+        action="store_true",
+        default=False,
+        help="Use legacy version of Tensor Generator. Legacy version is buggy and should only be used if absolutely necessary. Current version is faster and more reliable.",
     )
 
     args = parser.parse_args()
