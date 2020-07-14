@@ -4,13 +4,13 @@ import logging
 import operator
 import numpy as np
 from typing.io import TextIO
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.tensor_from_file import _build_tensor_from_file, random_text_window_tensor
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4cvd.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
+from ml4cvd.tensor_from_file import _build_tensor_from_file, random_text_window_tensor, token_dictionary_and_text_from_file
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 
@@ -247,7 +247,7 @@ def _token_dictionary_from_text_file(text_file: str) -> Dict[str, int]:
 
 def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: bool = True) -> Tuple[TensorMap, TensorMap]:
     name = os.path.basename(text_file).split('.')[0]
-    token_dictionary = _token_dictionary_from_text_file(text_file)
+    text, token_dictionary = token_dictionary_and_text_from_file(text_file)
     shape = (window_size, len(token_dictionary)) if one_hot else (window_size,)
     burn_in = TensorMap(
         f'next_{name}', Interpretation.LANGUAGE, shape=shape,
@@ -255,34 +255,18 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
         cacheable=False,
     )
     output_map = TensorMap(
-        f'next_next_{name}', Interpretation.LANGUAGE, shape=shape,
+        f'next_next_{name}', Interpretation.LANGUAGE,
+        shape=(len(token_dictionary),) if one_hot else shape,
+        loss='categorical_crossentropy',
         channel_map=token_dictionary,
         cacheable=False,
     )
     input_map = TensorMap(
         name, Interpretation.LANGUAGE, shape=shape,
-        tensor_from_file=random_text_window_tensor(text_file, window_size, one_hot=one_hot),
+        tensor_from_file=random_text_window_tensor(text, window_size, one_hot=one_hot),
         dependent_map=[burn_in, output_map],
         channel_map=token_dictionary,
         annotation_units=128,
         cacheable=False,
     )
     return input_map, burn_in, output_map
-
-
-# TMAPS['lsd_text_next_char'] = TensorMap(
-#     'lsd_text_next_char', Interpretation.LANGUAGE, shape=(len(TESTIMONIAL_CHAR_2_IDX),), channel_map=TESTIMONIAL_CHAR_2_IDX, cacheable=False,
-# )
-#
-# TMAPS['lsd_text_next_2_char'] = TensorMap(
-#     'lsd_text_next_2_char', Interpretation.LANGUAGE, shape=(2, len(TESTIMONIAL_CHAR_2_IDX)), channel_map=TESTIMONIAL_CHAR_2_IDX, annotation_units=32, cacheable=False,
-# )
-#
-# TMAPS['lsd_text_32'] = TensorMap(
-#     'lsd_text_corpus', Interpretation.LANGUAGE, shape=(32, len(TESTIMONIAL_CHAR_2_IDX)),
-#     tensor_from_file=random_text_window_tensor('/home/sam/ml/LSD.txt', 32),
-#     dependent_map=TMAPS['lsd_text_next_char'],
-#     channel_map=TESTIMONIAL_CHAR_2_IDX,
-#     annotation_units=128,
-#     cacheable=False,
-# )

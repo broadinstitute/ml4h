@@ -24,6 +24,7 @@ from collections import defaultdict
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
@@ -77,7 +78,7 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
-    parser.add_argument('--text_file', default=None, help='Path to a file with text.',)
+    parser.add_argument('--text_file', default=None, help='Path to a file with text.')
     parser.add_argument(
         '--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
@@ -85,15 +86,14 @@ def parse_args():
     )
 
     # Data selection parameters
+    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
+    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
         '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
         help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
     )
-    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
-    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
-
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -137,17 +137,19 @@ def parse_args():
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
     parser.add_argument('--dense_layers', nargs='*', default=[16, 64], type=int, help='List of number of hidden units in neural nets dense layers.')
-    parser.add_argument('--dropout', default=0.0, type=float, help='Dropout rate of dense layers must be in [0.0, 1.0].')
+    parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
+    parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
+    parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--conv_x', default=[3], nargs='*', type=int, help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_y', default=[3], nargs='*', type=int, help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_z', default=[2], nargs='*', type=int, help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
-    parser.add_argument('--conv_dropout', default=0.0, type=float, help='Dropout rate of convolutional kernels must be in [0.0, 1.0].')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
-    parser.add_argument('--conv_normalize', default=None, choices=['', 'batch_norm'], help='Type of normalization layer for convolutions')
-    parser.add_argument('--conv_regularize', default=None, choices=['dropout', 'spatial_dropout'], help='Type of regularization layer for convolutions.')
+    parser.add_argument('--conv_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for convolutions')
+    parser.add_argument('--conv_regularize', default=None, choices=list(CONV_REGULARIZATION_CLASSES), help='Type of regularization layer for convolutions.')
+    parser.add_argument('--conv_regularize_rate', default=0.0, type=float, help='Rate parameter for conv_regularize.')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')
@@ -384,7 +386,10 @@ def _process_args(args):
         del args.input_tensors[:2]
         del args.output_tensors[0]
         input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
-        args.tensor_maps_in.extend([input_map, burn_in])
+        if args.text_one_hot:
+            args.tensor_maps_in.append(input_map)
+        else:
+            args.tensor_maps_in.extend([input_map, burn_in])
         args.tensor_maps_out.append(output_map)
     args.tensor_maps_in.extend([_get_tmap(it, needed_tensor_maps) for it in args.input_tensors])
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
