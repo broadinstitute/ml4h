@@ -185,30 +185,34 @@ def write_tensors_from_csv(
         tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
         if not os.path.exists(os.path.dirname(tensor_file)):
             os.makedirs(os.path.dirname(tensor_file))
-        with h5py.File(tensor_file, 'a') as hd5:
-            for value, column_header in zip(row, header):
-                if column_header == sample_header:
-                    continue
-                tp = tensor_path(path_prefix, column_header)
-                if tp in hd5:
-                    stats['skipped'] += 1
-                    continue
-                else:
-                    storage_type = StorageType.STRING
-                    if column_header.startswith('c_'):
-                        storage_type=StorageType.CATEGORICAL_FLAG
-                        try:
+        try:
+            with h5py.File(tensor_file, 'a') as hd5:
+                for value, column_header in zip(row, header):
+                    if column_header == sample_header:
+                        continue
+                    tp = tensor_path(path_prefix, column_header)
+                    if tp in hd5:
+                        stats['skipped'] += 1
+                        continue
+                    else:
+                        storage_type = StorageType.STRING
+                        if column_header.startswith('c_'):
+                            storage_type=StorageType.CATEGORICAL_FLAG
+                            try:
+                                value = float(value)
+                            except ValueError:
+                                value = 1.0 if 'true' in value.lower() else 0.0
+                        elif column_header.startswith('d_'):
+                            storage_type=StorageType.CONTINUOUS
                             value = float(value)
-                        except ValueError:
-                            value = 1.0 if 'true' in value.lower() else 0.0
-                    elif column_header.startswith('d_'):
-                        storage_type=StorageType.CONTINUOUS
-                        value = float(value)
-                    elif column_header.startswith('incident_') or column_header.startswith('prevalent_'):
-                        storage_type=StorageType.CATEGORICAL_FLAG
-                        value = float(value)
-                    create_tensor_in_hd5(hd5, path_prefix, column_header, value, stats, storage_type=storage_type)
-                    stats['created'] += 1
+                        elif column_header.startswith('incident_') or column_header.startswith('prevalent_'):
+                            storage_type=StorageType.CATEGORICAL_FLAG
+                            value = float(value)
+                        create_tensor_in_hd5(hd5, path_prefix, column_header, value, stats, storage_type=storage_type)
+                        stats['created'] += 1
+        except OSError:
+            logging.warning('File already exists')
+            continue
 
 
 def write_tensors_from_dicom_pngs(
