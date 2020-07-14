@@ -70,14 +70,7 @@ from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
     test_train_valid_tensor_generators,
 )
-from ml4cvd.tensor_writer_ukbb import (
-    write_tensors,
-    append_gene_csv,
-    append_fields_from_csv,
-    write_tensors_from_ecg_pngs,
-    write_tensors_from_dicom_pngs,
-)
-from ml4cvd.tensor_writer_partners import write_tensors_partners
+from ml4cvd.tensor_writer_ecg import write_tensors_ecg
 
 
 def run(args):
