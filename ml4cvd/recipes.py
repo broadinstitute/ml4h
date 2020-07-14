@@ -25,7 +25,7 @@ from ml4cvd.models import make_character_model_plus, embed_model_predict, make_s
 from ml4cvd.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, plot_roc_per_class, plot_tsne
 from ml4cvd.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
-from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
+from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs, write_tensors_from_csv
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 
 
@@ -44,6 +44,8 @@ def run(args):
             write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
         elif 'tensorize_partners' == args.mode:
             write_tensors_partners(args.xml_folder, args.tensors, args.num_workers)
+        elif 'tensorize_csv' == args.mode:
+            write_tensors_from_csv(args.tensors, args.tensor_source)
         elif 'explore' == args.mode:
             explore(args)
         elif 'cross_reference' == args.mode:

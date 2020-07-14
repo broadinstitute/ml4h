@@ -18,7 +18,7 @@ import traceback
 from functools import partial
 from itertools import product
 from collections import Counter, defaultdict
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, TextIO
 
 import h5py
 import imageio
@@ -28,6 +28,7 @@ import zipfile
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
+import pandas as pd
 import nibabel as nib
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
@@ -168,6 +169,43 @@ def write_tensors(
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
 
+def write_tensors_from_csv(
+    tensors, tensor_source, min_sample_id, max_sample_id, sample_header='sample_id',
+    path_prefix='ukb_tabular_data', delimiter='\t',
+):
+    stats = Counter()
+    reader = csv.reader(open(tensor_source), delimiter=delimiter)
+    header = next(reader)
+    sample_index = header.index(sample_header)
+    for row in reader:
+        sample_id = row[sample_index]
+        if not min_sample_id <= int(sample_id) < max_sample_id:
+            continue
+        stats[sample_header + '_' + sample_id] += 1
+        tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+        if not os.path.exists(os.path.dirname(tensor_file)):
+            os.makedirs(os.path.dirname(tensor_file))
+        with h5py.File(tensor_file, 'a') as hd5:
+            for value, column_header in zip(row, header):
+                if column_header == sample_header:
+                    continue
+                tp = tensor_path(path_prefix, column_name)
+                if tp in hd5:
+                    tensor = first_dataset_at_path(hd5, tp)
+                    tensor[:] = value
+                    stats['updated'] += 1
+                else:
+                    storage_type = StorageType.STRING
+                    if column_header.startswith('c_'):
+                        storage_type=StorageType.CATEGORICAL_FLAG
+                    elif column_header.startswith('d_'):
+                        storage_type=StorageType.CONTINUOUS
+                    elif column_header.startswith('incident_') or column_header.startswith('prevalent_'):
+                        storage_type=StorageType.CATEGORICAL_FLAG
+                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, value, stats, storage_type=storage_type)
+                    stats['created'] += 1
+
+
 def write_tensors_from_dicom_pngs(
     tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
     sample_header='sample_id', dicom_header='dicom_file',
@@ -302,6 +340,11 @@ def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
         if os.path.exists(xml_folder + sample_str + '_' + xml_id + '_2_0.xml'):
             return True
     return False
+
+
+def _sample_in_csv(csv_file, sample_id) -> bool:
+    sample_str = str(sample_id)
+    return
 
 
 def _dicts_and_plots_from_tensorization(
@@ -1308,7 +1351,7 @@ def _log_extreme_n(stats, n) -> None:
 
 def _prune_sample(
     sample_id: int, min_sample_id: int, max_sample_id: int, mri_field_ids: List[int],
-    xml_field_ids: List[int], zip_folder: str, xml_folder: str,
+    xml_field_ids: List[int], zip_folder: str, xml_folder: str, csv_dataframe: pd.DataFrame,
 ):
     """Return True if the sample ID is missing associated MRI, EKG, or GT data.  Or if the sample_id is below the given minimum."""
 
@@ -1320,5 +1363,4 @@ def _prune_sample(
         return True
     if len(xml_field_ids) > 0 and not _sample_has_ecgs(xml_folder, xml_field_ids, sample_id):
         return True
-
     return False
