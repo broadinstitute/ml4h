@@ -45,7 +45,7 @@ def run(args):
         elif 'tensorize_partners' == args.mode:
             write_tensors_partners(args.xml_folder, args.tensors, args.num_workers)
         elif 'tensorize_csv' == args.mode:
-            write_tensors_from_csv(args.tensors, args.tensor_source)
+            write_tensors_from_csv(args.tensors, args.tensors_source, args.min_sample_id, args.max_sample_id)
         elif 'explore' == args.mode:
             explore(args)
         elif 'cross_reference' == args.mode:

@@ -189,7 +189,7 @@ def write_tensors_from_csv(
             for value, column_header in zip(row, header):
                 if column_header == sample_header:
                     continue
-                tp = tensor_path(path_prefix, column_name)
+                tp = tensor_path(path_prefix, column_header)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
                     tensor[:] = value
@@ -202,7 +202,7 @@ def write_tensors_from_csv(
                         storage_type=StorageType.CONTINUOUS
                     elif column_header.startswith('incident_') or column_header.startswith('prevalent_'):
                         storage_type=StorageType.CATEGORICAL_FLAG
-                    create_tensor_in_hd5(hd5, path_prefix, tensor_name, value, stats, storage_type=storage_type)
+                    create_tensor_in_hd5(hd5, path_prefix, column_header, value, stats, storage_type=storage_type)
                     stats['created'] += 1
 
 
