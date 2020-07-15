@@ -943,22 +943,36 @@ TMAPS[task] = TensorMap(
 #     ecg_rate_pc
 
 # fmt: off
-# TMap name    ->    (hd5 key,          fill, validator,                       normalization)
+# TMap name      ->      (hd5 key,          fill, validator,                       normalization)
 interval_key_map = {
-    "ecg_rate":      ("ventricularrate", 0,   make_range_validator(10, 200),   Standardize(mean=59.3, std=10.6)),
-    "ecg_pr":        ("printerval",      0,   make_range_validator(50, 500),   None),
-    "ecg_qrs":       ("qrsduration",     0,   make_range_validator(20, 400),   None),
-    "ecg_qt":        ("qtinterval",      0,   make_range_validator(100, 800),  None),
-    "ecg_qtc":       ("qtcorrected",     0,   make_range_validator(100, 800),  None),
-    "ecg_paxis":     ("paxis",           999, make_range_validator(-180, 180), None), # TODO fix range of PRT axes
-    "ecg_raxis":     ("raxis",           999, make_range_validator(-180, 180), None),
-    "ecg_taxis":     ("taxis",           999, make_range_validator(-180, 180), None),
-    "ecg_qrs_count": ("qrscount",        -1,  validator_no_negative,           None),
-    "ecg_qonset":    ("qonset",          -1,  validator_no_negative,           None),
-    "ecg_qoffset":   ("qoffset",         -1,  validator_no_negative,           None),
-    "ecg_ponset":    ("ponset",          -1,  validator_no_negative,           None),
-    "ecg_poffset":   ("poffset",         -1,  validator_no_negative,           None),
-    "ecg_toffset":   ("toffset",         -1,  validator_no_negative,           None),
+    "ecg_rate":          ("ventricularrate", 0,   make_range_validator(10, 200),   None),
+    "ecg_rate_std":      ("ventricularrate", 0,   make_range_validator(10, 200),   Standardize(mean=70, std=16)),
+    "ecg_pr":            ("printerval",      0,   make_range_validator(50, 500),   None),
+    "ecg_pr_std":        ("printerval",      0,   make_range_validator(50, 500),   Standardize(mean=175, std=36)),
+    "ecg_qrs":           ("qrsduration",     0,   make_range_validator(20, 400),   None),
+    "ecg_qrs_std":       ("qrsduration",     0,   make_range_validator(20, 400),   Standardize(mean=104, std=26)),
+    "ecg_qt":            ("qtinterval",      0,   make_range_validator(100, 800),  None),
+    "ecg_qt_std":        ("qtinterval",      0,   make_range_validator(100, 800),  Standardize(mean=411, std=45)),
+    "ecg_qtc":           ("qtcorrected",     0,   make_range_validator(100, 800),  None),
+    "ecg_qtc_std":       ("qtcorrected",     0,   make_range_validator(100, 800),  Standardize(mean=440, std=39)),
+    "ecg_paxis":         ("paxis",           999, make_range_validator(-90, 360),  None),
+    "ecg_paxis_std":     ("paxis",           999, make_range_validator(-90, 360),  Standardize(mean=47, std=30)),
+    "ecg_raxis":         ("raxis",           999, make_range_validator(-90, 360),  None),
+    "ecg_raxis_std":     ("raxis",           999, make_range_validator(-90, 360),  Standardize(mean=18, std=53)),
+    "ecg_taxis":         ("taxis",           999, make_range_validator(-90, 360),  None),
+    "ecg_taxis_std":     ("taxis",           999, make_range_validator(-90, 360),  Standardize(mean=58, std=63)),
+    "ecg_qrs_count":     ("qrscount",        -1,  validator_no_negative,           None),
+    "ecg_qrs_count_std": ("qrscount",        -1,  validator_no_negative,           Standardize(mean=12, std=3)),
+    "ecg_qonset":        ("qonset",          -1,  validator_no_negative,           None),
+    "ecg_qonset_std":    ("qonset",          -1,  validator_no_negative,           Standardize(mean=204, std=36)),
+    "ecg_qoffset":       ("qoffset",         -1,  validator_no_negative,           None),
+    "ecg_qoffset_std":   ("qoffset",         -1,  validator_no_negative,           Standardize(mean=252, std=44)),
+    "ecg_ponset":        ("ponset",          -1,  make_range_validator(0, 1000),   None),
+    "ecg_ponset_std":    ("ponset",          -1,  make_range_validator(0, 1000),   Standardize(mean=122, std=27)),
+    "ecg_poffset":       ("poffset",         -1,  make_range_validator(10, 500),   None),
+    "ecg_poffset_std":   ("poffset",         -1,  make_range_validator(10, 500),   Standardize(mean=170, std=42)),
+    "ecg_toffset":       ("toffset",         -1,  validator_no_negative,           None),
+    "ecg_toffset_std":   ("toffset",         -1,  validator_no_negative,           Standardize(mean=397, std=73)),
 }
 # fmt: on
 
@@ -1023,13 +1037,27 @@ def ecg_age(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS["ecg_age"] = TensorMap(
-    "ecg_age",
+task = "ecg_age"
+TMAPS[task] = TensorMap(
+    task,
     path_prefix=ECG_PREFIX,
     loss="logcosh",
     tensor_from_file=ecg_age,
     shape=(None, 1),
     time_series_limit=0,
+    validator=make_range_validator(0, 120),
+)
+
+task = "ecg_age_std"
+TMAPS[task] = TensorMap(
+    task,
+    path_prefix=ECG_PREFIX,
+    loss="logcosh",
+    tensor_from_file=ecg_age,
+    shape=(None, 1),
+    time_series_limit=0,
+    validator=make_range_validator(0, 120),
+    normalization=Standardize(mean=65, std=16),
 )
 
 

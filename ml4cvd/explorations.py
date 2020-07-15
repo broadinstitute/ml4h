@@ -1261,8 +1261,8 @@ def _tensors_to_df(args):
     paths = [
         (path, gen.name.replace("_worker", ""))
         for gen in generators
-        for worker_paths in gen.path_iters
-        for path in worker_paths.paths
+        for worker_paths in gen.worker_path_iters
+        for path in gen.paths
     ]
     ExploreParallelWrapper(
         tmaps, paths, args.num_workers, args.output_folder, args.id,
@@ -1439,6 +1439,7 @@ def explore(args):
                             mode = df_cur[key].mode()
                             stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                             stats["variance"] = df_cur[key].var()
+                            stats["stdev"] = df_cur[key].std()
                             stats["count"] = df_cur[key].count()
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
@@ -1461,6 +1462,7 @@ def explore(args):
                         mode = df_cur[key].mode()
                         stats["mode"] = mode[0] if len(mode) != 0 else np.nan
                         stats["variance"] = df_cur[key].var()
+                        stats["stdev"] = df_cur[key].std()
                         stats["count"] = df_cur[key].count()
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
@@ -1541,21 +1543,21 @@ def explore(args):
                     f" {fpath}",
                 )
 
-    if args.plot_hist == "True":
-        for tm in args.tensor_maps_in:
-            if tm.interpretation == Interpretation.CONTINUOUS:
-                name = tm.name
-                arr = list(df[name])
-                plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-                plt.hist(arr, 50, rwidth=0.9)
-                plt.xlabel(name)
-                plt.ylabel("Fraction")
-                plt.rcParams.update({"font.size": 13})
-                figure_path = os.path.join(
-                    args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}",
-                )
-                plt.savefig(figure_path)
-                logging.info(f"Saved {name} histogram plot at: {figure_path}")
+    for tm in args.tensor_maps_in:
+        if tm.interpretation == Interpretation.CONTINUOUS:
+            name = tm.name
+            arr = list(df[name])
+            plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * 0.6))
+            plt.rcParams.update({"font.size": 14})
+            plt.xlabel(name)
+            plt.ylabel("Count")
+            figure_path = os.path.join(
+                args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}",
+            )
+            plt.hist(arr, 50, rwidth=0.9)
+            plt.savefig(figure_path)
+            plt.close()
+            logging.info(f"Saved {name} histogram plot at: {figure_path}")
 
 
 def cross_reference(args):
