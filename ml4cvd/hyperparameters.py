@@ -5,10 +5,11 @@ import logging
 import argparse
 from timeit import default_timer as timer
 from typing import Dict, List
-from collections import Counter
+from collections import Counter, defaultdict
 
 # Imports: third party
 import numpy as np
+import pandas as pd
 import hyperopt
 from hyperopt import hp, tpe, fmin
 from skimage.filters import threshold_otsu
@@ -17,6 +18,7 @@ from skimage.filters import threshold_otsu
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.defines import IMAGE_EXT, MODEL_EXT, Arguments
+from ml4cvd.recipes import _predict_and_evaluate
 from ml4cvd.arguments import parse_args
 from ml4cvd.tensor_maps_ecg import TMAPS
 from ml4cvd.tensor_generators import (
@@ -62,14 +64,14 @@ def hyperoptimize(args: argparse.Namespace):
     conv_normalize_sets = ["", "batch_norm"]
     """
     dense_layers_sets = [
-        [256],
-        [1000],  # Collin's suggestion
+        # [256],
+        # [1000],  # Collin's suggestion
         [16, 64],  # Baseline
     ]
     dense_blocks_sets = [
-        [64, 128],  # Collin's suggestion
+        # [64, 128],  # Collin's suggestion
         [24, 12],  # Baseline
-        [32, 24, 16],  # Baseline
+        # [32, 24, 16],  # Baseline
     ]
     # pool_types = ["max", "average"]
     conv_x_sets = _generate_conv1D_filter_widths()
@@ -133,12 +135,14 @@ def hyperparameter_optimizer(
     )
     generate_test.kill_workers()
     histories = []
+    aucs = []
     fig_path = os.path.join(args.output_folder, args.id, "plots")
     i = 0
 
     def loss_from_multimodal_multitask(x: Arguments):
         model = None
         history = None
+        auc = None
         nonlocal i
         i += 1
         try:
@@ -172,9 +176,43 @@ def hyperparameter_optimizer(
             )
             history.history["parameter_count"] = [model.count_params()]
             histories.append(history.history)
-            title = (  # refer to loss_by_params.txt to find the params for this trial
-                f"trial_{i}"
+            train_data, train_labels = big_batch_from_minibatch_generator(
+                generate_train, args.training_steps,
             )
+            # refer to trial_metrics_and_params.csv to find the params for this trial
+            title = f"trial_{i-1}"
+            train_auc = _predict_and_evaluate(
+                model,
+                train_data,
+                train_labels,
+                args.tensor_maps_in,
+                args.tensor_maps_out,
+                args.batch_size,
+                args.hidden_layer,
+                os.path.join(
+                    args.output_folder, args.id, "pr_roc_curves", title, "train",
+                ),
+                None,
+                args.embed_visualization,
+                args.alpha,
+            )
+            test_auc = _predict_and_evaluate(
+                model,
+                test_data,
+                test_labels,
+                args.tensor_maps_in,
+                args.tensor_maps_out,
+                args.batch_size,
+                args.hidden_layer,
+                os.path.join(
+                    args.output_folder, args.id, "pr_roc_curves", title, "test",
+                ),
+                None,
+                args.embed_visualization,
+                args.alpha,
+            )
+            auc = {"train": train_auc, "test": test_auc}
+            aucs.append(auc)
             plot_metric_history(history, args.training_steps, title, fig_path)
             model.load_weights(
                 os.path.join(args.output_folder, args.id, args.id + MODEL_EXT),
@@ -208,6 +246,8 @@ def hyperparameter_optimizer(
         finally:
             del model
             gc.collect()
+            if auc is None:
+                aucs.append({"train": {}, "test": {}})
             if history is None:
                 histories.append(
                     {
@@ -226,7 +266,7 @@ def hyperparameter_optimizer(
         max_evals=args.max_evals,
         trials=trials,
     )
-    plot_trials(trials, histories, fig_path, param_lists)
+    plot_trials(trials, histories, aucs, fig_path, param_lists)
     logging.info("Saved learning plot to:{}".format(fig_path))
 
 
@@ -358,43 +398,111 @@ def _string_from_architecture_dict(x: Arguments):
     return "\n".join([f"{k} = {x[k]}" for k in x])
 
 
-def _string_from_trials(trials: hyperopt.Trials, index: int, param_lists: Dict = {}):
-    s = ""
-    x = trials.trials[index]["misc"]["vals"]
-    for k in x:
-        s += "\n" + k + " = "
-        v = x[k][0]
-        if k in param_lists:
-            s += str(param_lists[k][int(v)])
-        elif k in ["num_layers", "layer_width"]:
-            s += str(int(v))
-        elif v < 1:
-            s += f"{v:.2E}"
-        else:
-            s += f"{v:.2f}"
-    return s
-
-
-def _model_label_from_losses_and_histories(
+def _trial_metric_and_param_label(
     i: int,
     all_losses: np.array,
     histories: List[Dict],
     trials: hyperopt.Trials,
-    param_lists: dict,
-):
-    label = (
-        f"Trial {i}: \nTest Loss:{all_losses[i]:.3f}\nTrain"
-        f' Loss:{histories[i]["loss"][-1]:.3f}\nValidation'
-        f' Loss:{histories[i]["val_loss"][-1]:.3f}'
+    param_lists: Dict,
+    aucs: List[Dict[str, Dict]],
+) -> str:
+    label = f"Trial {i}\n"
+    for split, split_auc in aucs[i].items():
+        no_idx = 0
+        for idx, channel in enumerate(split_auc):
+            if "no_" in channel:
+                no_idx = idx
+
+        for idx, (channel, auc) in enumerate(split_auc.items()):
+            if len(split_auc) == 2 and no_idx == idx:
+                continue
+            label += f"{split.title()} {channel} AUC: {auc:.3f}\n"
+    # fmt: off
+    label += (
+        f"Test Loss: {all_losses[i]:.3f}\n"
+        f"Train Loss: {histories[i]['loss'][-1]:.3f}\n"
+        f"Validation Loss: {histories[i]['val_loss'][-1]:.3f}\n"
+        f"Model Parameter Count: {histories[i]['parameter_count'][-1]}\n"
     )
-    label += f'\nModel parameter count: {histories[i]["parameter_count"][-1]}'
-    label += f"{_string_from_trials(trials, i, param_lists)}"
+    # fmt: on
+    label += _trial_parameter_string(trials, i, param_lists)
     return label
+
+
+def _trial_parameter_string(
+    trials: hyperopt.Trials, index: int, param_lists: Dict,
+) -> str:
+    label = ""
+    params = trials.trials[index]["misc"]["vals"]
+    for param in params:
+        label += f"{param} = "
+        value = params[param][0]
+        if param in param_lists:
+            label += str(param_lists[param][int(value)])
+        elif param in ["num_layers", "layer_width"]:
+            label += str(int(value))
+        elif value < 1:
+            label += f"{value:.2E}"
+        else:
+            label += f"{value:.2f}"
+        label += "\n"
+    return label
+
+
+def _trial_metrics_and_params_to_df(
+    all_losses: np.array,
+    histories: List[Dict],
+    trials: hyperopt.Trials,
+    param_lists: Dict,
+    trial_aucs: List[Dict[str, Dict]],
+) -> pd.DataFrame:
+    data = defaultdict(list)
+    for trial_auc in trial_aucs:
+        for split, split_auc in trial_auc.items():
+            no_idx = 0
+            for i, label in enumerate(split_auc):
+                if "no_" in label:
+                    no_idx = i
+
+            for i, (label, auc) in enumerate(split_auc.items()):
+                if len(split_auc) == 2 and no_idx == i:
+                    continue
+                data[f"{split}_{label}_auc"].append(auc)
+
+    data.update(
+        {
+            "test_loss": all_losses,
+            "train_loss": [history["loss"][-1] for history in histories],
+            "valid_loss": [history["val_loss"][-1] for history in histories],
+            "parameter_count": [
+                history["parameter_count"][-1] for history in histories
+            ],
+        },
+    )
+    data.update(_trial_parameters_to_dict(trials, param_lists))
+    df = pd.DataFrame(data)
+    df.index.name = "Trial"
+    return df
+
+
+def _trial_parameters_to_dict(trials: hyperopt.Trials, param_lists: Dict) -> Dict:
+    data = defaultdict(list)
+    for trial in trials.trials:
+        params = trial["misc"]["vals"]
+        for param in params:
+            value = params[param][0]
+            if param in param_lists:
+                value = param_lists[param][int(value)]
+            elif param in ["num_layers", "layer_width"]:
+                value = int(value)
+            data[param].append(value)
+    return data
 
 
 def plot_trials(
     trials: hyperopt.Trials,
     histories: List[Dict],
+    aucs: List[Dict[str, Dict]],
     figure_path: str,
     param_lists: Dict = {},
 ):
@@ -410,13 +518,25 @@ def plot_trials(
     matplotlib.rcParams.update({"font.size": 9})
     colors = ["r" if x == cutoff else "b" for x in lplot]
     plt.plot(lplot)
-    with open(os.path.join(figure_path, "loss_by_params.txt"), "w") as f:
-        for i in range(len(trials.trials)):
-            label = _model_label_from_losses_and_histories(
-                i, all_losses, histories, trials, param_lists,
+    trial_metrics_and_params_df = _trial_metrics_and_params_to_df(
+        all_losses, histories, trials, param_lists, aucs,
+    )
+    for col, dtype in trial_metrics_and_params_df.dtypes.items():
+        if dtype == float:
+            trial_metrics_and_params_df[col] = trial_metrics_and_params_df[col].apply(
+                lambda x: "{:.3}".format(x),
             )
-            plt.text(i, lplot[i], label, color=colors[i])
-            f.write(label.replace("\n", ",") + "\n")
+    trial_metrics_and_params_df.to_csv(
+        os.path.join(figure_path, "trial_metrics_and_params.csv"),
+    )
+    labels = [
+        _trial_metric_and_param_label(
+            i, all_losses, histories, trials, param_lists, aucs,
+        )
+        for i in range(len(trials.trials))
+    ]
+    for i, label in enumerate(labels):
+        plt.text(i, lplot[i], label, color=colors[i])
     plt.xlabel("Iterations")
     plt.ylabel("Losses")
     plt.ylim(min(lplot) * 0.95, max(lplot) * 1.05)
@@ -448,9 +568,7 @@ def plot_trials(
         color = cm(i / len(histories))
         training_loss = np.clip(history["loss"], a_min=-np.inf, a_max=cutoff)
         val_loss = np.clip(history["val_loss"], a_min=-np.inf, a_max=cutoff)
-        label = _model_label_from_losses_and_histories(
-            i, all_losses, histories, trials, param_lists,
-        )
+        label = labels[i]
         ax1.plot(training_loss, label=label, linestyle=linestyles[i % 4], color=color)
         ax1.text(len(training_loss) - 1, training_loss[-1], str(i))
         ax2.plot(val_loss, label=label, linestyle=linestyles[i % 4], color=color)
