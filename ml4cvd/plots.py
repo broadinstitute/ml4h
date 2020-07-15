@@ -451,11 +451,10 @@ def plot_rocs(
     lw = 2
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-        for key in labels:
-            if "no_" in key and len(labels) == 2:
+        for label_index, key in enumerate(labels):
+            if len(labels) == 2 and label_index == 0:
                 continue
             color = _hash_string_to_color(p + key)
             label_text = (
@@ -2341,9 +2340,9 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix="./figures/"):
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
-    for key in labels:
+    for label_index, key in enumerate(labels):
         labels_to_areas[key] = roc_auc[labels[key]]
-        if "no_" in key and len(labels) == 2:
+        if len(labels) == 2 and label_index == 0:
             continue
         color = _hash_string_to_color(key)
         label_text = (
@@ -2380,8 +2379,8 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-        for key in labels:
-            if "no_" in key and len(labels) == 2:
+        for label_index, key in enumerate(labels):
+            if len(labels) == 2 and label_index == 0:
                 continue
             color = _hash_string_to_color(p + key)
             label_text = (
@@ -2430,8 +2429,8 @@ def subplot_rocs(
     for predicted, truth, labels in rocs:
         true_sums = np.sum(truth, axis=0)
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
-        for key in labels:
-            if "no_" in key and len(labels) == 2:
+        for label_index, key in enumerate(labels):
+            if len(labels) == 2 and label_index == 0:
                 continue
             color = _hash_string_to_color(key)
             label_text = (
@@ -2484,8 +2483,8 @@ def subplot_comparison_rocs(
         true_sums = np.sum(truth, axis=0)
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-            for key in labels:
-                if "no_" in key and len(labels) == 2:
+            for label_index, key in enumerate(labels):
+                if len(labels) == 2 and label_index == 0:
                     continue
                 color = _hash_string_to_color(p + key)
                 label_text = (
