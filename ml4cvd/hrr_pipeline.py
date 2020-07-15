@@ -165,8 +165,8 @@ def _downsample_ecg(ecg, rate: float):
 
 
 def _rand_add_noise(ecg):
-    noise_frac = np.random.rand() * .1  # max of 10% noise
-    return ecg + noise_frac * ecg.mean(axis=0) * np.random.randn(*ecg.shape)
+    noise_frac = np.random.rand() * .2
+    return ecg + noise_frac * ecg.std(axis=0) * np.random.randn(*ecg.shape)
 
 
 def _apply_aug_rate(augmentation: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], np.ndarray]:
@@ -525,20 +525,21 @@ def _demo_augmentations(hd5_path: str, setting: ModelSetting):
     num_samples = 5
     ax_size = 10
     t = np.linspace(0, PRETEST_TRAINING_DUR, tmap.shape[0])
-    with h5py.File(_path_from_sample_id(hd5_path), 'r') as hd5:
+    with h5py.File(hd5_path, 'r') as hd5:
         ecg = tmap.tensor_from_file(tmap, hd5)
         fig, axes = plt.subplots(
-            nrows=num_samples, ncols=1, figsize=(ax_size, num_samples * ax_size), sharex='all',
+            nrows=num_samples, ncols=1, figsize=(ax_size * 2, num_samples * ax_size), sharex='all',
         )
         orig = tmap.postprocess_tensor(ecg, augment=False, hd5=hd5)[:, 0]
-        axes[0].title(f'Augmentation Samples for model {setting.model_id}')
+        axes[0].set_title(f'Augmentation Samples for model {setting.model_id}')
         for ax in axes:
-            ax.plot(t, orig, c='k', alpha=.5, label='Original ECG')
+            ax.plot(t, orig, c='k', label='Original ECG')
             ax.plot(
                 t, tmap.postprocess_tensor(ecg, augment=True, hd5=hd5)[:, 0],
-                c='r', alpha=.5, label='Augmented ECG'
+                c='r', alpha=.5, label='Augmented ECG',
             )
-    plt.savefig(os.path.join(AUGMENTATION_FIGURE_FOLDER, f'{_sample_id_from_path(hd5_path)}_{setting.model_id}_augmentations.png'))
+            ax.legend()
+    plt.savefig(os.path.join(AUGMENTATION_FIGURE_FOLDER, f'{setting.model_id}_{_sample_id_from_path(hd5_path)}.png'))
 
 
 # Model training
@@ -551,7 +552,7 @@ def _make_ecg_tmap(setting: ModelSetting, split_idx: int) -> TensorMap:
         interpretation=Interpretation.CONTINUOUS,
         validator=no_nans, normalization=normalizer,
         tensor_from_file=_make_pretest_ecg_tff(setting.downsample_rate, PRETEST_MODEL_LEADS, random_start=setting.shift),
-        cacheable=False, augmentations=setting.augmentations,
+        cacheable=False, augmentations=augmentations,
     )
 
 
@@ -657,7 +658,7 @@ def _train_pretest_model(
         history_df = pd.DataFrame(history.history)
         history_df['model_id'] = setting.model_id
         history_df['split_idx'] = split_idx
-        history_df.to_csv(history_tsv(split_idx, setting.model_id), sep='\t')
+        history_df.to_csv(history_tsv(split_idx, setting.model_id), sep='\t', index=False)
     finally:
         generate_train.kill_workers()
         generate_valid.kill_workers()
@@ -776,10 +777,11 @@ def _evaluate_models():
         R2_df = pd.DataFrame({'R2': R2s})
         R2_df['model'] = m_id
         R2_dfs.append(R2_df)
+        plt.close('all')
 
     R2_df = pd.concat(R2_dfs)
     plt.figure(figsize=(ax_size, ax_size))
-    sns.boxplot(x='model', y='R2', data=R2_df, inner='box')
+    sns.boxplot(x='model', y='R2', data=R2_df)
     plt.savefig(os.path.join(figure_folder, f'model_performance_comparison.png'))
     plt.clf()
 
@@ -823,6 +825,7 @@ if __name__ == '__main__':
     aug_demo_paths = np.random.choice(sorted(os.listdir(TENSOR_FOLDER)), 3)
     for setting in MODEL_SETTINGS:
         for path in aug_demo_paths:
+            path = os.path.join(TENSOR_FOLDER, path)
             _demo_augmentations(path, setting)
     if TRAIN_PRETEST_MODELS:
         for i in range(K_SPLIT):
@@ -831,6 +834,7 @@ if __name__ == '__main__':
                     logging.info(f'Skipping {setting.model_id} in split {i} since it already exists.')
                     continue
                 _train_pretest_model(setting, i)
+                plt.close('all')
     if INFER_PRETEST_MODELS:
         for i in range(K_SPLIT):
             logging.info(f'Running inference on split {i}.')
