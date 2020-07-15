@@ -20,7 +20,7 @@ import traceback
 import numpy as np
 import pandas as pd
 from collections import Counter
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Event
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union
 
@@ -127,6 +127,7 @@ class TensorGenerator:
         self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
         self.stats_q = Queue(len(self.worker_instances))
         self._started = True
+        self.quit = Event()
         for i, (path_iter, iter_len) in enumerate(zip(self.path_iters, self.true_epoch_lens)):
             name = f'{self.name}_{i}'
             worker_instance = _MultiModalMultiTaskWorker(
@@ -139,6 +140,7 @@ class TensorGenerator:
                 self.cache_size,
                 name,
                 self.augment,
+                self.quit,
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
@@ -233,6 +235,7 @@ class TensorGenerator:
 
     def kill_workers(self):
         if self._started and not self.run_on_main_thread:
+            self.quit.set()
             for worker in self.workers:
                 worker.terminate()
             logging.info(f'Stopped {len(self.workers)} workers. {self.stats_string}')
@@ -326,6 +329,7 @@ class _MultiModalMultiTaskWorker:
         cache_size: float,
         name: str,
         augment: bool,
+        quit_event: Event,
     ):
         self.q = q
         self.stats_q = stats_q
@@ -341,6 +345,7 @@ class _MultiModalMultiTaskWorker:
         self.cache_size = cache_size
         self.name = name
         self.augment = augment
+        self.quit_event = quit_event
 
         self.stats = Counter()
         self.epoch_stats = Counter()
@@ -438,6 +443,8 @@ class _MultiModalMultiTaskWorker:
 
     def multiprocessing_worker(self):
         for i, path in enumerate(self.path_iter):
+            if self.quit_event.is_set():
+                break
             self._handle_tensor_path(path)
             if self.stats['batch_index'] == self.batch_size:
 
@@ -553,7 +560,7 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     if not matches:
         mrn_col_name = df.columns[0]
     else:
-         # Get first string from set of matches to use as column name
+        # Get first string from set of matches to use as column name
         mrn_col_name = next(iter(matches))
 
     if len(matches) > 1:
@@ -565,7 +572,6 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     sample_ids = df[mrn_col_name].apply(str)
 
     return set(sample_ids)
-
 
 
 def get_train_valid_test_paths(

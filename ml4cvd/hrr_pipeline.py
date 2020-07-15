@@ -6,7 +6,7 @@ import seaborn as sns
 import logging
 import numpy as np
 import pandas as pd
-from typing import List, Union, Tuple, Dict, Any
+from typing import List, Union, Tuple, Dict, Any, Callable
 from itertools import combinations
 from sklearn.model_selection import KFold, train_test_split
 from multiprocessing import Pool, cpu_count
@@ -48,6 +48,7 @@ TEST_CSV_NAME = 'test_ids.csv'
 BIOSPPY_MEASUREMENTS_FILE = os.path.join(OUTPUT_FOLDER, 'biosppy_hr_recovery_measurements.csv')
 FIGURE_FOLDER = os.path.join(OUTPUT_FOLDER, 'figures')
 BIOSPPY_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'biosppy')
+AUGMENTATION_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'augmentations')
 
 PRETEST_ECG_SUMMARY_STATS_CSV = os.path.join(OUTPUT_FOLDER, 'pretest_ecg_summary_stats.csv')
 
@@ -59,6 +60,8 @@ VALIDATION_SPLIT = .1
 
 DROPOUT = True
 BATCH_NORM = True
+AUG_RATE = .5
+OVERWRITE_MODELS = True
 
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
@@ -164,6 +167,10 @@ def _downsample_ecg(ecg, rate: float):
 def _rand_add_noise(ecg):
     noise_frac = np.random.rand() * .1  # max of 10% noise
     return ecg + noise_frac * ecg.mean(axis=0) * np.random.randn(*ecg.shape)
+
+
+def _apply_aug_rate(augmentation: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], np.ndarray]:
+    return lambda a: augmentation(a) if np.random.rand() < AUG_RATE else a
 
 
 # HR measurements from biosppy
@@ -499,19 +506,45 @@ def _get_pretest_summary_stats(id_csv: str) -> Tuple[float, float]:
 ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift'])
 
 
+AUGMENTATIONS = [_warp_ecg, _random_crop_ecg, _rand_add_noise]
 MODEL_SETTINGS = [
     ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False}),
-    ModelSetting(**{'model_id': 'noise_crop_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': False}),
-    ModelSetting(**{'model_id': 'shift_model', 'downsample_rate': 1, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': True}),
-    ModelSetting(**{'model_id': 'warp_model', 'downsample_rate': 1, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
-    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_rand_add_noise, _random_crop_ecg], 'shift': True}),
-    ModelSetting(**{'model_id': 'downsample_model_warp', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [_warp_ecg, _rand_add_noise, _random_crop_ecg], 'shift': True}),
+    ModelSetting(**{'model_id': 'shift', 'downsample_rate': 1, 'augmentations': [], 'shift': True}),
+    ModelSetting(**{'model_id': 'shift_augment', 'downsample_rate': 1, 'augmentations': AUGMENTATIONS, 'shift': True}),
+    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [], 'shift': True}),
+    ModelSetting(**{'model_id': 'downsample_augment', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': AUGMENTATIONS, 'shift': True}),
 ]
+
+
+# Augmentation demonstrations
+Augmentation = Callable[[np.ndarray], np.ndarray]
+
+
+def _demo_augmentations(hd5_path: str, setting: ModelSetting):
+    tmap = _make_ecg_tmap(setting, 0)
+    num_samples = 5
+    ax_size = 10
+    t = np.linspace(0, PRETEST_TRAINING_DUR, tmap.shape[0])
+    with h5py.File(_path_from_sample_id(hd5_path), 'r') as hd5:
+        ecg = tmap.tensor_from_file(tmap, hd5)
+        fig, axes = plt.subplots(
+            nrows=num_samples, ncols=1, figsize=(ax_size, num_samples * ax_size), sharex='all',
+        )
+        orig = tmap.postprocess_tensor(ecg, augment=False, hd5=hd5)[:, 0]
+        axes[0].title(f'Augmentation Samples for model {setting.model_id}')
+        for ax in axes:
+            ax.plot(t, orig, c='k', alpha=.5, label='Original ECG')
+            ax.plot(
+                t, tmap.postprocess_tensor(ecg, augment=True, hd5=hd5)[:, 0],
+                c='r', alpha=.5, label='Augmented ECG'
+            )
+    plt.savefig(os.path.join(AUGMENTATION_FIGURE_FOLDER, f'{_sample_id_from_path(hd5_path)}_{setting.model_id}_augmentations.png'))
 
 
 # Model training
 def _make_ecg_tmap(setting: ModelSetting, split_idx: int) -> TensorMap:
     normalizer = Standardize(*_get_pretest_summary_stats(_split_train_name(split_idx)))
+    augmentations = [_apply_aug_rate(aug) for aug in setting.augmentations]
     return TensorMap(
         f'pretest_ecg_downsample_{setting.downsample_rate}',
         shape=(int(PRETEST_TRAINING_DUR * SAMPLING_RATE // setting.downsample_rate), len(PRETEST_MODEL_LEADS)),
@@ -575,6 +608,10 @@ def pretest_model_file(split_idx: int, model_id: str) -> str:
     return os.path.join(split_folder_name(split_idx), model_id, model_id + MODEL_EXT)
 
 
+def history_tsv(split_idx: int, model_id: str) -> str:
+    return os.path.join(split_folder_name(split_idx), model_id, 'history.tsv')
+
+
 def _train_pretest_model(
         setting: ModelSetting, split_idx: int,
 ) -> Tuple[Any, Dict]:
@@ -593,7 +630,7 @@ def _train_pretest_model(
     train_len = len(pd.read_csv(train_csv))
     valid_len = len(pd.read_csv(valid_csv))
     training_steps = train_len // batch_size
-    validation_steps = valid_len // batch_size
+    validation_steps = valid_len // batch_size * (1 if setting.shift else 2)
 
     generate_train, generate_valid, _ = test_train_valid_tensor_generators(
         tensor_maps_in=[pretest_tmap],
@@ -611,11 +648,16 @@ def _train_pretest_model(
     )
 
     model = make_pretest_model(setting, split_idx, False)
+    logging.info(f'Beginning training with {training_steps} training steps and {validation_steps} validation steps.')
     try:
         model, history = train_model_from_generators(
             model, generate_train, generate_valid, training_steps, validation_steps, batch_size,
             epochs, patience, split_folder_name(split_idx), setting.model_id, True, True, return_history=True,
         )
+        history_df = pd.DataFrame(history.history)
+        history_df['model_id'] = setting.model_id
+        history_df['split_idx'] = split_idx
+        history_df.to_csv(history_tsv(split_idx, setting.model_id), sep='\t')
     finally:
         generate_train.kill_workers()
         generate_valid.kill_workers()
@@ -737,8 +779,8 @@ def _evaluate_models():
 
     R2_df = pd.concat(R2_dfs)
     plt.figure(figsize=(ax_size, ax_size))
-    sns.violinplot(x='model', y='R2', data=R2_df, inner='box')
-    plt.savefig(os.path.join(figure_folder, f'all_models_violin.png'))
+    sns.boxplot(x='model', y='R2', data=R2_df, inner='box')
+    plt.savefig(os.path.join(figure_folder, f'model_performance_comparison.png'))
     plt.clf()
 
 
@@ -749,6 +791,7 @@ if __name__ == '__main__':
     os.makedirs(FIGURE_FOLDER, exist_ok=True)
     os.makedirs(BIOSPPY_FIGURE_FOLDER, exist_ok=True)
     os.makedirs(PRETEST_LABEL_FIGURE_FOLDER, exist_ok=True)
+    os.makedirs(AUGMENTATION_FIGURE_FOLDER, exist_ok=True)
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     load_config('INFO', OUTPUT_FOLDER, 'log_' + now_string, USER)
 
@@ -777,13 +820,19 @@ if __name__ == '__main__':
     plot_pretest_label_summary_stats()
     if MAKE_SPLIT_CSVS:
         build_csvs()
+    aug_demo_paths = np.random.choice(sorted(os.listdir(TENSOR_FOLDER)), 3)
+    for setting in MODEL_SETTINGS:
+        for path in aug_demo_paths:
+            _demo_augmentations(path, setting)
     if TRAIN_PRETEST_MODELS:
         for i in range(K_SPLIT):
             for setting in MODEL_SETTINGS:
+                if os.path.exists(pretest_model_file(i, setting.model_id)) and not OVERWRITE_MODELS:
+                    logging.info(f'Skipping {setting.model_id} in split {i} since it already exists.')
+                    continue
                 _train_pretest_model(setting, i)
     if INFER_PRETEST_MODELS:
         for i in range(K_SPLIT):
             logging.info(f'Running inference on split {i}.')
             _infer_models_split_idx(i)
     _evaluate_models()
-    # TODO: augmentations demonstrations
