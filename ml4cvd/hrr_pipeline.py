@@ -631,7 +631,7 @@ def _train_pretest_model(
     train_len = len(pd.read_csv(train_csv))
     valid_len = len(pd.read_csv(valid_csv))
     training_steps = train_len // batch_size
-    validation_steps = valid_len // batch_size * (1 if setting.shift else 2)
+    validation_steps = valid_len // batch_size * (2 if setting.shift else 1)
 
     generate_train, generate_valid, _ = test_train_valid_tensor_generators(
         tensor_maps_in=[pretest_tmap],
