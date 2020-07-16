@@ -1,5 +1,5 @@
 ---
-name: New feature or enhancement
+name: 1 - New feature or enhancement
 about: New feature or enhancement
 title: ''
 labels: "infrastructure 🚇"
