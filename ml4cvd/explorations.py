@@ -41,7 +41,7 @@ class ExploreParallelWrapper:
     def _hd5_to_disk(self, path, gen_name):
         with self.counter.get_lock():
             i = self.counter.value
-            if i % 500 == 0:
+            if i % 1000 == 0:
                 logging.info(f"Parsing {i}/{self.total} ({i/self.total*100:.1f}%) done")
             self.counter.value += 1
 
@@ -162,8 +162,10 @@ def _tensors_to_df(args):
     paths = [
         (path, gen.name.replace("_worker", ""))
         for gen in generators
-        for path in gen.paths
+        for worker_paths in gen.path_iters
+        for path in worker_paths.paths
     ]
+
     ExploreParallelWrapper(
         tmaps, paths, args.num_workers, args.output_folder, args.id,
     ).run()
@@ -180,18 +182,19 @@ def _tensors_to_df(args):
         str_cols.append(f"error_type_{tm.name}")
     str_cols = {key: "string" for key in str_cols}
 
-    # read all temporary files to df
-    df = pd.DataFrame()
+    # Consolidate temporary CSV files into one dataframe
     base = os.path.join(args.output_folder, args.id)
     temp_files = []
+    df_list = []
     for name in os.listdir(base):
         if "tensors_all_union_" in name:
             fpath = os.path.join(base, name)
             _df = pd.read_csv(fpath, dtype=str_cols)
             logging.debug(f"Loaded {fpath} into memory")
-            df = df.append(_df, ignore_index=True)
-            logging.debug(f"Appended {fpath} to overall dataframe")
+            df_list.append(_df)
+            logging.debug(f"Appended {fpath} to list of dataframes")
             temp_files.append(fpath)
+    df = pd.concat(df_list, ignore_index=True)
 
     logging.info(
         f"Extracted {len(tmaps)} tmaps from {len(df)} tensors across {len(paths)} hd5"
@@ -403,7 +406,10 @@ def explore(args):
                             stats = dict()
                             key = f"{tm.name} {cm}"
                             stats["count"] = df_cur[key].count()
-                            stats["count_unique"] = len(df_cur[key].value_counts())
+                            if stats["count"] == 0:
+                                stats["count_unique"] = 0
+                            else:
+                                stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = (
@@ -419,7 +425,10 @@ def explore(args):
                         stats = dict()
                         key = tm.name
                         stats["count"] = df_cur[key].count()
-                        stats["count_unique"] = len(df_cur[key].value_counts())
+                        if stats["count"] == 0:
+                            stats["count_unique"] = 0
+                        else:
+                            stats["count_unique"] = len(df_cur[key].value_counts())
                         stats["missing"] = df_cur[key].isna().sum()
                         stats["total"] = len(df_cur[key])
                         stats["missing_percent"] = (

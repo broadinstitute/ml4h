@@ -49,7 +49,6 @@ def _map_mrn_to_xml(fpath_xml: str) -> Union[Tuple[str, str], None]:
 
 
 def _get_mrn_xmls_map(xml_folder: str, num_workers: int) -> Dict[str, List[str]]:
-
     # Get all xml paths
     fpath_xmls = []
     for root, dirs, files in os.walk(xml_folder):
