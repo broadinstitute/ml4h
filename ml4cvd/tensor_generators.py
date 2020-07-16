@@ -13,8 +13,8 @@ import logging
 import traceback
 from typing import Any, Set, Dict, List, Tuple, Union, Callable, Iterator, Optional
 from itertools import chain
-from collections import Counter, defaultdict
-from multiprocessing import Event, Queue, Barrier, Process
+from collections import Counter
+from multiprocessing import Event, Queue, Process
 
 # Imports: third party
 import h5py
@@ -24,7 +24,6 @@ import pandas as pd
 # Imports: first party
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.tensor_generators_legacy import TensorGenerator as TensorGeneratorLegacy
 
 np.set_printoptions(threshold=np.inf)
 
@@ -83,7 +82,7 @@ class TensorGenerator:
         output_maps: List[TensorMap],
         paths: Union[List[str], List[List[str]]],
         num_workers: int,
-        cache_size,  # no cache is used but include to match type signature of v1
+        cache_size: float,
         weights: List[float] = None,
         keep_paths: bool = False,
         mixup: float = 0.0,
@@ -92,42 +91,51 @@ class TensorGenerator:
         augment: bool = False,
         sample_weight: TensorMap = None,
     ):
-        self.batch_size = batch_size
-        self.input_maps = input_maps
-        self.output_maps = output_maps
-        self.paths = paths
-        self.weights = weights
-        self.keep_paths = keep_paths
-        self.mixup = mixup
-        self.name = name
-        self.siamese = siamese
+        """
+        :param paths: If weights is provided, paths should be a list of path lists the same length as weights
+        """
         self.augment = augment
-        self.sample_weight = sample_weight
-
         self.run_on_main_thread = num_workers == 0
-        num_workers = num_workers or 1
-        self.num_workers = num_workers
-        self.started = False
-        self.worker_q = None
-        self.worker_barrier = None
-        self.worker_processes = []
+        self.q = None
+        self.stats_q = None
+        self._started = False
+        self.workers = []
         self.worker_instances = []
-        self.stats = Counter()
-        self.true_epoch_stats = self.stats
-
-        self.true_epoch_len = len(paths)
+        if num_workers == 0:
+            num_workers = 1  # The one worker is the main thread
+        (
+            self.batch_size,
+            self.input_maps,
+            self.output_maps,
+            self.num_workers,
+            self.cache_size,
+            self.weights,
+            self.name,
+            self.keep_paths,
+        ) = (
+            batch_size,
+            input_maps,
+            output_maps,
+            num_workers,
+            cache_size,
+            weights,
+            name,
+            keep_paths,
+        )
+        self.true_epochs = 0
+        self.stats_string = ""
         if weights is None:
             worker_paths = np.array_split(paths, num_workers)
-            self.worker_true_epoch_lens = list(map(len, worker_paths))
-            self.worker_path_iters = [_ShufflePaths(p) for p in worker_paths]
+            self.true_epoch_lens = list(map(len, worker_paths))
+            self.path_iters = [_ShufflePaths(p) for p in worker_paths]
         else:
             # split each path list into paths for each worker.
             # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
             split_paths = [np.array_split(a, num_workers) for a in paths]
             # Next, each list of paths gets given to each worker. E.g. [[[p1], [p3, p4]], [[p2], [p5]]]
             worker_paths = np.swapaxes(split_paths, 0, 1)
-            self.worker_true_epoch_lens = [max(map(len, p)) for p in worker_paths]
-            self.worker_path_iters = [_WeightedPaths(p, weights) for p in worker_paths]
+            self.true_epoch_lens = [max(map(len, p)) for p in worker_paths]
+            self.path_iters = [_WeightedPaths(p, weights) for p in worker_paths]
 
         self.batch_function_kwargs = {}
         if mixup > 0:
@@ -143,377 +151,480 @@ class TensorGenerator:
         else:
             self.batch_function = _identity_batch
 
-    def __next__(self):
-        if not self.started:
-            self.init_workers()
-
-        in_batch = {
-            tm.input_name(): np.zeros((self.batch_size,) + tm.static_shape())
-            for tm in self.input_maps
-        }
-        out_batch = {
-            tm.output_name(): np.zeros((self.batch_size,) + tm.static_shape())
-            for tm in self.output_maps
-        }
-        paths = []
-
-        self.stats["batch_count"] += 1
-        self.stats["batch_total"] += 1
-        i = 0  # i changes in the body of the loop, cannot simply use range()
-        while i < self.batch_size:
-            self.stats["sample_count"] += 1
-            self.stats["sample_total"] += 1
-            if self.run_on_main_thread:
-                tensors = next(self.worker_instances[0])
-            else:
-                tensors = self.worker_q.get()
-            _collect_tensor_stats(self, tensors)
-            in_tensors, out_tensors, path, error = tensors
-            if error is not None:
-                self.stats["samples_failed"] += 1
-                i -= 1  # rollback batch index, only use tensors that succeed
-            else:
-                for tm, in_tensor in in_tensors.items():
-                    in_batch[tm][i] = in_tensor
-                for tm, out_tensor in out_tensors.items():
-                    out_batch[tm][i] = out_tensor
-                paths.append(path)
-                self.stats["samples_succeeded"] += 1
-
-            if self.reached_true_epoch():
-                if not self.run_on_main_thread:
-                    self.worker_barrier.wait()
-                self.stats["true_epochs"] += 1
-
-                logging.info(
-                    f"{get_stats_string(self)}{get_verbose_stats_string({self.name: self})}",
-                )
-
-                # reset stats
-                self.true_epoch_stats = self.stats
-                self.stats = Counter()
-                self.stats["true_epochs"] = self.true_epoch_stats["true_epochs"]
-                self.stats["batch_total"] = self.true_epoch_stats["batch_total"]
-                self.stats["sample_total"] = self.true_epoch_stats["sample_total"]
-
-            i += 1
-
-        batch = self.batch_function(
-            in_batch, out_batch, self.keep_paths, paths, **self.batch_function_kwargs
-        )
-        return batch
-
-    def reached_true_epoch(self):
-        return self.stats["sample_count"] == self.true_epoch_len
-
-    def __iter__(self):
-        return self
-
-    def init_workers(self):
-        self.worker_q = Queue()
-        self.worker_barrier = Barrier(self.num_workers + 1)
-        self.started = True
-        for i, (worker_path_iter, worker_true_epoch_len) in enumerate(
-            zip(self.worker_path_iters, self.worker_true_epoch_lens),
+    def _init_workers(self):
+        self.q = Queue(min(self.batch_size, TENSOR_GENERATOR_MAX_Q_SIZE))
+        self.stats_q = Queue(self.num_workers)
+        self._started = True
+        for i, (path_iter, iter_len) in enumerate(
+            zip(self.path_iters, self.true_epoch_lens),
         ):
             name = f"{self.name}_{i}"
-            worker_instance = TensorGeneratorWorker(
-                name,
-                worker_path_iter,
-                worker_true_epoch_len,
+            worker_instance = _MultiModalMultiTaskWorker(
+                self.q,
+                self.stats_q,
+                self.num_workers,
                 self.input_maps,
                 self.output_maps,
+                path_iter,
+                iter_len,
+                self.batch_function,
+                self.batch_size,
+                self.keep_paths,
+                self.batch_function_kwargs,
+                self.cache_size,
+                name,
                 self.augment,
-                self.worker_q,
-                self.worker_barrier,
             )
             self.worker_instances.append(worker_instance)
             if not self.run_on_main_thread:
-                worker_process = Process(
-                    target=worker_instance.run_concurrent, name=name, args=(),
+                process = Process(
+                    target=worker_instance.multiprocessing_worker, name=name, args=(),
                 )
-                worker_process.start()
-                self.worker_processes.append(worker_process)
+                process.start()
+                self.workers.append(process)
+        logging.info(
+            f"Started {i + 1} {self.name.replace('_', ' ')}s with cache size"
+            f" {self.cache_size/1e9}GB.",
+        )
+
+    def set_worker_paths(self, paths: List[Path]):
+        """In the single worker case, set the worker's paths."""
+        if not self._started:
+            self._init_workers()
         if not self.run_on_main_thread:
-            logging.info(f"Started {self.num_workers} {self.name}s")
+            raise ValueError(
+                "Cannot sort paths of multiprocessing workers. num_workers must be 0.",
+            )
+        self.worker_instances[0].path_iter.paths = paths
+
+    def __next__(
+        self,
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Optional[List[str]]]:
+        if not self._started:
+            self._init_workers()
+        if self.true_epoch_is_finished():
+            self.aggregate_and_print_stats()
+        if self.run_on_main_thread:
+            return next(self.worker_instances[0])
+        else:
+            return self.q.get()
+
+    def true_epoch_is_finished(self):
+        return all(worker.stats_signal.is_set() for worker in self.worker_instances)
+
+    def clear_worker_stats_signal(self):
+        for worker in self.worker_instances:
+            worker.stats_signal.clear()
+
+    def aggregate_and_print_stats(self):
+        stats = Counter()
+        self.true_epochs += 1
+        cur_worker = 0
+        for _ in range(len(self.worker_instances)):
+            cur_worker += 1
+            worker_stats = self.stats_q.get().copy()
+            for k in worker_stats:
+                if stats[k] == 0 and cur_worker == 1 and ("_max" in k or "_min" in k):
+                    stats[k] = worker_stats[k]
+                elif "_max" in k:
+                    stats[k] = max(stats[k], worker_stats[k])
+                elif "_min" in k:
+                    stats[k] = min(stats[k], worker_stats[k])
+                else:
+                    stats[k] += worker_stats[k]
+
+        all_errors = [
+            f"[{error}] - {count:.0f}"
+            for error, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)
+            if "Error" in error
+        ]
+        if len(all_errors) > 0:
+            error_info = f"The following errors were raised:\n\t\t" + "\n\t\t".join(
+                all_errors,
+            )
+        else:
+            error_info = "No errors raised."
+
+        eps = 1e-7
+        for tm in self.input_maps + self.output_maps:
+            if self.true_epochs != 1:
+                break
+            if tm.is_categorical() and tm.axes() == 1:
+                n = stats[f"{tm.name}_n"] + eps
+                self.stats_string = (
+                    f"{self.stats_string}\nCategorical TensorMap: {tm.name} has {n:.0f}"
+                    " total examples."
+                )
+                for channel, index in tm.channel_map.items():
+                    examples = stats[f"{tm.name}_index_{index:.0f}"]
+                    self.stats_string = (
+                        f"{self.stats_string}\n\tLabel {channel} {examples} examples,"
+                        f" {100 * (examples / n):0.2f}% of total."
+                    )
+            elif tm.is_continuous() and tm.axes() == 1:
+                sum_squared = stats[f"{tm.name}_sum_squared"]
+                n = stats[f"{tm.name}_n"] + eps
+                n_sum = stats[f"{tm.name}_sum"]
+                mean = n_sum / n
+                std = np.sqrt((sum_squared / n) - (mean * mean))
+                self.stats_string = (
+                    f"{self.stats_string}\nContinuous TensorMap: {tm.name} has {n:.0f}"
+                    f" total examples.\n\tMean: {mean:0.2f}, "
+                )
+                self.stats_string = (
+                    f"{self.stats_string}Standard Deviation: {std:0.2f}, Max:"
+                    f" {stats[f'{tm.name}_max']:0.2f}, Min:"
+                    f" {stats[f'{tm.name}_min']:0.2f}"
+                )
+            elif tm.is_time_to_event():
+                sum_squared = stats[f"{tm.name}_sum_squared"]
+                n = stats[f"{tm.name}_n"] + eps
+                n_sum = stats[f"{tm.name}_sum"]
+                mean = n_sum / n
+                std = np.sqrt((sum_squared / n) - (mean * mean))
+                self.stats_string = (
+                    f"{self.stats_string}\nTime to event TensorMap: {tm.name} Total"
+                    f" events: {stats[f'{tm.name}_events']}, "
+                )
+                self.stats_string = (
+                    f"{self.stats_string}\n\tMean Follow Up: {mean:0.2f}, Standard"
+                    f" Deviation: {std:0.2f}, "
+                )
+                self.stats_string = (
+                    f"{self.stats_string}\n\tMax Follow Up:"
+                    f" {stats[f'{tm.name}_max']:0.2f}, Min Follow Up:"
+                    f" {stats[f'{tm.name}_min']:0.2f}"
+                )
+
+        info_string = "\n\t".join(
+            [
+                f"Generator looped & shuffled over {sum(self.true_epoch_lens)} paths."
+                f" Epoch: {self.true_epochs:.0f}",
+                f"{stats['Tensors presented']:0.0f} tensors were presented.",
+                f"{stats['skipped_paths']} paths were skipped because they previously"
+                " failed.",
+                f"{error_info}",
+                f"{self.stats_string}",
+            ],
+        )
+        logging.info(
+            f"\n!!!!>~~~~~~~~~~~~ {self.name} completed true epoch {self.true_epochs}"
+            f" ~~~~~~~~~~~~<!!!!\nAggregated information string:\n\t{info_string}",
+        )
+
+        self.clear_worker_stats_signal()
 
     def kill_workers(self):
-        if self.started:
-            for worker_process in self.worker_processes:
-                worker_process.terminate()
-            self.started = False
-            self.worker_q = None
-            self.worker_barrier = None
-            self.worker_instances = []
-            self.worker_processes = []
-            if not self.run_on_main_thread:
-                logging.info(f"Stopped {self.num_workers} {self.name}s")
+        if self._started and not self.run_on_main_thread:
+            for worker in self.workers:
+                worker.terminate()
+            self._started = False
+            logging.info(
+                f'Stopped {len(self.workers)} {self.name.split("_")[0]} workers.'
+                f" {self.stats_string}",
+            )
+        self.workers = []
+
+    def __iter__(
+        self,
+    ):  # This is so python type annotations recognize TensorGenerator as an iterator
+        return self
 
     def __del__(self):
         self.kill_workers()
 
 
-class TensorGeneratorWorker:
+class TensorMapArrayCache:
+    """
+    Caches numpy arrays created by tensor maps up to a maximum number of bytes
+    """
+
     def __init__(
         self,
-        name: str,
-        path_iter: PathIterator,
-        true_epoch_len: int,
+        max_size,
+        input_tms: List[TensorMap],
+        output_tms: List[TensorMap],
+        max_rows: Optional[int] = np.inf,
+    ):
+        input_tms = [tm for tm in input_tms if tm.cacheable]
+        output_tms = [tm for tm in output_tms if tm.cacheable]
+        self.max_size = max_size
+        self.data = {}
+        self.row_size = sum(
+            np.zeros(tm.static_shape(), dtype=np.float32).nbytes
+            for tm in set(input_tms + output_tms)
+        )
+        self.nrows = (
+            min(int(max_size / self.row_size), max_rows) if self.row_size else 0
+        )
+        self.autoencode_names: Dict[str, str] = {}
+        for tm in input_tms:
+            self.data[tm.input_name()] = np.zeros(
+                (self.nrows,) + tm.static_shape(), dtype=np.float32,
+            )
+        for tm in output_tms:
+            if tm in input_tms:  # Useful for autoencoders
+                self.autoencode_names[tm.output_name()] = tm.input_name()
+            else:
+                self.data[tm.output_name()] = np.zeros(
+                    (self.nrows,) + tm.static_shape(), dtype=np.float32,
+                )
+        self.files_seen = Counter()  # name -> max position filled in cache
+        self.key_to_index = {}  # file_path, name -> position in self.data
+        self.hits = 0
+        self.failed_paths: Set[str] = set()
+
+    def _fix_key(self, key: Tuple[str, str]) -> Tuple[str, str]:
+        file_path, name = key
+        return file_path, self.autoencode_names.get(name, name)
+
+    def __setitem__(self, key: Tuple[str, str], value) -> bool:
+        """
+        :param key: should be a tuple file_path, name
+        """
+        file_path, name = self._fix_key(key)
+        if key in self.key_to_index:  # replace existing value
+            self.data[name][self.key_to_index[key]] = value
+            return True
+        if self.files_seen[name] >= self.nrows:  # cache already full
+            return False
+        self.key_to_index[key] = self.files_seen[name]
+        self.data[name][self.key_to_index[key]] = value
+        self.files_seen[name] += 1
+        return True
+
+    def __getitem__(self, key: Tuple[str, str]):
+        """
+        :param key: should be a tuple file_path, name
+        """
+        file_path, name = self._fix_key(key)
+        val = self.data[name][self.key_to_index[file_path, name]]
+        self.hits += 1
+        return val
+
+    def __contains__(self, key: Tuple[str, str]):
+        return self._fix_key(key) in self.key_to_index
+
+    def __len__(self):
+        return sum(self.files_seen.values())
+
+    def average_fill(self):
+        return (
+            np.mean(list(self.files_seen.values()) or [0]) / self.nrows
+            if self.nrows
+            else 0
+        )
+
+    def __str__(self):
+        hits = f"The cache has had {self.hits} hits."
+        fullness = " - ".join(
+            f"{name} has {count} / {self.nrows} tensors"
+            for name, count in self.files_seen.items()
+        )
+        return f"{hits} {fullness}."
+
+
+class _MultiModalMultiTaskWorker:
+    def __init__(
+        self,
+        q: Queue,
+        stats_q: Queue,
+        num_workers: int,
         input_maps: List[TensorMap],
         output_maps: List[TensorMap],
+        path_iter: PathIterator,
+        true_epoch_len: int,
+        batch_function: BatchFunction,
+        batch_size: int,
+        return_paths: bool,
+        batch_func_kwargs: Dict,
+        cache_size: float,
+        name: str,
         augment: bool,
-        q: Queue,
-        barrier: Barrier,
     ):
-        self.name = name
-        self.path_iter = path_iter
-        self.true_epoch_len = true_epoch_len
+        self.q = q
+        self.stats_q = stats_q
+        self.num_workers = num_workers
         self.input_maps = input_maps
         self.output_maps = output_maps
+        self.path_iter = path_iter
+        self.true_epoch_len = true_epoch_len
+        self.batch_function = batch_function
+        self.batch_size = batch_size
+        self.return_paths = return_paths
+        self.batch_func_kwargs = batch_func_kwargs
+        self.cache_size = cache_size
+        self.name = name
         self.augment = augment
-        self.q = q
-        self.barrier = barrier
-        self.count = 0
+        self.stats_signal = Event()
 
-    def __next__(
-        self,
-    ) -> Tuple[
-        Optional[Dict[str, np.ndarray]],
-        Optional[Dict[str, np.ndarray]],
-        str,
-        Optional[Exception],
-    ]:
-        self.count += 1
+        self.stats = Counter()
+        self.epoch_stats = Counter()
+        self.start = time.time()
+        self.paths_in_batch = []
 
-        path = next(self.path_iter)
+        self.in_batch = {
+            tm.input_name(): np.zeros((batch_size,) + tm.static_shape())
+            for tm in input_maps
+        }
+        self.out_batch = {
+            tm.output_name(): np.zeros((batch_size,) + tm.static_shape())
+            for tm in output_maps
+        }
+
+        self.cache = TensorMapArrayCache(
+            cache_size, input_maps, output_maps, true_epoch_len,
+        )
+        self.dependents = {}
+        self.idx = 0
+
+    def _handle_tm(self, tm: TensorMap, is_input: bool, path: Path) -> h5py.File:
+        name = tm.input_name() if is_input else tm.output_name()
+        batch = self.in_batch if is_input else self.out_batch
+        idx = self.stats["batch_index"]
+
+        if tm in self.dependents:
+            batch[name][idx] = self.dependents[tm]
+            if tm.cacheable:
+                self.cache[path, name] = self.dependents[tm]
+            self._collect_stats(tm, self.dependents[tm])
+            return self.hd5
+        if (path, name) in self.cache:
+            batch[name][idx] = self.cache[path, name]
+            return self.hd5
+        if self.hd5 is None:  # Don't open hd5 if everything is in the self.cache
+            self.hd5 = h5py.File(path, "r")
+        tensor = tm.postprocess_tensor(
+            tm.tensor_from_file(tm, self.hd5, self.dependents),
+            augment=self.augment,
+            hd5=self.hd5,
+        )
+        slices = tuple(
+            slice(min(tm.static_shape()[i], tensor.shape[i]))
+            for i in range(len(tensor.shape))
+        )
+        batch[name][(idx,) + slices] = tensor[slices]
+        if tm.cacheable:
+            self.cache[path, name] = batch[name][idx]
+        self._collect_stats(tm, tensor)
+        return self.hd5
+
+    def _collect_stats(self, tm, tensor):
+        if tm.is_time_to_event():
+            self.epoch_stats[f"{tm.name}_events"] += tensor[0]
+            self._collect_continuous_stats(tm, tensor[1])
+        if tm.is_categorical() and tm.axes() == 1:
+            self.epoch_stats[f"{tm.name}_index_{np.argmax(tensor):.0f}"] += 1
+        if tm.is_continuous() and tm.axes() == 1:
+            self._collect_continuous_stats(tm, tm.rescale(tensor)[0])
+        self.epoch_stats[f"{tm.name}_n"] += 1
+
+    def _collect_continuous_stats(self, tm, rescaled):
+        if (
+            0.0
+            == self.epoch_stats[f"{tm.name}_max"]
+            == self.epoch_stats[f"{tm.name}_min"]
+        ):
+            self.epoch_stats[f"{tm.name}_max"] = rescaled
+            self.epoch_stats[f"{tm.name}_min"] = rescaled
+        self.epoch_stats[f"{tm.name}_max"] = max(
+            rescaled, self.epoch_stats[f"{tm.name}_max"],
+        )
+        self.epoch_stats[f"{tm.name}_min"] = min(
+            rescaled, self.epoch_stats[f"{tm.name}_min"],
+        )
+        self.epoch_stats[f"{tm.name}_sum"] += rescaled
+        self.epoch_stats[f"{tm.name}_sum_squared"] += rescaled * rescaled
+
+    def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
+        if path in self.cache.failed_paths:
+            self.epoch_stats["skipped_paths"] += 1
+            return
         try:
-            hd5 = h5py.File(path, "r")
-            dependents = {}
-            in_tensors = {
-                tm.input_name(): self.get_tensor(tm, hd5, dependents, input=True)
-                for tm in self.input_maps
-            }
-            out_tensors = {
-                tm.output_name(): self.get_tensor(tm, hd5, dependents, input=False)
-                for tm in self.output_maps
-            }
-            return in_tensors, out_tensors, path, None
+            self.dependents = {}
+            self.hd5 = None
+            for tm in self.input_maps:
+                hd5 = self._handle_tm(tm, True, path)
+            for tm in self.output_maps:
+                hd5 = self._handle_tm(tm, False, path)
+            self.paths_in_batch.append(path)
+            self.stats["Tensors presented"] += 1
+            self.epoch_stats["Tensors presented"] += 1
+            self.stats["batch_index"] += 1
         except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
-            return None, None, path, e
+            error_name = type(e).__name__
+            self.stats[
+                f"{error_name} while attempting to generate"
+                f" tensor:\n{traceback.format_exc()}\n"
+            ] += 1
+            self.epoch_stats[f"{error_name}: {e}"] += 1
+            self.cache.failed_paths.add(path)
+            _log_first_error(self.stats, path)
         finally:
             if hd5 is not None:
                 hd5.close()
 
-    def get_tensor(
-        self, tm: TensorMap, hd5: h5py.File, dependents: Dict, input: bool,
-    ) -> np.ndarray:
-        name = tm.input_name() if input else tm.output_name()
-        if name in dependents:
-            return dependents[name]
-        return tm.postprocess_tensor(
-            tm.tensor_from_file(tm, hd5, dependents), self.augment, hd5,
+    def _on_epoch_end(self):
+        self.stats["epochs"] += 1
+        self.epoch_stats["epochs"] = self.stats["epochs"]
+        # wait until the previous signal is consumed, allows for 1 batch to be loaded in advance
+        while self.stats_signal.is_set():
+            continue
+        self.stats_q.put(self.epoch_stats)
+        self.stats_signal.set()
+        if self.stats["Tensors presented"] == 0:
+            logging.error(f"Completed an epoch but did not find any tensors to yield")
+        if "test" in self.name:
+            logging.warning(
+                f"Test worker {self.name} completed a full epoch. Test results may be"
+                " double counting samples.",
+            )
+        self.start = time.time()
+        self.epoch_stats = Counter()
+
+    def multiprocessing_worker(self):
+        for i, path in enumerate(self.path_iter):
+            self._handle_tensor_path(path)
+            if self.stats["batch_index"] == self.batch_size:
+                out = self.batch_function(
+                    self.in_batch,
+                    self.out_batch,
+                    self.return_paths,
+                    self.paths_in_batch,
+                    **self.batch_func_kwargs,
+                )
+                self.q.put(out)
+                self.paths_in_batch = []
+                self.stats["batch_index"] = 0
+                self.in_batch = {
+                    tm.input_name(): np.zeros((self.batch_size,) + tm.static_shape())
+                    for tm in self.input_maps
+                }
+                self.out_batch = {
+                    tm.output_name(): np.zeros((self.batch_size,) + tm.static_shape())
+                    for tm in self.output_maps
+                }
+            if (i + 1) % self.true_epoch_len == 0:
+                self._on_epoch_end()
+
+    def __next__(self):
+        while self.stats["batch_index"] < self.batch_size:
+            path = next(self.path_iter)
+            self._handle_tensor_path(path)
+            if self.idx > 0 and self.idx % self.true_epoch_len == 0:
+                self._on_epoch_end()
+            self.idx += 1
+        self.stats["batch_index"] = 0
+        out = self.batch_function(
+            self.in_batch,
+            self.out_batch,
+            self.return_paths,
+            self.paths_in_batch,
+            **self.batch_func_kwargs,
         )
-
-    def run_concurrent(self):
-        while True:
-            tensors = next(self)
-            # before putting the first tensor of the next true epoch in the queue
-            # wait for all the tensors in the previous true epoch to be consumed
-            # allows loading of the first tensor without enqueueing
-            if self.count != 1 and self.count % self.true_epoch_len == 1:
-                self.barrier.wait()
-            self.q.put(tensors)
-
-
-def _collect_tensor_stats(
-    generator: TensorGenerator,
-    tensors: Tuple[
-        Optional[Dict[str, np.ndarray]],
-        Optional[Dict[str, np.ndarray]],
-        str,
-        Optional[Exception],
-    ],
-) -> None:
-    stats = generator.stats
-    in_tensors, out_tensors, path, error = tensors
-    if error is not None:
-        error_name = type(error).__name__
-        stats[f"error_{error_name}"] += 1
-    else:
-        for tms, tensors, is_input in [
-            (generator.input_maps, in_tensors, True),
-            (generator.output_maps, out_tensors, False),
-        ]:
-            for tm in tms:
-                stats[f"{tm.name}_n"] += 1
-                if tm.axes() == 1:
-                    tensor = tensors[tm.input_name() if is_input else tm.output_name()]
-                    if tm.is_categorical():
-                        stats[f"{tm.name}_index_{np.argmax(tensor):.0f}"] += 1
-                    elif tm.is_continuous():
-                        value = tensor[0]
-                        min_key = f"{tm.name}_min"
-                        max_key = f"{tm.name}_max"
-                        if min_key not in stats or value < stats[min_key]:
-                            stats[min_key] = value
-                        if max_key not in stats or value > stats[max_key]:
-                            stats[max_key] = value
-                        stats[f"{tm.name}_sum"] += value
-                        stats[f"{tm.name}_squared_sum"] += value ** 2
-
-
-def get_stats_string(generator: TensorGenerator) -> str:
-    stats = generator.true_epoch_stats
-    # fmt: off
-    return (
-        f"\n"
-        f"------------------- {generator.name} completed true epoch {stats['true_epochs']} -------------------\n"
-        f"\tGenerator shuffled {stats['sample_count']} samples.\n"
-        f"\t{stats['samples_succeeded']} samples successfully yielded tensors.\n"
-        f"\t{stats['samples_failed']} samples failed to yield tensors.\n"
-    )
-    # fmt: on
-
-
-def get_verbose_stats_string(generators: Dict[str, TensorGenerator]) -> str:
-    if len(generators) == 1:
-        generator = list(generators.values())[0]
-        dataframes = _get_stats_as_dataframes(
-            generator.true_epoch_stats, generator.input_maps, generator.output_maps,
-        )
-    else:
-        dataframes = _get_stats_as_dataframes_from_multiple_generators(generators)
-    continuous_tm_df, categorical_tm_df, other_tm_df = dataframes
-
-    continuous_tm_string = (
-        f">>>>>>>>>> Continuous Tensor Maps\n{continuous_tm_df}"
-        if len(continuous_tm_df) != 0
-        else ""
-    )
-
-    categorical_tm_strings = []
-    for tm in categorical_tm_df.index.get_level_values("TensorMap").drop_duplicates():
-        tm_df = categorical_tm_df.loc[tm]
-        categorical_tm_strings.append(
-            f">>>>>>>>>> Categorical Tensor Map: [{tm}]\n{tm_df}",
-        )
-
-    other_tm_string = (
-        f">>>>>>>>>> Other Tensor Maps\n{other_tm_df}" if len(other_tm_df) != 0 else ""
-    )
-
-    tensor_stats_string = "\n\n".join(
-        [
-            s
-            for s in [continuous_tm_string] + categorical_tm_strings + [other_tm_string]
-            if s != ""
-        ],
-    )
-
-    return f"\n{tensor_stats_string}\n"
-
-
-def _get_stats_as_dataframes(
-    stats: Counter, input_maps: List[TensorMap], output_maps: List[TensorMap],
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    continuous_tmaps = []
-    categorical_tmaps = []
-    other_tmaps = []
-    for tm in input_maps + output_maps:
-        if tm.axes() == 1 and tm.is_continuous():
-            continuous_tmaps.append(tm)
-        elif tm.axes() == 1 and tm.is_categorical():
-            categorical_tmaps.append(tm)
-        else:
-            other_tmaps.append(tm)
-
-    _stats = defaultdict(list)
-    for tm in continuous_tmaps:
-        count = stats[f"{tm.name}_n"]
-        mean = stats[f"{tm.name}_sum"] / count
-        std = np.sqrt((stats[f"{tm.name}_squared_sum"] / count) - (mean ** 2))
-        _stats["count"].append(f"{count:.0f}")
-        _stats["mean"].append(f"{mean:.2f}")
-        _stats["std"].append(f"{std:.2f}")
-        _stats["min"].append(f"{stats[f'{tm.name}_min']:.2f}")
-        _stats["max"].append(f"{stats[f'{tm.name}_max']:.2f}")
-    continuous_tm_df = pd.DataFrame(_stats, index=[tm.name for tm in continuous_tmaps])
-    continuous_tm_df.index.name = "TensorMap"
-
-    _stats = defaultdict(list)
-    for tm in categorical_tmaps:
-        total = stats[f"{tm.name}_n"]
-        for channel, index in tm.channel_map.items():
-            count = stats[f"{tm.name}_index_{index}"]
-            _stats["count"].append(f"{count:.0f}")
-            _stats["percent"].append(f"{count / total * 100:.2f}")
-            _stats["TensorMap"].append(tm.name)
-            _stats["Label"].append(channel)
-        _stats["count"].append(f"{total:.0f}")
-        _stats["percent"].append("100.00")
-        _stats["TensorMap"].append(tm.name)
-        _stats["Label"].append("total")
-    categorical_tm_df = pd.DataFrame(
-        {key: val for key, val in _stats.items() if key in {"count", "percent"}},
-        index=pd.MultiIndex.from_tuples(
-            zip(_stats["TensorMap"], _stats["Label"]), names=["TensorMap", "Label"],
-        ),
-    )
-    categorical_tm_df.index.name = "TensorMap"
-
-    other_tm_df = pd.DataFrame(
-        {"count": [f"{stats[f'{tm.name}_n']:.0f}" for tm in other_tmaps]},
-        index=[tm.name for tm in other_tmaps],
-    )
-    other_tm_df.index.name = "TensorMap"
-
-    return continuous_tm_df, categorical_tm_df, other_tm_df
-
-
-def _get_stats_as_dataframes_from_multiple_generators(
-    generators: Dict[str, TensorGenerator],
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    split_to_dataframes = {
-        split: _get_stats_as_dataframes(
-            stats=generator.true_epoch_stats,
-            input_maps=generator.input_maps,
-            output_maps=generator.output_maps,
-        )
-        for split, generator in generators.items()
-    }
-
-    def combine_split_dataframes(split_to_dataframe, index=["TensorMap"]):
-        df = (
-            pd.concat(split_to_dataframe, names=["Split"])
-            .reorder_levels(index + ["Split"])
-            .reset_index()
-        )
-        df["Split"] = pd.Categorical(df["Split"], split_to_dataframe.keys())
-        if "Label" in index:
-            labels = df["Label"].drop_duplicates()
-            df["Label"] = pd.Categorical(df["Label"], labels)
-        df = df.set_index(index + ["Split"]).sort_index()
-        return df
-
-    continuous_tm_df = combine_split_dataframes(
-        {
-            split: continuous_df
-            for split, (continuous_df, _, _) in split_to_dataframes.items()
-        },
-    )
-    categorical_tm_df = combine_split_dataframes(
-        {
-            split: categorical_df
-            for split, (_, categorical_df, _) in split_to_dataframes.items()
-        },
-        ["TensorMap", "Label"],
-    )
-    other_tm_df = combine_split_dataframes(
-        {split: other_df for split, (_, _, other_df) in split_to_dataframes.items()},
-    )
-
-    return continuous_tm_df, categorical_tm_df, other_tm_df
+        self.paths_in_batch = []
+        return out
 
 
 def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int):
@@ -904,16 +1015,18 @@ def test_train_valid_tensor_generators(
         )
         weights = None
 
-    _TensorGenerator = TensorGenerator
-    if "legacy_tensor_generator" in kwargs and kwargs["legacy_tensor_generator"]:
-        _TensorGenerator = TensorGeneratorLegacy
-
-    generate_train = _TensorGenerator(
+    num_train_workers = int(
+        training_steps / (training_steps + validation_steps) * num_workers,
+    ) or (1 if num_workers else 0)
+    num_valid_workers = int(
+        validation_steps / (training_steps + validation_steps) * num_workers,
+    ) or (1 if num_workers else 0)
+    generate_train = TensorGenerator(
         batch_size,
         tensor_maps_in,
         tensor_maps_out,
         train_paths,
-        num_workers,
+        num_train_workers,
         cache_size,
         weights,
         keep_paths,
@@ -923,12 +1036,12 @@ def test_train_valid_tensor_generators(
         augment=True,
         sample_weight=sample_weight,
     )
-    generate_valid = _TensorGenerator(
+    generate_valid = TensorGenerator(
         batch_size,
         tensor_maps_in,
         tensor_maps_out,
         valid_paths,
-        num_workers,
+        num_valid_workers,
         cache_size,
         weights,
         keep_paths,
@@ -936,7 +1049,7 @@ def test_train_valid_tensor_generators(
         siamese=siamese,
         augment=False,
     )
-    generate_test = _TensorGenerator(
+    generate_test = TensorGenerator(
         batch_size,
         tensor_maps_in,
         tensor_maps_out,
@@ -950,6 +1063,14 @@ def test_train_valid_tensor_generators(
         augment=False,
     )
     return generate_train, generate_valid, generate_test
+
+
+def _log_first_error(stats: Counter, tensor_path: str):
+    for k in stats:
+        if "Error" in k and stats[k] == 1:
+            stats[k] += 1  # Increment so we only see these messages once
+            logging.debug(f"At tensor path: {tensor_path}")
+            logging.debug(f"Got first error: {k}")
 
 
 def _identity_batch(

@@ -224,73 +224,58 @@ def _make_augmentation_combinations(
 
 # Generates a diverse family of ECG TMaps with name modifications:
 #
-# ecg_625     ecg_625_std     ecg_625_std_exact     ecg_625_raw     ecg_625_raw_exact
-# ecg_1250    ecg_1250_std    ecg_1250_std_exact    ecg_1250_raw    ecg_1250_raw_exact
-# ecg_2500    ecg_2500_std    ecg_2500_std_exact    ecg_2500_raw    ecg_2500_raw_exact
-# ecg_5000    ecg_5000_std    ecg_5000_std_exact    ecg_5000_raw    ecg_5000_raw_exact
+#    [12_lead_]ecg_{length}[_exact][_std][_augmentations]
+#
+#    ecg_625     ecg_625_std     ecg_625_exact_std
+#    ecg_1250    ecg_1250_std    ecg_1250_exact_std
+#    ecg_2500    ecg_2500_std    ecg_2500_exact_std
+#    ecg_5000    ecg_5000_std    ecg_5000_exact_std
 #
 # plus all permutations of above with 1-3 augmentations per TMap (see below).
 #
-# Generated TMaps have modifications in order:
-#     [12_lead_]ecg_length[_normalization][_exact][_augmentations]
+# length options: number of samples in ECG voltage array, and if we resample
+#    None:   resample input to given length
+#    _exact: only return tensors with len(array) == length
 #
-# length: number of samples in ECG voltage array
-#    625
-#    1250
-#    2500
-#    5000
+# normalize options:
+#    None: return unmodified voltage data (i.e. raw)
+#    _std: normalize with normalize mean = 0, std = 2000
 #
-# normalization (which also handles resampling):
-#    None:      resample input to length, and normalize with ZeroMeanStd1
-#    exact:     only return array with len(array) == length
-#    std:       resample input to length; normalize with Standardize mean = 0, std = 2000
-#    std_exact: normalize with Standardize mean = 0, std = 2000;
-#               only return array with len(array) == length0
-#    raw:       resample input to length; original voltage values; does not normalize
-#    raw_exact: does not normalize; only return array with len(array) == length
-#
-# augmentations: modifications to arrays
+# augmentation options: modifications to arrays
 #    crop:  isolate a random subsection of the ECG
 #    noise: add Gaussian noise
 #    warp:  add bendiness
 #
 # When using these generated TMaps, you must use the exact name;
-#     valid:     ecg_2500_std_exact_crop_noise
-#     not valid: ecg_2500_std_exact_noise_crop
-#     not valid: ecg_2500_exact_std_noise_crop
+#    valid:     ecg_2500_exact_std_crop_noise
+#    not valid: ecg_2500_exact_std_noise_crop
+#    not valid: ecg_2500_std_exact_noise_crop
 #
+leads_options = [ECG_REST_INDEPENDENT_LEADS, ECG_REST_AMP_LEADS]
 length_options = [625, 1250, 2500, 5000]
 exact_options = [True, False]
+normalize_options = [None, Standardize(mean=0, std=2000)]
 augmentation_options = _make_augmentation_combinations(augmentations)
-normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
-leads_options = [ECG_REST_INDEPENDENT_LEADS, ECG_REST_AMP_LEADS]
 
-for leads, length, exact_length, normalization, augmentation in product(
+for leads, length, exact, normalize, augmentation in product(
     leads_options,
     length_options,
     exact_options,
     normalize_options,
     augmentation_options,
 ):
-    norm = (
-        ""
-        if isinstance(normalization, ZeroMeanStd1)
-        else "_std"
-        if isinstance(normalization, Standardize)
-        else "_raw"
-    )
-    exact = "_exact" if exact_length else ""
+    # Some options are Booleans or callables and must be converted into text
+    num_leads = f"{len(leads)}_lead_" if len(leads) != 8 else ""
+    exact_text = "_exact" if exact else ""
+    normalize_text = "_std" if isinstance(normalize, Standardize) else ""
+    name = f"{num_leads}ecg_{length}{exact_text}{normalize_text}{augmentation}"
 
-    num_leads = ""
-    if len(leads) != 8:
-        num_leads = f"{len(leads)}_lead_"
-    name = f"{num_leads}ecg_{length}{norm}{exact}{augmentation}"
     TMAPS[name] = TensorMap(
         name,
         shape=(None, length, len(leads)),
         path_prefix=ECG_PREFIX,
-        tensor_from_file=make_voltage(exact_length),
-        normalization=normalization,
+        tensor_from_file=make_voltage(exact),
+        normalization=normalize,
         channel_map=leads,
         time_series_limit=0,
         validator=validator_not_all_zero,
@@ -949,7 +934,9 @@ TMAPS[task] = TensorMap(
 # Creates TMaps with _md and _pc suffix.
 # Examples:
 #     ecg_rate_md
+#     ecg_rate_std_md
 #     ecg_rate_pc
+#     ecg_rate_std_pc
 
 # fmt: off
 # TMap name      ->      (hd5 key,          fill, validator,                       normalization)

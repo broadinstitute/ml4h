@@ -636,6 +636,8 @@ def parse_args():
             " labels to report."
         ),
     )
+
+    """
     parser.add_argument(
         "--legacy_tensor_generator",
         action="store_true",
@@ -646,6 +648,7 @@ def parse_args():
             " reliable."
         ),
     )
+    """
 
     args = parser.parse_args()
     _process_args(args)

@@ -54,7 +54,6 @@ from ml4cvd.tensor_generators import (
     BATCH_PATHS_INDEX,
     BATCH_OUTPUT_INDEX,
     TensorGenerator,
-    get_verbose_stats_string,
     big_batch_from_minibatch_generator,
     test_train_valid_tensor_generators,
 )
@@ -184,6 +183,9 @@ def train_multimodal_multitask(args):
     generate_test.kill_workers()
 
     logging.info(f"Model trained for {len(history.history['loss'])} epochs")
+
+    # TODO fix new TensorGenerator so we can once more use these nice stats
+    """
     if isinstance(generate_train, TensorGenerator):
         logging.info(
             get_verbose_stats_string(
@@ -194,6 +196,7 @@ def train_multimodal_multitask(args):
                 },
             ),
         )
+    """
 
     performance_metrics = _predict_and_evaluate(
         model,
