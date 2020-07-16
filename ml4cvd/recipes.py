@@ -4,6 +4,7 @@ import csv
 import copy
 import logging
 from timeit import default_timer as timer
+from typing import Dict, List, Tuple
 from functools import reduce
 from collections import Counter, defaultdict
 
@@ -47,21 +48,9 @@ from ml4cvd.metrics import (
     get_precision_recall_aucs,
 )
 from ml4cvd.arguments import parse_args
+from ml4cvd.TensorMap import TensorMap
 from ml4cvd.optimizers import find_learning_rate
-from ml4cvd.explorations import (
-    explore,
-    ecg_dates,
-    mri_dates,
-    cross_reference,
-    infer_with_pixels,
-    plot_while_learning,
-    predictions_to_pngs,
-    sample_from_char_model,
-    plot_heatmap_of_tensors,
-    test_labels_to_label_map,
-    tabulate_correlations_of_tensors,
-    plot_histograms_of_tensors_in_pdf,
-)
+from ml4cvd.explorations import explore, cross_reference
 from ml4cvd.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_PATHS_INDEX,
@@ -127,34 +116,12 @@ def run(args):
             infer_multimodal_multitask(args)
         elif "infer_hidden" == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
-        elif "infer_pixels" == args.mode:
-            infer_with_pixels(args)
         elif "test_scalar" == args.mode:
             test_multimodal_scalar_tasks(args)
         elif "compare_scalar" == args.mode:
             compare_multimodal_scalar_task_models(args)
-        elif "plot_predictions" == args.mode:
-            plot_predictions(args)
-        elif "plot_while_training" == args.mode:
-            plot_while_training(args)
         elif "plot_saliency" == args.mode:
             saliency_maps(args)
-        elif "plot_mri_dates" == args.mode:
-            mri_dates(args.tensors, args.output_folder, args.id)
-        elif "plot_ecg_dates" == args.mode:
-            ecg_dates(args.tensors, args.output_folder, args.id)
-        elif "plot_histograms" == args.mode:
-            plot_histograms_of_tensors_in_pdf(
-                args.id, args.tensors, args.output_folder, args.max_samples,
-            )
-        elif "plot_heatmap" == args.mode:
-            plot_heatmap_of_tensors(
-                args.id,
-                args.tensors,
-                args.output_folder,
-                args.min_samples,
-                args.max_samples,
-            )
         elif "plot_resting_ecgs" == args.mode:
             plot_ecg_rest_mp(
                 args.tensors,
@@ -165,18 +132,8 @@ def run(args):
             )
         elif "plot_muse_ecg" == args.mode:
             plot_muse_ecg(args)
-        elif "tabulate_correlations" == args.mode:
-            tabulate_correlations_of_tensors(
-                args.id,
-                args.tensors,
-                args.output_folder,
-                args.min_samples,
-                args.max_samples,
-            )
         elif "train_shallow" == args.mode:
             train_shallow_model(args)
-        elif "train_char" == args.mode:
-            train_char_model(args)
         elif "train_siamese" == args.mode:
             train_siamese_model(args)
         elif "append_continuous_csv" == args.mode:
@@ -615,60 +572,6 @@ def train_shallow_model(args):
     )
 
 
-def train_char_model(args):
-    args.num_workers = 0
-    logging.info(f"Number of workers forced to 0 for character emitting LSTM model.")
-    base_model = make_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.learning_rate,
-        base_model,
-        args.language_layer,
-        args.language_prefix,
-        args.model_layers,
-    )
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
-        **args.__dict__
-    )
-
-    model = train_model_from_generators(
-        model,
-        generate_train,
-        generate_valid,
-        args.training_steps,
-        args.validation_steps,
-        args.batch_size,
-        args.epochs,
-        args.patience,
-        args.output_folder,
-        args.id,
-        args.inspect_model,
-        args.inspect_show_labels,
-    )
-    batch = next(generate_test)
-    input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
-    sample_from_char_model(char_model, input_data, tensor_paths)
-
-    output_path = os.path.join(args.output_folder, args.id + "/")
-    data, labels, paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
-    return _predict_and_evaluate(
-        model,
-        data,
-        labels,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.batch_size,
-        args.hidden_layer,
-        output_path,
-        paths,
-        args.embed_visualization,
-        args.alpha,
-    )
-
-
 def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
@@ -700,53 +603,6 @@ def train_siamese_model(args):
         {"random_siamese_verification_task": 0},
         args.id,
         os.path.join(args.output_folder, args.id + "/"),
-    )
-
-
-def plot_predictions(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    data, labels, paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
-    predictions = model.predict(data, batch_size=args.batch_size)
-    if len(args.tensor_maps_out) == 1:
-        predictions = [predictions]
-    folder = os.path.join(args.output_folder, args.id, "prediction_pngs/")
-    predictions_to_pngs(
-        predictions,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        data,
-        labels,
-        paths,
-        folder,
-    )
-
-
-def plot_while_training(args):
-    generate_train, _, generate_test = test_train_valid_tensor_generators(
-        **args.__dict__
-    )
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
-    model = make_multimodal_multitask_model(**args.__dict__)
-
-    plot_folder = os.path.join(args.output_folder, args.id, "training_frames/")
-    plot_while_learning(
-        model,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        generate_train,
-        test_data,
-        test_labels,
-        test_paths,
-        args.epochs,
-        args.batch_size,
-        args.training_steps,
-        plot_folder,
-        args.write_pngs,
     )
 
 
@@ -1189,6 +1045,25 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         subplot_comparison_scatters(scatters, plot_folder)
 
 
+def _test_labels_to_label_map(
+    test_labels: Dict[TensorMap, np.ndarray], examples: int,
+) -> Tuple[Dict[str, np.ndarray], List[str], List[str]]:
+    label_dict = {tm: np.zeros((examples,)) for tm in test_labels}
+    categorical_labels = []
+    continuous_labels = []
+
+    for tm in test_labels:
+        for i in range(examples):
+            if tm.is_continuous() and tm.axes() == 1:
+                label_dict[tm][i] = tm.rescale(test_labels[tm][i])
+                continuous_labels.append(tm)
+            elif tm.is_categorical() and tm.axes() == 1:
+                label_dict[tm][i] = np.argmax(test_labels[tm][i])
+                categorical_labels.append(tm)
+
+    return label_dict, categorical_labels, continuous_labels
+
+
 def _tsne_wrapper(
     model,
     hidden_layer_name,
@@ -1229,7 +1104,7 @@ def _tsne_wrapper(
         )
 
     gene_labels = []
-    label_dict, categorical_labels, continuous_labels = test_labels_to_label_map(
+    label_dict, categorical_labels, continuous_labels = _test_labels_to_label_map(
         test_labels, len(test_paths),
     )
     if (
