@@ -1853,7 +1853,7 @@ def plot_muse_ecg(args):
         "ecg_raxis_md",
         "ecg_qtc_md",
     ]
-    voltage_tensor = "ecg_2500_raw"
+    voltage_tensor = "12_lead_ecg_2500_raw"
     # Imports: first party
     from ml4cvd.tensor_maps_ecg import TMAPS
 
@@ -1879,7 +1879,9 @@ def plot_muse_ecg(args):
                 skip_hd5 = False
                 tdict = defaultdict(dict)
                 for tm in tensor_maps_in:
-                    key = tm.name.split("ecg_")[1]
+                    key = tm.name.split(
+                        "12_lead_ecg_" if key == voltage_tensor else "ecg_",
+                    )[1]
                     try:
                         tensors = tm.tensor_from_file(tm, hd5)
 

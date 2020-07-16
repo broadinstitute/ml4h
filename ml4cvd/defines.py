@@ -39,8 +39,6 @@ JOIN_CHAR = "_"
 CONCAT_CHAR = "-"
 HD5_GROUP_CHAR = "/"
 
-ECG_REST_INDEPENDENT_LEADS = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
-
 MRI_FRAMES = 50
 MRI_TO_SEGMENT = "cine_segmented_sax_inlinevf"
 MRI_LAX_TO_SEGMENT = "cine_segmented_lax_inlinevf"
@@ -192,6 +190,16 @@ ECG_REST_AMP_LEADS = {
     "V4": 9,
     "V5": 10,
     "V6": 11,
+}
+ECG_REST_INDEPENDENT_LEADS = {
+    "I": 0,
+    "II": 1,
+    "V1": 2,
+    "V2": 3,
+    "V3": 4,
+    "V4": 5,
+    "V5": 6,
+    "V6": 7,
 }
 ECG_SEGMENTED_CHANNEL_MAP = {
     "unknown": 0,

@@ -19,6 +19,7 @@ from ml4cvd.defines import (
     ECG_DATE_FORMAT,
     ECG_REST_AMP_LEADS,
     ECG_DATETIME_FORMAT,
+    ECG_REST_INDEPENDENT_LEADS,
     CARDIAC_SURGERY_DATE_FORMAT,
 )
 from ml4cvd.metrics import weighted_crossentropy
@@ -231,7 +232,7 @@ def _make_augmentation_combinations(
 # plus all permutations of above with 1-3 augmentations per TMap (see below).
 #
 # Generated TMaps have modifications in order:
-#     ecg_{length}{_normalization}{_exact}{_augmentations}
+#     [12_lead_]ecg_length[_normalization][_exact][_augmentations]
 #
 # length: number of samples in ECG voltage array
 #    625
@@ -262,9 +263,14 @@ length_options = [625, 1250, 2500, 5000]
 exact_options = [True, False]
 augmentation_options = _make_augmentation_combinations(augmentations)
 normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
+leads_options = [ECG_REST_INDEPENDENT_LEADS, ECG_REST_AMP_LEADS]
 
-for length, exact_length, normalization, augmentation in product(
-    length_options, exact_options, normalize_options, augmentation_options,
+for leads, length, exact_length, normalization, augmentation in product(
+    leads_options,
+    length_options,
+    exact_options,
+    normalize_options,
+    augmentation_options,
 ):
     norm = (
         ""
@@ -275,14 +281,17 @@ for length, exact_length, normalization, augmentation in product(
     )
     exact = "_exact" if exact_length else ""
 
-    name = f"ecg_{length}{norm}{exact}{augmentation}"
+    num_leads = ""
+    if len(leads) != 8:
+        num_leads = f"{len(leads)}_lead_"
+    name = f"{num_leads}ecg_{length}{norm}{exact}{augmentation}"
     TMAPS[name] = TensorMap(
         name,
-        shape=(None, length, 12),
+        shape=(None, length, len(leads)),
         path_prefix=ECG_PREFIX,
         tensor_from_file=make_voltage(exact_length),
         normalization=normalization,
-        channel_map=ECG_REST_AMP_LEADS,
+        channel_map=leads,
         time_series_limit=0,
         validator=validator_not_all_zero,
         augmentations=augmentation_options[augmentation],
