@@ -21,6 +21,7 @@ assignees: ''
 
 ## Current Behavior
 <!--- Tell us what happens instead of the expected behavior -->
+<!--- Copy and paste the complete error or warning here -->
 
 ## Possible Solution
 <!--- Not obligatory, but suggest a fix/reason for the bug, -->
@@ -32,6 +33,3 @@ assignees: ''
 2.
 3.
 4.
-
-## Error message
-<!--- Copy and paste the complete traceback here -->
