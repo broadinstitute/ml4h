@@ -7,7 +7,7 @@ import errno
 import logging
 
 
-def load_config(log_level, log_dir, log_file_basename, log_file_suffix):
+def load_config(log_level, log_dir, log_file_basename):
     # Imports: standard library
     from logging import config as logging_config
 
@@ -19,7 +19,7 @@ def load_config(log_level, log_dir, log_file_basename, log_file_suffix):
 
     logger = logging.getLogger(__name__)
 
-    log_file = "{}/{}_{}.log".format(log_dir, log_file_basename, log_file_suffix)
+    log_file = "{}/{}.log".format(log_dir, log_file_basename)
 
     try:
         logging_config.dictConfig(_create_config(log_level, log_file))

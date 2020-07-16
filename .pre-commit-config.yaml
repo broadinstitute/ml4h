@@ -30,7 +30,6 @@ repos:
   rev: v2.0.1
   hooks:
     - id: add-trailing-comma
-      exclude: "ml4cvd/tensor_maps_by_script.py"
 
 - repo: https://github.com/timothycrosley/isort
   rev: 5.0.5

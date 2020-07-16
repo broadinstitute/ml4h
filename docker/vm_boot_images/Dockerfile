@@ -22,13 +22,6 @@ WORKDIR /app
 # Basic setup
 RUN ./ubuntu.sh
 
-# FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
-# understand this odd sequence of installing then uninstalling fastai before
-# installing it from github. (Basically, to get its deps.)
-# RUN pip3 install -r fastai-requirements.txt
-# RUN pip3 uninstall -y fastai
-# RUN ./fastai.sh
-
 RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
 
 # Requirements for the tensorflow project

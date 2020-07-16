@@ -2,55 +2,22 @@
 import os
 import csv
 import copy
-import math
 import logging
 import datetime
-import operator
 import multiprocessing as mp
-from typing import Dict, List, Tuple, Optional, Generator, DefaultDict
-from operator import itemgetter
 from functools import reduce
-from itertools import combinations
-from collections import Counter, OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict
 
 # Imports: third party
 import h5py
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import Model
 
 # Imports: first party
-from ml4cvd.plots import (
-    SUBPLOT_SIZE,
-    plot_heatmap,
-    subplot_rocs,
-    subplot_scatters,
-    evaluate_predictions,
-    plot_cross_reference,
-    plot_histograms_in_pdf,
-)
-from ml4cvd.models import make_multimodal_multitask_model
-from ml4cvd.defines import (
-    IMAGE_EXT,
-    JOIN_CHAR,
-    TENSOR_EXT,
-    ECG_CHAR_2_IDX,
-    ECG_IDX_2_CHAR,
-    PARTNERS_READ_TEXT,
-    PARTNERS_CHAR_2_IDX,
-    PARTNERS_IDX_2_CHAR,
-    CODING_VALUES_MISSING,
-    MRI_SEGMENTED_CHANNEL_MAP,
-    CODING_VALUES_LESS_THAN_ONE,
-)
-from ml4cvd.TensorMap import TensorMap, Interpretation, decompress_data
-from ml4cvd.tensor_generators import (
-    BATCH_INPUT_INDEX,
-    BATCH_PATHS_INDEX,
-    BATCH_OUTPUT_INDEX,
-    TensorGenerator,
-    test_train_valid_tensor_generators,
-)
+from ml4cvd.plots import SUBPLOT_SIZE
+from ml4cvd.defines import IMAGE_EXT
+from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.tensor_generators import test_train_valid_tensor_generators
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot

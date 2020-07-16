@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
 # Script to enable running Python modules within Docker containers
-# Note: If 'nvidia-docker' is specified as $DOCKER_COMMAND, this script must be run on a dl-image machine
-# (rather than a 'ukbb-image' machine) on a GPU-enabled machine.
 
 ################### VARIABLES ############################################
 

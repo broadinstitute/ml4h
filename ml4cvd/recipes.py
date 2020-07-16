@@ -14,12 +14,11 @@ import numpy as np
 
 # Imports: first party
 from ml4cvd.plots import (
+    plot_ecg,
     plot_rocs,
     plot_tsne,
     subplot_rocs,
-    plot_muse_ecg,
     plot_scatters,
-    plot_ecg_rest_mp,
     subplot_scatters,
     plot_roc_per_class,
     plot_saliency_maps,
@@ -35,7 +34,6 @@ from ml4cvd.models import (
     embed_model_predict,
     make_hidden_layer_model,
     get_model_inputs_outputs,
-    make_character_model_plus,
     train_model_from_generators,
     make_multimodal_multitask_model,
 )
@@ -67,41 +65,7 @@ def run(args):
     start_time = timer()  # Keep track of elapsed execution time
     try:
         if "tensorize" == args.mode:
-            write_tensors(
-                args.id,
-                args.xml_folder,
-                args.zip_folder,
-                args.output_folder,
-                args.tensors,
-                args.dicoms,
-                args.mri_field_ids,
-                args.xml_field_ids,
-                args.zoom_x,
-                args.zoom_y,
-                args.zoom_width,
-                args.zoom_height,
-                args.write_pngs,
-                args.min_sample_id,
-                args.max_sample_id,
-                args.min_values,
-            )
-        elif "tensorize_pngs" == args.mode:
-            write_tensors_from_dicom_pngs(
-                args.tensors,
-                args.dicoms,
-                args.app_csv,
-                args.dicom_series,
-                args.min_sample_id,
-                args.max_sample_id,
-                args.x,
-                args.y,
-            )
-        elif "tensorize_ecg_pngs" == args.mode:
-            write_tensors_from_ecg_pngs(
-                args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id,
-            )
-        elif "tensorize_partners" == args.mode:
-            write_tensors_partners(args.xml_folder, args.tensors, args.num_workers)
+            write_tensors_ecg(args.xml_folder, args.tensors, args.num_workers)
         elif "explore" == args.mode:
             explore(args)
         elif "cross_reference" == args.mode:
@@ -122,30 +86,12 @@ def run(args):
             compare_multimodal_scalar_task_models(args)
         elif "plot_saliency" == args.mode:
             saliency_maps(args)
-        elif "plot_resting_ecgs" == args.mode:
-            plot_ecg_rest_mp(
-                args.tensors,
-                args.min_sample_id,
-                args.max_sample_id,
-                args.output_folder,
-                args.num_workers,
-            )
-        elif "plot_muse_ecg" == args.mode:
-            plot_muse_ecg(args)
+        elif "plot_ecg" == args.mode:
+            plot_ecg(args)
         elif "train_shallow" == args.mode:
             train_shallow_model(args)
         elif "train_siamese" == args.mode:
             train_siamese_model(args)
-        elif "append_continuous_csv" == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, "continuous", ",")
-        elif "append_categorical_csv" == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, "categorical", ",")
-        elif "append_continuous_tsv" == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, "continuous", "\t")
-        elif "append_categorical_tsv" == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, "categorical", "\t")
-        elif "append_gene_csv" == args.mode:
-            append_gene_csv(args.tensors, args.app_csv, ",")
         elif "find_learning_rate" == args.mode:
             _find_learning_rate(args)
         elif "find_learning_rate_and_train" == args.mode:

@@ -15,7 +15,6 @@ import numpy as np
 # Imports: first party
 from ml4cvd.logger import load_config
 from ml4cvd.models import BottleneckType, parent_sort, check_no_bottleneck
-from ml4cvd.defines import IMPUTATION_MEAN, IMPUTATION_RANDOM
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_ecg import (
     TMAPS,
@@ -68,58 +67,14 @@ def parse_args():
 
     # Input and Output files and directories
     parser.add_argument(
-        "--bigquery_credentials_file",
-        default="/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json",
-        help="Path to service account credentials for looking up BigQuery tables.",
-    )
-    parser.add_argument(
-        "--bigquery_dataset",
-        default="broad-ml4cvd.ukbb7089_r10data",
-        help="BigQuery dataset containing tables we want to query.",
-    )
-    parser.add_argument(
         "--xml_folder",
         default="/mnt/disks/ecg-rest-xml/",
         help="Path to folder of XMLs of ECG data.",
     )
     parser.add_argument(
-        "--zip_folder",
-        default="/mnt/disks/sax-mri-zip/",
-        help="Path to folder of zipped dicom images.",
-    )
-    parser.add_argument(
-        "--phenos_folder",
-        default="gs://ml4cvd/phenotypes/",
-        help="Path to folder of phenotype defining CSVs.",
-    )
-    parser.add_argument(
-        "--phecode_definitions",
-        default="/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv",
-        help="CSV of phecode definitions",
-    )
-    parser.add_argument(
-        "--dicoms", default="./dicoms/", help="Path to folder of dicoms.",
-    )
-    parser.add_argument(
         "--sample_csv",
         default=None,
         help="Path to CSV with Sample IDs to restrict tensor paths",
-    )
-    parser.add_argument(
-        "--tsv_style",
-        default="standard",
-        choices=["standard", "genetics"],
-        help=(
-            "Format choice for the TSV file produced in output by infer and explore"
-            " modes."
-        ),
-    )
-    parser.add_argument(
-        "--app_csv",
-        help=(
-            "Path to file used to link sample IDs between UKBB applications 17488 and"
-            " 7089"
-        ),
     )
     parser.add_argument(
         "--tensors",
@@ -152,170 +107,8 @@ def parse_args():
         action="store_true",
         help="Whether to freeze the layers from model_layers.",
     )
-    parser.add_argument(
-        "--continuous_file",
-        default=None,
-        help=(
-            "Path to a file containing continuous values from which a output TensorMap"
-            " will be made.Note that setting this argument has the effect of linking"
-            " the first output_tensorsargument to the TensorMap made from this file."
-        ),
-    )
-
-    # Data selection parameters
-    parser.add_argument(
-        "--continuous_file_column",
-        default=None,
-        help="Column header in file from which a continuous TensorMap will be made.",
-    )
-    parser.add_argument(
-        "--continuous_file_normalize",
-        default=False,
-        action="store_true",
-        help="Whether to normalize a continuous TensorMap made from a file.",
-    )
-    parser.add_argument(
-        "--continuous_file_discretization_bounds",
-        default=[],
-        nargs="*",
-        type=float,
-        help=(
-            "Bin boundaries to use to discretize a continuous TensorMap read from a"
-            " file."
-        ),
-    )
-    parser.add_argument(
-        "--categorical_field_ids",
-        nargs="*",
-        default=[],
-        type=int,
-        help="List of field ids from which input features will be collected.",
-    )
-    parser.add_argument(
-        "--continuous_field_ids",
-        nargs="*",
-        default=[],
-        type=int,
-        help=(
-            "List of field ids from which continuous real-valued input features will be"
-            " collected."
-        ),
-    )
-    parser.add_argument(
-        "--include_array",
-        default=False,
-        action="store_true",
-        help="Include array idx for UKBB phenotypes.",
-    )
-    parser.add_argument(
-        "--include_instance",
-        default=False,
-        action="store_true",
-        help="Include instances for UKBB phenotypes.",
-    )
-    parser.add_argument(
-        "--min_values", default=10, type=int, help="Per feature size minimum.",
-    )
-    parser.add_argument(
-        "--min_samples",
-        default=3,
-        type=int,
-        help="Min number of samples to require for calculating correlations.",
-    )
-    parser.add_argument(
-        "--max_samples",
-        type=int,
-        default=None,
-        help=(
-            "Max number of samples to use for tensor reporting -- all samples are used"
-            " if not specified."
-        ),
-    )
-    parser.add_argument(
-        "--mri_field_ids",
-        default=["20208", "20209"],
-        nargs="*",
-        help="Field id for MR images.",
-    )
-    parser.add_argument(
-        "--xml_field_ids",
-        default=["20205", "6025"],
-        nargs="*",
-        help="Field id for XMLs of resting and exercise ECG data.",
-    )
-    parser.add_argument(
-        "--max_patients",
-        default=999999,
-        type=int,
-        help="Maximum number of patient data to read",
-    )
-    parser.add_argument(
-        "--min_sample_id",
-        default=0,
-        type=int,
-        help="Minimum sample id to write to tensor.",
-    )
-    parser.add_argument(
-        "--max_sample_id",
-        default=7000000,
-        type=int,
-        help="Maximum sample id to write to tensor.",
-    )
-    parser.add_argument(
-        "--max_slices",
-        default=999999,
-        type=int,
-        help="Maximum number of dicom slices to read",
-    )
-    parser.add_argument(
-        "--dicom_series",
-        default="cine_segmented_sax_b6",
-        help="Maximum number of dicom slices to read",
-    )
-    parser.add_argument(
-        "--b_slice_force",
-        default=None,
-        help=(
-            "If set, will only load specific b slice for short axis MRI diastole"
-            " systole tensor maps (i.e b0, b1, b2, ... b10)."
-        ),
-    )
-    parser.add_argument(
-        "--include_missing_continuous_channel",
-        default=False,
-        action="store_true",
-        help="Include missing channels in continuous tensors",
-    )
-    parser.add_argument(
-        "--imputation_method_for_continuous_fields",
-        default=IMPUTATION_RANDOM,
-        help="can be random or mean",
-        choices=[IMPUTATION_RANDOM, IMPUTATION_MEAN],
-    )
 
     # Model Architecture Parameters
-    parser.add_argument("--x", default=256, type=int, help="x tensor resolution")
-    parser.add_argument("--y", default=256, type=int, help="y tensor resolution")
-    parser.add_argument(
-        "--zoom_x", default=50, type=int, help="zoom_x tensor resolution",
-    )
-    parser.add_argument(
-        "--zoom_y", default=35, type=int, help="zoom_y tensor resolution",
-    )
-    parser.add_argument(
-        "--zoom_width", default=96, type=int, help="zoom_width tensor resolution",
-    )
-    parser.add_argument(
-        "--zoom_height", default=96, type=int, help="zoom_height tensor resolution",
-    )
-    parser.add_argument("--z", default=48, type=int, help="z tensor resolution")
-    parser.add_argument("--t", default=48, type=int, help="Number of time slices")
-    parser.add_argument(
-        "--mlp_concat",
-        default=False,
-        action="store_true",
-        help="Concatenate input with every multiplayer perceptron layer.",
-    )  # TODO: should be the same style as u_connect
     parser.add_argument(
         "--dense_layers",
         nargs="*",
@@ -415,14 +208,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--max_pools",
-        nargs="*",
-        default=[],
-        type=int,
-        help="List of maxpooling layers.",
-    )
-    parser.add_argument(
-        "--pool_last_layer_dense_blocks",
+        "--pool_after_final_dense_block",
         default=True,
         action="store_false",
         help="Pool the last layer of all dense blocks.",
@@ -479,14 +265,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--aligned_dimension",
-        default=16,
-        type=int,
-        help=(
-            "Dimensionality of aligned embedded space for multi-modal alignment models."
-        ),
-    )
-    parser.add_argument(
         "--max_parameters",
         default=9000000,
         type=int,
@@ -513,7 +291,7 @@ def parse_args():
     )
     parser.add_argument(
         "--language_prefix",
-        default="ukb_ecg_rest",
+        default="partners_ecg_rest",
         help=(
             "Path prefix for a TensorMap to learn language models (eg train_char_model)"
         ),
@@ -604,15 +382,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--label_weights",
-        nargs="*",
-        type=float,
-        help=(
-            "List of per-label weights for weighted categorical cross entropy. If"
-            " provided, must map 1:1 to number of labels."
-        ),
-    )
-    parser.add_argument(
         "--patience",
         default=8,
         type=int,
@@ -680,15 +449,6 @@ def parse_args():
         help="Random seed to use throughout run.  Always use np.random.",
     )
     parser.add_argument(
-        "--write_pngs",
-        default=False,
-        action="store_true",
-        help="Write pngs of slices.",
-    )
-    parser.add_argument(
-        "--debug", default=False, action="store_true", help="Run in debug mode.",
-    )
-    parser.add_argument(
         "--eager",
         default=False,
         action="store_true",
@@ -698,14 +458,12 @@ def parse_args():
     )
     parser.add_argument(
         "--inspect_model",
-        default=False,
-        action="store_true",
+        action="store_false",
         help="Plot model architecture, measure inference and training speeds.",
     )
     parser.add_argument(
         "--inspect_show_labels",
-        default=True,
-        action="store_true",
+        action="store_false",
         help="Plot model architecture with labels for each layer.",
     )
     parser.add_argument(
@@ -955,7 +713,6 @@ def _process_args(args):
         args.logging_level,
         os.path.join(args.output_folder, args.id),
         "log_" + now_string,
-        args.min_sample_id,
     )
     args.u_connect = _process_u_connect_args(args.u_connect)
     needed_tensor_maps = (
