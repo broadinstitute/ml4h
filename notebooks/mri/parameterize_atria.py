@@ -30,6 +30,7 @@ import numpy as np
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {}
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'] = 11
 projected_dss = []
+directions = []
 for ds_valve, ds_annot, view, la_value in zip(dss_valve[0], dss_annot, 
                                               ['3ch', '2ch', '4ch'],
                                               [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
@@ -40,6 +41,11 @@ for ds_valve, ds_annot, view, la_value in zip(dss_valve[0], dss_annot,
         arr_valve = ns.vtk_to_numpy(projected_dss[-1][0].GetCellData().GetArray(f'cine_segmented_lax_inlinevf_zoom_segmented_projected_{t}'))
         arr_annot = ns.vtk_to_numpy(projected_dss[-1][0].GetCellData().GetArray(f'cine_segmented_lax_{view}_annotated_{t}'))
         arr_valve[:] = np.logical_and(arr_valve>0.5, arr_annot==la_value)
+    idxs = np.where(arr_valve>0.5)[0]
+    centers = vtk.vtkCellCenters()
+    centers.SetInputData(ds_valve)
+    centers.Update()
+    break
 
     to_xdmf(projected_dss[-1][0], f'/home/pdiachil/projects/atria/projected_{view}', 
             array_name='cine_segmented_lax_inlinevf_zoom_segmented_projected')
