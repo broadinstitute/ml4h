@@ -478,7 +478,6 @@ def explore(args):
     for tm in args.tensor_maps_in:
         if tm.interpretation == Interpretation.CONTINUOUS:
             name = tm.name
-            arr = list(df[name])
             plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * 0.6))
             plt.rcParams.update({"font.size": 14})
             plt.xlabel(name)
@@ -486,7 +485,7 @@ def explore(args):
             figure_path = os.path.join(
                 args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}",
             )
-            plt.hist(arr, 50, rwidth=0.9)
+            plt.hist(df[name].dropna(), 50, rwidth=0.9)
             plt.savefig(figure_path)
             plt.close()
             logging.info(f"Saved {name} histogram plot at: {figure_path}")
