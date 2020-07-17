@@ -150,10 +150,10 @@ def train_multimodal_multitask(args):
         args.inspect_model,
         args.inspect_show_labels,
         return_history=True,
-        defer_worker_halt=args.plot_train_curves,
+        defer_worker_halt=args.plot_train_roc_and_pr_curves,
     )
     out_path = os.path.join(args.output_folder, args.id + "/")
-    if args.plot_train_curves:
+    if args.plot_train_roc_and_pr_curves:
         train_data, train_labels = big_batch_from_minibatch_generator(
             generate_train, args.training_steps,
         )
