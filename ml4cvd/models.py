@@ -1513,6 +1513,9 @@ def train_model_from_generators(
         validation_data=generate_valid,
         callbacks=_get_callbacks(patience, model_file),
     )
+    model = load_model(
+        model_file, custom_objects=_get_custom_objects(generate_train.output_maps),
+    )
     if not defer_worker_halt:
         generate_train.kill_workers()
         generate_valid.kill_workers()
