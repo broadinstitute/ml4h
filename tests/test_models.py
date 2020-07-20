@@ -83,8 +83,8 @@ class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         'input_output_tmaps',
         [
-            [LANGUAGE_TMAPS[:0], [LANGUAGE_TMAPS[:0]],
-            [LANGUAGE_TMAPS[-1:], [LANGUAGE_TMAPS[-1:]],
+            (LANGUAGE_TMAPS[:0], LANGUAGE_TMAPS[:0]),
+            (LANGUAGE_TMAPS[-1:], LANGUAGE_TMAPS[-1:]),
         ],
     )
     def test_language_models(self, input_output_tmaps, tmpdir):
