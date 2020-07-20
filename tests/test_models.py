@@ -84,11 +84,11 @@ class TestMakeMultimodalMultitaskModel:
     def test_language_models(self):
         params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
-            tensor_maps_in=[LANGUAGE_TMAP_1HOT_WINDOW],
-            tensor_maps_out=[LANGUAGE_TMAP_1HOT_SOFTMAX],
+            tensor_maps_in=LANGUAGE_TMAP_1HOT_WINDOW,
+            tensor_maps_out=LANGUAGE_TMAP_1HOT_SOFTMAX,
             **params
         )
-        assert_model_trains([LANGUAGE_TMAP_1HOT_WINDOW], [LANGUAGE_TMAP_1HOT_SOFTMAX], m)
+        assert_model_trains(LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX, m)
     #     m.save(os.path.join(tmpdir, 'lstm.h5'))
     #     path = os.path.join(tmpdir, f'm{MODEL_EXT}')
     #     m.save(path)
