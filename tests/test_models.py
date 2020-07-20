@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Tuple, Iterator
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
 from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS, \
-    LANGUAGE_TMAPS, LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
+    LANGUAGE_TMAPS
 
 MEAN_PRECISION_EPS = .02  # how much mean precision degradation is acceptable
 DEFAULT_PARAMS = {
@@ -80,16 +80,27 @@ def _rotate(a: List, n: int):
 
 
 class TestMakeMultimodalMultitaskModel:
-    def test_language_models(self, tmpdir):
+    @pytest.mark.parametrize(
+        'input_output_tmaps',
+        [
+            (LANGUAGE_TMAPS[:0], LANGUAGE_TMAPS[:0]),
+            #(LANGUAGE_TMAPS[-1:], LANGUAGE_TMAPS[-1:]),
+        ],
+    )
+    def test_language_models(self, input_output_tmaps, tmpdir):
         params = DEFAULT_PARAMS.copy()
-        m = make_multimodal_multitask_model([LANGUAGE_TMAP_1HOT_WINDOW], [LANGUAGE_TMAP_1HOT_SOFTMAX], **params)
-        assert_model_trains([LANGUAGE_TMAP_1HOT_WINDOW], [LANGUAGE_TMAP_1HOT_SOFTMAX], m)
+        m = make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            **params
+        )
+        assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
         m.save(os.path.join(tmpdir, 'lstm.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_multimodal_multitask_model(
-            [LANGUAGE_TMAP_1HOT_WINDOW],
-            [LANGUAGE_TMAP_1HOT_SOFTMAX],
+            input_output_tmaps[0],
+            input_output_tmaps[1],
             model_file=path,
             **DEFAULT_PARAMS,
         )
