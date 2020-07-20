@@ -408,9 +408,9 @@ def ecg_datetime(tm, hd5, dependents={}):
     return tensor
 
 
-task = "ecg_datetime"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_datetime"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=ecg_datetime,
@@ -463,7 +463,7 @@ def make_voltage_len_categorical_tmap(
 for lead in ECG_REST_AMP_LEADS:
     tmap_name = f"lead_{lead}_len"
     TMAPS[tmap_name] = TensorMap(
-        tmap_name,
+        name=tmap_name,
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=ECG_PREFIX,
         tensor_from_file=make_voltage_len_categorical_tmap(lead=lead),
@@ -555,9 +555,9 @@ def make_language_tensor(key: str):
     return language_tensor
 
 
-task = "ecg_read_md"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_read_md"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="read_md_clean"),
@@ -567,9 +567,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_read_pc"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_read_pc"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="read_pc_clean"),
@@ -579,9 +579,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_patientid"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_patientid"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="patientid"),
@@ -595,9 +595,9 @@ def validator_clean_mrn(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     int(tensor)
 
 
-task = "ecg_patientid_clean"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_patientid_clean"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="patientid_clean"),
@@ -607,9 +607,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_firstname"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_firstname"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="patientfirstname"),
@@ -619,9 +619,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_lastname"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_lastname"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="patientlastname"),
@@ -631,9 +631,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sex"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sex"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="gender"),
@@ -642,9 +642,9 @@ TMAPS[task] = TensorMap(
     validator=validator_not_all_zero,
 )
 
-task = "ecg_date"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_date"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="acquisitiondate"),
@@ -654,9 +654,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_time"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_time"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="acquisitiontime"),
@@ -666,9 +666,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sitename"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sitename"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="sitename"),
@@ -678,9 +678,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_location"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_location"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="location"),
@@ -690,9 +690,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_dob"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_dob"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="dateofbirth"),
@@ -757,9 +757,9 @@ def make_sampling_frequency_from_file(
 
 # sampling frequency without any suffix calculates the sampling frequency directly from the voltage array
 # other metadata that are reported by the muse system are unreliable
-task = "ecg_sampling_frequency"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_sampling_frequency_from_file(),
@@ -769,9 +769,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_pc"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_pc"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="ecgsamplebase_pc", channel_prefix="_"),
@@ -781,9 +781,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_md"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_md"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="ecgsamplebase_md", channel_prefix="_"),
@@ -793,9 +793,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_lead"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_lead"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="waveform_samplebase", channel_prefix="_"),
@@ -805,9 +805,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_continuous"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_continuous"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_sampling_frequency_from_file(),
@@ -817,9 +817,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_pc_continuous"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_pc_continuous"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="ecgsamplebase_pc", fill=-1),
@@ -829,9 +829,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_md_continuous"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_md_continuous"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="ecgsamplebase_md", fill=-1),
@@ -841,9 +841,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_sampling_frequency_lead_continuous"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_sampling_frequency_lead_continuous"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="waveform_samplebase", fill=-1),
@@ -853,9 +853,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_time_resolution"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_time_resolution"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(
@@ -867,9 +867,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_amplitude_resolution"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_amplitude_resolution"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(
@@ -881,9 +881,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_measurement_filter"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_measurement_filter"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(
@@ -895,9 +895,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_high_pass_filter"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_high_pass_filter"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="waveform_highpassfilter", fill=-1),
@@ -907,9 +907,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_low_pass_filter"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_low_pass_filter"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="waveform_lowpassfilter", fill=-1),
@@ -919,9 +919,9 @@ TMAPS[task] = TensorMap(
 )
 
 
-task = "ecg_ac_filter"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_ac_filter"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
     tensor_from_file=make_ecg_tensor(key="waveform_acfilter", channel_prefix="_"),
@@ -989,9 +989,9 @@ for interval, (key, fill, validator, normalization) in interval_key_map.items():
         )
 
 
-task = "ecg_weight_lbs"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_weight_lbs"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
     loss="logcosh",
@@ -1002,7 +1002,7 @@ TMAPS[task] = TensorMap(
 )
 
 
-def ecg_age(tm, hd5, dependents={}):
+def get_ecg_age_from_hd5(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=float)
@@ -1033,27 +1033,80 @@ def ecg_age(tm, hd5, dependents={}):
     return tensor
 
 
-task = "ecg_age"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_age"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     path_prefix=ECG_PREFIX,
     loss="logcosh",
-    tensor_from_file=ecg_age,
+    tensor_from_file=get_ecg_age_from_hd5,
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(0, 120),
 )
 
-task = "ecg_age_std"
-TMAPS[task] = TensorMap(
-    task,
+tmap_name = "ecg_age_std"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
     path_prefix=ECG_PREFIX,
     loss="logcosh",
-    tensor_from_file=ecg_age,
+    tensor_from_file=get_ecg_age_from_hd5,
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(0, 120),
     normalization=Standardize(mean=65, std=16),
+)
+
+
+def get_ecg_age_binarize_from_hd5(age_threshold: float = 70):
+    def _tensor_from_file(tm, hd5, dependents={}):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=float)
+        try:
+            if tm.shape[0] is None:
+                shape = (None, 1)
+            else:
+                shape = (1,)
+            _tm = TensorMap("_temp", shape=shape, path_prefix=ECG_PREFIX)
+            ages = TMAPS["ecg_age"].tensor_from_file(tm=_tm, hd5=hd5)
+        except Exception as e:
+            raise e
+
+        for i, ecg_date in enumerate(ecg_dates):
+            if i >= shape[0]:
+                break
+            age = ages[i]
+            try:
+                for idx, cm in enumerate(tm.channel_map):
+                    slices = (
+                        (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
+                    )
+                    if age <= float(age_threshold) and idx == 0:
+                        tensor[slices] = 1.0
+                    if age > float(age_threshold) and idx == 1:
+                        tensor[slices] = 1.0
+            except (KeyError, ValueError):
+                logging.debug(
+                    f"Could not obtain tensor {tm.name} from ECG on {ecg_date} in"
+                    f" {hd5.filename}",
+                )
+
+        return tensor
+
+    return _tensor_from_file
+
+
+# This TMap's TFF function assumes the first entry of the channel map is <=,
+# and the second entry is >.
+tmap_name = "ecg_age_binary"
+TMAPS[tmap_name] = TensorMap(
+    name=tmap_name,
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=ECG_PREFIX,
+    tensor_from_file=get_ecg_age_binarize_from_hd5(age_threshold=70.0),
+    channel_map={"less_or_equal": 0, "greater": 1},
+    time_series_limit=0,
+    validator=validator_not_all_zero,
 )
 
 
@@ -1259,6 +1312,12 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
 def build_ecg_time_series_tensor_maps(
     needed_tensor_maps: List[str], time_series_limit: int = 1,
 ) -> Dict[str, TensorMap]:
+    """Given a list of needed tensor maps, e.g. ["ecg_age_newest"], finds the base tmap
+    e.g. "ecg_age", and creates a new tmap with the name of the needed tmap. This new
+    tmap will have the correct time_series_order and shape, but otherwise inherets all
+    properties from the base tmap.
+    """
+
     name2tensormap: Dict[str:TensorMap] = {}
 
     for needed_name in needed_tensor_maps:

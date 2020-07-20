@@ -833,14 +833,15 @@ def get_train_valid_test_paths(
 
     # find tensors and split them among train/valid/test
     for root, dirs, files in os.walk(tensors):
-        for name in files:
-            path = os.path.join(root, name)
-            split = os.path.splitext(name)
+        for fname in files:
+            if not fname.endswith(TENSOR_EXT):
+                continue
+
+            path = os.path.join(root, fname)
+            split = os.path.splitext(fname)
             sample_id = split[0]
 
-            if split[-1].lower() != TENSOR_EXT:
-                continue
-            elif sample_set is not None and sample_id not in sample_set:
+            if sample_set is not None and sample_id not in sample_set:
                 continue
             elif train_set is not None and sample_id in train_set:
                 train_paths.append(path)
