@@ -62,8 +62,8 @@ from matplotlib import pyplot as plt  # isort:skip
 # fmt: on
 
 
-RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
-FALLOUT_LABEL = "Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)"
+RECALL_LABEL = "Sensitivity | True Positive Rate | TP/(TP+FN)"
+FALLOUT_LABEL = "1 - Specificity | False Positive Rate | FP/(FP+TN)"
 PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
 
 SUBPLOT_SIZE = 8
@@ -164,8 +164,8 @@ def evaluate_predictions(
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
-            f"For tm:{tm.name} with channel map:{tm.channel_map}"
-            f" examples:{y_predictions.shape[0]}",
+            f"For tm:{tm.name} with channel map: {tm.channel_map}"
+            f" examples: {y_predictions.shape[0]}",
         )
         logging.info(
             f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred"
@@ -384,6 +384,7 @@ def evaluate_predictions(
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/"):
+    plt.rcParams["font.size"] = 14
     row = 0
     col = 0
     total_plots = int(
@@ -395,7 +396,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
         rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)),
     )
     for k in sorted(history.history.keys()):
-        if not k.startswith("val_"):
+        if not k.startswith("val_") and not k.startswith("no_"):
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [
                     history.history[k][0](i * training_steps)
@@ -424,9 +425,18 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     figure_path = os.path.join(prefix, "metric_history_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
+    plt.savefig(figure_path, bbox_inches="tight")
     plt.clf()
-    logging.info(f"Saved learning curves at:{figure_path}")
+    logging.info(f"Saved learning curves at: {figure_path}")
+
+
+def _find_negative_label_index(labels: Dict[str, int], key_prefix: str = "no_") -> int:
+    """Given a set of labels and their values, return the index of the negative label"""
+    negative_label_index = 0
+    for index, label in enumerate(labels):
+        if label.startswith(key_prefix):
+            negative_label_index = index
+    return negative_label_index
 
 
 def plot_prediction_calibration(
@@ -446,17 +456,26 @@ def plot_prediction_calibration(
     :param prefix: Optional path prefix where the plot will be saved
     :param n_bins: Number of bins to quantize predictions into
     """
+    plt.rcParams["font.size"] = 14
     _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
     ax3.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
 
-    for k in labels:
-        y_true = truth[..., labels[k]]
-        y_prob = prediction[..., labels[k]]
-        color = _hash_string_to_color(k)
-        brier_score = brier_score_loss(y_true, prediction[..., labels[k]], pos_label=1)
+    if len(labels) == 2:
+        negative_label_idx = _find_negative_label_index(labels=labels, key_prefix="no_")
+
+    for idx, label in enumerate(labels):
+        if len(labels) == 2 and idx == negative_label_idx:
+            continue
+
+        y_true = truth[..., labels[label]]
+        y_prob = prediction[..., labels[label]]
+        color = _hash_string_to_color(label)
+        brier_score = brier_score_loss(
+            y_true, prediction[..., labels[label]], pos_label=1,
+        )
         fraction_of_positives, mean_predicted_value = calibration_curve(
             y_true, y_prob, n_bins=n_bins,
         )
@@ -464,14 +483,14 @@ def plot_prediction_calibration(
             mean_predicted_value,
             fraction_of_positives,
             "s-",
-            label=f"{k} Brier score: {brier_score:0.3f}",
+            label=f"{label} Brier score: {brier_score:0.3f}",
             color=color,
         )
         ax2.hist(
             y_prob,
             range=(0, 1),
             bins=n_bins,
-            label=f"{k} n={true_sums[labels[k]]:.0f}",
+            label=f"{label} n={true_sums[labels[label]]:.0f}",
             histtype="step",
             lw=2,
             color=color,
@@ -491,7 +510,7 @@ def plot_prediction_calibration(
             prob_pred,
             prob_true,
             "s-",
-            label=f"{k} Brier score: {brier_score:0.3f}",
+            label=f"{label} Brier score: {brier_score:0.3f}",
             color=color,
         )
     ax1.set_ylabel("Fraction of positives")
@@ -507,8 +526,8 @@ def plot_prediction_calibration(
     figure_path = os.path.join(prefix, "calibrations_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info(f"Try to save calibrations plot at: {figure_path}")
-    plt.savefig(figure_path)
+    plt.savefig(figure_path, bbox_inches="tight")
+    logging.info(f"Saved calibration plot at: {figure_path}")
     plt.clf()
 
 
@@ -657,9 +676,9 @@ def subplot_scatters(
         )
         axes[row, col].scatter(prediction, truth, marker=".", alpha=alpha)
         margin = float((np.max(truth) - np.min(truth)) / 100)
-        if (
-            paths is not None
-        ):  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
+
+        # If tensor paths are provided, plot file names of top_k outliers and #1 inlier
+        if paths is not None:
             diff = np.abs(prediction - truth)
             arg_sorted = diff[:, 0].argsort()
             # The path of the best prediction, ie the inlier
@@ -680,9 +699,7 @@ def subplot_scatters(
         axes[row, col].set_xlabel("Predictions")
         axes[row, col].set_ylabel("Actual")
         axes[row, col].set_title(title + "\n")
-        pearson = np.corrcoef(prediction.flatten(), truth.flatten())[
-            1, 0,
-        ]  # corrcoef returns full covariance matrix
+        pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]
         r2 = pearson * pearson
         big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
         axes[row, col].text(
@@ -724,9 +741,7 @@ def subplot_comparison_scatters(
     for predictions, truth, title, paths in scatters:
         for k in predictions:
             c = _hash_string_to_color(title + k)
-            pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[
-                1, 0,
-            ]  # corrcoef returns full covariance matrix
+            pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]
             r2 = pearson * pearson
             big_r2 = coefficient_of_determination(
                 truth.flatten(), predictions[k].flatten(),
@@ -745,9 +760,7 @@ def subplot_comparison_scatters(
                 alpha=alpha,
             )
             axes[row, col].legend(loc="upper left")
-            if (
-                paths is not None
-            ):  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
+            if paths is not None:
                 margin = float((np.max(truth) - np.min(truth)) / 100)
                 diff = np.abs(predictions[k] - truth)
                 arg_sorted = diff[:, 0].argsort()
@@ -1537,34 +1550,45 @@ def plot_cross_reference(
 
 
 def plot_roc_per_class(prediction, truth, labels, title, prefix="./figures/"):
+    plt.rcParams["font.size"] = 14
     lw = 2
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
-    for label_index, key in enumerate(labels):
-        labels_to_areas[key] = roc_auc[labels[key]]
-        if len(labels) == 2 and label_index == 0:
+    if len(labels) == 2:
+        negative_label_idx = _find_negative_label_index(labels=labels, key_prefix="no_")
+
+    for idx, label in enumerate(labels):
+        if len(labels) == 2 and idx == negative_label_idx:
             continue
-        color = _hash_string_to_color(key)
+
+        labels_to_areas[label] = roc_auc[labels[label]]
+        color = _hash_string_to_color(label)
         label_text = (
-            f"{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+            f"{label} = {roc_auc[labels[label]]:.3f}, n={true_sums[labels[label]]:.0f}"
         )
         plt.plot(
-            fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+            fpr[labels[label]],
+            tpr[labels[label]],
+            color=color,
+            lw=lw,
+            label=label_text,
         )
         logging.info(
-            f"ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}",
+            f"ROC AUC for {label_text}, "
+            f"Truth shape {truth.shape}, "
+            f"True sums {true_sums}",
         )
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
     plt.ylabel(RECALL_LABEL)
     plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right", bbox_to_anchor=(0.98, 0))
+    plt.legend(loc="lower right")
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
-    plt.title(f"ROC {title} n={truth.shape[0]:.0f}\n")
+    plt.title(f"ROC curve: {title}, n={truth.shape[0]:.0f}\n")
 
     figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1576,28 +1600,34 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix="./figures/"):
 
 
 def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
+    plt.rcParams["font.size"] = 14
     lw = 2
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-        for label_index, key in enumerate(labels):
-            if len(labels) == 2 and label_index == 0:
+        if len(labels) == 2:
+            negative_label_idx = _find_negative_label_index(
+                labels=labels, key_prefix="no_",
+            )
+        for idx, label in enumerate(labels):
+            if len(labels) == 2 and idx == negative_label_idx:
                 continue
-            color = _hash_string_to_color(p + key)
+
+            color = _hash_string_to_color(p + label)
             label_text = (
-                f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
-                f" n={true_sums[labels[key]]:.0f}"
+                f"{p}_{label} area:{roc_auc[labels[label]]:.3f}"
+                f" n={true_sums[labels[label]]:.0f}"
             )
             plt.plot(
-                fpr[labels[key]],
-                tpr[labels[key]],
+                fpr[labels[label]],
+                tpr[labels[label]],
                 color=color,
                 lw=lw,
                 label=label_text,
             )
-            logging.info(f"ROC Label {label_text}")
+            logging.info(f"ROC label {label_text}")
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
@@ -1605,7 +1635,7 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
-    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}\n")
+    plt.title(f"ROC curve: {title}, n={np.sum(true_sums):.0f}\n")
 
     figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1632,16 +1662,24 @@ def subplot_rocs(
     for predicted, truth, labels in rocs:
         true_sums = np.sum(truth, axis=0)
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
-        for label_index, key in enumerate(labels):
-            if len(labels) == 2 and label_index == 0:
+
+        if len(labels) == 2:
+            negative_label_idx = _find_negative_label_index(
+                labels=labels, key_prefix="no_",
+            )
+
+        for idx, label in enumerate(labels):
+            if len(labels) == 2 and idx == negative_label_idx:
                 continue
-            color = _hash_string_to_color(key)
+
+            color = _hash_string_to_color(label)
             label_text = (
-                f"{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+                f"{label} area: {roc_auc[labels[label]]:.3f}"
+                f" n={true_sums[labels[label]]:.0f}"
             )
             axes[row, col].plot(
-                fpr[labels[key]],
-                tpr[labels[key]],
+                fpr[labels[label]],
+                tpr[labels[label]],
                 color=color,
                 lw=lw,
                 label=label_text,
@@ -1686,9 +1724,14 @@ def subplot_comparison_rocs(
         true_sums = np.sum(truth, axis=0)
         for p in predictions:
             fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-            for label_index, key in enumerate(labels):
-                if len(labels) == 2 and label_index == 0:
+            if len(labels) == 2:
+                negative_label_idx = _find_negative_label_index(
+                    labels=labels, key_prefix="no_",
+                )
+            for idx, label in enumerate(labels):
+                if len(labels) == 2 and idx == negative_label_idx:
                     continue
+
                 color = _hash_string_to_color(p + key)
                 label_text = (
                     f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
@@ -1727,38 +1770,44 @@ def subplot_comparison_rocs(
 def plot_precision_recall_per_class(
     prediction, truth, labels, title, prefix="./figures/",
 ):
-    # Compute Precision-Recall and plot curve
+    plt.rcParams["font.size"] = 14
     lw = 2.0
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
-    for k in labels:
-        c = _hash_string_to_color(k)
+    if len(labels) == 2:
+        negative_label_idx = _find_negative_label_index(labels=labels, key_prefix="no_")
+    for idx, label in enumerate(labels):
+        if len(labels) == 2 and idx == negative_label_idx:
+            continue
+
         precision, recall, _ = precision_recall_curve(
-            truth[:, labels[k]], prediction[:, labels[k]],
+            truth[:, labels[label]], prediction[:, labels[label]],
         )
         average_precision = average_precision_score(
-            truth[:, labels[k]], prediction[:, labels[k]],
+            truth[:, labels[label]], prediction[:, labels[label]],
         )
+        labels_to_areas[label] = average_precision
+        color = _hash_string_to_color(label)
         label_text = (
-            f"{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}"
+            f"{label} mean precision: {average_precision:.3f},"
+            f" n={true_sums[labels[label]]:.0f}"
         )
-        plt.plot(recall, precision, lw=lw, color=c, label=label_text)
+        plt.plot(recall, precision, lw=lw, color=color, label=label_text)
         logging.info(f"prAUC Label {label_text}")
-        labels_to_areas[k] = average_precision
 
-    plt.xlim([0.0, 1.00])
+    plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
-    plt.legend(loc="lower left")
-    plt.title(f"{title} n={np.sum(true_sums):.0f}")
+    plt.legend(loc="lower right")
+    plt.title(f"PR curve: {title}, n={np.sum(true_sums):.0f}\n")
 
     figure_path = os.path.join(prefix, "precision_recall_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
+    plt.savefig(figure_path, bbox_inches="tight")
     plt.clf()
     logging.info(f"Saved Precision Recall curve at: {figure_path}")
     return labels_to_areas
@@ -1771,17 +1820,24 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
     for p in predictions:
-        for k in labels:
-            c = _hash_string_to_color(p + k)
+        if len(labels) == 2:
+            negative_label_idx = _find_negative_label_index(
+                labels=labels, key_prefix="no_",
+            )
+        for idx, label in enumerate(labels):
+            if len(labels) == 2 and idx == negative_label_idx:
+                continue
+
+            c = _hash_string_to_color(p + label)
             precision, recall, _ = precision_recall_curve(
-                truth[:, labels[k]], predictions[p][:, labels[k]],
+                truth[:, labels[label]], predictions[p][:, labels[label]],
             )
             average_precision = average_precision_score(
-                truth[:, labels[k]], predictions[p][:, labels[k]],
+                truth[:, labels[label]], predictions[p][:, labels[label]],
             )
             label_text = (
-                f"{p}_{k} mean precision:{average_precision:.3f}"
-                f" n={true_sums[labels[k]]:.0f}"
+                f"{p}_{label} mean precision:{average_precision:.3f}"
+                f" n={true_sums[labels[label]]:.0f}"
             )
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
             logging.info(f"prAUC Label {label_text}")
