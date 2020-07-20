@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import copy
 import h5py
@@ -11,6 +12,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
@@ -20,6 +22,79 @@ YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
+measurement_matrix_leads = {
+    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
+}
+# Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
+measurement_matrix_global_measures = {
+    'pon': 1,       # P-wave onset in median beat (in samples)
+    'poff': 2,      # P-wave offset in median beat
+    'qon': 3,       # Q-Onset in median beat
+    'qoff': 4,      # Q-Offset in median beat
+    'ton': 5,       # T-Onset in median beat
+    'toff': 6,      # T-Offset in median beat
+    'nqrs': 7,      # Number of QRS Complexes
+    'qrsdur': 8,    # QRS Duration
+    'qt': 9,        # QT Interval
+    'qtc': 10,      # QT Corrected
+    'print': 11,    # PR Interval
+    'vrate': 12,    # Ventricular Rate
+    'avgrr': 13,    # Average R-R Interval
+}
+measurement_matrix_lead_measures = {
+    'pona': 1,      # P Wave amplitude at P-onset
+    'pamp': 2,      # P wave amplitude
+    'pdur': 3,      # P wave duration
+    'bmpar': 4,     # P wave area
+    'bmpi': 5,      # P wave intrinsicoid (time from P onset to peak of P)
+    'ppamp': 6,     # P Prime amplitude
+    'ppdur': 7,     # P Prime duration
+    'bmppar': 8,    # P Prime area
+    'bmppi': 9,     # P Prime intrinsicoid (time from P onset to peak of P')
+    'qamp': 10,     # Q wave amplitude
+    'qdur': 11,     # Q wave duration
+    'bmqar': 12,    # Q wave area
+    'bmqi': 13,     # Q intrinsicoid (time from Q onset to peak of Q)
+    'ramp': 14,     # R amplitude
+    'rdur': 15,     # R duration
+    'bmrar': 16,    # R wave area
+    'bmri': 17,     # R intrinsicoid (time from R onset to peak of R)
+    'samp': 18,     # S amplitude
+    'sdur': 19,     # S duration
+    'bmsar': 20,    # S wave area
+    'bmsi': 21,     # S intrinsicoid (time from Q onset to peak of S)
+    'rpamp': 22,    # R Prime amplitude
+    'rpdur': 23,    # R Prime duration
+    'bmrpar': 24,   # R Prime wave area
+    'bmrpi': 25,    # R Prime intrinsicoid (time from Q onset to peak of R Prime)
+    'spamp': 26,    # S Prime Amplitude
+    'spdur': 27,    # S Prime Duration
+    'bmspar': 28,   # S Prime wave area
+    'bmspi': 29,    # S intriniscoid (time from Q onset to peak of S prime)
+    'stj': 30,      # STJ point, End of QRS Point Amplitude
+    'stm': 31,      # STM point, Middle of the ST Segment Amplitude
+    'ste': 32,      # STE point, End of ST Segment Amplitude
+    'mxsta': 33,    # Maximum of STJ, STM, STE Amplitudes
+    'mnsta': 34,    # Minimum of STJ and STM Amplitudes
+    'spta': 35,     # Special T-Wave amplitude
+    'qrsa': 36,     # Total QRS area
+    'qrsdef': 37,   # QRS Deflection
+    'maxra': 38,    # Maximum R Amplitude (R or R Prime)
+    'maxsa': 39,    # Maximum S Amplitude (S or S Prime)
+    'tamp': 40,     # T amplitude
+    'tdur': 41,     # T duration
+    'bmtar': 42,    # T wave area
+    'bmti': 43,     # T intriniscoid (time from STE to peak of T)
+    'tpamp': 44,    # T Prime amplitude
+    'tpdur': 45,    # T Prime duration
+    'bmtpar': 46,   # T Prime area
+    'bmtpi': 47,    # T Prime intriniscoid (time from STE to peak of T)
+    'tend': 48,     # T Amplitude at T offset
+    'parea': 49,    # P wave area, includes P and P Prime
+    'qrsar': 50,    # QRS area
+    'tarea': 51,    # T wave area, include T and T Prime
+    'qrsint': 52    # QRS intriniscoid (see following)
+}
 
 
 def _hd5_filename_to_mrn_int(filename: str) -> int:
@@ -325,7 +400,7 @@ def make_partners_ecg_tensor(key: str, fill: float = 0, channel_prefix: str = ''
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date, key)
             try:
-                data = decompress_data(data_compressed=hd5[path][()], dtype='str')
+                data = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
                 if tm.interpretation == Interpretation.CATEGORICAL:
                     matched = False
                     data = f'{channel_prefix}{data}'
@@ -931,6 +1006,29 @@ TMAPS[task] = TensorMap(
     shape=(None, 1),
     time_series_limit=0,
     validator=make_range_validator(-180, 180),
+)
+
+
+task = "partners_ecg_measuredamplitudepeak_r"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="measuredamplitudepeak_IE_R", fill=np.nan),
+    shape=(None, 12),
+    time_series_limit=0,
+)
+
+
+task = "partners_ecg_acquisitiondevice"
+TMAPS[task] = TensorMap(
+    task,
+    interpretation=Interpretation.LANGUAGE,
+    path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=make_partners_ecg_tensor(key="acquisitiondevice", fill=999),
+    shape=(None, 1),
+    time_series_limit=0,
 )
 
 
@@ -1597,3 +1695,400 @@ def build_cardiac_surgery_tensor_maps(
         name2tensormap[needed_name] = sts_tmap
 
     return name2tensormap
+
+
+def partners_channel_string_bias(hd5_key, synonyms={}, unspecified_key='unspecified'):
+    def tensor_from_string(tm, hd5, dependents={}):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        found = False
+        for i, ecg_date in enumerate(ecg_dates):
+            try:
+                if hd5_key == 'acquisitionyear':
+                    hd5_string = ecg_date.split('-')[0]
+                elif hd5_key == 'locationcardiology':
+                    path = _make_hd5_path(tm, ecg_date, 'locationname')
+                    hd5_string = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                else:
+                    path = _make_hd5_path(tm, ecg_date, hd5_key)
+                    hd5_string = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                for key in synonyms:
+                    if hd5_string.lower() == key.lower():
+                        index = synonyms[key]
+                        slices = (i, index) if dynamic else (index,)
+                        tensor[slices] = 1.0
+                        found = True
+                        break
+            except KeyError:
+                pass
+            if not found:
+                if unspecified_key is None:
+                    # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                    raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+                index = synonyms[unspecified_key]
+                slices = (i, index) if dynamic else (index,)
+                tensor[slices] = 1.0
+        return tensor
+    return tensor_from_string
+
+
+bias_dic = {
+            'acquisitiondevice': {'MAC': 0,
+                                  'MAC55': 1,
+                                  'MAC5K': 2,
+                                  'D3K': 3,
+                                  'MACVU': 4,
+                                  'S8500': 5,
+                                  'CASE': 6,
+                                  'MAC16': 7,
+                                  'MAC 8': 8,
+                                  'unspecified': 9},
+            'locationname': {'46-YAWKEY5 - CARDIOLOGY NR': 0,
+                             '30-EMERGENCY DEPARTMENT': 1,
+                             '40-WACC2/6 - CLINICS': 2,
+                             '160-LUNDER EMERGENCY DEPARTMENT': 3,
+                             '23-JACKSON 121-SURGICAL DAY CARE': 4,
+                             '7-ELLISON 10 - CARDIAC': 5,
+                             '53-WACC 5 BUL MED GROUP': 6,
+                             '22-PRIVATE AMBULATORY': 7,
+                             '44-PROCESS DO NOT INTERPRET': 8,
+                             '106-BIGELOW8-CARDIO SUITE 800 NR': 9,
+                             '18-GREY 1 ADMITTING TEST AREA': 10,
+                             '43-CHELSEA HLTH CNTR LAB': 11,
+                             '6-ELLISON 9 - CCU': 12,
+                             '8-ELLISON 11 - CARDIAC': 13,
+                             '2-BLAKE 8 - CARDIAC SICU': 14,
+                             '91-REVERE HLTH CNTR LAB': 15,
+                             '89-WHITE 9 - MED': 16,
+                             '33-ELLISON 16 - MED': 17,
+                             '71-BIGELOW 11 - MED': 18,
+                             '88-WHITE 8 - MED': 19,
+                             '98-BUNKER HILL HEALTH CENTER NR': 20,
+                             '63-MGH BACK BAY': 21,
+                             '59-CHELSEA HEALTH CENTER ED NR': 22,
+                             '80-WHITE 10 - MED': 23,
+                             '81-WHITE 11 - UROLOGY': 24,
+                             '5-ELLISON 8 - CARDIAC SURG': 25,
+                             '110-ED TRAUMA': 26,
+                             '101-BEACON HILL PRIMARY NR': 27,
+                             '138-ED OBSERVATION UNIT': 28,
+                             '147-DANVERS ACC CARDIOLOGY PRTCE': 29,
+                             'unspecified': 30},
+            'locationcardiology': {
+                             '46-YAWKEY5 - CARDIOLOGY NR': 1,
+                             '30-EMERGENCY DEPARTMENT': 0,
+                             '40-WACC2/6 - CLINICS': 0,
+                             '160-LUNDER EMERGENCY DEPARTMENT': 0,
+                             '23-JACKSON 121-SURGICAL DAY CARE': 0,
+                             '7-ELLISON 10 - CARDIAC': 1,
+                             '53-WACC 5 BUL MED GROUP': 0,
+                             '22-PRIVATE AMBULATORY': 0,
+                             '44-PROCESS DO NOT INTERPRET': 0,
+                             '106-BIGELOW8-CARDIO SUITE 800 NR': 1,
+                             '18-GREY 1 ADMITTING TEST AREA': 0,
+                             '43-CHELSEA HLTH CNTR LAB': 0,
+                             '6-ELLISON 9 - CCU': 1,
+                             '8-ELLISON 11 - CARDIAC': 1,
+                             '2-BLAKE 8 - CARDIAC SICU': 1,
+                             '91-REVERE HLTH CNTR LAB': 0,
+                             '89-WHITE 9 - MED': 0,
+                             '33-ELLISON 16 - MED': 0,
+                             '71-BIGELOW 11 - MED': 0,
+                             '88-WHITE 8 - MED': 0,
+                             '98-BUNKER HILL HEALTH CENTER NR': 0,
+                             '63-MGH BACK BAY': 0,
+                             '59-CHELSEA HEALTH CENTER ED NR': 0,
+                             '80-WHITE 10 - MED': 0,
+                             '81-WHITE 11 - UROLOGY': 0,
+                             '5-ELLISON 8 - CARDIAC SURG': 1,
+                             '110-ED TRAUMA': 0,
+                             '101-BEACON HILL PRIMARY NR': 0,
+                             '138-ED OBSERVATION UNIT': 0,
+                             '147-DANVERS ACC CARDIOLOGY PRTCE': 1,
+                             'unspecified': 0}}
+
+
+def _clean_variable_name(s):
+    # Remove invalid characters
+    t = re.sub('[^0-9a-zA-Z_]', '', s)
+
+    # Remove leading characters until we find a letter or underscore
+    t = re.sub('^[^a-zA-Z_]+', '', t)
+
+    if not t:
+        t = _clean_variable_name('val'+s)
+    return t
+
+
+for bias_key in bias_dic:
+    TMAPS[f'partners_ecg_bias_{bias_key}_oldest'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}_oldest',
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_order=TimeSeriesOrder.OLDEST,
+        channel_map={_clean_variable_name(key): value for key, value in bias_dic[bias_key].items()},
+        tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
+
+    TMAPS[f'partners_ecg_bias_{bias_key}_newest'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}_newest',
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_order=TimeSeriesOrder.NEWEST,
+        channel_map={_clean_variable_name(key): value for key, value in bias_dic[bias_key].items()},
+        tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
+
+    TMAPS[f'partners_ecg_bias_{bias_key}'] = TensorMap(
+        f'partners_ecg_bias_{bias_key}',
+        interpretation=Interpretation.CATEGORICAL,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_limit=0,
+        channel_map={_clean_variable_name(key): value for key, value in bias_dic[bias_key].items()},
+        tensor_from_file=partners_channel_string_bias(bias_key, synonyms=bias_dic[bias_key], unspecified_key='unspecified'))
+
+bias_waveform_dic = {'nonzero': {'10.0': 0, '5.0': 1, '0.0': 2, '2.5': 3, 'unspecified': 4},
+                     'len': {'2500': 0, '5000': 1, 'unspecified': 2}}
+
+
+def partners_waveform_feature_bias(bias_key, lead='I', synonyms={}, unspecified_key='unspecified', window_size=100):
+    def tensor_from_waveform(tm, hd5, dependents={}):
+        found = False
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=np.float32)
+        for ecg_date in ecg_dates:
+            try:
+                path = _make_hd5_path(tm, ecg_date, lead)
+                waveform = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                hd5_len = len(waveform)
+                if 'len' in bias_key:
+                    hd5_string = str(hd5_len)
+                if 'nonzero' in bias_key:
+                    diff_waveform = waveform[1:] > waveform[:-1]
+                    cumsum = np.cumsum(np.insert(diff_waveform, 0, 0))
+                    running_mean = (cumsum[window_size:] - cumsum[:-window_size]) / float(window_size)
+                    hd5_nonzero_frac = np.count_nonzero(running_mean)/hd5_len
+                    if hd5_nonzero_frac > 0.6:
+                        hd5_string = '10.0'
+                    elif (hd5_nonzero_frac <= 0.6) and (hd5_nonzero_frac > 0.4):
+                        hd5_string = '5.0'
+                    elif (hd5_nonzero_frac <= 0.4) and (hd5_nonzero_frac) > 0.15:
+                        hd5_string = '2.5'
+                    else:
+                        hd5_string = '0.0'
+                for key in synonyms:
+                    if key.lower() in hd5_string.lower():                        
+                        slices = (synonyms[key],)
+                        tensor[slices] = 1.0
+                        found = True
+                        break               
+            except KeyError:
+                pass
+            if not found:
+                if unspecified_key is None:
+                    # TODO Do we want to try to continue to get tensors for other ECGs in HD5?
+                    raise ValueError(f'No channel keys found in {hd5_string} for {tm.name} with channel map {tm.channel_map}.')
+                slices = (synonyms[unspecified_key],)
+                tensor[slices] = 1.0
+        return tensor
+    return tensor_from_waveform
+
+
+for bias_key in bias_waveform_dic:
+    for lead in ECG_REST_AMP_LEADS:
+        TMAPS[f'partners_ecg_bias_{lead}_{bias_key}_oldest'] = TensorMap(
+            f'partners_ecg_bias_{lead}_{bias_key}_oldest',
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=PARTNERS_PREFIX,
+            time_series_order=TimeSeriesOrder.OLDEST,
+            channel_map={_clean_variable_name(key): value for key, value in bias_waveform_dic[bias_key].items()},
+            tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
+
+        TMAPS[f'partners_ecg_bias_{lead}_{bias_key}_newest'] = TensorMap(
+            f'partners_ecg_bias_{lead}_{bias_key}_newest',
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=PARTNERS_PREFIX,
+            time_series_order=TimeSeriesOrder.NEWEST,
+            channel_map={_clean_variable_name(key): value for key, value in bias_waveform_dic[bias_key].items()},
+            tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
+
+        TMAPS[f'partners_ecg_bias_{lead}_{bias_key}'] = TensorMap(
+            f'partners_ecg_bias_{lead}_{bias_key}',
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=PARTNERS_PREFIX,
+            time_series_limit=0,
+            channel_map={_clean_variable_name(key): value for key, value in bias_waveform_dic[bias_key].items()},
+            tensor_from_file=partners_waveform_feature_bias(bias_key, lead=lead, synonyms=bias_waveform_dic[bias_key], unspecified_key='unspecified'))
+
+
+def build_toast_from_file(file_name: str, patient_column: str = 'MRN', toast_column: str = 'Toast', delimiter='\t'):
+    try:
+        with open(file_name, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = next(reader)
+            patient_index = header.index(patient_column)
+            toast_index = header.index(toast_column)
+            toast_table = {}
+            for row in reader:
+                try:
+                    patient_key = int(row[patient_index])
+                    toast_table[patient_key] = row[toast_index]
+                    if len(toast_table) % 2000 == 0:
+                        logging.debug(f'Processed: {len(toast_table)} patient rows.')
+                except ValueError as e:
+                    logging.warning(f'val err {e}')
+            logging.info(f'Done processing TOAST {len(toast_table)} patient rows.')
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        patient_key_from_ecg = _hd5_filename_to_mrn_int(hd5.filename)
+        tensor = np.zeros(shape, dtype=np.float32)
+        idx = toast_table[patient_key_from_ecg]
+        if tm.interpretation == Interpretation.CATEGORICAL:
+            tensor[..., int(idx)-1] = 1.0
+        elif tm.interpretation == Interpretation.CONTINUOUS:
+            tensor[0] = idx
+        return tensor
+    return tensor_from_file
+
+TMAPS['toast_subtype'] = TensorMap(
+    'toast_subtype',
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    time_series_limit=0,
+    shape=(None, 5),
+    channel_map={'DefCE': 0,
+                 'PosCE': 1,
+                 'LAA': 2,
+                 'SAO': 3,
+                 'Undet': 4},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt')
+)
+
+TMAPS['toast_subtype_newest'] = TensorMap(
+    'toast_subtype_newest',
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    time_series_limit=1,
+    time_series_order=TimeSeriesOrder.NEWEST,
+    shape=(5,),
+    channel_map={'DefCE': 0,
+                 'PosCE': 1,
+                 'LAA': 2,
+                 'SAO': 3,
+                 'Undet': 4},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_afib.csv'),
+    loss=weighted_crossentropy([0.11955995212662704,
+                                0.16872962940814032,
+                                0.12452570093699813,
+                                0.24825824454318735,
+                                0.3389264729850471], 'toast_subtype_newest')
+    # loss='categorical_crossentropy'
+)
+
+registry_keys = {'afib': 'afib',
+                 'bmi': 'BMI',
+                 'dbp': 'Diastolic_BP',
+                 'sbp': 'Systolic_BP'}
+
+for key in registry_keys:
+    TMAPS[f'toast_{key}_newest'] = TensorMap(
+        f'toast_{key}_newest',
+        interpretation=Interpretation.CONTINUOUS,
+        path_prefix=PARTNERS_PREFIX,
+        time_series_limit=1,
+        time_series_order=TimeSeriesOrder.NEWEST,
+        shape=(1,),
+        tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_afib.csv', toast_column=registry_keys[key]),
+    )
+
+TMAPS['toast_subtype_oldest'] = TensorMap(
+    'toast_subtype_oldest',
+    interpretation=Interpretation.CATEGORICAL,
+    path_prefix=PARTNERS_PREFIX,
+    time_series_limit=1,
+    time_series_order=TimeSeriesOrder.OLDEST,
+    shape=(5,),
+    channel_map={f'toast_{d+1}': d for d in range(5)},
+    tensor_from_file=build_toast_from_file('/home/paolo/ml/notebooks/stroke/stroke_registry_mrn_mapped_toast_subtype-062020.txt'),
+    loss='categorical_crossentropy'
+)
+
+
+partners_ecg_features_dic = {
+    'atrialrate_md': [79.958490, 41.526322],
+    'paxis_md': [44.447618, 30.149715],
+    'poffset_md': [137.660674, 62.846951],
+    'ponset_md': [2355.778680, 11844.168609],
+    'qoffset_md': [211.344796, 65.183171],
+    'qonset_md': [173.726931, 53.417421],
+    'qrscount_md': [12.418957, 3.192442],
+    'qrsduration_md': [95.192446, 22.307156],
+    'qtcorrected_md': [432.750401, 59.467004],
+    'qtinterval_md': [395.786748, 48.109634],
+    'raxis_md': [24.924176, 46.946210],
+    'taxis_md': [48.100464, 47.254585],
+    'toffset_md': [330.698266, 104.930466],
+    'ventricularrate_md': [74.553214, 18.791369]
+}
+
+for feature in partners_ecg_features_dic:
+    TMAPS['partners_feat_'+feature] = TensorMap(
+        'partners_feat_'+feature,
+        interpretation=Interpretation.CONTINUOUS,
+        path_prefix=PARTNERS_PREFIX,
+        loss='logcosh',
+        normalization=Standardize(mean=partners_ecg_features_dic[feature][0],
+                                  std=partners_ecg_features_dic[feature][1]),
+        tensor_from_file=make_partners_ecg_tensor(key=feature),
+        shape=(1,)
+    )
+
+
+def make_measurement_matrix_from_file(key: str, lead: str = None):
+    # First 18 words of measurement matrix are for global measurements, then each lead has 53*2 words
+    lead_start = 18
+    lead_words = 53 * 2
+
+    def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):        
+        ecg_dates = _get_ecg_dates(tm, hd5)
+        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+        tensor = np.zeros(shape, dtype=float)
+        for i, ecg_date in enumerate(ecg_dates):
+            path = _make_hd5_path(tm, ecg_date, 'measurementmatrix')
+            matrix = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            if lead is None:
+                idx = measurement_matrix_global_measures[key]
+            else:
+                idx = lead_start + measurement_matrix_leads[lead] * lead_words + (measurement_matrix_lead_measures[key]-1)*2+1
+            tensor[i] = matrix[idx]
+        return tensor
+    return measurement_matrix_from_file
+
+
+for measurement in measurement_matrix_global_measures:
+    TMAPS[f'measurementmatrix_{measurement}'] = TensorMap(
+        f'measurementmatrix_{measurement}',
+        interpretation=Interpretation.CONTINUOUS,
+        shape=(None, 1),
+        path_prefix=PARTNERS_PREFIX,
+        loss='logcosh',
+        time_series_limit=0,
+        tensor_from_file=make_measurement_matrix_from_file(measurement)
+    )
+
+
+for lead in measurement_matrix_leads:
+    for measurement in measurement_matrix_lead_measures:
+        TMAPS[f'measurementmatrix_{lead}_{measurement}'] = TensorMap(
+              f'measurementmatrix_{lead}_{measurement}',
+              interpretation=Interpretation.CONTINUOUS,
+              shape=(None, 1),
+              path_prefix=PARTNERS_PREFIX,
+              loss='logcosh',
+              time_series_limit=0,
+              tensor_from_file=make_measurement_matrix_from_file(measurement, lead=lead)
+        )
