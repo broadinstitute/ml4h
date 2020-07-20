@@ -13,8 +13,9 @@ import h5py
 import numcodecs
 import numpy as np
 
-from ml4cvd.defines import TENSOR_EXT, XML_EXT, ECG_REST_AMP_LEADS, ECG_REST_INDEPENDENT_LEADS
+from ml4cvd.defines import TENSOR_EXT, XML_EXT, ECG_REST_AMP_LEADS
 
+ECG_REST_INDEPENDENT_LEADS = ['I', 'II', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
 
 def write_tensors_partners(xml_folder: str, tensors: str, num_workers: int) -> None:
     """Write tensors as HD5 files containing data from Partners dataset
