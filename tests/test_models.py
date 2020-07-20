@@ -83,11 +83,11 @@ def _rotate(a: List, n: int):
 class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         'input_tmaps',
-        LANGUAGE_TMAP_1HOT_WINDOW,
+        [LANGUAGE_TMAP_1HOT_WINDOW],
     )
     @pytest.mark.parametrize(
         'output_tmaps',
-        LANGUAGE_TMAP_1HOT_SOFTMAX,
+        [LANGUAGE_TMAP_1HOT_SOFTMAX],
     )
     def test_language_models(self, input_tmaps, output_tmaps):
         params = DEFAULT_PARAMS.copy()
