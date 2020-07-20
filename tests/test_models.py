@@ -103,7 +103,7 @@ class TestMakeMultimodalMultitaskModel:
             model_file=path,
             **DEFAULT_PARAMS,
         )
-        
+
     @pytest.mark.parametrize(
         'input_output_tmaps',
         [
