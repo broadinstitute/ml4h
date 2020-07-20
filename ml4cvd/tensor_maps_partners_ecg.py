@@ -1798,8 +1798,7 @@ def ecg_lvh_from_file(tm, hd5, dependents={}):
         if 'avl_lvh' in tm.name:
             is_lvh = criteria_rleads['aVL'] > avl_min
         elif 'sokolow_lyon_lvh' in tm.name:
-            is_lvh = criteria_sleads['V1'] +\
-                        np.maximum(criteria_rleads['V5'], criteria_rleads['V6']) > sl_min
+            is_lvh = criteria_sleads['V1'] + np.maximum(criteria_rleads['V5'], criteria_rleads['V6']) > sl_min
         elif 'cornell_lvh' in tm.name:
             is_lvh = criteria_rleads['aVL'] + criteria_sleads['V3']
             if is_female:
@@ -1810,7 +1809,7 @@ def ecg_lvh_from_file(tm, hd5, dependents={}):
             raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
         # Following convention from categorical TMAPS, positive has cmap index 1
         index = 1 if is_lvh else 0
-        slices = (i, index) if dynamic else (i,)
+        slices = (i, index) if dynamic else (index,)
         tensor[slices] = 1.0
     return tensor
 
