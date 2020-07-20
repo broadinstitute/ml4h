@@ -1005,7 +1005,7 @@ TMAPS[tmap_name] = TensorMap(
 def get_ecg_age_from_hd5(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-    tensor = np.zeros(shape, dtype=float)
+    tensor = np.full(shape, fill_value=-1, dtype=float)
     for i, ecg_date in enumerate(ecg_dates):
         if i >= shape[0]:
             break
@@ -1057,40 +1057,25 @@ TMAPS[tmap_name] = TensorMap(
 )
 
 
-def get_ecg_age_binarize_from_hd5(age_threshold: float = 70):
+def get_ecg_age_binarize_from_hd5(
+    age_threshold: float = 70, min_age: float = 0, max_age: float = 120,
+):
     def _tensor_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        tensor = np.zeros(shape, dtype=float)
-        try:
-            if tm.shape[0] is None:
-                shape = (None, 1)
-            else:
-                shape = (1,)
-            _tm = TensorMap("_temp", shape=shape, path_prefix=ECG_PREFIX)
-            ages = TMAPS["ecg_age"].tensor_from_file(tm=_tm, hd5=hd5)
-        except Exception as e:
-            raise e
+        _age_tm = copy.deepcopy(tm)
+        _age_tm.shape = (None, 1) if dynamic else (1,)
+        ages = get_ecg_age_from_hd5(_age_tm, hd5)
 
-        for i, ecg_date in enumerate(ecg_dates):
-            if i >= shape[0]:
-                break
-            age = ages[i]
-            try:
-                for idx, cm in enumerate(tm.channel_map):
-                    slices = (
-                        (i, tm.channel_map[cm]) if dynamic else (tm.channel_map[cm],)
-                    )
-                    if age <= float(age_threshold) and idx == 0:
-                        tensor[slices] = 1.0
-                    if age > float(age_threshold) and idx == 1:
-                        tensor[slices] = 1.0
-            except (KeyError, ValueError):
-                logging.debug(
-                    f"Could not obtain tensor {tm.name} from ECG on {ecg_date} in"
-                    f" {hd5.filename}",
-                )
+        def _binarize(age):
+            if min_age < age <= age_threshold:
+                return [1, 0]
+            elif age_threshold < age < max_age:
+                return [0, 1]
+            logging.debug(f"Could not binarize age {age} from hd5 {hd5.filename}")
+            return [0, 0]
 
+        tensor = np.apply_along_axis(_binarize, 1 if dynamic else 0, ages)
         return tensor
 
     return _tensor_from_file
