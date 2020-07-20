@@ -20,79 +20,6 @@ YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
-measurement_matrix_leads = {
-    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
-}
-# Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
-measurement_matrix_global_measures = {
-    'pon': 1,       # P-wave onset in median beat (in samples)
-    'poff': 2,      # P-wave offset in median beat
-    'qon': 3,       # Q-Onset in median beat
-    'qoff': 4,      # Q-Offset in median beat
-    'ton': 5,       # T-Onset in median beat
-    'toff': 6,      # T-Offset in median beat
-    'nqrs': 7,      # Number of QRS Complexes
-    'qrsdur': 8,    # QRS Duration
-    'qt': 9,        # QT Interval
-    'qtc': 10,      # QT Corrected
-    'print': 11,    # PR Interval
-    'vrate': 12,    # Ventricular Rate
-    'avgrr': 13,    # Average R-R Interval
-}
-measurement_matrix_lead_measures = {
-    'pona': 1,      # P Wave amplitude at P-onset
-    'pamp': 2,      # P wave amplitude
-    'pdur': 3,      # P wave duration
-    'bmpar': 4,     # P wave area
-    'bmpi': 5,      # P wave intrinsicoid (time from P onset to peak of P)
-    'ppamp': 6,     # P Prime amplitude
-    'ppdur': 7,     # P Prime duration
-    'bmppar': 8,    # P Prime area
-    'bmppi': 9,     # P Prime intrinsicoid (time from P onset to peak of P')
-    'qamp': 10,     # Q wave amplitude
-    'qdur': 11,     # Q wave duration
-    'bmqar': 12,    # Q wave area
-    'bmqi': 13,     # Q intrinsicoid (time from Q onset to peak of Q)
-    'ramp': 14,     # R amplitude
-    'rdur': 15,     # R duration
-    'bmrar': 16,    # R wave area
-    'bmri': 17,     # R intrinsicoid (time from R onset to peak of R)
-    'samp': 18,     # S amplitude
-    'sdur': 19,     # S duration
-    'bmsar': 20,    # S wave area
-    'bmsi': 21,     # S intrinsicoid (time from Q onset to peak of S)
-    'rpamp': 22,    # R Prime amplitude
-    'rpdur': 23,    # R Prime duration
-    'bmrpar': 24,   # R Prime wave area
-    'bmrpi': 25,    # R Prime intrinsicoid (time from Q onset to peak of R Prime)
-    'spamp': 26,    # S Prime Amplitude
-    'spdur': 27,    # S Prime Duration
-    'bmspar': 28,   # S Prime wave area
-    'bmspi': 29,    # S intriniscoid (time from Q onset to peak of S prime)
-    'stj': 30,      # STJ point, End of QRS Point Amplitude
-    'stm': 31,      # STM point, Middle of the ST Segment Amplitude
-    'ste': 32,      # STE point, End of ST Segment Amplitude
-    'mxsta': 33,    # Maximum of STJ, STM, STE Amplitudes
-    'mnsta': 34,    # Minimum of STJ and STM Amplitudes
-    'spta': 35,     # Special T-Wave amplitude
-    'qrsa': 36,     # Total QRS area
-    'qrsdef': 37,   # QRS Deflection
-    'maxra': 38,    # Maximum R Amplitude (R or R Prime)
-    'maxsa': 39,    # Maximum S Amplitude (S or S Prime)
-    'tamp': 40,     # T amplitude
-    'tdur': 41,     # T duration
-    'bmtar': 42,    # T wave area
-    'bmti': 43,     # T intriniscoid (time from STE to peak of T)
-    'tpamp': 44,    # T Prime amplitude
-    'tpdur': 45,    # T Prime duration
-    'bmtpar': 46,   # T Prime area
-    'bmtpi': 47,    # T Prime intriniscoid (time from STE to peak of T)
-    'tend': 48,     # T Amplitude at T offset
-    'parea': 49,    # P wave area, includes P and P Prime
-    'qrsar': 50,    # QRS area
-    'tarea': 51,    # T wave area, include T and T Prime
-    'qrsint': 52    # QRS intriniscoid (see following)
-}
 
 
 def _hd5_filename_to_mrn_int(filename: str) -> int:
@@ -1723,6 +1650,81 @@ for feature in partners_ecg_features_dic:
         tensor_from_file=make_partners_ecg_tensor(key=feature),
         shape=(1,)
     )
+
+
+measurement_matrix_leads = {
+    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
+}
+# Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
+measurement_matrix_global_measures = {
+    'pon': 1,       # P-wave onset in median beat (in samples)
+    'poff': 2,      # P-wave offset in median beat
+    'qon': 3,       # Q-Onset in median beat
+    'qoff': 4,      # Q-Offset in median beat
+    'ton': 5,       # T-Onset in median beat
+    'toff': 6,      # T-Offset in median beat
+    'nqrs': 7,      # Number of QRS Complexes
+    'qrsdur': 8,    # QRS Duration
+    'qt': 9,        # QT Interval
+    'qtc': 10,      # QT Corrected
+    'print': 11,    # PR Interval
+    'vrate': 12,    # Ventricular Rate
+    'avgrr': 13,    # Average R-R Interval
+}
+measurement_matrix_lead_measures = {
+    'pona': 1,      # P Wave amplitude at P-onset
+    'pamp': 2,      # P wave amplitude
+    'pdur': 3,      # P wave duration
+    'bmpar': 4,     # P wave area
+    'bmpi': 5,      # P wave intrinsicoid (time from P onset to peak of P)
+    'ppamp': 6,     # P Prime amplitude
+    'ppdur': 7,     # P Prime duration
+    'bmppar': 8,    # P Prime area
+    'bmppi': 9,     # P Prime intrinsicoid (time from P onset to peak of P')
+    'qamp': 10,     # Q wave amplitude
+    'qdur': 11,     # Q wave duration
+    'bmqar': 12,    # Q wave area
+    'bmqi': 13,     # Q intrinsicoid (time from Q onset to peak of Q)
+    'ramp': 14,     # R amplitude
+    'rdur': 15,     # R duration
+    'bmrar': 16,    # R wave area
+    'bmri': 17,     # R intrinsicoid (time from R onset to peak of R)
+    'samp': 18,     # S amplitude
+    'sdur': 19,     # S duration
+    'bmsar': 20,    # S wave area
+    'bmsi': 21,     # S intrinsicoid (time from Q onset to peak of S)
+    'rpamp': 22,    # R Prime amplitude
+    'rpdur': 23,    # R Prime duration
+    'bmrpar': 24,   # R Prime wave area
+    'bmrpi': 25,    # R Prime intrinsicoid (time from Q onset to peak of R Prime)
+    'spamp': 26,    # S Prime Amplitude
+    'spdur': 27,    # S Prime Duration
+    'bmspar': 28,   # S Prime wave area
+    'bmspi': 29,    # S intriniscoid (time from Q onset to peak of S prime)
+    'stj': 30,      # STJ point, End of QRS Point Amplitude
+    'stm': 31,      # STM point, Middle of the ST Segment Amplitude
+    'ste': 32,      # STE point, End of ST Segment Amplitude
+    'mxsta': 33,    # Maximum of STJ, STM, STE Amplitudes
+    'mnsta': 34,    # Minimum of STJ and STM Amplitudes
+    'spta': 35,     # Special T-Wave amplitude
+    'qrsa': 36,     # Total QRS area
+    'qrsdef': 37,   # QRS Deflection
+    'maxra': 38,    # Maximum R Amplitude (R or R Prime)
+    'maxsa': 39,    # Maximum S Amplitude (S or S Prime)
+    'tamp': 40,     # T amplitude
+    'tdur': 41,     # T duration
+    'bmtar': 42,    # T wave area
+    'bmti': 43,     # T intriniscoid (time from STE to peak of T)
+    'tpamp': 44,    # T Prime amplitude
+    'tpdur': 45,    # T Prime duration
+    'bmtpar': 46,   # T Prime area
+    'bmtpi': 47,    # T Prime intriniscoid (time from STE to peak of T)
+    'tend': 48,     # T Amplitude at T offset
+    'parea': 49,    # P wave area, includes P and P Prime
+    'qrsar': 50,    # QRS area
+    'tarea': 51,    # T wave area, include T and T Prime
+    'qrsint': 52    # QRS intriniscoid (see following)
+}
 
 
 def make_measurement_matrix_from_file(key: str, lead: str = None):
