@@ -1622,36 +1622,6 @@ def build_cardiac_surgery_tensor_maps(
     return name2tensormap
 
 
-partners_ecg_features_dic = {
-    'atrialrate_md': [79.958490, 41.526322],
-    'paxis_md': [44.447618, 30.149715],
-    'poffset_md': [137.660674, 62.846951],
-    'ponset_md': [2355.778680, 11844.168609],
-    'qoffset_md': [211.344796, 65.183171],
-    'qonset_md': [173.726931, 53.417421],
-    'qrscount_md': [12.418957, 3.192442],
-    'qrsduration_md': [95.192446, 22.307156],
-    'qtcorrected_md': [432.750401, 59.467004],
-    'qtinterval_md': [395.786748, 48.109634],
-    'raxis_md': [24.924176, 46.946210],
-    'taxis_md': [48.100464, 47.254585],
-    'toffset_md': [330.698266, 104.930466],
-    'ventricularrate_md': [74.553214, 18.791369]
-}
-
-for feature in partners_ecg_features_dic:
-    TMAPS['partners_feat_'+feature] = TensorMap(
-        'partners_feat_'+feature,
-        interpretation=Interpretation.CONTINUOUS,
-        path_prefix=PARTNERS_PREFIX,
-        loss='logcosh',
-        normalization=Standardize(mean=partners_ecg_features_dic[feature][0],
-                                  std=partners_ecg_features_dic[feature][1]),
-        tensor_from_file=make_partners_ecg_tensor(key=feature),
-        shape=(1,)
-    )
-
-
 # Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
 measurement_matrix_leads = {
     'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
