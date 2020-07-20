@@ -1,5 +1,4 @@
 import os
-import re
 import csv
 import copy
 import h5py
@@ -12,8 +11,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
-from ml4cvd.metrics import weighted_crossentropy
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 
