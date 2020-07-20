@@ -402,13 +402,18 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                     history.history[k][0](i * training_steps)
                     for i in range(len(history.history[k]))
                 ]
-            axes[row, col].plot(history.history[k])
+            axes[row, col].plot(
+                list(range(1, len(history.history[k]) + 1)), history.history[k],
+            )
             k_split = str(k).replace("output_", "").split("_")
             k_title = " ".join(OrderedDict.fromkeys(k_split))
             axes[row, col].set_title(k_title)
             axes[row, col].set_xlabel("epoch")
             if "val_" + k in history.history:
-                axes[row, col].plot(history.history["val_" + k])
+                axes[row, col].plot(
+                    list(range(1, len(history.history["val_" + k]) + 1)),
+                    history.history["val_" + k],
+                )
                 labels = ["train", "valid"]
             else:
                 labels = [k]
@@ -1732,14 +1737,14 @@ def subplot_comparison_rocs(
                 if len(labels) == 2 and idx == negative_label_idx:
                     continue
 
-                color = _hash_string_to_color(p + key)
+                color = _hash_string_to_color(p + label)
                 label_text = (
-                    f"{p}_{key} area:{roc_auc[labels[key]]:.3f}"
-                    f" n={true_sums[labels[key]]:.0f}"
+                    f"{p}_{label} area:{roc_auc[labels[label]]:.3f}"
+                    f" n={true_sums[labels[label]]:.0f}"
                 )
                 axes[row, col].plot(
-                    fpr[labels[key]],
-                    tpr[labels[key]],
+                    fpr[labels[label]],
+                    tpr[labels[label]],
                     color=color,
                     lw=lw,
                     label=label_text,

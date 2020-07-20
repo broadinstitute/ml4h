@@ -457,16 +457,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--inspect_model",
-        action="store_false",
-        help="Plot model architecture, measure inference and training speeds.",
-    )
-    parser.add_argument(
-        "--inspect_show_labels",
-        action="store_false",
-        help="Plot model architecture with labels for each layer.",
-    )
-    parser.add_argument(
         "--alpha",
         default=0.5,
         type=float,

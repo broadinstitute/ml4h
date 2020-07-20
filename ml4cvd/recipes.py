@@ -147,8 +147,6 @@ def train_multimodal_multitask(args):
         args.patience,
         args.output_folder,
         args.id,
-        args.inspect_model,
-        args.inspect_show_labels,
         return_history=True,
         defer_worker_halt=args.plot_train_roc_and_pr_curves,
     )
@@ -498,8 +496,6 @@ def train_shallow_model(args):
         args.patience,
         args.output_folder,
         args.id,
-        args.inspect_model,
-        args.inspect_show_labels,
     )
 
     p = os.path.join(args.output_folder, args.id + "/")
@@ -538,8 +534,6 @@ def train_siamese_model(args):
         args.patience,
         args.output_folder,
         args.id,
-        args.inspect_model,
-        args.inspect_show_labels,
     )
 
     data, labels, paths = big_batch_from_minibatch_generator(

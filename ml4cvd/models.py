@@ -302,7 +302,6 @@ def make_character_model_plus(
         _plot_dot_model_in_color(
             model_to_dot(m, show_shapes=True, expand_nested=True),
             model_layers.replace(MODEL_EXT, IMAGE_EXT),
-            True,
         )
         logging.info(f"Loaded and plotted model weights from:{model_layers}")
 
@@ -1459,8 +1458,6 @@ def train_model_from_generators(
     patience: int,
     output_folder: str,
     run_id: str,
-    inspect_model: bool,
-    inspect_show_labels: bool,
     return_history: bool = False,
     plot: bool = True,
     defer_worker_halt: bool = False,
@@ -1469,7 +1466,6 @@ def train_model_from_generators(
 
     Training data lives on disk, it will be loaded by generator functions.
     Plots the metric history after training. Creates a directory to save weights, if necessary.
-    Measures runtime and plots architecture diagram if inspect_model is True.
 
     :param model: The model to optimize
     :param generate_train: Generator function that yields mini-batches of training data.
@@ -1481,8 +1477,6 @@ def train_model_from_generators(
     :param patience: Number of epochs to wait before reducing learning rate.
     :param output_folder: Directory where output file will be stored
     :param run_id: User-chosen string identifying this run
-    :param inspect_model: If True, measure training and inference runtime of the model and generate architecture plot.
-    :param inspect_show_labels: If True, show labels on the architecture plot.
     :param return_history: If true return history from training and don't plot the training history
     :return: The optimized model.
     """
@@ -1490,19 +1484,12 @@ def train_model_from_generators(
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
-    if inspect_model:
-        image_p = os.path.join(
+    _plot_dot_model_in_color(
+        model_to_dot(model, show_shapes=True, expand_nested=True),
+        os.path.join(
             output_folder, run_id, "architecture_graph_" + run_id + IMAGE_EXT,
-        )
-        _inspect_model(
-            model,
-            generate_train,
-            generate_valid,
-            batch_size,
-            training_steps,
-            inspect_show_labels,
-            image_p,
-        )
+        ),
+    )
 
     history = model.fit(
         generate_train,
@@ -1671,61 +1658,7 @@ def _regularization_layer(dimension: int, regularization_type: str, rate: float)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Inspections ~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _inspect_model(
-    model: Model,
-    generate_train: Iterable,
-    generate_valid: Iterable,
-    batch_size: int,
-    training_steps: int,
-    inspect_show_labels: bool,
-    image_path: str,
-) -> Model:
-    """Collect statistics on model inference and training times.
-
-    Arguments:
-        model: the model to inspect
-        generate_train: training data generator function
-        generate_valid: Validation data generator function
-        batch_size: size of the mini-batches
-        training_steps: number of optimization steps to take
-        inspect_show_labels: if True, show layer labels on the architecture diagram
-        image_path: file path of the architecture diagram
-
-    Returns:
-        The slightly optimized keras model
-    """
-    if image_path:
-        _plot_dot_model_in_color(
-            model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True),
-            image_path,
-            inspect_show_labels,
-        )
-    t0 = time.time()
-    _ = model.fit(
-        generate_train,
-        steps_per_epoch=training_steps,
-        validation_steps=1,
-        validation_data=generate_valid,
-    )
-    t1 = time.time()
-    n = batch_size * training_steps
-    train_speed = (t1 - t0) / n
-    logging.info(
-        f"Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample"
-        f" training speed:{train_speed:0.3f} seconds.",
-    )
-    t0 = time.time()
-    _ = model.predict(generate_valid, steps=training_steps, verbose=1)
-    t1 = time.time()
-    inference_speed = (t1 - t0) / n
-    logging.info(
-        f"Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample"
-        f" inference speed:{inference_speed:0.4f} seconds.",
-    )
-    return model
-
-
-def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
+def _plot_dot_model_in_color(dot, image_path):
     # Imports: third party
     import pydot
 
@@ -1772,8 +1705,6 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
                 legend["Activation"] = "yellow"
                 n.set_fillcolor("yellow")
         n.set_style("filled")
-        if not inspect_show_labels:
-            n.set_label("\n")
 
     for label in legend:
         legend_node = pydot.Node(

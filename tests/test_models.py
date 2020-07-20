@@ -403,8 +403,6 @@ class TestModelPerformance:
                 batch_size=batch_size,
                 output_folder=str(tmpdir),
                 run_id="brain_seg_test",
-                inspect_model=True,
-                inspect_show_labels=True,
             )
             test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
                 generate_test, 12,

@@ -169,8 +169,6 @@ def hyperparameter_optimizer(
                 patience=args.patience,
                 output_folder=args.output_folder,
                 run_id=args.id,
-                inspect_model=args.inspect_model,
-                inspect_show_labels=args.inspect_show_labels,
                 return_history=True,
                 plot=False,
             )
