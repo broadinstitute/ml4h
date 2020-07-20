@@ -266,24 +266,6 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
 
-    def test_no_dense_layers(self):
-        params = DEFAULT_PARAMS.copy()
-        params['dense_layers'] = []
-        inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
-        m = make_multimodal_multitask_model(
-            inp,
-            out,
-            **DEFAULT_PARAMS,
-        )
-        assert_model_trains(inp, out, m)
-
-    @pytest.mark.parametrize(
-        'output_tmaps',
-        [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
-    )
-    def test_parents(self, output_tmaps):
-        assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps)
-
     @pytest.mark.parametrize(
         'input_output_tmaps',
         [
@@ -307,6 +289,24 @@ class TestMakeMultimodalMultitaskModel:
             model_file=path,
             **DEFAULT_PARAMS,
         )
+
+    def test_no_dense_layers(self):
+        params = DEFAULT_PARAMS.copy()
+        params['dense_layers'] = []
+        inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
+        m = make_multimodal_multitask_model(
+            inp,
+            out,
+            **DEFAULT_PARAMS,
+        )
+        assert_model_trains(inp, out, m)
+
+    @pytest.mark.parametrize(
+        'output_tmaps',
+        [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
+    )
+    def test_parents(self, output_tmaps):
+        assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps)
 
 
 @pytest.mark.parametrize(
