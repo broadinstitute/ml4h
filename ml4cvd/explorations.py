@@ -76,7 +76,7 @@ class ExploreParallelWrapper:
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
                                         dict_of_tensor_dicts[i][
-                                            f"{tm.name} {cm}"
+                                            f"{tm.name}_{cm}"
                                         ] = tensor[tm.channel_map[cm]]
                                 else:
                                     # If tensor is a scalar, isolate the value in the array;
@@ -95,7 +95,7 @@ class ExploreParallelWrapper:
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
                                         dict_of_tensor_dicts[i][
-                                            f"{tm.name} {cm}"
+                                            f"{tm.name}_{cm}"
                                         ] = np.nan
                                 else:
                                     dict_of_tensor_dicts[i][tm.name] = np.full(
@@ -116,7 +116,7 @@ class ExploreParallelWrapper:
                         # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                         if tm.channel_map:
                             for cm in tm.channel_map:
-                                dict_of_tensor_dicts[0][f"{tm.name} {cm}"] = np.nan
+                                dict_of_tensor_dicts[0][f"{tm.name}_{cm}"] = np.nan
                         else:
                             dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
                         dict_of_tensor_dicts[0][f"error_type_{tm.name}"] = type(
@@ -175,7 +175,7 @@ def _tensors_to_df(args):
     for tm in tmaps:
         if tm.interpretation == Interpretation.LANGUAGE:
             str_cols.extend(
-                [f"{tm.name} {cm}" for cm in tm.channel_map]
+                [f"{tm.name}_{cm}" for cm in tm.channel_map]
                 if tm.channel_map
                 else [tm.name],
             )
@@ -256,6 +256,21 @@ def explore(args):
         cols = [c for c in df.columns if not c.startswith("error_type_")]
         df = df[cols]
 
+    # Remove redundant columns for binary labels
+    redundant_cms = []
+    if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
+        for tm in [
+            tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL
+        ]:
+            if tm.channel_map:
+                for cm in tm.channel_map:
+                    if cm.startswith("no_"):
+                        df = df.drop(f"{tm.name}_{cm}", 1)
+                        redundant_cms.append(cm)
+                    elif cm == "female":
+                        df = df.drop(f"{tm.name}_{cm}", 1)
+                        redundant_cms.append(cm)
+
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
@@ -277,9 +292,10 @@ def explore(args):
                 counts_missing = []
                 if tm.channel_map:
                     for cm in tm.channel_map:
-                        key = f"{tm.name} {cm}"
-                        counts.append(df_cur[key].sum())
-                        counts_missing.append(df_cur[key].isna().sum())
+                        key = f"{tm.name}_{cm}"
+                        if cm not in redundant_cms:
+                            counts.append(df_cur[key].sum())
+                            counts_missing.append(df_cur[key].isna().sum())
                 else:
                     key = tm.name
                     counts.append(df_cur[key].sum())
@@ -292,7 +308,10 @@ def explore(args):
                 counts.append(sum(counts))
 
                 # Create list of row names
-                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
+                cm_names = [cm for cm in tm.channel_map if cm not in redundant_cms] + [
+                    f"missing",
+                    f"total",
+                ]
 
                 # Transform list into dataframe indexed by channel maps
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
@@ -333,7 +352,7 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f"{tm.name} {cm}"
+                            key = f"{tm.name}_{cm}"
                             stats["min"] = df_cur[key].min()
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
@@ -351,7 +370,7 @@ def explore(args):
                             df_stats = pd.concat(
                                 [
                                     df_stats,
-                                    pd.DataFrame([stats], index=[f"{tm.name} {cm}"]),
+                                    pd.DataFrame([stats], index=[f"{tm.name}_{cm}"]),
                                 ],
                             )
                     else:
@@ -404,7 +423,7 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f"{tm.name} {cm}"
+                            key = f"{tm.name}_{cm}"
                             stats["count"] = df_cur[key].count()
                             if stats["count"] == 0:
                                 stats["count_unique"] = 0
@@ -418,7 +437,7 @@ def explore(args):
                             df_stats = pd.concat(
                                 [
                                     df_stats,
-                                    pd.DataFrame([stats], index=[f"{tm.name} {cm}"]),
+                                    pd.DataFrame([stats], index=[f"{tm.name}_{cm}"]),
                                 ],
                             )
                     else:
@@ -472,7 +491,7 @@ def continuous_explore_header(tm: TensorMap) -> str:
 
 
 def categorical_explore_header(tm: TensorMap, channel: str) -> str:
-    return f"{tm.name} {channel}"
+    return f"{tm.name}_{channel}"
 
 
 def cross_reference(args):
