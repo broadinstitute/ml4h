@@ -91,7 +91,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
             input_output_tmaps[0][0],
-            input_output_tmaps[1][0],
+            input_output_tmaps[1],
             **params
         )
         #assert_model_trains(input_tmaps, output_tmaps, m)
