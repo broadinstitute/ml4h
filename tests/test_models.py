@@ -83,7 +83,7 @@ class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         'input_output_tmaps',
         [
-            (LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX),
+            ([LANGUAGE_TMAP_1HOT_WINDOW], [LANGUAGE_TMAP_1HOT_SOFTMAX]),
         ],
     )
     def test_language_models(self, input_output_tmaps, tmpdir):
