@@ -4,7 +4,7 @@ Machine Learning for CardioVascular Disease - MGH/MIT edition!
 ## Contents
 - Setup
 - Run scripts
-- [Tensorize ECGs](documentation/tensorize_ecgs.md)
+- [Tensorize ECGs](docs/tensorize_ecgs.md)
 - Contribute
 
 ## Setup
