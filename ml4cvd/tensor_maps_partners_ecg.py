@@ -1652,10 +1652,10 @@ for feature in partners_ecg_features_dic:
     )
 
 
+# Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
 measurement_matrix_leads = {
     'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
 }
-# Measurement matrix TMAPS -- indices from MUSE XML dev manual, page 49 and following
 measurement_matrix_global_measures = {
     'pon': 1,       # P-wave onset in median beat (in samples)
     'poff': 2,      # P-wave offset in median beat
