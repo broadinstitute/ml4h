@@ -81,7 +81,7 @@ def _rotate(a: List, n: int):
 
 
 class TestMakeMultimodalMultitaskModel:
-    def test_language_models(self, input_tmaps, output_tmaps):
+    def test_language_models(self):
         params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
             [LANGUAGE_TMAP_1HOT_WINDOW],
