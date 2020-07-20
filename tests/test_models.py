@@ -8,8 +8,9 @@ from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS, \
-    LANGUAGE_TMAPS
+from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
+from ml4cvd.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
+
 
 MEAN_PRECISION_EPS = .02  # how much mean precision degradation is acceptable
 DEFAULT_PARAMS = {
@@ -83,7 +84,7 @@ class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         'input_output_tmaps',
         [
-            (LANGUAGE_TMAPS[:0], LANGUAGE_TMAPS[:0]),
+            ([LANGUAGE_TMAP_1HOT_WINDOW], [LANGUAGE_TMAP_1HOT_SOFTMAX]),
             #(LANGUAGE_TMAPS[-1:], LANGUAGE_TMAPS[-1:]),
         ],
     )
