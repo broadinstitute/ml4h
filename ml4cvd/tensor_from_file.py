@@ -1,5 +1,4 @@
 import os
-import re
 import csv
 import logging
 import datetime
@@ -12,14 +11,13 @@ import numpy as np
 import vtk.util.numpy_support
 from tensorflow.keras.utils import to_categorical
 
-from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.metrics import weighted_crossentropy, cox_hazard_loss
 from ml4cvd.tensor_writer_ukbb import tensor_path
-from ml4cvd.normalizer import ZeroMeanStd1, Standardize
 from ml4cvd.TensorMap import TensorMap, no_nans, str2date, make_range_validator, Interpretation
+from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
 from ml4cvd.defines import StorageType, MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP
-from ml4cvd.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
 
 
 """
@@ -49,9 +47,12 @@ def _random_slice_tensor(tensor_key, dependent_key=None):
     return _random_slice_tensor_from_file
 
 
-def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, allow_channels=True, flip_swap=False, swap_axes=-1):
+def _slice_subset_tensor(tensor_key, start, stop, step=1, dependent_key=None, pad_shape=None, dtype_override=None, allow_channels=True, flip_swap=False, swap_axes=-1):
     def _slice_subset_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
+        if dtype_override is not None:
+            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
+        else:
+            big_tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tensor_key)
 
         if flip_swap:
             big_tensor = np.flip(np.swapaxes(big_tensor, 0, swap_axes))
@@ -99,7 +100,7 @@ def _build_tensor_from_file(file_name: str, target_column: str, normalization: b
         if error:
             raise error
         if normalization:
-            tm.normalization = Standardize(mean=mean, std=std)
+            tm.normalization = {'mean': mean, 'std': std}
         try:
             return table[os.path.basename(hd5.filename).replace('.hd5', '')].copy()
         except KeyError:
@@ -159,7 +160,7 @@ def random_text_window_tensor(text: str, window_size: int, one_hot: bool = True)
     return text_from_file
 
 
-def _survival_tensor(start_date_key: str, incidence_only: bool = False):
+def _survival_tensor(start_date_key: str, day_window: int, incidence_only: bool = False):
     def _survival_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0   # Assume no disease if the tensor does not have the dataset
@@ -174,9 +175,9 @@ def _survival_tensor(start_date_key: str, incidence_only: bool = False):
             raise ValueError(f'No date found for survival {tm.name}')
 
         intervals = int(tm.shape[0] / 2)
-        days_per_interval = tm.days_window / intervals
+        days_per_interval = day_window / intervals
         survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
-        for i, day_delta in enumerate(np.arange(0, tm.days_window, days_per_interval)):
+        for i, day_delta in enumerate(np.arange(0, day_window, days_per_interval)):
             cur_date = assess_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[intervals+i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
@@ -206,12 +207,9 @@ def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
         if incidence_only and censor_date <= assess_date:
             raise ValueError(f'{tm.name} only considers incident diagnoses')
 
-        days_of_follow_up = (censor_date - assess_date).days
-        if days_of_follow_up > tm.days_window:
-            has_disease = 0
         tensor = np.zeros(tm.shape, dtype=np.float32)
         tensor[0] = has_disease
-        tensor[1] = days_of_follow_up
+        tensor[1] = (censor_date - assess_date).days
         return tensor
     return _cox_tensor_from_file
 
@@ -481,59 +479,51 @@ TMAPS['ecg-bike-hr-achieved'] = TensorMap(
 DAYS_IN_5_YEARS = 365 * 5
 TMAPS['enroll_cad_hazard'] = TensorMap(
     'coronary_artery_disease', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_hyp_hazard'] = TensorMap(
     'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_afib_hazard'] = TensorMap(
     'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
-)
-TMAPS['enroll_af_hazard_5_incident'] = TensorMap(
-    'atrial_fibrillation_or_flutter', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_chol_hazard'] = TensorMap(
     'hypercholesterolemia', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_diabetes2_hazard'] = TensorMap(
     'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
-TMAPS['enroll_db2_hazard_5_incident'] = TensorMap(
+TMAPS['enroll_diabetes2_hazard_incident'] = TensorMap(
     'diabetes_type_2', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
 TMAPS['enroll_hyp_hazard_5'] = TensorMap(
     'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_hyp_hazard_5_incident'] = TensorMap(
     'hypertension', Interpretation.SURVIVAL_CURVE, shape=(50,),
-    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
 TMAPS['enroll_cad_hazard_5_incident'] = TensorMap(
     'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
 TMAPS['enroll_cad_hazard_5'] = TensorMap(
     'coronary_artery_disease_soft', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_mi_hazard_5'] = TensorMap(
     'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date'),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
 TMAPS['enroll_mi_hazard_5_incident'] = TensorMap(
     'myocardial_infarction', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
-)
-TMAPS['enroll_death_hazard_5_incident'] = TensorMap(
-    'death', Interpretation.SURVIVAL_CURVE, shape=(50,), days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('dates/enroll_date', incidence_only=True),
+    tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS, incidence_only=True),
 )
 
 TMAPS['cox_mi'] = TensorMap('myocardial_infarction', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
@@ -542,10 +532,8 @@ TMAPS['cox_hyp'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, tenso
 TMAPS['cox_hyp_incident'] = TensorMap('hypertension', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
 TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
-TMAPS['cox_af'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
-TMAPS['cox_af_incident'] = TensorMap('atrial_fibrillation_or_flutter', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
-TMAPS['cox_death_incident'] = TensorMap('death', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
-TMAPS['cox_db2_incident'] = TensorMap('diabetes_type_2', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
+TMAPS['cox_cad'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date'))
+TMAPS['cox_cad_incident'] = TensorMap('coronary_artery_disease_soft', Interpretation.TIME_TO_EVENT, tensor_from_file=cox_tensor_from_file('dates/enroll_date', incidence_only=True))
 
 
 def _warp_ecg(ecg):
@@ -597,8 +585,8 @@ def _make_ecg_rest(
 
 
 TMAPS['ecg_rest_raw'] = TensorMap(
-    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    normalization=Standardize(mean=0, std=2000), channel_map=ECG_REST_LEADS,
+    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
+    channel_map=ECG_REST_LEADS,
 )
 
 TMAPS['ecg_rest_raw_roll'] = TensorMap(
@@ -622,15 +610,6 @@ TMAPS['ecg_rest'] = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
 )
-for lead in ECG_REST_LEADS:
-    TMAPS[f'ecg_rest_{lead}'] = TensorMap(
-        lead, Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-        channel_map={lead: 0}, normalization=ZeroMeanStd1(),
-    )
-    TMAPS[f'{lead}'] = TensorMap(
-        lead, Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-        channel_map={lead: 0}, normalization=Standardize(mean=0, std=2000),
-    )
 TMAPS['ecg_rest_2500_ukb'] = TensorMap(
     'ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
     tensor_from_file=_make_ecg_rest(downsample_steps=2), normalization={'zero_mean_std1': 1.0},
@@ -639,10 +618,6 @@ TMAPS['ecg_rest_2500_ukb'] = TensorMap(
 TMAPS['ecg_rest_stft'] = TensorMap(
     'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
     tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32), normalization={'zero_mean_std1': 1.0},
-)
-TMAPS['ecg_rest_stft_raw'] = TensorMap(
-    'ecg_rest_stft_raw', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32),
 )
 TMAPS['ecg_rest_stft_512'] = TensorMap(
     'ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
@@ -1123,7 +1098,7 @@ def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
 
 
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
-    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape)
+    slice_subset_tensor_from_file = _slice_subset_tensor(tensor_key, start, stop, step=step, pad_shape=pad_shape, dtype_override='float_array')
 
     def mask_subset_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         original = slice_subset_tensor_from_file(tm, hd5, dependents)
@@ -1176,7 +1151,6 @@ TMAPS['t1_and_t2_flair_30_slices'] = TensorMap(
     tensor_from_file=_combined_subset_tensor(['T1', 'T2_FLAIR'], 90, 150, 2, pad_shape=(192, 256, 256)),
     normalization={'zero_mean_std1': True},
 )
-
 _dicom_keys = ['t1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1']
 TMAPS['t1_t2_dicom_30_slices'] = TensorMap(
     't1_t2_dicom_30_slices', Interpretation.CONTINUOUS, shape=(192, 256, 30, 2), path_prefix='ukb_brain_mri',
@@ -1444,46 +1418,62 @@ TMAPS['mri_patient_position_cine_segmented_sax_inlinevf'] = TensorMap(
 )
 
 
-def _mri_tensor_4d(hd5, name):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, dest_shape=None):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
-    if isinstance(hd5[name], h5py.Group):
-        nslices = len(hd5[name]) // MRI_FRAMES
-        for img in hd5[name]:
-            img_shape = hd5[name][img].shape
+    hd5_path = f'{path_prefix}/{name}/instance_{instance}'
+    if concatenate:
+        hd5_path = f'{path_prefix}/{name}/'    
+    if isinstance(hd5[hd5_path], h5py.Group):
+        for img in hd5[hd5_path]:
+            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
             break
-        shape = (img_shape[0], img_shape[1], nslices, MRI_FRAMES)
+        if dest_shape is None:
+            dest_shape = (max(img_shape), max(img_shape))
+        nslices = len(hd5[hd5_path]) // MRI_FRAMES        
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         t = 0
         s = 0
-        for k in sorted(hd5[name], key=int):
-            arr[:, :, s, t] = np.array(hd5[name][k]).T
+        for img in sorted(hd5[hd5_path], key=int):
+            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
+            arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[f'{hd5_path}/{img}/instance_{instance}']).T
             t += 1
             if t == MRI_FRAMES:
                 s += 1
                 t = 0
-    elif isinstance(hd5[name], h5py.Dataset):
+    elif isinstance(hd5[hd5_path], h5py.Dataset):
+        img_shape = hd5[hd5_path].shape
+        if dest_shape is None:
+            dest_shape = (max(img_shape), max(img_shape))
         nslices = 1
-        shape = (hd5[name].shape[0], hd5[name].shape[1], nslices, MRI_FRAMES)
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
-            arr[:, :, 0, t] = np.array(hd5[name][:, :, t]).T
+            if concatenate:
+                hd5_path = f'{path_prefix}/{name}{t+1}/instance_{instance}'
+                arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
+            else:
+                try:
+                    arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
+                except ValueError:
+                    logging.warning(f'Series {name} has less than {MRI_FRAMES} frames')
     else:
         raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
 
 
-def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
+def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, save_path=None, order='F'):
     """
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
-    arr = _mri_tensor_4d(hd5, name)
-    width = hd5['_'.join([MRI_PIXEL_WIDTH, name])]
-    height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])]
-    positions = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, name]))
-    orientations = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, name]))
-    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])]
+    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate)
+    width = hd5['_'.join([MRI_PIXEL_WIDTH, view_name])]
+    height = hd5['_'.join([MRI_PIXEL_HEIGHT, view_name])]
+    positions = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, view_name]))
+    orientations = _mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, view_name]))
+    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, view_name])]
     _, dataset_indices, dataset_counts = np.unique(orientations, axis=1, return_index=True, return_counts=True)
     grids = []
     for d_idx, d_cnt in zip(dataset_indices, dataset_counts):
@@ -1555,6 +1545,37 @@ def _map_points_to_cells(pts, dataset, tol=1e-3):
         if locator.FindClosestPointWithinRadius(pt, tol, closest_pt, generic_cell, cell_id, sub_id, dist2, inside):
             map_to_cells[pt_id] = cell_id.get()
     return map_to_cells
+
+
+def _mri_project_grids(source_grids, destination_grids, source_name):
+    for i, source_grid in enumerate(source_grids):
+        for j, destination_grid in enumerate(destination_grids):
+            dims = destination_grid.GetDimensions()
+            pts = vtk.util.numpy_support.vtk_to_numpy(destination_grid.GetPoints().GetData())
+            npts_per_slice = dims[0] * dims[1]
+            ncells_per_slice = (dims[0]-1) * (dims[1]-1)
+            n_orientation = (pts[npts_per_slice] - pts[0])
+            n_orientation /= np.linalg.norm(n_orientation)
+            cell_centers = vtk.vtkCellCenters()
+            cell_centers.SetInputData(destination_grid)
+            cell_centers.Update()
+            cell_pts = vtk.util.numpy_support.vtk_to_numpy(cell_centers.GetOutput().GetPoints().GetData())
+            # Loop through dataset slices
+            for s in range(dims[2]-1):
+                slice_center = np.mean(pts[s*npts_per_slice:(s+2)*npts_per_slice], axis=0)
+                slice_cell_pts = cell_pts[s*ncells_per_slice:(s+1)*ncells_per_slice]
+                slice_source = _cut_through_plane(source_grid, slice_center, n_orientation)
+                map_to_source = _map_points_to_cells(slice_cell_pts, slice_source)
+                # Loop through time
+                for t in range(MRI_FRAMES):
+                    source_arr_name = f'{source_name}_{t}'
+                    destination_arr_name = f'{source_name}_projected_{t}'
+                    source_arr = vtk.util.numpy_support.vtk_to_numpy(slice_source.GetCellData().GetArray(source_arr_name))
+                    destination_arr = np.ascontiguousarray(source_arr[map_to_source])
+                    destination_arr_vtk = vtk.util.numpy_support.numpy_to_vtk(destination_arr)
+                    destination_arr_vtk.SetName(destination_arr_name)
+                    destination_grid.GetCellData().AddArray(destination_arr_vtk)
+    return destination_grids
 
 
 def _make_mri_projected_segmentation_from_file(to_segment_name, segmented_name, save_path=None):
@@ -1646,10 +1667,6 @@ TMAPS['lax_3ch_diastole_slice0_3d'] = TensorMap(
     'lax_3ch_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(200, 160, 1), loss='logcosh',
     normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0),
 )
-TMAPS['lax_2ch_diastole_slice0_3d'] = TensorMap(
-    'lax_2ch_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(200, 160, 1), loss='logcosh',
-    normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/instance_0', 0),
-)
 TMAPS['cine_segmented_ao_dist_slice0_3d'] = TensorMap(
     'cine_segmented_ao_dist_slice0_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
     normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
@@ -1662,63 +1679,16 @@ TMAPS['lax_3ch_diastole_slice0'] = TensorMap(
     'lax_3ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
     normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0),
 )
-TMAPS['lax_2ch_diastole_slice0'] = TensorMap(
-    'lax_2ch_diastole_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
-    normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/instance_0', 0),
-)
 TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap(
     'cine_segmented_ao_dist_slice0', Interpretation.CONTINUOUS, shape=(256, 256), loss='logcosh',
     normalization={'zero_mean_std1': True}, tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
 )
 
 
+
 def _pad_crop_tensor(tm, hd5, dependents={}):
     return _pad_or_crop_array_to_shape(tm.shape, np.array(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32))
 
-
-TMAPS['cine_lax_2ch_192_16'] = TensorMap(
-    'cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
-)
-TMAPS['cine_lax_3ch_192_16'] = TensorMap(
-    'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
-)
-TMAPS['cine_lax_4ch_192_16'] = TensorMap(
-    'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_pad_crop_tensor, normalization={'zero_mean_std1': True},
-)
-
-TMAPS['cine_lax_2ch_192_16_3'] = TensorMap(
-    'cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch', 0, 48, 3, pad_shape=(192, 160, 48)),
-    normalization=ZeroMeanStd1(),
-)
-TMAPS['cine_lax_3ch_192_16_3'] = TensorMap(
-    'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch', 0, 48, 3, pad_shape=(192, 160, 48)),
-    normalization=ZeroMeanStd1(),
-)
-TMAPS['cine_lax_4ch_192_16_3'] = TensorMap(
-    'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(192, 160, 48)),
-    normalization=ZeroMeanStd1(),
-)
-TMAPS['cine_lax_2ch_192_16_3_4d'] = TensorMap(
-    'cine_segmented_lax_2ch', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
-    normalization=ZeroMeanStd1(),
-)
-TMAPS['cine_lax_3ch_192_16_3_4d'] = TensorMap(
-    'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
-    normalization=ZeroMeanStd1(),
-)
-TMAPS['cine_lax_4ch_192_16_3_4d'] = TensorMap(
-    'cine_segmented_lax_4ch', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
-    normalization=ZeroMeanStd1(),
-)
 
 TMAPS['cine_lax_3ch_192'] = TensorMap(
     'cine_segmented_lax_3ch', Interpretation.CONTINUOUS, shape=(192, 192, 50), path_prefix='ukb_cardiac_mri',
@@ -1754,7 +1724,7 @@ TMAPS['cine_sax_b6_192_1'] = TensorMap(
 )
 
 
-def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', step=1):
+def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri'):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if path_prefix == 'ukb_liver_mri':
@@ -1762,23 +1732,16 @@ def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', ste
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., :] = _pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         elif tm.axes() == 4:
-            tensor_index = 0
-            for i in range(0, tm.shape[-2], step):
+            for i in range(tm.shape[-2]):
                 categorical_index_slice = _get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}{i+1}')
                 categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-                tensor[..., tensor_index, :] = _pad_or_crop_array_to_shape(tensor[..., tensor_index, :].shape, categorical_one_hot)
-                tensor_index += 1
+                tensor[..., i, :] = _pad_or_crop_array_to_shape(tensor[..., i, :].shape, categorical_one_hot)
         else:
             raise ValueError(f'No method to get segmented slices for TensorMap: {tm}')
         return tensor
     return _segmented_dicom_tensor_from_file
 
 
-TMAPS['lax_2ch_segmented_192_16_3'] = TensorMap(
-    'lax_2ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 16, 13),
-    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_2ch_annotated_', step=3),
-    channel_map=MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP,
-)
 TMAPS['lax_3ch_segmented'] = TensorMap(
     'lax_3ch_segmented',  Interpretation.CATEGORICAL, shape=(256, 256, 50, 6),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
@@ -1799,11 +1762,6 @@ TMAPS['lax_3ch_segmented_192_160'] = TensorMap(
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
     channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
 )
-TMAPS['lax_3ch_segmented_192_16_3'] = TensorMap(
-    'lax_3ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 16, 6),
-    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_', step=3),
-    channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
-)
 TMAPS['lax_4ch_segmented'] = TensorMap(
     'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 50, 14),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
@@ -1814,20 +1772,9 @@ TMAPS['lax_4ch_segmented_192'] = TensorMap(
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
 )
-TMAPS['lax_4ch_segmented_192_16_3'] = TensorMap(
-    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 16, 14),
-    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
-    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-)
 TMAPS['lax_4ch_segmented_192_w'] = TensorMap(
     'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 50, 14),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
-    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
-)
-TMAPS['lax_4ch_segmented_192_16_3_w'] = TensorMap(
-    'lax_4ch_segmented', Interpretation.CATEGORICAL, shape=(192, 160, 16, 14),
-    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
 )
@@ -1953,93 +1900,59 @@ def sax_tensor(b_series_prefix):
     def sax_tensor_from_file(tm, hd5, dependents={}):
         missing = 0
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.dependent_map is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        if tm.axes() == 3:
-            for b in range(tm.shape[-1]):
-                try:
-                    tm_shape = (tm.shape[0], tm.shape[1])
-                    tensor[:, :, b] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_frame_b{b}/instance_0'], dtype=np.float32))
-                except KeyError:
-                    missing += 1
-                    tensor[:, :, b] = 0
-        else:
-            for b in range(tm.shape[-2]):
-                try:
-                    tm_shape = (tm.shape[0], tm.shape[1])
-                    tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_frame_b{b}/instance_0'], dtype=np.float32))
-                    index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_mask_b{b}/instance_0'], dtype=np.float32))
-                    if tm.dependent_map is not None:
-                        dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-                except KeyError:
-                    missing += 1
-                    tensor[:, :, b, 0] = 0
-                    if tm.dependent_map is not None:
-                        dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
-            if missing == tm.shape[-2]:
-                raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]} looked at: {tm.path_prefix}/{b_series_prefix}')
+        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+        for b in range(tm.shape[-2]):
+            try:
+                tm_shape = (tm.shape[0], tm.shape[1])
+                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{b_series_prefix}_frame_b{b}'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{b_series_prefix}_mask_b{b}'], dtype=np.float32))
+                dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
+            except KeyError:
+                missing += 1
+                tensor[:, :, b, 0] = 0
+                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+        if missing == tm.shape[-2]:
+            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
         return tensor
     return sax_tensor_from_file
 
 
 TMAPS['sax_all_diastole_segmented'] = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3), path_prefix='ukb_cardiac_mri',
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
 )
 TMAPS['sax_all_diastole_segmented_weighted'] = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3), path_prefix='ukb_cardiac_mri',
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_diastole_segmented'),
 )
 
 TMAPS['sax_all_diastole'] = TensorMap(
-    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
+    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
     dependent_map=TMAPS['sax_all_diastole_segmented'],
 )
 TMAPS['sax_all_diastole_weighted'] = TensorMap(
-    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
+    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
     dependent_map=TMAPS['sax_all_diastole_segmented_weighted'],
 )
 
 TMAPS['sax_all_systole_segmented'] = TensorMap(
-    'sax_all_systole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3), path_prefix='ukb_cardiac_mri',
+    'sax_all_systole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
 )
 TMAPS['sax_all_systole_segmented_weighted'] = TensorMap(
-    'sax_all_systole_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3), path_prefix='ukb_cardiac_mri',
+    'sax_all_systole_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'),
 )
 
 TMAPS['sax_all_systole'] = TensorMap(
-    'sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'), path_prefix='ukb_cardiac_mri',
+    'sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
     dependent_map=TMAPS['sax_all_systole_segmented'],
 )
 TMAPS['sax_all_systole_weighted'] = TensorMap(
-    'sax_all_systole_weighted', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'), path_prefix='ukb_cardiac_mri',
+    'sax_all_systole_weighted', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
     dependent_map=TMAPS['sax_all_systole_segmented_weighted'],
-)
-
-TMAPS['sax_all_diastole_192_segmented'] = TensorMap(
-    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 224, 13, 3), path_prefix='ukb_cardiac_mri',
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-)
-TMAPS['sax_all_diastole_192_segmented_weighted'] = TensorMap(
-    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 224, 13, 3), path_prefix='ukb_cardiac_mri',
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy([1.0, 8.0, 8.0], 'sax_all_diastole_192_segmented'),
-)
-
-TMAPS['sax_all_diastole_192'] = TensorMap(
-    'sax_all_diastole_192', shape=(192, 224, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
-    dependent_map=TMAPS['sax_all_diastole_192_segmented'],
-)
-TMAPS['sax_all_diastole_192_weighted'] = TensorMap(
-    'sax_all_diastole_192', shape=(192, 224, 13, 1), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
-    dependent_map=TMAPS['sax_all_diastole_192_segmented_weighted'],
-)
-TMAPS['sax_all_diastole_192_3d'] = TensorMap(
-    'sax_all_diastole_192_3d', shape=(192, 224, 13), tensor_from_file=sax_tensor('diastole'), path_prefix='ukb_cardiac_mri',
 )
 
 
@@ -2051,17 +1964,16 @@ def all_sax_tensor(total_b_slices=13):
         for b in range(total_b_slices):
             try:
                 tm_shape = (tm.shape[0], tm.shape[1])
-                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_frame_b{b}/instance_0'], dtype=np.float32))
-                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_mask_b{b}/instance_0'], dtype=np.float32))
+                tensor[:, :, b, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'diastole_frame_b{b}'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'diastole_mask_b{b}'], dtype=np.float32))
                 dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-                tensor[:, :, b + total_b_slices, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_frame_b{b}/instance_0'], dtype=np.float32))
-                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_mask_b{b}/instance_0'], dtype=np.float32))
+                tensor[:, :, b + total_b_slices, 0] = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'systole_frame_b{b}'], dtype=np.float32))
+                index_tensor = _pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'systole_mask_b{b}'], dtype=np.float32))
                 dependents[tm.dependent_map][:, :, b + total_b_slices, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-            except KeyError as e:
+            except KeyError:
                 missing += 1
                 tensor[:, :, b, 0] = 0
                 dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
-                logging.info(f'got e::::\n{e} gues is: {tm.hd5_key_guess()}')
         if missing == tm.shape[-2]:
             raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
         return tensor
@@ -2074,8 +1986,8 @@ TMAPS['sax_all_segmented_weighted'] = TensorMap(
     channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_segmented'),
 )
 
-TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented'], path_prefix='ukb_cardiac_mri')
-TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'], path_prefix='ukb_cardiac_mri')
+TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented'])
+TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])
 
 
 def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str='ukb_cardiac_mri') -> Callable:
@@ -2141,7 +2053,7 @@ def _bounding_box_channel_map(total_axes: int) -> Dict[str, int]:
 
 TMAPS['lax_3ch_lv_cavity_bbox_slice0'] = TensorMap(
     'lax_3ch_lv_cavity_bbox_slice0', Interpretation.MESH, shape=(4,),
-    tensor_from_file=_bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_cavity']),
+    tensor_from_file=_bounding_box_from_categorical((160, 160), 'ukb_cardiac_mri/cine_segmented_lax_3ch_annotated_1/instance_0', MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity']),
     channel_map=_bounding_box_channel_map(2),
 )
 TMAPS['lax_3ch_left_atrium_bbox_slice0'] = TensorMap(

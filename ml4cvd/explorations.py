@@ -313,7 +313,7 @@ def str2date(d):
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output: TensorMap, model, test_data, max_samples=16):
+def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output: TensorMap, model, test_data, max_samples=16, heat=0.7):
     for tm in tensor_maps_in:
         if 'next' not in tm.name and tm.interpretation == Interpretation.LANGUAGE:
             language_input = tm
@@ -329,7 +329,7 @@ def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output:
                 burn_in[0, k, language_output.channel_map[c]] = 1.0
             cur_test = {language_input.input_name(): burn_in}
             prediction = model.predict(cur_test)
-            next_token = index_2_token[_sample_with_heat(prediction[0, :], 0.7)]
+            next_token = index_2_token[_sample_with_heat(prediction[0, :], heat)]
             sentence += next_token
         logging.info(f'Model completed sentence:{sentence}')
 
@@ -421,9 +421,6 @@ def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples:
             elif tm.is_categorical() and tm.axes() == 1:
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
-            elif tm.is_time_to_event():
-                label_dict[tm][i] = test_labels[tm][i, 0]
-                continuous_labels.append(tm)
 
     return label_dict, categorical_labels, continuous_labels
 
