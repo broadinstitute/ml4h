@@ -2038,7 +2038,6 @@ parquet_features = [
     'd_hip',
     'c_ethnicity_white',
     'c_ethnicity_black',
-    'c_chest_pain',
     'd_biochemistry_30010',
     'd_biochemistry_30020',
     'd_biochemistry_30030',
@@ -2107,7 +2106,7 @@ def _parquet_tensor_from_file(tm, hd5, dependents={}):
     return tensor
 
 for pf in parquet_features:
-    interpretation = Interpretation.CONTINUOUS if pf.startswith('d_') else Interpretation.CATEGORICAL
+    interpretation = Interpretation.CONTINUOUS if (pf.startswith('d_')) else Interpretation.CATEGORICAL
     if interpretation is Interpretation.CONTINUOUS:
         TMAPS[pf] = TensorMap(
             pf, interpretation,
