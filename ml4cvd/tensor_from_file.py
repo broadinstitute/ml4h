@@ -2098,9 +2098,12 @@ parquet_features = [
 ]
 
 def _parquet_tensor_from_file(tm, hd5, dependents={}):
-    tensor = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name, _pass_nan)
+    tensor = np.zeros(tm.shape)
+    arr = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name, _pass_nan)
     if tm.interpretation is Interpretation.CATEGORICAL:
-        tensor = to_categorical(tensor)
+        tensor[int(arr)] = 1.0
+    else:
+        tensor[:] = arr
     return tensor
 
 for pf in parquet_features:
