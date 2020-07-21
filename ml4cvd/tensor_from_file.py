@@ -1633,7 +1633,6 @@ TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap(
 )
 
 
-
 def _pad_crop_tensor(tm, hd5, dependents={}):
     return _pad_or_crop_array_to_shape(tm.shape, np.array(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32))
 
@@ -1938,7 +1937,7 @@ TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_fil
 TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])
 
 
-def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str='ukb_cardiac_mri') -> Callable:
+def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str = 'ukb_cardiac_mri') -> Callable:
     """Get semantic segmentation with label index as pixel values for an MRI slice"""
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(shape, dtype=np.float32)
@@ -2036,3 +2035,139 @@ TMAPS['cine_segmented_ao_ascending_aorta_bbox'] = TensorMap(
     'cine_segmented_ao_ascending_aorta_bbox', Interpretation.MESH, shape=(6,), tensor_from_file=abbfc,
     channel_map=_bounding_box_channel_map(3),
 )
+
+parquet_features = [
+    'birthdate',
+    'enroll_date',
+    'enroll_age',
+    'death_date',
+    'death_age',
+    'death_censor_date',
+    'death_censor_age',
+    'phenotype_censor_date',
+    'phenotype_censor_age',
+    'lost_to_followup_date',
+    'lost_to_followup_age',
+    'computed_date',
+    'missing_fields',
+    'has_gp_data',
+    'prevalent_mi',
+    'incident_mi',
+    'prevalent_afib',
+    'incident_afib',
+    'prevalent_stroke',
+    'incident_stroke',
+    'prevalent_hf',
+    'incident_hf',
+    'prevalent_brady',
+    'incident_brady',
+    'prevalent_vent_arr',
+    'incident_vent_arr',
+    'prevalent_supra_arr',
+    'incident_supra_arr',
+    'prevalent_valvular',
+    'incident_valvular',
+    'prevalent_venous_thrombo',
+    'incident_venous_thrombo',
+    'prevalent_intracranial',
+    'incident_intracranial',
+    'd_age',
+    'c_sex',
+    'c_antihypertensive',
+    'c_lipidlowering',
+    'd_systolic_bp',
+    'd_diastolic_bp',
+    'd_pulse_rate',
+    'c_diabetes',
+    'd_weight',
+    'd_height',
+    'd_waist',
+    'd_hip',
+    'c_ethnicity_white',
+    'c_ethnicity_black',
+    'd_biochemistry_30010',
+    'd_biochemistry_30020',
+    'd_biochemistry_30030',
+    'd_biochemistry_30040',
+    'd_biochemistry_30050',
+    'd_biochemistry_30060',
+    'd_biochemistry_30070',
+    'd_biochemistry_30080',
+    'd_biochemistry_30090',
+    'd_biochemistry_30100',
+    'd_biochemistry_30110',
+    'd_biochemistry_30120',
+    'd_biochemistry_30130',
+    'd_biochemistry_30140',
+    'd_biochemistry_30150',
+    'd_biochemistry_30160',
+    'd_biochemistry_30170',
+    'd_biochemistry_30180',
+    'd_biochemistry_30190',
+    'd_biochemistry_30200',
+    'd_biochemistry_30210',
+    'd_biochemistry_30220',
+    'd_biochemistry_30230',
+    'd_biochemistry_30240',
+    'd_biochemistry_30250',
+    'd_biochemistry_30260',
+    'd_biochemistry_30270',
+    'd_biochemistry_30280',
+    'd_biochemistry_30290',
+    'd_biochemistry_30300',
+    'd_biochemistry_30600',
+    'd_biochemistry_30610',
+    'd_biochemistry_30620',
+    'd_biochemistry_30630',
+    'd_biochemistry_30640',
+    'd_biochemistry_30650',
+    'd_biochemistry_30670',
+    'd_biochemistry_30680',
+    'd_biochemistry_30690',
+    'd_biochemistry_30700',
+    'd_biochemistry_30710',
+    'd_biochemistry_30720',
+    'd_biochemistry_30730',
+    'd_biochemistry_30740',
+    'd_biochemistry_30750',
+    'd_biochemistry_30760',
+    'd_biochemistry_30770',
+    'd_biochemistry_30780',
+    'd_biochemistry_30810',
+    'd_biochemistry_30830',
+    'd_biochemistry_30840',
+    'd_biochemistry_30850',
+    'd_biochemistry_30860',
+    'd_biochemistry_30870',
+    'd_biochemistry_30880',
+    'd_biochemistry_30890',
+]
+
+def _parquet_tensor_from_file(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape)
+    arr = _get_tensor_at_first_date(hd5, tm.path_prefix, tm.name, _pass_nan)
+    if tm.interpretation is Interpretation.CATEGORICAL:
+        tensor[int(arr)] = 1.0
+    else:
+        tensor[:] = arr
+    return tensor
+
+for pf in parquet_features:
+    interpretation = Interpretation.CONTINUOUS if (pf.startswith('d_')) else Interpretation.CATEGORICAL
+    if interpretation is Interpretation.CONTINUOUS:
+        TMAPS[pf] = TensorMap(
+            pf, interpretation,
+            path_prefix='ukb_tabular_data',
+            tensor_from_file=_parquet_tensor_from_file,
+            shape=(1,),
+        )
+    elif interpretation is Interpretation.CATEGORICAL:
+        TMAPS[pf] = TensorMap(
+            pf, interpretation,
+            path_prefix='ukb_tabular_data',
+            tensor_from_file=_parquet_tensor_from_file,
+            channel_map = {
+                f'no_{pf}': 0,
+                f'yes_{pf}': 1,
+            },
+        )

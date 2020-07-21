@@ -18,7 +18,7 @@ import traceback
 from functools import partial
 from itertools import product
 from collections import Counter, defaultdict
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, TextIO
 
 import h5py
 import imageio
@@ -40,7 +40,6 @@ from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 from ml4cvd.defines import StorageType, IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
-
 
 
 MRI_MIN_RADIUS = 2
@@ -167,6 +166,52 @@ def write_tensors(
         logging.info("Populated {} in {} seconds.".format(tp, elapsed_time))
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
+
+
+def write_tensors_from_csv(
+    tensors, tensor_source, min_sample_id, max_sample_id, sample_header='sample_id',
+    path_prefix='ukb_tabular_data', delimiter='\t',
+):
+    stats = Counter()
+    reader = csv.reader(open(tensor_source), delimiter=delimiter)
+    header = next(reader)
+    sample_index = header.index(sample_header)
+    for row in reader:
+        sample_id = row[sample_index]
+        if not min_sample_id <= int(sample_id) < max_sample_id:
+            continue
+        stats[sample_header + '_' + sample_id] += 1
+        tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
+        if not os.path.exists(os.path.dirname(tensor_file)):
+            os.makedirs(os.path.dirname(tensor_file))
+        try:
+            with h5py.File(tensor_file, 'a') as hd5:
+                for value, column_header in zip(row, header):
+                    if column_header == sample_header:
+                        continue
+                    tp = tensor_path(path_prefix, column_header)
+                    if tp in hd5:
+                        stats['skipped'] += 1
+                        continue
+                    else:
+                        storage_type = StorageType.STRING
+                        if column_header.startswith('c_'):
+                            storage_type=StorageType.CATEGORICAL_FLAG
+                            try:
+                                value = float(value)
+                            except ValueError:
+                                value = 1.0 if 'true' in value.lower() else 0.0
+                        elif column_header.startswith('d_'):
+                            storage_type=StorageType.CONTINUOUS
+                            value = float(value)
+                        elif column_header.startswith('incident_') or column_header.startswith('prevalent_'):
+                            storage_type=StorageType.CATEGORICAL_FLAG
+                            value = float(value)
+                        create_tensor_in_hd5(hd5, path_prefix, column_header, value, stats, storage_type=storage_type)
+                        stats['created'] += 1
+        except OSError:
+            logging.warning('File already exists')
+            continue
 
 
 def write_tensors_from_dicom_pngs(
@@ -507,7 +552,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
-                logging.exception(f'Got key error trying to make anatomical mask, skipping.')
+                logging.exception('Got key error trying to make anatomical mask, skipping.')
                 continue
 
             _save_pixel_dimensions_if_missing(slicer, series, hd5)
@@ -1323,5 +1368,4 @@ def _prune_sample(
         return True
     if len(xml_field_ids) > 0 and not _sample_has_ecgs(xml_folder, xml_field_ids, sample_id):
         return True
-
     return False
