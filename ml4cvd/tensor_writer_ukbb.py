@@ -1360,7 +1360,7 @@ def _log_extreme_n(stats, n) -> None:
 
 def _prune_sample(
     sample_id: int, min_sample_id: int, max_sample_id: int, mri_field_ids: List[int],
-    xml_field_ids: List[int], zip_folder: str, xml_folder: str, csv_dataframe: pd.DataFrame,
+    xml_field_ids: List[int], zip_folder: str, xml_folder: str,
 ):
     """Return True if the sample ID is missing associated MRI, EKG, or GT data.  Or if the sample_id is below the given minimum."""
 
