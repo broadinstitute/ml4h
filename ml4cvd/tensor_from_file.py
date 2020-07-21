@@ -1586,7 +1586,6 @@ TMAPS['cine_segmented_ao_dist_slice0'] = TensorMap(
 )
 
 
-
 def _pad_crop_tensor(tm, hd5, dependents={}):
     return _pad_or_crop_array_to_shape(tm.shape, np.array(tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32))
 
@@ -1891,7 +1890,7 @@ TMAPS['sax_all'] = TensorMap('sax_all', shape=(256, 256, 26, 1), tensor_from_fil
 TMAPS['sax_all_weighted'] = TensorMap('sax_all_weighted', shape=(256, 256, 26, 1), tensor_from_file=all_sax_tensor(), dependent_map=TMAPS['sax_all_segmented_weighted'])
 
 
-def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str='ukb_cardiac_mri') -> Callable:
+def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str = 'ukb_cardiac_mri') -> Callable:
     """Get semantic segmentation with label index as pixel values for an MRI slice"""
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(shape, dtype=np.float32)

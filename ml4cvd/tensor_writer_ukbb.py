@@ -28,7 +28,6 @@ import zipfile
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
-import pandas as pd
 import nibabel as nib
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
@@ -41,7 +40,6 @@ from ml4cvd.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_
 from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED_CHANNEL_MAP, MRI_ANNOTATION_CHANNEL_MAP, MRI_ANNOTATION_NAME
 from ml4cvd.defines import StorageType, IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHAR, CONCAT_CHAR, HD5_GROUP_CHAR, DATE_FORMAT
 from ml4cvd.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
-
 
 
 MRI_MIN_RADIUS = 2
@@ -551,7 +549,7 @@ def _tensorize_short_axis_segmented_cardiac_mri(
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
-                logging.exception(f'Got key error trying to make anatomical mask, skipping.')
+                logging.exception('Got key error trying to make anatomical mask, skipping.')
                 continue
 
             _save_pixel_dimensions_if_missing(slicer, series, hd5)
