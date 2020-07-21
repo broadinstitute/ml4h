@@ -351,11 +351,6 @@ def _sample_has_ecgs(xml_folder, xml_field_ids, sample_id) -> bool:
     return False
 
 
-def _sample_in_csv(csv_file, sample_id) -> bool:
-    sample_str = str(sample_id)
-    return
-
-
 def _dicts_and_plots_from_tensorization(
     a_id: str,
     output_folder: str,
