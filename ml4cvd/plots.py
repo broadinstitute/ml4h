@@ -33,6 +33,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_prec
 from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
 from sklearn.calibration import calibration_curve
 from sksurv.metrics import concordance_index_censored
+
 import seaborn as sns
 from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
@@ -76,7 +77,7 @@ ECG_REST_PLOT_AMP_LEADS = [
 
 def evaluate_predictions(
     tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, title: str, folder: str, test_paths: List[str] = None,
-    max_melt: int = 30000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+    max_melt: int = 30000, protected: Dict[TensorMap, np.ndarray] = {}, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
@@ -89,6 +90,7 @@ def evaluate_predictions(
     :param folder: The folder to save the plots at
     :param test_paths: The tensor paths that were predicted
     :param max_melt: For multi-dimensional prediction the maximum number of prediction to allow in the flattened array
+    :param protected: TensorMaps and tensors sensitive to bias
     :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
     :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
     :return: Dictionary of performance metrics with string keys for labels and float values
@@ -99,14 +101,14 @@ def evaluate_predictions(
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -115,7 +117,7 @@ def evaluate_predictions(
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -124,7 +126,7 @@ def evaluate_predictions(
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -145,12 +147,12 @@ def evaluate_predictions(
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, new_title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, protected, new_title, folder))
         calibration_title = f'{title}_at_{tm.days_window}_days'
         plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, calibration_title, folder)
         plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder, tm.days_window)
     elif tm.is_language():
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
+        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
@@ -534,6 +536,7 @@ def plot_survivorship(
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(events)
+
     sick_per_step = 0
     censored = 0
     survivorship = [1.0]
@@ -550,6 +553,7 @@ def plot_survivorship(
     plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(events) // 2 for g in groups}
+
     predicted_sick = {g: 0 for g in groups}
     predicted_days = defaultdict(list)
     predicted_survival = defaultdict(list)
@@ -564,8 +568,11 @@ def plot_survivorship(
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
-        plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o', label=f'{group} group had {predicted_sick[group]} events')
-    plt.title(f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, {100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+        plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o',
+                 label=f'{group} group had {predicted_sick[group]} events')
+
+    plt.title(f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, '
+              f'{100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="lower left")
@@ -1549,7 +1556,7 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
-def plot_roc_per_class(prediction, truth, labels, title, prefix='./figures/'):
+def plot_roc_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
     lw = 2
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
