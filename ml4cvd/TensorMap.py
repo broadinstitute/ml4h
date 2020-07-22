@@ -395,12 +395,20 @@ class TensorMap(object):
             self.metrics = []
 
 
-def make_range_validator(minimum: float, maximum: float):
-    def _range_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-        if not ((tensor > minimum).all() and (tensor < maximum).all()):
+class RangeValidator:
+    def __init__(self, minimum: float, maximum: float):
+        self.minimum = minimum
+        self.maximum = maximum
+
+    def __call__(self, tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
+        if not ((tensor > self.minimum).all() and (tensor < self.maximum).all()):
             raise ValueError(f"TensorMap {tm.name} failed range check.")
 
-    return _range_validator
+    def __str__(self):
+        return f"Range Validator (min, max) = ({self.minimum}, {self.maximum})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def no_nans(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):

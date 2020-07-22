@@ -1,12 +1,10 @@
 # Imports: standard library
 import os
-import csv
+import re
 import copy
 import logging
 import datetime
-from typing import Dict, List, Tuple, Union, Callable
-from itertools import product, combinations
-from collections import defaultdict
+from typing import Dict, List, Tuple, Union, Callable, Optional
 
 # Imports: third party
 import h5py
@@ -26,12 +24,11 @@ from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.TensorMap import (
     TensorMap,
     Interpretation,
+    RangeValidator,
     TimeSeriesOrder,
-    str2date,
     decompress_data,
-    make_range_validator,
 )
-from ml4cvd.normalizer import Standardize, ZeroMeanStd1
+from ml4cvd.normalizer import Standardize
 
 YEAR_DAYS = 365.26
 CARDIAC_SURGERY_OUTCOMES_CSV = "/data/sts-data/mgh-preop-ecg-outcome-labels.csv"
@@ -44,11 +41,13 @@ def _hd5_filename_to_mrn_int(filename: str) -> int:
 
 
 def _get_ecg_dates(tm, hd5):
+    # preserve state across tensor maps
+    # keyed by the mrn, time series order, tmap shape
     if not hasattr(_get_ecg_dates, "mrn_lookup"):
         _get_ecg_dates.mrn_lookup = dict()
     mrn = _hd5_filename_to_mrn_int(hd5.filename)
-    if mrn in _get_ecg_dates.mrn_lookup:
-        return _get_ecg_dates.mrn_lookup[mrn]
+    if (mrn, tm.time_series_order, tm.shape) in _get_ecg_dates.mrn_lookup:
+        return _get_ecg_dates.mrn_lookup[(mrn, tm.time_series_order, tm.shape)]
 
     dates = list(hd5[tm.path_prefix])
     if tm.time_series_lookup is not None:
@@ -68,7 +67,7 @@ def _get_ecg_dates(tm, hd5):
     start_idx = tm.time_series_limit if tm.time_series_limit is not None else 1
     dates = dates[-start_idx:]  # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
-    _get_ecg_dates.mrn_lookup[mrn] = dates
+    _get_ecg_dates.mrn_lookup[(mrn, tm.time_series_order, tm.shape)] = dates
     return dates
 
 
@@ -105,7 +104,7 @@ def _resample_voltage(voltage, desired_samples):
     elif len(voltage) < desired_samples:
         if desired_samples % len(voltage) == 0:
             x = np.arange(len(voltage))
-            x_interp = np.linspace(0, len(voltage), len(desired_samples))
+            x_interp = np.linspace(0, len(voltage), desired_samples)
             return np.interp(x_interp, x, voltage)
         else:
             length_mismatch = True
@@ -186,101 +185,66 @@ def _warp_ecg(ecg: np.array):
     return warped_ecg
 
 
-# Dict[str, Callable]
-augmentations = {
+name2augmentations = {
     "crop": _crop_ecg,
     "noise": _noise_ecg,
     "warp": _warp_ecg,
 }
 
 
-def _make_augmentation_combinations(
-    augmentations: Dict[str, Callable],
-) -> Dict[str, List[Callable]]:
-    """Iterate through all combinations of augmentations, and return a dictionary
-    of callables that are keyed by the concatenated names"""
-    # Initialize dict in which to store augmentation combos
-    unique_augmentations = dict()
-
-    # Iterate through all possible lengths, e.g. 1, 2, 3-augment combos
-    for r in range(1, len(augmentations) + 1):
-
-        # Iterate through unique augmentation sets
-        for aug_set in list(combinations(augmentations, r)):
-
-            # Get list of augmentation functions for this set
-            aug_funcs = [augmentations[aug] for aug in aug_set if aug in augmentations]
-
-            # Get single string of name to append to TMap name
-            aug_name = "_" + "_".join(sorted(aug_set))
-
-            unique_augmentations[aug_name] = aug_funcs
-
-    # Add empty entry for no augmentation
-    unique_augmentations[""] = None
-
-    return unique_augmentations
-
-
-# Generates a diverse family of ECG TMaps with name modifications:
+# Generates ECG voltage TMaps that are given by the name format:
 #
-#    [12_lead_]ecg_{length}[_exact][_std][_augmentations]
+#       [12_lead_]ecg_{length}[_exact][_std][_augmentations]
 #
-#    ecg_625     ecg_625_std     ecg_625_exact_std
-#    ecg_1250    ecg_1250_std    ecg_1250_exact_std
-#    ecg_2500    ecg_2500_std    ecg_2500_exact_std
-#    ecg_5000    ecg_5000_std    ecg_5000_exact_std
+# Required:
+#   length: the number of samples present in each lead.
 #
-# plus all permutations of above with 1-3 augmentations per TMap (see below).
+# Optional:
+#   12_lead: use the 12 clinical leads.
+#   exact: only return voltages when the raw data has exactly {length} samples in each lead.
+#   std: standardize voltages using mean = 0, std = 2000.
+#   augmentations: apply crop, noise, and warp transformations to voltages.
 #
-# length options: number of samples in ECG voltage array, and if we resample
-#    None:   resample input to given length
-#    _exact: only return tensors with len(array) == length
+# Examples:
 #
-# normalize options:
-#    None: return unmodified voltage data (i.e. raw)
-#    _std: normalize with normalize mean = 0, std = 2000
-#
-# augmentation options: modifications to arrays
-#    crop:  isolate a random subsection of the ECG
-#    noise: add Gaussian noise
-#    warp:  add bendiness
-#
-# When using these generated TMaps, you must use the exact name;
-#    valid:     ecg_2500_exact_std_crop_noise
-#    not valid: ecg_2500_exact_std_noise_crop
-#    not valid: ecg_2500_std_exact_noise_crop
-#
-leads_options = [ECG_REST_INDEPENDENT_LEADS, ECG_REST_AMP_LEADS]
-length_options = [625, 1250, 2500, 5000]
-exact_options = [True, False]
-normalize_options = [None, Standardize(mean=0, std=2000)]
-augmentation_options = _make_augmentation_combinations(augmentations)
-
-for leads, length, exact, normalize, augmentation in product(
-    leads_options,
-    length_options,
-    exact_options,
-    normalize_options,
-    augmentation_options,
-):
-    # Some options are Booleans or callables and must be converted into text
-    num_leads = f"{len(leads)}_lead_" if len(leads) != 8 else ""
-    exact_text = "_exact" if exact else ""
-    normalize_text = "_std" if isinstance(normalize, Standardize) else ""
-    name = f"{num_leads}ecg_{length}{exact_text}{normalize_text}{augmentation}"
-
-    TMAPS[name] = TensorMap(
-        name,
-        shape=(None, length, len(leads)),
-        path_prefix=ECG_PREFIX,
-        tensor_from_file=make_voltage(exact),
-        normalization=normalize,
-        channel_map=leads,
-        time_series_limit=0,
-        validator=validator_not_all_zero,
-        augmentations=augmentation_options[augmentation],
+#       valid: ecg_2500_exact_std
+#       valid: 12_lead_ecg_625_crop_warp
+#       invalid: ecg_2500_noise_std
+def build_ecg_voltage_tensor_map(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
+    name2tensormap = dict()
+    voltage_tm_pattern = re.compile(
+        r"^(12_lead_)?ecg_\d+(_exact)?(_std)?(_warp|_crop|_noise)*$",
     )
+    for needed_name in needed_tensor_maps:
+        if voltage_tm_pattern.match(needed_name) is None:
+            continue
+
+        leads = (
+            ECG_REST_AMP_LEADS
+            if "12_lead" in needed_name
+            else ECG_REST_INDEPENDENT_LEADS
+        )
+        length = int(needed_name.split("ecg_")[1].split("_")[0])
+        exact = "exact" in needed_name
+        normalization = Standardize(mean=0, std=2000) if "std" in needed_name else None
+        augmentations = [
+            augment_function
+            for augment_option, augment_function in name2augmentations.items()
+            if augment_option in needed_name
+        ]
+
+        name2tensormap[needed_name] = TensorMap(
+            name=needed_name,
+            shape=(None, length, len(leads)),
+            path_prefix=ECG_PREFIX,
+            tensor_from_file=make_voltage(exact),
+            normalization=normalization,
+            channel_map=leads,
+            time_series_limit=0,
+            validator=validator_not_all_zero,
+            augmentations=augmentations,
+        )
+    return name2tensormap
 
 
 def voltage_stat(tm, hd5, dependents={}):
@@ -941,34 +905,34 @@ TMAPS[tmap_name] = TensorMap(
 # fmt: off
 # TMap name      ->      (hd5 key,          fill, validator,                       normalization)
 interval_key_map = {
-    "ecg_rate":          ("ventricularrate", 0,   make_range_validator(10, 200),   None),
-    "ecg_rate_std":      ("ventricularrate", 0,   make_range_validator(10, 200),   Standardize(mean=70, std=16)),
-    "ecg_pr":            ("printerval",      0,   make_range_validator(50, 500),   None),
-    "ecg_pr_std":        ("printerval",      0,   make_range_validator(50, 500),   Standardize(mean=175, std=36)),
-    "ecg_qrs":           ("qrsduration",     0,   make_range_validator(20, 400),   None),
-    "ecg_qrs_std":       ("qrsduration",     0,   make_range_validator(20, 400),   Standardize(mean=104, std=26)),
-    "ecg_qt":            ("qtinterval",      0,   make_range_validator(100, 800),  None),
-    "ecg_qt_std":        ("qtinterval",      0,   make_range_validator(100, 800),  Standardize(mean=411, std=45)),
-    "ecg_qtc":           ("qtcorrected",     0,   make_range_validator(100, 800),  None),
-    "ecg_qtc_std":       ("qtcorrected",     0,   make_range_validator(100, 800),  Standardize(mean=440, std=39)),
-    "ecg_paxis":         ("paxis",           999, make_range_validator(-90, 360),  None),
-    "ecg_paxis_std":     ("paxis",           999, make_range_validator(-90, 360),  Standardize(mean=47, std=30)),
-    "ecg_raxis":         ("raxis",           999, make_range_validator(-90, 360),  None),
-    "ecg_raxis_std":     ("raxis",           999, make_range_validator(-90, 360),  Standardize(mean=18, std=53)),
-    "ecg_taxis":         ("taxis",           999, make_range_validator(-90, 360),  None),
-    "ecg_taxis_std":     ("taxis",           999, make_range_validator(-90, 360),  Standardize(mean=58, std=63)),
-    "ecg_qrs_count":     ("qrscount",        -1,  make_range_validator(0, 100),    None),
-    "ecg_qrs_count_std": ("qrscount",        -1,  make_range_validator(0, 100),    Standardize(mean=12, std=3)),
-    "ecg_qonset":        ("qonset",          -1,  make_range_validator(0, 500),    None),
-    "ecg_qonset_std":    ("qonset",          -1,  make_range_validator(0, 500),    Standardize(mean=204, std=36)),
-    "ecg_qoffset":       ("qoffset",         -1,  make_range_validator(0, 500),    None),
-    "ecg_qoffset_std":   ("qoffset",         -1,  make_range_validator(0, 500),    Standardize(mean=252, std=44)),
-    "ecg_ponset":        ("ponset",          -1,  make_range_validator(0, 1000),   None),
-    "ecg_ponset_std":    ("ponset",          -1,  make_range_validator(0, 1000),   Standardize(mean=122, std=27)),
-    "ecg_poffset":       ("poffset",         -1,  make_range_validator(10, 500),   None),
-    "ecg_poffset_std":   ("poffset",         -1,  make_range_validator(10, 500),   Standardize(mean=170, std=42)),
-    "ecg_toffset":       ("toffset",         -1,  make_range_validator(0, 1000),   None),
-    "ecg_toffset_std":   ("toffset",         -1,  make_range_validator(0, 1000),   Standardize(mean=397, std=73)),
+    "ecg_rate":          ("ventricularrate", 0,   RangeValidator(10, 200),   None),
+    "ecg_rate_std":      ("ventricularrate", 0,   RangeValidator(10, 200),   Standardize(mean=70, std=16)),
+    "ecg_pr":            ("printerval",      0,   RangeValidator(50, 500),   None),
+    "ecg_pr_std":        ("printerval",      0,   RangeValidator(50, 500),   Standardize(mean=175, std=36)),
+    "ecg_qrs":           ("qrsduration",     0,   RangeValidator(20, 400),   None),
+    "ecg_qrs_std":       ("qrsduration",     0,   RangeValidator(20, 400),   Standardize(mean=104, std=26)),
+    "ecg_qt":            ("qtinterval",      0,   RangeValidator(100, 800),  None),
+    "ecg_qt_std":        ("qtinterval",      0,   RangeValidator(100, 800),  Standardize(mean=411, std=45)),
+    "ecg_qtc":           ("qtcorrected",     0,   RangeValidator(100, 800),  None),
+    "ecg_qtc_std":       ("qtcorrected",     0,   RangeValidator(100, 800),  Standardize(mean=440, std=39)),
+    "ecg_paxis":         ("paxis",           999, RangeValidator(-90, 360),  None),
+    "ecg_paxis_std":     ("paxis",           999, RangeValidator(-90, 360),  Standardize(mean=47, std=30)),
+    "ecg_raxis":         ("raxis",           999, RangeValidator(-90, 360),  None),
+    "ecg_raxis_std":     ("raxis",           999, RangeValidator(-90, 360),  Standardize(mean=18, std=53)),
+    "ecg_taxis":         ("taxis",           999, RangeValidator(-90, 360),  None),
+    "ecg_taxis_std":     ("taxis",           999, RangeValidator(-90, 360),  Standardize(mean=58, std=63)),
+    "ecg_qrs_count":     ("qrscount",        -1,  RangeValidator(0, 100),    None),
+    "ecg_qrs_count_std": ("qrscount",        -1,  RangeValidator(0, 100),    Standardize(mean=12, std=3)),
+    "ecg_qonset":        ("qonset",          -1,  RangeValidator(0, 500),    None),
+    "ecg_qonset_std":    ("qonset",          -1,  RangeValidator(0, 500),    Standardize(mean=204, std=36)),
+    "ecg_qoffset":       ("qoffset",         -1,  RangeValidator(0, 500),    None),
+    "ecg_qoffset_std":   ("qoffset",         -1,  RangeValidator(0, 500),    Standardize(mean=252, std=44)),
+    "ecg_ponset":        ("ponset",          -1,  RangeValidator(0, 1000),   None),
+    "ecg_ponset_std":    ("ponset",          -1,  RangeValidator(0, 1000),   Standardize(mean=122, std=27)),
+    "ecg_poffset":       ("poffset",         -1,  RangeValidator(10, 500),   None),
+    "ecg_poffset_std":   ("poffset",         -1,  RangeValidator(10, 500),   Standardize(mean=170, std=42)),
+    "ecg_toffset":       ("toffset",         -1,  RangeValidator(0, 1000),   None),
+    "ecg_toffset_std":   ("toffset",         -1,  RangeValidator(0, 1000),   Standardize(mean=397, std=73)),
 }
 # fmt: on
 
@@ -998,7 +962,7 @@ TMAPS[tmap_name] = TensorMap(
     tensor_from_file=make_ecg_tensor(key="weightlbs"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(100, 800),
+    validator=RangeValidator(100, 800),
 )
 
 
@@ -1041,7 +1005,7 @@ TMAPS[tmap_name] = TensorMap(
     tensor_from_file=get_ecg_age_from_hd5,
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(0, 120),
+    validator=RangeValidator(0, 120),
 )
 
 tmap_name = "ecg_age_std"
@@ -1052,47 +1016,83 @@ TMAPS[tmap_name] = TensorMap(
     tensor_from_file=get_ecg_age_from_hd5,
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(0, 120),
+    validator=RangeValidator(0, 120),
     normalization=Standardize(mean=65, std=16),
 )
 
 
-def get_ecg_age_binarize_from_hd5(
-    age_threshold: float = 70, min_age: float = 0, max_age: float = 120,
-):
-    def _tensor_from_file(tm, hd5, dependents={}):
-        ecg_dates = _get_ecg_dates(tm, hd5)
-        dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        _age_tm = copy.deepcopy(tm)
-        _age_tm.shape = (None, 1) if dynamic else (1,)
-        ages = get_ecg_age_from_hd5(_age_tm, hd5)
+# Build TensorMaps which binarize a continuous value returned by an existing tensor map
+# The following TMaps would both successfully be returned by this function:
+#   ecg_age_binary_70
+#   ecg_age_binary_70_newest
+def build_binary_tensor_map(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
+    name2tensormap = dict()
+    for needed_name in needed_tensor_maps:
+        if "_binary_" not in needed_name:
+            continue
 
-        def _binarize(age):
-            if min_age < age <= age_threshold:
-                return [1, 0]
-            elif age_threshold < age < max_age:
-                return [0, 1]
-            logging.debug(f"Could not binarize age {age} from hd5 {hd5.filename}")
-            return [0, 0]
+        # ecg_age_binary_70_newest is split into [ecg_age, 70_newest]
+        base_name, modifications = needed_name.split("_binary_")
+        if base_name not in TMAPS:
+            logging.debug(f"Base for binary TMap {needed_name} not found in ECG TMaps.")
+            continue
 
-        tensor = np.apply_along_axis(_binarize, 1 if dynamic else 0, ages)
-        return tensor
+        if "_newest" in modifications:
+            base_name += "_newest"
+        elif "_oldest" in modifications:
+            base_name += "_oldest"
+        elif "_random" in modifications:
+            base_name += "_random"
+        TMAPS.update(build_ecg_time_series_tensor_maps([base_name]))
+        base_tm = TMAPS[base_name]
+        threshold = float(modifications.split("_")[0])
 
-    return _tensor_from_file
+        if (
+            not base_tm.is_continuous()
+            or base_tm.static_axes() != 1
+            or base_tm.static_shape[0] != 1
+        ):
+            logging.warning(
+                f"Can only binarize TMap which returns one continuous value. Cannot binarize {base_name}.",
+            )
 
+        def binary_tensor_from_file(tm, hd5, dependents={}):
+            dynamic, _ = _is_dynamic_shape(tm, 1)
+            values = base_tm.tensor_from_file(base_tm, hd5)
 
-# This TMap's TFF function assumes the first entry of the channel map is <=,
-# and the second entry is >.
-tmap_name = "ecg_age_binary"
-TMAPS[tmap_name] = TensorMap(
-    name=tmap_name,
-    interpretation=Interpretation.CATEGORICAL,
-    path_prefix=ECG_PREFIX,
-    tensor_from_file=get_ecg_age_binarize_from_hd5(age_threshold=70.0),
-    channel_map={"less_or_equal": 0, "greater": 1},
-    time_series_limit=0,
-    validator=validator_not_all_zero,
-)
+            def _binarize(value):
+                if (
+                    isinstance(base_tm.validator, RangeValidator)
+                    and not base_tm.validator.minimum
+                    < value
+                    < base_tm.validator.maximum
+                ):
+                    return [0, 0]
+                elif value <= threshold:
+                    return [1, 0]
+                elif value > threshold:
+                    return [0, 1]
+                else:
+                    logging.debug(
+                        f"Could not binarize value {value} with {threshold} in hd5 {hd5.filename}",
+                    )
+                    return [0, 0]
+
+            return np.apply_along_axis(_binarize, 1 if dynamic else 0, values)
+
+        name2tensormap[needed_name] = TensorMap(
+            name=needed_name,
+            interpretation=Interpretation.CATEGORICAL,
+            path_prefix=ECG_PREFIX,
+            tensor_from_file=binary_tensor_from_file,
+            channel_map={"less_or_equal": 0, "greater": 1},
+            time_series_limit=base_tm.time_series_limit,
+            time_series_order=base_tm.time_series_order,
+            time_series_lookup=base_tm.time_series_lookup,
+            validator=validator_not_all_zero,
+        )
+
+    return name2tensormap
 
 
 def ecg_acquisition_year(tm, hd5, dependents={}):
@@ -1295,7 +1295,7 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
 
 
 def build_ecg_time_series_tensor_maps(
-    needed_tensor_maps: List[str], time_series_limit: int = 1,
+    needed_tensor_maps: List[str], time_series_limit: Optional[int] = None,
 ) -> Dict[str, TensorMap]:
     """Given a list of needed tensor maps, e.g. ["ecg_age_newest"], finds the base tmap
     e.g. "ecg_age", and creates a new tmap with the name of the needed tmap. This new
@@ -1324,7 +1324,8 @@ def build_ecg_time_series_tensor_maps(
 
         time_tmap = copy.deepcopy(TMAPS[base_name])
         time_tmap.name = needed_name
-        time_tmap.shape = time_tmap.shape[1:]
+        if time_series_limit is None:
+            time_tmap.shape = time_tmap.static_shape
         time_tmap.time_series_limit = time_series_limit
         time_tmap.time_series_order = time_series_order
         time_tmap.metrics = None
