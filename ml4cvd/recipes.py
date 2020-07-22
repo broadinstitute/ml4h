@@ -114,10 +114,6 @@ def run(args):
             if not args.learning_rate:
                 raise ValueError('Could not find learning rate.')
             train_multimodal_multitask(args)
-        elif 'tokenize' == args.mode:
-            tokenize_tensor_maps(args)
-        elif 'tokenize_text' == args.mode:
-            tokenize_text(args.app_csv)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -264,7 +260,7 @@ def infer_multimodal_multitask(args):
             csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
             if tsv_style_is_genetics:
                 csv_row *= 2
-            for y, tm in zip(reversed(prediction), no_fail_tmaps_out):
+            for y, tm in zip(prediction, no_fail_tmaps_out):
                 if len(tm.shape) == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
@@ -425,44 +421,6 @@ def saliency_maps(args):
         for channel in tm.channel_map:
             gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
             plot_saliency_maps(in_tensor, gradients, paths, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
-
-
-def tokenize_tensor_maps(args):
-    characters = set()
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
-    for path in tensor_paths:
-        with h5py.File(path, "r") as hd5:
-            for tm in filter(lambda tm: tm.is_language, args.tensor_maps_out):
-                text = str(tm.tensor_from_file(tm, hd5, dependents={}))
-                [characters.add(char) for char in text]
-    logging.info(f'Total characters: {len(characters)}')
-    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
-    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
-    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
-
-
-def _preprocess_sentence(sentence):
-    sentence = sentence.strip()
-    # creating a space between a word and the punctuation following it
-    # eg: "he is a boy." => "he is a boy ."
-    sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
-    sentence = re.sub(r'[" "]+', " ", sentence)
-    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
-    sentence = re.sub(r"[^a-zA-Z?.!,]+", " ", sentence)
-    sentence = sentence.strip()
-    # adding a start and an end token to the sentence
-    return sentence
-
-
-def tokenize_text(text_file):
-    characters = set()
-    with open(text_file) as file:
-        lines = file.readlines()
-        for line in lines:
-            [characters.add(char) for char in _preprocess_sentence(line)]
-    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
-    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
-    logging.info(f'char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n')
 
 
 def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
