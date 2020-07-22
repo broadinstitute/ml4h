@@ -1,12 +1,33 @@
+[tool.black]
+line-length="88"
+
 [tool.isort]
-line_length = "88"
-length_sort = true
-multi_line_output = "3"
-include_trailing_comma = true
-force_grid_wrap = "0"
-use_parentheses = true
+length_sort = "True"
+multi_line_output="3"
+include_trailing_comma="True"
+force_grid_wrap="0"
+use_parentheses="True"
+line_length="88"
 import_heading_stdlib = "Imports: standard library"
 import_heading_firstparty = "Imports: first party"
 import_heading_thirdparty = "Imports: third party"
 default_section = "THIRDPARTY"
 known_first_party = "ml4cvd"
+known_third_party = ["gitlint", "h5py", "matplotlib", "numpy", "pandas", "pytest"]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable="bad-continuation, missing-module-docstring, missing-function-docstring, too-few-public-methods, too-many-arguments, too-many-locals, too-many-instance-attributes, too-many-ancestors, fixme, logging-fstring-interpolation, protected-access, ungrouped-imports, too-many-statements"
+
+[tool.pylint.'SIMILARITIES']
+min-similarity-lines="10"
+ignore-comments="yes"
+ignore-docstrings="yes"
+ignore-imports="yes"
+
+[tool.pylint.'BASIC']
+argument-rgx="([a-z_][a-z0-9_]{2,30})|tm$"     # snake_case + tm
+variable-rgx="([a-z_][a-z0-9_]{2,30})|tm$"     # snake_case + tm
+const-rgx="([^\\W\\da-z][^\\Wa-z]*|__.*__|name)$"  # UPPER_CASE + name
+
+[tool.pylint.'FORMAT']
+max-line-length="88"
