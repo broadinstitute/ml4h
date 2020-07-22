@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
     parser.add_argument('--tensor_maps_protected', default=[], help='Do not set this directly. Use protected_tensors')
-    
+
     # Input and Output files and directories
     parser.add_argument(
         '--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',

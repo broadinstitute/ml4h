@@ -30,8 +30,8 @@ from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.tensor_map_maker import write_tensor_maps
 from ml4cvd.tensor_writer_partners import write_tensors_partners
 
-from ml4cvd.explorations import sample_from_char_embed_model, mri_dates, ecg_dates
-from ml4cvd.explorations import explore, predictions_to_pngs, sample_from_language_model
+from ml4cvd.explorations import mri_dates, ecg_dates
+from ml4cvd.explorations import explore, predictions_to_pngs
 from ml4cvd.explorations import tabulate_correlations_of_tensors, test_labels_to_label_map, infer_with_pixels
 from ml4cvd.explorations import plot_heatmap_of_tensors, plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
