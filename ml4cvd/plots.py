@@ -1645,20 +1645,15 @@ def subplot_roc_per_class(prediction, truth, labels, protected, title, prefix='.
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for p in protected:
-        print(f'\n name {p.name} truth shape {truth.shape} IN ROCCCC {p.name} and {p.shape} and {protected[p].shape}')
-
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
         axes[row, col].set_title(f'Protected {p.name}')
         for key in labels:
             if p.is_categorical():
                 idx2key = {v: k for k, v in p.channel_map.items()}
                 protected_indexes = protected[p][:, 0] == 1
-                print(f'\n\n protected_indexes shape {protected_indexes.shape}')
-
                 pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes],
                                                             truth[protected_indexes], labels)
                 label_text = f'{key} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
-
                 color = _hash_string_to_color(p.name + key)
                 axes[row, col].plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
             elif p.is_continuous():
@@ -1669,8 +1664,8 @@ def subplot_roc_per_class(prediction, truth, labels, protected, title, prefix='.
                 label_text = f'{key} roc={proc_auc[labels[key]]:.3f} Highest  n={np.sum(protected_indexes):.0f}'
                 color = _hash_string_to_color(p.name + key)
                 axes[row, col].plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
-                print(f'\n\n median {threshold} protected_indexes shape {protected[p].shape}')
                 axes[row, col].set_xlim([0.0, 1.0])
+
         axes[row, col].set_ylim([-0.02, 1.03])
         axes[row, col].set_ylabel(RECALL_LABEL)
         axes[row, col].set_xlabel(FALLOUT_LABEL)
