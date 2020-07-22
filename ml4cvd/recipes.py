@@ -464,6 +464,7 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
     logging.info(f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
     embeddings = []
     test_paths = []
+    protected_data = {}
     for i in range(steps):
         batch = next(generate_test)
         input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
@@ -482,6 +483,7 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
 
+    protected_data = {tm: test_labels[tm.output_name()] for tm in tensor_maps_protected}
     performance_metrics = {}
     scatters = []
     rocs = []
@@ -489,7 +491,7 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
         if tm.output_name() in scalar_predictions:
             y_predict = np.array(scalar_predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
-            performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+            performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, protected_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
