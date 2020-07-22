@@ -30,6 +30,7 @@ from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
+
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
     'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
@@ -53,11 +54,11 @@ def parse_args():
     parser.add_argument('--input_tensors', default=[], nargs='*')
     parser.add_argument('--output_tensors', default=[], nargs='*')
     parser.add_argument('--protected_tensors', default=[], nargs='*')
-    parser.add_argument('--sample_weight', default=None,  help='TensorMap key for sample weight in training.')
+    parser.add_argument('--sample_weight', default=None, help='TensorMap key for sample weight in training.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
     parser.add_argument('--tensor_maps_protected', default=[], help='Do not set this directly. Use protected_tensors')
-
+    
     # Input and Output files and directories
     parser.add_argument(
         '--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
@@ -78,7 +79,6 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
-    parser.add_argument('--text_file', default=None, help='Path to a file with text.')
     parser.add_argument(
         '--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
@@ -86,8 +86,6 @@ def parse_args():
     )
 
     # Data selection parameters
-    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
-    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
@@ -133,6 +131,10 @@ def parse_args():
     # Model Architecture Parameters
     parser.add_argument('--x', default=256, type=int, help='x tensor resolution')
     parser.add_argument('--y', default=256, type=int, help='y tensor resolution')
+    parser.add_argument('--zoom_x', default=50, type=int, help='zoom_x tensor resolution')
+    parser.add_argument('--zoom_y', default=35, type=int, help='zoom_y tensor resolution')
+    parser.add_argument('--zoom_width', default=96, type=int, help='zoom_width tensor resolution')
+    parser.add_argument('--zoom_height', default=96, type=int, help='zoom_height tensor resolution')
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
@@ -170,7 +172,7 @@ def parse_args():
     parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
-    parser.add_argument('--language_prefix', default=None, help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
+    parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
 
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
@@ -191,8 +193,8 @@ def parse_args():
              'If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
     )
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
-    parser.add_argument('--training_steps', default=72, type=int, help='Number of training batches to examine in an epoch.')
-    parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
+    parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
+    parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument(
@@ -349,6 +351,9 @@ def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
     from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
     TMAPS.update(script_tmaps)
 
+    from ml4cvd.tensor_maps_by_script import TMAPS as script_tmaps
+    TMAPS.update(script_tmaps)
+
     return TMAPS[name]
 
 
@@ -379,23 +384,12 @@ def _process_args(args):
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect)
     needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
-
-    args.tensor_maps_in = []
-    args.tensor_maps_out = []
-    if args.text_file is not None:
-        del args.input_tensors[:2]
-        del args.output_tensors[0]
-        input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
-        if args.text_one_hot:
-            args.tensor_maps_in.append(input_map)
-        else:
-            args.tensor_maps_in.extend([input_map, burn_in])
-        args.tensor_maps_out.append(output_map)
-    args.tensor_maps_in.extend([_get_tmap(it, needed_tensor_maps) for it in args.input_tensors])
+    args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
     args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     if args.sample_weight:
         assert args.sample_weight.shape == (1,)
 
+    args.tensor_maps_out = []
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
         args.tensor_maps_out.append(
