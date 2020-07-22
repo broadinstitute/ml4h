@@ -28,7 +28,7 @@ from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DE
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
