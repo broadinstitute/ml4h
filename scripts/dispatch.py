@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import time
+import socket
 import logging
 import argparse
 import datetime
@@ -24,9 +25,22 @@ q = mp.Queue()
 env = os.environ.copy()
 
 
+def _get_path_to_ecgs() -> str:
+    """Check the hostname of the machine and return the appropriate path.
+    If there is no match found, this function does not return anything, and
+    the script ends up with a non-viable path prefix to HD5 files and will fail."""
+    if "mithril" == socket.gethostname():
+        return "/data/ecg"
+    elif "anduril" == socket.gethostname():
+        return "/media/4tb1/ecg"
+    elif "stultzlab" in socket.gethostname():
+        return "/storage/shared/ecg_deidentified"
+
+
 def worker(script, bootstrap, gpu):
     env["GPU"] = gpu
     env["BOOTSTRAP"] = bootstrap
+    env["PATH_TO_ECGS"] = _get_path_to_ecgs()
 
     subprocess.run(
         f"bash {script}".split(),
@@ -70,13 +84,13 @@ def parse_args():
         "--gpus",
         nargs="+",
         required=True,
-        help="list of gpu devices to run on, specified by indices or intervals. for example, to use gpu 0, 3, 4, 5: --gpus 0 3-5",
+        help="List of gpu devices to run on, specified by indices or intervals. For example, to use gpu 0, 3, 4, and 5: --gpus 0 3-5",
     )
     parser.add_argument(
         "--bootstraps",
         nargs="+",
         default=["0-9"],
-        help="list of bootstraps to run on, same specification as gpus. default: 0-9",
+        help="List of bootstraps to run on; same specification as gpus. default: 0-9",
     )
     parser.add_argument(
         "--scripts", nargs="+", required=True, help="list of paths to scripts to run",
