@@ -431,13 +431,14 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
     rocs = []
 
     y_predictions = model.predict(test_data, batch_size=batch_size)
+    protected_data = {tm: test_labels[tm.output_name()] for tm in tensor_maps_protected}
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
         if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
-        performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+        performance_metrics.update(evaluate_predictions(tm, y, y_truth, protected_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
         if tm.is_language():
             sample_from_language_model(tensor_maps_in, tm, model, test_data, max_samples=16)
 
