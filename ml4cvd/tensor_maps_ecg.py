@@ -1320,7 +1320,9 @@ def build_ecg_time_series_tensor_maps(
 
         base_name = needed_name.split(base_split)[0]
         if base_name not in TMAPS:
-            continue
+            TMAPS.update(build_ecg_voltage_tensor_map([base_name]))
+            if base_name not in TMAPS:
+                continue
 
         time_tmap = copy.deepcopy(TMAPS[base_name])
         time_tmap.name = needed_name
