@@ -101,14 +101,14 @@ def evaluate_predictions(
         logging.info(f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}")
         plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder)
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 2:
         melt_shape = (y_predictions.shape[0] * y_predictions.shape[1], y_predictions.shape[2])
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -117,7 +117,7 @@ def evaluate_predictions(
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -126,7 +126,7 @@ def evaluate_predictions(
         idx = np.random.choice(np.arange(melt_shape[0]), min(melt_shape[0], max_melt), replace=False)
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         plot_prediction_calibration(y_predictions, y_truth, tm.channel_map, title, folder)
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -147,12 +147,12 @@ def evaluate_predictions(
         concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
         logging.info(f"{[f'{label}: {value:.3f}' for label, value in zip(concordance_return_values, c_index)]}")
         new_title = f'{title}_C_Index_{c_index[0]:0.3f}'
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, protected, new_title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f'{new_title}_vs_ROC': 0}, protected, new_title, folder))
         calibration_title = f'{title}_at_{tm.days_window}_days'
         plot_prediction_calibration(y_predictions, y_truth[:, 0, np.newaxis], {tm.name: 0}, calibration_title, folder)
         plot_survivorship(y_truth[:, 0], y_truth[:, 1], y_predictions[:, 0], tm.name, folder, tm.days_window)
     elif tm.is_language():
-        performance_metrics.update(plot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
+        performance_metrics.update(subplot_roc_per_class(y_predictions, y_truth, tm.channel_map, protected, title, folder))
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
@@ -169,6 +169,7 @@ def evaluate_predictions(
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
+        subplot_pearson_per_class(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
@@ -430,6 +431,81 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info("Saved scatter plot at: {}".format(figure_path))
+
+
+def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
+    ### labels are tm.channel_map. Looks like this: {'no_poor_data_quality': 0, 'Poor data quality': 1}
+
+    lw = 2
+    col = 0
+    row = 1
+    alpha = 0.5
+    labels_to_areas = {}
+    true_sums = np.sum(truth, axis=0)
+    total_plots = len(protected) + 1
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
+
+    for p in protected:
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_title(f'Protected {p.name}')
+        for key in labels:
+            if p.is_categorical():
+                idx2key = {v: k for k, v in p.channel_map.items()}
+                protected_indexes = protected[p][:, 0] == 1
+                print(f'\n\n protected_indexes shape {protected_indexes.shape}')
+                color = _hash_string_to_color(p.name + key)
+                axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+                axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+                pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
+                big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
+                axes[row, col].scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw,
+                                       label=f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}',
+                                       marker='.', alpha=alpha)
+
+
+            elif p.is_continuous():  #### top/bottom quantile
+                threshold = np.median(protected[p])
+                protected_indexes = (protected[p] > threshold)[:, 0]
+                color = _hash_string_to_color(p.name + key)
+                axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+                axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+                pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
+                big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
+                axes[row, col].scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw,
+                                       label=f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}',
+                                       marker='.', alpha=alpha)
+
+                print(f'\n\n median {threshold} protected_indexes shape {protected[p].shape}')
+
+        axes[row, col].set_ylabel('Predictions')
+        axes[row, col].set_xlabel('Actual')
+        axes[row, col].legend(loc='lower right')
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    axes[0, 0].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+    axes[0, 0].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+    pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]
+    big_r_squared = coefficient_of_determination(truth, prediction)
+    label_text = f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} n={truth.shape[0]:.0f}'
+    axes[0, 0].scatter(prediction, truth, color=color, lw=lw, label=label_text, marker='.', alpha=alpha)
+    axes[0, 0].legend(loc='lower right')
+    axes[0, 0].set_title(f'Pearson {title}')
+
+    figure_path = os.path.join(prefix, 'per_class_pearson_' + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path, bbox_inches='tight')
+    plt.clf()
+    logging.info(f"Saved Pearson correlations at: {figure_path} with {len(protected)} protected TensorMaps.")
+    return labels_to_areas
 
 
 def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]], prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
@@ -1556,12 +1632,55 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
-def plot_roc_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
+def subplot_roc_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
     lw = 2
+    col = 0
+    row = 1
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+    total_plots = len(protected) + 1
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+
+    for p in protected:
+        print(f'\n name {p.name} truth shape {truth.shape} IN ROCCCC {p.name} and {p.shape} and {protected[p].shape}')
+
+        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
+        axes[row, col].set_title(f'Protected {p.name}')
+        for key in labels:
+            if p.is_categorical():
+                idx2key = {v: k for k, v in p.channel_map.items()}
+                protected_indexes = protected[p][:, 0] == 1
+                print(f'\n\n protected_indexes shape {protected_indexes.shape}')
+
+                pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes],
+                                                            truth[protected_indexes], labels)
+                label_text = f'{key} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
+
+                color = _hash_string_to_color(p.name + key)
+                axes[row, col].plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
+            elif p.is_continuous():
+                threshold = np.median(protected[p])
+                protected_indexes = (protected[p] > threshold)[:, 0]
+                pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes],
+                                                            truth[protected_indexes], labels)
+                label_text = f'{key} roc={proc_auc[labels[key]]:.3f} Highest  n={np.sum(protected_indexes):.0f}'
+                color = _hash_string_to_color(p.name + key)
+                axes[row, col].plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
+                print(f'\n\n median {threshold} protected_indexes shape {protected[p].shape}')
+                axes[row, col].set_xlim([0.0, 1.0])
+        axes[row, col].set_ylim([-0.02, 1.03])
+        axes[row, col].set_ylabel(RECALL_LABEL)
+        axes[row, col].set_xlabel(FALLOUT_LABEL)
+        axes[row, col].legend(loc='lower right')
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -1569,23 +1688,17 @@ def plot_roc_per_class(prediction, truth, labels, protected, title, prefix='./fi
             continue
         color = _hash_string_to_color(key)
         label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-        plt.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+        axes[0, 0].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f'ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}')
 
-    plt.xlim([0.0, 1.0])
-    plt.ylim([-0.02, 1.03])
-    plt.ylabel(RECALL_LABEL)
-    plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right", bbox_to_anchor=(0.98, 0))
-    plt.plot([0, 1], [0, 1], 'k:', lw=0.5)
-    plt.title(f'ROC {title} n={truth.shape[0]:.0f}\n')
-
+    axes[0, 0].set_title(f'ROC {title} n={truth.shape[0]:.0f}\n')
+    axes[0, 0].legend(loc='lower right')
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches='tight')
     plt.clf()
-    logging.info("Saved ROC curve at: {}".format(figure_path))
+    logging.info(f"Saved ROC curve at: {figure_path} with {len(protected)} protected TensorMaps.")
     return labels_to_areas
 
 
