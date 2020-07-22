@@ -169,7 +169,7 @@ def evaluate_predictions(
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
-        subplot_pearson_per_class(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder))
+        subplot_pearson_per_class(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder)
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
