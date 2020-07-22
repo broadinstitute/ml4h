@@ -501,6 +501,15 @@ def parse_args():
             " TensorGenerator."
         ),
     )
+    parser.add_argument(
+        "--legacy_tensor_generator",
+        action="store_true",
+        help=(
+            "Use legacy version of Tensor Generator. Legacy version is buggy and should"
+            " only be used if absolutely necessary. Current version is faster and more"
+            " reliable."
+        ),
+    )
 
     # Cross reference arguments
     parser.add_argument(
@@ -627,19 +636,6 @@ def parse_args():
         ),
     )
 
-    """
-    parser.add_argument(
-        "--legacy_tensor_generator",
-        action="store_true",
-        default=False,
-        help=(
-            "Use legacy version of Tensor Generator. Legacy version is buggy and should"
-            " only be used if absolutely necessary. Current version is faster and more"
-            " reliable."
-        ),
-    )
-    """
-
     args = parser.parse_args()
     _process_args(args)
     return args
@@ -684,7 +680,7 @@ def _process_u_connect_args(
                 f"u_connect of {tmap_in} {tmap_out} requires matching shapes besides"
                 " channel dimension.",
             )
-        if tmap_in.axes() < 2 or tmap_out.axes() < 2:
+        if tmap_in.static_axes() < 2 or tmap_out.static_axes() < 2:
             raise TypeError(f"Cannot u_connect 1d TensorMaps ({tmap_in} {tmap_out}).")
         new_u_connect[tmap_in].add(tmap_out)
     return new_u_connect

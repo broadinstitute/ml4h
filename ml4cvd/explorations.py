@@ -17,7 +17,7 @@ import pandas as pd
 from ml4cvd.plots import SUBPLOT_SIZE, _find_negative_label_index
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.tensor_generators import test_train_valid_tensor_generators
+from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot
@@ -159,12 +159,20 @@ class ExploreParallelWrapper:
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    paths = [
-        (path, gen.name.replace("_worker", ""))
-        for gen in generators
-        for worker_paths in gen.path_iters
-        for path in worker_paths.paths
-    ]
+    paths = (
+        [
+            (path, gen.name.replace("_worker", ""))
+            for gen in generators
+            for path in gen.paths
+        ]
+        if isinstance(generators[0], TensorGenerator)
+        else [
+            (path, gen.name.replace("_worker", ""))
+            for gen in generators
+            for worker_paths in gen.path_iters
+            for path in worker_paths.paths
+        ]
+    )
 
     ExploreParallelWrapper(
         tmaps, paths, args.num_workers, args.output_folder, args.id,
@@ -225,12 +233,9 @@ def _modify_tmap_to_return_mean(tmap: TensorMap) -> TensorMap:
 def tmap_requires_modification_for_explore(tm: TensorMap) -> bool:
     """Whether a tmap has to be modified to be used in explore"""
     if tm.is_continuous():
-        return tm.shape not in {(1,), (None, 1)}
+        return tm.static_shape != (1,)
     if tm.is_categorical():
-        if tm.shape[0] is None:
-            return tm.axes() > 2
-        else:
-            return tm.axes() > 1
+        return tm.static_axes() > 1
     if tm.is_language():
         return False
     return True

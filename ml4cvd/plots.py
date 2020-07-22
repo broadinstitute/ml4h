@@ -162,7 +162,7 @@ def evaluate_predictions(
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
     performance_metrics = {}
-    if tm.is_categorical() and tm.axes() == 1:
+    if tm.is_categorical() and tm.static_axes() == 1:
         logging.info(
             f"For tm:{tm.name} with channel map: {tm.channel_map}"
             f" examples: {y_predictions.shape[0]}",
@@ -181,7 +181,7 @@ def evaluate_predictions(
             plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical() and tm.axes() == 2:
+    elif tm.is_categorical() and tm.static_axes() == 2:
         melt_shape = (
             y_predictions.shape[0] * y_predictions.shape[1],
             y_predictions.shape[2],
@@ -203,7 +203,7 @@ def evaluate_predictions(
             y_predictions, y_truth, tm.channel_map, title, folder,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical() and tm.axes() == 3:
+    elif tm.is_categorical() and tm.static_axes() == 3:
         melt_shape = (
             y_predictions.shape[0] * y_predictions.shape[1] * y_predictions.shape[2],
             y_predictions.shape[3],
@@ -225,7 +225,7 @@ def evaluate_predictions(
             y_predictions, y_truth, tm.channel_map, title, folder,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.is_categorical() and tm.axes() == 4:
+    elif tm.is_categorical() and tm.static_axes() == 4:
         melt_shape = (
             y_predictions.shape[0]
             * y_predictions.shape[1]
@@ -351,7 +351,7 @@ def evaluate_predictions(
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
-    elif tm.axes() > 1 or tm.is_mesh():
+    elif tm.static_axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:

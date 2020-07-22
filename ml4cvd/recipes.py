@@ -54,6 +54,7 @@ from ml4cvd.tensor_generators import (
     BATCH_PATHS_INDEX,
     BATCH_OUTPUT_INDEX,
     TensorGenerator,
+    get_verbose_stats_string,
     big_batch_from_minibatch_generator,
     test_train_valid_tensor_generators,
 )
@@ -182,8 +183,6 @@ def train_multimodal_multitask(args):
 
     logging.info(f"Model trained for {len(history.history['loss'])} epochs")
 
-    # TODO fix new TensorGenerator so we can once more use these nice stats
-    """
     if isinstance(generate_train, TensorGenerator):
         logging.info(
             get_verbose_stats_string(
@@ -194,7 +193,6 @@ def train_multimodal_multitask(args):
                 },
             ),
         )
-    """
 
     performance_metrics = _predict_and_evaluate(
         model,
@@ -905,7 +903,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         plot_title = tm.name + "_" + args.id
         plot_folder = os.path.join(args.output_folder, args.id)
 
-        if tm.is_categorical() and tm.axes() == 1:
+        if tm.is_categorical() and tm.static_axes() == 1:
             msg = "For tm '{}' with channel map {}: sum truth = {}; sum pred = {}"
             for m in predictions[tm]:
                 logging.info(
@@ -924,7 +922,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 plot_folder,
             )
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
-        elif tm.is_categorical() and tm.axes() == 4:
+        elif tm.is_categorical() and tm.static_axes() == 4:
             for p in predictions[tm]:
                 y = predictions[tm][p]
                 melt_shape = (
@@ -944,7 +942,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             )
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
-        elif tm.is_continuous() and tm.axes() == 1:
+        elif tm.is_continuous() and tm.static_axes() == 1:
             scaled_predictions = {
                 k: tm.rescale(predictions[tm][k]) for k in predictions[tm]
             }
@@ -997,10 +995,10 @@ def _test_labels_to_label_map(
 
     for tm in test_labels:
         for i in range(examples):
-            if tm.is_continuous() and tm.axes() == 1:
+            if tm.is_continuous() and tm.static_axes() == 1:
                 label_dict[tm][i] = tm.rescale(test_labels[tm][i])
                 continuous_labels.append(tm)
-            elif tm.is_categorical() and tm.axes() == 1:
+            elif tm.is_categorical() and tm.static_axes() == 1:
                 label_dict[tm][i] = np.argmax(test_labels[tm][i])
                 categorical_labels.append(tm)
 

@@ -198,7 +198,7 @@ class TensorMap(object):
         elif self.loss is None and self.is_continuous():
             self.loss = "mse"
         elif self.loss is None and self.is_survival_curve():
-            self.loss = survival_likelihood_loss(self.shape[0] // 2)
+            self.loss = survival_likelihood_loss(self.static_shape[0] // 2)
         elif self.loss is None and self.is_time_to_event():
             self.loss = cox_hazard_loss
         elif self.loss is None and self.is_language():
@@ -306,8 +306,28 @@ class TensorMap(object):
     def axes(self):
         return len(self.shape)
 
-    def static_shape(self, limit=6):
-        return tuple([size if size else limit for size in self.shape])
+    def static_axes(self):
+        return len(self.static_shape)
+
+    def first_dynamic_index(self):
+        try:
+            return self.shape.index(None)
+        except ValueError:
+            return -1
+
+    @property
+    def static_shape(self):
+        _shape = tuple()
+        for dim in self.shape:
+            if dim is not None:
+                _shape += (dim,)
+        return _shape
+
+    def flat_size(self):
+        size = 1
+        for dim in self.static_shape:
+            size *= dim
+        return size
 
     def hd5_key_guess(self):
         if self.path_prefix is None:
@@ -357,16 +377,16 @@ class TensorMap(object):
     def infer_metrics(self):
         if self.metrics is None and self.is_categorical():
             self.metrics = ["categorical_accuracy"]
-            if self.axes() == 1:
+            if self.static_axes() == 1:
                 self.metrics += per_class_precision(self.channel_map)
                 self.metrics += per_class_recall(self.channel_map)
-            elif self.axes() == 2:
+            elif self.static_axes() == 2:
                 self.metrics += per_class_precision_3d(self.channel_map)
                 self.metrics += per_class_recall_3d(self.channel_map)
-            elif self.axes() == 3:
+            elif self.static_axes() == 3:
                 self.metrics += per_class_precision_4d(self.channel_map)
                 self.metrics += per_class_recall_4d(self.channel_map)
-            elif self.axes() == 4:
+            elif self.static_axes() == 4:
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
         elif self.metrics is None and self.is_continuous() and self.shape[-1] == 1:
@@ -442,7 +462,7 @@ def _default_continuous_tensor_from_file(tm, hd5, input_shape, input_channel_map
     if tm.hd5_key_guess() in hd5:
         missing = False
         data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
-        if tm.axes() > 1 or tm.shape[0] > 1:
+        if tm.static_axes() > 1 or tm.shape[0] > 1:
             continuous_data = np.array(data)
         elif hasattr(data, "__shape__"):
             continuous_data[0] = data[0]

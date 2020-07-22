@@ -139,7 +139,7 @@ def make_shallow_model(
     my_metrics = {}
     loss_weights = []
     input_tensors = [
-        Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in
+        Input(shape=tm.static_shape, name=tm.input_name()) for tm in tensor_maps_in
     ]
 
     it = concatenate(input_tensors) if len(input_tensors) > 1 else input_tensors[0]
@@ -195,7 +195,7 @@ def make_waveform_model_unet(
 
     neurons = 24
     input_tensor = residual = Input(
-        shape=tensor_maps_in[0].shape, name=tensor_maps_in[0].input_name(),
+        shape=tensor_maps_in[0].static_shape, name=tensor_maps_in[0].input_name(),
     )
     x = c600 = Conv1D(
         filters=neurons, kernel_size=11, activation="relu", padding="same",
@@ -218,7 +218,7 @@ def make_waveform_model_unet(
     x = Conv1D(filters=neurons, kernel_size=51, activation="relu", padding="same")(x)
     x = concatenate([x, residual])
     conv_label = Conv1D(
-        filters=tensor_maps_out[0].shape[CHANNEL_AXIS],
+        filters=tensor_maps_out[0].static_shape[CHANNEL_AXIS],
         kernel_size=1,
         activation="linear",
     )(x)
@@ -337,12 +337,12 @@ def make_character_model(
     input_layers = []
     for it in tensor_maps_in:
         if it.is_embedding():
-            embed_in = Input(shape=it.shape, name=it.input_name())
+            embed_in = Input(shape=it.static_shape, name=it.input_name())
             input_layers.append(embed_in)
         elif it.is_language():
-            burn_in = Input(shape=it.shape, name=it.input_name())
+            burn_in = Input(shape=it.static_shape, name=it.input_name())
             input_layers.append(burn_in)
-            repeater = RepeatVector(it.shape[0])
+            repeater = RepeatVector(it.static_shape[0])
         else:
             logging.warning(
                 f"character model can not handle input TensorMap:{it.name} with"
@@ -355,12 +355,14 @@ def make_character_model(
     lstm_out = LSTM(128)(lstm_in)  # TODO this should be argument
 
     output_layers = []
-    for ot in tensor_maps_out:
-        if ot.name == f"{language_layer}{LANGUAGE_MODEL_SUFFIX}":
+    for tm in tensor_maps_out:
+        if tm.name == f"{language_layer}{LANGUAGE_MODEL_SUFFIX}":
             output_layers.append(
-                Dense(ot.shape[-1], activation=ot.activation, name=ot.output_name())(
-                    lstm_out,
-                ),
+                Dense(
+                    tm.static_shape[-1],
+                    activation=tm.activation,
+                    name=tm.output_name(),
+                )(lstm_out),
             )
 
     m = Model(inputs=input_layers, outputs=output_layers)
@@ -384,10 +386,12 @@ def make_siamese_model(
     **kwargs,
 ) -> Model:
     in_left = [
-        Input(shape=tm.shape, name=tm.input_name() + "_left") for tm in tensor_maps_in
+        Input(shape=tm.static_shape, name=tm.input_name() + "_left")
+        for tm in tensor_maps_in
     ]
     in_right = [
-        Input(shape=tm.shape, name=tm.input_name() + "_right") for tm in tensor_maps_in
+        Input(shape=tm.static_shape, name=tm.input_name() + "_right")
+        for tm in tensor_maps_in
     ]
     encode_model = make_hidden_layer_model(base_model, tensor_maps_in, hidden_layer)
     h_left = encode_model(in_left)
@@ -1018,7 +1022,7 @@ class DenseDecoder:
         self.parents = parents
         self.activation = _activation_layer(activation)
         self.dense = Dense(
-            units=tensor_map_out.shape[0],
+            units=tensor_map_out.static_shape[0],
             name=tensor_map_out.output_name(),
             activation=tensor_map_out.activation,
         )
@@ -1057,10 +1061,10 @@ class ConvDecoder:
         upsample_z: int,
         u_connect_parents: List[TensorMap] = None,
     ):
-        dimension = tensor_map_out.axes()
+        dimension = tensor_map_out.static_axes()
         self.dense_blocks = [
             DenseConvolutionalBlock(
-                dimension=tensor_map_out.axes(),
+                dimension=tensor_map_out.static_axes(),
                 conv_layer_type=conv_layer_type,
                 filters=filters,
                 conv_x=[x] * block_size,
@@ -1079,7 +1083,7 @@ class ConvDecoder:
             dimension, "conv", conv_x, conv_y, conv_z,
         )
         self.conv_label = conv_layer(
-            tensor_map_out.shape[-1],
+            tensor_map_out.static_shape[-1],
             _one_by_n_kernel(dimension),
             activation=tensor_map_out.activation,
             name=tensor_map_out.output_name(),
@@ -1255,7 +1259,9 @@ def make_multimodal_multitask_model(
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
     num_dense = len(dense_blocks)
-    num_res = len(conv_layers) if any(tm.axes() > 1 for tm in tensor_maps_in) else 0
+    num_res = (
+        len(conv_layers) if any(tm.static_axes() > 1 for tm in tensor_maps_in) else 0
+    )
     num_filters_needed = num_res + num_dense
     conv_x = _repeat_dimension(conv_x, "x", num_filters_needed)
     conv_y = _repeat_dimension(conv_y, "y", num_filters_needed)
@@ -1263,10 +1269,10 @@ def make_multimodal_multitask_model(
 
     encoders: Dict[TensorMap:Layer] = {}
     for tm in tensor_maps_in:
-        if tm.axes() > 1:
+        if tm.static_axes() > 1:
             encoders[tm] = ConvEncoder(
                 filters_per_dense_block=dense_blocks,
-                dimension=tm.axes(),
+                dimension=tm.static_axes(),
                 res_filters=conv_layers,
                 conv_layer_type=conv_type,
                 conv_x=conv_x,
@@ -1298,12 +1304,12 @@ def make_multimodal_multitask_model(
 
     pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
     for tm in tensor_maps_out:
-        if any([tm in out for out in u_connect.values()]) or tm.axes() == 1:
+        if any([tm in out for out in u_connect.values()]) or tm.static_axes() == 1:
             pre_decoder_shapes[tm] = None
         else:
             pre_decoder_shapes[tm] = _calc_start_shape(
                 num_upsamples=len(dense_blocks),
-                output_shape=tm.shape,
+                output_shape=tm.static_shape,
                 upsample_rates=[pool_x, pool_y, pool_z],
                 channels=dense_blocks[-1],
             )
@@ -1347,7 +1353,7 @@ def make_multimodal_multitask_model(
     conv_x, conv_y, conv_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
     decoders: Dict[TensorMap, Layer] = {}
     for tm in tensor_maps_out:
-        if tm.axes() > 1:
+        if tm.static_axes() > 1:
             decoders[tm] = ConvDecoder(
                 tensor_map_out=tm,
                 filters_per_dense_block=dense_blocks,
@@ -1427,7 +1433,7 @@ def _make_multimodal_multitask_model(
     ] = {}  # TensorMap -> embed, encoder_intermediates
     encoder_intermediates = {}
     for tm, encoder in encoders.items():
-        x = Input(shape=tm.shape, name=tm.input_name())
+        x = Input(shape=tm.static_shape, name=tm.input_name())
         inputs[tm] = x
         y, intermediates = encoder(x)
         encoder_outputs[tm] = y
