@@ -163,12 +163,11 @@ def evaluate_predictions(
             y_truth = y_truth[y_truth != tm.sentinel]
         _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
-            performance_metrics.update(plot_scatter(prediction_flat, truth_flat, title, prefix=folder))
+            performance_metrics.update(subplot_pearson_per_class(prediction_flat, truth_flat, tm.channel_map, protected, title, prefix=folder))
     elif tm.is_continuous():
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
-        performance_metrics.update(plot_scatter(tm.rescale(y_predictions), tm.rescale(y_truth), title, prefix=folder, paths=test_paths))
         subplot_pearson_per_class(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder)
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
