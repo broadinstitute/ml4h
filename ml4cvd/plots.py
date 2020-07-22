@@ -465,8 +465,7 @@ def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefi
                                        label=f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}',
                                        marker='.', alpha=alpha)
 
-
-            elif p.is_continuous():  #### top/bottom quantile
+            elif p.is_continuous():  # top/bottom quantile
                 threshold = np.median(protected[p])
                 protected_indexes = (protected[p] > threshold)[:, 0]
                 color = _hash_string_to_color(p.name + key)
@@ -490,6 +489,7 @@ def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefi
             if col >= cols:
                 break
 
+    color = _hash_string_to_color(title)
     axes[0, 0].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
     axes[0, 0].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
     pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]
