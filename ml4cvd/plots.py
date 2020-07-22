@@ -446,10 +446,9 @@ def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefi
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
 
-    for protected_name, p in protected.items():
-
+    for p in protected:
         axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'Protected {protected_name}')
+        axes[row, col].set_title(f'Protected {p.name}')
         for key in labels:
             if p.is_categorical():
                 idx2key = {v: k for k, v in p.channel_map.items()}
