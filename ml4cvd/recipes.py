@@ -14,15 +14,6 @@ import numpy as np
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
-#from sksurv.metrics import concordance_index_censored
-
-# try:
-#     import tensorflow as tf
-#     gpus = tf.config.experimental.list_physical_devices('GPU')
-#     if len(gpus) > 0:
-#         tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
-# except RuntimeError:
-#     pass
 
 from ml4cvd.arguments import parse_args
 from ml4cvd.optimizers import find_learning_rate
