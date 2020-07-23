@@ -1,4 +1,6 @@
 # Imports: standard library
+import os
+import socket
 from enum import Enum, auto
 from typing import Dict, List, Union
 
@@ -19,6 +21,29 @@ class StorageType(Enum):
 ArgumentList = List[Union[int, float]]
 Arguments = Dict[str, Union[int, float, ArgumentList]]
 
+YEAR_DAYS = 365.26
+
+
+def _get_path_prefix_to_sts_data() -> str:
+    print(f"hostname is {socket.gethostname()}")
+    if "anduril" == socket.gethostname():
+        return "/media/4tb1/sts-data"
+    elif "mithril" == socket.gethostname():
+        return "/data/sts-data"
+    elif "stultzlab" in socket.gethostname():
+        return "/storage/shared/sts-data"
+    else:
+        return ""
+
+
+CARDIAC_SURGERY_OUTCOMES_CSV = os.path.join(
+    _get_path_prefix_to_sts_data(), "mgh-preop-ecg-outcome-labels.csv",
+)
+CARDIAC_SURGERY_FEATURES_CSV = os.path.join(
+    _get_path_prefix_to_sts_data(), "mgh-all-features-labels.csv",
+)
+
+ECG_PREFIX = "partners_ecg_rest"
 DATE_FORMAT = "%Y-%m-%d_%H-%M-%S"
 ECG_DATE_FORMAT = "%m-%d-%Y"
 ECG_TIME_FORMAT = "%H:%M:%S"

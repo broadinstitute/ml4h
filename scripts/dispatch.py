@@ -29,10 +29,10 @@ def _get_path_to_ecgs() -> str:
     """Check the hostname of the machine and return the appropriate path.
     If there is no match found, this function does not return anything, and
     the script ends up with a non-viable path prefix to HD5 files and will fail."""
-    if "mithril" == socket.gethostname():
-        return "/data/ecg"
-    elif "anduril" == socket.gethostname():
+    if "anduril" == socket.gethostname():
         return "/media/4tb1/ecg"
+    elif "mithril" == socket.gethostname():
+        return "/data/ecg"
     elif "stultzlab" in socket.gethostname():
         return "/storage/shared/ecg_deidentified"
 

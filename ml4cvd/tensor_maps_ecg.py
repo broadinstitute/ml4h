@@ -14,11 +14,15 @@ import pandas as pd
 # Imports: first party
 from ml4cvd.defines import (
     STOP_CHAR,
+    YEAR_DAYS,
+    ECG_PREFIX,
     ECG_DATE_FORMAT,
     ECG_REST_AMP_LEADS,
     ECG_DATETIME_FORMAT,
     ECG_REST_INDEPENDENT_LEADS,
     CARDIAC_SURGERY_DATE_FORMAT,
+    CARDIAC_SURGERY_FEATURES_CSV,
+    CARDIAC_SURGERY_OUTCOMES_CSV,
     CARDIAC_SURGERY_PREOPERATIVE_FEATURES,
 )
 from ml4cvd.metrics import weighted_crossentropy
@@ -32,10 +36,6 @@ from ml4cvd.TensorMap import (
 )
 from ml4cvd.normalizer import Standardize
 
-YEAR_DAYS = 365.26
-CARDIAC_SURGERY_OUTCOMES_CSV = "/data/sts-data/mgh-preop-ecg-outcome-labels.csv"
-CARDIAC_SURGERY_FEATURES_CSV = "/data/sts-data/mgh-all-features-labels.csv"
-ECG_PREFIX = "partners_ecg_rest"
 TMAPS = dict()
 
 
@@ -1482,7 +1482,8 @@ def build_cardiac_surgery_dict(
     df = pd.read_csv(
         filename, low_memory=False, usecols=[patient_column] + keys,
     ).sort_values(by=[patient_column, date_column])
-    # sort dataframe such that newest surgery per patient appears later and is used in lookup table
+    # sort dataframe such that newest surgery per patient appears later and is used
+    # in lookup table
     for row in df.itertuples():
         patient_key = getattr(row, patient_column)
         cardiac_surgery_dict[patient_key] = {key: getattr(row, key) for key in keys}

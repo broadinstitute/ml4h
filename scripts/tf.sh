@@ -162,12 +162,12 @@ WORKDIR=$(pwd)
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
-    docker run ${INTERACTIVE} \
-    ${GPU_DEVICE} \
+    docker run ${INTERACTIVE} ${GPU_DEVICE} \
     --env GROUP_NAMES \
     --env GROUP_IDS \
-    --rm \
+    --uts=host \
     --ipc=host \
+    --rm \
     -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
@@ -175,12 +175,12 @@ Attempting to run Docker with
         eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
-docker run ${INTERACTIVE} \
-${GPU_DEVICE} \
+docker run ${INTERACTIVE} ${GPU_DEVICE} \
 --env GROUP_NAMES \
 --env GROUP_IDS \
---rm \
+--uts=host \
 --ipc=host \
+--rm \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
