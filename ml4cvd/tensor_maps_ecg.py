@@ -19,6 +19,7 @@ from ml4cvd.defines import (
     ECG_DATETIME_FORMAT,
     ECG_REST_INDEPENDENT_LEADS,
     CARDIAC_SURGERY_DATE_FORMAT,
+    CARDIAC_SURGERY_PREOPERATIVE_FEATURES,
 )
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.TensorMap import (
@@ -26,12 +27,14 @@ from ml4cvd.TensorMap import (
     Interpretation,
     RangeValidator,
     TimeSeriesOrder,
+    no_nans,
     decompress_data,
 )
 from ml4cvd.normalizer import Standardize
 
 YEAR_DAYS = 365.26
 CARDIAC_SURGERY_OUTCOMES_CSV = "/data/sts-data/mgh-preop-ecg-outcome-labels.csv"
+CARDIAC_SURGERY_FEATURES_CSV = "/data/sts-data/mgh-all-features-labels.csv"
 ECG_PREFIX = "partners_ecg_rest"
 TMAPS = dict()
 
@@ -1513,28 +1516,52 @@ def build_date_interval_lookup(
     return date_interval_lookup
 
 
-def make_cardiac_surgery_outcome_tensor_from_file(
-    cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]], outcome_column: str,
+def make_cardiac_surgery_categorical_tensor_from_file(
+    cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]],
+    feature_column: str,
+    positive_value: int = 1,
+    negative_value: int = 0,
 ) -> Callable:
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
         mrn = _hd5_filename_to_mrn_int(hd5.filename)
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        outcome = cardiac_surgery_dict[mrn][outcome_column]
+        feature = cardiac_surgery_dict[mrn][feature_column]
 
-        if type(outcome) is float and not outcome.is_integer():
+        if type(feature) is float and not feature.is_integer():
             raise ValueError(
-                f"Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got"
-                f" non-discrete value: {outcome}",
+                f"Cardiac Surgery categorical outcome {tm.name} ({feature_column}) got"
+                f" non-discrete value: {feature}",
             )
 
         # ensure binary outcome
-        if outcome != 0 and outcome != 1:
+        if feature not in {negative_value, positive_value}:
             raise ValueError(
-                f"Cardiac Surgery categorical outcome {tm.name} ({outcome_column}) got"
-                f" non-binary value: {outcome}",
+                f"Cardiac Surgery categorical outcome {tm.name} ({feature_column}) got"
+                f" non-binary value: {feature}",
             )
 
-        tensor[outcome] = 1
+        if feature == positive_value:
+            idx = 1
+        elif feature == negative_value:
+            idx = 0
+        else:
+            raise ValueError(
+                f"Cardiac Surgery feature {feature_column} got value {feature} that does not match positive or negative label values {positive_value} or {negative_value}",
+            )
+        tensor[idx] = 1
+        return tensor
+
+    return tensor_from_file
+
+
+def make_cardiac_surgery_feature_tensor_from_file(
+    cardiac_surgery_dict: Dict[int, Dict[str, float]],
+) -> Callable:
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
+        mrn = _hd5_filename_to_mrn_int(hd5.filename)
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for feature, idx in tm.channel_map.items():
+            tensor[idx] = cardiac_surgery_dict[mrn][feature]
         return tensor
 
     return tensor_from_file
@@ -1607,7 +1634,7 @@ def build_cardiac_surgery_tensor_maps(
                 clean_name,
                 Interpretation.CATEGORICAL,
                 path_prefix=ECG_PREFIX,
-                tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(
+                tensor_from_file=make_cardiac_surgery_categorical_tensor_from_file(
                     cardiac_surgery_dict, needed_outcome_columns[needed_name],
                 ),
                 channel_map=channel_map,
@@ -1630,4 +1657,73 @@ def build_cardiac_surgery_tensor_maps(
 
         name2tensormap[needed_name] = sts_tmap
 
+    name2tensormap.update(
+        build_extended_cardiac_surgery_tensor_maps(needed_tensor_maps),
+    )
+    return name2tensormap
+
+
+def build_extended_cardiac_surgery_tensor_maps(
+    needed_tensor_maps: List[str],
+    filename: str = CARDIAC_SURGERY_FEATURES_CSV,
+    patient_column: str = "medrecn",
+    date_column: str = "surgdt",
+) -> Dict[str, TensorMap]:
+    name2tensormap = dict()
+    cardiac_surgery_dict = None
+
+    def _get_dict():
+        nonlocal cardiac_surgery_dict
+        if cardiac_surgery_dict is None:
+            cardiac_surgery_dict = (
+                pd.read_csv(filename)
+                .sort_values([patient_column, date_column])
+                .drop_duplicates(patient_column, keep="last")
+                .set_index(patient_column)
+                .to_dict("index")
+            )
+        return cardiac_surgery_dict
+
+    for needed_name in needed_tensor_maps:
+        if needed_name == "sts_preop":
+            tff = make_cardiac_surgery_feature_tensor_from_file(_get_dict())
+            channel_map = CARDIAC_SURGERY_PREOPERATIVE_FEATURES
+            validator = no_nans
+        elif needed_name == "sts_bypass_time":
+            tff = make_cardiac_surgery_feature_tensor_from_file(_get_dict())
+            channel_map = {"perfustm": 0}
+            validator = no_nans
+        elif needed_name == "sts_crossclamp_time":
+            tff = make_cardiac_surgery_feature_tensor_from_file(_get_dict())
+            channel_map = {"xclamptm": 0}
+            validator = no_nans
+        elif needed_name == "sts_cabg":
+            tff = make_cardiac_surgery_categorical_tensor_from_file(
+                cardiac_surgery_dict=_get_dict(),
+                feature_column="opcab",
+                positive_value=1,
+                negative_value=2,
+            )
+            channel_map = _outcome_channels("cabg")
+            validator = validator_not_all_zero
+        elif needed_name == "sts_valve":
+            tff = make_cardiac_surgery_categorical_tensor_from_file(
+                cardiac_surgery_dict=_get_dict(),
+                feature_column="opvalve",
+                positive_value=1,
+                negative_value=2,
+            )
+            channel_map = _outcome_channels("valve")
+            validator = validator_not_all_zero
+        else:
+            continue
+
+        name2tensormap[needed_name] = TensorMap(
+            needed_name,
+            Interpretation.CONTINUOUS,
+            path_prefix=ECG_PREFIX,
+            tensor_from_file=tff,
+            channel_map=channel_map,
+            validator=validator,
+        )
     return name2tensormap
