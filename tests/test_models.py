@@ -303,7 +303,7 @@ class TestMakeMultimodalMultitaskModel:
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_multimodal_multitask_model(
-            input_output_tmaps[0][0],
+            input_output_tmaps[0],
             input_output_tmaps[1],
             model_file=path,
             **DEFAULT_PARAMS,
