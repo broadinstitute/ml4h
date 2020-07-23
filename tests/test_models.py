@@ -294,7 +294,7 @@ class TestMakeMultimodalMultitaskModel:
     def test_language_models(self, input_output_tmaps, tmpdir):
         params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
-            input_output_tmaps[0][0],
+            input_output_tmaps[0],
             input_output_tmaps[1],
             **params
         )

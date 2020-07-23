@@ -313,10 +313,10 @@ def str2date(d):
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def sample_from_language_model(tensor_maps_in: List[TensorMap], language_output: TensorMap, model, test_data, max_samples=16, heat=0.7):
-    for tm in tensor_maps_in:
-        if 'next' not in tm.name and tm.interpretation == Interpretation.LANGUAGE:
-            language_input = tm
+def sample_from_language_model(
+    language_input: TensorMap, language_output: TensorMap,
+    model, test_data, max_samples=16, heat=0.7,
+):
     burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
     index_2_token = {v: k for k, v in language_output.channel_map.items()}
     for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch

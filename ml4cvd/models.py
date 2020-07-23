@@ -491,11 +491,11 @@ def adaptive_normalization(mu: Tensor, sigma: Tensor, target: Tensor) -> Tensor:
 
 def global_average_pool(x: Tensor) -> Tensor:
     if len(x.shape) == 3:
-        return GlobalAveragePooling1D()(x) #K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+        return GlobalAveragePooling1D()(x)
     elif len(x.shape) == 4:
-        return GlobalAveragePooling2D()(x) #K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+        return GlobalAveragePooling2D()(x)
     elif len(x.shape) == 5:
-        return GlobalAveragePooling3D()(x) #K.mean(x, axis=tuple(range(1, len(x.shape) - 1)))
+        return GlobalAveragePooling3D()(x)
 
 
 def check_no_bottleneck(u_connect: DefaultDict[TensorMap, Set[TensorMap]], tensor_maps_out: List[TensorMap]) -> bool:
@@ -959,7 +959,7 @@ def make_multimodal_multitask_model(
                 pool_type=pool_type,
                 pool_x=pool_x,
                 pool_y=pool_y,
-                pool_z=pool_z
+                pool_z=pool_z,
             )
         else:
             encoders[tm] = FullyConnectedBlock(

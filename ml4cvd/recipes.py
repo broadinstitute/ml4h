@@ -433,7 +433,7 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(evaluate_predictions(tm, y, y_truth, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
         if tm.is_language():
-            sample_from_language_model(tensor_maps_in, tm, model, test_data, max_samples=16)
+            sample_from_language_model(tensor_maps_in[0], tm, model, test_data, max_samples=16)
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)

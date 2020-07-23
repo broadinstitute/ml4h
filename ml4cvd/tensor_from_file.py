@@ -1424,14 +1424,14 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
     """
     hd5_path = f'{path_prefix}/{name}/instance_{instance}'
     if concatenate:
-        hd5_path = f'{path_prefix}/{name}/'    
+        hd5_path = f'{path_prefix}/{name}/'
     if isinstance(hd5[hd5_path], h5py.Group):
         for img in hd5[hd5_path]:
             img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
             break
         if dest_shape is None:
             dest_shape = (max(img_shape), max(img_shape))
-        nslices = len(hd5[hd5_path]) // MRI_FRAMES        
+        nslices = len(hd5[hd5_path]) // MRI_FRAMES
         shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         t = 0
