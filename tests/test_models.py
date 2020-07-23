@@ -298,7 +298,7 @@ class TestMakeMultimodalMultitaskModel:
             input_output_tmaps[1],
             **params
         )
-        assert_model_trains(input_output_tmaps[0][0], input_output_tmaps[1], m)
+        assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
         m.save(os.path.join(tmpdir, 'lstm.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
