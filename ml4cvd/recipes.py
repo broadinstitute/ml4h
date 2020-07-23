@@ -460,11 +460,12 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
+    protected_data = {tm: [] for tm in tensor_maps_protected}
 
     logging.info(f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
     embeddings = []
     test_paths = []
-    protected_data = {}
+
     for i in range(steps):
         batch = next(generate_test)
         input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
@@ -476,6 +477,8 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
 
         for tm_output_name in test_labels:
             test_labels[tm_output_name].extend(np.copy(output_data[tm_output_name]))
+        for tm in tensor_maps_protected:
+            protected_data[tm].extend(np.copy(output_data[tm.output_name()]))
 
         for y, tm_output_name in zip(y_predictions, model_predictions):
             if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
@@ -486,11 +489,15 @@ def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_ma
     performance_metrics = {}
     scatters = []
     rocs = []
+    for tm in tensor_maps_protected:
+        protected_data[tm] = np.array(protected_data[tm])
+
     for tm in tensor_maps_out:
         if tm.output_name() in scalar_predictions:
             y_predict = np.array(scalar_predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
-            performance_metrics.update(evaluate_predictions(tm, y_predict, y_truth, test_labels, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters))
+            metrics = evaluate_predictions(tm, y_predict, y_truth, protected_data, tm.name, plot_path, test_paths, rocs=rocs, scatters=scatters)
+            performance_metrics.update(metrics)
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)

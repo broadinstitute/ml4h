@@ -434,13 +434,11 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
 
 def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
     ### labels are tm.channel_map. Looks like this: {'no_poor_data_quality': 0, 'Poor data quality': 1}
-
     lw = 2
     col = 0
     row = 1
     alpha = 0.5
     labels_to_areas = {}
-    true_sums = np.sum(truth, axis=0)
     total_plots = len(protected) + 1
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
@@ -453,15 +451,13 @@ def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefi
             if p.is_categorical():
                 idx2key = {v: k for k, v in p.channel_map.items()}
                 protected_indexes = protected[p][:, 0] == 1
-                print(f'\n\n protected_indexes shape {protected_indexes.shape}')
                 color = _hash_string_to_color(p.name + key)
                 axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
                 axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
                 pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
                 big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
-                axes[row, col].scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw,
-                                       label=f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}',
-                                       marker='.', alpha=alpha)
+                label = f'{idx2key[0]} Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} n={np.sum(protected_indexes):.0f}'
+                axes[row, col].scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw, label=label, marker='.', alpha=alpha)
 
             elif p.is_continuous():  # top/bottom quantile
                 threshold = np.median(protected[p])
@@ -471,11 +467,8 @@ def subplot_pearson_per_class(prediction, truth, labels, protected, title, prefi
                 axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
                 pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
                 big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
-                axes[row, col].scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw,
-                                       label=f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}',
-                                       marker='.', alpha=alpha)
-
-                print(f'\n\n median {threshold} protected_indexes shape {protected[p].shape}')
+                label = f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}'
+                axes[row, col].scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw, label=label, marker='.', alpha=alpha)
 
         axes[row, col].set_ylabel('Predictions')
         axes[row, col].set_xlabel('Actual')
