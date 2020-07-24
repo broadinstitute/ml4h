@@ -17,28 +17,28 @@ mgh_close_fu = mgh_df[['MRN', 'distance_from_fu']].groupby('MRN') \
                                                   .min() 
 mgh_patients = mgh_df.merge(mgh_close_fu, on=['MRN', 'distance_from_fu'])
 
-# # %%
-# for i, row in mgh_patients[['patientid', 'acquisitiondate', 'acquisitiontime']].iterrows():
-#     try:
-#         mrn = int(float(row['patientid']))
-#         path = f"/data/partners_ecg/mgh/hd5/{mrn}.hd5"
-#         with h5py.File(path, 'r') as hd5:
-#             hd5_out = h5py.File(f"/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/{i}.hd5", 'w')
-#             hd5_out[f"partners_ecg_rest/{row['acquisitiondate']}T{row['acquisitiontime']}"] = h5py.ExternalLink(path, f"/partners_ecg_rest/{row['acquisitiondate']}T{row['acquisitiontime']}")
-#     except:
-#         pass
+# %%
+for i, row in mgh_patients[['patientid', 'acquisitiondate', 'acquisitiontime']].iterrows():
+    try:
+        mrn = int(float(row['patientid']))
+        path = f"/data/ecg/mgh/{mrn}.hd5"
+        with h5py.File(path, 'r') as hd5:
+            hd5_out = h5py.File(f"/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/{i}.hd5", 'w')
+            hd5_out[f"partners_ecg_rest/{row['acquisitiondate']}T{row['acquisitiontime']}"] = h5py.ExternalLink(path, f"/partners_ecg_rest/{row['acquisitiondate']}T{row['acquisitiontime']}")
+    except:
+        pass
 
 # %% 
-# from sklearn.model_selection import train_test_split
-# ids = list(range(len(mgh_patients)))
-# train, test = train_test_split(ids, test_size=0.10)
-# train, valid = train_test_split(train, test_size=0.30)
-# np.savetxt('/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/train.csv',
-#            np.array(train, dtype=np.int), fmt="%i")
-# np.savetxt('/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/valid.csv',
-#            np.array(valid, dtype=np.int), fmt="%i")
-# np.savetxt('/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/test.csv',
-#            np.array(test, dtype=np.int), fmt="%i")
+from sklearn.model_selection import train_test_split
+ids = list(range(len(mgh_patients)))
+train, test = train_test_split(ids, test_size=0.10)
+train, valid = train_test_split(train, test_size=0.30)
+np.savetxt('/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/train.csv',
+           np.array(train, dtype=np.int), fmt="%i")
+np.savetxt('/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/valid.csv',
+           np.array(valid, dtype=np.int), fmt="%i")
+np.savetxt('/home/paolo/mgh_mrns_to_extract/mgh_3yrs_last_before_fu/test.csv',
+           np.array(test, dtype=np.int), fmt="%i")
 
 
 # %%
