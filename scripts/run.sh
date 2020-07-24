@@ -16,6 +16,7 @@ PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
 NOTEBOOK_COMMAND="jupyter-notebook"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
+CONTAINER_NAME=""
 
 ################### USERNAME & GROUPS ####################################
 
@@ -162,6 +163,7 @@ if [[ "$PYTHON_COMMAND" == "$NOTEBOOK_COMMAND" ]] ; then
         PORT_FLAG="-p ${PORT}:${PORT}"
     fi
     PYTHON_ARGS="--port ${PORT} --ip 0.0.0.0 --no-browser"
+    CONTAINER_NAME="--name ${USER}-notebook-${PORT}"
 fi
 
 cat <<LAUNCH_MESSAGE
@@ -177,6 +179,7 @@ Attempting to run Docker with
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
     ${PORT_FLAG} \
+    ${CONTAINER_NAME} \
     ${DOCKER_IMAGE} /bin/bash -c \
     "pip install ${WORKDIR}; cd ${HOME}; ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
@@ -192,5 +195,6 @@ ${GPU_DEVICE} \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${PORT_FLAG} \
+${CONTAINER_NAME} \
 ${DOCKER_IMAGE} /bin/bash -c \
 "pip install ${WORKDIR}; cd ${HOME}; ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
