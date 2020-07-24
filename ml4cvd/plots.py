@@ -1623,7 +1623,10 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
-def subplot_roc_per_class(prediction, truth, labels, protected, title, prefix='./figures/'):
+def subplot_roc_per_class(
+        prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
+        protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/'
+) -> Dict[str, float]:
     lw = 2
     col = 0
     row = 1
@@ -1635,36 +1638,30 @@ def subplot_roc_per_class(prediction, truth, labels, protected, title, prefix='.
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
-    for p in protected:
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'Protected {p.name}')
+    for p, ax in zip(protected, axes.ravel()):
+        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+        ax.set_title(f'Protected {p.name}')
         for key in labels:
-            if p.is_categorical():
+            if p.is_categorical():  # TODO: Look at more than just the 0th class label
                 idx2key = {v: k for k, v in p.channel_map.items()}
                 protected_indexes = protected[p][:, 0] == 1
                 pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
-                label_text = f'{key} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
+                label_text = f'{key} {idx2key[0]} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
                 color = _hash_string_to_color(p.name + key)
-                axes[row, col].plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
-            elif p.is_continuous():
+                ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
+            elif p.is_continuous():  # TODO: Look at more than just the highest half of the population
                 threshold = np.median(protected[p])
                 protected_indexes = (protected[p] > threshold)[:, 0]
                 pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
                 label_text = f'{key} roc={proc_auc[labels[key]]:.3f} Highest  n={np.sum(protected_indexes):.0f}'
                 color = _hash_string_to_color(p.name + key)
-                axes[row, col].plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
-                axes[row, col].set_xlim([0.0, 1.0])
+                ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
+                ax.set_xlim([0.0, 1.0])
 
-        axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
-        axes[row, col].legend(loc='lower right')
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+        ax.set_ylim([-0.02, 1.03])
+        ax.set_ylabel(RECALL_LABEL)
+        ax.set_xlabel(FALLOUT_LABEL)
+        ax.legend(loc='lower right')
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -1672,11 +1669,11 @@ def subplot_roc_per_class(prediction, truth, labels, protected, title, prefix='.
             continue
         color = _hash_string_to_color(key)
         label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-        axes[0, 0].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+        axes[-1, -1].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
         logging.info(f'ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}')
 
-    axes[0, 0].set_title(f'ROC {title} n={truth.shape[0]:.0f}\n')
-    axes[0, 0].legend(loc='lower right')
+    axes[-1, -1].set_title(f'ROC {title} n={truth.shape[0]:.0f}\n')
+    axes[-1, -1].legend(loc='lower right')
     figure_path = os.path.join(prefix, 'per_class_roc_' + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
