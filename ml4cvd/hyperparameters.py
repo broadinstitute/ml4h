@@ -19,8 +19,12 @@ from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4cvd.defines import IMAGE_EXT, MODEL_EXT, Arguments
 from ml4cvd.recipes import _predict_and_evaluate
-from ml4cvd.arguments import parse_args
-from ml4cvd.tensor_maps_ecg import TMAPS
+from ml4cvd.arguments import _get_tmap, parse_args
+from ml4cvd.tensor_maps_ecg import (
+    TMAPS,
+    build_cardiac_surgery_tensor_maps,
+    build_ecg_time_series_tensor_maps,
+)
 from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
     test_train_valid_tensor_generators,
@@ -58,11 +62,10 @@ def run(args: argparse.Namespace):
 
 
 def hyperoptimize(args: argparse.Namespace):
-    """
     block_size_sets = [2, 3, 4]
-    conv_layers_sets = [[32]]  # Baseline
+    # conv_layers_sets = [[32]]  # Baseline
     conv_normalize_sets = ["", "batch_norm"]
-    """
+
     dense_layers_sets = [
         # [256],
         # [1000],  # Collin's suggestion
@@ -70,54 +73,65 @@ def hyperoptimize(args: argparse.Namespace):
     ]
     dense_blocks_sets = [
         # [64, 128],  # Collin's suggestion
-        [24, 12],  # Baseline
-        # [32, 24, 16],  # Baseline
+        # [24, 12],  # Baseline
+        [32, 24, 16],  # Baseline
     ]
-    # pool_types = ["max", "average"]
+    pool_types = ["max", "average"]
     conv_x_sets = _generate_conv1D_filter_widths()
-    conv_dropout_sets = [0, 0.25, 0.5]
-    dropout_sets = [0, 0.25, 0.5]
-    learning_rate_sets = [0.0002, 0.0004]
+
+    conv_regularize_sets = ["spatial_dropout"]
+    conv_dropout_sets = [0.25, 0.5]
+    dropout_sets = [0.25, 0.5]
+
+    learning_rate_sets = [0.0002, 0.0001, 0.00005]
 
     # Generate weighted loss tmaps for STS death
     weighted_losses = [val for val in range(1, 20, 4)]
     output_tensors_sets = _generate_weighted_loss_tmaps(
         base_tmap_name="sts_death", weighted_losses=weighted_losses,
     )
+    for name in output_tensors_sets:
+        if name not in TMAPS:
+            _get_tmap(name, output_tensors_sets)
 
-    """
+    # Input tensors maps with data augmentation and 8 vs. 12 leads
+    input_tensor_map_sets = [
+        "12_lead_ecg_2500_std_newest_sts",
+        "ecg_2500_std_newest_sts",
+        "12_lead_ecg_2500_std_crop_noise_warp_newest_sts",
+        "ecg_2500_std_crop_noise_warp_newest_sts",
+    ]
+    for name in input_tensor_map_sets:
+        if name not in TMAPS:
+            _get_tmap(name, input_tensor_map_sets)
+
     space = {
         "block_size": hp.choice("block_size", block_size_sets),
-        "conv_layers": hp.choice("conv_layers", conv_layers_sets),
-        "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
-        "learning_rate": hp.choice("learning_rate", learning_rate_sets),
-        "dropout": hp.choice("dropout", dropout_sets),
-        "pool_type": hp.choice("pool_type", pool_types),
-    }
-    param_lists = {
-        "block_size": block_size_sets,
-        "conv_layers": conv_layers_sets,
-        "conv_normalize": conv_normalize_sets,
-        "learning_rate": learning_rate_sets,
-        "pool_type": pool_types,
-    }
-    """
-
-    space = {
         "conv_x": hp.choice("conv_x", conv_x_sets),
+        "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
         "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
         "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
         "dense_layers": hp.choice("dense_layers", dense_layers_sets),
         "dropout": hp.choice("dropout", dropout_sets),
         "output_tensors": hp.choice("output_tensors", output_tensors_sets),
+        "input_tensors": hp.choice("input_tensors", input_tensor_map_sets),
+        "learning_rate": hp.choice("learning_rate", learning_rate_sets),
+        "conv_regularize": hp.choice("conv_regularize", conv_regularize_sets),
+        "pool_type": hp.choice("pool_type", pool_types),
     }
     param_lists = {
+        "block_size": block_size_sets,
         "conv_x": conv_x_sets,
+        "conv_normalize": conv_normalize_sets,
         "conv_dropout": conv_dropout_sets,
         "dense_blocks": dense_blocks_sets,
         "dense_layers": dense_layers_sets,
         "dropout": dropout_sets,
         "output_tensors": output_tensors_sets,
+        "conv_regularize": conv_regularize_sets,
+        "input_tensors": input_tensor_map_sets,
+        "learning_rate": learning_rate_sets,
+        "pool_type": pool_types,
     }
     hyperparameter_optimizer(args, space, param_lists)
 
@@ -129,11 +143,6 @@ def hyperparameter_optimizer(
 ):
     args.keep_paths = False
     args.keep_paths_test = False
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    test_data, test_labels = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
-    generate_test.kill_workers()
     histories = []
     aucs = []
     fig_path = os.path.join(args.output_folder, args.id, "plots")
@@ -155,9 +164,11 @@ def hyperparameter_optimizer(
                     f" has:{model.count_params()}. Return max loss.",
                 )
                 return MAX_LOSS
-            generate_train, generate_valid, _ = test_train_valid_tensor_generators(
-                **args.__dict__
-            )
+            (
+                generate_train,
+                generate_valid,
+                generate_test,
+            ) = test_train_valid_tensor_generators(**args.__dict__)
             model, history = train_model_from_generators(
                 model=model,
                 generate_train=generate_train,
@@ -176,6 +187,9 @@ def hyperparameter_optimizer(
             histories.append(history.history)
             train_data, train_labels = big_batch_from_minibatch_generator(
                 generate_train, args.training_steps,
+            )
+            test_data, test_labels = big_batch_from_minibatch_generator(
+                generate_test, args.test_steps,
             )
             # refer to trial_metrics_and_params.csv to find the params for this trial
             title = f"trial_{i-1}"
@@ -228,6 +242,7 @@ def hyperparameter_optimizer(
             )
             generate_train.kill_workers()
             generate_valid.kill_workers()
+            generate_test.kill_workers()
             return loss_and_metrics[0]
 
         except ValueError:
@@ -284,6 +299,8 @@ def set_args_from_x(args: argparse.Namespace, x: Arguments):
             elif isinstance(args.__dict__[k], list):
                 if isinstance(x[k], tuple):
                     args.__dict__[k] = list(x[k])
+                else:
+                    args.__dict__[k] = [x[k]]
             else:
                 args.__dict__[k] = x[k]
             logging.info(f"value in args is now: {args.__dict__[k]}\n")
@@ -455,6 +472,8 @@ def _trial_metrics_and_params_to_df(
     trial_aucs: List[Dict[str, Dict]],
 ) -> pd.DataFrame:
     data = defaultdict(list)
+    trial_aucs_test = []
+    trial_aucs_train = []
     for trial_auc in trial_aucs:
         for split, split_auc in trial_auc.items():
             no_idx = 0
@@ -466,6 +485,10 @@ def _trial_metrics_and_params_to_df(
                 if len(split_auc) == 2 and no_idx == i:
                     continue
                 data[f"{split}_{label}_auc"].append(auc)
+                if split == "test":
+                    trial_aucs_test.append(auc)
+                elif split == "train":
+                    trial_aucs_train.append(auc)
 
     data.update(
         {
@@ -475,6 +498,8 @@ def _trial_metrics_and_params_to_df(
             "parameter_count": [
                 history["parameter_count"][-1] for history in histories
             ],
+            "test_auc": trial_aucs_test,
+            "train_auc": trial_aucs_train,
         },
     )
     data.update(_trial_parameters_to_dict(trials, param_lists))
