@@ -168,7 +168,7 @@ def evaluate_predictions(
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
-        subplot_pearson_per_class(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder)
+        performance_metrics.update(subplot_pearson_per_class(tm.rescale(y_predictions), tm.rescale(y_truth), tm.channel_map, protected, title, folder))
         scatters.append((tm.rescale(y_predictions), tm.rescale(y_truth), title, test_paths))
     else:
         logging.warning(f"No evaluation clause for tensor map {tm.name}")
@@ -437,45 +437,13 @@ def subplot_pearson_per_class(
     protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/'
 ) -> Dict[str, float]:
     lw = 2
-    col = 0
-    row = 1
     alpha = 0.5
     labels_to_areas = {}
     total_plots = len(protected) + 1
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
-
-    for p, ax in zip(protected, axes.ravel()):
-        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
-        ax.set_title(f'Protected {p.name}')
-        for key in labels:
-            if p.is_categorical():
-                class_label = 0
-                idx2key = {v: k for k, v in p.channel_map.items()}
-                protected_indexes = protected[p][:, class_label] == 1
-                color = _hash_string_to_color(p.name + key)
-                ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
-                ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-                pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
-                big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
-                label = f'{idx2key[class_label]} Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} n={np.sum(protected_indexes):.0f}'
-                ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw, label=label, marker='.', alpha=alpha)
-
-            elif p.is_continuous():  # top/bottom quantile
-                threshold = np.median(protected[p])
-                protected_indexes = (protected[p] > threshold)[:, 0]
-                color = _hash_string_to_color(p.name + key)
-                ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
-                ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-                pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
-                big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
-                label = f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}'
-                ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, lw=lw, label=label, marker='.', alpha=alpha)
-
-        ax.set_ylabel('Predictions')
-        ax.set_xlabel('Actual')
-        ax.legend(loc='lower right')
+    _protected_subplots(prediction, truth, labels, protected, axes, metric_type='roc')
 
     color = _hash_string_to_color(title)
     axes[-1, -1].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
@@ -1620,6 +1588,59 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
+def _protected_subplots(prediction, truth, labels, protected, axes, metric_type):
+    for p, ax in zip(protected, axes.ravel()):
+        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+        ax.set_title(f'Protected {p.name}')
+        if metric_type == 'roc':
+            ax.set_ylim([-0.02, 1.03])
+            ax.set_ylabel(RECALL_LABEL)
+            ax.set_xlabel(FALLOUT_LABEL)
+            ax.legend(loc='lower right')
+        elif metric_type == 'pearson':
+            ax.set_ylabel('Predictions')
+            ax.set_xlabel('Actual')
+            ax.legend(loc='lower right')
+
+        for key in labels:
+            if p.is_categorical():
+                class_label = 0  # TODO: Look at more than just the 0th class label
+                idx2key = {v: k for k, v in p.channel_map.items()}
+                protected_indexes = protected[p][:, class_label] == 1
+                color = _hash_string_to_color(p.name + key)
+                if metric_type == 'roc':
+                    pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
+                    label_text = f'{key} {idx2key[class_label]} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
+                    ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, label=label_text)
+                elif metric_type == 'pearson':
+                    ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+                    ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+                    pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
+                    big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
+                    label = f'{idx2key[class_label]} Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} n={np.sum(protected_indexes):.0f}'
+                    ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, label=label, marker='.', alpha=0.5)
+                else:
+                    raise ValueError(f'No way plot protected tensors for metric type {metric_type}')
+            elif p.is_continuous():
+                threshold = np.median(protected[p])  # TODO: Look at more than just the highest half of the population
+                protected_indexes = (protected[p] > threshold)[:, 0]
+                color = _hash_string_to_color(p.name + key)
+                if metric_type == 'roc':
+                    pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
+                    label_text = f'{key} roc={proc_auc[labels[key]]:.3f} Highest  n={np.sum(protected_indexes):.0f}'
+                    ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, label=label_text)
+                    ax.set_xlim([0.0, 1.0])
+                elif metric_type == 'pearson':
+                    ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
+                    ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
+                    pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
+                    big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
+                    label = f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}'
+                    ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, label=label, marker='.', alpha=0.5)
+                else:
+                    raise ValueError(f'No way plot protected tensors for metric type {metric_type}')
+
+
 def subplot_roc_per_class(
         prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
         protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/'
@@ -1631,33 +1652,8 @@ def subplot_roc_per_class(
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
+    _protected_subplots(prediction, truth, labels, protected, axes, metric_type='roc')
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
-
-    for p, ax in zip(protected, axes.ravel()):
-        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
-        ax.set_title(f'Protected {p.name}')
-        for key in labels:
-            if p.is_categorical():
-                class_label = 0  # TODO: Look at more than just the 0th class label
-                idx2key = {v: k for k, v in p.channel_map.items()}
-                protected_indexes = protected[p][:, class_label] == 1
-                pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
-                label_text = f'{key} {idx2key[class_label]} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
-                color = _hash_string_to_color(p.name + key)
-                ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
-            elif p.is_continuous():  # TODO: Look at more than just the highest half of the population
-                threshold = np.median(protected[p])
-                protected_indexes = (protected[p] > threshold)[:, 0]
-                pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
-                label_text = f'{key} roc={proc_auc[labels[key]]:.3f} Highest  n={np.sum(protected_indexes):.0f}'
-                color = _hash_string_to_color(p.name + key)
-                ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, lw=lw, label=label_text)
-                ax.set_xlim([0.0, 1.0])
-
-        ax.set_ylim([-0.02, 1.03])
-        ax.set_ylabel(RECALL_LABEL)
-        ax.set_xlabel(FALLOUT_LABEL)
-        ax.legend(loc='lower right')
 
     for key in labels:
         labels_to_areas[key] = roc_auc[labels[key]]
