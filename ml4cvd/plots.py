@@ -1,55 +1,39 @@
 # Imports: standard library
 import os
 import re
-import glob
 import math
 import hashlib
 import logging
-import operator
-from typing import Dict, List, Tuple, Union, Callable, Iterable, Optional, DefaultDict
+from typing import Dict, List, Tuple, Union, Callable, Optional
 from datetime import datetime
-from textwrap import wrap
-from functools import reduce
-from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
-from multiprocessing import Pool
 
 # Imports: third party
 import h5py
 import numpy as np
-import pandas as pd
 import seaborn as sns
 from scipy import stats
 from sklearn import manifold
-from sksurv.metrics import concordance_index_censored
-from biosppy.signals import ecg
 from sklearn.metrics import (
     auc,
-    f1_score,
     roc_curve,
-    recall_score,
-    precision_score,
     brier_score_loss,
     precision_recall_curve,
     average_precision_score,
 )
-from matplotlib.ticker import NullFormatter, MultipleLocator, AutoMinorLocator
+from matplotlib.ticker import NullFormatter
 from sklearn.calibration import calibration_curve
 from scipy.ndimage.filters import gaussian_filter
-from matplotlib.backends.backend_pdf import PdfPages
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 # Imports: first party
 from ml4cvd.defines import (
     PDF_EXT,
     IMAGE_EXT,
-    JOIN_CHAR,
     TENSOR_EXT,
     ECG_REST_LEADS,
-    HD5_GROUP_CHAR,
     ECG_DATE_FORMAT,
     ECG_DATETIME_FORMAT,
-    ECG_REST_MEDIAN_LEADS,
 )
 from ml4cvd.metrics import concordance_index, coefficient_of_determination
 from ml4cvd.TensorMap import TensorMap
@@ -292,51 +276,6 @@ def evaluate_predictions(
             events_at_end,
             follow_up,
             predictions_at_end,
-            tm.name,
-            folder,
-            tm.days_window,
-        )
-    elif tm.is_time_to_event():
-        c_index = concordance_index_censored(
-            y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0],
-        )
-        concordance_return_values = [
-            "C-Index",
-            "Concordant Pairs",
-            "Discordant Pairs",
-            "Tied Predicted Risk",
-            "Tied Event Time",
-        ]
-
-        logging.info(
-            [
-                f"{label}: {value:.3f}"
-                for label, value in zip(concordance_return_values, c_index)
-            ],
-        )
-
-        new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
-        performance_metrics.update(
-            plot_roc_per_class(
-                y_predictions,
-                y_truth[:, 0, np.newaxis],
-                {f"{new_title}_vs_ROC": 0},
-                new_title,
-                folder,
-            ),
-        )
-        calibration_title = f"{title}_at_{tm.days_window}_days"
-        plot_prediction_calibration(
-            y_predictions,
-            y_truth[:, 0, np.newaxis],
-            {tm.name: 0},
-            calibration_title,
-            folder,
-        )
-        plot_survivorship(
-            y_truth[:, 0],
-            y_truth[:, 1],
-            y_predictions[:, 0],
             tm.name,
             folder,
             tm.days_window,

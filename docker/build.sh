@@ -1,28 +1,22 @@
 #!/usr/bin/env bash
 
-# This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
-# and again optionally, tag the image also as 'latest_<gpu|cpu>'.
-#
-# It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
-# by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
+# This script can be used to build and tag a 'ml4cvd' image and to tag the image as 'latest_<gpu|cpu>'.
 
 # Stop the execution if any of the commands fails
 set -e
 
 ################### VARIABLES ############################################
 
-REPO="gcr.io/broad-ml4cvd/deeplearning"
+REPO="ml4cvd"
 TAG=$( git rev-parse --short HEAD )
-CONTEXT="docker/vm_boot_images/"
+CONTEXT="docker/"
 CPU_ONLY="false"
-PUSH_TO_GCR="false"
-PUSH_TO_LATEST="false"
 
 BASE_IMAGE_GPU="tensorflow/tensorflow:2.1.0-gpu-py3"
 BASE_IMAGE_CPU="tensorflow/tensorflow:2.1.0-py3"
 
-LATEST_TAG_GPU="tf2-latest-gpu"
-LATEST_TAG_CPU="tf2-latest-cpu"
+LATEST_TAG_GPU="latest-gpu"
+LATEST_TAG_CPU="latest-cpu"
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -36,15 +30,11 @@ usage()
 {
     cat <<USAGE_MESSAGE
 
-    This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
-    and again optionally, tag the image also as 'latest_<gpu|cpu>'.
+    This script can be used to build and tag a 'ml4cvd' image and to tag the image as 'latest_<gpu|cpu>'.
 
-    It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
-    by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
+    Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-c] [-h]
 
-    Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-chp]
-
-    Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4cvd/jamesp/docker/deeplearning -cp
+    Example: ./${SCRIPT_NAME} -d /home/username/ml/ml4cvd/docker -cp
 
         -d      <path>      Path to directory where Dockerfile is located. Default: '${CONTEXT}'
 
@@ -53,8 +43,6 @@ usage()
         -c                  Build off of the cpu-only base image and tag image also as '${LATEST_TAG_CPU}'.
                             Default: Build image to run on GPU-enabled machines and tag image also as '${LATEST_TAG_GPU}'.
 
-        -p                  Push to Google Container Register
-
         -h                  Print this help text
 
 USAGE_MESSAGE
@@ -62,7 +50,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":d:t:chpP" opt ; do
+while getopts ":d:t:ch" opt ; do
     case ${opt} in
         h)
             usage
@@ -76,12 +64,6 @@ while getopts ":d:t:chpP" opt ; do
             ;;
         c)
             CPU_ONLY="true"
-            ;;
-        p)
-            PUSH_TO_GCR="true"
-            ;;
-        P)
-            PUSH_TO_LATEST="true"
             ;;
         :)
             echo -e "${RED}ERROR: Option -${OPTARG} requires an argument.${NC}" 1>&2
@@ -116,14 +98,3 @@ docker build ${CONTEXT} \
     --tag "${REPO}:${TAG}" \
     --tag "${REPO}:${LATEST_TAG}" \
     --network host \
-
-if [[ ${PUSH_TO_LATEST} == "true" ]]; then
-    echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
-    docker push ${REPO}:${TAG}
-    docker push ${REPO}:${LATEST_TAG}
-fi
-
-if [[ ${PUSH_TO_GCR} == "true" ]]; then
-    echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}'...${NC}"
-    docker push ${REPO}:${TAG}
-fi

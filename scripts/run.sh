@@ -4,15 +4,17 @@
 
 ################### VARIABLES ############################################
 
-# The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
+DOCKER_IMAGE_GPU="ml4cvd:latest-gpu"
+DOCKER_IMAGE_NO_GPU="ml4cvd:latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
 MOUNTS=""
+PORT="8888"
+PORT_FLAG=""
 PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
+NOTEBOOK_COMMAND="jupyter-notebook"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
 ################### USERNAME & GROUPS ####################################
@@ -35,7 +37,6 @@ export GROUP_NAMES GROUP_IDS
 # Create string to be called in Docker's bash shell via eval;
 # this creates a user, adds groups, adds user to groups, then calls the Python script
 CALL_DOCKER_AS_USER="
-    apt-get -y install sudo;
     useradd -u $(id -u) ${USER};
     GROUP_NAMES_ARR=( \${GROUP_NAMES} );
     GROUP_IDS_ARR=( \${GROUP_IDS} );
@@ -45,7 +46,7 @@ CALL_DOCKER_AS_USER="
         echo \"Adding user ${USER} to group\" \${GROUP_NAMES_ARR[i]}
         usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
     done;
-    sudo -u ${USER}"
+    sudo -H -u ${USER}"
 
 ################### HELP TEXT ############################################
 
@@ -57,7 +58,7 @@ usage()
 
     Usage: ${SCRIPT_NAME} [-nth] [-i <image>] module [arg ...]
 
-    Example: ./${SCRIPT_NAME} -n -t -i gcr.io/broad-ml4cvd/deeplearning:latest-cpu recipes.py --mode tensorize ...
+    Example: ./${SCRIPT_NAME} -n -t -i ml4cvd:latest-cpu recipes.py --mode tensorize ...
 
         -c                  if set use CPU docker image and machine and use the regular 'docker' launcher.
                             By default, we assume the machine is GPU-enabled.
@@ -66,9 +67,9 @@ usage()
 
         -m                  Directories to mount at the same path in the docker image
 
-        -t                  Run Docker container interactively.
+        -p                  Ports to map between docker container and host
 
-        -j                  Set up Jupyter directory
+        -t                  Run Docker container interactively.
 
         -r                  Call Python script as root. If this flag is not specified,
                             the owner and group of the output directory will be those
@@ -78,12 +79,13 @@ usage()
 
         -i      <image>     Run Docker with the specified custom <image>. The default image is '${DOCKER_IMAGE}'.
         -T                  Run tests
+        -N                  Run jupyter notebook
 USAGE_MESSAGE
 }
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:d:m:ctjrhT" opt ; do
+while getopts ":i:d:m:p:ctrhTN" opt ; do
     case ${opt} in
         h)
             usage
@@ -96,7 +98,11 @@ while getopts ":i:d:m:ctjrhT" opt ; do
             GPU_DEVICE="--gpus device=${OPTARG}"
             ;;
         m)
-            MOUNTS="-v ${OPTARG}:${OPTARG}"
+            MOUNTS="${MOUNTS} -v ${OPTARG}:${OPTARG}"
+            ;;
+        p)
+            PORT="${OPTARG}"
+            PORT_FLAG="-p ${PORT}:${PORT}"
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
@@ -105,17 +111,15 @@ while getopts ":i:d:m:ctjrhT" opt ; do
         t)
             INTERACTIVE="-it"
             ;;
-        j)  # Set up Jupyter
-            mkdir -p /home/${USER}/jupyter/
-            chmod o+w /home/${USER}/jupyter/
-            mkdir -p /home/${USER}/jupyter/root/
-            mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
-            ;;
         r) # Output owned by root
             CALL_DOCKER_AS_USER=""
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
+            ;;
+        N)
+            PYTHON_COMMAND=${NOTEBOOK_COMMAND}
+            INTERACTIVE="-it"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -131,7 +135,7 @@ while getopts ":i:d:m:ctjrhT" opt ; do
 done
 shift $((OPTIND - 1))
 
-if [[ $# -eq 0 ]]; then
+if [[ $# -eq 0 && "$PYTHON_COMMAND" != "$NOTEBOOK_COMMAND" ]]; then
     echo "ERROR: No Python module was specified." 1>&2
     usage
     exit 1
@@ -139,49 +143,54 @@ fi
 
 ################### SCRIPT BODY ##########################################
 
-if ! docker pull ${DOCKER_IMAGE}; then
-    echo "Could not pull the image ${DOCKER_IMAGE}. Will try anyway..."
-fi
-
 if [[ -d "/data" ]] ; then
     echo "Found /data folder will try to mount it."
     MOUNTS="${MOUNTS} -v /data/:/data/"
 fi
 
-if [[ -d "/mnt" ]] ; then
-    echo "Found /mnt folder will try to mount it."
-    MOUNTS="${MOUNTS} -v /mnt/:/mnt/"
+if [[ -d "/media" ]] ; then
+    echo "Found /media folder will try to mount it."
+    MOUNTS="${MOUNTS} -v /media/:/media/"
 fi
-
-# Get your external IP directly from a DNS provider
-WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
 
 # Let anyone run this script
 WORKDIR=$(pwd)
 
 PYTHON_ARGS="$@"
+if [[ "$PYTHON_COMMAND" == "$NOTEBOOK_COMMAND" ]] ; then
+    if [[ "${PORT_FLAG}" == "" ]] ; then
+        PORT_FLAG="-p ${PORT}:${PORT}"
+    fi
+    PYTHON_ARGS="--port ${PORT} --ip 0.0.0.0 --no-browser"
+fi
+
 cat <<LAUNCH_MESSAGE
 Attempting to run Docker with
-    docker run ${INTERACTIVE} ${GPU_DEVICE} \
+    docker run --rm \
+    ${INTERACTIVE} \
+    ${GPU_DEVICE} \
     --env GROUP_NAMES \
     --env GROUP_IDS \
     --uts=host \
     --ipc=host \
-    --rm \
     -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
-    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
-        eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+    ${PORT_FLAG} \
+    ${DOCKER_IMAGE} /bin/bash -c \
+    "pip install ${WORKDIR}; cd ${HOME}; ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
-docker run ${INTERACTIVE} ${GPU_DEVICE} \
+docker run --rm \
+${INTERACTIVE} \
+${GPU_DEVICE} \
 --env GROUP_NAMES \
 --env GROUP_IDS \
 --uts=host \
 --ipc=host \
---rm \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${PORT_FLAG} \
+${DOCKER_IMAGE} /bin/bash -c \
+"pip install ${WORKDIR}; cd ${HOME}; ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"

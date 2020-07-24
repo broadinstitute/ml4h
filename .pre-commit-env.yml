@@ -1,0 +1,10 @@
+name: ml4cvd
+channels:
+  - conda-forge
+  - defaults
+  - anaconda
+dependencies:
+  - python=3.8
+  - pip
+  - pip:
+    - pre-commit

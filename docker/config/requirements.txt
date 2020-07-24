@@ -1,0 +1,17 @@
+h5py==2.10.0
+pydot==1.2.4
+hyperopt==0.1.2
+seaborn==0.10.1
+scikit-image
+ipywidgets==7.5.1
+bokeh
+notebook
+tensorflow==2.1.0
+tensorflow-gpu==2.1.0
+tensorflow-addons==0.9.1
+tensorflow_probability==0.9.0
+numcodecs
+beautifulsoup4
+lxml
+xmltodict
+modin==0.7.4
