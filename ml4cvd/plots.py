@@ -480,13 +480,13 @@ def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[
                 # Plot the paths of the worst predictions ie the outliers
                 for idx in arg_sorted[-top_k:]:
                     _text_on_plot(ax, prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-            ax.set_xlabel('Predictions')
-            ax.set_ylabel('Actual')
-            ax.set_title(title + '\n')
-            pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-            r2 = pearson*pearson
-            big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
-            ax.text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=ax.transAxes)
+        ax.set_xlabel('Predictions')
+        ax.set_ylabel('Actual')
+        ax.set_title(title + '\n')
+        pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+        r2 = pearson * pearson
+        big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
+        ax.text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=ax.transAxes)
 
     figure_path = prefix + 'scatters_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -517,9 +517,9 @@ def subplot_comparison_scatters(
                     _text_on_plot(ax, predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
                     for idx in arg_sorted[-top_k:]:
                         _text_on_plot(ax, predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-            ax.set_xlabel('Predictions')
-            ax.set_ylabel('Actual')
-            ax.set_title(title + '\n')
+        ax.set_xlabel('Predictions')
+        ax.set_ylabel('Actual')
+        ax.set_title(title + '\n')
 
     figure_path = os.path.join(prefix, 'scatters_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1705,13 +1705,13 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
                 label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
                 ax .plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                 logging.info(f'ROC Label {label_text}')
-            ax.set_xlim([0.0, 1.0])
-            ax.set_ylim([-0.02, 1.03])
-            ax.set_ylabel(RECALL_LABEL)
-            ax.set_xlabel(FALLOUT_LABEL)
-            ax.legend(loc='lower right')
-            ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
-            ax.set_title(f'ROC n={np.sum(true_sums):.0f}')
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([-0.02, 1.03])
+        ax.set_ylabel(RECALL_LABEL)
+        ax.set_xlabel(FALLOUT_LABEL)
+        ax.legend(loc='lower right')
+        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+        ax.set_title(f'ROC n={np.sum(true_sums):.0f}')
 
     figure_path = prefix + 'rocs_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1736,13 +1736,13 @@ def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, 
                     ax.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
                     logging.info(f"ROC Label {label_text}")
 
-            ax.set_xlim([0.0, 1.0])
-            ax.set_ylim([-0.02, 1.03])
-            ax.set_ylabel(RECALL_LABEL)
-            ax.set_xlabel(FALLOUT_LABEL)
-            ax.legend(loc="lower right")
-            ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
-            ax.set_title(f'ROC n={np.sum(true_sums):.0f}\n')
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([-0.02, 1.03])
+        ax.set_ylabel(RECALL_LABEL)
+        ax.set_xlabel(FALLOUT_LABEL)
+        ax.legend(loc="lower right")
+        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+        ax.set_title(f'ROC n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'rocs_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
