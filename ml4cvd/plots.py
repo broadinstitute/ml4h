@@ -443,7 +443,7 @@ def subplot_pearson_per_class(
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
-    _protected_subplots(prediction, truth, labels, protected, axes, metric_type='roc')
+    _protected_subplots(prediction, truth, labels, protected, axes, metric_type='pearson')
 
     color = _hash_string_to_color(title)
     axes[-1, -1].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
