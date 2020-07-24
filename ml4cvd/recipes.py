@@ -146,8 +146,10 @@ def train_multimodal_multitask(args):
 
     out_path = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-                                 args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha)
+    return _predict_and_evaluate(
+        model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+        args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha,
+    )
 
 
 def test_multimodal_multitask(args):
@@ -155,16 +157,20 @@ def test_multimodal_multitask(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-                                 args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha)
+    return _predict_and_evaluate(
+        model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+        args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
+    )
 
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + '/')
-    return _predict_scalars_and_evaluate_from_generator(model, generate_test, args.tensor_maps_in, args.tensor_maps_out,
-                                                        args.tensor_maps_protected, args.test_steps, args.hidden_layer, p, args.alpha)
+    return _predict_scalars_and_evaluate_from_generator(
+        model, generate_test, args.tensor_maps_in, args.tensor_maps_out,
+        args.tensor_maps_protected, args.test_steps, args.hidden_layer, p, args.alpha,
+    )
 
 
 def compare_multimodal_multitask_models(args):
@@ -215,8 +221,10 @@ def infer_multimodal_multitask(args):
         with open(args.sample_csv, 'r') as csv_file:
             sample_ids = [row[0] for row in csv.reader(csv_file)]
             sample_set = set(sample_ids[1:])
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
-                    if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)]
+    tensor_paths = [
+        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
+        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
+    ]
     model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
@@ -340,8 +348,10 @@ def train_shallow_model(args):
 
     p = os.path.join(args.output_folder, args.id + '/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-                                 args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha)
+    return _predict_and_evaluate(
+        model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+        args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha,
+    )
 
 
 def train_char_model(args):
@@ -364,8 +374,10 @@ def train_char_model(args):
 
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-                                 args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha)
+    return _predict_and_evaluate(
+        model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+        args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
+    )
 
 
 def train_siamese_model(args):
@@ -379,8 +391,10 @@ def train_siamese_model(args):
 
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     prediction = siamese_model.predict(data)
-    return subplot_roc_per_class(prediction, labels['output_siamese'], {'random_siamese_verification_task': 0},
-                                 args.protected_maps, args.id, os.path.join(args.output_folder, args.id + '/'))
+    return subplot_roc_per_class(
+        prediction, labels['output_siamese'], {'random_siamese_verification_task': 0},
+        args.protected_maps, args.id, os.path.join(args.output_folder, args.id + '/'),
+    )
 
 
 def plot_predictions(args):
@@ -421,8 +435,10 @@ def saliency_maps(args):
             plot_saliency_maps(in_tensor, gradients, paths, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
 
 
-def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
-                          batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha):
+def _predict_and_evaluate(
+    model, test_data, test_labels, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
+    batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha,
+):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
     scatters = []
@@ -452,8 +468,10 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
     return performance_metrics
 
 
-def _predict_scalars_and_evaluate_from_generator(model, generate_test, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
-                                                 steps, hidden_layer, plot_path, alpha):
+def _predict_scalars_and_evaluate_from_generator(
+    model, generate_test, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
+    steps, hidden_layer, plot_path, alpha,
+):
     layer_names = [layer.name for layer in model.layers]
     model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
     scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}

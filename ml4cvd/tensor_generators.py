@@ -801,12 +801,18 @@ def test_train_valid_tensor_generators(
 
     num_train_workers = int(training_steps / (training_steps + validation_steps) * num_workers) or (1 if num_workers else 0)
     num_valid_workers = int(validation_steps / (training_steps + validation_steps) * num_workers) or (1 if num_workers else 0)
-    generate_train = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_train_workers, cache_size, weights,
-                                     keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight)
-    generate_valid = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_valid_workers, cache_size, weights,
-                                     keep_paths, name='validation_worker', siamese=siamese, augment=False)
-    generate_test = TensorGenerator(batch_size, tensor_maps_in, tensor_maps_out+tensor_maps_protected, test_paths, num_workers, 0, weights,
-                                    keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False)
+    generate_train = TensorGenerator(
+        batch_size, tensor_maps_in, tensor_maps_out, train_paths, num_train_workers, cache_size, weights,
+        keep_paths, mixup_alpha, name='train_worker', siamese=siamese, augment=True, sample_weight=sample_weight,
+    )
+    generate_valid = TensorGenerator(
+        batch_size, tensor_maps_in, tensor_maps_out, valid_paths, num_valid_workers, cache_size, weights,
+        keep_paths, name='validation_worker', siamese=siamese, augment=False,
+    )
+    generate_test = TensorGenerator(
+        batch_size, tensor_maps_in, tensor_maps_out+tensor_maps_protected, test_paths, num_workers, 0, weights,
+        keep_paths or keep_paths_test, name='test_worker', siamese=siamese, augment=False,
+    )
     return generate_train, generate_valid, generate_test
 
 

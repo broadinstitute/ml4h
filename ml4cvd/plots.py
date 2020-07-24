@@ -434,7 +434,7 @@ def plot_scatters(predictions, truth, title, prefix='./figures/', paths=None, to
 
 def subplot_pearson_per_class(
     prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
-    protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/'
+    protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/',
 ) -> Dict[str, float]:
     lw = 2
     alpha = 0.5
@@ -578,11 +578,15 @@ def plot_survivorship(
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
-        plt.plot([0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o',
-                 label=f'{group} group had {predicted_sick[group]} events')
+        plt.plot(
+            [0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o',
+            label=f'{group} group had {predicted_sick[group]} events',
+        )
 
-    plt.title(f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, '
-              f'{100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.')
+    plt.title(
+        f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, '
+        f'{100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
+    )
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.legend(loc="lower left")
@@ -1476,7 +1480,7 @@ def plot_ecg_rest(
         'aVL': 'ecg_rest_lvh_avl',
         'Sokolow_Lyon': 'ecg_rest_lvh_sokolow_lyon',
         'Cornell': 'ecg_rest_lvh_cornell',
-        }
+    }
     from ml4cvd.tensor_from_file import TMAPS
     raw_scale = 0.005 # Conversion from raw to mV
     default_yrange = ECG_REST_PLOT_DEFAULT_YRANGE # mV
@@ -1623,7 +1627,7 @@ def _protected_subplots(prediction, truth, labels, protected, axes, metric_type)
 
 def subplot_roc_per_class(
         prediction: np.ndarray, truth: np.ndarray, labels: Dict[str, int],
-        protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/'
+        protected: Dict[TensorMap, np.ndarray], title: str, prefix: str = './figures/',
 ) -> Dict[str, float]:
     lw = 2
     labels_to_areas = {}
