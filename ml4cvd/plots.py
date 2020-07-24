@@ -180,24 +180,34 @@ def evaluate_predictions(
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix='./figures/'):
+    row = 0
+    col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
-    f, axes = _figure_and_subplot_axes_from_total(total_plots)
-    for ax in axes.ravel():
-        for k in sorted(history.history.keys()):
-            if not k.startswith('val_'):
-                if isinstance(history.history[k][0], LearningRateSchedule):
-                    history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
-                ax.plot(history.history[k])
-                k_split = str(k).replace('output_', '').split('_')
-                k_title = " ".join(OrderedDict.fromkeys(k_split))
-                ax.set_title(k_title)
-                ax.set_xlabel('epoch')
-                if 'val_' + k in history.history:
-                    ax.plot(history.history['val_' + k])
-                    labels = ['train', 'valid']
-                else:
-                    labels = [k]
-                ax.legend(labels, loc='upper left')
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
+    for k in sorted(history.history.keys()):
+        if not k.startswith('val_'):
+            if isinstance(history.history[k][0], LearningRateSchedule):
+                history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
+            axes[row, col].plot(history.history[k])
+            k_split = str(k).replace('output_', '').split('_')
+            k_title = " ".join(OrderedDict.fromkeys(k_split))
+            axes[row, col].set_title(k_title)
+            axes[row, col].set_xlabel('epoch')
+            if 'val_' + k in history.history:
+                axes[row, col].plot(history.history['val_' + k])
+                labels = ['train', 'valid']
+            else:
+                labels = [k]
+            axes[row, col].legend(labels, loc='upper left')
+
+            row += 1
+            if row == rows:
+                row = 0
+                col += 1
+                if col >= cols:
+                    break
 
     plt.tight_layout()
     figure_path = os.path.join(prefix, 'metric_history_' + title + IMAGE_EXT)
