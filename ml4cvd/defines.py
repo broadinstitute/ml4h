@@ -25,7 +25,6 @@ YEAR_DAYS = 365.26
 
 
 def _get_path_prefix_to_sts_data() -> str:
-    print(f"hostname is {socket.gethostname()}")
     if "anduril" == socket.gethostname():
         return "/media/4tb1/sts-data"
     elif "mithril" == socket.gethostname():
