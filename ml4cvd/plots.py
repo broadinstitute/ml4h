@@ -180,34 +180,24 @@ def evaluate_predictions(
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix='./figures/'):
-    row = 0
-    col = 0
     total_plots = int(len(history.history) / 2)  # divide by 2 because we plot validation and train histories together
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
-    for k in sorted(history.history.keys()):
-        if not k.startswith('val_'):
-            if isinstance(history.history[k][0], LearningRateSchedule):
-                history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
-            axes[row, col].plot(history.history[k])
-            k_split = str(k).replace('output_', '').split('_')
-            k_title = " ".join(OrderedDict.fromkeys(k_split))
-            axes[row, col].set_title(k_title)
-            axes[row, col].set_xlabel('epoch')
-            if 'val_' + k in history.history:
-                axes[row, col].plot(history.history['val_' + k])
-                labels = ['train', 'valid']
-            else:
-                labels = [k]
-            axes[row, col].legend(labels, loc='upper left')
-
-            row += 1
-            if row == rows:
-                row = 0
-                col += 1
-                if col >= cols:
-                    break
+    f, axes = _figure_and_subplot_axes_from_total(total_plots)
+    for ax in axes.ravel():
+        for k in sorted(history.history.keys()):
+            if not k.startswith('val_'):
+                if isinstance(history.history[k][0], LearningRateSchedule):
+                    history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
+                ax.plot(history.history[k])
+                k_split = str(k).replace('output_', '').split('_')
+                k_title = " ".join(OrderedDict.fromkeys(k_split))
+                ax.set_title(k_title)
+                ax.set_xlabel('epoch')
+                if 'val_' + k in history.history:
+                    ax.plot(history.history['val_' + k])
+                    labels = ['train', 'valid']
+                else:
+                    labels = [k]
+                ax.legend(labels, loc='upper left')
 
     plt.tight_layout()
     figure_path = os.path.join(prefix, 'metric_history_' + title + IMAGE_EXT)
@@ -465,39 +455,28 @@ def subplot_pearson_per_class(
 
 
 def subplot_scatters(scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]], prefix: str='./figures/', top_k: int=3, alpha: float=0.5):
-    row = 0
-    col = 0
-    total_plots = len(scatters)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for prediction, truth, title, paths in scatters:
-        axes[row, col].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
-        axes[row, col].plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)])
-        axes[row, col].scatter(prediction, truth, marker='.', alpha=alpha)
-        margin = float((np.max(truth) - np.min(truth)) / 100)
-        if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
-            diff = np.abs(prediction - truth)
-            arg_sorted = diff[:, 0].argsort()
-            # The path of the best prediction, ie the inlier
-            _text_on_plot(axes[row, col], prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
-            # Plot the paths of the worst predictions ie the outliers
-            for idx in arg_sorted[-top_k:]:
-                _text_on_plot(axes[row, col], prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-        axes[row, col].set_xlabel('Predictions')
-        axes[row, col].set_ylabel('Actual')
-        axes[row, col].set_title(title + '\n')
-        pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-        r2 = pearson*pearson
-        big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
-        axes[row, col].text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=axes[row, col].transAxes)
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+    fig, axes = _figure_and_subplot_axes_from_total(len(scatters))
+    for ax in axes.ravel():
+        for prediction, truth, title, paths in scatters:
+            ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
+            ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)])
+            ax.scatter(prediction, truth, marker='.', alpha=alpha)
+            margin = float((np.max(truth) - np.min(truth)) / 100)
+            if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
+                diff = np.abs(prediction - truth)
+                arg_sorted = diff[:, 0].argsort()
+                # The path of the best prediction, ie the inlier
+                _text_on_plot(ax, prediction[arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                # Plot the paths of the worst predictions ie the outliers
+                for idx in arg_sorted[-top_k:]:
+                    _text_on_plot(ax, prediction[idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+            ax.set_xlabel('Predictions')
+            ax.set_ylabel('Actual')
+            ax.set_title(title + '\n')
+            pearson = np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+            r2 = pearson*pearson
+            big_r2 = coefficient_of_determination(truth.flatten(), prediction.flatten())
+            ax.text(0, 1, f"Pearson:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}", verticalalignment='bottom', transform=ax.transAxes)
 
     figure_path = prefix + 'scatters_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -510,38 +489,27 @@ def subplot_comparison_scatters(
     scatters: List[Tuple[Dict[str, np.ndarray], np.ndarray, str, Optional[List[str]]]], prefix: str = './figures/', top_k: int = 3,
     alpha: float = 0.5,
 ):
-    row = 0
-    col = 0
-    total_plots = len(scatters)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for predictions, truth, title, paths in scatters:
-        for k in predictions:
-            c = _hash_string_to_color(title+k)
-            pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
-            r2 = pearson * pearson
-            big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
-            axes[row, col].plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
-            axes[row, col].scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}', marker='.', alpha=alpha)
-            axes[row, col].legend(loc="upper left")
-            if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
-                margin = float((np.max(truth) - np.min(truth)) / 100)
-                diff = np.abs(predictions[k] - truth)
-                arg_sorted = diff[:, 0].argsort()
-                _text_on_plot(axes[row, col], predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
-                for idx in arg_sorted[-top_k:]:
-                    _text_on_plot(axes[row, col], predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
-        axes[row, col].set_xlabel('Predictions')
-        axes[row, col].set_ylabel('Actual')
-        axes[row, col].set_title(title + '\n')
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+    fig, axes = _figure_and_subplot_axes_from_total(len(scatters))
+    for ax in axes.ravel():
+        for predictions, truth, title, paths in scatters:
+            for k in predictions:
+                c = _hash_string_to_color(title+k)
+                pearson = np.corrcoef(predictions[k].flatten(), truth.flatten())[1, 0]  # corrcoef returns full covariance matrix
+                r2 = pearson * pearson
+                big_r2 = coefficient_of_determination(truth.flatten(), predictions[k].flatten())
+                ax.plot([np.min(predictions[k]), np.max(predictions[k])], [np.min(predictions[k]), np.max(predictions[k])], color=c)
+                ax.scatter(predictions[k], truth, color=c, label=f'{k} r:{pearson:0.3f} r^2:{r2:0.3f} R^2:{big_r2:0.3f}', marker='.', alpha=alpha)
+                ax.legend(loc="upper left")
+                if paths is not None:  # If tensor paths are provided we plot the file names of top_k outliers and the #1 inlier
+                    margin = float((np.max(truth) - np.min(truth)) / 100)
+                    diff = np.abs(predictions[k] - truth)
+                    arg_sorted = diff[:, 0].argsort()
+                    _text_on_plot(ax, predictions[k][arg_sorted[0]] + margin, truth[arg_sorted[0]] + margin, os.path.basename(paths[arg_sorted[0]]))
+                    for idx in arg_sorted[-top_k:]:
+                        _text_on_plot(ax, predictions[k][idx] + margin, truth[idx] + margin, os.path.basename(paths[idx]))
+            ax.set_xlabel('Predictions')
+            ax.set_ylabel('Actual')
+            ax.set_title(title + '\n')
 
     figure_path = os.path.join(prefix, 'scatters_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1592,16 +1560,6 @@ def _protected_subplots(prediction, truth, labels, protected, axes, metric_type)
     for p, ax in zip(protected, axes.ravel()):
         ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
         ax.set_title(f'Protected {p.name}')
-        if metric_type == 'roc':
-            ax.set_ylim([-0.02, 1.03])
-            ax.set_ylabel(RECALL_LABEL)
-            ax.set_xlabel(FALLOUT_LABEL)
-            ax.legend(loc='lower right')
-        elif metric_type == 'pearson':
-            ax.set_ylabel('Predictions')
-            ax.set_xlabel('Actual')
-            ax.legend(loc='lower right')
-
         for key in labels:
             if p.is_categorical():
                 class_label = 0  # TODO: Look at more than just the 0th class label
@@ -1639,6 +1597,16 @@ def _protected_subplots(prediction, truth, labels, protected, axes, metric_type)
                     ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, label=label, marker='.', alpha=0.5)
                 else:
                     raise ValueError(f'No way plot protected tensors for metric type {metric_type}')
+
+        if metric_type == 'roc':
+            ax.set_ylim([-0.02, 1.03])
+            ax.set_ylabel(RECALL_LABEL)
+            ax.set_xlabel(FALLOUT_LABEL)
+            ax.legend(loc='lower right')
+        elif metric_type == 'pearson':
+            ax.set_ylabel('Predictions')
+            ax.set_xlabel('Actual')
+            ax.legend(loc='lower right')
 
 
 def subplot_roc_per_class(
@@ -1706,39 +1674,34 @@ def plot_rocs(predictions, truth, labels, title, prefix='./figures/'):
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
+def _figure_and_subplot_axes_from_total(total_plots: int):
+    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
+    rows = max(2, int(math.ceil(total_plots / cols)))
+    return plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
+
+
 def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 2
-    row = 0
-    col = 0
-    total_plots = len(rocs)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for predicted, truth, labels in rocs:
-        true_sums = np.sum(truth, axis=0)
-        fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
-        for key in labels:
-            if 'no_' in key and len(labels) == 2:
-                continue
-            color = _hash_string_to_color(key)
-            label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-            axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-            logging.info(f'ROC Label {label_text}')
-        axes[row, col].set_xlim([0.0, 1.0])
-        axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
-        axes[row, col].legend(loc='lower right')
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}')
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+    fig, axes = _figure_and_subplot_axes_from_total(len(rocs))
+    for ax in axes.ravel():
+        for predicted, truth, labels in rocs:
+            true_sums = np.sum(truth, axis=0)
+            fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predicted, truth, labels)
+            for key in labels:
+                if 'no_' in key and len(labels) == 2:
+                    continue
+                color = _hash_string_to_color(key)
+                label_text = f'{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
+                ax .plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+                logging.info(f'ROC Label {label_text}')
+            ax.set_xlim([0.0, 1.0])
+            ax.set_ylim([-0.02, 1.03])
+            ax.set_ylabel(RECALL_LABEL)
+            ax.set_xlabel(FALLOUT_LABEL)
+            ax.legend(loc='lower right')
+            ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+            ax.set_title(f'ROC n={np.sum(true_sums):.0f}')
 
     figure_path = prefix + 'rocs_together' + IMAGE_EXT
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1749,38 +1712,27 @@ def subplot_rocs(rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]], pref
 def subplot_comparison_rocs(rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, Dict[str, int]]], prefix: str='./figures/'):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
-    row = 0
-    col = 0
-    total_plots = len(rocs)
-    cols = max(2, int(math.ceil(math.sqrt(total_plots))))
-    rows = max(2, int(math.ceil(total_plots / cols)))
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*SUBPLOT_SIZE, rows*SUBPLOT_SIZE))
-    for predictions, truth, labels in rocs:
-        true_sums = np.sum(truth, axis=0)
-        for p in predictions:
-            fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-            for key in labels:
-                if 'no_' in key and len(labels) == 2:
-                    continue
-                color = _hash_string_to_color(p + key)
-                label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
-                axes[row, col].plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
-                logging.info(f"ROC Label {label_text}")
+    fig, axes = _figure_and_subplot_axes_from_total(len(rocs))
+    for ax in axes.ravel():
+        for predictions, truth, labels in rocs:
+            true_sums = np.sum(truth, axis=0)
+            for p in predictions:
+                fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
+                for key in labels:
+                    if 'no_' in key and len(labels) == 2:
+                        continue
+                    color = _hash_string_to_color(p + key)
+                    label_text = f'{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}'
+                    ax.plot(fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text)
+                    logging.info(f"ROC Label {label_text}")
 
-        axes[row, col].set_xlim([0.0, 1.0])
-        axes[row, col].set_ylim([-0.02, 1.03])
-        axes[row, col].set_ylabel(RECALL_LABEL)
-        axes[row, col].set_xlabel(FALLOUT_LABEL)
-        axes[row, col].legend(loc="lower right")
-        axes[row, col].plot([0, 1], [0, 1], 'k:', lw=0.5)
-        axes[row, col].set_title(f'ROC n={np.sum(true_sums):.0f}\n')
-
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+            ax.set_xlim([0.0, 1.0])
+            ax.set_ylim([-0.02, 1.03])
+            ax.set_ylabel(RECALL_LABEL)
+            ax.set_xlabel(FALLOUT_LABEL)
+            ax.legend(loc="lower right")
+            ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
+            ax.set_title(f'ROC n={np.sum(true_sums):.0f}\n')
 
     figure_path = os.path.join(prefix, 'rocs_compared_together' + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -1866,21 +1818,15 @@ def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
 
 
 def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
-    row = 0
-    col = 0
     f, axes = plt.subplots(rows, cols, sharex=True, figsize=(36, 36))
-    for i in range(true_waves.shape[0]):
-        axes[row, col].plot(true_waves[i, :, 0], color='blue', label='Actual Wave')
-        if predicted_waves is not None:
-            axes[row, col].plot(predicted_waves[i, :, 0], color='green', label='Predicted')
-        axes[row, col].set_xlabel('time')
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+    for ax in axes.ravel():
+        for i in range(true_waves.shape[0]):
+            ax.plot(true_waves[i, :, 0], color='blue', label='Actual Wave')
+            if predicted_waves is not None:
+                ax.plot(predicted_waves[i, :, 0], color='green', label='Predicted')
+            ax.set_xlabel('time')
     plt.legend(loc="lower left")
+
     figure_path = os.path.join(plot_path, title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
