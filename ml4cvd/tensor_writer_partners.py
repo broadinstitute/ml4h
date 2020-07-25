@@ -242,7 +242,10 @@ def _get_amplitude_from_amplitude_tags(amplitude_tags: bs4.ResultSet) -> Dict[st
                 amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][:] = np.nan
         for amplitude_feature in amplitude_features:
             value = int(amplitude_tag.find(f'amplitudemeasurement{amplitude_feature}').text)
-            amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][ecg_rest_amp_leads[lead_id]] = value
+            try:
+                amplitude_data[f'measuredamplitude{amplitude_feature}_{wave_id}'][ecg_rest_amp_leads[lead_id]] = value
+            except KeyError as e:
+                logging.warning(f'Amplitude of lead {str(e)} will not be extracted.')
     return amplitude_data
 
 
