@@ -75,17 +75,17 @@ def _get_ecg_dates(tm, hd5):
 
 def validator_no_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if any(tensor == ""):
-        raise ValueError(f"TensorMap {tm.name} failed empty string check.")
+        raise ValueError(f"TensorMap {tm.name} failed empty string check on hd5 {hd5.filename}")
 
 
 def validator_no_negative(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if any(tensor < 0):
-        raise ValueError(f"TensorMap {tm.name} failed non-negative check")
+        raise ValueError(f"TensorMap {tm.name} failed non-negative check on hd5 {hd5.filename}")
 
 
 def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if np.count_nonzero(tensor) == 0:
-        raise ValueError(f"TensorMap {tm.name} failed all-zero check")
+        raise ValueError(f"TensorMap {tm.name} failed all-zero check on hd5 {hd5.filename}")
 
 
 def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ...]]:
