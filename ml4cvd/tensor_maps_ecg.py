@@ -18,11 +18,10 @@ from ml4cvd.defines import (
     ECG_PREFIX,
     ECG_DATE_FORMAT,
     ECG_REST_AMP_LEADS,
+    CARDIAC_SURGERY_CSV,
     ECG_DATETIME_FORMAT,
     ECG_REST_INDEPENDENT_LEADS,
     CARDIAC_SURGERY_DATE_FORMAT,
-    CARDIAC_SURGERY_FEATURES_CSV,
-    CARDIAC_SURGERY_OUTCOMES_CSV,
     CARDIAC_SURGERY_PREOPERATIVE_FEATURES,
 )
 from ml4cvd.metrics import weighted_crossentropy
@@ -1472,7 +1471,7 @@ def build_ecg_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]
 
 
 def build_cardiac_surgery_dict(
-    filename: str = CARDIAC_SURGERY_OUTCOMES_CSV,
+    filename: str = CARDIAC_SURGERY_CSV,
     patient_column: str = "medrecn",
     date_column: str = "surgdt",
     additional_columns: List[str] = [],
@@ -1501,15 +1500,13 @@ def build_date_interval_lookup(
     for mrn in cardiac_surgery_dict:
         start_date = (
             _cardiac_surgery_str2date(
-                cardiac_surgery_dict[mrn][start_column],
-                ECG_DATETIME_FORMAT.replace("T", " "),
+                cardiac_surgery_dict[mrn][start_column], CARDIAC_SURGERY_DATE_FORMAT,
             )
             + datetime.timedelta(days=start_offset)
         ).strftime(ECG_DATETIME_FORMAT)
         end_date = (
             _cardiac_surgery_str2date(
-                cardiac_surgery_dict[mrn][end_column],
-                ECG_DATETIME_FORMAT.replace("T", " "),
+                cardiac_surgery_dict[mrn][end_column], CARDIAC_SURGERY_DATE_FORMAT,
             )
             + datetime.timedelta(days=end_offset)
         ).strftime(ECG_DATETIME_FORMAT)
@@ -1666,7 +1663,7 @@ def build_cardiac_surgery_tensor_maps(
 
 def build_extended_cardiac_surgery_tensor_maps(
     needed_tensor_maps: List[str],
-    filename: str = CARDIAC_SURGERY_FEATURES_CSV,
+    filename: str = CARDIAC_SURGERY_CSV,
     patient_column: str = "medrecn",
     date_column: str = "surgdt",
 ) -> Dict[str, TensorMap]:

@@ -26,19 +26,21 @@ YEAR_DAYS = 365.26
 
 def _get_path_prefix_to_sts_data() -> str:
     if "anduril" == socket.gethostname():
-        return "/media/4tb1/sts-data"
+        path = "/media/4tb1/sts-data"
     elif "mithril" == socket.gethostname():
-        return "/data/sts-data"
+        path = "/data/sts-data"
     elif "stultzlab" in socket.gethostname():
-        return "/storage/shared/sts-data"
+        path = "/storage/shared/sts-data"
     else:
-        return ""
+        path = ""
+
+    if not os.path.isdir(path):
+        path = os.path.expanduser("~/dropbox/sts_data")
+
+    return path
 
 
-CARDIAC_SURGERY_OUTCOMES_CSV = os.path.join(
-    _get_path_prefix_to_sts_data(), "mgh-preop-ecg-outcome-labels.csv",
-)
-CARDIAC_SURGERY_FEATURES_CSV = os.path.join(
+CARDIAC_SURGERY_CSV = os.path.join(
     _get_path_prefix_to_sts_data(), "mgh-all-features-labels.csv",
 )
 
