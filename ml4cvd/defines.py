@@ -29,6 +29,7 @@ PDF_EXT = '.pdf'
 TENSOR_EXT = '.hd5'
 MODEL_EXT = '.h5'
 XML_EXT = '.xml'
+JSON_EXT = '.json'
 
 STOP_CHAR = '!'
 JOIN_CHAR = '_'

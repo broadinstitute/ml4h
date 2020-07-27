@@ -6,7 +6,7 @@ do
 	    for j in 2500 5000
 	    do
 	        sbatch --time 01:00:00 --job-name=ml4cvd_${j}_${output} \
-                logs/ml/scripts/tf_cluster.sh -b 2017P001650/mgh_tar \
+                logs/ml/scripts/tf_cluster.sh -b 2017P001650/mgh_3yrs \
                 /home/paolo.achille/ml/ml4cvd/recipes.py \
                     --mode train \
                     --num_workers 20 \
