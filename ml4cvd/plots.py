@@ -30,7 +30,7 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score
+from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import calibration_curve
 from sksurv.metrics import concordance_index_censored
 
@@ -443,7 +443,7 @@ def subplot_pearson_per_class(
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
-    _protected_subplots(prediction, truth, labels, protected, axes, metric_type='pearson')
+    _protected_subplots(prediction, truth, protected, axes, metric=coefficient_of_determination, metric_name='$R^2$')
 
     color = _hash_string_to_color(title)
     axes[-1, -1].plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
@@ -1572,57 +1572,58 @@ def plot_counter(counts, title, prefix='./figures/'):
     logging.info(f"Saved counter plot at: {figure_path}")
 
 
-def _protected_subplots(prediction, truth, labels, protected, axes, metric_type):
-    for p, ax in zip(protected, axes.ravel()):
-        ax.plot([0, 1], [0, 1], 'k:', lw=0.5)
-        ax.set_title(f'Protected {p.name}')
-        for key in labels:
-            if p.is_categorical():
-                class_label = 0  # TODO: Look at more than just the 0th class label
-                idx2key = {v: k for k, v in p.channel_map.items()}
-                protected_indexes = protected[p][:, class_label] == 1
-                color = _hash_string_to_color(p.name + key)
-                if metric_type == 'roc':
-                    pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
-                    label_text = f'{key} {idx2key[class_label]} roc={proc_auc[labels[key]]:.3f} n={np.sum(protected_indexes):.0f}'
-                    ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, label=label_text)
-                elif metric_type == 'pearson':
-                    ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
-                    ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-                    pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
-                    big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
-                    label = f'{idx2key[class_label]} Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} n={np.sum(protected_indexes):.0f}'
-                    ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, label=label, marker='.', alpha=0.5)
-                else:
-                    raise ValueError(f'No way plot protected tensors for metric type {metric_type}')
-            elif p.is_continuous():
-                threshold = np.median(protected[p])  # TODO: Look at more than just the highest half of the population
-                protected_indexes = (protected[p] > threshold)[:, 0]
-                color = _hash_string_to_color(p.name + key)
-                if metric_type == 'roc':
-                    pfpr, ptpr, proc_auc = get_fpr_tpr_roc_pred(prediction[protected_indexes], truth[protected_indexes], labels)
-                    label_text = f'{key} roc={proc_auc[labels[key]]:.3f} Highest  n={np.sum(protected_indexes):.0f}'
-                    ax.plot(pfpr[labels[key]], ptpr[labels[key]], color=color, label=label_text)
-                    ax.set_xlim([0.0, 1.0])
-                elif metric_type == 'pearson':
-                    ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2)
-                    ax.plot([np.min(prediction), np.max(prediction)], [np.min(prediction), np.max(prediction)], linewidth=4)
-                    pearson = np.corrcoef(prediction[protected_indexes].flatten(), truth[protected_indexes].flatten())[1, 0]
-                    big_r_squared = coefficient_of_determination(truth[protected_indexes], prediction[protected_indexes])
-                    label = f'Pearson:{pearson:0.3f} r^2:{pearson * pearson:0.3f} R^2:{big_r_squared:0.3f} Highest n={np.sum(protected_indexes):.0f}'
-                    ax.scatter(prediction[protected_indexes], truth[protected_indexes], color=color, label=label, marker='.', alpha=0.5)
-                else:
-                    raise ValueError(f'No way plot protected tensors for metric type {metric_type}')
+def _bootstrap_performance(
+        truth: np.ndarray, prediction: np.ndarray, metric: Callable[[np.ndarray, np.ndarray], float],
+        n_samples: int = 1000,
+) -> List[float]:
+    perf = []
+    for _ in range(n_samples):
+        idx = np.random.randint(0, truth.shape[0], size=truth.shape[0])
+        perf.append(metric(truth[idx], prediction[idx]))
+    return perf
 
-        if metric_type == 'roc':
-            ax.set_ylim([-0.02, 1.03])
-            ax.set_ylabel(RECALL_LABEL)
-            ax.set_xlabel(FALLOUT_LABEL)
-            ax.legend(loc='lower right')
-        elif metric_type == 'pearson':
-            ax.set_ylabel('Predictions')
-            ax.set_xlabel('Actual')
-            ax.legend(loc='lower right')
+
+def _performance_by_index(
+        separated_metric_inputs: List[Tuple[np.ndarray, np.ndarray]],
+        metric: Callable[[np.ndarray, np.ndarray], float],
+) -> List[List[float]]:
+    """
+    Input dictionary {name: (truth, predicted)} and performance metric
+    output DataFrame {performance: performances, name: names}
+    """
+    return [_bootstrap_performance(truth, pred, metric) for truth, pred in separated_metric_inputs]
+
+
+def _protected_subplots(
+        prediction: np.ndarray, truth: np.ndarray, protected: Dict[TensorMap, np.ndarray], axes: np.ndarray,
+        metric: Callable[[np.ndarray, np.ndarray], float], metric_name: str,
+):
+    group_col = 'Group'
+    for p, ax in zip(protected, axes.ravel()):
+        ax.set_title(f'Performance by protected {p.name}')
+        if p.is_categorical():
+            group_names = list(p.channel_map.keys())
+            protected_indexes = [protected[p][:, class_label] == 1 for class_label in p.channel_map.values()]
+        elif p.is_continuous():
+            quantiles = 1 / 3, 2 / 3
+            group_names = [f'{quantile:.3%} percentile' for quantile in quantiles]
+            thresholds = np.quantile(protected[p], quantiles).tolist() + [np.inf]
+            protected_indexes = [
+                (protected[p] > thresholds[i]) & (protected[p] <= thresholds[i + 1])
+                for i in range(len(quantiles))
+            ]
+        else:
+            raise NotImplementedError(f'Cannot plot {p} with interpretation {p.interpretation}')
+        logging.info(f'Beginning bootstrap performance evaluation of protected {p}')
+        performances = _performance_by_index(
+            [(truth[protected_idx], prediction[protected_idx]) for protected_idx in protected_indexes],
+            metric,
+        )
+        performance_dict = {group_col: [], metric_name: []}
+        for performance, group_name in zip(performances, group_names):
+            performance_dict[group_col] += [group_name] * len(performance)
+            performance_dict[metric_name] += performance
+        sns.boxplot(x=group_col, y=metric_name, data=pd.DataFrame(performance_dict), ax=ax)
 
 
 def subplot_roc_per_class(
@@ -1636,7 +1637,7 @@ def subplot_roc_per_class(
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
-    _protected_subplots(prediction, truth, labels, protected, axes, metric_type='roc')
+    _protected_subplots(prediction, truth, protected, axes, metric=roc_auc_score, metric_name='ROC AUC')
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for key in labels:
