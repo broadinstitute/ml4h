@@ -29,6 +29,14 @@ TMAPS['partners_ecg_read_pc_clean_svt'] = TensorMap('partners_ecg_read_pc_clean_
 
 TMAPS['partners_ecg_afib'] = TensorMap('partners_ecg_afib', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='partners_ecg_rest', channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1}, tensor_from_file=make_partners_ecg_label(keys='read_md_clean', not_found_key='no_atrial_fibrillation', dict_of_list = {'atrial_fibrillation': ['atrial fib', 'afib', 'atrial fibrillation', 'atrial  fibrillation', 'afibrillation']}))
 TMAPS['partners_ecg_afib_all'] = TensorMap('partners_ecg_afib_all', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='partners_ecg_rest', channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1}, tensor_from_file=make_partners_ecg_label(keys=['read_md_clean', 'read_pc_clean'], not_found_key='no_atrial_fibrillation', dict_of_list = {'atrial_fibrillation': ['atrial fib', 'afib', 'atrial fibrillation', 'atrial  fibrillation', 'afibrillation']}))
+TMAPS['partners_ecg_afib_all_newest'] = TensorMap('partners_ecg_afib_all_newest',
+                                                  interpretation=Interpretation.CATEGORICAL,
+                                                  path_prefix='partners_ecg_rest',
+                                                  channel_map={'no_atrial_fibrillation': 0,
+                                                               'atrial_fibrillation': 1},
+                                                  tensor_from_file=make_partners_ecg_label(keys=['read_md_clean', 'read_pc_clean'],
+                                                                                           not_found_key='no_atrial_fibrillation',
+                                                                                           dict_of_list = {'atrial_fibrillation': ['atrial fib', 'afib', 'atrial fibrillation', 'atrial  fibrillation', 'afibrillation']}))
 TMAPS['partners_ecg_sinus_rhythm'] = TensorMap('partners_sinus_rhythm', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='partners_ecg_rest', channel_map={'sinus_arrhythmia': 0, 'unspecified': 1}, tensor_from_file=make_partners_ecg_label(keys=['read_md_clean', 'read_pc_clean'], dict_of_list = {'sinus_arrhythmia': ['marked sinus arrhythmia', 'marked sinus arrhythmia', 'sinus arrhythmia', 'sinus arrhythmia']}))
 TMAPS['partners_ecg_supranodal'] = TensorMap(
     'partners_ecg_supranodal', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='partners_ecg_rest',

@@ -11,5 +11,7 @@ apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
 # Dependencies to interact with S3 buckets
 apt-get install s3fs s3cmd -y
 
+apt-get install python3-pip -y
+
 # Clean cache for leaner images
 apt-get clean

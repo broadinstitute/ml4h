@@ -17,8 +17,8 @@ CPU_ONLY="false"
 PUSH_TO_CR="false"
 PUSH_TO_LATEST="false"
 
-BASE_IMAGE_GPU="tensorflow/tensorflow:2.2.0-gpu"
-BASE_IMAGE_CPU="tensorflow/tensorflow:2.2.0"
+BASE_IMAGE_GPU="tensorflow/tensorflow:2.1.0-gpu-py3"
+BASE_IMAGE_CPU="tensorflow/tensorflow:2.1.0-py3"
 
 LATEST_TAG_GPU="tf2-latest-gpu"
 LATEST_TAG_CPU="tf2-latest-cpu"
