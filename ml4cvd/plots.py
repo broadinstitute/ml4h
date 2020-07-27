@@ -1606,11 +1606,14 @@ def _protected_subplots(
             protected_indexes = [protected[p][:, class_label] == 1 for class_label in p.channel_map.values()]
         elif p.is_continuous():
             quantiles = 1 / 3, 2 / 3
-            group_names = [f'{quantile:.3%} percentile' for quantile in quantiles]
-            thresholds = np.quantile(protected[p], quantiles).tolist() + [np.inf]
+            thresholds = [np.min(protected[p])] + np.quantile(protected[p], quantiles).tolist() + [np.max(protected[p])]
+            group_names = [
+                f'{p.rescale(thresholds[i]):.1f} < x < {p.rescale(thresholds[i + 1]):.1f}'
+                for i in range(len(thresholds) - 1)
+            ]
             protected_indexes = [
                 (protected[p] > thresholds[i]) & (protected[p] <= thresholds[i + 1])
-                for i in range(len(quantiles))
+                for i in range(len(thresholds) - 1)
             ]
         else:
             raise NotImplementedError(f'Cannot plot {p} with interpretation {p.interpretation}')
@@ -1619,6 +1622,7 @@ def _protected_subplots(
             [(truth[protected_idx], prediction[protected_idx]) for protected_idx in protected_indexes],
             metric,
         )
+        group_names = [f'{group_name}\nn = {idx.sum()}' for group_name, idx in zip(group_names, protected_indexes)]
         performance_dict = {group_col: [], metric_name: []}
         for performance, group_name in zip(performances, group_names):
             performance_dict[group_col] += [group_name] * len(performance)
