@@ -136,6 +136,5 @@ singularity exec ${INTERACTIVE} \
         cd ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ ; \
         tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/small_ecgs.tar & \
         wait; \
-        rm ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/small_ecgs.tar \
         cd ${SLURM_JOB_SCRATCHDIR}; \
-        ${PYTHON_COMMAND} ${PYTHON_ARGS} --tensors ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}"
+        ${PYTHON_COMMAND} ${PYTHON_ARGS} --tensors ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh"
