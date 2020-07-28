@@ -37,7 +37,7 @@ export GROUP_NAMES GROUP_IDS
 
 # Create string to be called in Docker's bash shell via eval;
 # this creates a user, adds groups, adds user to groups, then calls the Python script
-CALL_DOCKER_AS_USER="
+SETUP_USER="
     useradd -u $(id -u) ${USER};
     GROUP_NAMES_ARR=( \${GROUP_NAMES} );
     GROUP_IDS_ARR=( \${GROUP_IDS} );
@@ -47,7 +47,8 @@ CALL_DOCKER_AS_USER="
         echo \"Adding user ${USER} to group\" \${GROUP_NAMES_ARR[i]}
         usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
     done;
-    sudo -H -u ${USER}"
+"
+CALL_AS_USER="sudo -H -u ${USER}"
 
 ################### HELP TEXT ############################################
 
@@ -113,7 +114,8 @@ while getopts ":i:d:m:p:ctrhTN" opt ; do
             INTERACTIVE="-it"
             ;;
         r) # Output owned by root
-            CALL_DOCKER_AS_USER=""
+            SETUP_USER=""
+            CALL_AS_USER=""
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
@@ -181,7 +183,10 @@ Attempting to run Docker with
     ${PORT_FLAG} \
     ${CONTAINER_NAME} \
     ${DOCKER_IMAGE} /bin/bash -c \
-    "pip install ${WORKDIR}; cd ${HOME}; ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+    "${SETUP_USER}
+    cd ${HOME};
+    ${CALL_AS_USER} pip install ${WORKDIR};
+    ${CALL_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
 docker run --rm \
@@ -197,4 +202,7 @@ ${MOUNTS} \
 ${PORT_FLAG} \
 ${CONTAINER_NAME} \
 ${DOCKER_IMAGE} /bin/bash -c \
-"pip install ${WORKDIR}; cd ${HOME}; ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+"${SETUP_USER}
+cd ${HOME};
+${CALL_AS_USER} pip install ${WORKDIR};
+${CALL_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
