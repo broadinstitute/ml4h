@@ -130,6 +130,7 @@ def evaluate_predictions(
     max_melt: int = 30000,
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
+    data_split: str = "test",
 ) -> Dict[str, float]:
     """Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
@@ -143,6 +144,7 @@ def evaluate_predictions(
     :param max_melt: For multi-dimensional prediction the maximum number of prediction to allow in the flattened array
     :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
     :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
+    :param data_split: The data split being evaluated (train, valid, or test)
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
     performance_metrics = {}
@@ -156,13 +158,30 @@ def evaluate_predictions(
             f" :{np.sum(y_predictions, axis=0)}",
         )
         plot_precision_recall_per_class(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            prediction=y_predictions,
+            truth=y_truth,
+            labels=tm.channel_map,
+            title=title,
+            prefix=folder,
+            data_split=data_split,
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            prediction=y_predictions,
+            truth=y_truth,
+            labels=tm.channel_map,
+            title=title,
+            prefix=folder,
+            data_split=data_split,
         )
         performance_metrics.update(
-            plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder),
+            plot_roc_per_class(
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
+            ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.static_axes() == 2:
@@ -176,15 +195,32 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder),
+            plot_roc_per_class(
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
+            ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            prediction=y_predictions,
+            truth=y_truth,
+            labels=tm.channel_map,
+            title=title,
+            prefix=folder,
+            data_split=data_split,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.static_axes() == 3:
@@ -198,15 +234,32 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder),
+            plot_roc_per_class(
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
+            ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            prediction=y_predictions,
+            truth=y_truth,
+            labels=tm.channel_map,
+            title=title,
+            prefix=folder,
+            data_split=data_split,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.static_axes() == 4:
@@ -223,15 +276,32 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder),
+            plot_roc_per_class(
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
+            ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            prediction=y_predictions,
+            truth=y_truth,
+            labels=tm.channel_map,
+            title=title,
+            prefix=folder,
+            data_split=data_split,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
@@ -266,11 +336,12 @@ def evaluate_predictions(
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
         plot_prediction_calibration(
-            predictions_at_end[:, np.newaxis],
-            events_at_end[:, np.newaxis],
-            {tm.name: 0},
-            calibration_title,
-            folder,
+            prediction=predictions_at_end[:, np.newaxis],
+            truth=events_at_end[:, np.newaxis],
+            labels={tm.name: 0},
+            title=calibration_title,
+            prefix=folder,
+            data_split=data_split,
         )
         plot_survivorship(
             events_at_end,
@@ -282,11 +353,23 @@ def evaluate_predictions(
         )
     elif tm.is_language():
         performance_metrics.update(
-            plot_roc_per_class(y_predictions, y_truth, tm.channel_map, title, folder),
+            plot_roc_per_class(
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
+            ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -390,6 +473,7 @@ def plot_prediction_calibration(
     title: str,
     prefix: str = "./figures/",
     n_bins: int = 10,
+    data_split: str = "test",
 ):
     """Plot calibration performance and compute Brier Score.
 
@@ -399,6 +483,7 @@ def plot_prediction_calibration(
     :param title: The name of this plot
     :param prefix: Optional path prefix where the plot will be saved
     :param n_bins: Number of bins to quantize predictions into
+    :param data_split: The data split being plotted (train, valid, or test)
     """
     plt.rcParams["font.size"] = 14
     _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
@@ -467,7 +552,9 @@ def plot_prediction_calibration(
     ax3.set_title("Calibration plot (equally spaced bins)")
     plt.tight_layout()
 
-    figure_path = os.path.join(prefix, "calibrations_" + title + IMAGE_EXT)
+    figure_path = os.path.join(
+        prefix, "calibrations_" + title + "_" + data_split + IMAGE_EXT,
+    )
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches="tight")
@@ -1493,7 +1580,9 @@ def plot_cross_reference(
     logging.info(f"Saved histogram of days relative to {window_end} to {fpath}")
 
 
-def plot_roc_per_class(prediction, truth, labels, title, prefix="./figures/"):
+def plot_roc_per_class(
+    prediction, truth, labels, title, prefix="./figures/", data_split="test",
+):
     plt.rcParams["font.size"] = 14
     lw = 2
     labels_to_areas = {}
@@ -1534,7 +1623,9 @@ def plot_roc_per_class(prediction, truth, labels, title, prefix="./figures/"):
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
     plt.title(f"ROC curve: {title}, n={truth.shape[0]:.0f}\n")
 
-    figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
+    figure_path = os.path.join(
+        prefix, "per_class_roc_" + title + "_" + data_split + IMAGE_EXT,
+    )
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches="tight")
@@ -1712,7 +1803,7 @@ def subplot_comparison_rocs(
 
 
 def plot_precision_recall_per_class(
-    prediction, truth, labels, title, prefix="./figures/",
+    prediction, truth, labels, title, prefix="./figures/", data_split="test",
 ):
     plt.rcParams["font.size"] = 14
     lw = 2.0
@@ -1748,7 +1839,9 @@ def plot_precision_recall_per_class(
     plt.legend(loc="lower right")
     plt.title(f"PR curve: {title}, n={np.sum(true_sums):.0f}\n")
 
-    figure_path = os.path.join(prefix, "precision_recall_" + title + IMAGE_EXT)
+    figure_path = os.path.join(
+        prefix, "precision_recall_" + title + "_" + data_split + IMAGE_EXT,
+    )
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches="tight")

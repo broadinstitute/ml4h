@@ -149,32 +149,29 @@ def train_multimodal_multitask(args):
         args.output_folder,
         args.id,
         return_history=True,
-        defer_worker_halt=args.plot_train_roc_and_pr_curves,
     )
     out_path = os.path.join(args.output_folder, args.id + "/")
-    if args.plot_train_roc_and_pr_curves:
-        train_data, train_labels = big_batch_from_minibatch_generator(
-            generate_train, args.training_steps,
-        )
-        out_path_train = os.path.join(
-            args.output_folder, args.id + "/train_pr_roc_curves/",
-        )
-        _predict_and_evaluate(
-            model,
-            train_data,
-            train_labels,
-            args.tensor_maps_in,
-            args.tensor_maps_out,
-            args.batch_size,
-            args.hidden_layer,
-            out_path_train,
-            None,
-            args.embed_visualization,
-            args.alpha,
-        )
 
-        generate_train.kill_workers()
-        generate_valid.kill_workers()
+    train_data, train_labels = big_batch_from_minibatch_generator(
+        generate_train, args.training_steps,
+    )
+    _predict_and_evaluate(
+        model=model,
+        test_data=train_data,
+        test_labels=train_labels,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        hidden_layer=args.hidden_layer,
+        plot_path=out_path,
+        test_paths=None,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
+        data_split="train",
+    )
+
+    generate_train.kill_workers()
+    generate_valid.kill_workers()
 
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
         generate_test, args.test_steps,
@@ -195,17 +192,18 @@ def train_multimodal_multitask(args):
         )
 
     performance_metrics = _predict_and_evaluate(
-        model,
-        test_data,
-        test_labels,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.batch_size,
-        args.hidden_layer,
-        out_path,
-        test_paths,
-        args.embed_visualization,
-        args.alpha,
+        model=model,
+        test_data=test_data,
+        test_labels=test_labels,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        hidden_layer=args.hidden_layer,
+        plot_path=out_path,
+        test_paths=test_paths,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
+        data_split="test",
     )
     return performance_metrics
 
@@ -606,6 +604,7 @@ def _predict_and_evaluate(
     test_paths,
     embed_visualization,
     alpha,
+    data_split="test",
 ):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
@@ -631,6 +630,7 @@ def _predict_and_evaluate(
                 test_paths,
                 rocs=rocs,
                 scatters=scatters,
+                data_split=data_split,
             ),
         )
 
