@@ -10,7 +10,7 @@
 ################### VARIABLES ############################################
 
 # The default images are based on tensorflow/tensorflow:2.1.0
-DOCKER_IMAGE_GPU="gitlab-registry.ccds.io/${USER}/ml4cvd:tf2-latest-gpu"
+DOCKER_IMAGE_GPU="gitlab-registry.ccds.io/paolo.achille/ml4cvd:tf2-latest-gpu"
 DOCKER_IMAGE_CPU="gitlab-registry.ccds.io/${USER}/ml4cvd:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--nv"
@@ -123,40 +123,17 @@ LAUNCH_MESSAGE
 # s3cmd sync ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/
 # echo ${SLURM_JOB_SCRATCHDIR}
 # ls -l ${SLURM_JOB_SCRATCHDIR}
-echo s3://${MOUNT_BUCKETS}/mgh_1.tar
+cd $SLURM_JOB_SCRATCHDIR
+s3cmd sync s3://2017P001650/mgh_tar/*.tar ./
+for i in $(ls *.tar) 
+do 
+    tar xf $i & 
+done
+wait
 
 singularity exec ${INTERACTIVE} \
     ${GPU_DEVICE} \
     ${MOUNTS} \
     docker://${DOCKER_IMAGE} /bin/bash -c \
-        "pip install -e ${WORKDIR}/ml; \
-        mkdir -p ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}; \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_a.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_b.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_c.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_d.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_e.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_f.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_g.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_h.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_i.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_j.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        s3cmd sync s3://${MOUNT_BUCKETS}/mgh_3yrs_k.tar ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ & \
-        wait; \
-        cd ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/ ; \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_a.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_b.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_c.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_d.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_e.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_f.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_g.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_h.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_i.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_j.tar & \
-        tar xf ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/mgh_3yrs_k.tar & \
-        wait; \
-        cd ${SLURM_JOB_SCRATCHDIR}; \
-        cp -r ${WORKDIR}/mgh_3yrs_hd5s . ; \
-        ln -s ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/tmp_hd5 partners_ecg ; \
-        ${PYTHON_COMMAND} ${PYTHON_ARGS} --tensors ${SLURM_JOB_SCRATCHDIR}/mgh_3yrs_hd5s"
+        "pip install -e ${WORKDIR}/ml4cvd; \
+         bash ${WORKDIR}/launch_explore.sh"
