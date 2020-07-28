@@ -75,6 +75,32 @@ python scripts/dispatch.py \
     ~/dropbox/ml4cvd_run_scripts/sts_ecg/train-deeper.sh
 ```
 
+## Tests
+From in the `ml` repo directory, run integration and pre-pytest unit tests:
+```
+scripts/run.sh -t $PWD/ml4cvd/tests.py
+```
+
+### Unit tests
+To run unit tests in Docker:
+```
+/scripts/tf.sh -T $PWD/tests
+```
+
+Some of the unit tests are slow due to creating, saving and loading `tensorflow` models.
+To skip those tests to move quickly, run
+```
+/scripts/tf.sh -T $PWD/tests -m "not slow"
+```
+
+pytest can also run specific tests using `::`. For example
+```
+python -m pytest $PWD/ml/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
+```
+
+For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
+
+
 ## Contribute
 
 Submit a new feature request, bug report, etc. by creating a [new issue with the ml4cvd template](https://github.com/aguirre-lab/ml/issues/new/choose).
