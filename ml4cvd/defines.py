@@ -40,7 +40,10 @@ def _get_path_prefix_to_sts_data() -> str:
     return path
 
 
-CARDIAC_SURGERY_CSV = os.path.join(
+CARDIAC_SURGERY_OUTCOMES_CSV = os.path.join(
+    _get_path_prefix_to_sts_data(), "mgh-preop-ecg-outcome-labels.csv",
+)
+CARDIAC_SURGERY_FEATURES_CSV = os.path.join(
     _get_path_prefix_to_sts_data(), "mgh-all-features-labels.csv",
 )
 

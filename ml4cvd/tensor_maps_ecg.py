@@ -18,10 +18,11 @@ from ml4cvd.defines import (
     ECG_PREFIX,
     ECG_DATE_FORMAT,
     ECG_REST_AMP_LEADS,
-    CARDIAC_SURGERY_CSV,
     ECG_DATETIME_FORMAT,
     ECG_REST_INDEPENDENT_LEADS,
     CARDIAC_SURGERY_DATE_FORMAT,
+    CARDIAC_SURGERY_FEATURES_CSV,
+    CARDIAC_SURGERY_OUTCOMES_CSV,
     CARDIAC_SURGERY_PREOPERATIVE_FEATURES,
 )
 from ml4cvd.metrics import weighted_crossentropy
@@ -75,17 +76,23 @@ def _get_ecg_dates(tm, hd5):
 
 def validator_no_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if any(tensor == ""):
-        raise ValueError(f"TensorMap {tm.name} failed empty string check on hd5 {hd5.filename}")
+        raise ValueError(
+            f"TensorMap {tm.name} failed empty string check on hd5 {hd5.filename}",
+        )
 
 
 def validator_no_negative(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if any(tensor < 0):
-        raise ValueError(f"TensorMap {tm.name} failed non-negative check on hd5 {hd5.filename}")
+        raise ValueError(
+            f"TensorMap {tm.name} failed non-negative check on hd5 {hd5.filename}",
+        )
 
 
 def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
     if np.count_nonzero(tensor) == 0:
-        raise ValueError(f"TensorMap {tm.name} failed all-zero check on hd5 {hd5.filename}")
+        raise ValueError(
+            f"TensorMap {tm.name} failed all-zero check on hd5 {hd5.filename}",
+        )
 
 
 def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ...]]:
@@ -1471,7 +1478,7 @@ def build_ecg_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]
 
 
 def build_cardiac_surgery_dict(
-    filename: str = CARDIAC_SURGERY_CSV,
+    filename: str = CARDIAC_SURGERY_OUTCOMES_CSV,
     patient_column: str = "medrecn",
     date_column: str = "surgdt",
     additional_columns: List[str] = [],
@@ -1500,13 +1507,15 @@ def build_date_interval_lookup(
     for mrn in cardiac_surgery_dict:
         start_date = (
             _cardiac_surgery_str2date(
-                cardiac_surgery_dict[mrn][start_column], CARDIAC_SURGERY_DATE_FORMAT,
+                cardiac_surgery_dict[mrn][start_column],
+                ECG_DATETIME_FORMAT.replace("T", " "),
             )
             + datetime.timedelta(days=start_offset)
         ).strftime(ECG_DATETIME_FORMAT)
         end_date = (
             _cardiac_surgery_str2date(
-                cardiac_surgery_dict[mrn][end_column], CARDIAC_SURGERY_DATE_FORMAT,
+                cardiac_surgery_dict[mrn][end_column],
+                ECG_DATETIME_FORMAT.replace("T", " "),
             )
             + datetime.timedelta(days=end_offset)
         ).strftime(ECG_DATETIME_FORMAT)
@@ -1663,7 +1672,7 @@ def build_cardiac_surgery_tensor_maps(
 
 def build_extended_cardiac_surgery_tensor_maps(
     needed_tensor_maps: List[str],
-    filename: str = CARDIAC_SURGERY_CSV,
+    filename: str = CARDIAC_SURGERY_FEATURES_CSV,
     patient_column: str = "medrecn",
     date_column: str = "surgdt",
 ) -> Dict[str, TensorMap]:
