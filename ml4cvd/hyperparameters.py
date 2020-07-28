@@ -260,7 +260,7 @@ def hyperparameter_optimizer(
             del model
             gc.collect()
             if auc is None:
-                aucs.append({"train": {}, "test": {}})
+                aucs.append({"train": {"BAD_MODEL": -1}, "test": {"BAD_MODEL": -1}})
             if history is None:
                 histories.append(
                     {
@@ -484,7 +484,7 @@ def _trial_metrics_and_params_to_df(
             for i, (label, auc) in enumerate(split_auc.items()):
                 if len(split_auc) == 2 and no_idx == i:
                     continue
-                data[f"{split}_{label}_auc"].append(auc)
+
                 if split == "test":
                     trial_aucs_test.append(auc)
                 elif split == "train":
@@ -529,6 +529,8 @@ def plot_trials(
     figure_path: str,
     param_lists: Dict = {},
 ):
+    if not os.path.isdir(figure_path):
+        os.makedirs(figure_path)
     all_losses = np.array(trials.losses())  # the losses we will put in the text
     real_losses = all_losses[all_losses != MAX_LOSS]
     cutoff = MAX_LOSS
@@ -550,7 +552,7 @@ def plot_trials(
                 lambda x: "{:.3}".format(x),
             )
     trial_metrics_and_params_df.to_csv(
-        os.path.join(figure_path, "trial_metrics_and_params.csv"),
+        os.path.join(figure_path, "../trial_metrics_and_params.csv"),
     )
     labels = [
         _trial_metric_and_param_label(
