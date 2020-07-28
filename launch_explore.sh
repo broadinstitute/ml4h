@@ -1,4 +1,4 @@
-/home/${USER}/ml4cvd/ml4cvd/recipes.py \
+python /home/${USER}/ml4cvd/ml4cvd/recipes.py \
         --mode explore \
         --tensors ${SLURM_JOB_SCRATCHDIR}/mgh/ \
         --input_tensors partners_ecg_rate_pc \
