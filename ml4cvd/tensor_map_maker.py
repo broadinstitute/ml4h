@@ -24,9 +24,9 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        #_write_disease_tensor_maps(args.phenos_folder, f)
-        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
-        #_write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+        _write_disease_tensor_maps(args.phenos_folder, f)
+        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
         _write_continuous_tensor_maps(f, db_client)
 
         f.write('\n')
@@ -40,7 +40,7 @@ def _get_tensor_map_file_imports() -> str:
         f"from ml4cvd.defines import StorageType\n"
         f"from ml4cvd.metrics import weighted_crossentropy\n"
         f"from ml4cvd.tensormap.ukb.demographics import prevalent_incident_tensor\n"
-        f"from ml4cvd.TensorMap import TensorMap, Interpretation, make_range_validator\n\n\n"
+        f"from ml4cvd.TensorMap import TensorMap, Interpretation, make_range_validator\n\n"
     )
 
 

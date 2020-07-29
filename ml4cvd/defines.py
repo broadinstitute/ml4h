@@ -125,7 +125,7 @@ PARTNERS_IDX_2_CHAR = {
     35: 'y', 36: 'z',
 }
 
-TENSOR_MAPS_FILE_NAME = 'tensor_maps_by_script'
+TENSOR_MAPS_FILE_NAME = 'by_script'
 
 # BigQuery tables
 SQL_DATASET = "ukbb7089_201904"
