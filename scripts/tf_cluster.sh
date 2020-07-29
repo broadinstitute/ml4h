@@ -114,12 +114,8 @@ LAUNCH_MESSAGE
 
 ## Download bucket
 cd $SLURM_JOB_SCRATCHDIR
-# s3cmd sync s3://${MOUNT_BUCKETS}/ ./
-for i in {1..9}
-do
-    s3cmd sync s3://${MOUNT_BUCKETS}/mgh_tar_$i.tar ./ &
-done 
-wait
+s3cmd sync s3://${MOUNT_BUCKETS}/mgh_tar_8.tar ./
+pwd
 
 for i in $(ls *.tar) 
 do 
