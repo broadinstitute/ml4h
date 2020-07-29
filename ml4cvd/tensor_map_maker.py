@@ -24,9 +24,9 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        _write_disease_tensor_maps(args.phenos_folder, f)
-        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
-        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+        #_write_disease_tensor_maps(args.phenos_folder, f)
+        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        #_write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
         _write_continuous_tensor_maps(f, db_client)
 
         f.write('\n')
@@ -190,7 +190,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
         for i in range(0, row.max_array + 1):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         channel_map += "}"
-        f.write(f"{row.FieldID}_{row.instance} = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ")
+        f.write(f"ukb_{row.FieldID}_{row.instance} = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ")
         f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
 
 
