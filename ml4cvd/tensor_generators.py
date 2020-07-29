@@ -796,8 +796,8 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
             " likely column name, but recommend explicitly setting MRN column name.",
         )
 
-    # Isolate this column from the dataframe, and cast to strings
-    sample_ids = df[mrn_col_name].apply(str)
+    # Isolate MRN column from dataframe, cast to float -> int -> string
+    sample_ids = df[mrn_col_name].astype(float).astype(int).apply(str)
 
     return set(sample_ids)
 
