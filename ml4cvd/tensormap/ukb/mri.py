@@ -1530,83 +1530,87 @@ corrected_extracted_lvef_sentinel = TensorMap(
 
 LA_2Ch_vol_max = TensorMap(
     'LA_2Ch_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 63.45582391534391, 'std': 22.548034481265972},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_2Ch_vol_max': 0},
+    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_2Ch_vol_max': 0}, path_prefix='continuous',
 )
 LA_2Ch_vol_min = TensorMap(
     'LA_2Ch_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 28.308681904761904, 'std': 15.842444310837582},
-    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_2Ch_vol_min': 0},
+    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_2Ch_vol_min': 0}, path_prefix='continuous',
 )
 LA_4Ch_vol_max = TensorMap(
     'LA_4Ch_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 74.53903305263158, 'std': 25.448756860639776},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_4Ch_vol_max': 0},
+    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_4Ch_vol_max': 0}, path_prefix='continuous',
 )
 LA_4Ch_vol_min = TensorMap(
     'LA_4Ch_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 31.014961894736846, 'std': 17.146722819760804},
-    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_4Ch_vol_min': 0},
+    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_4Ch_vol_min': 0}, path_prefix='continuous',
 )
 LA_Biplan_vol_max = TensorMap(
     'LA_Biplan_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 67.86355108225109, 'std': 21.793845470012105},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_Biplan_vol_max': 0},
+    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_Biplan_vol_max': 0}, path_prefix='continuous',
 )
 LA_Biplan_vol_min = TensorMap(
     'LA_Biplan_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 28.79685670995671, 'std': 15.43219634139272},
-    validator=make_range_validator(0, 300), loss='logcosh', channel_map={'LA_Biplan_vol_min': 0},
+    validator=make_range_validator(0, 300), loss='logcosh', channel_map={'LA_Biplan_vol_min': 0}, path_prefix='continuous',
 )
 LVEDV = TensorMap(
     'LVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 144.1479505192425, 'std': 34.39409859908663}, loss='logcosh',
-    validator=make_range_validator(0, 500), channel_map={'LVEDV': 0},
+    validator=make_range_validator(0, 500), channel_map={'LVEDV': 0}, path_prefix='continuous',
+)
+LVEF = TensorMap(
+    'LVEF',  Interpretation.CONTINUOUS, normalization={'mean': 47.0, 'std': 10.0}, loss='logcosh', path_prefix='continuous',
+    validator=make_range_validator(0, 500), channel_map={'LVEF': 0},
 )
 LVESV = TensorMap(
     'LVESV',  Interpretation.CONTINUOUS, normalization={'mean': 59.58324862553452, 'std': 21.186976544044025}, loss='logcosh',
-    validator=make_range_validator(0, 400), channel_map={'LVESV': 0},
+    validator=make_range_validator(0, 400), channel_map={'LVESV': 0}, path_prefix='continuous',
 )
 LVM = TensorMap(
     'LVM',  Interpretation.CONTINUOUS, normalization={'mean': 89.70372484725051, 'std': 24.803669503436304}, loss='logcosh',
-    validator=make_range_validator(0, 400), channel_map={'LVM': 0},
+    validator=make_range_validator(0, 400), channel_map={'LVM': 0}, path_prefix='continuous',
 )
 LVSV = TensorMap(
     'LVSV',  Interpretation.CONTINUOUS, normalization={'mean': 84.85198120147119, 'std': 19.2700091046526}, loss='logcosh',
-    validator=make_range_validator(0, 400), channel_map={'LVSV': 0},
+    validator=make_range_validator(0, 400), channel_map={'LVSV': 0}, path_prefix='continuous',
 )
 RA_4Ch_vol_max = TensorMap(
     'RA_4Ch_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 79.22289586811351, 'std': 26.504015552539048},
-    validator=make_range_validator(0, 500), loss='logcosh', channel_map={'RA_4Ch_vol_max': 0},
+    validator=make_range_validator(0, 500), loss='logcosh', channel_map={'RA_4Ch_vol_max': 0}, path_prefix='continuous',
 )
 RA_4Ch_vol_min = TensorMap(
     'RA_4Ch_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 46.25831176961603, 'std': 20.002160080524803},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'RA_4Ch_vol_min': 0},
+    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'RA_4Ch_vol_min': 0}, path_prefix='continuous',
 )
 RVEDV = TensorMap(
     'RVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 152.41239853151131, 'std': 37.15198900632509}, loss='logcosh',
-    validator=make_range_validator(0, 500), channel_map={'RVEDV': 0},
+    validator=make_range_validator(0, 500), channel_map={'RVEDV': 0}, path_prefix='continuous',
 )
 RVEF = TensorMap(
     'RVEF',  Interpretation.CONTINUOUS, normalization={'mean': 56.404863078182565, 'std': 6.526231365539632}, loss='logcosh',
-    validator=make_range_validator(10, 200), channel_map={'RVEF': 0},
+    validator=make_range_validator(10, 200), channel_map={'RVEF': 0}, path_prefix='continuous',
 )
 RVESV = TensorMap(
     'RVESV',  Interpretation.CONTINUOUS, normalization={'mean': 67.61379869467673, 'std': 22.853189258914284}, loss='logcosh',
-    validator=make_range_validator(0, 300), channel_map={'RVESV': 0},
+    validator=make_range_validator(0, 300), channel_map={'RVESV': 0}, path_prefix='continuous',
 )
 RVSV = TensorMap(
     'RVSV',  Interpretation.CONTINUOUS, normalization={'mean': 85.0908258288989, 'std': 19.30893645374548}, loss='logcosh',
-    validator=make_range_validator(0, 200), channel_map={'RVSV': 0},
+    validator=make_range_validator(0, 200), channel_map={'RVSV': 0}, path_prefix='continuous',
 )
 LAQC = TensorMap(
     'LAQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.2657977883096367, 'std': 0.5561369836438385}, loss='logcosh',
-    validator=make_range_validator(0, 200), channel_map={'LAQC': 0},
+    validator=make_range_validator(0, 200), channel_map={'LAQC': 0}, path_prefix='continuous',
 )
 LVQC = TensorMap(
     'LVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.1737756714060033, 'std': 0.4620420984104567}, loss='logcosh',
-    validator=make_range_validator(0, 200), channel_map={'LVQC': 0},
+    validator=make_range_validator(0, 200), channel_map={'LVQC': 0}, path_prefix='continuous',
 )
 RAQC = TensorMap(
     'RAQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.1860189573459716, 'std': 0.4791815490882246}, loss='logcosh',
-    validator=make_range_validator(0, 200), channel_map={'RAQC': 0},
+    validator=make_range_validator(0, 200), channel_map={'RAQC': 0}, path_prefix='continuous',
 )
 RVQC = TensorMap(
     'RVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='logcosh',
-    validator=make_range_validator(0, 200), channel_map={'RVQC': 0},
+    validator=make_range_validator(0, 200), channel_map={'RVQC': 0}, path_prefix='continuous',
 )
 
 myocardial_mass = TensorMap(
