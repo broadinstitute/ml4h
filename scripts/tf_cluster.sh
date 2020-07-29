@@ -11,7 +11,7 @@
 
 # The default images are based on tensorflow/tensorflow:2.1.0
 DOCKER_IMAGE_GPU="gitlab-registry.ccds.io/paolo.achille/ml4cvd:tf2-latest-gpu"
-DOCKER_IMAGE_CPU="gitlab-registry.ccds.io/${USER}/ml4cvd:tf2-latest-cpu"
+DOCKER_IMAGE_CPU="gitlab-registry.ccds.io/paolo.achille/ml4cvd:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--nv"
 INTERACTIVE=""
@@ -119,12 +119,13 @@ Attempting to run singularity with
             ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
-## Mount bucket
-# s3cmd sync ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/
-# echo ${SLURM_JOB_SCRATCHDIR}
-# ls -l ${SLURM_JOB_SCRATCHDIR}
+## Download bucket
 cd $SLURM_JOB_SCRATCHDIR
-s3cmd sync s3://2017P001650/mgh_tar/*.tar ./
+for i in {1..9}
+do 
+    s3cmd sync s3://2017P001650/mgh_tar/mgh_tar_${i}.tar ./ &
+done 
+wait
 for i in $(ls *.tar) 
 do 
     tar xf $i & 
@@ -135,5 +136,5 @@ singularity exec ${INTERACTIVE} \
     ${GPU_DEVICE} \
     ${MOUNTS} \
     docker://${DOCKER_IMAGE} /bin/bash -c \
-        "pip install -e ${WORKDIR}/ml4cvd; \
-         bash ${WORKDIR}/launch_explore.sh"
+        "pip install -e /home/$USER/ml4cvd; \
+         bash ${WORKDIR}/ml4cvd/launch_explore.sh"
