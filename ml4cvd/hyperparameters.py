@@ -62,10 +62,10 @@ def run(args: argparse.Namespace):
 
 
 def hyperoptimize(args: argparse.Namespace):
-    block_size_sets = [2, 3, 4]
+    # block_size_sets = [2, 3, 4]
     # conv_layers_sets = [[32]]  # Baseline
-    conv_normalize_sets = ["", "batch_norm"]
-
+    # conv_normalize_sets = [""]
+    """
     dense_layers_sets = [
         # [256],
         # [1000],  # Collin's suggestion
@@ -76,17 +76,23 @@ def hyperoptimize(args: argparse.Namespace):
         # [24, 12],  # Baseline
         [32, 24, 16],  # Baseline
     ]
-    pool_types = ["max", "average"]
-    conv_x_sets = _generate_conv1D_filter_widths()
+    pool_types = ["max"]
 
     conv_regularize_sets = ["spatial_dropout"]
-    conv_dropout_sets = [0.25, 0.5]
-    dropout_sets = [0.25, 0.5]
+    conv_dropout_sets = [0.5]
+    dropout_sets = [0.5]
+    """
 
-    learning_rate_sets = [0.0002, 0.0001, 0.00005]
+    conv_x_sets = _generate_conv1D_filter_widths(
+        num_unique_filters=6,
+        list_len_bounds=[1, 1],
+        first_filter_width_bounds=[6, 200],
+        probability_vary_filter_width=0,
+    )
+    learning_rate_sets = [0.0002, 0.0001, 0.00005, 0.00002]
 
     # Generate weighted loss tmaps for STS death
-    weighted_losses = [val for val in range(1, 20, 4)]
+    weighted_losses = [val for val in range(1, 12, 4)]
     output_tensors_sets = _generate_weighted_loss_tmaps(
         base_tmap_name="sts_death", weighted_losses=weighted_losses,
     )
@@ -96,42 +102,45 @@ def hyperoptimize(args: argparse.Namespace):
 
     # Input tensors maps with data augmentation and 8 vs. 12 leads
     input_tensor_map_sets = [
-        "12_lead_ecg_2500_std_newest_sts",
-        "ecg_2500_std_newest_sts",
-        "12_lead_ecg_2500_std_crop_noise_warp_newest_sts",
-        "ecg_2500_std_crop_noise_warp_newest_sts",
+        ["ecg_2500_std_newest_sts", "ecg_age_std_newest_sts", "ecg_sex_newest_sts"],
     ]
-    for name in input_tensor_map_sets:
-        if name not in TMAPS:
-            _get_tmap(name, input_tensor_map_sets)
+
+    for input_tensors in input_tensor_map_sets:
+        if type(input_tensors) == list:
+            for name in input_tensors:
+                if name not in TMAPS:
+                    _get_tmap(name, input_tensors)
+        elif type(input_tensors) == str:
+            if input_tensors not in TMAPS:
+                _get_tmap(name, [input_tensors])
 
     space = {
-        "block_size": hp.choice("block_size", block_size_sets),
+        # "block_size": hp.choice("block_size", block_size_sets),
         "conv_x": hp.choice("conv_x", conv_x_sets),
-        "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
-        "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
-        "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
-        "dense_layers": hp.choice("dense_layers", dense_layers_sets),
-        "dropout": hp.choice("dropout", dropout_sets),
+        # "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
+        # "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
+        # "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
+        # "dense_layers": hp.choice("dense_layers", dense_layers_sets),
+        # "dropout": hp.choice("dropout", dropout_sets),
         "output_tensors": hp.choice("output_tensors", output_tensors_sets),
-        "input_tensors": hp.choice("input_tensors", input_tensor_map_sets),
+        # "input_tensors": hp.choice("input_tensors", input_tensor_map_sets),
         "learning_rate": hp.choice("learning_rate", learning_rate_sets),
-        "conv_regularize": hp.choice("conv_regularize", conv_regularize_sets),
-        "pool_type": hp.choice("pool_type", pool_types),
+        # "conv_regularize": hp.choice("conv_regularize", conv_regularize_sets),
+        # "pool_type": hp.choice("pool_type", pool_types),
     }
     param_lists = {
-        "block_size": block_size_sets,
+        # "block_size": block_size_sets,
         "conv_x": conv_x_sets,
-        "conv_normalize": conv_normalize_sets,
-        "conv_dropout": conv_dropout_sets,
-        "dense_blocks": dense_blocks_sets,
-        "dense_layers": dense_layers_sets,
-        "dropout": dropout_sets,
+        # "conv_normalize": conv_normalize_sets,
+        # "conv_dropout": conv_dropout_sets,
+        # "dense_blocks": dense_blocks_sets,
+        # "dense_layers": dense_layers_sets,
+        # "dropout": dropout_sets,
         "output_tensors": output_tensors_sets,
-        "conv_regularize": conv_regularize_sets,
-        "input_tensors": input_tensor_map_sets,
+        # "conv_regularize": conv_regularize_sets,
+        # "input_tensors": input_tensor_map_sets,
         "learning_rate": learning_rate_sets,
-        "pool_type": pool_types,
+        # "pool_type": pool_types,
     }
     hyperparameter_optimizer(args, space, param_lists)
 
