@@ -180,6 +180,10 @@ bmi_ukb = TensorMap(
     'bmi', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
     validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh',
 )
+bmi_21 = TensorMap(
+    '21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'21001_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
+    validator=make_range_validator(0, 300), normalization={'mean': 27.3397, 'std': 4.7721}, loss='logcosh',
+)
 birth_year = TensorMap(
     '22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
     validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739},
