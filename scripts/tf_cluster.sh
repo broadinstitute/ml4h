@@ -101,8 +101,6 @@ fi
 USER=$(whoami)
 WORKDIR=$(pwd)
 
-echo $WORKDIR
-
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run singularity with
@@ -121,20 +119,16 @@ LAUNCH_MESSAGE
 
 ## Download bucket
 cd $SLURM_JOB_SCRATCHDIR
-for i in {1..9}
-do 
-    s3cmd sync s3://2017P001650/mgh_tar/mgh_tar_${i}.tar ./ &
-done 
-wait
+s3cmd sync s3://${MOUNT_BUCKETS}/ ./
 for i in $(ls *.tar) 
 do 
     tar xf $i & 
 done
 wait
 
-singularity exec ${INTERACTIVE} \
+singularity exec \
     ${GPU_DEVICE} \
     ${MOUNTS} \
     docker://${DOCKER_IMAGE} /bin/bash -c \
         "pip install -e /home/$USER/ml4cvd; \
-         bash ${WORKDIR}/ml4cvd/launch_explore.sh"
+        ${PYTHON_ARGS}"
