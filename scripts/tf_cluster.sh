@@ -130,4 +130,5 @@ singularity exec \
     ${MOUNTS} \
     docker://${DOCKER_IMAGE} /bin/bash -c \
         "pip install -e /home/$USER/ml4cvd; \
+         export MOUNT_BUCKETS=${MOUNT_BUCKETS}; \
         ${PYTHON_ARGS}"
