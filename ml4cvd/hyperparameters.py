@@ -62,6 +62,28 @@ def run(args: argparse.Namespace):
 
 
 def hyperoptimize(args: argparse.Namespace):
+    """
+    hyperopt is a Python library that performs Bayesian optimization over a given set of hyperparameters
+    to minimize an objective function. Here, the objective function is loss_from_multimodal_multitask.
+
+    A trials=hyperopt.Trials() object is initialized and passed into the fmin() function, along with
+    the objective function to be minimized, the hyperparameter space over which to search, the
+    search algorithm to use, and the maximum number of evaluations to run. The trials object is a database
+    that is updated with the statistics and return values of each evaluation. These values can be accessed
+    via trials.trials, trials.results, trials.losses(), and trials.statuses().
+
+    One limitation is that hyperopt may generate the same hyperparameter combination in different evaluations.
+    This makes it cumbersome to perform an exhaustive grid search over a small set of parameters.
+    One method to address this is as follows:
+
+    Before training each model in loss_from_multimodal_multitask, check whether the hyperopt.Trials() object
+    already has this combination of hyperparameters stored (they should be stored in trials.trials).
+    If so, skip training this model and save/return fake results/losses. These fake results should be skipped
+    when plotting results and writing trial_metrics_and_params.csv.
+    max_evals can be initialized with a high number, and hyperoptimization can be stopped when all the combinations
+    have been run. A stopping criterion can be: size of trials.trials == number of unique hyperparameter combinations.
+    """
+
     # block_size_sets = [2, 3, 4]
     # conv_layers_sets = [[32]]  # Baseline
     # conv_normalize_sets = [""]
