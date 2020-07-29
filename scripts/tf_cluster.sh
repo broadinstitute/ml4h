@@ -3,7 +3,7 @@
 #SBATCH -p batch
 #SBATCH -N 1
 #SBATCH --gpus=1
-#SBATCH --time 00:20:00
+#SBATCH --time 02:00:00
 #SBATCH --job-name=ml4cvd_tf2
 # Script to enable running Python modules within Singularity containers of Docker images
 
@@ -104,17 +104,12 @@ WORKDIR=$(pwd)
 PYTHON_ARGS="$@"
 cat <<LAUNCH_MESSAGE
 Attempting to run singularity with
-    singularity exec ${INTERACTIVE} \
-        ${GPU_DEVICE} \
-        ${MOUNTS} \
-        docker://${DOCKER_IMAGE} /bin/bash -c \
-            "pip install -e ${WORKDIR}/ml
-            mkdir -p ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}; \
-            s3fs -o use_path_request_style \
-                 -o url=http://ogw.ccds.io \
-                 -o passwd_file=${WORKDIR}/.passwd-s3fs \
-                 ${MOUNT_BUCKETS} ${SLURM_JOB_SCRATCHDIR}/${MOUNT_BUCKETS}/; \
-            ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+    singularity exec \
+    ${GPU_DEVICE} \
+    ${MOUNTS} \
+    docker://${DOCKER_IMAGE} /bin/bash -c \
+        "pip install -e /home/$USER/ml4cvd; \
+        ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
 ## Download bucket
