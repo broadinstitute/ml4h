@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 
 # Imports: third party
 import numpy as np
+import pydot
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow_probability as tfp
@@ -299,7 +300,7 @@ def make_character_model_plus(
 
     if model_layers is not None:
         m.load_weights(model_layers, by_name=True)
-        _plot_dot_model_in_color(
+        _save_architecture_diagram(
             model_to_dot(m, show_shapes=True, expand_nested=True),
             model_layers.replace(MODEL_EXT, IMAGE_EXT),
         )
@@ -1489,7 +1490,7 @@ def train_model_from_generators(
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
-    _plot_dot_model_in_color(
+    _save_architecture_diagram(
         model_to_dot(model, show_shapes=True, expand_nested=True),
         os.path.join(
             output_folder, run_id, "architecture_graph_" + run_id + IMAGE_EXT,
@@ -1660,10 +1661,13 @@ def _regularization_layer(dimension: int, regularization_type: str, rate: float)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Inspections ~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _plot_dot_model_in_color(dot, image_path):
-    # Imports: third party
-    import pydot
+def _save_architecture_diagram(dot: pydot.Dot, image_path: str):
+    """
+    Given a graph representation of a model architecture, save the architecture diagram as a png.
 
+    :param dot: pydot.Dot representation of model
+    :param image_path: path to save png of architecture diagram to
+    """
     legend = {}
     for n in dot.get_nodes():
         if n.get_label():
