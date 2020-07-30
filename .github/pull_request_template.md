@@ -1,9 +1,9 @@
 Closes #
 
 ## Proposed Changes
-  -
-  -
-  -
+-
+-
+-
 
 ## Checklist
 - [ ] Added docstrings to important functions.
