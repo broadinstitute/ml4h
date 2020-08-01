@@ -114,7 +114,7 @@ LAUNCH_MESSAGE
 
 ## Download bucket
 cd $SLURM_JOB_SCRATCHDIR
-s3cmd sync s3://${MOUNT_BUCKETS}/mgh_tar_8.tar ./
+s3cmd sync s3://${MOUNT_BUCKETS}/ ./
 pwd
 
 for i in $(ls *.tar) 
