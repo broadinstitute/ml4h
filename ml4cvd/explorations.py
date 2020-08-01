@@ -17,7 +17,7 @@ import pandas as pd
 from ml4cvd.plots import SUBPLOT_SIZE, _find_negative_label_index
 from ml4cvd.defines import IMAGE_EXT
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
+from ml4cvd.tensor_generators import TensorGenerator, train_valid_test_tensor_generators
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot
@@ -157,7 +157,7 @@ class ExploreParallelWrapper:
 
 
 def _tensors_to_df(args):
-    generators = test_train_valid_tensor_generators(**args.__dict__)
+    generators = train_valid_test_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
     paths = (
         [

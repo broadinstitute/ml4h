@@ -27,7 +27,7 @@ from ml4cvd.tensor_maps_ecg import (
 )
 from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
-    test_train_valid_tensor_generators,
+    train_valid_test_tensor_generators,
 )
 
 # fmt: off
@@ -199,7 +199,7 @@ def hyperparameter_optimizer(
                 generate_train,
                 generate_valid,
                 generate_test,
-            ) = test_train_valid_tensor_generators(**args.__dict__)
+            ) = train_valid_test_tensor_generators(**args.__dict__)
             model, history = train_model_from_generators(
                 model=model,
                 generate_train=generate_train,

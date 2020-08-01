@@ -995,7 +995,7 @@ def get_train_valid_test_paths_split_by_csvs(
     return train_paths, valid_paths, test_paths
 
 
-def test_train_valid_tensor_generators(
+def train_valid_test_tensor_generators(
     tensor_maps_in: List[TensorMap],
     tensor_maps_out: List[TensorMap],
     tensors: str,

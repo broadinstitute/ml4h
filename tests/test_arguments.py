@@ -7,10 +7,9 @@ import pytest
 
 # Imports: first party
 from ml4cvd.arguments import TMAPS, parse_args
-from ml4cvd.test_utils import TMAPS as MOCK_TMAPS
 
 
-@mock.patch.dict(TMAPS, MOCK_TMAPS)
+@mock.patch.dict(TMAPS, pytest.MOCK_TMAPS)
 class TestUConnect:
     def test_no_u(self, tmpdir):
         sys.argv = [
@@ -38,7 +37,7 @@ class TestUConnect:
         args = parse_args()
         assert len(args.u_connect) == 1
         inp, out = list(args.u_connect.items())[0]
-        tmap = MOCK_TMAPS[inp_key]
+        tmap = pytest.MOCK_TMAPS[inp_key]
         assert inp == tmap
         assert out == {tmap}
 
@@ -63,8 +62,12 @@ class TestUConnect:
         ]
         args = parse_args()
         assert len(args.u_connect) == 2
-        assert args.u_connect[MOCK_TMAPS[inp_key1]] == {MOCK_TMAPS[inp_key1]}
-        assert args.u_connect[MOCK_TMAPS[inp_key2]] == {MOCK_TMAPS[inp_key1]}
+        assert args.u_connect[pytest.MOCK_TMAPS[inp_key1]] == {
+            pytest.MOCK_TMAPS[inp_key1],
+        }
+        assert args.u_connect[pytest.MOCK_TMAPS[inp_key2]] == {
+            pytest.MOCK_TMAPS[inp_key1],
+        }
 
     def test_one_to_many(self, tmpdir):
         key1 = "3d_cont"
@@ -88,7 +91,10 @@ class TestUConnect:
         ]
         args = parse_args()
         assert len(args.u_connect) == 1
-        assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1], MOCK_TMAPS[key2]}
+        assert args.u_connect[pytest.MOCK_TMAPS[key1]] == {
+            pytest.MOCK_TMAPS[key1],
+            pytest.MOCK_TMAPS[key2],
+        }
 
     def test_multi_u(self, tmpdir):
         key1 = "3d_cont"
@@ -112,5 +118,5 @@ class TestUConnect:
         ]
         args = parse_args()
         assert len(args.u_connect) == 2
-        assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1]}
-        assert args.u_connect[MOCK_TMAPS[key2]] == {MOCK_TMAPS[key2]}
+        assert args.u_connect[pytest.MOCK_TMAPS[key1]] == {pytest.MOCK_TMAPS[key1]}
+        assert args.u_connect[pytest.MOCK_TMAPS[key2]] == {pytest.MOCK_TMAPS[key2]}

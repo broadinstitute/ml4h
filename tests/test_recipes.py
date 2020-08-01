@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 # Imports: first party
-# Imports with test in their name
+from ml4cvd.plots import _find_negative_label_index
 from ml4cvd.recipes import _find_learning_rate, inference_file_name
 from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4cvd.recipes import (
@@ -22,7 +22,6 @@ from ml4cvd.recipes import (
     infer_hidden_layer_multimodal_multitask,
 )
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, build_hdf5s
 from ml4cvd.explorations import (
     explore,
     continuous_explore_header,
@@ -41,6 +40,7 @@ class TestRecipes:
     def test_test_scalar(self, default_arguments):
         tst_multimodal_scalar_tasks(default_arguments)
 
+    # TODO either fix these or delete
     """
     def test_infer(self, default_arguments):
         infer_multimodal_multitask(default_arguments)
@@ -73,20 +73,19 @@ class TestRecipes:
         )
         inferred = pd.read_csv(tsv, sep="\t")
         assert len(set(inferred["FID"])) == pytest.N_TENSORS
+    """
 
     def test_find_learning_rate(self, default_arguments):
         _find_learning_rate(default_arguments)
 
-    """
-
-    def test_explore(self, default_arguments, tmpdir_factory):
+    def test_explore(self, default_arguments, tmpdir_factory, utils):
         temp_dir = tmpdir_factory.mktemp("explore_tensors")
         default_arguments.tensors = str(temp_dir)
-        tmaps = TMAPS_UP_TO_4D[:]
+        tmaps = pytest.TMAPS_UP_TO_4D[:]
         tmaps.append(
             TensorMap(f"scalar", shape=(1,), interpretation=Interpretation.CONTINUOUS),
         )
-        explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS)
+        explore_expected = utils.build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS)
         default_arguments.num_workers = 3
         default_arguments.tensor_maps_in = tmaps
         explore(default_arguments)
@@ -109,8 +108,12 @@ class TestRecipes:
                     assert actual == row_expected
                     continue
                 if tm.is_categorical():
+                    negative_label_idx = _find_negative_label_index(tm.channel_map)
                     for channel, idx in tm.channel_map.items():
-                        channel_val = getattr(
-                            row, categorical_explore_header(tm, channel),
-                        )
-                        assert channel_val == row_expected[idx]
+                        if idx == negative_label_idx and len(tm.channel_map) == 2:
+                            assert categorical_explore_header(tm, channel) not in row
+                        else:
+                            channel_val = getattr(
+                                row, categorical_explore_header(tm, channel),
+                            )
+                            assert channel_val == row_expected[idx]

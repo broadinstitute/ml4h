@@ -20,16 +20,6 @@ from ml4cvd.models import (
     make_multimodal_multitask_model,
 )
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.test_utils import (
-    SEGMENT_IN,
-    SEGMENT_OUT,
-    PARENT_TMAPS,
-    CYCLE_PARENTS,
-    TMAPS_UP_TO_4D,
-    CONTINUOUS_TMAPS,
-    CATEGORICAL_TMAPS,
-    MULTIMODAL_UP_TO_4D,
-)
 
 MEAN_PRECISION_EPS = 0.02  # how much mean precision degradation is acceptable
 DEFAULT_PARAMS = {
@@ -115,9 +105,9 @@ class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         "input_output_tmaps",
         [
-            (CONTINUOUS_TMAPS[:1], CONTINUOUS_TMAPS[1:2]),
-            (CONTINUOUS_TMAPS[1:2], CONTINUOUS_TMAPS[:1]),
-            (CONTINUOUS_TMAPS[:2], CONTINUOUS_TMAPS[:2]),
+            (pytest.CONTINUOUS_TMAPS[:1], pytest.CONTINUOUS_TMAPS[1:2]),
+            (pytest.CONTINUOUS_TMAPS[1:2], pytest.CONTINUOUS_TMAPS[:1]),
+            (pytest.CONTINUOUS_TMAPS[:2], pytest.CONTINUOUS_TMAPS[:2]),
         ],
     )
     def test_multimodal_multitask_quickly(self, input_output_tmaps):
@@ -128,10 +118,10 @@ class TestMakeMultimodalMultitaskModel:
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
-        "input_tmaps", MULTIMODAL_UP_TO_4D,
+        "input_tmaps", pytest.MULTIMODAL_UP_TO_4D,
     )
     @pytest.mark.parametrize(
-        "output_tmaps", MULTIMODAL_UP_TO_4D,
+        "output_tmaps", pytest.MULTIMODAL_UP_TO_4D,
     )
     def test_multimodal(
         self, input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
@@ -140,20 +130,20 @@ class TestMakeMultimodalMultitaskModel:
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
-        "input_tmap", CONTINUOUS_TMAPS[:-1],
+        "input_tmap", pytest.CONTINUOUS_TMAPS[:-1],
     )
     @pytest.mark.parametrize(
-        "output_tmap", TMAPS_UP_TO_4D,
+        "output_tmap", pytest.TMAPS_UP_TO_4D,
     )
     def test_unimodal_md_to_nd(self, input_tmap: TensorMap, output_tmap: TensorMap):
         assert_model_trains([input_tmap], [output_tmap])
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
-        "input_tmap", TMAPS_UP_TO_4D,
+        "input_tmap", pytest.TMAPS_UP_TO_4D,
     )
     @pytest.mark.parametrize(
-        "output_tmap", TMAPS_UP_TO_4D,
+        "output_tmap", pytest.TMAPS_UP_TO_4D,
     )
     def test_load_unimodal(self, tmpdir, input_tmap, output_tmap):
         m = make_multimodal_multitask_model(
@@ -170,7 +160,7 @@ class TestMakeMultimodalMultitaskModel:
         "activation", ACTIVATION_FUNCTIONS.keys(),
     )
     def test_load_custom_activations(self, tmpdir, activation):
-        inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
+        inp, out = pytest.CONTINUOUS_TMAPS[:2], pytest.CATEGORICAL_TMAPS[:2]
         params = DEFAULT_PARAMS.copy()
         params["activation"] = activation
         m = make_multimodal_multitask_model(inp, out, **params)
@@ -182,10 +172,10 @@ class TestMakeMultimodalMultitaskModel:
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
-        "input_tmaps", MULTIMODAL_UP_TO_4D,
+        "input_tmaps", pytest.MULTIMODAL_UP_TO_4D,
     )
     @pytest.mark.parametrize(
-        "output_tmaps", MULTIMODAL_UP_TO_4D,
+        "output_tmaps", pytest.MULTIMODAL_UP_TO_4D,
     )
     def test_load_multimodal(
         self, tmpdir, input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
@@ -205,30 +195,30 @@ class TestMakeMultimodalMultitaskModel:
         params["conv_layers"] = [8, 8]
         params["dense_blocks"] = [4, 4, 2]
         m = make_multimodal_multitask_model(
-            [SEGMENT_IN],
-            [SEGMENT_IN],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}}),
+            [pytest.SEGMENT_IN],
+            [pytest.SEGMENT_IN],
+            u_connect=defaultdict(set, {pytest.SEGMENT_IN: {pytest.SEGMENT_IN}}),
             **params,
         )
-        assert_model_trains([SEGMENT_IN], [SEGMENT_IN], m)
+        assert_model_trains([pytest.SEGMENT_IN], [pytest.SEGMENT_IN], m)
 
     def test_u_connect_segment(self):
         params = DEFAULT_PARAMS.copy()
         params["pool_x"] = params["pool_y"] = 2
         m = make_multimodal_multitask_model(
-            [SEGMENT_IN],
-            [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
+            [pytest.SEGMENT_IN],
+            [pytest.SEGMENT_OUT],
+            u_connect=defaultdict(set, {pytest.SEGMENT_IN: {pytest.SEGMENT_OUT}}),
             **params,
         )
-        assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
+        assert_model_trains([pytest.SEGMENT_IN], [pytest.SEGMENT_OUT], m)
 
     @pytest.mark.parametrize(
         "input_output_tmaps",
         [
-            (CONTINUOUS_TMAPS[:1], [SEGMENT_IN]),
-            ([SEGMENT_IN], CONTINUOUS_TMAPS[:1]),
-            ([SEGMENT_IN], [SEGMENT_IN]),
+            (pytest.CONTINUOUS_TMAPS[:1], [pytest.SEGMENT_IN]),
+            ([pytest.SEGMENT_IN], pytest.CONTINUOUS_TMAPS[:1]),
+            ([pytest.SEGMENT_IN], [pytest.SEGMENT_IN]),
         ],
     )
     def test_multimodal_multitask_variational(self, input_output_tmaps, tmpdir):
@@ -257,48 +247,54 @@ class TestMakeMultimodalMultitaskModel:
         params["pool_x"] = params["pool_y"] = 2
         params["bottleneck_type"] = BottleneckType.GlobalAveragePoolStructured
         m = make_multimodal_multitask_model(
-            [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
-            [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
+            [pytest.SEGMENT_IN, pytest.TMAPS_UP_TO_4D[0]],
+            [pytest.SEGMENT_OUT],
+            u_connect=defaultdict(set, {pytest.SEGMENT_IN: {pytest.SEGMENT_OUT}}),
             **params,
         )
-        assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
+        assert_model_trains(
+            [pytest.SEGMENT_IN, pytest.TMAPS_UP_TO_4D[0]], [pytest.SEGMENT_OUT], m,
+        )
 
     def test_u_connect_no_bottleneck(self):
         params = DEFAULT_PARAMS.copy()
         params["pool_x"] = params["pool_y"] = 2
         params["bottleneck_type"] = BottleneckType.NoBottleNeck
         m = make_multimodal_multitask_model(
-            [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
-            [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
+            [pytest.SEGMENT_IN, pytest.TMAPS_UP_TO_4D[0]],
+            [pytest.SEGMENT_OUT],
+            u_connect=defaultdict(set, {pytest.SEGMENT_IN: {pytest.SEGMENT_OUT}}),
             **params,
         )
-        assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
+        assert_model_trains(
+            [pytest.SEGMENT_IN, pytest.TMAPS_UP_TO_4D[0]], [pytest.SEGMENT_OUT], m,
+        )
 
     def test_no_dense_layers(self):
         params = DEFAULT_PARAMS.copy()
         params["dense_layers"] = []
-        inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
+        inp, out = pytest.CONTINUOUS_TMAPS[:2], pytest.CATEGORICAL_TMAPS[:2]
         m = make_multimodal_multitask_model(inp, out, **DEFAULT_PARAMS)
         assert_model_trains(inp, out, m)
 
     @pytest.mark.parametrize(
-        "output_tmaps", [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
+        "output_tmaps",
+        [_rotate(pytest.PARENT_TMAPS, i) for i in range(len(pytest.PARENT_TMAPS))],
     )
     def test_parents(self, output_tmaps):
-        assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps)
+        assert_model_trains([pytest.TMAPS_UP_TO_4D[-1]], output_tmaps)
 
 
 @pytest.mark.parametrize(
-    "tmaps", [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
+    "tmaps", [_rotate(pytest.PARENT_TMAPS, i) for i in range(len(pytest.PARENT_TMAPS))],
 )
 def test_parent_sort(tmaps):
-    assert parent_sort(tmaps) == PARENT_TMAPS
+    assert parent_sort(tmaps) == pytest.PARENT_TMAPS
 
 
 @pytest.mark.parametrize(
-    "tmaps", [_rotate(CYCLE_PARENTS, i) for i in range(len(CYCLE_PARENTS))],
+    "tmaps",
+    [_rotate(pytest.CYCLE_PARENTS, i) for i in range(len(pytest.CYCLE_PARENTS))],
 )
 def test_parent_sort_cycle(tmaps):
     with pytest.raises(ValueError):
@@ -307,7 +303,10 @@ def test_parent_sort_cycle(tmaps):
 
 @pytest.mark.parametrize(
     "tmaps",
-    [_rotate(PARENT_TMAPS + TMAPS_UP_TO_4D, i) for i in range(len(PARENT_TMAPS))],
+    [
+        _rotate(pytest.PARENT_TMAPS + pytest.TMAPS_UP_TO_4D, i)
+        for i in range(len(pytest.PARENT_TMAPS))
+    ],
 )
 def test_parent_sort_idempotent(tmaps):
     assert (
@@ -318,10 +317,10 @@ def test_parent_sort_idempotent(tmaps):
 
 
 @pytest.mark.parametrize(
-    "tmap_out", TMAPS_UP_TO_4D,
+    "tmap_out", pytest.TMAPS_UP_TO_4D,
 )
 @pytest.mark.parametrize(
-    "u_connect_out", TMAPS_UP_TO_4D,
+    "u_connect_out", pytest.TMAPS_UP_TO_4D,
 )
 def test_check_no_bottleneck(tmap_out, u_connect_out):
     u_connect = defaultdict(set, {tmap_out: {u_connect_out}})
@@ -348,7 +347,7 @@ class TestModelPerformance:
         from ml4cvd.tensor_from_file import TMAPS
         from ml4cvd.tensor_generators import (
             big_batch_from_minibatch_generator,
-            test_train_valid_tensor_generators,
+            train_valid_test_tensor_generators,
         )
 
         tmaps_in = [TMAPS["t1_30_slices_4d"]]
@@ -379,7 +378,7 @@ class TestModelPerformance:
             generate_train,
             generate_valid,
             generate_test,
-        ) = test_train_valid_tensor_generators(
+        ) = train_valid_test_tensor_generators(
             tmaps_in,
             tmaps_out,
             tensors=tensor_path,

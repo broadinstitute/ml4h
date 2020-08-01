@@ -56,7 +56,7 @@ from ml4cvd.tensor_generators import (
     TensorGenerator,
     get_verbose_stats_string,
     big_batch_from_minibatch_generator,
-    test_train_valid_tensor_generators,
+    train_valid_test_tensor_generators,
 )
 from ml4cvd.tensor_writer_ecg import write_tensors_ecg
 
@@ -117,7 +117,7 @@ def run(args):
 def _find_learning_rate(args) -> float:
     schedule = args.learning_rate_schedule
     args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
-    generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, _, _ = train_valid_test_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     try:
         lr = find_learning_rate(
@@ -133,7 +133,7 @@ def _find_learning_rate(args) -> float:
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+    generate_train, generate_valid, generate_test = train_valid_test_tensor_generators(
         **args.__dict__
     )
     model = make_multimodal_multitask_model(**args.__dict__)
@@ -209,7 +209,7 @@ def train_multimodal_multitask(args):
 
 
 def test_multimodal_multitask(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + "/")
     data, labels, paths = big_batch_from_minibatch_generator(
@@ -231,7 +231,7 @@ def test_multimodal_multitask(args):
 
 
 def test_multimodal_scalar_tasks(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + "/")
     return _predict_scalars_and_evaluate_from_generator(
@@ -247,7 +247,7 @@ def test_multimodal_scalar_tasks(args):
 
 
 def compare_multimodal_multitask_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     models_inputs_outputs = get_model_inputs_outputs(
         args.model_files, args.tensor_maps_in, args.tensor_maps_out,
     )
@@ -262,7 +262,7 @@ def compare_multimodal_multitask_models(args):
 
 
 def compare_multimodal_scalar_task_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     models_io = get_model_inputs_outputs(
         args.model_files, args.tensor_maps_in, args.tensor_maps_out,
     )
@@ -471,7 +471,7 @@ def infer_hidden_layer_multimodal_multitask(args):
 
 
 def train_shallow_model(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+    generate_train, generate_valid, generate_test = train_valid_test_tensor_generators(
         **args.__dict__
     )
     model = make_shallow_model(
@@ -516,7 +516,7 @@ def train_shallow_model(args):
 def train_siamese_model(args):
     base_model = make_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+    generate_train, generate_valid, generate_test = train_valid_test_tensor_generators(
         **args.__dict__, siamese=True
     )
     siamese_model = train_model_from_generators(
@@ -550,7 +550,7 @@ def saliency_maps(args):
     import tensorflow as tf
 
     tf.compat.v1.disable_eager_execution()
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(
         generate_test, args.test_steps,
