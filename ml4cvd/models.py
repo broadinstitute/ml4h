@@ -1460,9 +1460,10 @@ def train_model_from_generators(
     generate_valid: Iterable,
     training_steps: int,
     validation_steps: int,
-    batch_size: int,
     epochs: int,
     patience: int,
+    learning_rate_patience: int,
+    learning_rate_reduction: float,
     output_folder: str,
     run_id: str,
     return_history: bool = False,
@@ -1478,9 +1479,10 @@ def train_model_from_generators(
     :param generate_valid: Generator function that yields mini-batches of validation data.
     :param training_steps: Number of mini-batches in each so-called epoch
     :param validation_steps: Number of validation mini-batches to examine after each epoch.
-    :param batch_size: Number of training examples in each mini-batch
     :param epochs: Maximum number of epochs to run regardless of Early Stopping
     :param patience: Number of epochs to wait before reducing learning rate.
+    :param learning_rate_patience: Number of epochs without validation loss improvement to wait before reducing learning rate.
+    :param learning_rate_reduction: Scale factor to reduce learning rate by.
     :param output_folder: Directory where output file will be stored
     :param run_id: User-chosen string identifying this run
     :param return_history: If true return history from training and don't plot the training history
@@ -1504,7 +1506,9 @@ def train_model_from_generators(
         verbose=1,
         validation_steps=validation_steps,
         validation_data=generate_valid,
-        callbacks=_get_callbacks(patience, model_file),
+        callbacks=_get_callbacks(
+            model_file, patience, learning_rate_patience, learning_rate_reduction,
+        ),
     )
     model = load_model(
         model_file, custom_objects=_get_custom_objects(generate_train.output_maps),
@@ -1520,11 +1524,21 @@ def train_model_from_generators(
     return model
 
 
-def _get_callbacks(patience: int, model_file: str) -> List[Callback]:
+def _get_callbacks(
+    model_file: str,
+    patience: int,
+    learning_rate_patience: int,
+    learning_rate_reduction: float,
+) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
-        EarlyStopping(monitor="val_loss", patience=patience * 3, verbose=1),
-        ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=patience, verbose=1),
+        EarlyStopping(monitor="val_loss", patience=patience, verbose=1),
+        ReduceLROnPlateau(
+            monitor="val_loss",
+            factor=learning_rate_reduction,
+            patience=learning_rate_patience,
+            verbose=1,
+        ),
     ]
     return callbacks
 

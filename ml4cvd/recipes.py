@@ -138,16 +138,17 @@ def train_multimodal_multitask(args):
     )
     model = make_multimodal_multitask_model(**args.__dict__)
     model, history = train_model_from_generators(
-        model,
-        generate_train,
-        generate_valid,
-        args.training_steps,
-        args.validation_steps,
-        args.batch_size,
-        args.epochs,
-        args.patience,
-        args.output_folder,
-        args.id,
+        model=model,
+        generate_train=generate_train,
+        generate_valid=generate_valid,
+        training_steps=args.training_steps,
+        validation_steps=args.validation_steps,
+        epochs=args.epochs,
+        patience=args.patience,
+        learning_rate_patience=args.learning_rate_patience,
+        learning_rate_reduction=args.learning_rate_reduction,
+        output_folder=args.output_folder,
+        run_id=args.id,
         return_history=True,
     )
     out_path = os.path.join(args.output_folder, args.id + "/")
@@ -482,16 +483,17 @@ def train_shallow_model(args):
         args.model_layers,
     )
     model = train_model_from_generators(
-        model,
-        generate_train,
-        generate_valid,
-        args.training_steps,
-        args.validation_steps,
-        args.batch_size,
-        args.epochs,
-        args.patience,
-        args.output_folder,
-        args.id,
+        model=model,
+        generate_train=generate_train,
+        generate_valid=generate_valid,
+        training_steps=args.training_steps,
+        validation_steps=args.validation_steps,
+        epochs=args.epochs,
+        patience=args.patience,
+        learning_rate_patience=args.learning_rate_patience,
+        learning_rate_reduction=args.learning_rate_reduction,
+        output_folder=args.output_folder,
+        run_id=args.id,
     )
 
     p = os.path.join(args.output_folder, args.id + "/")
@@ -520,16 +522,17 @@ def train_siamese_model(args):
         **args.__dict__, siamese=True
     )
     siamese_model = train_model_from_generators(
-        siamese_model,
-        generate_train,
-        generate_valid,
-        args.training_steps,
-        args.validation_steps,
-        args.batch_size,
-        args.epochs,
-        args.patience,
-        args.output_folder,
-        args.id,
+        model=siamese_model,
+        generate_train=generate_train,
+        generate_valid=generate_valid,
+        training_steps=args.training_steps,
+        validation_steps=args.validation_steps,
+        epochs=args.epochs,
+        patience=args.patience,
+        learning_rate_patience=args.learning_rate_patience,
+        learning_rate_reduction=args.learning_rate_reduction,
+        output_folder=args.output_folder,
+        run_id=args.id,
     )
 
     data, labels, paths = big_batch_from_minibatch_generator(

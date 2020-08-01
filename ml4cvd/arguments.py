@@ -375,6 +375,18 @@ def parse_args():
         help="Learning rate during training.",
     )
     parser.add_argument(
+        "--learning_rate_patience",
+        default=10,
+        type=int,
+        help="Number of epochs without validation loss improvement to wait before reducing learning rate by multiplying by the learning_rate_reduction scale factor.",
+    )
+    parser.add_argument(
+        "--learning_rate_reduction",
+        default=0.5,
+        type=float,
+        help="Scale factor to reduce learning rate by.",
+    )
+    parser.add_argument(
         "--mixup_alpha",
         default=0,
         type=float,
@@ -385,7 +397,7 @@ def parse_args():
     )
     parser.add_argument(
         "--patience",
-        default=8,
+        default=24,
         type=int,
         help=(
             "Early Stopping parameter: Maximum number of epochs to run without"
