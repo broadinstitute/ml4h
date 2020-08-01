@@ -2,7 +2,7 @@
 
 #SBATCH -p batch
 #SBATCH -N 1
-#SBATCH --gpus=1
+#SBATCH --gpus=2
 #SBATCH --time 02:00:00
 #SBATCH --job-name=ml4cvd_tf2
 # Script to enable running Python modules within Singularity containers of Docker images
