@@ -3,6 +3,7 @@ import os
 import csv
 import copy
 import logging
+import argparse
 from timeit import default_timer as timer
 from typing import Dict, List, Tuple
 from functools import reduce
@@ -11,6 +12,9 @@ from collections import Counter, defaultdict
 # Imports: third party
 import h5py
 import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import Model
 
 # Imports: first party
 from ml4cvd.plots import (
@@ -47,13 +51,13 @@ from ml4cvd.metrics import (
 )
 from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.optimizers import find_learning_rate
 from ml4cvd.explorations import explore, cross_reference
 from ml4cvd.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_PATHS_INDEX,
     BATCH_OUTPUT_INDEX,
     TensorGenerator,
+    _sample_csv_to_set,
     get_verbose_stats_string,
     big_batch_from_minibatch_generator,
     train_valid_test_tensor_generators,
@@ -64,16 +68,16 @@ from ml4cvd.tensor_writer_ecg import write_tensors_ecg
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
     try:
-        if "tensorize" == args.mode:
+        if "train" == args.mode:
+            train_multimodal_multitask(args)
+        elif "test" == args.mode:
+            test_multimodal_multitask(args)
+        elif "tensorize" == args.mode:
             write_tensors_ecg(args.xml_folder, args.tensors, args.num_workers)
         elif "explore" == args.mode:
             explore(args)
         elif "cross_reference" == args.mode:
             cross_reference(args)
-        elif "train" == args.mode:
-            train_multimodal_multitask(args)
-        elif "test" == args.mode:
-            test_multimodal_multitask(args)
         elif "compare" == args.mode:
             compare_multimodal_multitask_models(args)
         elif "infer" == args.mode:
@@ -92,15 +96,6 @@ def run(args):
             train_shallow_model(args)
         elif "train_siamese" == args.mode:
             train_siamese_model(args)
-        elif "find_learning_rate" == args.mode:
-            _find_learning_rate(args)
-        elif "find_learning_rate_and_train" == args.mode:
-            args.learning_rate = _find_learning_rate(args)
-            if not args.learning_rate:
-                raise ValueError("Could not find learning rate.")
-            train_multimodal_multitask(args)
-        elif "tokenize" == args.mode:
-            tokenize_tensor_maps(args)
         else:
             raise ValueError("Unknown mode:", args.mode)
 
@@ -112,24 +107,6 @@ def run(args):
     logging.info(
         "Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time),
     )
-
-
-def _find_learning_rate(args) -> float:
-    schedule = args.learning_rate_schedule
-    args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
-    generate_train, _, _ = train_valid_test_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    try:
-        lr = find_learning_rate(
-            model,
-            generate_train,
-            args.training_steps,
-            os.path.join(args.output_folder, args.id),
-        )
-    finally:
-        generate_train.kill_workers()
-    args.learning_rate_schedule = schedule
-    return lr
 
 
 def train_multimodal_multitask(args):
@@ -471,16 +448,19 @@ def infer_hidden_layer_multimodal_multitask(args):
                 )
 
 
-def train_shallow_model(args):
+def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
+    """
+    Train a shallow model (e.g. linear or logistic regression) and return performance metrics.
+    """
     generate_train, generate_valid, generate_test = train_valid_test_tensor_generators(
         **args.__dict__
     )
     model = make_shallow_model(
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.learning_rate,
-        args.model_file,
-        args.model_layers,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        learning_rate=args.learning_rate,
+        model_file=args.model_file,
+        model_layers=args.model_layers,
     )
     model = train_model_from_generators(
         model=model,
@@ -497,22 +477,46 @@ def train_shallow_model(args):
     )
 
     p = os.path.join(args.output_folder, args.id + "/")
+
+    train_data, train_labels = big_batch_from_minibatch_generator(
+        generate_train, args.training_steps,
+    )
+    generate_train.kill_workers()
+    generate_valid.kill_workers()
+    _predict_and_evaluate(
+        model=model,
+        test_data=train_data,
+        test_labels=train_labels,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        hidden_layer=args.hidden_layer,
+        plot_path=p,
+        test_paths=None,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
+        data_split="train",
+    )
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
         generate_test, args.test_steps,
     )
-    return _predict_and_evaluate(
-        model,
-        test_data,
-        test_labels,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.batch_size,
-        args.hidden_layer,
-        p,
-        test_paths,
-        args.embed_visualization,
-        args.alpha,
+    generate_test.kill_workers()
+    performance_metrics = _predict_and_evaluate(
+        model=model,
+        test_data=test_data,
+        test_labels=test_labels,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        hidden_layer=args.hidden_layer,
+        plot_path=p,
+        test_paths=test_paths,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
+        save_coefficients=True,
+        data_split="test",
     )
+    return performance_metrics
 
 
 def train_siamese_model(args):
@@ -549,9 +553,6 @@ def train_siamese_model(args):
 
 
 def saliency_maps(args):
-    # Imports: third party
-    import tensorflow as tf
-
     tf.compat.v1.disable_eager_execution()
     _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
@@ -575,26 +576,6 @@ def saliency_maps(args):
             )
 
 
-def tokenize_tensor_maps(args):
-    characters = set()
-    tensor_paths = [
-        args.tensors + tp
-        for tp in sorted(os.listdir(args.tensors))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
-    ]
-    for path in tensor_paths:
-        with h5py.File(path, "r") as hd5:
-            for tm in filter(lambda tm: tm.is_language, args.tensor_maps_out):
-                text = str(tm.tensor_from_file(tm, hd5, dependents={}))
-                characters += set(text)
-    logging.info(f"Total characters: {len(characters)}")
-    char2index = dict((c, i) for i, c in enumerate(sorted(list(characters))))
-    index2char = dict((i, c) for i, c in enumerate(sorted(list(characters))))
-    logging.info(
-        f"char2index:\n\n {char2index}  \n\n\n\n index2char: \n\n {index2char} \n\n\n",
-    )
-
-
 def _predict_and_evaluate(
     model,
     test_data,
@@ -608,11 +589,26 @@ def _predict_and_evaluate(
     embed_visualization,
     alpha,
     data_split="test",
+    save_coefficients=False,
 ):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
     scatters = []
     rocs = []
+
+    if save_coefficients:
+        all_coefficients = []
+        coef_list = [
+            c[0].round(3) for c in model.layers[-1].get_weights()[0]
+        ]  # weights of output layer
+        all_coefficients.append(coef_list)
+        coef_path = os.path.join(plot_path, "coefficients" + ".csv")
+        if not os.path.exists(os.path.dirname(coef_path)):
+            os.makedirs(os.path.dirname(coef_path))
+        with open(coef_path, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow([feature.name for feature in tensor_maps_in])
+            writer.writerows(all_coefficients)
 
     y_predictions = model.predict(test_data, batch_size=batch_size)
     for y, tm in zip(y_predictions, tensor_maps_out):
@@ -625,12 +621,12 @@ def _predict_and_evaluate(
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(
             evaluate_predictions(
-                tm,
-                y,
-                y_truth,
-                tm.name,
-                plot_path,
-                test_paths,
+                tm=tm,
+                y_predictions=y,
+                y_truth=y_truth,
+                title=tm.name,
+                folder=plot_path,
+                test_paths=test_paths,
                 rocs=rocs,
                 scatters=scatters,
                 data_split=data_split,

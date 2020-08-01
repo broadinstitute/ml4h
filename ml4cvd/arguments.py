@@ -66,6 +66,11 @@ def parse_args():
         default=[],
         help="Do not set this directly. Use output_tensors",
     )
+    parser.add_argument(
+        "--mrn_column_name",
+        default="medrecn",
+        help="Name of MRN column in tensors_all*.csv",
+    )
 
     # Input and Output files and directories
     parser.add_argument(

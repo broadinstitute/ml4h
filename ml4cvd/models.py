@@ -22,6 +22,7 @@ from collections import Counter, defaultdict
 # Imports: third party
 import numpy as np
 import pydot
+import pandas as pd
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow_probability as tfp
@@ -68,6 +69,7 @@ from tensorflow.keras.layers import (
     concatenate,
 )
 from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.metrics import Recall, Precision
 from tensorflow.keras.callbacks import (
     History,
     Callback,
@@ -139,10 +141,10 @@ def make_shallow_model(
     outputs = []
     my_metrics = {}
     loss_weights = []
-    input_tensors = [
-        Input(shape=tm.static_shape, name=tm.input_name()) for tm in tensor_maps_in
-    ]
 
+    input_tensors = [
+        Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in
+    ]
     it = concatenate(input_tensors) if len(input_tensors) > 1 else input_tensors[0]
     for ot in tensor_maps_out:
         losses.append(ot.loss)
@@ -1468,6 +1470,7 @@ def train_model_from_generators(
     run_id: str,
     return_history: bool = False,
     plot: bool = True,
+    outcome: str = None,
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
@@ -1486,6 +1489,10 @@ def train_model_from_generators(
     :param output_folder: Directory where output file will be stored
     :param run_id: User-chosen string identifying this run
     :param return_history: If true return history from training and don't plot the training history
+    :param X_train: Training features in a DataFrame
+    :param y_train: Training outcomes in a DataFrame
+    :param X_valid: Validation features in a DataFrame
+    :param y_valid: Validation outcomes in a DataFrame
     :return: The optimized model.
     """
     model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)

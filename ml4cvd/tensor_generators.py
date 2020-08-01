@@ -762,7 +762,10 @@ def _get_train_valid_test_discard_ratios(
     return train_ratio, valid_ratio, test_ratio, discard_ratio
 
 
-def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]]:
+def _sample_csv_to_set(
+    sample_csv: Optional[str] = None, mrn_col_name: Optional[str] = None,
+) -> Union[None, Set[str]]:
+
     if sample_csv is None:
         return None
 
@@ -777,24 +780,26 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
         df.columns = df.iloc[0]
         df = df[1:]
 
-    # Declare set of possible MRN column names
-    possible_mrn_col_names = {"sampleid", "medrecn", "mrn", "patient_id"}
+    if mrn_col_name is None:
 
-    # Find intersection between CSV columns and possible MRN column names
-    matches = set(df.columns).intersection(possible_mrn_col_names)
+        # Declare set of possible MRN column names
+        possible_mrn_col_names = {"sampleid", "medrecn", "mrn", "patient_id"}
 
-    # If no matches, assume the first column is MRN
-    if not matches:
-        mrn_col_name = df.columns[0]
-    else:
-        # Get first string from set of matches to use as column name
-        mrn_col_name = next(iter(matches))
+        # Find intersection between CSV columns and possible MRN column names
+        matches = set(df.columns).intersection(possible_mrn_col_names)
 
-    if len(matches) > 1:
-        logging.warning(
-            f"{sample_csv} has more than one potential column for MRNs. Inferring most"
-            " likely column name, but recommend explicitly setting MRN column name.",
-        )
+        # If no matches, assume the first column is MRN
+        if not matches:
+            mrn_col_name = df.columns[0]
+        else:
+            # Get first string from set of matches to use as column name
+            mrn_col_name = next(iter(matches))
+
+        if len(matches) > 1:
+            logging.warning(
+                f"{sample_csv} has more than one potential column for MRNs. Inferring most"
+                " likely column name, but recommend explicitly setting MRN column name.",
+            )
 
     # Isolate MRN column from dataframe, cast to float -> int -> string
     sample_ids = df[mrn_col_name].astype(float).astype(int).apply(str)

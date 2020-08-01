@@ -150,11 +150,9 @@ def evaluate_predictions(
     performance_metrics = {}
     if tm.is_categorical() and tm.static_axes() == 1:
         logging.info(
-            f"For tm:{tm.name} with channel map: {tm.channel_map}"
-            f" examples: {y_predictions.shape[0]}",
-        )
-        logging.info(
-            f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred"
+            f"{tm.name} has channel map: {tm.channel_map}"
+            f" with {y_predictions.shape[0]} examples in the test set.\n"
+            f"Sum Truth:{np.sum(y_truth, axis=0)} \nSum pred"
             f" :{np.sum(y_predictions, axis=0)}",
         )
         plot_precision_recall_per_class(
