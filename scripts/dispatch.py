@@ -34,7 +34,7 @@ def _get_path_to_ecgs() -> str:
     elif "mithril" == socket.gethostname():
         return "/data/ecg"
     elif "stultzlab" in socket.gethostname():
-        return "/storage/shared/ecg_deidentified"
+        return "/storage/shared/ecg"
 
 
 def worker(script, bootstrap, gpu):
