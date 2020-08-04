@@ -272,15 +272,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--max_parameters",
-        default=9000000,
-        type=int,
-        help=(
-            "Maximum number of trainable parameters in a model during hyperparameter"
-            " optimization."
-        ),
-    )
-    parser.add_argument(
         "--bottleneck_type",
         type=str,
         default=list(BOTTLENECK_STR_TO_ENUM)[0],
@@ -304,7 +295,7 @@ def parse_args():
         ),
     )
 
-    # Training and Hyper-Parameter Optimization Parameters
+    # Training Parameters
     parser.add_argument(
         "--epochs", default=12, type=int, help="Number of training epochs.",
     )
@@ -410,15 +401,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--max_evals",
-        default=16,
-        type=int,
-        help=(
-            "Maximum number of models for the hyper-parameter optimizer to evaluate"
-            " before returning."
-        ),
-    )
-    parser.add_argument(
         "--balance_csvs",
         default=[],
         nargs="*",
@@ -450,6 +432,23 @@ def parse_args():
     )
     parser.add_argument(
         "--anneal_max", default=2.0, type=float, help="Annealing maximum value",
+    )
+
+    # Hyperoptimize arguments
+    parser.add_argument(
+        "--max_parameters",
+        default=9000000,
+        type=int,
+        help="Maximum number of trainable parameters in a model during hyperoptimization.",
+    )
+    parser.add_argument(
+        "--max_evals",
+        default=16,
+        type=int,
+        help=(
+            "Maximum number of models for the hyperparameter optimizer to evaluate"
+            " before returning."
+        ),
     )
 
     # Run specific and debugging arguments

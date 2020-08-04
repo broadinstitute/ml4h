@@ -3,9 +3,8 @@ import gc
 import os
 import logging
 import argparse
-from timeit import default_timer as timer
 from typing import Dict, List
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 # Imports: third party
 import numpy as np
@@ -17,14 +16,10 @@ from skimage.filters import threshold_otsu
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
-from ml4cvd.defines import IMAGE_EXT, MODEL_EXT, Arguments
-from ml4cvd.recipes import _predict_and_evaluate
-from ml4cvd.arguments import _get_tmap, parse_args
-from ml4cvd.tensor_maps_ecg import (
-    TMAPS,
-    build_cardiac_surgery_tensor_maps,
-    build_ecg_time_series_tensor_maps,
-)
+from ml4cvd.defines import IMAGE_EXT, Arguments
+from ml4cvd.arguments import _get_tmap
+from ml4cvd.evaluations import predict_and_evaluate
+from ml4cvd.tensor_maps_ecg import TMAPS
 from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
     train_valid_test_tensor_generators,
@@ -41,53 +36,22 @@ from matplotlib import pyplot as plt    # isort:skip
 MAX_LOSS = 9e9
 
 
-def run(args: argparse.Namespace):
-    # Keep track of elapsed execution time
-    start_time = timer()
-
-    try:
-        if "hyperoptimize" == args.mode:
-            hyperoptimize(args)
-        else:
-            raise ValueError("Unknown hyperparameter optimization mode:", args.mode)
-
-    except Exception as e:
-        logging.exception(e)
-
-    end_time = timer()
-    elapsed_time = end_time - start_time
-    logging.info(
-        "Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time),
-    )
-
-
 def hyperoptimize(args: argparse.Namespace):
     """
     hyperopt is a Python library that performs Bayesian optimization over a given set of hyperparameters
     to minimize an objective function. Here, the objective function is loss_from_multimodal_multitask.
 
-    A trials=hyperopt.Trials() object is initialized and passed into the fmin() function, along with
-    the objective function to be minimized, the hyperparameter space over which to search, the
-    search algorithm to use, and the maximum number of evaluations to run. The trials object is a database
-    that is updated with the statistics and return values of each evaluation. These values can be accessed
-    via trials.trials, trials.results, trials.losses(), and trials.statuses().
-
-    One limitation is that hyperopt may generate the same hyperparameter combination in different evaluations.
-    This makes it cumbersome to perform an exhaustive grid search over a small set of parameters.
-    One method to address this is as follows:
-
-    Before training each model in loss_from_multimodal_multitask, check whether the hyperopt.Trials() object
-    already has this combination of hyperparameters stored (they should be stored in trials.trials).
-    If so, skip training this model and save/return fake results/losses. These fake results should be skipped
-    when plotting results and writing trial_metrics_and_params.csv.
-    max_evals can be initialized with a high number, and hyperoptimization can be stopped when all the combinations
-    have been run. A stopping criterion can be: size of trials.trials == number of unique hyperparameter combinations.
+    Hyperparameter combinations are randomly chosen and non-unique choices are skipped before model
+    compilation. The computation to skip repeated combinations is fast and inexpensive. However, each
+    non-unique combination counts towards the maximum number of models to evaluate. If a grid search
+    over a relatively small search space is desired, set max_evals >> size of search space. In this
+    case, it is likely, but not guaranteed, that all combinations will be seen.
     """
 
-    # block_size_sets = [2, 3, 4]
-    # conv_layers_sets = [[32]]  # Baseline
-    # conv_normalize_sets = [""]
-    """
+    block_size_sets = [2, 3, 4]
+    conv_layers_sets = [[32]]  # Baseline
+    conv_normalize_sets = [""]
+
     dense_layers_sets = [
         # [256],
         # [1000],  # Collin's suggestion
@@ -98,12 +62,11 @@ def hyperoptimize(args: argparse.Namespace):
         # [24, 12],  # Baseline
         [32, 24, 16],  # Baseline
     ]
-    pool_types = ["max"]
+    pool_types = ["max", "average"]
 
     conv_regularize_sets = ["spatial_dropout"]
     conv_dropout_sets = [0.5]
     dropout_sets = [0.5]
-    """
 
     conv_x_sets = _generate_conv1D_filter_widths(
         num_unique_filters=6,
@@ -138,31 +101,31 @@ def hyperoptimize(args: argparse.Namespace):
 
     space = {
         # "block_size": hp.choice("block_size", block_size_sets),
-        "conv_x": hp.choice("conv_x", conv_x_sets),
+        # "conv_x": hp.choice("conv_x", conv_x_sets),
         # "conv_normalize": hp.choice("conv_normalize", conv_normalize_sets),
         # "conv_dropout": hp.choice("conv_dropout", conv_dropout_sets),
         # "dense_blocks": hp.choice("dense_blocks", dense_blocks_sets),
         # "dense_layers": hp.choice("dense_layers", dense_layers_sets),
         # "dropout": hp.choice("dropout", dropout_sets),
-        "output_tensors": hp.choice("output_tensors", output_tensors_sets),
+        # "output_tensors": hp.choice("output_tensors", output_tensors_sets),
         # "input_tensors": hp.choice("input_tensors", input_tensor_map_sets),
-        "learning_rate": hp.choice("learning_rate", learning_rate_sets),
+        # "learning_rate": hp.choice("learning_rate", learning_rate_sets),
         # "conv_regularize": hp.choice("conv_regularize", conv_regularize_sets),
-        # "pool_type": hp.choice("pool_type", pool_types),
+        "pool_type": hp.choice("pool_type", pool_types),
     }
     param_lists = {
         # "block_size": block_size_sets,
-        "conv_x": conv_x_sets,
+        # "conv_x": conv_x_sets,
         # "conv_normalize": conv_normalize_sets,
         # "conv_dropout": conv_dropout_sets,
         # "dense_blocks": dense_blocks_sets,
         # "dense_layers": dense_layers_sets,
         # "dropout": dropout_sets,
-        "output_tensors": output_tensors_sets,
+        # "output_tensors": output_tensors_sets,
         # "conv_regularize": conv_regularize_sets,
         # "input_tensors": input_tensor_map_sets,
-        "learning_rate": learning_rate_sets,
-        # "pool_type": pool_types,
+        # "learning_rate": learning_rate_sets,
+        "pool_type": pool_types,
     }
     hyperparameter_optimizer(args, space, param_lists)
 
@@ -176,8 +139,9 @@ def hyperparameter_optimizer(
     args.keep_paths_test = False
     histories = []
     aucs = []
-    fig_path = os.path.join(args.output_folder, args.id, "plots")
+    results_path = os.path.join(args.output_folder, args.id)
     i = 0
+    seen_combinations = set()
 
     def loss_from_multimodal_multitask(x: Arguments):
         model = None
@@ -185,7 +149,19 @@ def hyperparameter_optimizer(
         auc = None
         nonlocal i
         i += 1
+
         try:
+            trial_id = f"{i - 1}"
+            trials_path = os.path.join(results_path, "trials")
+
+            # only try unique parameter combinations
+            params = str(x)
+            if params in seen_combinations:
+                raise ValueError(
+                    f"Trial {trial_id}: hyperparameter combination is non-unique: {params}",
+                )
+            seen_combinations.add(params)
+
             set_args_from_x(args, x)
             model = make_multimodal_multitask_model(**args.__dict__)
 
@@ -195,6 +171,7 @@ def hyperparameter_optimizer(
                     f" has:{model.count_params()}. Return max loss.",
                 )
                 return MAX_LOSS
+
             (
                 generate_train,
                 generate_valid,
@@ -210,8 +187,8 @@ def hyperparameter_optimizer(
                 patience=args.patience,
                 learning_rate_patience=args.learning_rate_patience,
                 learning_rate_reduction=args.learning_rate_reduction,
-                output_folder=args.output_folder,
-                run_id=args.id,
+                output_folder=trials_path,
+                run_id=trial_id,
                 return_history=True,
                 plot=False,
             )
@@ -223,43 +200,38 @@ def hyperparameter_optimizer(
             test_data, test_labels = big_batch_from_minibatch_generator(
                 generate_test, args.test_steps,
             )
-            # refer to trial_metrics_and_params.csv to find the params for this trial
-            title = f"trial_{i-1}"
-            train_auc = _predict_and_evaluate(
-                model,
-                train_data,
-                train_labels,
-                args.tensor_maps_in,
-                args.tensor_maps_out,
-                args.batch_size,
-                args.hidden_layer,
-                os.path.join(
-                    args.output_folder, args.id, "pr_roc_curves", title, "train",
-                ),
-                None,
-                args.embed_visualization,
-                args.alpha,
+            train_auc = predict_and_evaluate(
+                model=model,
+                test_data=train_data,
+                test_labels=train_labels,
+                tensor_maps_in=args.tensor_maps_in,
+                tensor_maps_out=args.tensor_maps_out,
+                batch_size=args.batch_size,
+                hidden_layer=args.hidden_layer,
+                plot_path=os.path.join(trials_path, trial_id),
+                test_paths=None,
+                embed_visualization=args.embed_visualization,
+                alpha=args.alpha,
+                data_split="train",
             )
-            test_auc = _predict_and_evaluate(
-                model,
-                test_data,
-                test_labels,
-                args.tensor_maps_in,
-                args.tensor_maps_out,
-                args.batch_size,
-                args.hidden_layer,
-                os.path.join(
-                    args.output_folder, args.id, "pr_roc_curves", title, "test",
-                ),
-                None,
-                args.embed_visualization,
-                args.alpha,
+            test_auc = predict_and_evaluate(
+                model=model,
+                test_data=test_data,
+                test_labels=test_labels,
+                tensor_maps_in=args.tensor_maps_in,
+                tensor_maps_out=args.tensor_maps_out,
+                batch_size=args.batch_size,
+                hidden_layer=args.hidden_layer,
+                plot_path=os.path.join(trials_path, trial_id),
+                test_paths=None,
+                embed_visualization=args.embed_visualization,
+                alpha=args.alpha,
+                data_split="test",
             )
             auc = {"train": train_auc, "test": test_auc}
             aucs.append(auc)
-            plot_metric_history(history, args.training_steps, title, fig_path)
-            model.load_weights(
-                os.path.join(args.output_folder, args.id, args.id + MODEL_EXT),
+            plot_metric_history(
+                history, args.training_steps, "", os.path.join(trials_path, trial_id),
             )
             loss_and_metrics = model.evaluate(
                 test_data, test_labels, batch_size=args.batch_size,
@@ -311,8 +283,7 @@ def hyperparameter_optimizer(
         max_evals=args.max_evals,
         trials=trials,
     )
-    plot_trials(trials, histories, aucs, fig_path, param_lists)
-    logging.info("Saved learning plot to:{}".format(fig_path))
+    plot_trials(trials, histories, aucs, results_path, param_lists)
 
 
 def set_args_from_x(args: argparse.Namespace, x: Arguments):
@@ -581,11 +552,13 @@ def plot_trials(
     for col, dtype in trial_metrics_and_params_df.dtypes.items():
         if dtype == float:
             trial_metrics_and_params_df[col] = trial_metrics_and_params_df[col].apply(
-                lambda x: "{:.3}".format(x),
+                lambda x: f"{x:.3}",
             )
-    trial_metrics_and_params_df.to_csv(
-        os.path.join(figure_path, "../trial_metrics_and_params.csv"),
+    metric_and_param_path = os.path.join(
+        figure_path, "metrics_and_hyperparameters.csv",
     )
+    trial_metrics_and_params_df.to_csv(metric_and_param_path)
+    logging.info(f"Saved metric and hyperparameter table to {metric_and_param_path}")
     labels = [
         _trial_metric_and_param_label(
             i, all_losses, histories, trials, param_lists, aucs,
@@ -598,15 +571,13 @@ def plot_trials(
     plt.ylabel("Losses")
     plt.ylim(min(lplot) * 0.95, max(lplot) * 1.05)
     plt.title(f"Hyperparameter Optimization\n")
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
     plt.axhline(
         cutoff, label=f"Loss display cutoff at {cutoff:.3f}", color="r", linestyle="--",
     )
-    loss_path = os.path.join(figure_path, "loss_per_iteration" + IMAGE_EXT)
+    loss_path = os.path.join(figure_path, "loss_per_trial" + IMAGE_EXT)
     plt.legend()
     plt.savefig(loss_path)
-    logging.info("Saved loss plot to: {}".format(loss_path))
+    logging.info(f"Saved loss plot to {loss_path}")
 
     fig, [ax1, ax3, ax2] = plt.subplots(
         nrows=1,
@@ -646,12 +617,7 @@ def plot_trials(
         ncol=5,
     )
     ax3.axis("off")
-    learning_path = os.path.join(figure_path, "learning_curves" + IMAGE_EXT)
+    learning_path = os.path.join(figure_path, "learning_curves_all_trials" + IMAGE_EXT)
     plt.tight_layout()
     plt.savefig(learning_path)
-    logging.info("Saved learning curve plot to: {}".format(learning_path))
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    run(args)
+    logging.info(f"Saved learning curve plot to {learning_path}")

@@ -22,7 +22,6 @@ from collections import Counter, defaultdict
 # Imports: third party
 import numpy as np
 import pydot
-import pandas as pd
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow_probability as tfp
@@ -69,7 +68,6 @@ from tensorflow.keras.layers import (
     concatenate,
 )
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.metrics import Recall, Precision
 from tensorflow.keras.callbacks import (
     History,
     Callback,
@@ -83,7 +81,6 @@ from tensorflow.keras.optimizers import Adam
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.defines import (
     IMAGE_EXT,
-    JOIN_CHAR,
     MODEL_EXT,
     ECG_CHAR_2_IDX,
     PARTNERS_READ_TEXT,
@@ -1481,7 +1478,6 @@ def train_model_from_generators(
     run_id: str,
     return_history: bool = False,
     plot: bool = True,
-    outcome: str = None,
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
@@ -1499,11 +1495,8 @@ def train_model_from_generators(
     :param learning_rate_reduction: Scale factor to reduce learning rate by.
     :param output_folder: Directory where output file will be stored
     :param run_id: User-chosen string identifying this run
-    :param return_history: If true return history from training and don't plot the training history
-    :param X_train: Training features in a DataFrame
-    :param y_train: Training outcomes in a DataFrame
-    :param X_valid: Validation features in a DataFrame
-    :param y_valid: Validation outcomes in a DataFrame
+    :param return_history: Whether or not to return history from training
+    :param plot: Whether or not to plot metrics from training
     :return: The optimized model.
     """
     model_file = os.path.join(output_folder, run_id, "model_weights" + MODEL_EXT)
@@ -1512,9 +1505,7 @@ def train_model_from_generators(
 
     _save_architecture_diagram(
         model_to_dot(model, show_shapes=True, expand_nested=True),
-        os.path.join(
-            output_folder, run_id, "architecture_graph_" + run_id + IMAGE_EXT,
-        ),
+        os.path.join(output_folder, run_id, "architecture_graph" + IMAGE_EXT),
     )
 
     history = model.fit(
@@ -1528,15 +1519,15 @@ def train_model_from_generators(
             model_file, patience, learning_rate_patience, learning_rate_reduction,
         ),
     )
-    model = load_model(
-        model_file, custom_objects=_get_custom_objects(generate_train.output_maps),
-    )
 
-    logging.info("Model weights saved at: %s" % model_file)
+    logging.info(f"Model weights saved at: {model_file}")
     if plot:
         plot_metric_history(
             history, training_steps, run_id, os.path.dirname(model_file),
         )
+
+    # load the weights from model which achieved the best validation loss
+    model.load_weights(model_file)
     if return_history:
         return model, history
     return model

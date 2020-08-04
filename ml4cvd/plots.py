@@ -447,7 +447,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                     break
 
     plt.tight_layout()
-    figure_path = os.path.join(prefix, "metric_history_" + title + IMAGE_EXT)
+    title = "metric_history" if title == "" else "metric_history_" + title
+    figure_path = os.path.join(prefix, title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches="tight")
