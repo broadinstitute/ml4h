@@ -114,11 +114,11 @@ LAUNCH_MESSAGE
 
 ## Download bucket
 cd $SLURM_JOB_SCRATCHDIR
-s3cmd sync s3://${MOUNT_BUCKETS}/ ./
-pwd
+cp -r /home/${USER}/.mc ./
+/home/${USER}/mc cp --recursive ccds/${MOUNT_BUCKETS}/ ./
 
 for i in $(ls *.tar) 
-do 
+do
     tar xf $i & 
 done
 wait
