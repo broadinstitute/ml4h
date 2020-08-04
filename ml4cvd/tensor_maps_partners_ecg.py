@@ -1653,7 +1653,7 @@ def build_cardiac_surgery_tensor_maps(
 
 
 TMAPS[f'partners_ecg_5000_sts_newest'] = TensorMap(
-    'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(False), loss='mse',
     normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=validator_not_all_zero, metrics=['mae', 'mse'],
     cacheable=False, time_series_lookup=build_date_interval_lookup(build_cardiac_surgery_dict()),
 )
