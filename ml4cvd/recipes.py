@@ -458,7 +458,10 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
     model = make_shallow_model(
         tensor_maps_in=args.tensor_maps_in,
         tensor_maps_out=args.tensor_maps_out,
+        optimizer=args.optimizer,
         learning_rate=args.learning_rate,
+        learning_rate_schedule=args.learning_rate_schedule,
+        training_steps=args.training_steps,
         model_file=args.model_file,
         model_layers=args.model_layers,
     )
@@ -597,26 +600,40 @@ def _predict_and_evaluate(
     rocs = []
 
     if save_coefficients:
-        all_coefficients = []
-        coef_list = [
-            c[0].round(3) for c in model.layers[-1].get_weights()[0]
-        ]  # weights of output layer
-        all_coefficients.append(coef_list)
-        coef_path = os.path.join(plot_path, "coefficients" + ".csv")
-        if not os.path.exists(os.path.dirname(coef_path)):
-            os.makedirs(os.path.dirname(coef_path))
-        with open(coef_path, "w") as f:
-            writer = csv.writer(f)
-            writer.writerow([feature.name for feature in tensor_maps_in])
-            writer.writerows(all_coefficients)
+        # Get coefficients from model layers
+        coefficients = [c[0].round(3) for c in model.layers[-1].get_weights()[0]]
+
+        # Get feature names from TMaps
+        feature_names = []
+        for tm in tensor_maps_in:
+            # Use append to add single string to list
+            if tm.channel_map is None:
+                feature_names.append(tm.name)
+            # Use extend to add list items to list
+            else:
+                feature_names.extend(tm.channel_map)
+
+        if len(coefficients) != len(feature_names):
+            raise ValueError("Number of coefficient values and names differ!")
+
+        # Create dataframe of features
+        df = pd.DataFrame({"feature": feature_names, "coefficient": coefficients})
+        df = df.iloc[(-df["coefficient"]).argsort()].reset_index(drop=True)
+
+        # Save dataframe
+        fname = os.path.join(plot_path, "coefficients" + ".csv")
+        if not os.path.exists(os.path.dirname(fname)):
+            os.makedirs(os.path.dirname(fname))
+        df.round(3).to_csv(path_or_buf=fname, index=False)
 
     y_predictions = model.predict(test_data, batch_size=batch_size)
     for y, tm in zip(y_predictions, tensor_maps_out):
+
+        # When models have one output, model.predict returns ndarray
+        # otherwise it returns a list
         if tm.output_name() not in layer_names:
             continue
-        if not isinstance(
-            y_predictions, list,
-        ):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+        if not isinstance(y_predictions, list):
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(

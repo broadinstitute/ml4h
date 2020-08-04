@@ -114,19 +114,22 @@ class BottleneckType(Enum):
 def make_shallow_model(
     tensor_maps_in: List[TensorMap],
     tensor_maps_out: List[TensorMap],
+    optimizer: str,
     learning_rate: float,
+    learning_rate_schedule: str,
+    training_steps: int,
     model_file: str = None,
     model_layers: str = None,
+    **kwargs,
 ) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
 
-    Input and output tensor maps are set from the command line.
-    Model summary printed to output
-
-    :param tensor_maps_in: List of input TensorMaps, only 1 input TensorMap is currently supported,
-                            otherwise there are layer name collisions.
+    :param tensor_maps_in: List of input TensorMaps
     :param tensor_maps_out: List of output TensorMaps
+    :param optimizer: which optimizer to use. See optimizers.py.
     :param learning_rate: Size of learning steps in SGD optimization
+    :param learning_rate_schedule: learning rate schedule to train with, e.g. triangular
+    :param training_steps: How many training steps to train the model. Only needed if learning_rate_schedule given
     :param model_file: Optional HD5 model file to load and return.
     :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
     :return: a compiled keras model
@@ -158,16 +161,24 @@ def make_shallow_model(
             )(it),
         )
 
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-    m = Model(inputs=input_tensors, outputs=outputs)
-    m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
-    m.summary()
+    opt = get_optimizer(
+        name=optimizer,
+        learning_rate=learning_rate,
+        steps_per_epoch=training_steps,
+        learning_rate_schedule=learning_rate_schedule,
+        optimizer_kwargs=kwargs.get("optimizer_kwargs"),
+    )
 
+    model = Model(inputs=input_tensors, outputs=outputs)
+    model.compile(
+        optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics,
+    )
+    model.summary()
     if model_layers is not None:
-        m.load_weights(model_layers, by_name=True)
+        model.load_weights(model_layers, by_name=True)
         logging.info("Loaded model weights from:{}".format(model_layers))
 
-    return m
+    return model
 
 
 def make_waveform_model_unet(
@@ -1239,8 +1250,8 @@ def make_multimodal_multitask_model(
     u_connect: DefaultDict[TensorMap, Set[TensorMap]] = u_connect or defaultdict(set)
     custom_dict = _get_custom_objects(tensor_maps_out)
     opt = get_optimizer(
-        optimizer,
-        learning_rate,
+        name=optimizer,
+        learning_rate=learning_rate,
         steps_per_epoch=training_steps,
         learning_rate_schedule=learning_rate_schedule,
         optimizer_kwargs=kwargs.get("optimizer_kwargs"),
@@ -1495,7 +1506,7 @@ def train_model_from_generators(
     :param y_valid: Validation outcomes in a DataFrame
     :return: The optimized model.
     """
-    model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
+    model_file = os.path.join(output_folder, run_id, "model_weights" + MODEL_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
