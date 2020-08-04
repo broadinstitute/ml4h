@@ -381,7 +381,7 @@ def parse_args():
     )
     parser.add_argument(
         "--learning_rate_patience",
-        default=10,
+        default=8,
         type=int,
         help="Number of epochs without validation loss improvement to wait before reducing learning rate by multiplying by the learning_rate_reduction scale factor.",
     )
