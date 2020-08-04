@@ -88,7 +88,9 @@ def _resample_voltage(voltage, desired_samples):
     elif len(voltage) == 5000 and desired_samples == 2500:
         return voltage[::2]
     else:
-        raise ValueError(f'Voltage length {len(voltage)} is not desired {desired_samples} and re-sampling method is unknown.')
+        x = np.arange(len(voltage))
+        x_interp = np.linspace(0, len(voltage), desired_samples)
+        return np.interp(x_interp, x, voltage)
 
 
 def _resample_voltage_with_rate(voltage, desired_samples, rate, desired_rate):
@@ -1648,3 +1650,10 @@ def build_cardiac_surgery_tensor_maps(
         name2tensormap[needed_name] = sts_tmap
 
     return name2tensormap
+
+
+TMAPS[f'partners_ecg_5000_sts_newest'] = TensorMap(
+    'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=validator_not_all_zero, metrics=['mae', 'mse'],
+    cacheable=False, time_series_lookup=build_date_interval_lookup(build_cardiac_surgery_dict()),
+)
