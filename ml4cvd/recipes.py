@@ -386,8 +386,13 @@ def _convert_tsv_to_genetics(tsv_path: str):
     df.to_csv(tsv_path, sep='\t', index=False)
 
 
+def _path_to_int(path: str):
+    return int(path.replace(TENSOR_EXT, ''))
+
+
 def infer_hidden_layer_multimodal_multitask(args):
     assert len(args.model_files) == len(args.model_ids)
+    ids = set(pd.read_csv(args.test_csv)['sample_id'])
     full_models = [load_multimodal_multitask_model(model_file, args.tensor_maps_out) for model_file in args.model_files]
     embed_models = [
         make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer) for full_model in full_models
@@ -397,7 +402,8 @@ def infer_hidden_layer_multimodal_multitask(args):
     for m_id, shape in zip(args.model_ids, hidden_shapes):
         logging.info(f'Hidden shape for model {m_id} is {shape}.')
     tsv_path = hidden_inference_file_name(args.output_folder, args.id)
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if print(tp) or os.path.splitext(tp)[-1].lower() == TENSOR_EXT and _path_to_int(tp) in ids]
+    logging.info(f'Beginning inference on {len(tensor_paths)} tensors')
     _infer_hidden(
         models=embed_models, model_ids=args.model_ids, hidden_shapes=hidden_shapes, inference_tsv=tsv_path,
         tensor_paths=tensor_paths, tensor_maps_in=args.tensor_maps_in, num_workers=args.num_workers,
