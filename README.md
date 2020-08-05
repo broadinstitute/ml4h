@@ -78,20 +78,21 @@ python scripts/dispatch.py \
 ## Tests
 From in the `ml` repo directory, run integration and pre-pytest unit tests:
 ```
-scripts/run.sh -t $PWD/ml4cvd/tests.py
+bash scripts/run.sh -t $PWD/ml4cvd/tests.py
 ```
 
 ### Unit tests
 To run unit tests in Docker:
 ```
-/scripts/tf.sh -T $PWD/tests
+bash scripts/run.sh -T $PWD/tests
 ```
 
 Some of the unit tests are slow due to creating, saving and loading `tensorflow` models.
 To skip those tests to move quickly, run
 ```
-/scripts/tf.sh -T $PWD/tests -m "not slow"
+bash scripts/run.sh -T $PWD/tests -m '"not slow"'
 ```
+Ensure you wrap `"not slow"` in single quotes.
 
 pytest can also run specific tests using `::`. For example
 ```
