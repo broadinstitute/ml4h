@@ -17,12 +17,12 @@ from ml4cvd.logger import load_config
 from ml4cvd.models import BottleneckType, parent_sort, check_no_bottleneck
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.tensor_maps_ecg import (
-    TMAPS,
     build_binary_tensor_map,
     build_ecg_voltage_tensor_map,
     build_cardiac_surgery_tensor_maps,
     build_ecg_time_series_tensor_maps,
 )
+from ml4cvd.tensor_maps_ecg_labels import TMAPS
 
 BOTTLENECK_STR_TO_ENUM = {
     "flatten_restructure": BottleneckType.FlattenRestructure,
