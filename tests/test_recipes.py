@@ -8,7 +8,7 @@ import pytest
 
 # Imports: first party
 from ml4cvd.plots import _find_negative_label_index
-from ml4cvd.recipes import _find_learning_rate, inference_file_name
+from ml4cvd.recipes import inference_file_name
 from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4cvd.recipes import (
     hidden_inference_file_name,
@@ -74,9 +74,6 @@ class TestRecipes:
         inferred = pd.read_csv(tsv, sep="\t")
         assert len(set(inferred["FID"])) == pytest.N_TENSORS
     """
-
-    def test_find_learning_rate(self, default_arguments):
-        _find_learning_rate(default_arguments)
 
     def test_explore(self, default_arguments, tmpdir_factory, utils):
         temp_dir = tmpdir_factory.mktemp("explore_tensors")

@@ -1,8 +1,8 @@
 # Imports: standard library
 import sys
+from unittest import mock as mock
 
 # Imports: third party
-import mock
 import pytest
 
 # Imports: first party

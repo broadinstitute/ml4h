@@ -1,0 +1,30 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: ml4cvd-tests
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6.9
+    - name: Install dependencies
+      run: |
+        sudo bash docker/config/ubuntu.sh
+        python -m pip install --upgrade pip
+        pip install -r docker/config/pre_requirements.txt
+        pip install -r docker/config/requirements.txt
+        pip install .
+    - name: Test with pytest
+      run: |
+        pytest -m "not slow" -vks tests

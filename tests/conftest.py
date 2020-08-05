@@ -2,11 +2,11 @@
 import os
 import sys
 from typing import Dict, List, Tuple
+from unittest import mock as mock
 from itertools import product
 
 # Imports: third party
 import h5py
-import mock
 import numpy as np
 import pytest
 
