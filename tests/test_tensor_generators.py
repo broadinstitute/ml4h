@@ -10,6 +10,7 @@ import pytest
 # Imports: first party
 from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.tensor_generators import (
+    TensorGenerator,
     _sample_csv_to_set,
     get_train_valid_test_paths,
     get_train_valid_test_paths_split_by_csvs,
@@ -74,6 +75,40 @@ def train_valid_test_csv(tmpdir_factory, request):
     )
 
 
+@pytest.fixture(scope="function")
+def train_valid_test_paths(default_arguments, train_valid_test_csv):
+    args = default_arguments
+    (
+        (train_csv, train_ids),
+        (valid_csv, valid_ids),
+        (test_csv, test_ids),
+    ) = train_valid_test_csv
+    return get_train_valid_test_paths(
+        tensors=args.tensors,
+        valid_ratio=args.valid_ratio,
+        test_ratio=args.test_ratio,
+        sample_csv=None,
+        train_csv=train_csv,
+        valid_csv=valid_csv,
+        test_csv=test_csv,
+    )
+
+
+@pytest.fixture(scope="function")
+def train_paths(train_valid_test_paths):
+    return train_valid_test_paths[0]
+
+
+@pytest.fixture(scope="function")
+def valid_paths(train_valid_test_paths):
+    return train_valid_test_paths[1]
+
+
+@pytest.fixture(scope="function")
+def test_paths(train_valid_test_paths):
+    return train_valid_test_paths[2]
+
+
 # Ugly meta fixtures because fixtures cannot be
 # used as parameters in pytest.mark.parametrize
 # https://github.com/pytest-dev/pytest/issues/349
@@ -124,6 +159,47 @@ def test_ratio(request, valid_test_ratio):
     if request.param is None:
         return None
     return valid_test_ratio[1]
+
+
+class TestTensorGenerator:
+    def test_get_true_epoch(self, default_arguments, train_paths):
+        num_workers = 2
+        num_tensors = len(train_paths)  # 8 paths by default
+        batch_size = 2
+        num_steps = 20  # each path should be visited exactly 5 times
+        repeat_test = 3
+
+        # the test should currently fail but is flaky
+        for _ in range(repeat_test):
+            generator = TensorGenerator(
+                paths=train_paths,
+                keep_paths=True,
+                batch_size=batch_size,
+                input_maps=default_arguments.tensor_maps_in,
+                output_maps=default_arguments.tensor_maps_out,
+                num_workers=num_workers,
+                cache_size=default_arguments.cache_size,
+            )
+
+            rets = []
+            for i in range(num_steps):
+                rets.append(next(generator))
+
+            paths = []
+            for ret in rets:
+                paths.extend(ret[3])
+            unique_paths, counts = np.unique(paths, return_counts=True)
+            unique_counts = np.unique(counts)
+
+            try:
+                # make sure the tensors visited were seen the same number of times
+                # make sure all the tensors are visited
+                # make sure the tensors are visited the expected number of times
+                assert len(unique_counts) == 1
+                assert set(unique_paths) == set(train_paths)
+                assert unique_counts[0] == batch_size * num_steps / num_tensors
+            finally:
+                del generator
 
 
 class TestSampleCsvToSet:
