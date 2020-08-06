@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 # Imports: first party
-from ml4cvd.defines import EPS
+from ml4cvd.definitions import EPS
 
 
 class Normalizer(ABC):

@@ -16,7 +16,7 @@ import numpy as np
 import numcodecs
 
 # Imports: first party
-from ml4cvd.defines import XML_EXT, TENSOR_EXT, ECG_REST_INDEPENDENT_LEADS
+from ml4cvd.definitions import XML_EXT, TENSOR_EXT, ECG_REST_INDEPENDENT_LEADS
 
 
 def write_tensors_ecg(xml_folder: str, tensors: str, num_workers: int) -> None:

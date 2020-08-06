@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 # Imports: first party
-from ml4cvd.defines import TENSOR_EXT
+from ml4cvd.definitions import TENSOR_EXT
 from ml4cvd.tensor_generators import (
     TensorGenerator,
     _sample_csv_to_set,

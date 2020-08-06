@@ -22,7 +22,6 @@ from tensorflow.keras import Model
 from tensorflow.keras.utils import to_categorical
 
 # Imports: first party
-from ml4cvd.defines import JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT, StorageType
 from ml4cvd.metrics import (
     pearson,
     cox_hazard_loss,
@@ -38,6 +37,7 @@ from ml4cvd.metrics import (
     survival_likelihood_loss,
 )
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
+from ml4cvd.definitions import JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT, StorageType
 
 MEAN_IDX = 0
 STD_IDX = 1

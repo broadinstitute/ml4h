@@ -79,16 +79,16 @@ from tensorflow.keras.optimizers import Adam
 
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
-from ml4cvd.defines import (
+from ml4cvd.metrics import get_metric_dict
+from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
+from ml4cvd.definitions import (
     IMAGE_EXT,
     MODEL_EXT,
     ECG_CHAR_2_IDX,
     PARTNERS_READ_TEXT,
     PARTNERS_CHAR_2_IDX,
 )
-from ml4cvd.metrics import get_metric_dict
-from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = "_next_character"

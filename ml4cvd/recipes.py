@@ -33,7 +33,6 @@ from ml4cvd.models import (
     train_model_from_generators,
     make_multimodal_multitask_model,
 )
-from ml4cvd.defines import MODEL_EXT, TENSOR_EXT
 from ml4cvd.metrics import (
     log_aucs,
     get_roc_aucs,
@@ -42,11 +41,12 @@ from ml4cvd.metrics import (
     get_precision_recall_aucs,
 )
 from ml4cvd.arguments import parse_args
+from ml4cvd.definitions import MODEL_EXT, TENSOR_EXT
 from ml4cvd.evaluations import (
     predict_and_evaluate,
     predict_scalars_and_evaluate_from_generator,
 )
-from ml4cvd.explorations import explore, cross_reference
+from ml4cvd.explorations import explore
 from ml4cvd.hyperparameters import hyperoptimize
 from ml4cvd.tensor_generators import (
     BATCH_INPUT_INDEX,
@@ -71,8 +71,6 @@ def run(args):
             write_tensors_ecg(args.xml_folder, args.tensors, args.num_workers)
         elif "explore" == args.mode:
             explore(args)
-        elif "cross_reference" == args.mode:
-            cross_reference(args)
         elif "compare" == args.mode:
             compare_multimodal_multitask_models(args)
         elif "infer" == args.mode:

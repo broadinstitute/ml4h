@@ -4,13 +4,10 @@
 import os
 import sys
 import errno
-import logging
+import logging.config
 
 
 def load_config(log_level, log_dir, log_file_basename):
-    # Imports: standard library
-    from logging import config as logging_config
-
     try:
         os.makedirs(log_dir)
     except OSError as e:
@@ -22,7 +19,7 @@ def load_config(log_level, log_dir, log_file_basename):
     log_file = "{}/{}.log".format(log_dir, log_file_basename)
 
     try:
-        logging_config.dictConfig(_create_config(log_level, log_file))
+        logging.config.dictConfig(_create_config(log_level, log_file))
         success_msg = "Logging configuration was loaded. Log messages can be found at {}.".format(
             log_file,
         )

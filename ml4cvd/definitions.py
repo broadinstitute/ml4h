@@ -26,9 +26,9 @@ YEAR_DAYS = 365.26
 
 def _get_path_prefix_to_sts_data() -> str:
     if "anduril" == socket.gethostname():
-        path = "/media/4tb1/sts-data"
+        return "~/dropbox/sts_data"
     elif "mithril" == socket.gethostname():
-        path = "/data/sts-data"
+        return "~/dropbox/sts_data"
     elif "stultzlab" in socket.gethostname():
         path = "/storage/shared/sts-data"
     else:

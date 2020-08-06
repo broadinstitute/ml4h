@@ -12,7 +12,17 @@ import numpy as np
 import pandas as pd
 
 # Imports: first party
-from ml4cvd.defines import (
+from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.TensorMap import (
+    TensorMap,
+    Interpretation,
+    RangeValidator,
+    TimeSeriesOrder,
+    no_nans,
+    decompress_data,
+)
+from ml4cvd.normalizer import Standardize
+from ml4cvd.definitions import (
     STOP_CHAR,
     YEAR_DAYS,
     ECG_PREFIX,
@@ -25,16 +35,6 @@ from ml4cvd.defines import (
     CARDIAC_SURGERY_OUTCOMES_CSV,
     CARDIAC_SURGERY_PREOPERATIVE_FEATURES,
 )
-from ml4cvd.metrics import weighted_crossentropy
-from ml4cvd.TensorMap import (
-    TensorMap,
-    Interpretation,
-    RangeValidator,
-    TimeSeriesOrder,
-    no_nans,
-    decompress_data,
-)
-from ml4cvd.normalizer import Standardize
 
 TMAPS = dict()
 
@@ -456,9 +456,9 @@ def make_ecg_tensor(
             tensor = np.full(shape, "", dtype=object)
         elif tm.interpretation == Interpretation.CONTINUOUS:
             tensor = (
-                np.zeros(shape, dtype=np.float32)
+                np.zeros(shape, dtype=float)
                 if fill == 0
-                else np.full(shape, fill, dtype=np.float32)
+                else np.full(shape, fill, dtype=float)
             )
         elif tm.interpretation == Interpretation.CATEGORICAL:
             tensor = np.zeros(shape, dtype=float)
@@ -498,7 +498,6 @@ def make_ecg_tensor(
                     f"Could not obtain tensor {tm.name} from ECG on {ecg_date} in"
                     f" {hd5.filename}",
                 )
-
         if tm.interpretation == Interpretation.LANGUAGE:
             tensor = tensor.astype(str)
         return tensor

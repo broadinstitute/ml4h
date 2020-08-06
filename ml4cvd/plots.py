@@ -27,7 +27,9 @@ from scipy.ndimage.filters import gaussian_filter
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 # Imports: first party
-from ml4cvd.defines import (
+from ml4cvd.metrics import concordance_index, coefficient_of_determination
+from ml4cvd.TensorMap import TensorMap
+from ml4cvd.definitions import (
     PDF_EXT,
     IMAGE_EXT,
     TENSOR_EXT,
@@ -35,8 +37,6 @@ from ml4cvd.defines import (
     ECG_DATE_FORMAT,
     ECG_DATETIME_FORMAT,
 )
-from ml4cvd.metrics import concordance_index, coefficient_of_determination
-from ml4cvd.TensorMap import TensorMap
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot

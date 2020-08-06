@@ -16,10 +16,14 @@ from skimage.filters import threshold_otsu
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
-from ml4cvd.defines import IMAGE_EXT, Arguments
-from ml4cvd.arguments import _get_tmap
+from ml4cvd.arguments import _get_tmap, parse_args
+from ml4cvd.definitions import IMAGE_EXT, MODEL_EXT, Arguments
 from ml4cvd.evaluations import predict_and_evaluate
-from ml4cvd.tensor_maps_ecg import TMAPS
+from ml4cvd.tensor_maps_ecg import (
+    TMAPS,
+    build_cardiac_surgery_tensor_maps,
+    build_ecg_time_series_tensor_maps,
+)
 from ml4cvd.tensor_generators import (
     big_batch_from_minibatch_generator,
     train_valid_test_tensor_generators,

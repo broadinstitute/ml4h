@@ -11,9 +11,9 @@ import numpy as np
 import pytest
 
 # Imports: first party
-from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.arguments import TMAPS, parse_args
 from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.definitions import TENSOR_EXT
 
 
 def pytest_configure():

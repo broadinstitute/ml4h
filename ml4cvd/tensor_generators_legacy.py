@@ -22,8 +22,8 @@ import numpy as np
 import pandas as pd
 
 # Imports: first party
-from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.definitions import TENSOR_EXT
 
 np.set_printoptions(threshold=np.inf)
 

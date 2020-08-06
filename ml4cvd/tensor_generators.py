@@ -1,5 +1,3 @@
-# On-the-fly data generation of tensors for training or prediction
-
 # Python 2/3 friendly
 from __future__ import print_function
 
@@ -23,8 +21,8 @@ import numpy as np
 import pandas as pd
 
 # Imports: first party
-from ml4cvd.defines import TENSOR_EXT
 from ml4cvd.TensorMap import TensorMap
+from ml4cvd.definitions import TENSOR_EXT
 
 np.set_printoptions(threshold=np.inf)
 
@@ -783,7 +781,7 @@ def _sample_csv_to_set(
     if mrn_col_name is None:
 
         # Declare set of possible MRN column names
-        possible_mrn_col_names = {"sampleid", "medrecn", "mrn", "patient_id"}
+        possible_mrn_col_names = {"mgh_mrn", "sampleid", "medrecn", "mrn", "patient_id"}
 
         # Find intersection between CSV columns and possible MRN column names
         matches = set(df.columns).intersection(possible_mrn_col_names)
@@ -859,9 +857,7 @@ def get_train_valid_test_paths(
         "discard": (discard_paths, discard_ratio),
     }
 
-    # parse csv's to disjoint sets, None if csv was None
     sample_set = _sample_csv_to_set(sample_csv)
-
     train_set = _sample_csv_to_set(train_csv)
     valid_set = _sample_csv_to_set(valid_csv)
     test_set = _sample_csv_to_set(test_csv)
@@ -885,7 +881,7 @@ def get_train_valid_test_paths(
     ):
         raise ValueError("validation and test samples overlap")
 
-    # find tensors and split them among train/valid/test
+    # Find tensors and split them among train/valid/test
     for root, dirs, files in os.walk(tensors):
         for fname in files:
             if not fname.endswith(TENSOR_EXT):

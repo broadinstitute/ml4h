@@ -85,13 +85,14 @@ class TestRecipes:
         explore_expected = utils.build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS)
         default_arguments.num_workers = 3
         default_arguments.tensor_maps_in = tmaps
+        default_arguments.explore_export_fpath = True
         explore(default_arguments)
+
         csv_path = os.path.join(
-            default_arguments.output_folder,
-            default_arguments.id,
-            "tensors_all_union.csv",
+            default_arguments.output_folder, default_arguments.id, "tensors_union.csv",
         )
         explore_result = pd.read_csv(csv_path)
+
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
