@@ -1,4 +1,4 @@
-FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.0
+FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.3
 # https://github.com/DataBiosphere/terra-docker/blob/master/terra-jupyter-gatk/CHANGELOG.md
 
 USER root
@@ -21,4 +21,6 @@ RUN pip3 install --user -r $HOME/ml4cvd_pkg/config/tensorflow-requirements.txt \
   && pip3 install --upgrade --user google-cloud-bigquery[pandas]==1.22.0 \
   # Configure notebook extensions.
   && jupyter nbextension install --user --py vega \
-  && jupyter nbextension enable --user --py vega
+  && jupyter nbextension enable --user --py vega \
+  && jupyter nbextension install --user --py ipycanvas \
+  && jupyter nbextension enable --user --py ipycanvas
