@@ -5849,8 +5849,8 @@ TMAPS["overall_interpretation_pc"] = TensorMap(
     ),
 )
 
-TMAPS["hypertrophy_enlargment"] = TensorMap(
-    "hypertrophy_enlargment",
+TMAPS["hypertrophy_enlargement"] = TensorMap(
+    "hypertrophy_enlargement",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
@@ -5904,8 +5904,8 @@ TMAPS["hypertrophy_enlargment"] = TensorMap(
     ),
 )
 
-TMAPS["hypertrophy_enlargment_md"] = TensorMap(
-    "hypertrophy_enlargment_md",
+TMAPS["hypertrophy_enlargement_md"] = TensorMap(
+    "hypertrophy_enlargement_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
@@ -5959,8 +5959,8 @@ TMAPS["hypertrophy_enlargment_md"] = TensorMap(
     ),
 )
 
-TMAPS["hypertrophy_enlargment_pc"] = TensorMap(
-    "hypertrophy_enlargment_pc",
+TMAPS["hypertrophy_enlargement_pc"] = TensorMap(
+    "hypertrophy_enlargement_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
