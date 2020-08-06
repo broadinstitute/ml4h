@@ -96,7 +96,7 @@ Ensure you wrap `"not slow"` in single quotes.
 
 pytest can also run specific tests using `::`. For example
 ```
-python -m pytest $PWD/ml/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
+bash scripts/run.sh -T $PWD/tests/test_recipes.py::TestRecipes::test_explore -m '"not slow"'
 ```
 
 For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
