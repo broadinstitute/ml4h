@@ -30,6 +30,7 @@ from ml4cvd.definitions import (
     ECG_REST_AMP_LEADS,
     ECG_DATETIME_FORMAT,
     ECG_REST_INDEPENDENT_LEADS,
+    ECG_ZERO_PADDING_THRESHOLD,
     CARDIAC_SURGERY_DATE_FORMAT,
     CARDIAC_SURGERY_FEATURES_CSV,
     CARDIAC_SURGERY_OUTCOMES_CSV,
@@ -93,6 +94,17 @@ def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         raise ValueError(
             f"TensorMap {tm.name} failed all-zero check on hd5 {hd5.filename}",
         )
+
+
+def validator_voltage_no_zero_padding(
+    tm: TensorMap, tensor: np.ndarray, hd5: h5py.File,
+):
+    for cm, idx in tm.channel_map.items():
+        lead_length = tm.static_shape[-1]
+        lead = tensor[..., tm.channel_map[cm]]
+        num_zero = lead_length - np.count_nonzero(lead)
+        if num_zero > ECG_ZERO_PADDING_THRESHOLD * lead_length:
+            raise ValueError(f"Lead {cm} is zero-padded for ECG in {hd5.filename}")
 
 
 def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ...]]:
@@ -250,7 +262,7 @@ def build_ecg_voltage_tensor_map(needed_tensor_maps: List[str]) -> Dict[str, Ten
             normalization=normalization,
             channel_map=leads,
             time_series_limit=0,
-            validator=validator_not_all_zero,
+            validator=validator_voltage_no_zero_padding,
             augmentations=augmentations,
         )
     return name2tensormap

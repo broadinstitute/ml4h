@@ -111,7 +111,7 @@ class TensorMap(object):
         metrics: Optional[List[Union[str, Callable]]] = None,
         parents: Optional[List["TensorMap"]] = None,
         sentinel: Optional[float] = None,
-        validator: Optional[Callable] = None,
+        validator: Optional[Union[Callable, List[Callable]]] = None,
         cacheable: Optional[bool] = False,
         activation: Optional[Union[str, Callable]] = None,
         days_window: int = 1825,
@@ -140,7 +140,7 @@ class TensorMap(object):
         :param metrics: List of metric functions of strings
         :param parents: List of TensorMaps which must be attached to the model graph before this one
         :param sentinel: If set, this value should never naturally occur in this TensorMap, it will be used for masking loss function
-        :param validator: boolean function that validates a numpy arrays (eg checks ranges or NaNs)
+        :param validator: boolean function or list of functions that validate numpy arrays (eg checks ranges or NaNs)
         :param cacheable: boolean true if tensors made by this TensorMap can be cached. Avoid this if there is randomness in tensor construction. Only compatible with legacy TensorGenerator.
         :param activation: String specifying activation function
         :param days_window: Number of days to consider for survival curve TensorMaps, the longest possible follow up.
@@ -241,6 +241,8 @@ class TensorMap(object):
 
         if self.validator is None:
             self.validator = lambda tm, x, hd5: None
+        if not isinstance(self.validator, list):
+            self.validator = [self.validator]
 
     def __repr__(self):
         return f"TensorMap({self.name}, {self.shape}, {self.interpretation})"
@@ -358,7 +360,8 @@ class TensorMap(object):
         )
 
     def postprocess_tensor(self, np_tensor, augment: bool, hd5: h5py.File):
-        self.validator(self, np_tensor, hd5)
+        for validator in self.validator:
+            validator(self, np_tensor, hd5)
         np_tensor = self.apply_augmentations(np_tensor, augment)
         np_tensor = self.normalize(np_tensor)
         return self.discretize(np_tensor)

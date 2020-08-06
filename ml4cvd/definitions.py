@@ -22,6 +22,7 @@ ArgumentList = List[Union[int, float]]
 Arguments = Dict[str, Union[int, float, ArgumentList]]
 
 YEAR_DAYS = 365.26
+ECG_ZERO_PADDING_THRESHOLD = 0.25
 
 
 def _get_path_prefix_to_sts_data() -> str:
