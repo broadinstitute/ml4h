@@ -12,6 +12,7 @@ from collections import Counter, defaultdict
 # Imports: third party
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.utils import model_to_dot
 
 # Imports: first party
 from ml4cvd.plots import (
@@ -20,6 +21,7 @@ from ml4cvd.plots import (
     plot_scatters,
     plot_roc_per_class,
     plot_saliency_maps,
+    plot_metric_history,
     plot_precision_recalls,
     subplot_comparison_rocs,
     subplot_comparison_scatters,
@@ -30,6 +32,7 @@ from ml4cvd.models import (
     make_siamese_model,
     make_hidden_layer_model,
     get_model_inputs_outputs,
+    _save_architecture_diagram,
     train_model_from_generators,
     make_multimodal_multitask_model,
 )
@@ -41,13 +44,13 @@ from ml4cvd.metrics import (
     get_precision_recall_aucs,
 )
 from ml4cvd.arguments import parse_args
-from ml4cvd.definitions import MODEL_EXT, TENSOR_EXT
+from ml4cvd.definitions import IMAGE_EXT, MODEL_EXT, TENSOR_EXT
 from ml4cvd.evaluations import (
     predict_and_evaluate,
     predict_scalars_and_evaluate_from_generator,
 )
 from ml4cvd.explorations import explore
-from ml4cvd.hyperparameters import hyperoptimize
+from ml4cvd.hyperparameters import hyperoptimize, sample_random_hyperparameter
 from ml4cvd.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_PATHS_INDEX,
@@ -451,37 +454,180 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
     generate_train, generate_valid, generate_test = train_valid_test_tensor_generators(
         **args.__dict__
     )
-    model = make_shallow_model(
-        tensor_maps_in=args.tensor_maps_in,
-        tensor_maps_out=args.tensor_maps_out,
-        optimizer=args.optimizer,
-        learning_rate=args.learning_rate,
-        learning_rate_schedule=args.learning_rate_schedule,
-        training_steps=args.training_steps,
-        model_file=args.model_file,
-        model_layers=args.model_layers,
-    )
-    model = train_model_from_generators(
-        model=model,
-        generate_train=generate_train,
-        generate_valid=generate_valid,
-        training_steps=args.training_steps,
-        validation_steps=args.validation_steps,
-        epochs=args.epochs,
-        patience=args.patience,
-        learning_rate_patience=args.learning_rate_patience,
-        learning_rate_reduction=args.learning_rate_reduction,
-        output_folder=args.output_folder,
-        run_id=args.id,
-    )
 
-    p = os.path.join(args.output_folder, args.id + "/")
-
+    # loading all the data into memory somewhat defeats the purpose of generators
+    # and will break if the dataset is large TODO switch predict_and_evaluate to use generators
     train_data, train_labels = big_batch_from_minibatch_generator(
         generate_train, args.training_steps,
     )
+    valid_data, valid_labels = big_batch_from_minibatch_generator(
+        generate_valid, args.validation_steps,
+    )
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps,
+    )
     generate_train.kill_workers()
     generate_valid.kill_workers()
+    generate_test.kill_workers()
+
+    if args.shallow_model_regularization is not None:
+        # if using l1/l2/l1l2 regularization,
+        # generate l1 l2 combinations,
+        # train model on training data,
+        # assess trained model on validation data,
+        # select model that achieves lowest validation loss to apply to test data
+
+        l1_l2_combos = set()
+        low = args.L_range[0]
+        high = args.L_range[1]
+        while len(l1_l2_combos) < args.max_evals:
+            l1 = None
+            l2 = None
+            if args.shallow_model_regularization == "l1l2":
+                l1 = sample_random_hyperparameter(low, high, "logarithmic")
+                l2 = sample_random_hyperparameter(low, high, "logarithmic")
+            elif args.shallow_model_regularization == "l1":
+                l1 = sample_random_hyperparameter(low, high, "logarithmic")
+            elif args.shallow_model_regularization == "l2":
+                l2 = sample_random_hyperparameter(low, high, "logarithmic")
+            else:
+                raise ValueError(
+                    f"Unknown regularization method for shallow model: {args.shallow_model_regularization}",
+                )
+            l1_l2_combos.add((l1, l2))
+
+        model = None
+        best_loss = np.finfo(float).max
+        best_l1 = -1
+        best_l2 = -1
+        for l1, l2 in l1_l2_combos:
+            _model = make_shallow_model(
+                tensor_maps_in=args.tensor_maps_in,
+                tensor_maps_out=args.tensor_maps_out,
+                optimizer=args.optimizer,
+                learning_rate=args.learning_rate,
+                learning_rate_schedule=args.learning_rate_schedule,
+                training_steps=args.training_steps,
+                model_file=args.model_file,
+                model_layers=args.model_layers,
+                l1=l1,
+                l2=l2,
+            )
+            _model, history = train_model_from_generators(
+                model=_model,
+                generate_train=generate_train,
+                generate_valid=None,
+                training_steps=args.training_steps,
+                validation_steps=None,
+                epochs=args.epochs,
+                patience=args.patience,
+                learning_rate_patience=args.learning_rate_patience,
+                learning_rate_reduction=args.learning_rate_reduction,
+                output_folder=args.output_folder,
+                run_id=args.id,
+                return_history=True,
+                plot=False,
+            )
+            generate_train.kill_workers()
+            title = f"l1_{l1:.5}_l2_{l2:.5}".replace(".", "-")
+            trial_path = os.path.join(args.output_folder, args.id, "trials", title)
+            plot_metric_history(
+                history=history,
+                training_steps=args.training_steps,
+                title="",
+                prefix=trial_path,
+            )
+            train_aucs = predict_and_evaluate(
+                model=_model,
+                test_data=train_data,
+                test_labels=train_labels,
+                tensor_maps_in=args.tensor_maps_in,
+                tensor_maps_out=args.tensor_maps_out,
+                batch_size=args.batch_size,
+                hidden_layer=args.hidden_layer,
+                plot_path=trial_path,
+                test_paths=None,
+                embed_visualization=args.embed_visualization,
+                alpha=args.alpha,
+                data_split="train",
+            )
+            valid_aucs = predict_and_evaluate(
+                model=_model,
+                test_data=valid_data,
+                test_labels=valid_labels,
+                tensor_maps_in=args.tensor_maps_in,
+                tensor_maps_out=args.tensor_maps_out,
+                batch_size=args.batch_size,
+                hidden_layer=args.hidden_layer,
+                plot_path=trial_path,
+                test_paths=None,
+                embed_visualization=args.embed_visualization,
+                alpha=args.alpha,
+                data_split="valid",
+            )
+            # fmt: off
+            logging.info(
+                f"\nModel with L1 = {l1:.5} and L2 = {l2:.5} achieved the following AUCs:\n"
+                f"\tTrain AUC: {', '.join([f'{label} = {auc:.5}' for label, auc in train_aucs.items()])}\n"
+                f"\tValid AUC: {', '.join([f'{label} = {auc:.5}' for label, auc in valid_aucs.items()])}\n",
+            )
+            # fmt: on
+
+            loss = _model.evaluate(
+                x=valid_data, y=valid_labels, batch_size=args.batch_size,
+            )[0]
+            if loss < best_loss:
+                best_loss = loss
+                best_l1 = l1
+                best_l2 = l2
+                model = _model
+
+        model_file = os.path.join(
+            args.output_folder, args.id, "model_weights" + MODEL_EXT,
+        )
+        model.save(model_file, overwrite=True)
+        _save_architecture_diagram(
+            model_to_dot(model, show_shapes=True, expand_nested=True),
+            os.path.join(
+                args.output_folder, args.id, "architecture_graph" + IMAGE_EXT,
+            ),
+        )
+        # fmt: off
+        logging.info(
+            f"\nTried {len(l1_l2_combos)} L1 and L2 combinations.\n"
+            f"\tModel with L1 = {best_l1:.5} and L2 = {best_l2:.5} achieved best loss of {best_loss:.5} on validation data.\n"
+            f"\tModel saved to {model_file} and applied to test data.\n",
+        )
+        # fmt: on
+    else:
+        model = make_shallow_model(
+            tensor_maps_in=args.tensor_maps_in,
+            tensor_maps_out=args.tensor_maps_out,
+            optimizer=args.optimizer,
+            learning_rate=args.learning_rate,
+            learning_rate_schedule=args.learning_rate_schedule,
+            training_steps=args.training_steps,
+            model_file=args.model_file,
+            model_layers=args.model_layers,
+        )
+        model = train_model_from_generators(
+            model=model,
+            generate_train=generate_train,
+            generate_valid=generate_valid,
+            training_steps=args.training_steps,
+            validation_steps=args.validation_steps,
+            epochs=args.epochs,
+            patience=args.patience,
+            learning_rate_patience=args.learning_rate_patience,
+            learning_rate_reduction=args.learning_rate_reduction,
+            output_folder=args.output_folder,
+            run_id=args.id,
+        )
+        generate_train.kill_workers()
+        generate_valid.kill_workers()
+
+    # Evaluate trained model on test data
+    p = os.path.join(args.output_folder, args.id + "/")
     predict_and_evaluate(
         model=model,
         test_data=train_data,
@@ -496,10 +642,6 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
         alpha=args.alpha,
         data_split="train",
     )
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
-    generate_test.kill_workers()
     performance_metrics = predict_and_evaluate(
         model=model,
         test_data=test_data,

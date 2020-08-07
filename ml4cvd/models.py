@@ -76,6 +76,9 @@ from tensorflow.keras.callbacks import (
     ReduceLROnPlateau,
 )
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.regularizers import l1 as _l1
+from tensorflow.keras.regularizers import l2 as _l2
+from tensorflow.keras.regularizers import l1_l2
 
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
@@ -117,6 +120,8 @@ def make_shallow_model(
     training_steps: int,
     model_file: str = None,
     model_layers: str = None,
+    l1: float = None,
+    l2: float = None,
     **kwargs,
 ) -> Model:
     """Make a shallow model (e.g. linear or logistic regression)
@@ -129,6 +134,8 @@ def make_shallow_model(
     :param training_steps: How many training steps to train the model. Only needed if learning_rate_schedule given
     :param model_file: Optional HD5 model file to load and return.
     :param model_layers: Optional HD5 model file whose weights will be loaded into this model when layer names match.
+    :param l1: Optional float value to use for L1 regularization. If L2 is given as well, L1_L2 regularization is used.
+    :param l2: Optional float value to use for L2 regularization. If L1 is given as well, L1_L2 regularization is used.
     :return: a compiled keras model
     """
     if model_file is not None:
@@ -141,6 +148,14 @@ def make_shallow_model(
     outputs = []
     my_metrics = {}
     loss_weights = []
+
+    regularizer = None
+    if l1 is not None and l2 is not None:
+        regularizer = l1_l2(l1=l1, l2=l2)
+    elif l1 is not None:
+        regularizer = _l1(l=l1)
+    elif l2 is not None:
+        regularizer = _l2(l=l2)
 
     input_tensors = [
         Input(shape=tm.shape, name=tm.input_name()) for tm in tensor_maps_in
@@ -155,6 +170,7 @@ def make_shallow_model(
                 units=len(ot.channel_map),
                 activation=ot.activation,
                 name=ot.output_name(),
+                kernel_regularizer=regularizer,
             )(it),
         )
 
@@ -1467,9 +1483,9 @@ def _make_multimodal_multitask_model(
 def train_model_from_generators(
     model: Model,
     generate_train: Iterable,
-    generate_valid: Iterable,
+    generate_valid: Optional[Iterable],
     training_steps: int,
-    validation_steps: int,
+    validation_steps: Optional[int],
     epochs: int,
     patience: int,
     learning_rate_patience: int,
@@ -1503,10 +1519,11 @@ def train_model_from_generators(
     if not os.path.exists(os.path.dirname(model_file)):
         os.makedirs(os.path.dirname(model_file))
 
-    _save_architecture_diagram(
-        model_to_dot(model, show_shapes=True, expand_nested=True),
-        os.path.join(output_folder, run_id, "architecture_graph" + IMAGE_EXT),
-    )
+    if plot:
+        _save_architecture_diagram(
+            model_to_dot(model, show_shapes=True, expand_nested=True),
+            os.path.join(output_folder, run_id, "architecture_graph" + IMAGE_EXT),
+        )
 
     history = model.fit(
         generate_train,
@@ -1516,7 +1533,11 @@ def train_model_from_generators(
         validation_steps=validation_steps,
         validation_data=generate_valid,
         callbacks=_get_callbacks(
-            model_file, patience, learning_rate_patience, learning_rate_reduction,
+            model_file,
+            patience,
+            learning_rate_patience,
+            learning_rate_reduction,
+            monitor="loss" if generate_valid is None else "val_loss",
         ),
     )
 
@@ -1538,12 +1559,15 @@ def _get_callbacks(
     patience: int,
     learning_rate_patience: int,
     learning_rate_reduction: float,
+    monitor: str = "val_loss",
 ) -> List[Callback]:
     callbacks = [
-        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
-        EarlyStopping(monitor="val_loss", patience=patience, verbose=1),
+        ModelCheckpoint(
+            filepath=model_file, monitor=monitor, verbose=1, save_best_only=True,
+        ),
+        EarlyStopping(monitor=monitor, patience=patience, verbose=1),
         ReduceLROnPlateau(
-            monitor="val_loss",
+            monitor=monitor,
             factor=learning_rate_reduction,
             patience=learning_rate_patience,
             verbose=1,

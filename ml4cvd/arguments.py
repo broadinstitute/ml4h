@@ -426,6 +426,16 @@ def parse_args():
     parser.add_argument(
         "--anneal_max", default=2.0, type=float, help="Annealing maximum value",
     )
+    parser.add_argument(
+        "--shallow_model_regularization",
+        nargs="?",
+        default="l1l2",
+        choices=["l1l2", "l1", "l2"],
+        help="Regularization to apply to shallow model. "
+        "L values are dynamically optimized from a range of values set by --L_range. "
+        "The maximum number of L values sampled is set by --max_evals. "
+        "To disable regularization in shallow models, use this argument with no value.",
+    )
 
     # Hyperoptimize arguments
     parser.add_argument(
@@ -442,6 +452,15 @@ def parse_args():
             "Maximum number of models for the hyperparameter optimizer to evaluate"
             " before returning."
         ),
+    )
+    parser.add_argument(
+        "--L_range",
+        default=[1e-4, 1e4],
+        nargs=2,
+        type=float,
+        help="Range of L values to sample logarithmically to create random combinations "
+        "of L1 and L2 values for L1 L2 regularization of shallow model."
+        "Default 1e-4 to 1e4",
     )
 
     # Run specific and debugging arguments

@@ -625,3 +625,37 @@ def plot_trials(
     plt.tight_layout()
     plt.savefig(learning_path)
     logging.info(f"Saved learning curve plot to {learning_path}")
+
+
+def sample_random_hyperparameter(
+    lower_bound: float = 0.0,
+    upper_bound: float = 1.0,
+    scaling: str = "linear",
+    primitive_type: np.dtype = float,
+):
+    if scaling not in ["linear", "logarithmic"]:
+        raise ValueError(f"Invalid scaling parameter: {scaling}")
+
+    if lower_bound >= upper_bound:
+        logging.warning(
+            f"Lower ({lower_bound}) and upper ({upper_bound}) bounds overlap",
+        )
+
+    if scaling == "logarithmic":
+        lower_bound = np.log(lower_bound)
+        upper_bound = np.log(upper_bound)
+
+    if primitive_type == float:
+        sampled_value = np.random.uniform(low=lower_bound, high=upper_bound, size=1)
+    elif primitive_type == int:
+        sampled_value = np.random.randint(
+            low=lower_bound, high=upper_bound + 1, size=1,
+        )
+    else:
+        raise ValueError(f"Invalid primitive type: {primitive_type}")
+
+    if scaling == "logarithmic":
+        sampled_value = np.exp(sampled_value)
+
+    # Return the value inside numpy array
+    return sampled_value.item()
