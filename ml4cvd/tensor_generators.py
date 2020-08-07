@@ -22,7 +22,7 @@ import pandas as pd
 
 # Imports: first party
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.definitions import TENSOR_EXT
+from ml4cvd.definitions import TENSOR_EXT, MRN_COLUMNS
 
 np.set_printoptions(threshold=np.inf)
 
@@ -768,7 +768,7 @@ def _sample_csv_to_set(
         return None
 
     # Read CSV to dataframe and assume no header
-    df = pd.read_csv(sample_csv, header=None)
+    df = pd.read_csv(sample_csv, header=None, low_memory=False)
 
     # If first row and column is castable to int, there is no header
     try:
@@ -780,11 +780,8 @@ def _sample_csv_to_set(
 
     if mrn_col_name is None:
 
-        # Declare set of possible MRN column names
-        possible_mrn_col_names = {"mgh_mrn", "sampleid", "medrecn", "mrn", "patient_id"}
-
         # Find intersection between CSV columns and possible MRN column names
-        matches = set(df.columns).intersection(possible_mrn_col_names)
+        matches = set(df.columns).intersection(MRN_COLUMNS)
 
         # If no matches, assume the first column is MRN
         if not matches:
