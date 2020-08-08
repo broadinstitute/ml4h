@@ -64,8 +64,12 @@ def _get_ecg_mrns(args):
                 split = os.path.splitext(file)
                 if split[-1] != TENSOR_EXT:
                     continue
-                mrn = int(split[0])
-                mrns.add(mrn)
+                try:
+                    mrn = int(split[0])
+                    mrns.add(mrn)
+                except ValueError:
+                    print(f"Could not get MRN from ECG HD5: {os.path.join(root, file)}")
+                    continue
     return mrns
 
 
@@ -190,8 +194,12 @@ def _deidentify_ecgs(args, mrn_map):
             split = os.path.splitext(file)
             if split[-1] != TENSOR_EXT:
                 continue
-            mrn = int(split[0])
-            new_id = mrn_map[mrn]
+            try:
+                mrn = int(split[0])
+                new_id = mrn_map[mrn]
+            except (ValueError, KeyError):
+                print(f"Bad MRN mapping for ECG HD5: {os.path.join(root, file)}")
+                continue
             old_path = os.path.join(root, file)
             new_path = os.path.join(new_root, f"{new_id}{TENSOR_EXT}")
             old_new_paths.append((old_path, new_path))
