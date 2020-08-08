@@ -254,15 +254,16 @@ def _deidentify_sts_csvs(args, mrn_map):
             if split[-1] != CSV_EXT:
                 continue
             old_path = os.path.join(root, file)
-            global sts_skip
-            if old_path in sts_skip:
-                continue
             new_path = os.path.join(new_root, file)
             if os.path.exists(new_path):
                 print(f"Path to new de-identified STS CSV already exists: {new_path}")
                 print(f"Replaced {new_path}")
                 os.remove(new_path)
             shutil.copyfile(old_path, new_path)
+            # if there was no PHI in the original file, copy it without trying to deidentify
+            global sts_skip
+            if old_path in sts_skip:
+                continue
             _deidentify_sts_csv(new_path, mrn_map)
             count += 1
 
