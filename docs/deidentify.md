@@ -1,8 +1,8 @@
-# Deidentify Data
+# Deidentify data
 
 Some compute resources may not be allowed to store Protected Health Information (PHI). Therefore we sometimes need to deidentify data before using those resources.
 
-The script at [scripts/deidentify.py](../scripts/deidentify.py) currently supports deidentification of ECG HD5s and STS CSVs. Deidenfication of additional data sources can be implemented using the modular approach documented in the script itself.
+The script at [scripts/deidentify.py](../scripts/deidentify.py) currently supports deidentification of ECG HD5s and STS CSV files (including both feature & outcome spreadsheets, and bootstrap lists of MRNs). Deidenfication of additional data sources can be implemented using the modular approach documented in the script itself.
 
 To deidentify ECG and STS data:
 ```bash

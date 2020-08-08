@@ -2,10 +2,14 @@
 Machine Learning for CardioVascular Disease - MGH/MIT edition!
 
 ## Contents
-- Setup
-- Run scripts
+- [Setup](#setup)
+- [Modes](#modes)
+- [Notebook](#notebook)
+- [Run scripts](#run-scripts)
+- [Tests](#tests)
 - [Tensorize ECGs](docs/tensorize_ecgs.md)
-- Contribute
+- [Deidentify data](docs/deidentify.md)
+- [Contribute](#contribute)
 
 ## Setup
 1. install [docker](https://docs.docker.com/get-docker/) and [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/)
