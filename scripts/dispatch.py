@@ -30,17 +30,37 @@ def _get_path_to_ecgs() -> str:
     If there is no match found, this function does not return anything, and
     the script ends up with a non-viable path prefix to HD5 files and will fail."""
     if "anduril" == socket.gethostname():
-        return "/media/4tb1/ecg"
+        path = "/media/4tb1/ecg"
     elif "mithril" == socket.gethostname():
-        return "/data/ecg"
+        path = "/data/ecg"
     elif "stultzlab" in socket.gethostname():
-        return "/storage/shared/ecg"
+        path = "/storage/shared/ecg"
+    return os.path.expanduser(path)
+
+
+def _get_path_to_bootstraps() -> str:
+    """Check the hostname of the machine and return the appropriate path.
+    If there is no match found, this function does not return anything, and
+    the script ends up with a non-viable path prefix to HD5 files and will fail."""
+    if "anduril" == socket.gethostname():
+        path = "~/dropbox/sts_data/bootstraps"
+    elif "mithril" == socket.gethostname():
+        path = "~/dropbox/sts_data/bootstraps"
+    elif "stultzlab" in socket.gethostname():
+        path = "/storage/shared/sts_data_deid/bootstraps"
+
+    path = os.path.expanduser(path)
+    if not os.path.isdir(path):
+        raise ValueError(f"{path} is not a valid path to STS data")
+    else:
+        return path
 
 
 def worker(script, bootstrap, gpu):
     env["GPU"] = gpu
     env["BOOTSTRAP"] = bootstrap
     env["PATH_TO_ECGS"] = _get_path_to_ecgs()
+    env["PATH_TO_BOOTSTRAPS"] = _get_path_to_bootstraps()
 
     subprocess.run(
         f"bash {script}".split(),

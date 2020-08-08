@@ -25,27 +25,24 @@ YEAR_DAYS = 365.26
 ECG_ZERO_PADDING_THRESHOLD = 0.25
 
 
-def _get_path_prefix_to_sts_data() -> str:
+def _get_path_to_sts_data() -> str:
+    """Get path to STS data depending on the machine hostname"""
     if "anduril" == socket.gethostname():
-        return "~/dropbox/sts_data"
+        path = "~/dropbox/sts_data"
     elif "mithril" == socket.gethostname():
-        return "~/dropbox/sts_data"
+        path = "~/dropbox/sts_data"
     elif "stultzlab" in socket.gethostname():
-        path = "/storage/shared/sts-data"
+        path = "/storage/shared/sts_data_deid"
     else:
-        path = ""
-
-    if not os.path.isdir(path):
-        path = os.path.expanduser("~/dropbox/sts_data")
-
-    return path
+        path = "~/dropbox/sts_data"
+    return os.path.expanduser(path)
 
 
 CARDIAC_SURGERY_OUTCOMES_CSV = os.path.join(
-    _get_path_prefix_to_sts_data(), "mgh-preop-ecg-outcome-labels.csv",
+    _get_path_to_sts_data(), "mgh-preop-ecg-outcome-labels.csv",
 )
 CARDIAC_SURGERY_FEATURES_CSV = os.path.join(
-    _get_path_prefix_to_sts_data(), "mgh-all-features-labels.csv",
+    _get_path_to_sts_data(), "mgh-all-features-labels.csv",
 )
 
 ECG_PREFIX = "partners_ecg_rest"

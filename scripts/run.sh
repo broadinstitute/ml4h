@@ -29,7 +29,7 @@ GROUP_NAMES_ARR=( $GROUP_NAMES )
 # Iterate through array, get group ID for each group name, append to string
 GROUP_IDS=""
 for GROUP_TO_ADD in "${GROUP_NAMES_ARR[@]}"; do
-    GROUP_IDS="$GROUP_IDS $(getent group ${GROUP_TO_ADD} | grep -o -P '(?<=x:).*(?=:)')"
+    GROUP_IDS="$GROUP_IDS $(getent group ${GROUP_TO_ADD} | awk -F: '{printf "%d\n",$3}')"
 done
 
 # Export environment variables so they can be passed into Docker and accessed in bash
