@@ -54,7 +54,7 @@ ECG_DATE_FORMAT = "%m-%d-%Y"
 ECG_TIME_FORMAT = "%H:%M:%S"
 ECG_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 CARDIAC_SURGERY_DATE_FORMAT = "%Y-%m-%d"
-MRN_COLUMNS = {"mgh_mrn", "sampleid", "medrecn", "mrn", "patient_id"}
+MRN_COLUMNS = {"mgh_mrn", "sampleid", "medrecn", "mrn", "patient_id", "patientid"}
 
 EPS = 1e-7
 

@@ -224,15 +224,15 @@ def _deidentify_sts_csv(path, mrn_map):
         df.columns = df.iloc[0]
         df = df[1:]
 
-    matches = set(df.columns) & MRN_COLUMNS
+    matches = {col for col in df.columns for mrn_col in MRN_COLUMNS if mrn_col in col}
     if len(matches) == 0:
         # If none of the known MRN columns are in the csv, assume it's the first column
-        mrn_col = df.columns[0]
+        mrn_cols = [df.columns[0]]
     else:
-        mrn_col = next(iter(matches))
+        mrn_cols = list(matches)
 
     # Remap MRNs and drop PHI columns
-    df[mrn_col] = df[mrn_col].apply(lambda mrn: mrn_map[int(mrn)])
+    df[mrn_cols] = df[mrn_cols].applymap(lambda mrn: mrn_map[int(float(mrn))])
     phi_cols = set(df.columns) & phi_keys
     df = df.drop(phi_cols, axis=1)
 
