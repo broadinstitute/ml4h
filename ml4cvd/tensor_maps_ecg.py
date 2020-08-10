@@ -362,7 +362,7 @@ def make_ecg_label(
                         data_compressed=hd5[path][()], dtype=hd5[path].attrs["dtype"],
                     )
                     for string in dict_of_list[channel]:
-                        if string not in read:
+                        if string.lower() not in read.lower():
                             continue
                         slices = (i, idx) if dynamic else (idx,)
                         label_array[slices] = 1
