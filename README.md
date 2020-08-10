@@ -86,7 +86,7 @@ python scripts/dispatch.py \
 ## Tests
 From in the `ml` repo directory, run integration and pre-pytest unit tests:
 ```
-bash scripts/run.sh -t $PWD/ml4cvd/tests.py
+./scripts/run.sh -t $PWD/ml4cvd/tests.py
 ```
 
 ### Unit tests
@@ -98,13 +98,13 @@ bash scripts/run.sh -T $PWD/tests
 Some of the unit tests are slow due to creating, saving and loading `tensorflow` models.
 To skip those tests to move quickly, run
 ```
-bash scripts/run.sh -T $PWD/tests -m '"not slow"'
+./scripts/run.sh -T $PWD/tests -m '"not slow"'
 ```
 Ensure you wrap `"not slow"` in single quotes.
 
 pytest can also run specific tests using `::`. For example
 ```
-bash scripts/run.sh -T $PWD/tests/test_recipes.py::TestRecipes::test_explore -m '"not slow"'
+./scripts/run.sh -T $PWD/tests/test_recipes.py::TestRecipes::test_explore -m '"not slow"'
 ```
 
 For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
