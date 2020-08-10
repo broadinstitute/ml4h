@@ -14,7 +14,7 @@ PORT="8888"
 PORT_FLAG=""
 PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
-NOTEBOOK_COMMAND="jupyter-notebook"
+JUPYTER_COMMAND="jupyter lab"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 CONTAINER_NAME=""
 
@@ -69,6 +69,8 @@ usage()
 
         -m                  Directories to mount at the same path in the docker image
 
+        -j                  Run Jupyer Lab
+
         -p                  Ports to map between docker container and host
 
         -t                  Run Docker container interactively.
@@ -81,13 +83,12 @@ usage()
 
         -i      <image>     Run Docker with the specified custom <image>. The default image is '${DOCKER_IMAGE}'.
         -T                  Run tests
-        -N                  Run jupyter notebook
 USAGE_MESSAGE
 }
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:d:m:p:ctrhTN" opt ; do
+while getopts ":i:d:m:p:cjtrhT" opt ; do
     case ${opt} in
         h)
             usage
@@ -101,6 +102,10 @@ while getopts ":i:d:m:p:ctrhTN" opt ; do
             ;;
         m)
             MOUNTS="${MOUNTS} -v ${OPTARG}:${OPTARG}"
+            ;;
+        j)
+            PYTHON_COMMAND=${JUPYTER_COMMAND}
+            INTERACTIVE="-it"
             ;;
         p)
             PORT="${OPTARG}"
@@ -120,10 +125,6 @@ while getopts ":i:d:m:p:ctrhTN" opt ; do
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
             ;;
-        N)
-            PYTHON_COMMAND=${NOTEBOOK_COMMAND}
-            INTERACTIVE="-it"
-            ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
             usage
@@ -138,7 +139,7 @@ while getopts ":i:d:m:p:ctrhTN" opt ; do
 done
 shift $((OPTIND - 1))
 
-if [[ $# -eq 0 && "$PYTHON_COMMAND" != "$NOTEBOOK_COMMAND" ]]; then
+if [[ $# -eq 0 && "$PYTHON_COMMAND" != "$JUPYTER_COMMAND" ]]; then
     echo "ERROR: No Python module was specified." 1>&2
     usage
     exit 1
@@ -160,7 +161,7 @@ fi
 WORKDIR=$(pwd)
 
 PYTHON_ARGS="$@"
-if [[ "$PYTHON_COMMAND" == "$NOTEBOOK_COMMAND" ]] ; then
+if [[ "$PYTHON_COMMAND" == "$JUPYTER_COMMAND" ]] ; then
     if [[ "${PORT_FLAG}" == "" ]] ; then
         PORT_FLAG="-p ${PORT}:${PORT}"
     fi
