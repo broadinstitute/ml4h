@@ -19,7 +19,7 @@ from ml4cvd.metrics import sum_squared_error
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
-CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
+CARDIAC_SURGERY_OUTCOMES_CSV = '/storage/kayoung/mgh-preop-ecg-outcome-labels-deid.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
@@ -128,6 +128,7 @@ def make_voltage(exact_length = False):
                     tensor[slices] = voltage
                 except (KeyError, AssertionError, ValueError):
                     logging.debug(f'Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}')
+        # print(len(ecg_dates), tensor.mean())
         return tensor
     return get_voltage_from_file
 
@@ -1221,7 +1222,7 @@ def _loyalty_str2date(date_string: str) -> datetime.date:
 
 
 def _cardiac_surgery_str2date(input_date: str, date_format: str = CARDIAC_SURGERY_DATE_FORMAT) -> datetime.datetime:
-    return datetime.datetime.strptime(input_date, date_format)
+    return datetime.datetime.strptime(input_date, '%m/%d/%y %H:%M')
 
 
 def build_incidence_tensor_from_file(
@@ -1551,7 +1552,7 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
 
 def build_cardiac_surgery_dict(
     filename: str = CARDIAC_SURGERY_OUTCOMES_CSV,
-    patient_column: str = 'medrecn',
+    patient_column: str = 'mrn',
     date_column: str = 'surgdt',
     additional_columns: List[str] = [],
 ) -> Dict[int, Dict[str, Union[int, str]]]:
