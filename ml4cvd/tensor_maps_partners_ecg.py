@@ -19,7 +19,7 @@ from ml4cvd.metrics import sum_squared_error
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
-CARDIAC_SURGERY_OUTCOMES_CSV = '/storage/kayoung/mgh-preop-ecg-outcome-labels-deid.csv'
+CARDIAC_SURGERY_OUTCOMES_CSV = '/storage/shared/sts_data_deid/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
@@ -1222,7 +1222,7 @@ def _loyalty_str2date(date_string: str) -> datetime.date:
 
 
 def _cardiac_surgery_str2date(input_date: str, date_format: str = CARDIAC_SURGERY_DATE_FORMAT) -> datetime.datetime:
-    return datetime.datetime.strptime(input_date, '%m/%d/%y %H:%M')
+    return datetime.datetime.strptime(input_date, '%Y-%m-%d %H:%M:%S')
 
 
 def build_incidence_tensor_from_file(
@@ -1552,16 +1552,20 @@ def build_partners_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, Tenso
 
 def build_cardiac_surgery_dict(
     filename: str = CARDIAC_SURGERY_OUTCOMES_CSV,
-    patient_column: str = 'mrn',
-    date_column: str = 'surgdt',
+    patient_column: str = 'partners_ecg_patientid_clean',
+    date_column: str = 'partners_ecg_datetime',
     additional_columns: List[str] = [],
 ) -> Dict[int, Dict[str, Union[int, str]]]:
     keys = [date_column] + additional_columns
-    df = pd.read_csv(
-        filename,
-        low_memory=False,
-        usecols=[patient_column]+keys,
-    ).sort_values(by=[patient_column, date_column])
+    try:
+        df = pd.read_csv(
+            filename,
+            low_memory=False,
+            usecols=[patient_column]+keys,
+        ).sort_values(by=[patient_column, date_column])
+    except FileNotFoundError as e:
+        logging.warning(f'Could not build cardiac surgery dict because of {e}')
+        return {}
     # sort dataframe such that newest surgery per patient appears later and is used in lookup table
     cardiac_surgery_dict = {}
     for row in df.itertuples():
@@ -1572,9 +1576,9 @@ def build_cardiac_surgery_dict(
 
 def build_date_interval_lookup(
     cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]],
-    start_column: str = 'surgdt',
+    start_column: str = 'partners_ecg_datetime',
     start_offset: int = -30,
-    end_column: str = 'surgdt',
+    end_column: str = 'partners_ecg_datetime',
     end_offset: int = 0,
 ) -> Dict[int, Tuple[str, str]]:
     date_interval_lookup = {}
@@ -1653,8 +1657,11 @@ def build_cardiac_surgery_tensor_maps(
     return name2tensormap
 
 
-TMAPS[f'partners_ecg_5000_sts_newest'] = TensorMap(
-    'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(False), loss='mse',
-    normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=validator_not_all_zero, metrics=['mae', 'mse'],
-    cacheable=False, time_series_lookup=build_date_interval_lookup(build_cardiac_surgery_dict()),
-)
+try:
+    TMAPS[f'partners_ecg_5000_sts_newest'] = TensorMap(
+        'ecg_rest_5000', shape=(4992, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=make_voltage(False), loss='mse',
+        normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=validator_not_all_zero, metrics=['mae', 'mse'],
+        cacheable=False, time_series_lookup=build_date_interval_lookup(build_cardiac_surgery_dict()),
+    )
+except FileNotFoundError as e:
+    logging.warning(f'Could not build partners_ecg_5000_sts_newest because of {e}')
