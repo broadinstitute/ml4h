@@ -30,7 +30,7 @@ from ml4cvd.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters
 from ml4cvd.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4cvd.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map, load_multimodal_multitask_model
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.metrics import simclr_loss
+from ml4cvd.metrics import simclr_loss, simclr_accuracy
 
 
 def run(args):
@@ -478,6 +478,7 @@ def train_simclr_model(args):
     output_tensor = TensorMap(
         name='projection', shape=shape, loss=simclr_loss,
         tensor_from_file=zero_tensor_from_file,
+        metrics=[simclr_accuracy]
     )
     args.tensor_maps_out = [output_tensor]
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, simclr=True)
