@@ -24,10 +24,7 @@ from ml4cvd.tensor_maps_ecg import (
     build_cardiac_surgery_tensor_maps,
     build_ecg_time_series_tensor_maps,
 )
-from ml4cvd.tensor_generators import (
-    big_batch_from_minibatch_generator,
-    train_valid_test_tensor_generators,
-)
+from ml4cvd.tensor_generators import train_valid_test_tensor_generators
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot
@@ -198,48 +195,36 @@ def hyperparameter_optimizer(
             )
             history.history["parameter_count"] = [model.count_params()]
             histories.append(history.history)
-            train_data, train_labels = big_batch_from_minibatch_generator(
-                generate_train, args.training_steps,
-            )
-            test_data, test_labels = big_batch_from_minibatch_generator(
-                generate_test, args.test_steps,
-            )
             train_auc = predict_and_evaluate(
                 model=model,
-                test_data=train_data,
-                test_labels=train_labels,
+                data=generate_train,
+                steps=args.training_steps,
                 tensor_maps_in=args.tensor_maps_in,
                 tensor_maps_out=args.tensor_maps_out,
-                batch_size=args.batch_size,
-                hidden_layer=args.hidden_layer,
                 plot_path=os.path.join(trials_path, trial_id),
-                test_paths=None,
+                data_split="train",
+                hidden_layer=args.hidden_layer,
                 embed_visualization=args.embed_visualization,
                 alpha=args.alpha,
-                data_split="train",
             )
             test_auc = predict_and_evaluate(
                 model=model,
-                test_data=test_data,
-                test_labels=test_labels,
+                data=generate_test,
+                steps=args.test_steps,
                 tensor_maps_in=args.tensor_maps_in,
                 tensor_maps_out=args.tensor_maps_out,
-                batch_size=args.batch_size,
-                hidden_layer=args.hidden_layer,
                 plot_path=os.path.join(trials_path, trial_id),
-                test_paths=None,
+                data_split="test",
+                hidden_layer=args.hidden_layer,
                 embed_visualization=args.embed_visualization,
                 alpha=args.alpha,
-                data_split="test",
             )
             auc = {"train": train_auc, "test": test_auc}
             aucs.append(auc)
             plot_metric_history(
                 history, args.training_steps, "", os.path.join(trials_path, trial_id),
             )
-            loss_and_metrics = model.evaluate(
-                test_data, test_labels, batch_size=args.batch_size,
-            )
+            loss_and_metrics = model.evaluate(generate_test, steps=args.test_steps)
             logging.info(
                 f"Current architecture:\n{_string_from_architecture_dict(x)}\nCurrent"
                 f" model size: {model.count_params()}.",

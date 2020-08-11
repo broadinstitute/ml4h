@@ -14,9 +14,6 @@ from ml4cvd.recipes import (
     hidden_inference_file_name,
     infer_multimodal_multitask,
     train_multimodal_multitask,
-)
-from ml4cvd.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
-from ml4cvd.recipes import (
     compare_multimodal_multitask_models,
     compare_multimodal_scalar_task_models,
     infer_hidden_layer_multimodal_multitask,
@@ -36,9 +33,6 @@ class TestRecipes:
 
     def test_test(self, default_arguments):
         tst_multimodal_multitask(default_arguments)
-
-    def test_test_scalar(self, default_arguments):
-        tst_multimodal_scalar_tasks(default_arguments)
 
     # TODO either fix these or delete
     """

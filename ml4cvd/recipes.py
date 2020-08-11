@@ -45,10 +45,7 @@ from ml4cvd.metrics import (
 )
 from ml4cvd.arguments import parse_args
 from ml4cvd.definitions import IMAGE_EXT, MODEL_EXT, TENSOR_EXT
-from ml4cvd.evaluations import (
-    predict_and_evaluate,
-    predict_scalars_and_evaluate_from_generator,
-)
+from ml4cvd.evaluations import predict_and_evaluate
 from ml4cvd.explorations import explore
 from ml4cvd.hyperparameters import hyperoptimize, sample_random_hyperparameter
 from ml4cvd.tensor_generators import (
@@ -80,8 +77,6 @@ def run(args):
             infer_multimodal_multitask(args)
         elif "infer_hidden" == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
-        elif "test_scalar" == args.mode:
-            test_multimodal_scalar_tasks(args)
         elif "compare_scalar" == args.mode:
             compare_multimodal_scalar_task_models(args)
         elif "plot_saliency" == args.mode:
@@ -126,32 +121,35 @@ def train_multimodal_multitask(args):
         run_id=args.id,
         return_history=True,
     )
-    out_path = os.path.join(args.output_folder, args.id + "/")
 
-    train_data, train_labels = big_batch_from_minibatch_generator(
-        generate_train, args.training_steps,
-    )
+    out_path = os.path.join(args.output_folder, args.id + "/")
     predict_and_evaluate(
         model=model,
-        test_data=train_data,
-        test_labels=train_labels,
+        data=generate_train,
+        steps=args.training_steps,
         tensor_maps_in=args.tensor_maps_in,
         tensor_maps_out=args.tensor_maps_out,
-        batch_size=args.batch_size,
-        hidden_layer=args.hidden_layer,
         plot_path=out_path,
-        test_paths=None,
+        data_split="train",
+        hidden_layer=args.hidden_layer,
         embed_visualization=args.embed_visualization,
         alpha=args.alpha,
-        data_split="train",
+    )
+    performance_metrics = predict_and_evaluate(
+        model=model,
+        data=generate_test,
+        steps=args.test_steps,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        plot_path=out_path,
+        data_split="test",
+        hidden_layer=args.hidden_layer,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
     )
 
     generate_train.kill_workers()
     generate_valid.kill_workers()
-
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
     generate_test.kill_workers()
 
     logging.info(f"Model trained for {len(history.history['loss'])} epochs")
@@ -166,21 +164,6 @@ def train_multimodal_multitask(args):
                 },
             ),
         )
-
-    performance_metrics = predict_and_evaluate(
-        model=model,
-        test_data=test_data,
-        test_labels=test_labels,
-        tensor_maps_in=args.tensor_maps_in,
-        tensor_maps_out=args.tensor_maps_out,
-        batch_size=args.batch_size,
-        hidden_layer=args.hidden_layer,
-        plot_path=out_path,
-        test_paths=test_paths,
-        embed_visualization=args.embed_visualization,
-        alpha=args.alpha,
-        data_split="test",
-    )
     return performance_metrics
 
 
@@ -188,37 +171,17 @@ def test_multimodal_multitask(args):
     _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + "/")
-    data, labels, paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
     return predict_and_evaluate(
-        model,
-        data,
-        labels,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.batch_size,
-        args.hidden_layer,
-        out_path,
-        paths,
-        args.embed_visualization,
-        args.alpha,
-    )
-
-
-def test_multimodal_scalar_tasks(args):
-    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    p = os.path.join(args.output_folder, args.id + "/")
-    return predict_scalars_and_evaluate_from_generator(
-        model,
-        generate_test,
-        args.tensor_maps_in,
-        args.tensor_maps_out,
-        args.test_steps,
-        args.hidden_layer,
-        p,
-        args.alpha,
+        model=model,
+        data=generate_test,
+        steps=args.test_steps,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        plot_path=out_path,
+        data_split="test",
+        hidden_layer=args.hidden_layer,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
     )
 
 
@@ -455,21 +418,6 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
         **args.__dict__
     )
 
-    # loading all the data into memory somewhat defeats the purpose of generators
-    # and will break if the dataset is large TODO switch predict_and_evaluate to use generators
-    train_data, train_labels = big_batch_from_minibatch_generator(
-        generate_train, args.training_steps,
-    )
-    valid_data, valid_labels = big_batch_from_minibatch_generator(
-        generate_valid, args.validation_steps,
-    )
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps,
-    )
-    generate_train.kill_workers()
-    generate_valid.kill_workers()
-    generate_test.kill_workers()
-
     if args.shallow_model_regularization is not None:
         # if using l1/l2/l1l2 regularization,
         # generate l1 l2 combinations,
@@ -528,7 +476,6 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
                 return_history=True,
                 plot=False,
             )
-            generate_train.kill_workers()
             title = f"l1_{l1:.5}_l2_{l2:.5}".replace(".", "-")
             trial_path = os.path.join(args.output_folder, args.id, "trials", title)
             plot_metric_history(
@@ -539,31 +486,27 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
             )
             train_aucs = predict_and_evaluate(
                 model=_model,
-                test_data=train_data,
-                test_labels=train_labels,
+                data=generate_train,
+                steps=args.training_steps,
                 tensor_maps_in=args.tensor_maps_in,
                 tensor_maps_out=args.tensor_maps_out,
-                batch_size=args.batch_size,
-                hidden_layer=args.hidden_layer,
                 plot_path=trial_path,
-                test_paths=None,
+                data_split="train",
+                hidden_layer=args.hidden_layer,
                 embed_visualization=args.embed_visualization,
                 alpha=args.alpha,
-                data_split="train",
             )
             valid_aucs = predict_and_evaluate(
                 model=_model,
-                test_data=valid_data,
-                test_labels=valid_labels,
+                data=generate_valid,
+                steps=args.validation_steps,
                 tensor_maps_in=args.tensor_maps_in,
                 tensor_maps_out=args.tensor_maps_out,
-                batch_size=args.batch_size,
-                hidden_layer=args.hidden_layer,
                 plot_path=trial_path,
-                test_paths=None,
+                data_split="valid",
+                hidden_layer=args.hidden_layer,
                 embed_visualization=args.embed_visualization,
                 alpha=args.alpha,
-                data_split="valid",
             )
             # fmt: off
             logging.info(
@@ -573,11 +516,10 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
             )
             # fmt: on
 
-            loss = _model.evaluate(
-                x=valid_data, y=valid_labels, batch_size=args.batch_size,
-            )[0]
-            if loss < best_loss:
-                best_loss = loss
+            generate_valid.reset()
+            val_loss = _model.evaluate(generate_valid, steps=args.validation_steps)[0]
+            if val_loss < best_loss:
+                best_loss = val_loss
                 best_l1 = l1
                 best_l2 = l2
                 model = _model
@@ -623,40 +565,38 @@ def train_shallow_model(args: argparse.Namespace) -> Dict[str, float]:
             output_folder=args.output_folder,
             run_id=args.id,
         )
-        generate_train.kill_workers()
-        generate_valid.kill_workers()
 
     # Evaluate trained model on test data
-    p = os.path.join(args.output_folder, args.id + "/")
+    plot_path = os.path.join(args.output_folder, args.id + "/")
     predict_and_evaluate(
         model=model,
-        test_data=train_data,
-        test_labels=train_labels,
+        data=generate_train,
+        steps=args.training_steps,
         tensor_maps_in=args.tensor_maps_in,
         tensor_maps_out=args.tensor_maps_out,
-        batch_size=args.batch_size,
+        plot_path=plot_path,
+        data_split="train",
         hidden_layer=args.hidden_layer,
-        plot_path=p,
-        test_paths=None,
         embed_visualization=args.embed_visualization,
         alpha=args.alpha,
-        data_split="train",
     )
     performance_metrics = predict_and_evaluate(
         model=model,
-        test_data=test_data,
-        test_labels=test_labels,
+        data=generate_test,
+        steps=args.test_steps,
         tensor_maps_in=args.tensor_maps_in,
         tensor_maps_out=args.tensor_maps_out,
-        batch_size=args.batch_size,
+        plot_path=plot_path,
+        data_split="test",
         hidden_layer=args.hidden_layer,
-        plot_path=p,
-        test_paths=test_paths,
         embed_visualization=args.embed_visualization,
         alpha=args.alpha,
         save_coefficients=True,
-        data_split="test",
     )
+
+    generate_train.kill_workers()
+    generate_valid.kill_workers()
+    generate_test.kill_workers()
     return performance_metrics
 
 

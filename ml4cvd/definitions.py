@@ -4,6 +4,9 @@ import socket
 from enum import Enum, auto
 from typing import Dict, List, Union
 
+# Imports: third party
+import numpy as np
+
 
 class StorageType(Enum):
     CONTINUOUS = auto()
@@ -20,6 +23,11 @@ class StorageType(Enum):
 
 ArgumentList = List[Union[int, float]]
 Arguments = Dict[str, Union[int, float, ArgumentList]]
+Inputs = Dict[str, np.ndarray]
+Outputs = Inputs
+Path = str
+Paths = List[Path]
+Predictions = List[np.ndarray]
 
 YEAR_DAYS = 365.26
 ECG_ZERO_PADDING_THRESHOLD = 0.25

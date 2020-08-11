@@ -10,9 +10,9 @@ import logging
 from queue import Full, Empty
 from ctypes import c_uint64
 from typing import Any, Set, Dict, List, Tuple, Union, Callable, Iterator, Optional
-from itertools import chain
+from itertools import chain, cycle
 from collections import Counter, defaultdict
-from multiprocessing import Lock, Queue, Barrier, Process
+from multiprocessing import Lock, Barrier, Process
 from multiprocessing.sharedctypes import RawArray, RawValue
 
 # Imports: third party
@@ -22,7 +22,7 @@ import pandas as pd
 
 # Imports: first party
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.definitions import TENSOR_EXT, MRN_COLUMNS
+from ml4cvd.definitions import TENSOR_EXT, MRN_COLUMNS, Path, Paths
 
 np.set_printoptions(threshold=np.inf)
 
@@ -42,14 +42,13 @@ BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_SAMPLE_WEIGHTS_INDEX, BATCH_PATHS_I
     3,
 )
 
-Path = str
 PathIterator = Iterator[Path]
 Batch = Dict[Path, np.ndarray]
 BatchFunction = Callable[[Batch, Batch, bool, List[Path], "kwargs"], Any]
 
 
 class _ShufflePaths(Iterator):
-    def __init__(self, paths: List[Path]):
+    def __init__(self, paths: Paths):
         self.paths = paths
         np.random.shuffle(self.paths)
         self.idx = 0
@@ -182,6 +181,7 @@ class TensorGenerator:
         siamese: bool = False,
         augment: bool = False,
         sample_weight: TensorMap = None,
+        deterministic: bool = False,
     ):
         self.batch_size = batch_size
         self.input_maps = input_maps
@@ -194,6 +194,7 @@ class TensorGenerator:
         self.siamese = siamese
         self.augment = augment
         self.sample_weight = sample_weight
+        self.deterministic = deterministic
 
         self.run_on_main_thread = num_workers == 0
         num_workers = num_workers or 1
@@ -215,18 +216,7 @@ class TensorGenerator:
         # fmt: on
 
         self.true_epoch_len = len(paths)
-        if weights is None:
-            worker_paths = np.array_split(paths, num_workers)
-            self.worker_true_epoch_lens = list(map(len, worker_paths))
-            self.worker_path_iters = [_ShufflePaths(p) for p in worker_paths]
-        else:
-            # split each path list into paths for each worker.
-            # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
-            split_paths = [np.array_split(a, num_workers) for a in paths]
-            # Next, each list of paths gets given to each worker. E.g. [[[p1], [p3, p4]], [[p2], [p5]]]
-            worker_paths = np.swapaxes(split_paths, 0, 1)
-            self.worker_true_epoch_lens = [max(map(len, p)) for p in worker_paths]
-            self.worker_path_iters = [_WeightedPaths(p, weights) for p in worker_paths]
+        self._reset_worker_paths()
 
         self.batch_function_kwargs = {}
         if mixup > 0:
@@ -312,6 +302,27 @@ class TensorGenerator:
     def reached_true_epoch(self):
         return self.stats["paths_completed"] == self.true_epoch_len
 
+    def _reset_worker_paths(self):
+        num_workers = 1 if self.deterministic else self.num_workers
+        # reset paths are not reflected until workers are restarted
+        if self.weights is None:
+            worker_paths = np.array_split(self.paths, num_workers)
+            self.worker_true_epoch_lens = list(map(len, worker_paths))
+            if self.deterministic:
+                self.worker_path_iters = [cycle(p) for p in worker_paths]
+            else:
+                self.worker_path_iters = [_ShufflePaths(p) for p in worker_paths]
+        else:
+            # split each path list into paths for each worker.
+            # E.g. for two workers: [[p1, p2], [p3, p4, p5]] -> [[[p1], [p2]], [[p3, p4], [p5]]
+            split_paths = [np.array_split(a, num_workers) for a in self.paths]
+            # Next, each list of paths gets given to each worker. E.g. [[[p1], [p3, p4]], [[p2], [p5]]]
+            worker_paths = np.swapaxes(split_paths, 0, 1)
+            self.worker_true_epoch_lens = [max(map(len, p)) for p in worker_paths]
+            self.worker_path_iters = [
+                _WeightedPaths(p, self.weights) for p in worker_paths
+            ]
+
     def __iter__(self):
         return self
 
@@ -319,8 +330,10 @@ class TensorGenerator:
         self.worker_q = SharedMemoryTensorQueue(
             TENSOR_GENERATOR_MAX_Q_SIZE, self.input_maps, self.output_maps,
         )
-        self.worker_barrier = Barrier(self.num_workers)
+        num_workers = 1 if self.deterministic else self.num_workers
+        self.worker_barrier = Barrier(num_workers)
         self.started = True
+        self._reset_worker_paths()
         for i, (worker_path_iter, worker_true_epoch_len) in enumerate(
             zip(self.worker_path_iters, self.worker_true_epoch_lens),
         ):
@@ -343,10 +356,11 @@ class TensorGenerator:
                 worker_process.start()
                 self.worker_processes.append(worker_process)
         if not self.run_on_main_thread:
-            logging.info(f"Started {self.num_workers} {self.name}s")
+            logging.info(f"Started {num_workers} {self.name}s")
 
     def kill_workers(self):
         if self.started:
+            num_stopped = len(self.worker_processes)
             for worker_process in self.worker_processes:
                 worker_process.terminate()
             self.started = False
@@ -355,7 +369,11 @@ class TensorGenerator:
             self.worker_instances = []
             self.worker_processes = []
             if not self.run_on_main_thread:
-                logging.info(f"Stopped {self.num_workers} {self.name}s")
+                logging.info(f"Stopped {num_stopped} {self.name}s")
+
+    def reset(self, deterministic=False):
+        self.deterministic = deterministic
+        self.kill_workers()
 
     def __del__(self):
         self.kill_workers()
@@ -686,6 +704,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
+    generator.reset(deterministic=True)
     first_batch = next(generator)
     saved_tensors = {}
     batch_size = None

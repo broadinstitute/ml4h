@@ -92,6 +92,7 @@ from ml4cvd.definitions import (
     PARTNERS_READ_TEXT,
     PARTNERS_CHAR_2_IDX,
 )
+from ml4cvd.tensor_generators import TensorGenerator
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = "_next_character"
@@ -1482,8 +1483,8 @@ def _make_multimodal_multitask_model(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def train_model_from_generators(
     model: Model,
-    generate_train: Iterable,
-    generate_valid: Optional[Iterable],
+    generate_train: TensorGenerator,
+    generate_valid: Optional[TensorGenerator],
     training_steps: int,
     validation_steps: Optional[int],
     epochs: int,
@@ -1525,6 +1526,8 @@ def train_model_from_generators(
             os.path.join(output_folder, run_id, "architecture_graph" + IMAGE_EXT),
         )
 
+    generate_train.reset()
+    generate_valid.reset()
     history = model.fit(
         generate_train,
         steps_per_epoch=training_steps,

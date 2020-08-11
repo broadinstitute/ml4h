@@ -684,7 +684,8 @@ def plot_scatters(
 
 def subplot_scatters(
     scatters: List[Tuple[np.ndarray, np.ndarray, str, Optional[List[str]]]],
-    prefix: str = "./figures/",
+    data_split: str,
+    plot_path: str = "./figures/",
     top_k: int = 3,
     alpha: float = 0.5,
 ):
@@ -747,7 +748,7 @@ def subplot_scatters(
             if col >= cols:
                 break
 
-    figure_path = prefix + "scatters_together" + IMAGE_EXT
+    figure_path = os.path.join(plot_path, f"scatters_together_{data_split}{IMAGE_EXT}")
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -1681,7 +1682,8 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
 
 def subplot_rocs(
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]],
-    prefix: str = "./figures/",
+    data_split: str,
+    plot_path: str = "./figures/",
 ):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 2
@@ -1733,8 +1735,7 @@ def subplot_rocs(
             col += 1
             if col >= cols:
                 break
-
-    figure_path = prefix + "rocs_together" + IMAGE_EXT
+    figure_path = os.path.join(plot_path, f"roc_together_{data_split}{IMAGE_EXT}")
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
