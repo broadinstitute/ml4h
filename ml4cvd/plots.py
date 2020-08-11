@@ -11,13 +11,16 @@ from collections import Counter, OrderedDict, defaultdict
 # Imports: third party
 import h5py
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from scipy import stats
 from sklearn import manifold
 from sklearn.metrics import (
+    ConfusionMatrixDisplay,
     auc,
     roc_curve,
     brier_score_loss,
+    confusion_matrix,
     precision_recall_curve,
     average_precision_score,
 )
@@ -164,6 +167,14 @@ def evaluate_predictions(
             data_split=data_split,
         )
         plot_prediction_calibration(
+            prediction=y_predictions,
+            truth=y_truth,
+            labels=tm.channel_map,
+            title=title,
+            prefix=folder,
+            data_split=data_split,
+        )
+        plot_confusion_matrix(
             prediction=y_predictions,
             truth=y_truth,
             labels=tm.channel_map,
@@ -559,6 +570,61 @@ def plot_prediction_calibration(
     plt.savefig(figure_path, bbox_inches="tight")
     logging.info(f"Saved calibration plot at: {figure_path}")
     plt.clf()
+
+
+def plot_confusion_matrix(
+    prediction: np.ndarray,
+    truth: np.ndarray,
+    labels: Dict[str, int],
+    title: str,
+    prefix: str,
+    data_split: str,
+):
+    plt.rcParams["font.size"] = 14
+    lw = 2
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
+    idx_to_label = {idx: label for label, idx in labels.items()}
+    labels = list(labels.keys())
+
+    flatten_categorical = lambda categorical: np.array(
+        [idx_to_label[category] for category in categorical.argmax(axis=-1)],
+    )
+    class_prediction = flatten_categorical(prediction)
+    class_truth = flatten_categorical(truth)
+
+    cms = []
+    for matrix_title, normalize, ax in [
+        (f"{title} confusion matrix, n = {len(class_truth)}", None, ax1),
+        (f"normalized to true classes", "true", ax2),
+    ]:
+        cm = confusion_matrix(
+            y_true=class_truth,
+            y_pred=class_prediction,
+            labels=labels,
+            normalize=normalize,
+        )
+        cms.append(cm)
+        cm_display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+        cm_display.plot(cmap=plt.cm.Blues, ax=ax)
+        ax.set_title(matrix_title)
+
+        cm_df = pd.DataFrame(
+            cm,
+            columns=[f"pred:{label}" for label in labels],
+            index=[f"true:{label}" for label in labels],
+        )
+        with pd.option_context("display.float_format", "{:0.2f}".format):
+            logging.info(f"{matrix_title}:\n{cm_df}")
+
+    figure_path = os.path.join(
+        prefix, f"confusion_matrix_{title}_{data_split}{IMAGE_EXT}",
+    )
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path, bbox_inches="tight")
+    plt.clf()
+    logging.info("Saved confusion matrix at: {}".format(figure_path))
+    return cms
 
 
 def plot_scatter(
