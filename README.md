@@ -62,9 +62,11 @@ ssh -NL PORT:localhost:PORT USER@HOST
 
 If changes to the code are made after a Jupyter Lab instance is launched, update the package within the Jupyter notebook by reinstalling and reimporting `ml4cvd`. The following code is run inside the notebook.
 ```
-! pip install --user /path/to/ml/repo
+! pip install --user ~/ml
 import ml4cvd
 ```
+
+> replace `~/ml` with the path to the repo on your machine
 
 ## Run scripts
 Run scripts are stored in [this Dropbox folder](https://www.dropbox.com/sh/hjz7adj01x1erfs/AABnZifp1mUqs7Z_26zm4ly9a?dl=0).
