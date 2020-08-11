@@ -157,9 +157,6 @@ if [[ -d "/media" ]] ; then
     MOUNTS="${MOUNTS} -v /media/:/media/"
 fi
 
-# Let anyone run this script
-WORKDIR=$(pwd)
-
 PYTHON_ARGS="$@"
 if [[ "$PYTHON_COMMAND" == "$JUPYTER_COMMAND" ]] ; then
     if [[ "${PORT_FLAG}" == "" ]] ; then
@@ -178,7 +175,6 @@ Attempting to run Docker with
     --env GROUP_IDS \
     --uts=host \
     --ipc=host \
-    -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
     ${PORT_FLAG} \
@@ -186,7 +182,7 @@ Attempting to run Docker with
     ${DOCKER_IMAGE} /bin/bash -c \
     "${SETUP_USER}
     cd ${HOME};
-    ${CALL_AS_USER} pip install ${WORKDIR};
+    ${CALL_AS_USER} pip install $(pwd);
     ${CALL_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
@@ -197,7 +193,6 @@ ${GPU_DEVICE} \
 --env GROUP_IDS \
 --uts=host \
 --ipc=host \
--v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${PORT_FLAG} \
@@ -205,5 +200,5 @@ ${CONTAINER_NAME} \
 ${DOCKER_IMAGE} /bin/bash -c \
 "${SETUP_USER}
 cd ${HOME};
-${CALL_AS_USER} pip install ${WORKDIR};
+${CALL_AS_USER} pip install $(pwd);
 ${CALL_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
