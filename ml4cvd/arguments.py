@@ -25,9 +25,8 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap
 from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
-# from ml4cvd.tensor_maps_by_hand import TMAPS
+from ml4cvd.tensormap.partners.dynamic import make_partners_dynamic_tensor_maps
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-# from ml4cvd.tensor_maps_partners_ecg import build_partners_tensor_maps, build_cardiac_surgery_tensor_maps, build_partners_time_series_tensor_maps
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
 
@@ -321,17 +320,21 @@ def parse_args():
 
 
 def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
-    if isinstance(module_string, str) == False:
+    tm = make_partners_dynamic_tensor_maps(module_string)
+    if isinstance(tm, TensorMap):
+        return tm
+
+    if isinstance(module_string, str):
         raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
     if len(module_string) == 0:
         raise ValueError(f"Input name cannot be empty.")
     path_string = module_string
     if prefix:
-        if isinstance(prefix, str) == False:
+        if isinstance(prefix, str):
             raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
         if len(prefix) == 0:
             raise ValueError(f"Prefix cannot be set to an emtpy string.")
-        path_string = '.'.join([prefix,module_string])
+        path_string = '.'.join([prefix, module_string])
     else:
         if '.'.join(path_string.split('.')[0:2]) != 'ml4cvd.tensormap':
             raise ValueError(f"TensorMaps must reside in the path 'ml4cvd.tensormap.*'. Given: {module_string}")
@@ -341,11 +344,11 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     except ModuleNotFoundError:
         raise ModuleNotFoundError(f"Could not resolve library {'.'.join(path_string.split('.')[:-1])} for target tensormap {module_string}")
     try:
-        tm = getattr(i,path_string.split('.')[-1])
+        tm = getattr(i, path_string.split('.')[-1])
     except AttributeError:
         raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
-    from ml4cvd.TensorMap import TensorMap
-    if isinstance(tm, TensorMap) == False:
+
+    if isinstance(tm, TensorMap):
         raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
     return tm
 
