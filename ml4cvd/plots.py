@@ -1481,7 +1481,7 @@ def _plot_ecg_figure(
     ax.grid(b=True, color="r", which="minor", lw=0.2)
 
     # signal plot
-    voltage = data["2500_raw"]
+    voltage = data["2500"]
     plot_signal_function(voltage, ax)
 
     # bottom text
@@ -1522,11 +1522,15 @@ def plot_ecg(args):
         "ecg_raxis_md",
         "ecg_qtc_md",
     ]
-    voltage_tensor = "12_lead_ecg_2500_raw"
-    # Imports: first party
-    from ml4cvd.tensor_maps_ecg import TMAPS
+    voltage_tensor = "12_lead_ecg_2500"
 
-    tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
+    # Imports: first party
+    from ml4cvd.arguments import _get_tmap
+
+    needed_tensors = plot_tensors + [voltage_tensor]
+    tensor_maps_in = [
+        _get_tmap(name=it, needed_tensor_maps=needed_tensors) for it in needed_tensors
+    ]
     tensor_paths = [
         os.path.join(args.tensors, tp)
         for tp in os.listdir(args.tensors)
@@ -1548,9 +1552,7 @@ def plot_ecg(args):
                 skip_hd5 = False
                 tdict = defaultdict(dict)
                 for tm in tensor_maps_in:
-                    key = tm.name.split(
-                        "12_lead_ecg_" if key == voltage_tensor else "ecg_",
-                    )[1]
+                    key = tm.name.split("ecg_")[1]
                     try:
                         tensors = tm.tensor_from_file(tm, hd5)
 
