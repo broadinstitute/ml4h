@@ -611,10 +611,10 @@ def simclr_accuracy(_, hidden):
     logits_bb = logits_bb - masks * large_num
     logits_ab = tf.matmul(hidden1, hidden2, transpose_b=True)
     logits_ba = tf.matmul(hidden2, hidden1, transpose_b=True)
-    loss_a = tf.equal(
-        tf.argmax(labels, 1), tf.argmax(tf.concat([logits_ab, logits_aa], 1)),
+    loss_a = tf.keras.metrics.categorical_accuracy(
+        labels, tf.concat([logits_ab, logits_aa], 1),
     )
-    loss_b = tf.equal(
-        tf.argmax(labels, 1), tf.argmax(tf.concat([logits_ba, logits_bb], 1)),
+    loss_b = tf.keras.metrics.categorical_accuracy(
+        labels, tf.concat([logits_ba, logits_bb], 1),
     )
     return tf.add(tf.reduce_mean(loss_a), tf.reduce_mean(loss_b)) / 2
