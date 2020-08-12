@@ -5,14 +5,15 @@ from getpass import getuser
 from collections import defaultdict
 
 JOIN_CHAR = '_'
-SCRIPT_NAME = 'tensor_maps_partners_ecg_labels.py'
-TENSOR_FUNC_NAME = "make_partners_ecg_label"
+SCRIPT_PATH = 'tensormap/partners/tensor_maps_partners_ecg_labels.py'
+TENSOR_FROM_FILE_MAKER = "make_partners_ecg_label"
 PREFIX = "partners_ecg"
 TENSOR_PATH_PREFIX = "partners_ecg_rest"
 
+
 def _clean_label_string(string):
-    '''Replace spaces and slashes with JOIN_CHAR,
-       and remove parentheses and commas'''
+    """Replace spaces and slashes with JOIN_CHAR,
+       and remove parentheses and commas"""
     string = string.replace(' ', JOIN_CHAR)
     string = string.replace('/', JOIN_CHAR)
     string = string.replace('(', '')
@@ -22,17 +23,16 @@ def _clean_label_string(string):
 
 
 def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_hd5):
-    '''Given label_maps (which associates labels with source phrases)
+    """Given label_maps (which associates labels with source phrases)
        and channel_maps (which associates labels with unique sublabels),
        define the tensormaps to associate source phrases with precise labels,
        and write these maps in a python script
-    '''
+    """
 
     # Add import statements to .py
     if write_imports:
         py_file.write(f"from ml4cvd.TensorMap import TensorMap, Interpretation\n")
-        py_file.write(f"from ml4cvd.tensor_maps_by_hand import TMAPS\n")
-        py_file.write(f"from ml4cvd.tensor_maps_partners_ecg import {TENSOR_FUNC_NAME}\n\n")
+        py_file.write(f"from ml4cvd.tensormap.partners.ecg import {TENSOR_FROM_FILE_MAKER}\n\n")
 
     for label in label_maps:
         cm = '{'
@@ -48,8 +48,8 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
         cm += '}'
 
         for key in keys_in_hd5:
-            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}'] = TensorMap('{PREFIX}_{key}_{label}', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
-            py_file.write(f"TMAPS['{PREFIX}_{key}_{label}_newest'] = TensorMap('{PREFIX}_{key}_{label}_newest', interpretation=Interpretation.CATEGORICAL, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FUNC_NAME}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
+            py_file.write(f"{PREFIX}_{key}_{label} = TensorMap('{PREFIX}_{key}_{label}', interpretation=Interpretation.CATEGORICAL, time_series_limit=0, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FROM_FILE_MAKER}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
+            py_file.write(f"{PREFIX}_{key}_{label}_newest = TensorMap('{PREFIX}_{key}_{label}_newest', interpretation=Interpretation.CATEGORICAL, path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm}, tensor_from_file={TENSOR_FROM_FILE_MAKER}(keys='{key}', dict_of_list = {label_maps[label]})) \n\n")
 
 
 def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5):
@@ -134,7 +134,7 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5
         _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_hd5)
         write_imports = False
 
-        print(f"Created TMAPS from {file} and saved in {SCRIPT_NAME}")
+        print(f"Created Tensor Maps from {file} and saved in {SCRIPT_PATH}")
 
 
 if __name__ == '__main__':
@@ -143,10 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--hd5_keys', default=['read_md_clean', 'read_pc_clean'], nargs='+')
     args = parser.parse_args()
 
-    fpath_csv_dir = args.label_maps_dir
-    keys_in_hd5 = args.hd5_keys
-
     # Open the python script, parse the .csv label maps,
     # and create code that creates TensorMaps
-    with open(SCRIPT_NAME, 'w') as py_file:
-        _write_partners_ecg_tmap_script(py_file, fpath_csv_dir, keys_in_hd5)
+    with open(SCRIPT_PATH, 'w') as py_file:
+        _write_partners_ecg_tmap_script(py_file, args.label_maps_dir, args.hd5_keys)
