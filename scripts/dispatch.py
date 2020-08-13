@@ -1,13 +1,4 @@
 #!/bin/python3
-#
-# usage:
-# python dispatch.py \
-#     --gpus 0-3 \
-#     --bootstraps 0-9 \
-#     --scripts \
-#         train-simple.sh \
-#         train-varied.sh \
-#         train-deeper.sh
 
 # Imports: standard library
 import os
@@ -43,11 +34,11 @@ def _get_path_to_bootstraps() -> str:
     If there is no match found, this function does not return anything, and
     the script ends up with a non-viable path prefix to HD5 files and will fail."""
     if "anduril" == socket.gethostname():
-        path = "~/dropbox/sts_data/bootstraps"
+        path = "~/dropbox/sts-data/bootstraps"
     elif "mithril" == socket.gethostname():
-        path = "~/dropbox/sts_data/bootstraps"
+        path = "~/dropbox/sts-data/bootstraps"
     elif "stultzlab" in socket.gethostname():
-        path = "/storage/shared/sts_data_deid/bootstraps"
+        path = "/storage/shared/sts-data-deid/bootstraps"
 
     path = os.path.expanduser(path)
     if not os.path.isdir(path):
