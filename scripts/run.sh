@@ -38,7 +38,7 @@ export GROUP_NAMES GROUP_IDS
 # Create string to be called in Docker's bash shell via eval;
 # this creates a user, adds groups, adds user to groups, then calls the Python script
 SETUP_USER="
-    useradd -u $(id -u) ${USER};
+    useradd -u $(id -u) -d ${HOME} ${USER};
     GROUP_NAMES_ARR=( \${GROUP_NAMES} );
     GROUP_IDS_ARR=( \${GROUP_IDS} );
     for (( i=0; i<\${#GROUP_NAMES_ARR[@]}; ++i )); do
