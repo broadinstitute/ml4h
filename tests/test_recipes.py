@@ -8,16 +8,7 @@ import pytest
 
 # Imports: first party
 from ml4cvd.plots import _find_negative_label_index
-from ml4cvd.recipes import inference_file_name
-from ml4cvd.recipes import test_multimodal_multitask as tst_multimodal_multitask
-from ml4cvd.recipes import (
-    hidden_inference_file_name,
-    infer_multimodal_multitask,
-    train_multimodal_multitask,
-    compare_multimodal_multitask_models,
-    compare_multimodal_scalar_task_models,
-    infer_hidden_layer_multimodal_multitask,
-)
+from ml4cvd.recipes import infer_multimodal_multitask, train_multimodal_multitask
 from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.explorations import (
     explore,
@@ -31,43 +22,18 @@ class TestRecipes:
     def test_train(self, default_arguments):
         train_multimodal_multitask(default_arguments)
 
-    def test_test(self, default_arguments):
-        tst_multimodal_multitask(default_arguments)
-
-    # TODO either fix these or delete
-    """
     def test_infer(self, default_arguments):
         infer_multimodal_multitask(default_arguments)
-        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
-        inferred = pd.read_csv(tsv, sep="\t")
-        assert len(set(inferred["sample_id"])) == pytest.N_TENSORS
-
-    def test_infer_genetics(self, default_arguments):
-        default_arguments.tsv_style = "genetics"
-        infer_multimodal_multitask(default_arguments)
-        default_arguments.tsv_style = "standard"
-        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
-        inferred = pd.read_csv(tsv, sep="\t")
-        assert len(set(inferred["FID"])) == pytest.N_TENSORS
-
-    def test_infer_hidden(self, default_arguments):
-        infer_hidden_layer_multimodal_multitask(default_arguments)
-        tsv = hidden_inference_file_name(
-            default_arguments.output_folder, default_arguments.id,
+        path = os.path.join(
+            default_arguments.output_folder,
+            default_arguments.id,
+            f"predictions_test.csv",
         )
-        inferred = pd.read_csv(tsv, sep="\t")
-        assert len(set(inferred["sample_id"])) == pytest.N_TENSORS
-
-    def test_infer_hidden_genetics(self, default_arguments):
-        default_arguments.tsv_style = "genetics"
-        infer_hidden_layer_multimodal_multitask(default_arguments)
-        default_arguments.tsv_style = "standard"
-        tsv = hidden_inference_file_name(
-            default_arguments.output_folder, default_arguments.id,
+        predictions = pd.read_csv(path)
+        assert (
+            len(set(predictions["sample_id"]))
+            == default_arguments.test_steps * default_arguments.batch_size
         )
-        inferred = pd.read_csv(tsv, sep="\t")
-        assert len(set(inferred["FID"])) == pytest.N_TENSORS
-    """
 
     def test_explore(self, default_arguments, tmpdir_factory, utils):
         temp_dir = tmpdir_factory.mktemp("explore_tensors")

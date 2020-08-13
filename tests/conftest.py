@@ -114,7 +114,7 @@ def utils():
     return Utils
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="function")
 @mock.patch.dict(TMAPS, pytest.MOCK_TMAPS)
 def default_arguments(tmpdir_factory, utils):
     temp_dir = tmpdir_factory.mktemp("data")

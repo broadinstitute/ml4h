@@ -2,6 +2,7 @@
 import os
 import logging
 from typing import Dict, List, Tuple, Union, Optional
+from collections import OrderedDict
 
 # Imports: third party
 import numpy as np
@@ -9,10 +10,16 @@ import pandas as pd
 from tensorflow.keras.models import Model
 
 # Imports: first party
-from ml4cvd.plots import plot_tsne, subplot_rocs, subplot_scatters, evaluate_predictions
+from ml4cvd.plots import (
+    plot_tsne,
+    subplot_rocs,
+    subplot_scatters,
+    evaluate_predictions,
+    _find_negative_label_index,
+)
 from ml4cvd.models import embed_model_predict
 from ml4cvd.TensorMap import TensorMap
-from ml4cvd.definitions import Path, Paths, Inputs, Outputs, Predictions
+from ml4cvd.definitions import CSV_EXT, Path, Paths, Inputs, Outputs, Predictions
 from ml4cvd.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_PATHS_INDEX,
@@ -34,6 +41,7 @@ def predict_and_evaluate(
     hidden_layer: Optional[str] = None,
     embed_visualization: Optional[str] = None,
     alpha: Optional[float] = None,
+    save_predictions: bool = False,
 ) -> Dict:
     """
     Evaluate model on dataset, save plots, and return performance metrics
@@ -50,6 +58,8 @@ def predict_and_evaluate(
     :param hidden_layer: Name of hidden layer for embedded visualization
     :param embed_visualization: Type of embedded visualization
     :param alpha: Float of transparency for embedded visualization
+    :param save_predictions: If true, save predicted and actual output values to a csv
+
     :return: Dictionary of performance metrics
     """
     layer_names = [layer.name for layer in model.layers]
@@ -87,6 +97,37 @@ def predict_and_evaluate(
     y_predictions, output_data, data_paths = _get_predictions_from_data(
         model=model, data=data, steps=steps, batch_size=batch_size,
     )
+
+    if save_predictions:
+        save_data = OrderedDict()
+        if data_paths is not None:
+            save_data["sample_id"] = [
+                os.path.splitext(os.path.basename(p))[0] for p in data_paths
+            ]
+        for y_prediction, tm in zip(y_predictions, tensor_maps_out):
+            if tm.static_axes() != 1:
+                continue
+
+            y_actual = tm.rescale(output_data[tm.output_name()])
+            y_prediction = tm.rescale(y_prediction)
+
+            if tm.channel_map is not None:
+                negative_label_idx = -1
+                if len(tm.channel_map) == 2:
+                    negative_label_idx = _find_negative_label_index(
+                        labels=tm.channel_map,
+                    )
+                for cm, idx in tm.channel_map.items():
+                    if idx == negative_label_idx:
+                        continue
+                    save_data[f"{tm.name}_{cm}_actual"] = y_actual[..., idx]
+                    save_data[f"{tm.name}_{cm}_predicted"] = y_prediction[..., idx]
+            else:
+                save_data[f"{tm.name}_actual"] = y_actual.flatten()
+                save_data[f"{tm.name}_predicted"] = y_prediction.flatten()
+        path = os.path.join(plot_path, f"predictions_{data_split}{CSV_EXT}")
+        pd.DataFrame(save_data).round(3).to_csv(path, index=False)
+        logging.info(f"Saved predictions at: {path}")
 
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
@@ -143,7 +184,10 @@ def _get_predictions_from_data(
     batch_size: Optional[int],
 ) -> Tuple[Predictions, Outputs, Optional[Paths]]:
     """
-    Get model predictions, output data, and paths from data source
+    Get model predictions, output data, and paths from data source. If data source is a TensorGenerator, each sample
+    in the dataset will be used no more than once. In the case where steps * batch_size > num_samples, each sample
+    is used exactly once. If data source is a tuple of inputs and outputs, it is up to the user to provide the
+    correct number of samples.
 
     :param model: Model
     :param data: TensorGenerator or tuple of inputs, outputs, and optionally paths
@@ -175,7 +219,9 @@ def _get_predictions_from_data(
                 f"When providing data as a generator, steps is required, got {steps}",
             )
 
-        data.reset(deterministic=True)
+        # no need for deterministic operation, we truncate after the first true epoch of
+        # samples which is guaranteed to be unique, order within true epoch does not matter
+        data.reset()
         batch_size = data.batch_size
         data_length = steps * batch_size
         y_predictions = [
@@ -204,6 +250,20 @@ def _get_predictions_from_data(
 
             if data.keep_paths:
                 paths.extend(batch[BATCH_PATHS_INDEX])
+
+            # truncate arrays to only use each sample exactly once
+            if data.true_epoch_successful_samples is not None:
+                num_samples = data.true_epoch_successful_samples
+                if end_idx >= num_samples:
+                    for i in range(len(y_predictions)):
+                        y_predictions[i] = y_predictions[i][:num_samples]
+                    for output_name in output_data:
+                        # fmt: off
+                        output_data[output_name] = output_data[output_name][:num_samples]
+                        # fmt: on
+                    if data.keep_paths:
+                        paths = paths[:num_samples]
+                    break
     else:
         raise NotImplementedError(
             f"Cannot get data for inference from data of type {type(data).__name__}: {data}",

@@ -278,6 +278,7 @@ class TensorGenerator:
                 self.stats["samples_succeeded"] += 1
 
             if self.reached_true_epoch():
+                self.true_epoch_successful_samples = self.stats["samples_succeeded"]
                 self.stats["true_epochs"] += 1
 
                 self.true_epoch_stats = self.stats
@@ -304,6 +305,7 @@ class TensorGenerator:
 
     def _reset_worker_paths(self):
         num_workers = 1 if self.deterministic else self.num_workers
+        self.true_epoch_successful_samples = None
         # reset paths are not reflected until workers are restarted
         if self.weights is None:
             worker_paths = np.array_split(self.paths, num_workers)
@@ -829,6 +831,7 @@ def get_train_valid_test_paths(
     train_csv: str,
     valid_csv: str,
     test_csv: str,
+    no_empty_paths_allowed: bool = True,
 ) -> Tuple[List[str], List[str], List[str]]:
     """
     Return 3 disjoint lists of tensor paths.
@@ -845,6 +848,7 @@ def get_train_valid_test_paths(
     :param train_csv: path to csv containing sample ids to reserve for training list
     :param valid_csv: path to csv containing sample ids to reserve for validation list, mutually exclusive with valid_ratio
     :param test_csv: path to csv containing sample ids to reserve for testing list, mutually exclusive with test_ratio
+    :param no_empty_paths_allowed: If true, all data splits must contain paths, otherwise only one split needs to be non-empty
 
     :return: tuple of 3 lists of hd5 tensor file paths
     """
@@ -926,7 +930,10 @@ def get_train_valid_test_paths(
         f" {len(test_paths)} testing tensors at: {tensors}",
     )
     logging.debug(f"Discarded {len(discard_paths)} tensors due to given ratios")
-    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
+    if (
+        no_empty_paths_allowed
+        and (len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0)
+    ) or (len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0):
         raise ValueError(
             f"Not enough tensors at {tensors}\n"
             f"Found {len(train_paths)} training,"
@@ -1033,6 +1040,7 @@ def train_valid_test_tensor_generators(
     test_csv: str = None,
     siamese: bool = False,
     sample_weight: TensorMap = None,
+    no_empty_paths_allowed: bool = True,
     **kwargs,
 ) -> Tuple[TensorGenerator, TensorGenerator, TensorGenerator]:
     """Get 3 tensor generator functions for training, validation and testing data.
@@ -1055,6 +1063,7 @@ def train_valid_test_tensor_generators(
     :param test_csv: CSV file of sample ids to use for testing, mutually exclusive with test_ratio
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
     :param sample_weight: TensorMap that outputs a sample weight for the other tensors
+    :param no_empty_paths_allowed: If true, all data splits must contain paths, otherwise only one split needs to be non-empty
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
@@ -1079,6 +1088,7 @@ def train_valid_test_tensor_generators(
             train_csv=train_csv,
             valid_csv=valid_csv,
             test_csv=test_csv,
+            no_empty_paths_allowed=no_empty_paths_allowed,
         )
         weights = None
 

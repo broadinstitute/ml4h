@@ -65,8 +65,6 @@ def run(args):
     try:
         if "train" == args.mode:
             train_multimodal_multitask(args)
-        elif "test" == args.mode:
-            test_multimodal_multitask(args)
         elif "tensorize" == args.mode:
             write_tensors_ecg(args.xml_folder, args.tensors, args.num_workers)
         elif "explore" == args.mode:
@@ -167,24 +165,6 @@ def train_multimodal_multitask(args):
     return performance_metrics
 
 
-def test_multimodal_multitask(args):
-    _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
-    out_path = os.path.join(args.output_folder, args.id + "/")
-    return predict_and_evaluate(
-        model=model,
-        data=generate_test,
-        steps=args.test_steps,
-        tensor_maps_in=args.tensor_maps_in,
-        tensor_maps_out=args.tensor_maps_out,
-        plot_path=out_path,
-        data_split="test",
-        hidden_layer=args.hidden_layer,
-        embed_visualization=args.embed_visualization,
-        alpha=args.alpha,
-    )
-
-
 def compare_multimodal_multitask_models(args):
     _, _, generate_test = train_valid_test_tensor_generators(**args.__dict__)
     models_inputs_outputs = get_model_inputs_outputs(
@@ -229,106 +209,27 @@ def _make_tmap_nan_on_fail(tmap):
     return new_tmap
 
 
-def inference_file_name(output_folder: str, id_: str) -> str:
-    return os.path.join(output_folder, id_, "inference_" + id_ + ".tsv")
-
-
-# TODO fix this
 def infer_multimodal_multitask(args):
-    stats = Counter()
-    tensor_paths_inferred = set()
-    inference_tsv = inference_file_name(args.output_folder, args.id)
-    tsv_style_is_genetics = "genetics" in args.tsv_style
-    tensor_paths = [
-        os.path.join(args.tensors, tp)
-        for tp in sorted(os.listdir(args.tensors))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
-    ]
-    model = make_multimodal_multitask_model(**args.__dict__)
-    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
-    # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    generate_test = TensorGenerator(
-        1,
-        args.tensor_maps_in,
-        no_fail_tmaps_out,
-        tensor_paths,
-        num_workers=0,
-        cache_size=0,
-        keep_paths=True,
-        mixup=args.mixup_alpha,
+    args.valid_ratio = 0
+    args.test_ratio = 1
+    _, _, generate_test = train_valid_test_tensor_generators(
+        no_empty_paths_allowed=False, **args.__dict__
     )
-    generate_test.set_worker_paths(tensor_paths)
-    with open(inference_tsv, mode="w") as inference_file:
-        # TODO: csv.DictWriter is much nicer for this
-        inference_writer = csv.writer(
-            inference_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL,
-        )
-        header = ["sample_id"]
-        if tsv_style_is_genetics:
-            header = ["FID", "IID"]
-        for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
-            if len(otm.shape) == 1 and otm.is_continuous():
-                header.extend([ot + "_prediction", ot + "_actual"])
-            elif len(otm.shape) == 1 and otm.is_categorical():
-                channel_columns = []
-                for k in otm.channel_map:
-                    channel_columns.append(ot + "_" + k + "_prediction")
-                    channel_columns.append(ot + "_" + k + "_actual")
-                header.extend(channel_columns)
-        inference_writer.writerow(header)
-
-        while True:
-            batch = next(generate_test)
-            input_data, output_data, tensor_paths = (
-                batch[BATCH_INPUT_INDEX],
-                batch[BATCH_OUTPUT_INDEX],
-                batch[BATCH_PATHS_INDEX],
-            )
-            if tensor_paths[0] in tensor_paths_inferred:
-                next(generate_test)  # this prints end of epoch info
-                logging.info(
-                    f"Inference on {stats['count']} tensors finished. Inference TSV"
-                    f" file at: {inference_tsv}",
-                )
-                break
-
-            prediction = model.predict(input_data)
-            if len(no_fail_tmaps_out) == 1:
-                prediction = [prediction]
-
-            csv_row = [
-                os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, ""),
-            ]  # extract sample id
-            if tsv_style_is_genetics:
-                csv_row *= 2
-            for y, tm in zip(prediction, no_fail_tmaps_out):
-                if len(tm.shape) == 1 and tm.is_continuous():
-                    csv_row.append(
-                        str(tm.rescale(y)[0][0]),
-                    )  # first index into batch then index into the 1x1 structure
-                    if (
-                        tm.sentinel is not None
-                        and tm.sentinel == output_data[tm.output_name()][0][0]
-                    ) or np.isnan(output_data[tm.output_name()][0][0]):
-                        csv_row.append("NA")
-                    else:
-                        csv_row.append(
-                            str(tm.rescale(output_data[tm.output_name()])[0][0]),
-                        )
-                elif len(tm.shape) == 1 and tm.is_categorical():
-                    for k, i in tm.channel_map.items():
-                        csv_row.append(str(y[0][tm.channel_map[k]]))
-                        actual = output_data[tm.output_name()][0][i]
-                        csv_row.append("NA" if np.isnan(actual) else str(actual))
-
-            inference_writer.writerow(csv_row)
-            tensor_paths_inferred.add(tensor_paths[0])
-            stats["count"] += 1
-            if stats["count"] % 250 == 0:
-                logging.info(
-                    f"Wrote:{stats['count']} rows of inference.  Last"
-                    f" tensor:{tensor_paths[0]}",
-                )
+    model = make_multimodal_multitask_model(**args.__dict__)
+    out_path = os.path.join(args.output_folder, args.id + "/")
+    return predict_and_evaluate(
+        model=model,
+        data=generate_test,
+        steps=args.test_steps,
+        tensor_maps_in=args.tensor_maps_in,
+        tensor_maps_out=args.tensor_maps_out,
+        plot_path=out_path,
+        data_split="test",
+        hidden_layer=args.hidden_layer,
+        embed_visualization=args.embed_visualization,
+        alpha=args.alpha,
+        save_predictions=True,
+    )
 
 
 def hidden_inference_file_name(output_folder: str, id_: str) -> str:
