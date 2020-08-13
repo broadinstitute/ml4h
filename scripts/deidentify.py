@@ -298,7 +298,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--sts_dir",
-        default=os.path.expanduser("~/dropbox/sts_data"),
+        default=os.path.expanduser("~/dropbox/sts-data"),
         help="Path to STS CSVs.",
     )
     parser.add_argument(

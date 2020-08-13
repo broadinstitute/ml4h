@@ -10,8 +10,8 @@ To deidentify ECG and STS data:
     $PWD/scripts/deidentify.py \
     --starting_id 1 \
     --ecg_dir $HOME/data/ecg/mgh \
-    --sts_dir $HOME/data/sts_data \
+    --sts_dir $HOME/data/sts-data \
     --mrn_map $HOME/data/deid/mgh_mrn_deid_map.csv \
     --new_ecg_dir $HOME/data/deid/ecg/mgh \
-    --new_sts_dir $HOME/data/deid/sts_data
+    --new_sts_dir $HOME/data/deid/sts-data
 ```

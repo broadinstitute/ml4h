@@ -36,13 +36,13 @@ ECG_ZERO_PADDING_THRESHOLD = 0.25
 def _get_path_to_sts_data() -> str:
     """Get path to STS data depending on the machine hostname"""
     if "anduril" == socket.gethostname():
-        path = "~/dropbox/sts_data"
+        path = "~/dropbox/sts-data"
     elif "mithril" == socket.gethostname():
-        path = "~/dropbox/sts_data"
+        path = "~/dropbox/sts-data"
     elif "stultzlab" in socket.gethostname():
-        path = "/storage/shared/sts_data_deid"
+        path = "/storage/shared/sts-data-deid"
     else:
-        path = "~/dropbox/sts_data"
+        path = "~/dropbox/sts-data"
     return os.path.expanduser(path)
 
 
