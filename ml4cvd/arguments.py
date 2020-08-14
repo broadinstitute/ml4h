@@ -357,7 +357,7 @@ def _process_u_connect_args(u_connect: Optional[List[List]], tensormap_prefix) -
     new_u_connect = defaultdict(set)
     for connect_pair in u_connect:
         tmap_key_in, tmap_key_out = connect_pair[0], connect_pair[1]
-        tmap_in, tmap_out = tensormap_lookup(tmap_key_in, tensormap_prefix), tensormap_lookup(tmap_key_out, args.tensormap_prefix)
+        tmap_in, tmap_out = tensormap_lookup(tmap_key_in, tensormap_prefix), tensormap_lookup(tmap_key_out, tensormap_prefix)
         if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
             raise TypeError(f'u_connect of {tmap_in} {tmap_out} requires matching shapes besides channel dimension.')
         if tmap_in.axes() < 2 or tmap_out.axes() < 2:
