@@ -105,6 +105,14 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--remap_layer",
+        action="append",
+        nargs=2,
+        help="For transfer layer, manually remap layer from pretrained model to layer in new model. "
+        "For example: --rename_layer pretrained_layer_name new_layer_name. "
+        "Layers are remapped using this argument one at a time, repeat for multiple layers.",
+    )
+    parser.add_argument(
         "--freeze_model_layers",
         default=False,
         action="store_true",
@@ -791,3 +799,9 @@ def _process_args(args):
             "Activation, normalization, and regularization layers must each be listed"
             f" exactly once for valid ordering. Got : {args.layer_order}",
         )
+
+    if args.remap_layer is not None:
+        args.remap_layer = {
+            pretrained_layer: new_layer
+            for pretrained_layer, new_layer in args.remap_layer
+        }

@@ -666,6 +666,19 @@ class FullyConnectedBlock:
         name: str = None,
         parents: List[TensorMap] = None,
     ):
+        """
+        Creates a fully connected block with dense, activation, regularization, and normalization layers
+
+        :param widths: number of neurons in each dense layer
+        :param activation: string name of activation function
+        :param normalization: optional string name of normalization function
+        :param regularization: optional string name of regularization function
+        :param regularization_rate: if regularization is applied, the rate at which each dense layer is regularized
+        :param layer_order: list of strings specifying the activation, normalization, and regularization layers after the dense layer
+        :param is_encoder: boolean indicator if fully connected block is an input block
+        :param name: name of last dense layer in fully connected block, otherwise all dense layers are named ordinally e.g. dense_3 for the third dense layer in the model
+        :param parents: list of tensor maps defining the parents to this fully connected block
+        """
         final_dense = (
             Dense(units=widths[-1], name=name) if name else Dense(units=widths[-1])
         )
@@ -847,7 +860,6 @@ class ConcatenateRestructure:
                 regularization=regularization,
                 regularization_rate=regularization_rate,
                 layer_order=layer_order,
-                name="embed",
             )
             if widths
             else None
@@ -1414,6 +1426,7 @@ def make_multimodal_multitask_model(
     if model_layers:
         loaded = 0
         freeze = kwargs.get("freeze_model_layers", False)
+        layer_map = kwargs.get("remap_layer", dict()) or dict()
         m.load_weights(model_layers, by_name=True)
         try:
             m_other = load_model(
@@ -1421,7 +1434,10 @@ def make_multimodal_multitask_model(
             )
             for other_layer in m_other.layers:
                 try:
-                    target_layer = m.get_layer(other_layer.name)
+                    other_layer_name = other_layer.name
+                    if other_layer_name in layer_map:
+                        other_layer_name = layer_map[other_layer_name]
+                    target_layer = m.get_layer(other_layer_name)
                     target_layer.set_weights(other_layer.get_weights())
                     loaded += 1
                     if freeze:
