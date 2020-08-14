@@ -313,7 +313,6 @@ def parse_args():
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4cvd.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4cvd.tensormap\"")
 
-
     args = parser.parse_args()
     _process_args(args)
     return args

@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from ml4cvd.arguments import tensormap_lookup
+#from ml4cvd.arguments import tensormap_lookup
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 from ml4cvd.tensormap.partners.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int
@@ -508,7 +508,7 @@ def build_partners_time_series_tensor_maps(
         #     continue
 
         # time_tmap = copy.deepcopy(TMAPS[base_name])
-        time_tmap = copy.deepcopy(tensormap_lookup(base_name, preix="ml4cvd.tensormap.partners"))
+        #time_tmap = copy.deepcopy(tensormap_lookup(base_name, preix="ml4cvd.tensormap.partners"))
         time_tmap.name = needed_name
         time_tmap.shape = time_tmap.shape[1:]
         time_tmap.time_series_limit = time_series_limit
