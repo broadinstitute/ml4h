@@ -322,18 +322,17 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     tm = make_partners_dynamic_tensor_maps(module_string)
     if isinstance(tm, TensorMap):
         return tm
-
-    # if isinstance(module_string, str):
-    #     raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
+    if isinstance(module_string, str) == False:
+        raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
     if len(module_string) == 0:
         raise ValueError(f"Input name cannot be empty.")
     path_string = module_string
     if prefix:
-        # if isinstance(prefix, str):
-        #     raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
+        if isinstance(prefix, str) == False:
+            raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
         if len(prefix) == 0:
             raise ValueError(f"Prefix cannot be set to an emtpy string.")
-        path_string = '.'.join([prefix, module_string])
+        path_string = '.'.join([prefix,module_string])
     else:
         if '.'.join(path_string.split('.')[0:2]) != 'ml4cvd.tensormap':
             raise ValueError(f"TensorMaps must reside in the path 'ml4cvd.tensormap.*'. Given: {module_string}")
@@ -343,12 +342,11 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     except ModuleNotFoundError:
         raise ModuleNotFoundError(f"Could not resolve library {'.'.join(path_string.split('.')[:-1])} for target tensormap {module_string}")
     try:
-        tm = getattr(i, path_string.split('.')[-1])
+        tm = getattr(i,path_string.split('.')[-1])
     except AttributeError:
         raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
-
-    # if isinstance(tm, TensorMap):
-    #     raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
+    if isinstance(tm, TensorMap) == False:
+        raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
     return tm
 
 
