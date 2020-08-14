@@ -329,8 +329,8 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
         raise ValueError(f"Input name cannot be empty.")
     path_string = module_string
     if prefix:
-        if isinstance(prefix, str):
-            raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
+        # if isinstance(prefix, str):
+        #     raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
         if len(prefix) == 0:
             raise ValueError(f"Prefix cannot be set to an emtpy string.")
         path_string = '.'.join([prefix, module_string])
