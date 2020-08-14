@@ -10,7 +10,7 @@ from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import ZeroMeanStd1, Standardize
 from ml4cvd.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4cvd.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
-from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
+from ml4cvd.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES, MRI_LVOT_SEGMENTED_CHANNEL_MAP
 from ml4cvd.tensormap.general import get_tensor_at_first_date, normalized_first_date, pad_or_crop_array_to_shape
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
 
