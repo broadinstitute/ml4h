@@ -11,7 +11,6 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from ml4cvd.arguments import tensormap_lookup
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
