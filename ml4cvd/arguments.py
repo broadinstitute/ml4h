@@ -323,8 +323,8 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     if isinstance(tm, TensorMap):
         return tm
 
-    if isinstance(module_string, str):
-        raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
+    # if isinstance(module_string, str):
+    #     raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
     if len(module_string) == 0:
         raise ValueError(f"Input name cannot be empty.")
     path_string = module_string
