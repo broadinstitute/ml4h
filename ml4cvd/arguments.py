@@ -347,8 +347,8 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     except AttributeError:
         raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
 
-    if isinstance(tm, TensorMap):
-        raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
+    # if isinstance(tm, TensorMap):
+    #     raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
     return tm
 
 
