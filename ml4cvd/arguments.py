@@ -190,8 +190,8 @@ def parse_args():
              'If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
     )
     parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
-    parser.add_argument('--training_steps', default=400, type=int, help='Number of training batches to examine in an epoch.')
-    parser.add_argument('--validation_steps', default=40, type=int, help='Number of validation batches to examine in an epoch validation.')
+    parser.add_argument('--training_steps', default=72, type=int, help='Number of training batches to examine in an epoch.')
+    parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument(
