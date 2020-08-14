@@ -174,14 +174,6 @@ def evaluate_predictions(
             prefix=folder,
             data_split=data_split,
         )
-        plot_confusion_matrix(
-            prediction=y_predictions,
-            truth=y_truth,
-            labels=tm.channel_map,
-            title=title,
-            prefix=folder,
-            data_split=data_split,
-        )
         performance_metrics.update(
             plot_roc_per_class(
                 prediction=y_predictions,
@@ -193,6 +185,16 @@ def evaluate_predictions(
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
+        # only plot confusion matrix for non-binary tasks
+        if len(tm.channel_map) > 2:
+            plot_confusion_matrix(
+                prediction=y_predictions,
+                truth=y_truth,
+                labels=tm.channel_map,
+                title=title,
+                prefix=folder,
+                data_split=data_split,
+            )
     elif tm.is_categorical() and tm.static_axes() == 2:
         melt_shape = (
             y_predictions.shape[0] * y_predictions.shape[1],
