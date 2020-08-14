@@ -389,7 +389,13 @@ def evaluate_predictions(
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(
-                plot_scatter(prediction_flat, truth_flat, title, prefix=folder),
+                plot_scatter(
+                    prediction_flat,
+                    truth_flat,
+                    title,
+                    prefix=folder,
+                    data_split=data_split,
+                ),
             )
     elif tm.is_continuous():
         if tm.sentinel is not None:
@@ -402,6 +408,7 @@ def evaluate_predictions(
                 title,
                 prefix=folder,
                 paths=test_paths,
+                data_split=data_split,
             ),
         )
         scatters.append(
@@ -607,7 +614,7 @@ def plot_confusion_matrix(
         )
         cms.append(cm)
         cm_display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
-        cm_display.plot(cmap=plt.cm.Blues, ax=ax)
+        cm_display.plot(cmap=plt.cm.Blues, ax=ax, xticks_rotation="vertical")
         ax.set_title(matrix_title)
 
         cm_df = pd.DataFrame(
@@ -623,6 +630,7 @@ def plot_confusion_matrix(
     )
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
+    plt.tight_layout()
     plt.savefig(figure_path, bbox_inches="tight")
     plt.clf()
     logging.info("Saved confusion matrix at: {}".format(figure_path))
@@ -630,7 +638,7 @@ def plot_confusion_matrix(
 
 
 def plot_scatter(
-    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
+    prediction, truth, title, data_split, prefix, paths=None, top_k=3, alpha=0.5,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
@@ -687,7 +695,7 @@ def plot_scatter(
     sns.distplot(truth, label="Truth", color="b", ax=ax2)
     ax2.legend(loc="upper left")
 
-    figure_path = os.path.join(prefix, "scatter_" + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, f"scatter_{title}_{data_split}{IMAGE_EXT}")
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info("Try to save scatter plot at: {}".format(figure_path))

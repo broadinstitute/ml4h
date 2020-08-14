@@ -564,22 +564,27 @@ def get_verbose_stats_string(generators: Dict[str, TensorGenerator]) -> str:
         dataframes = _get_stats_as_dataframes_from_multiple_generators(generators)
     continuous_tm_df, categorical_tm_df, other_tm_df = dataframes
 
-    continuous_tm_string = (
-        f">>>>>>>>>> Continuous Tensor Maps\n{continuous_tm_df}"
-        if len(continuous_tm_df) != 0
-        else ""
-    )
-
-    categorical_tm_strings = []
-    for tm in categorical_tm_df.index.get_level_values("TensorMap").drop_duplicates():
-        tm_df = categorical_tm_df.loc[tm]
-        categorical_tm_strings.append(
-            f">>>>>>>>>> Categorical Tensor Map: [{tm}]\n{tm_df}",
+    with pd.option_context("display.max_columns", None, "display.max_rows", None):
+        continuous_tm_string = (
+            f">>>>>>>>>> Continuous Tensor Maps\n{continuous_tm_df}"
+            if len(continuous_tm_df) != 0
+            else ""
         )
 
-    other_tm_string = (
-        f">>>>>>>>>> Other Tensor Maps\n{other_tm_df}" if len(other_tm_df) != 0 else ""
-    )
+        categorical_tm_strings = []
+        for tm in categorical_tm_df.index.get_level_values(
+            "TensorMap",
+        ).drop_duplicates():
+            tm_df = categorical_tm_df.loc[tm]
+            categorical_tm_strings.append(
+                f">>>>>>>>>> Categorical Tensor Map: [{tm}]\n{tm_df}",
+            )
+
+        other_tm_string = (
+            f">>>>>>>>>> Other Tensor Maps\n{other_tm_df}"
+            if len(other_tm_df) != 0
+            else ""
+        )
 
     tensor_stats_string = "\n\n".join(
         [
