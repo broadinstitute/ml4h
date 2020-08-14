@@ -14,7 +14,7 @@ from ml4cvd.explorations import (
     explore,
     continuous_explore_header,
     categorical_explore_header,
-    tmap_requires_modification_for_explore,
+    _tmap_requires_modification_for_explore,
 )
 
 

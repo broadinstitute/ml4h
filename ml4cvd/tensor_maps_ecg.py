@@ -16,12 +16,19 @@ from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.TensorMap import (
     TensorMap,
     Interpretation,
-    RangeValidator,
     TimeSeriesOrder,
-    no_nans,
     decompress_data,
+    id_from_filename,
 )
 from ml4cvd.normalizer import Standardize
+from ml4cvd.validators import (
+    RangeValidator,
+    validator_no_empty,
+    validator_clean_mrn,
+    validator_no_negative,
+    validator_not_all_zero,
+    validator_voltage_no_zero_padding,
+)
 from ml4cvd.definitions import (
     STOP_CHAR,
     YEAR_DAYS,
@@ -30,18 +37,9 @@ from ml4cvd.definitions import (
     ECG_REST_AMP_LEADS,
     ECG_DATETIME_FORMAT,
     ECG_REST_INDEPENDENT_LEADS,
-    ECG_ZERO_PADDING_THRESHOLD,
-    CARDIAC_SURGERY_DATE_FORMAT,
-    CARDIAC_SURGERY_FEATURES_CSV,
-    CARDIAC_SURGERY_OUTCOMES_CSV,
-    CARDIAC_SURGERY_PREOPERATIVE_FEATURES,
 )
 
-TMAPS = dict()
-
-
-def _hd5_filename_to_mrn_int(filename: str) -> int:
-    return int(os.path.basename(filename).split(".")[0])
+tmaps: Dict[str, TensorMap] = {}
 
 
 def _get_ecg_dates(tm, hd5):
@@ -49,7 +47,7 @@ def _get_ecg_dates(tm, hd5):
     # keyed by the mrn, time series order, tmap shape
     if not hasattr(_get_ecg_dates, "mrn_lookup"):
         _get_ecg_dates.mrn_lookup = dict()
-    mrn = _hd5_filename_to_mrn_int(hd5.filename)
+    mrn = id_from_filename(hd5.filename)
     if (mrn, tm.time_series_order, tm.shape) in _get_ecg_dates.mrn_lookup:
         return _get_ecg_dates.mrn_lookup[(mrn, tm.time_series_order, tm.shape)]
 
@@ -73,38 +71,6 @@ def _get_ecg_dates(tm, hd5):
     dates.sort(reverse=True)
     _get_ecg_dates.mrn_lookup[(mrn, tm.time_series_order, tm.shape)] = dates
     return dates
-
-
-def validator_no_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if any(tensor == ""):
-        raise ValueError(
-            f"TensorMap {tm.name} failed empty string check on hd5 {hd5.filename}",
-        )
-
-
-def validator_no_negative(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if any(tensor < 0):
-        raise ValueError(
-            f"TensorMap {tm.name} failed non-negative check on hd5 {hd5.filename}",
-        )
-
-
-def validator_not_all_zero(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if np.count_nonzero(tensor) == 0:
-        raise ValueError(
-            f"TensorMap {tm.name} failed all-zero check on hd5 {hd5.filename}",
-        )
-
-
-def validator_voltage_no_zero_padding(
-    tm: TensorMap, tensor: np.ndarray, hd5: h5py.File,
-):
-    for cm, idx in tm.channel_map.items():
-        lead_length = tm.static_shape[-1]
-        lead = tensor[..., tm.channel_map[cm]]
-        num_zero = lead_length - np.count_nonzero(lead)
-        if num_zero > ECG_ZERO_PADDING_THRESHOLD * lead_length:
-            raise ValueError(f"Lead {cm} is zero-padded for ECG in {hd5.filename}")
 
 
 def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ...]]:
@@ -213,61 +179,6 @@ name2augmentations = {
 }
 
 
-# Generates ECG voltage TMaps that are given by the name format:
-#
-#       [12_lead_]ecg_{length}[_exact][_std][_augmentations]
-#
-# Required:
-#   length: the number of samples present in each lead.
-#
-# Optional:
-#   12_lead: use the 12 clinical leads.
-#   exact: only return voltages when the raw data has exactly {length} samples in each lead.
-#   std: standardize voltages using mean = 0, std = 2000.
-#   augmentations: apply crop, noise, and warp transformations to voltages.
-#
-# Examples:
-#
-#       valid: ecg_2500_exact_std
-#       valid: 12_lead_ecg_625_crop_warp
-#       invalid: ecg_2500_noise_std
-def build_ecg_voltage_tensor_map(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
-    name2tensormap = dict()
-    voltage_tm_pattern = re.compile(
-        r"^(12_lead_)?ecg_\d+(_exact)?(_std)?(_warp|_crop|_noise)*$",
-    )
-    for needed_name in needed_tensor_maps:
-        if voltage_tm_pattern.match(needed_name) is None:
-            continue
-
-        leads = (
-            ECG_REST_AMP_LEADS
-            if "12_lead" in needed_name
-            else ECG_REST_INDEPENDENT_LEADS
-        )
-        length = int(needed_name.split("ecg_")[1].split("_")[0])
-        exact = "exact" in needed_name
-        normalization = Standardize(mean=0, std=2000) if "std" in needed_name else None
-        augmentations = [
-            augment_function
-            for augment_option, augment_function in name2augmentations.items()
-            if augment_option in needed_name
-        ]
-
-        name2tensormap[needed_name] = TensorMap(
-            name=needed_name,
-            shape=(None, length, len(leads)),
-            path_prefix=ECG_PREFIX,
-            tensor_from_file=make_voltage(exact),
-            normalization=normalization,
-            channel_map=leads,
-            time_series_limit=0,
-            validator=validator_voltage_no_zero_padding,
-            augmentations=augmentations,
-        )
-    return name2tensormap
-
-
 def voltage_stat(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -296,7 +207,7 @@ def voltage_stat(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS["ecg_voltage_stats"] = TensorMap(
+tmaps["ecg_voltage_stats"] = TensorMap(
     "ecg_voltage_stats",
     shape=(None, 5),
     path_prefix=ECG_PREFIX,
@@ -326,7 +237,7 @@ def make_voltage_attr(volt_attr: str = ""):
     return get_voltage_attr_from_file
 
 
-TMAPS["voltage_len"] = TensorMap(
+tmaps["voltage_len"] = TensorMap(
     "voltage_len",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -394,7 +305,7 @@ def ecg_datetime(tm, hd5, dependents={}):
 
 
 tmap_name = "ecg_datetime"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -408,7 +319,7 @@ TMAPS[tmap_name] = TensorMap(
 def make_voltage_len_categorical_tmap(
     lead, channel_prefix="_", channel_unknown="other",
 ):
-    def _tensor_from_file(tm, hd5, dependents={}):
+    def tensor_from_file(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=float)
@@ -442,12 +353,12 @@ def make_voltage_len_categorical_tmap(
                 )
         return tensor
 
-    return _tensor_from_file
+    return tensor_from_file
 
 
 for lead in ECG_REST_AMP_LEADS:
     tmap_name = f"lead_{lead}_len"
-    TMAPS[tmap_name] = TensorMap(
+    tmaps[tmap_name] = TensorMap(
         name=tmap_name,
         interpretation=Interpretation.CATEGORICAL,
         path_prefix=ECG_PREFIX,
@@ -540,7 +451,7 @@ def make_language_tensor(key: str):
 
 
 tmap_name = "ecg_read_md"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -552,7 +463,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_read_pc"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -564,7 +475,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_patientid"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -575,12 +486,8 @@ TMAPS[tmap_name] = TensorMap(
 )
 
 
-def validator_clean_mrn(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    int(tensor)
-
-
 tmap_name = "ecg_patientid_clean"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -592,7 +499,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_firstname"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -604,7 +511,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_lastname"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -616,7 +523,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sex"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -627,7 +534,7 @@ TMAPS[tmap_name] = TensorMap(
 )
 
 tmap_name = "ecg_date"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -639,7 +546,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_time"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -651,7 +558,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sitename"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -663,7 +570,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_location"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -675,7 +582,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_dob"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.LANGUAGE,
     path_prefix=ECG_PREFIX,
@@ -742,7 +649,7 @@ def make_sampling_frequency_from_file(
 # sampling frequency without any suffix calculates the sampling frequency directly from the voltage array
 # other metadata that are reported by the muse system are unreliable
 tmap_name = "ecg_sampling_frequency"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -754,7 +661,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_pc"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -766,7 +673,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_md"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -778,7 +685,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_lead"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -790,7 +697,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_continuous"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -802,7 +709,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_pc_continuous"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -814,7 +721,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_md_continuous"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -826,7 +733,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_sampling_frequency_lead_continuous"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -838,7 +745,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_time_resolution"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -852,7 +759,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_amplitude_resolution"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -866,7 +773,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_measurement_filter"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -880,7 +787,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_high_pass_filter"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -892,7 +799,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_low_pass_filter"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -904,7 +811,7 @@ TMAPS[tmap_name] = TensorMap(
 
 
 tmap_name = "ecg_ac_filter"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -960,7 +867,7 @@ for interval, (key, fill, validator, normalization) in interval_key_map.items():
     for suffix in ["_md", "_pc"]:
         name = f"{interval}{suffix}"
         _key = f"{key}{suffix}"
-        TMAPS[name] = TensorMap(
+        tmaps[name] = TensorMap(
             name,
             interpretation=Interpretation.CONTINUOUS,
             path_prefix=ECG_PREFIX,
@@ -974,7 +881,7 @@ for interval, (key, fill, validator, normalization) in interval_key_map.items():
 
 
 tmap_name = "ecg_weight_lbs"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -1018,7 +925,7 @@ def get_ecg_age_from_hd5(tm, hd5, dependents={}):
 
 
 tmap_name = "ecg_age"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     path_prefix=ECG_PREFIX,
     loss="logcosh",
@@ -1029,7 +936,7 @@ TMAPS[tmap_name] = TensorMap(
 )
 
 tmap_name = "ecg_age_std"
-TMAPS[tmap_name] = TensorMap(
+tmaps[tmap_name] = TensorMap(
     name=tmap_name,
     path_prefix=ECG_PREFIX,
     loss="logcosh",
@@ -1039,80 +946,6 @@ TMAPS[tmap_name] = TensorMap(
     validator=RangeValidator(0, 120),
     normalization=Standardize(mean=65, std=16),
 )
-
-
-# Build TensorMaps which binarize a continuous value returned by an existing tensor map
-# The following TMaps would both successfully be returned by this function:
-#   ecg_age_binary_70
-#   ecg_age_binary_70_newest
-def build_binary_tensor_map(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
-    name2tensormap = dict()
-    for needed_name in needed_tensor_maps:
-        if "_binary_" not in needed_name:
-            continue
-
-        # ecg_age_binary_70_newest is split into [ecg_age, 70_newest]
-        base_name, modifications = needed_name.split("_binary_")
-        if base_name not in TMAPS:
-            logging.debug(f"Base for binary TMap {needed_name} not found in ECG TMaps.")
-            continue
-
-        if "_newest" in modifications:
-            base_name += "_newest"
-        elif "_oldest" in modifications:
-            base_name += "_oldest"
-        elif "_random" in modifications:
-            base_name += "_random"
-        TMAPS.update(build_ecg_time_series_tensor_maps([base_name]))
-        base_tm = TMAPS[base_name]
-        threshold = float(modifications.split("_")[0])
-
-        if (
-            not base_tm.is_continuous()
-            or base_tm.static_axes() != 1
-            or base_tm.static_shape[0] != 1
-        ):
-            logging.warning(
-                f"Can only binarize TMap which returns one continuous value. Cannot binarize {base_name}.",
-            )
-
-        def binary_tensor_from_file(tm, hd5, dependents={}):
-            dynamic, _ = _is_dynamic_shape(tm, 1)
-            values = base_tm.tensor_from_file(base_tm, hd5)
-
-            def _binarize(value):
-                if (
-                    isinstance(base_tm.validator, RangeValidator)
-                    and not base_tm.validator.minimum
-                    < value
-                    < base_tm.validator.maximum
-                ):
-                    return [0, 0]
-                elif value <= threshold:
-                    return [1, 0]
-                elif value > threshold:
-                    return [0, 1]
-                else:
-                    logging.debug(
-                        f"Could not binarize value {value} with {threshold} in hd5 {hd5.filename}",
-                    )
-                    return [0, 0]
-
-            return np.apply_along_axis(_binarize, 1 if dynamic else 0, values)
-
-        name2tensormap[needed_name] = TensorMap(
-            name=needed_name,
-            interpretation=Interpretation.CATEGORICAL,
-            path_prefix=ECG_PREFIX,
-            tensor_from_file=binary_tensor_from_file,
-            channel_map={"less_or_equal": 0, "greater": 1},
-            time_series_limit=base_tm.time_series_limit,
-            time_series_order=base_tm.time_series_order,
-            time_series_lookup=base_tm.time_series_lookup,
-            validator=validator_not_all_zero,
-        )
-
-    return name2tensormap
 
 
 def ecg_acquisition_year(tm, hd5, dependents={}):
@@ -1129,7 +962,7 @@ def ecg_acquisition_year(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS["ecg_acquisition_year"] = TensorMap(
+tmaps["ecg_acquisition_year"] = TensorMap(
     "ecg_acquisition_year",
     path_prefix=ECG_PREFIX,
     loss="logcosh",
@@ -1162,7 +995,7 @@ def ecg_bmi(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS["ecg_bmi"] = TensorMap(
+tmaps["ecg_bmi"] = TensorMap(
     "ecg_bmi",
     path_prefix=ECG_PREFIX,
     channel_map={"bmi": 0},
@@ -1219,7 +1052,7 @@ def ecg_channel_string(hd5_key, race_synonyms={}, unspecified_key=None):
 
 
 race_synonyms = {"asian": ["oriental"], "hispanic": ["latino"], "white": ["caucasian"]}
-TMAPS["ecg_race"] = TensorMap(
+tmaps["ecg_race"] = TensorMap(
     "ecg_race",
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -1270,7 +1103,7 @@ def _ecg_adult(hd5_key, minimum_age=18):
     return tensor_from_string
 
 
-TMAPS["ecg_adult_sex"] = TensorMap(
+tmaps["ecg_adult_sex"] = TensorMap(
     "ecg_adult_sex",
     interpretation=Interpretation.CATEGORICAL,
     path_prefix=ECG_PREFIX,
@@ -1295,7 +1128,7 @@ def voltage_zeros(tm, hd5, dependents={}):
     return tensor
 
 
-TMAPS["voltage_zeros"] = TensorMap(
+tmaps["voltage_zeros"] = TensorMap(
     "voltage_zeros",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=ECG_PREFIX,
@@ -1306,442 +1139,5 @@ TMAPS["voltage_zeros"] = TensorMap(
 )
 
 
-def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    voltage = decompress_data(
-        data_compressed=hd5["V6"][()], dtype=hd5["V6"].attrs["dtype"],
-    )
-    if np.count_nonzero(voltage == 0) > 10:
-        raise ValueError(f"TensorMap {tm.name} has too many zeros in V6.")
-
-
-def build_ecg_time_series_tensor_maps(
-    needed_tensor_maps: List[str], time_series_limit: Optional[int] = None,
-) -> Dict[str, TensorMap]:
-    """Given a list of needed tensor maps, e.g. ["ecg_age_newest"], finds the base tmap
-    e.g. "ecg_age", and creates a new tmap with the name of the needed tmap. This new
-    tmap will have the correct time_series_order and shape, but otherwise inherets all
-    properties from the base tmap.
-    """
-
-    name2tensormap: Dict[str:TensorMap] = {}
-
-    for needed_name in needed_tensor_maps:
-        if needed_name.endswith("_newest"):
-            base_split = "_newest"
-            time_series_order = TimeSeriesOrder.NEWEST
-        elif needed_name.endswith("_oldest"):
-            base_split = "_oldest"
-            time_series_order = TimeSeriesOrder.OLDEST
-        elif needed_name.endswith("_random"):
-            base_split = "_random"
-            time_series_order = TimeSeriesOrder.RANDOM
-        else:
-            continue
-
-        base_name = needed_name.split(base_split)[0]
-        if base_name not in TMAPS:
-            TMAPS.update(build_ecg_voltage_tensor_map([base_name]))
-            if base_name not in TMAPS:
-                continue
-
-        time_tmap = copy.deepcopy(TMAPS[base_name])
-        time_tmap.name = needed_name
-        if time_series_limit is None:
-            time_tmap.shape = time_tmap.static_shape
-        time_tmap.time_series_limit = time_series_limit
-        time_tmap.time_series_order = time_series_order
-        time_tmap.metrics = None
-        time_tmap.infer_metrics()
-
-        name2tensormap[needed_name] = time_tmap
-    return name2tensormap
-
-
 def _ecg_str2date(d) -> datetime.date:
     return datetime.datetime.strptime(d, ECG_DATE_FORMAT).date()
-
-
-def _cardiac_surgery_str2date(
-    input_date: str, date_format: str = CARDIAC_SURGERY_DATE_FORMAT,
-) -> datetime.datetime:
-    return datetime.datetime.strptime(input_date, date_format)
-
-
-def _outcome_channels(outcome: str):
-    return {f"no_{outcome}": 0, f"{outcome}": 1}
-
-
-def build_ecg_tensor_maps(needed_tensor_maps: List[str]) -> Dict[str, TensorMap]:
-    name2tensormap: Dict[str, TensorMap] = {}
-    diagnosis2column = {
-        "atrial_fibrillation": "first_af",
-        "blood_pressure_medication": "first_bpmed",
-        "coronary_artery_disease": "first_cad",
-        "cardiovascular_disease": "first_cvd",
-        "death": "death_date",
-        "diabetes_mellitus": "first_dm",
-        "heart_failure": "first_hf",
-        "hypertension": "first_htn",
-        "left_ventricular_hypertrophy": "first_lvh",
-        "myocardial_infarction": "first_mi",
-        "pulmonary_artery_disease": "first_pad",
-        "stroke": "first_stroke",
-        "valvular_disease": "first_valvular_disease",
-    }
-    logging.info(f"needed name {needed_tensor_maps}")
-    for diagnosis in diagnosis2column:
-        # Build diagnosis classification TensorMaps
-        name = f"diagnosis_{diagnosis}"
-        if name in needed_tensor_maps:
-            tensor_from_file_fxn = build_incidence_tensor_from_file(
-                INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis],
-            )
-            name2tensormap[name] = TensorMap(
-                f"{name}_newest",
-                Interpretation.CATEGORICAL,
-                path_prefix=ECG_PREFIX,
-                channel_map=_diagnosis_channels(diagnosis),
-                tensor_from_file=tensor_from_file_fxn,
-            )
-        name = f"incident_diagnosis_{diagnosis}"
-        if name in needed_tensor_maps:
-            tensor_from_file_fxn = build_incidence_tensor_from_file(
-                INCIDENCE_CSV,
-                diagnosis_column=diagnosis2column[diagnosis],
-                incidence_only=True,
-            )
-            name2tensormap[name] = TensorMap(
-                f"{name}_newest",
-                Interpretation.CATEGORICAL,
-                path_prefix=ECG_PREFIX,
-                channel_map=_diagnosis_channels(diagnosis, incidence_only=True),
-                tensor_from_file=tensor_from_file_fxn,
-            )
-
-        # Build time to event TensorMaps
-        name = f"cox_{diagnosis}"
-        if name in needed_tensor_maps:
-            tff = loyalty_time_to_event(
-                INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis],
-            )
-            name2tensormap[name] = TensorMap(
-                f"{name}_newest",
-                Interpretation.TIME_TO_EVENT,
-                path_prefix=ECG_PREFIX,
-                tensor_from_file=tff,
-            )
-        name = f"incident_cox_{diagnosis}"
-        if name in needed_tensor_maps:
-            tff = loyalty_time_to_event(
-                INCIDENCE_CSV,
-                diagnosis_column=diagnosis2column[diagnosis],
-                incidence_only=True,
-            )
-            name2tensormap[name] = TensorMap(
-                f"{name}_newest",
-                Interpretation.TIME_TO_EVENT,
-                path_prefix=ECG_PREFIX,
-                tensor_from_file=tff,
-            )
-
-        # Build survival curve TensorMaps
-        for needed_name in needed_tensor_maps:
-            if "survival" not in needed_name:
-                continue
-            potential_day_string = needed_name.split("_")[-1]
-            try:
-                days_window = int(potential_day_string)
-            except ValueError:
-                days_window = 1825  # Default to 5 years of follow up
-            name = f"survival_{diagnosis}"
-            if name in needed_name:
-                tff = _survival_from_file(
-                    days_window,
-                    INCIDENCE_CSV,
-                    diagnosis_column=diagnosis2column[diagnosis],
-                )
-                name2tensormap[needed_name] = TensorMap(
-                    f"{needed_name}_newest",
-                    Interpretation.SURVIVAL_CURVE,
-                    path_prefix=ECG_PREFIX,
-                    shape=(50,),
-                    days_window=days_window,
-                    tensor_from_file=tff,
-                )
-            name = f"incident_survival_{diagnosis}"
-            if name in needed_name:
-                tff = _survival_from_file(
-                    days_window,
-                    INCIDENCE_CSV,
-                    diagnosis_column=diagnosis2column[diagnosis],
-                    incidence_only=True,
-                )
-                name2tensormap[needed_name] = TensorMap(
-                    f"{needed_name}_newest",
-                    Interpretation.SURVIVAL_CURVE,
-                    path_prefix=ECG_PREFIX,
-                    shape=(50,),
-                    days_window=days_window,
-                    tensor_from_file=tff,
-                )
-    logging.info(f"return names {list(name2tensormap.keys())}")
-    return name2tensormap
-
-
-def build_cardiac_surgery_dict(
-    filename: str = CARDIAC_SURGERY_OUTCOMES_CSV,
-    patient_column: str = "medrecn",
-    date_column: str = "surgdt",
-    additional_columns: List[str] = [],
-) -> Dict[int, Dict[str, Union[int, str]]]:
-    keys = [date_column] + additional_columns
-    cardiac_surgery_dict = {}
-    df = pd.read_csv(
-        filename, low_memory=False, usecols=[patient_column] + keys,
-    ).sort_values(by=[patient_column, date_column])
-    # sort dataframe such that newest surgery per patient appears later and is used
-    # in lookup table
-    for row in df.itertuples():
-        patient_key = getattr(row, patient_column)
-        cardiac_surgery_dict[patient_key] = {key: getattr(row, key) for key in keys}
-    return cardiac_surgery_dict
-
-
-def build_date_interval_lookup(
-    cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]],
-    start_column: str = "surgdt",
-    start_offset: int = -30,
-    end_column: str = "surgdt",
-    end_offset: int = 0,
-) -> Dict[int, Tuple[str, str]]:
-    date_interval_lookup = {}
-    for mrn in cardiac_surgery_dict:
-        start_date = (
-            _cardiac_surgery_str2date(
-                cardiac_surgery_dict[mrn][start_column],
-                ECG_DATETIME_FORMAT.replace("T", " "),
-            )
-            + datetime.timedelta(days=start_offset)
-        ).strftime(ECG_DATETIME_FORMAT)
-        end_date = (
-            _cardiac_surgery_str2date(
-                cardiac_surgery_dict[mrn][end_column],
-                ECG_DATETIME_FORMAT.replace("T", " "),
-            )
-            + datetime.timedelta(days=end_offset)
-        ).strftime(ECG_DATETIME_FORMAT)
-        date_interval_lookup[mrn] = (start_date, end_date)
-    return date_interval_lookup
-
-
-def make_cardiac_surgery_categorical_tensor_from_file(
-    cardiac_surgery_dict: Dict[int, Dict[str, Union[int, str]]],
-    feature_column: str,
-    positive_value: int = 1,
-    negative_value: int = 0,
-) -> Callable:
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
-        mrn = _hd5_filename_to_mrn_int(hd5.filename)
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        feature = cardiac_surgery_dict[mrn][feature_column]
-
-        if type(feature) is float and not feature.is_integer():
-            raise ValueError(
-                f"Cardiac Surgery categorical outcome {tm.name} ({feature_column}) got"
-                f" non-discrete value: {feature}",
-            )
-
-        # ensure binary outcome
-        if feature not in {negative_value, positive_value}:
-            raise ValueError(
-                f"Cardiac Surgery categorical outcome {tm.name} ({feature_column}) got"
-                f" non-binary value: {feature}",
-            )
-
-        if feature == positive_value:
-            idx = 1
-        elif feature == negative_value:
-            idx = 0
-        else:
-            raise ValueError(
-                f"Cardiac Surgery feature {feature_column} got value {feature} that does not match positive or negative label values {positive_value} or {negative_value}",
-            )
-        tensor[idx] = 1
-        return tensor
-
-    return tensor_from_file
-
-
-def make_cardiac_surgery_feature_tensor_from_file(
-    cardiac_surgery_dict: Dict[int, Dict[str, float]],
-) -> Callable:
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
-        mrn = _hd5_filename_to_mrn_int(hd5.filename)
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for feature, idx in tm.channel_map.items():
-            tensor[idx] = cardiac_surgery_dict[mrn][feature]
-        return tensor
-
-    return tensor_from_file
-
-
-def build_cardiac_surgery_tensor_maps(
-    needed_tensor_maps: List[str],
-) -> Dict[str, TensorMap]:
-    """
-    Create tmaps for the Society of Thoracic Surgeons (STS) project.
-    Tensor Maps returned by this function fall into two categories:
-     1. cardiac surgery outcomes defined by the outcome tmaps defined below.
-        The outcome tmaps can be loaded to use a weighted loss function
-        by appending '_weighted_loss_x' to the end of the outcome tmap name
-        where the weight of the negative outcome (e.g. no_death) remains 1.0
-        and the weight of the positive outcome (e.g. death) = float(x).
-        examples of valid tmaps in category 1:
-            'sts_death'
-            'sts_death_weighted_loss_2'
-            'sts_death_weighted_loss_25.7'
-     2. ecg tensors defined by any of the tmaps defined at top level in this file,
-        including dynamically generated time series tmaps like '_newest', '_oldest', '_random' tmaps.
-        The ecg tmaps are modified to only load tensors within a given time window
-        defined relative to the surgery date. The modification is made by appending
-        '_sts' to the end of the ecg tensor name.
-        examples of valid tmaps in category 2:
-            'ecg_2500_std_newest_sts'
-            'ecg_datetime_oldest_sts'
-            'ecg_age_sts'
-
-    :param needed_tensor_maps: A list of tmap names to try to create tensor map objects for
-    :return: A dictionary of tmap names to tensor map objects
-    """
-    name2tensormap: Dict[str, TensorMap] = {}
-    if not any("sts" in needed_name for needed_name in needed_tensor_maps):
-        return name2tensormap
-
-    outcome2column = {
-        "sts_death": "mtopd",
-        "sts_stroke": "cnstrokp",
-        "sts_renal_failure": "crenfail",
-        "sts_prolonged_ventilation": "cpvntlng",
-        "sts_dsw_infection": "deepsterninf",
-        "sts_reoperation": "reop",
-        "sts_any_morbidity": "anymorbidity",
-        "sts_long_stay": "llos",
-    }
-
-    needed_outcome_columns = {}
-    for needed_name in needed_tensor_maps:
-        for outcome, column in outcome2column.items():
-            if outcome in needed_name:
-                needed_outcome_columns[needed_name] = column
-    cardiac_surgery_dict = build_cardiac_surgery_dict(
-        additional_columns=list(needed_outcome_columns.values()),
-    )
-    date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
-
-    for needed_name in needed_tensor_maps:
-        if needed_name in needed_outcome_columns:
-            clean_name = needed_name.replace(".", "_")
-            channel_map = _outcome_channels(clean_name)
-            loss_function = None
-            if "_weighted_loss_" in needed_name:
-                positive_outcome_weight = float(needed_name.split("_weighted_loss_")[1])
-                loss_function = weighted_crossentropy(
-                    [1.0, positive_outcome_weight], clean_name,
-                )
-            sts_tmap = TensorMap(
-                clean_name,
-                Interpretation.CATEGORICAL,
-                path_prefix=ECG_PREFIX,
-                tensor_from_file=make_cardiac_surgery_categorical_tensor_from_file(
-                    cardiac_surgery_dict, needed_outcome_columns[needed_name],
-                ),
-                channel_map=channel_map,
-                validator=validator_not_all_zero,
-                loss=loss_function,
-            )
-        else:
-            if not needed_name.endswith("_sts"):
-                continue
-
-            base_name = needed_name.split("_sts")[0]
-            if base_name not in TMAPS:
-                TMAPS.update(build_ecg_time_series_tensor_maps([base_name]))
-                if base_name not in TMAPS:
-                    continue
-
-            sts_tmap = copy.deepcopy(TMAPS[base_name])
-            sts_tmap.name = needed_name
-            sts_tmap.time_series_lookup = date_interval_lookup
-
-        name2tensormap[needed_name] = sts_tmap
-
-    name2tensormap.update(
-        build_extended_cardiac_surgery_tensor_maps(needed_tensor_maps),
-    )
-    return name2tensormap
-
-
-def build_extended_cardiac_surgery_tensor_maps(
-    needed_tensor_maps: List[str],
-    filename: str = CARDIAC_SURGERY_FEATURES_CSV,
-    patient_column: str = "medrecn",
-    date_column: str = "surgdt",
-) -> Dict[str, TensorMap]:
-    name2tensormap = dict()
-    cardiac_surgery_dict = None
-
-    def _get_dict():
-        nonlocal cardiac_surgery_dict
-        if cardiac_surgery_dict is None:
-            cardiac_surgery_dict = (
-                pd.read_csv(filename)
-                .sort_values([patient_column, date_column])
-                .drop_duplicates(patient_column, keep="last")
-                .set_index(patient_column)
-                .to_dict("index")
-            )
-        return cardiac_surgery_dict
-
-    for needed_name in needed_tensor_maps:
-        if needed_name == "sts_preop":
-            tff = make_cardiac_surgery_feature_tensor_from_file(_get_dict())
-            channel_map = CARDIAC_SURGERY_PREOPERATIVE_FEATURES
-            validator = no_nans
-        elif needed_name == "sts_bypass_time":
-            tff = make_cardiac_surgery_feature_tensor_from_file(_get_dict())
-            channel_map = {"perfustm": 0}
-            validator = no_nans
-        elif needed_name == "sts_crossclamp_time":
-            tff = make_cardiac_surgery_feature_tensor_from_file(_get_dict())
-            channel_map = {"xclamptm": 0}
-            validator = no_nans
-        elif needed_name == "sts_cabg":
-            tff = make_cardiac_surgery_categorical_tensor_from_file(
-                cardiac_surgery_dict=_get_dict(),
-                feature_column="opcab",
-                positive_value=1,
-                negative_value=2,
-            )
-            channel_map = _outcome_channels("cabg")
-            validator = validator_not_all_zero
-        elif needed_name == "sts_valve":
-            tff = make_cardiac_surgery_categorical_tensor_from_file(
-                cardiac_surgery_dict=_get_dict(),
-                feature_column="opvalve",
-                positive_value=1,
-                negative_value=2,
-            )
-            channel_map = _outcome_channels("valve")
-            validator = validator_not_all_zero
-        else:
-            continue
-
-        name2tensormap[needed_name] = TensorMap(
-            needed_name,
-            Interpretation.CONTINUOUS,
-            path_prefix=ECG_PREFIX,
-            tensor_from_file=tff,
-            channel_map=channel_map,
-            validator=validator,
-        )
-    return name2tensormap

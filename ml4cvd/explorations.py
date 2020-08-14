@@ -17,8 +17,7 @@ import seaborn as sns
 
 # Imports: first party
 from ml4cvd.plots import SUBPLOT_SIZE, _find_negative_label_index
-from ml4cvd.arguments import _get_tmap
-from ml4cvd.TensorMap import TensorMap, Interpretation
+from ml4cvd.TensorMap import TensorMap, Interpretation, update_tmaps
 from ml4cvd.definitions import IMAGE_EXT
 from ml4cvd.tensor_generators import TensorGenerator, train_valid_test_tensor_generators
 
@@ -60,26 +59,24 @@ def explore(args):
     ):
         ref_cols.append(args.explore_stratify_label)
 
-    # Build needed TMaps that are not in args.tensor_maps_in, and update args
-    if src_join is not None:
-        for tm_to_add in src_join:
-            if tm_to_add not in [tm.name for tm in args.tensor_maps_in]:
-                logging.info(f"Building and adding {tm_to_add} TMap")
-                tmap = _get_tmap(name=tm_to_add, needed_tensor_maps=src_join)
-                args.tensor_maps_in.append(tmap)
-    if src_time is not None:
-        if src_time not in [tm.name for tm in args.tensor_maps_in]:
-            logging.info(f"Building and adding {src_time} TMap")
-            tmap = _get_tmap(name=src_time, needed_tensor_maps=src_time)
-            args.tensor_maps_in.append(tmap)
+    tmaps = {tm.name: tm for tm in args.tensor_maps_in}
 
-    # Get TMaps from args and modify if necessary
-    tmaps = [
-        _modify_tmap_to_return_mean(tm)
-        if tmap_requires_modification_for_explore(tm)
-        else tm
-        for tm in args.tensor_maps_in
-    ]
+    # Ensure cross reference tensor maps are included in input_tensors
+    if src_join is not None:
+        for tmap_name in src_join:
+            if tmap_name not in tmaps:
+                raise ValueError(f"{tmap_name} not found in tmaps")
+    if src_time is not None:
+        if src_time not in tmaps:
+            raise ValueError(f"{tmap_name} not found in tmaps")
+
+    # Wipe tmaps dict, iterate through needed tmaps, and modify if necessary
+    updated_tmaps = {}
+    for tm_name, tm in tmaps.items():
+        if _tmap_requires_modification_for_explore(tm):
+            tm = _modify_tmap_to_return_mean(tm)
+        updated_tmaps[tm_name] = tm
+    tmaps = updated_tmaps
 
     df = _tensors_to_df(
         tensor_maps_in=tmaps,
@@ -1051,7 +1048,7 @@ def _modify_tmap_to_return_mean(tmap: TensorMap) -> TensorMap:
     return new_tm
 
 
-def tmap_requires_modification_for_explore(tm: TensorMap) -> bool:
+def _tmap_requires_modification_for_explore(tm: TensorMap) -> bool:
     """Whether a tmap has to be modified to be used in explore"""
     if tm.is_continuous():
         return tm.static_shape != (1,)

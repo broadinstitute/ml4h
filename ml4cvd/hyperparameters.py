@@ -16,15 +16,14 @@ from skimage.filters import threshold_otsu
 # Imports: first party
 from ml4cvd.plots import plot_metric_history
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model
-from ml4cvd.arguments import _get_tmap, parse_args
+from ml4cvd.arguments import parse_args
+from ml4cvd.TensorMap import TensorMap, update_tmaps
 from ml4cvd.definitions import IMAGE_EXT, MODEL_EXT, Arguments
 from ml4cvd.evaluations import predict_and_evaluate
-from ml4cvd.tensor_maps_ecg import (
-    TMAPS,
-    build_cardiac_surgery_tensor_maps,
-    build_ecg_time_series_tensor_maps,
+from ml4cvd.tensor_generators import (
+    big_batch_from_minibatch_generator,
+    train_valid_test_tensor_generators,
 )
-from ml4cvd.tensor_generators import train_valid_test_tensor_generators
 
 # fmt: off
 # need matplotlib -> Agg -> pyplot
@@ -77,28 +76,27 @@ def hyperoptimize(args: argparse.Namespace):
     )
     learning_rate_sets = [0.0002, 0.0001, 0.00005, 0.00002]
 
+    # Initialize empty dict of tmaps
+    tmaps: Dict[str, TensorMap] = {}
+
     # Generate weighted loss tmaps for STS death
     weighted_losses = [val for val in range(1, 12, 4)]
     output_tensors_sets = _generate_weighted_loss_tmaps(
         base_tmap_name="sts_death", weighted_losses=weighted_losses,
     )
-    for name in output_tensors_sets:
-        if name not in TMAPS:
-            _get_tmap(name, output_tensors_sets)
+    for tmap_name in output_tensors_sets:
+        tmaps = update_tmaps(tmap_name=tmap_name, tmaps=tmaps)
 
     # Input tensors maps with data augmentation and 8 vs. 12 leads
-    input_tensor_map_sets = [
+    input_tmap_sets = [
         ["ecg_2500_std_newest_sts", "ecg_age_std_newest_sts", "ecg_sex_newest_sts"],
     ]
-
-    for input_tensors in input_tensor_map_sets:
-        if type(input_tensors) == list:
-            for name in input_tensors:
-                if name not in TMAPS:
-                    _get_tmap(name, input_tensors)
-        elif type(input_tensors) == str:
-            if input_tensors not in TMAPS:
-                _get_tmap(name, [input_tensors])
+    for tmap_name_or_list in input_tmap_sets:
+        if isinstance(tmap_name_or_list, list):
+            for tmap_name in tmap_name_or_list:
+                tmaps = update_tmaps(tmap_name=tmap_name, tmaps=tmaps)
+        elif isinstance(tmap_name_or_list, str):
+            tmaps = update_tmaps(tmap_name=tmap_name_or_list, tmaps=tmaps)
 
     space = {
         # "block_size": hp.choice("block_size", block_size_sets),
@@ -109,7 +107,7 @@ def hyperoptimize(args: argparse.Namespace):
         # "dense_layers": hp.choice("dense_layers", dense_layers_sets),
         # "dropout": hp.choice("dropout", dropout_sets),
         # "output_tensors": hp.choice("output_tensors", output_tensors_sets),
-        # "input_tensors": hp.choice("input_tensors", input_tensor_map_sets),
+        # "input_tensors": hp.choice("input_tensors", input_tmap_sets),
         # "learning_rate": hp.choice("learning_rate", learning_rate_sets),
         # "conv_regularize": hp.choice("conv_regularize", conv_regularize_sets),
         "pool_type": hp.choice("pool_type", pool_types),
@@ -124,7 +122,7 @@ def hyperoptimize(args: argparse.Namespace):
         # "dropout": dropout_sets,
         # "output_tensors": output_tensors_sets,
         # "conv_regularize": conv_regularize_sets,
-        # "input_tensors": input_tensor_map_sets,
+        # "input_tensors": input_tmap_sets,
         # "learning_rate": learning_rate_sets,
         "pool_type": pool_types,
     }
@@ -297,8 +295,8 @@ def set_args_from_x(args: argparse.Namespace, x: Arguments):
                 args.__dict__[k] = x[k]
             logging.info(f"value in args is now: {args.__dict__[k]}\n")
     logging.info(f"Set arguments to: {args}")
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    args.tensor_maps_in = [tmaps[it] for it in args.input_tensors]
+    args.tensor_maps_out = [tmaps[ot] for ot in args.output_tensors]
 
 
 def _ensure_even_number(num: int) -> int:

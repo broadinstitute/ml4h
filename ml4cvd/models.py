@@ -85,13 +85,7 @@ from ml4cvd.plots import plot_metric_history
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
-from ml4cvd.definitions import (
-    IMAGE_EXT,
-    MODEL_EXT,
-    ECG_CHAR_2_IDX,
-    PARTNERS_READ_TEXT,
-    PARTNERS_CHAR_2_IDX,
-)
+from ml4cvd.definitions import IMAGE_EXT, MODEL_EXT, ECG_READ_TEXT
 from ml4cvd.tensor_generators import TensorGenerator
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
@@ -1818,60 +1812,6 @@ def _gradients_from_output(model, output_layer, output_index):
     )  # normalization trick: we normalize the gradient
     iterate = K.function([input_tensor], [x, grads])
     return iterate
-
-
-def _get_tensor_maps_for_characters(
-    tensor_maps_in: List[TensorMap],
-    base_model: Model,
-    language_layer: str,
-    language_prefix: str,
-    embed_name="embed",
-    embed_size=64,
-    burn_in=100,
-):
-    embed_model = make_hidden_layer_model(base_model, tensor_maps_in, embed_name)
-    tm_embed = TensorMap(
-        embed_name,
-        shape=(embed_size,),
-        interpretation=Interpretation.EMBEDDING,
-        parents=tensor_maps_in.copy(),
-        model=embed_model,
-    )
-
-    if PARTNERS_READ_TEXT in language_layer:
-        tm_char = TensorMap(
-            f"{language_layer}{LANGUAGE_MODEL_SUFFIX}",
-            Interpretation.LANGUAGE,
-            shape=(len(PARTNERS_CHAR_2_IDX),),
-            channel_map=PARTNERS_CHAR_2_IDX,
-            cacheable=False,
-        )
-        tm_burn_in = TensorMap(
-            language_layer,
-            Interpretation.LANGUAGE,
-            shape=(burn_in, len(PARTNERS_CHAR_2_IDX)),
-            path_prefix=language_prefix,
-            dependent_map=tm_char,
-            cacheable=False,
-        )
-    else:
-        tm_char = TensorMap(
-            f"{language_layer}{LANGUAGE_MODEL_SUFFIX}",
-            Interpretation.LANGUAGE,
-            shape=(len(ECG_CHAR_2_IDX),),
-            channel_map=ECG_CHAR_2_IDX,
-            cacheable=False,
-        )
-        tm_burn_in = TensorMap(
-            language_layer,
-            Interpretation.LANGUAGE,
-            shape=(burn_in, len(ECG_CHAR_2_IDX)),
-            path_prefix=language_prefix,
-            dependent_map=tm_char,
-            cacheable=False,
-        )
-
-    return [tm_embed, tm_burn_in], [tm_char]
 
 
 def get_model_inputs_outputs(

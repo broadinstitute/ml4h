@@ -1,31 +1,35 @@
+# Imports: standard library
+from typing import Dict
+
 # Imports: first party
 from ml4cvd.TensorMap import TensorMap, Interpretation
-from ml4cvd.tensor_maps_ecg import TMAPS, make_ecg_label
+from ml4cvd.tensor_maps_ecg import make_ecg_label
 
-TMAPS["supranodal_rhythms"] = TensorMap(
+tmaps: Dict[str, TensorMap] = {}
+tmaps["supranodal_rhythms"] = TensorMap(
     "supranodal_rhythms",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "ectopic_atrial_tachycardia": 0,
-        "atrial_fibrillation": 1,
-        "narrow_qrs_tachycardia": 2,
-        "pulseless_electrical_activity": 3,
-        "wpw": 4,
-        "supraventricular_tachycardia": 5,
-        "sinus_rhythm": 6,
-        "ectopic_atrial_rhythm": 7,
+        "ectopic_atrial_bradycardia": 0,
+        "torsade_de_pointes": 1,
+        "ventricular_rhythm": 2,
+        "atrial_flutter": 3,
+        "atrial_fibrillation": 4,
+        "narrow_qrs_tachycardia": 5,
+        "supraventricular_tachycardia": 6,
+        "wpw": 7,
         "sinus_pause": 8,
-        "atrial_paced_rhythm": 9,
-        "atrial_flutter": 10,
-        "ventricular_rhythm": 11,
-        "unspecified": 12,
-        "retrograde_atrial_activation": 13,
-        "torsade_de_pointes": 14,
+        "pulseless_electrical_activity": 9,
+        "atrial_paced_rhythm": 10,
+        "retrograde_atrial_activation": 11,
+        "asystole": 12,
+        "unspecified": 13,
+        "ectopic_atrial_rhythm": 14,
         "sinus_arrest": 15,
-        "ectopic_atrial_bradycardia": 16,
-        "asystole": 17,
+        "sinus_rhythm": 16,
+        "ectopic_atrial_tachycardia": 17,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
@@ -51,11 +55,11 @@ TMAPS["supranodal_rhythms"] = TensorMap(
                 "tracing is within normal limits",
                 "tracing within normal limits",
                 "sinus rhythm",
-                "ATRIAL TRIGEMINY",
-                "ATRIALBIGEMINY",
-                "ATRIAL BIGEMINAL  RHYTHM",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
+                "atrial trigeminy",
+                "atrialbigeminy",
+                "atrial bigeminal  rhythm",
+                "atrial bigeminy and ventricular bigeminy",
+                "atrial bigeminy and ventricular bigeminy",
                 "sinus bradycardia",
                 "sinus slowing",
                 "with occasional native sinus beats",
@@ -92,8 +96,8 @@ TMAPS["supranodal_rhythms"] = TensorMap(
             "sinus_arrest": ["sinus arrest"],
             "retrograde_atrial_activation": ["retrograde atrial activation"],
             "ectopic_atrial_rhythm": [
-                "ATRIAL ARRHYTHMIA",
-                "ATRIAL RHYTHM",
+                "atrial arrhythmia",
+                "atrial rhythm",
                 "unifocal ectopic atrial rhythm",
                 "unifocal ear",
                 "multifocal ectopic atrial rhythm",
@@ -101,8 +105,8 @@ TMAPS["supranodal_rhythms"] = TensorMap(
                 "wandering ectopic atrial rhythm",
                 "wandering ear",
                 "wandering atrial pacemaker",
-                "WANDERING ATRIAL PACEMAKER",
-                "ECTOPICSUPRAVENTRICULAR RHYTHM",
+                "wandering atrial pacemaker",
+                "ectopicsupraventricular rhythm",
                 "ectopic atrial rhythm",
                 "dual atrial foci ",
                 "multiple atrial foci",
@@ -114,7 +118,7 @@ TMAPS["supranodal_rhythms"] = TensorMap(
                 "unusual p wave axis",
                 "low atrial pacer",
                 "ectopic atrial rhythm ",
-                "ECTOPIC ATRIAL RHYTHM",
+                "ectopic atrial rhythm",
             ],
             "atrial_paced_rhythm": ["atrial paced rhythm", "atrial pacing"],
             "ectopic_atrial_tachycardia": [
@@ -131,12 +135,12 @@ TMAPS["supranodal_rhythms"] = TensorMap(
             ],
             "ectopic_atrial_bradycardia": [
                 "ectopic atrial bradycardia",
-                "ECTOPIC ATRIAL BRADYCARDIA",
+                "ectopic atrial bradycardia",
                 "low atrial bradycardia",
             ],
             "atrial_fibrillation": [
                 "atrial fibrillation",
-                "FIBRILLATION/FLUTTER",
+                "fibrillation/flutter",
                 "atrial fibrillation with rapid ventricular response",
                 "atrial fibrillation with moderate ventricular response",
                 "atrial fibrillation with controlled ventricular response",
@@ -159,8 +163,8 @@ TMAPS["supranodal_rhythms"] = TensorMap(
                 "tachycardia possibly flutter",
             ],
             "supraventricular_tachycardia": [
-                "ACCELERATED NODAL RHYTHM",
-                "ACCELERATED ATRIOVENTRICULAR NODAL RHYTHM",
+                "accelerated nodal rhythm",
+                "accelerated atrioventricular nodal rhythm",
                 "accelerated atrioventricular junctional rhythm",
                 "avnrt",
                 "av nodal reentrant",
@@ -187,10 +191,10 @@ TMAPS["supranodal_rhythms"] = TensorMap(
                 "narrow complex tachycardia",
             ],
             "unspecified": [
-                "UNCERTAIN RHYTHM",
-                "UNDETERMINED  RHYTHM",
-                "RHYTHM UNCLEAR",
-                "RHYTHM UNCERTAIN",
+                "uncertain rhythm",
+                "undetermined  rhythm",
+                "rhythm unclear",
+                "rhythm uncertain",
                 "atrial arrhythmia",
                 "technically poor tracing ",
                 "accelerated idioventricular rhythm",
@@ -208,35 +212,35 @@ TMAPS["supranodal_rhythms"] = TensorMap(
                 "pulseless electrical activity",
                 "pulseless",
             ],
-            "wpw": ["WOLFF-PARKINSON-WHITE PATTERN", "wolffparkinsonwhite"],
+            "wpw": ["wolff-parkinson-white pattern", "wolffparkinsonwhite"],
         },
     ),
 )
 
-TMAPS["supranodal_rhythms_md"] = TensorMap(
+tmaps["supranodal_rhythms_md"] = TensorMap(
     "supranodal_rhythms_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "ectopic_atrial_tachycardia": 0,
-        "atrial_fibrillation": 1,
-        "narrow_qrs_tachycardia": 2,
-        "pulseless_electrical_activity": 3,
-        "wpw": 4,
-        "supraventricular_tachycardia": 5,
-        "sinus_rhythm": 6,
-        "ectopic_atrial_rhythm": 7,
+        "ectopic_atrial_bradycardia": 0,
+        "torsade_de_pointes": 1,
+        "ventricular_rhythm": 2,
+        "atrial_flutter": 3,
+        "atrial_fibrillation": 4,
+        "narrow_qrs_tachycardia": 5,
+        "supraventricular_tachycardia": 6,
+        "wpw": 7,
         "sinus_pause": 8,
-        "atrial_paced_rhythm": 9,
-        "atrial_flutter": 10,
-        "ventricular_rhythm": 11,
-        "unspecified": 12,
-        "retrograde_atrial_activation": 13,
-        "torsade_de_pointes": 14,
+        "pulseless_electrical_activity": 9,
+        "atrial_paced_rhythm": 10,
+        "retrograde_atrial_activation": 11,
+        "asystole": 12,
+        "unspecified": 13,
+        "ectopic_atrial_rhythm": 14,
         "sinus_arrest": 15,
-        "ectopic_atrial_bradycardia": 16,
-        "asystole": 17,
+        "sinus_rhythm": 16,
+        "ectopic_atrial_tachycardia": 17,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
@@ -262,11 +266,11 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
                 "tracing is within normal limits",
                 "tracing within normal limits",
                 "sinus rhythm",
-                "ATRIAL TRIGEMINY",
-                "ATRIALBIGEMINY",
-                "ATRIAL BIGEMINAL  RHYTHM",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
+                "atrial trigeminy",
+                "atrialbigeminy",
+                "atrial bigeminal  rhythm",
+                "atrial bigeminy and ventricular bigeminy",
+                "atrial bigeminy and ventricular bigeminy",
                 "sinus bradycardia",
                 "sinus slowing",
                 "with occasional native sinus beats",
@@ -303,8 +307,8 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
             "sinus_arrest": ["sinus arrest"],
             "retrograde_atrial_activation": ["retrograde atrial activation"],
             "ectopic_atrial_rhythm": [
-                "ATRIAL ARRHYTHMIA",
-                "ATRIAL RHYTHM",
+                "atrial arrhythmia",
+                "atrial rhythm",
                 "unifocal ectopic atrial rhythm",
                 "unifocal ear",
                 "multifocal ectopic atrial rhythm",
@@ -312,8 +316,8 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
                 "wandering ectopic atrial rhythm",
                 "wandering ear",
                 "wandering atrial pacemaker",
-                "WANDERING ATRIAL PACEMAKER",
-                "ECTOPICSUPRAVENTRICULAR RHYTHM",
+                "wandering atrial pacemaker",
+                "ectopicsupraventricular rhythm",
                 "ectopic atrial rhythm",
                 "dual atrial foci ",
                 "multiple atrial foci",
@@ -325,7 +329,7 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
                 "unusual p wave axis",
                 "low atrial pacer",
                 "ectopic atrial rhythm ",
-                "ECTOPIC ATRIAL RHYTHM",
+                "ectopic atrial rhythm",
             ],
             "atrial_paced_rhythm": ["atrial paced rhythm", "atrial pacing"],
             "ectopic_atrial_tachycardia": [
@@ -342,12 +346,12 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
             ],
             "ectopic_atrial_bradycardia": [
                 "ectopic atrial bradycardia",
-                "ECTOPIC ATRIAL BRADYCARDIA",
+                "ectopic atrial bradycardia",
                 "low atrial bradycardia",
             ],
             "atrial_fibrillation": [
                 "atrial fibrillation",
-                "FIBRILLATION/FLUTTER",
+                "fibrillation/flutter",
                 "atrial fibrillation with rapid ventricular response",
                 "atrial fibrillation with moderate ventricular response",
                 "atrial fibrillation with controlled ventricular response",
@@ -370,8 +374,8 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
                 "tachycardia possibly flutter",
             ],
             "supraventricular_tachycardia": [
-                "ACCELERATED NODAL RHYTHM",
-                "ACCELERATED ATRIOVENTRICULAR NODAL RHYTHM",
+                "accelerated nodal rhythm",
+                "accelerated atrioventricular nodal rhythm",
                 "accelerated atrioventricular junctional rhythm",
                 "avnrt",
                 "av nodal reentrant",
@@ -398,10 +402,10 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
                 "narrow complex tachycardia",
             ],
             "unspecified": [
-                "UNCERTAIN RHYTHM",
-                "UNDETERMINED  RHYTHM",
-                "RHYTHM UNCLEAR",
-                "RHYTHM UNCERTAIN",
+                "uncertain rhythm",
+                "undetermined  rhythm",
+                "rhythm unclear",
+                "rhythm uncertain",
                 "atrial arrhythmia",
                 "technically poor tracing ",
                 "accelerated idioventricular rhythm",
@@ -419,35 +423,35 @@ TMAPS["supranodal_rhythms_md"] = TensorMap(
                 "pulseless electrical activity",
                 "pulseless",
             ],
-            "wpw": ["WOLFF-PARKINSON-WHITE PATTERN", "wolffparkinsonwhite"],
+            "wpw": ["wolff-parkinson-white pattern", "wolffparkinsonwhite"],
         },
     ),
 )
 
-TMAPS["supranodal_rhythms_pc"] = TensorMap(
+tmaps["supranodal_rhythms_pc"] = TensorMap(
     "supranodal_rhythms_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "ectopic_atrial_tachycardia": 0,
-        "atrial_fibrillation": 1,
-        "narrow_qrs_tachycardia": 2,
-        "pulseless_electrical_activity": 3,
-        "wpw": 4,
-        "supraventricular_tachycardia": 5,
-        "sinus_rhythm": 6,
-        "ectopic_atrial_rhythm": 7,
+        "ectopic_atrial_bradycardia": 0,
+        "torsade_de_pointes": 1,
+        "ventricular_rhythm": 2,
+        "atrial_flutter": 3,
+        "atrial_fibrillation": 4,
+        "narrow_qrs_tachycardia": 5,
+        "supraventricular_tachycardia": 6,
+        "wpw": 7,
         "sinus_pause": 8,
-        "atrial_paced_rhythm": 9,
-        "atrial_flutter": 10,
-        "ventricular_rhythm": 11,
-        "unspecified": 12,
-        "retrograde_atrial_activation": 13,
-        "torsade_de_pointes": 14,
+        "pulseless_electrical_activity": 9,
+        "atrial_paced_rhythm": 10,
+        "retrograde_atrial_activation": 11,
+        "asystole": 12,
+        "unspecified": 13,
+        "ectopic_atrial_rhythm": 14,
         "sinus_arrest": 15,
-        "ectopic_atrial_bradycardia": 16,
-        "asystole": 17,
+        "sinus_rhythm": 16,
+        "ectopic_atrial_tachycardia": 17,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
@@ -473,11 +477,11 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
                 "tracing is within normal limits",
                 "tracing within normal limits",
                 "sinus rhythm",
-                "ATRIAL TRIGEMINY",
-                "ATRIALBIGEMINY",
-                "ATRIAL BIGEMINAL  RHYTHM",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
+                "atrial trigeminy",
+                "atrialbigeminy",
+                "atrial bigeminal  rhythm",
+                "atrial bigeminy and ventricular bigeminy",
+                "atrial bigeminy and ventricular bigeminy",
                 "sinus bradycardia",
                 "sinus slowing",
                 "with occasional native sinus beats",
@@ -514,8 +518,8 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
             "sinus_arrest": ["sinus arrest"],
             "retrograde_atrial_activation": ["retrograde atrial activation"],
             "ectopic_atrial_rhythm": [
-                "ATRIAL ARRHYTHMIA",
-                "ATRIAL RHYTHM",
+                "atrial arrhythmia",
+                "atrial rhythm",
                 "unifocal ectopic atrial rhythm",
                 "unifocal ear",
                 "multifocal ectopic atrial rhythm",
@@ -523,8 +527,8 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
                 "wandering ectopic atrial rhythm",
                 "wandering ear",
                 "wandering atrial pacemaker",
-                "WANDERING ATRIAL PACEMAKER",
-                "ECTOPICSUPRAVENTRICULAR RHYTHM",
+                "wandering atrial pacemaker",
+                "ectopicsupraventricular rhythm",
                 "ectopic atrial rhythm",
                 "dual atrial foci ",
                 "multiple atrial foci",
@@ -536,7 +540,7 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
                 "unusual p wave axis",
                 "low atrial pacer",
                 "ectopic atrial rhythm ",
-                "ECTOPIC ATRIAL RHYTHM",
+                "ectopic atrial rhythm",
             ],
             "atrial_paced_rhythm": ["atrial paced rhythm", "atrial pacing"],
             "ectopic_atrial_tachycardia": [
@@ -553,12 +557,12 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
             ],
             "ectopic_atrial_bradycardia": [
                 "ectopic atrial bradycardia",
-                "ECTOPIC ATRIAL BRADYCARDIA",
+                "ectopic atrial bradycardia",
                 "low atrial bradycardia",
             ],
             "atrial_fibrillation": [
                 "atrial fibrillation",
-                "FIBRILLATION/FLUTTER",
+                "fibrillation/flutter",
                 "atrial fibrillation with rapid ventricular response",
                 "atrial fibrillation with moderate ventricular response",
                 "atrial fibrillation with controlled ventricular response",
@@ -581,8 +585,8 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
                 "tachycardia possibly flutter",
             ],
             "supraventricular_tachycardia": [
-                "ACCELERATED NODAL RHYTHM",
-                "ACCELERATED ATRIOVENTRICULAR NODAL RHYTHM",
+                "accelerated nodal rhythm",
+                "accelerated atrioventricular nodal rhythm",
                 "accelerated atrioventricular junctional rhythm",
                 "avnrt",
                 "av nodal reentrant",
@@ -609,10 +613,10 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
                 "narrow complex tachycardia",
             ],
             "unspecified": [
-                "UNCERTAIN RHYTHM",
-                "UNDETERMINED  RHYTHM",
-                "RHYTHM UNCLEAR",
-                "RHYTHM UNCERTAIN",
+                "uncertain rhythm",
+                "undetermined  rhythm",
+                "rhythm unclear",
+                "rhythm uncertain",
                 "atrial arrhythmia",
                 "technically poor tracing ",
                 "accelerated idioventricular rhythm",
@@ -630,40 +634,40 @@ TMAPS["supranodal_rhythms_pc"] = TensorMap(
                 "pulseless electrical activity",
                 "pulseless",
             ],
-            "wpw": ["WOLFF-PARKINSON-WHITE PATTERN", "wolffparkinsonwhite"],
+            "wpw": ["wolff-parkinson-white pattern", "wolffparkinsonwhite"],
         },
     ),
 )
 
-TMAPS["sinus_rhythm"] = TensorMap(
+tmaps["sinus_rhythm"] = TensorMap(
     "sinus_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
         "Atrial_bigeminy": 0,
-        "sinus_tachycardia": 1,
-        "ventricular_bigeminy": 2,
-        "sa_block": 3,
-        "Atrial_trigeminy": 4,
-        "sinus_arrhythmia": 5,
-        "sinus_bradycardia": 6,
+        "sa_block": 1,
+        "Atrial_trigeminy": 2,
+        "sinus_arrhythmia": 3,
+        "sinus_tachycardia": 4,
+        "sinus_bradycardia": 5,
+        "ventricular_bigeminy": 6,
         "unspecified": 7,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
-            "Atrial_trigeminy": ["ATRIAL TRIGEMINY"],
+            "Atrial_trigeminy": ["atrial trigeminy"],
             "Atrial_bigeminy": [
-                "ATRIALBIGEMINY",
-                "ATRIAL BIGEMINAL  RHYTHM",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
+                "atrialbigeminy",
+                "atrial bigeminal  rhythm",
+                "atrial bigeminy and ventricular bigeminy",
                 "atrial bigeminal rhythm",
                 "atrial bigeminy and ventricular bigeminy",
                 "atrial trigeminy",
                 "atrialbigeminy",
             ],
-            "ventricular_bigeminy": ["ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY"],
+            "ventricular_bigeminy": ["atrial bigeminy and ventricular bigeminy"],
             "sinus_bradycardia": ["sinus bradycardia", "sinus bradycardia"],
             "sinus_tachycardia": ["sinus tachycardia", "sinus tachycardia"],
             "sinus_arrhythmia": [
@@ -692,35 +696,35 @@ TMAPS["sinus_rhythm"] = TensorMap(
     ),
 )
 
-TMAPS["sinus_rhythm_md"] = TensorMap(
+tmaps["sinus_rhythm_md"] = TensorMap(
     "sinus_rhythm_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
         "Atrial_bigeminy": 0,
-        "sinus_tachycardia": 1,
-        "ventricular_bigeminy": 2,
-        "sa_block": 3,
-        "Atrial_trigeminy": 4,
-        "sinus_arrhythmia": 5,
-        "sinus_bradycardia": 6,
+        "sa_block": 1,
+        "Atrial_trigeminy": 2,
+        "sinus_arrhythmia": 3,
+        "sinus_tachycardia": 4,
+        "sinus_bradycardia": 5,
+        "ventricular_bigeminy": 6,
         "unspecified": 7,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
-            "Atrial_trigeminy": ["ATRIAL TRIGEMINY"],
+            "Atrial_trigeminy": ["atrial trigeminy"],
             "Atrial_bigeminy": [
-                "ATRIALBIGEMINY",
-                "ATRIAL BIGEMINAL  RHYTHM",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
+                "atrialbigeminy",
+                "atrial bigeminal  rhythm",
+                "atrial bigeminy and ventricular bigeminy",
                 "atrial bigeminal rhythm",
                 "atrial bigeminy and ventricular bigeminy",
                 "atrial trigeminy",
                 "atrialbigeminy",
             ],
-            "ventricular_bigeminy": ["ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY"],
+            "ventricular_bigeminy": ["atrial bigeminy and ventricular bigeminy"],
             "sinus_bradycardia": ["sinus bradycardia", "sinus bradycardia"],
             "sinus_tachycardia": ["sinus tachycardia", "sinus tachycardia"],
             "sinus_arrhythmia": [
@@ -749,35 +753,35 @@ TMAPS["sinus_rhythm_md"] = TensorMap(
     ),
 )
 
-TMAPS["sinus_rhythm_pc"] = TensorMap(
+tmaps["sinus_rhythm_pc"] = TensorMap(
     "sinus_rhythm_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
         "Atrial_bigeminy": 0,
-        "sinus_tachycardia": 1,
-        "ventricular_bigeminy": 2,
-        "sa_block": 3,
-        "Atrial_trigeminy": 4,
-        "sinus_arrhythmia": 5,
-        "sinus_bradycardia": 6,
+        "sa_block": 1,
+        "Atrial_trigeminy": 2,
+        "sinus_arrhythmia": 3,
+        "sinus_tachycardia": 4,
+        "sinus_bradycardia": 5,
+        "ventricular_bigeminy": 6,
         "unspecified": 7,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
-            "Atrial_trigeminy": ["ATRIAL TRIGEMINY"],
+            "Atrial_trigeminy": ["atrial trigeminy"],
             "Atrial_bigeminy": [
-                "ATRIALBIGEMINY",
-                "ATRIAL BIGEMINAL  RHYTHM",
-                "ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY",
+                "atrialbigeminy",
+                "atrial bigeminal  rhythm",
+                "atrial bigeminy and ventricular bigeminy",
                 "atrial bigeminal rhythm",
                 "atrial bigeminy and ventricular bigeminy",
                 "atrial trigeminy",
                 "atrialbigeminy",
             ],
-            "ventricular_bigeminy": ["ATRIAL BIGEMINY AND VENTRICULAR BIGEMINY"],
+            "ventricular_bigeminy": ["atrial bigeminy and ventricular bigeminy"],
             "sinus_bradycardia": ["sinus bradycardia", "sinus bradycardia"],
             "sinus_tachycardia": ["sinus tachycardia", "sinus tachycardia"],
             "sinus_arrhythmia": [
@@ -806,12 +810,12 @@ TMAPS["sinus_rhythm_pc"] = TensorMap(
     ),
 )
 
-TMAPS["ectopic_atrial_rhythm"] = TensorMap(
+tmaps["ectopic_atrial_rhythm"] = TensorMap(
     "ectopic_atrial_rhythm",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"multifocal": 0, "wandering": 1, "unifocal": 2, "unspecified": 3},
+    channel_map={"wandering": 0, "multifocal": 1, "unifocal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -833,18 +837,18 @@ TMAPS["ectopic_atrial_rhythm"] = TensorMap(
                 "wandering ectopic atrial rhythm",
                 "wandering ear",
                 "wandering atrial pacemaker",
-                "WANDERING ATRIAL PACEMAKER",
+                "wandering atrial pacemaker",
             ],
         },
     ),
 )
 
-TMAPS["ectopic_atrial_rhythm_md"] = TensorMap(
+tmaps["ectopic_atrial_rhythm_md"] = TensorMap(
     "ectopic_atrial_rhythm_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"multifocal": 0, "wandering": 1, "unifocal": 2, "unspecified": 3},
+    channel_map={"wandering": 0, "multifocal": 1, "unifocal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -866,18 +870,18 @@ TMAPS["ectopic_atrial_rhythm_md"] = TensorMap(
                 "wandering ectopic atrial rhythm",
                 "wandering ear",
                 "wandering atrial pacemaker",
-                "WANDERING ATRIAL PACEMAKER",
+                "wandering atrial pacemaker",
             ],
         },
     ),
 )
 
-TMAPS["ectopic_atrial_rhythm_pc"] = TensorMap(
+tmaps["ectopic_atrial_rhythm_pc"] = TensorMap(
     "ectopic_atrial_rhythm_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"multifocal": 0, "wandering": 1, "unifocal": 2, "unspecified": 3},
+    channel_map={"wandering": 0, "multifocal": 1, "unifocal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -899,18 +903,18 @@ TMAPS["ectopic_atrial_rhythm_pc"] = TensorMap(
                 "wandering ectopic atrial rhythm",
                 "wandering ear",
                 "wandering atrial pacemaker",
-                "WANDERING ATRIAL PACEMAKER",
+                "wandering atrial pacemaker",
             ],
         },
     ),
 )
 
-TMAPS["ectopic_atrial_tachycardia"] = TensorMap(
+tmaps["ectopic_atrial_tachycardia"] = TensorMap(
     "ectopic_atrial_tachycardia",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"multifocal": 0, "wandering": 1, "unifocal": 2, "unspecified": 3},
+    channel_map={"unspecified": 0, "multifocal": 1, "unifocal": 2, "wandering": 3},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -934,12 +938,12 @@ TMAPS["ectopic_atrial_tachycardia"] = TensorMap(
     ),
 )
 
-TMAPS["ectopic_atrial_tachycardia_md"] = TensorMap(
+tmaps["ectopic_atrial_tachycardia_md"] = TensorMap(
     "ectopic_atrial_tachycardia_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"multifocal": 0, "wandering": 1, "unifocal": 2, "unspecified": 3},
+    channel_map={"unspecified": 0, "multifocal": 1, "unifocal": 2, "wandering": 3},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -963,12 +967,12 @@ TMAPS["ectopic_atrial_tachycardia_md"] = TensorMap(
     ),
 )
 
-TMAPS["ectopic_atrial_tachycardia_pc"] = TensorMap(
+tmaps["ectopic_atrial_tachycardia_pc"] = TensorMap(
     "ectopic_atrial_tachycardia_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"multifocal": 0, "wandering": 1, "unifocal": 2, "unspecified": 3},
+    channel_map={"unspecified": 0, "multifocal": 1, "unifocal": 2, "wandering": 3},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -992,7 +996,7 @@ TMAPS["ectopic_atrial_tachycardia_pc"] = TensorMap(
     ),
 )
 
-TMAPS["atrial_flutter"] = TensorMap(
+tmaps["atrial_flutter"] = TensorMap(
     "atrial_flutter",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1014,7 +1018,7 @@ TMAPS["atrial_flutter"] = TensorMap(
     ),
 )
 
-TMAPS["atrial_flutter_md"] = TensorMap(
+tmaps["atrial_flutter_md"] = TensorMap(
     "atrial_flutter_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1036,7 +1040,7 @@ TMAPS["atrial_flutter_md"] = TensorMap(
     ),
 )
 
-TMAPS["atrial_flutter_pc"] = TensorMap(
+tmaps["atrial_flutter_pc"] = TensorMap(
     "atrial_flutter_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1058,7 +1062,7 @@ TMAPS["atrial_flutter_pc"] = TensorMap(
     ),
 )
 
-TMAPS["supraventricular_tachycardia"] = TensorMap(
+tmaps["supraventricular_tachycardia"] = TensorMap(
     "supraventricular_tachycardia",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1066,16 +1070,16 @@ TMAPS["supraventricular_tachycardia"] = TensorMap(
     channel_map={
         "junctional_tachycardia": 0,
         "atrial_tachycardia": 1,
-        "avnrt": 2,
-        "avrt": 3,
+        "avrt": 2,
+        "avnrt": 3,
         "unspecified": 4,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "junctional_tachycardia": [
-                "ACCELERATED NODAL RHYTHM",
-                "ACCELERATED ATRIOVENTRICULAR NODAL RHYTHM",
+                "accelerated nodal rhythm",
+                "accelerated atrioventricular nodal rhythm",
                 "accelerated atrioventricular junctional rhythm",
                 "junctional tachycardia",
             ],
@@ -1097,7 +1101,7 @@ TMAPS["supraventricular_tachycardia"] = TensorMap(
     ),
 )
 
-TMAPS["supraventricular_tachycardia_md"] = TensorMap(
+tmaps["supraventricular_tachycardia_md"] = TensorMap(
     "supraventricular_tachycardia_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1105,16 +1109,16 @@ TMAPS["supraventricular_tachycardia_md"] = TensorMap(
     channel_map={
         "junctional_tachycardia": 0,
         "atrial_tachycardia": 1,
-        "avnrt": 2,
-        "avrt": 3,
+        "avrt": 2,
+        "avnrt": 3,
         "unspecified": 4,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "junctional_tachycardia": [
-                "ACCELERATED NODAL RHYTHM",
-                "ACCELERATED ATRIOVENTRICULAR NODAL RHYTHM",
+                "accelerated nodal rhythm",
+                "accelerated atrioventricular nodal rhythm",
                 "accelerated atrioventricular junctional rhythm",
                 "junctional tachycardia",
             ],
@@ -1136,7 +1140,7 @@ TMAPS["supraventricular_tachycardia_md"] = TensorMap(
     ),
 )
 
-TMAPS["supraventricular_tachycardia_pc"] = TensorMap(
+tmaps["supraventricular_tachycardia_pc"] = TensorMap(
     "supraventricular_tachycardia_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1144,16 +1148,16 @@ TMAPS["supraventricular_tachycardia_pc"] = TensorMap(
     channel_map={
         "junctional_tachycardia": 0,
         "atrial_tachycardia": 1,
-        "avnrt": 2,
-        "avrt": 3,
+        "avrt": 2,
+        "avnrt": 3,
         "unspecified": 4,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "junctional_tachycardia": [
-                "ACCELERATED NODAL RHYTHM",
-                "ACCELERATED ATRIOVENTRICULAR NODAL RHYTHM",
+                "accelerated nodal rhythm",
+                "accelerated atrioventricular nodal rhythm",
                 "accelerated atrioventricular junctional rhythm",
                 "junctional tachycardia",
             ],
@@ -1175,25 +1179,25 @@ TMAPS["supraventricular_tachycardia_pc"] = TensorMap(
     ),
 )
 
-TMAPS["abnormal_st_segment_tu_wave"] = TensorMap(
+tmaps["abnormal_st_segment_tu_wave"] = TensorMap(
     "abnormal_st_segment_tu_wave",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "Inverted_U_waves": 0,
-        "Digitalis_effect": 1,
-        "Early_repolarization": 2,
+        "Pericarditis": 0,
+        "Brugada_pattern": 1,
+        "Osborn_wave": 2,
         "Metabolic_or_drug_effect": 3,
-        "Pericarditis": 4,
-        "Prominent_U_waves": 5,
-        "t_wave_abnormality": 6,
-        "TU_fusion": 7,
-        "ischemia": 8,
+        "TU_fusion": 4,
+        "Early_repolarization": 5,
+        "ischemia": 6,
+        "t_wave_abnormality": 7,
+        "Prominent_U_waves": 8,
         "st_abnormality": 9,
-        "ST_or_T_change_due_to_ventricular_hypertrophy": 10,
-        "Osborn_wave": 11,
-        "Brugada_pattern": 12,
+        "Inverted_U_waves": 10,
+        "ST_or_T_change_due_to_ventricular_hypertrophy": 11,
+        "Digitalis_effect": 12,
         "unspecified": 13,
     },
     tensor_from_file=make_ecg_label(
@@ -1231,8 +1235,8 @@ TMAPS["abnormal_st_segment_tu_wave"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
                 "anterior infarct or transmural ischemia",
                 "anterolateral subendocardial ischemia",
                 "anterolateral ischemia",
@@ -1265,7 +1269,7 @@ TMAPS["abnormal_st_segment_tu_wave"] = TensorMap(
                 "inferior st segment elevation and q waves",
                 "diffuse st segment elevation",
                 "diffuse elevation of st segments",
-                "ST segment elevation",
+                "st segment elevation",
                 "st segment depressions more marked",
                 "st segment depression is more marked in leads",
                 "st segment depression in leads v4-v6",
@@ -1288,12 +1292,12 @@ TMAPS["abnormal_st_segment_tu_wave"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
                 "nonspecific st segment",
                 "st segment changes",
                 "abnormal st segment changes",
-                "ST segment abnormality",
+                "st segment abnormality",
                 "nonspecific st segment and t wave abnormalities",
             ],
             "t_wave_abnormality": [
@@ -1322,40 +1326,40 @@ TMAPS["abnormal_st_segment_tu_wave"] = TensorMap(
                 "diffuse nonspecific st segment and t wave abnormalities",
             ],
             "ST_or_T_change_due_to_ventricular_hypertrophy": [
-                "ST or T change due to ventricular hypertrophy",
+                "st or t change due to ventricular hypertrophy",
             ],
-            "Prominent_U_waves": ["Prominent U waves"],
-            "Inverted_U_waves": ["Inverted U waves"],
-            "TU_fusion": ["TU fusion"],
-            "Osborn_wave": ["Osborn wave"],
-            "Early_repolarization": ["Early repolarization"],
-            "Pericarditis": ["Pericarditis"],
-            "Digitalis_effect": ["Digitalis effect"],
-            "Brugada_pattern": ["Brugada pattern"],
-            "Metabolic_or_drug_effect": ["Metabolic or drug effect"],
+            "Prominent_U_waves": ["prominent u waves"],
+            "Inverted_U_waves": ["inverted u waves"],
+            "TU_fusion": ["tu fusion"],
+            "Osborn_wave": ["osborn wave"],
+            "Early_repolarization": ["early repolarization"],
+            "Pericarditis": ["pericarditis"],
+            "Digitalis_effect": ["digitalis effect"],
+            "Brugada_pattern": ["brugada pattern"],
+            "Metabolic_or_drug_effect": ["metabolic or drug effect"],
         },
     ),
 )
 
-TMAPS["abnormal_st_segment_tu_wave_md"] = TensorMap(
+tmaps["abnormal_st_segment_tu_wave_md"] = TensorMap(
     "abnormal_st_segment_tu_wave_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "Inverted_U_waves": 0,
-        "Digitalis_effect": 1,
-        "Early_repolarization": 2,
+        "Pericarditis": 0,
+        "Brugada_pattern": 1,
+        "Osborn_wave": 2,
         "Metabolic_or_drug_effect": 3,
-        "Pericarditis": 4,
-        "Prominent_U_waves": 5,
-        "t_wave_abnormality": 6,
-        "TU_fusion": 7,
-        "ischemia": 8,
+        "TU_fusion": 4,
+        "Early_repolarization": 5,
+        "ischemia": 6,
+        "t_wave_abnormality": 7,
+        "Prominent_U_waves": 8,
         "st_abnormality": 9,
-        "ST_or_T_change_due_to_ventricular_hypertrophy": 10,
-        "Osborn_wave": 11,
-        "Brugada_pattern": 12,
+        "Inverted_U_waves": 10,
+        "ST_or_T_change_due_to_ventricular_hypertrophy": 11,
+        "Digitalis_effect": 12,
         "unspecified": 13,
     },
     tensor_from_file=make_ecg_label(
@@ -1393,8 +1397,8 @@ TMAPS["abnormal_st_segment_tu_wave_md"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
                 "anterior infarct or transmural ischemia",
                 "anterolateral subendocardial ischemia",
                 "anterolateral ischemia",
@@ -1427,7 +1431,7 @@ TMAPS["abnormal_st_segment_tu_wave_md"] = TensorMap(
                 "inferior st segment elevation and q waves",
                 "diffuse st segment elevation",
                 "diffuse elevation of st segments",
-                "ST segment elevation",
+                "st segment elevation",
                 "st segment depressions more marked",
                 "st segment depression is more marked in leads",
                 "st segment depression in leads v4-v6",
@@ -1450,12 +1454,12 @@ TMAPS["abnormal_st_segment_tu_wave_md"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
                 "nonspecific st segment",
                 "st segment changes",
                 "abnormal st segment changes",
-                "ST segment abnormality",
+                "st segment abnormality",
                 "nonspecific st segment and t wave abnormalities",
             ],
             "t_wave_abnormality": [
@@ -1484,40 +1488,40 @@ TMAPS["abnormal_st_segment_tu_wave_md"] = TensorMap(
                 "diffuse nonspecific st segment and t wave abnormalities",
             ],
             "ST_or_T_change_due_to_ventricular_hypertrophy": [
-                "ST or T change due to ventricular hypertrophy",
+                "st or t change due to ventricular hypertrophy",
             ],
-            "Prominent_U_waves": ["Prominent U waves"],
-            "Inverted_U_waves": ["Inverted U waves"],
-            "TU_fusion": ["TU fusion"],
-            "Osborn_wave": ["Osborn wave"],
-            "Early_repolarization": ["Early repolarization"],
-            "Pericarditis": ["Pericarditis"],
-            "Digitalis_effect": ["Digitalis effect"],
-            "Brugada_pattern": ["Brugada pattern"],
-            "Metabolic_or_drug_effect": ["Metabolic or drug effect"],
+            "Prominent_U_waves": ["prominent u waves"],
+            "Inverted_U_waves": ["inverted u waves"],
+            "TU_fusion": ["tu fusion"],
+            "Osborn_wave": ["osborn wave"],
+            "Early_repolarization": ["early repolarization"],
+            "Pericarditis": ["pericarditis"],
+            "Digitalis_effect": ["digitalis effect"],
+            "Brugada_pattern": ["brugada pattern"],
+            "Metabolic_or_drug_effect": ["metabolic or drug effect"],
         },
     ),
 )
 
-TMAPS["abnormal_st_segment_tu_wave_pc"] = TensorMap(
+tmaps["abnormal_st_segment_tu_wave_pc"] = TensorMap(
     "abnormal_st_segment_tu_wave_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "Inverted_U_waves": 0,
-        "Digitalis_effect": 1,
-        "Early_repolarization": 2,
+        "Pericarditis": 0,
+        "Brugada_pattern": 1,
+        "Osborn_wave": 2,
         "Metabolic_or_drug_effect": 3,
-        "Pericarditis": 4,
-        "Prominent_U_waves": 5,
-        "t_wave_abnormality": 6,
-        "TU_fusion": 7,
-        "ischemia": 8,
+        "TU_fusion": 4,
+        "Early_repolarization": 5,
+        "ischemia": 6,
+        "t_wave_abnormality": 7,
+        "Prominent_U_waves": 8,
         "st_abnormality": 9,
-        "ST_or_T_change_due_to_ventricular_hypertrophy": 10,
-        "Osborn_wave": 11,
-        "Brugada_pattern": 12,
+        "Inverted_U_waves": 10,
+        "ST_or_T_change_due_to_ventricular_hypertrophy": 11,
+        "Digitalis_effect": 12,
         "unspecified": 13,
     },
     tensor_from_file=make_ecg_label(
@@ -1555,8 +1559,8 @@ TMAPS["abnormal_st_segment_tu_wave_pc"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
                 "anterior infarct or transmural ischemia",
                 "anterolateral subendocardial ischemia",
                 "anterolateral ischemia",
@@ -1589,7 +1593,7 @@ TMAPS["abnormal_st_segment_tu_wave_pc"] = TensorMap(
                 "inferior st segment elevation and q waves",
                 "diffuse st segment elevation",
                 "diffuse elevation of st segments",
-                "ST segment elevation",
+                "st segment elevation",
                 "st segment depressions more marked",
                 "st segment depression is more marked in leads",
                 "st segment depression in leads v4-v6",
@@ -1612,12 +1616,12 @@ TMAPS["abnormal_st_segment_tu_wave_pc"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
                 "nonspecific st segment",
                 "st segment changes",
                 "abnormal st segment changes",
-                "ST segment abnormality",
+                "st segment abnormality",
                 "nonspecific st segment and t wave abnormalities",
             ],
             "t_wave_abnormality": [
@@ -1646,32 +1650,32 @@ TMAPS["abnormal_st_segment_tu_wave_pc"] = TensorMap(
                 "diffuse nonspecific st segment and t wave abnormalities",
             ],
             "ST_or_T_change_due_to_ventricular_hypertrophy": [
-                "ST or T change due to ventricular hypertrophy",
+                "st or t change due to ventricular hypertrophy",
             ],
-            "Prominent_U_waves": ["Prominent U waves"],
-            "Inverted_U_waves": ["Inverted U waves"],
-            "TU_fusion": ["TU fusion"],
-            "Osborn_wave": ["Osborn wave"],
-            "Early_repolarization": ["Early repolarization"],
-            "Pericarditis": ["Pericarditis"],
-            "Digitalis_effect": ["Digitalis effect"],
-            "Brugada_pattern": ["Brugada pattern"],
-            "Metabolic_or_drug_effect": ["Metabolic or drug effect"],
+            "Prominent_U_waves": ["prominent u waves"],
+            "Inverted_U_waves": ["inverted u waves"],
+            "TU_fusion": ["tu fusion"],
+            "Osborn_wave": ["osborn wave"],
+            "Early_repolarization": ["early repolarization"],
+            "Pericarditis": ["pericarditis"],
+            "Digitalis_effect": ["digitalis effect"],
+            "Brugada_pattern": ["brugada pattern"],
+            "Metabolic_or_drug_effect": ["metabolic or drug effect"],
         },
     ),
 )
 
-TMAPS["ischemia"] = TensorMap(
+tmaps["ischemia"] = TensorMap(
     "ischemia",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "lateral": 1,
-        "subendocardial": 2,
+        "transmural": 0,
+        "subendocardial": 1,
+        "lateral": 2,
         "septal": 3,
-        "transmural": 4,
+        "anterior": 4,
         "unspecified": 5,
     },
     tensor_from_file=make_ecg_label(
@@ -1706,17 +1710,17 @@ TMAPS["ischemia"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_md"] = TensorMap(
+tmaps["ischemia_md"] = TensorMap(
     "ischemia_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "lateral": 1,
-        "subendocardial": 2,
+        "transmural": 0,
+        "subendocardial": 1,
+        "lateral": 2,
         "septal": 3,
-        "transmural": 4,
+        "anterior": 4,
         "unspecified": 5,
     },
     tensor_from_file=make_ecg_label(
@@ -1751,17 +1755,17 @@ TMAPS["ischemia_md"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_pc"] = TensorMap(
+tmaps["ischemia_pc"] = TensorMap(
     "ischemia_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "lateral": 1,
-        "subendocardial": 2,
+        "transmural": 0,
+        "subendocardial": 1,
+        "lateral": 2,
         "septal": 3,
-        "transmural": 4,
+        "anterior": 4,
         "unspecified": 5,
     },
     tensor_from_file=make_ecg_label(
@@ -1796,7 +1800,7 @@ TMAPS["ischemia_pc"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_transmural"] = TensorMap(
+tmaps["ischemia_transmural"] = TensorMap(
     "ischemia_transmural",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1808,7 +1812,7 @@ TMAPS["ischemia_transmural"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_transmural_md"] = TensorMap(
+tmaps["ischemia_transmural_md"] = TensorMap(
     "ischemia_transmural_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1820,7 +1824,7 @@ TMAPS["ischemia_transmural_md"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_transmural_pc"] = TensorMap(
+tmaps["ischemia_transmural_pc"] = TensorMap(
     "ischemia_transmural_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1832,12 +1836,12 @@ TMAPS["ischemia_transmural_pc"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_subendocardial"] = TensorMap(
+tmaps["ischemia_subendocardial"] = TensorMap(
     "ischemia_subendocardial",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"anterior": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "anterior": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -1850,12 +1854,12 @@ TMAPS["ischemia_subendocardial"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_subendocardial_md"] = TensorMap(
+tmaps["ischemia_subendocardial_md"] = TensorMap(
     "ischemia_subendocardial_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"anterior": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "anterior": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -1868,12 +1872,12 @@ TMAPS["ischemia_subendocardial_md"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_subendocardial_pc"] = TensorMap(
+tmaps["ischemia_subendocardial_pc"] = TensorMap(
     "ischemia_subendocardial_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"anterior": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "anterior": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -1886,7 +1890,7 @@ TMAPS["ischemia_subendocardial_pc"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_subendocardial_anterior"] = TensorMap(
+tmaps["ischemia_subendocardial_anterior"] = TensorMap(
     "ischemia_subendocardial_anterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1898,7 +1902,7 @@ TMAPS["ischemia_subendocardial_anterior"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_subendocardial_anterior_md"] = TensorMap(
+tmaps["ischemia_subendocardial_anterior_md"] = TensorMap(
     "ischemia_subendocardial_anterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1910,7 +1914,7 @@ TMAPS["ischemia_subendocardial_anterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_subendocardial_anterior_pc"] = TensorMap(
+tmaps["ischemia_subendocardial_anterior_pc"] = TensorMap(
     "ischemia_subendocardial_anterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1922,12 +1926,12 @@ TMAPS["ischemia_subendocardial_anterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_anterior"] = TensorMap(
+tmaps["ischemia_anterior"] = TensorMap(
     "ischemia_anterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -1941,12 +1945,12 @@ TMAPS["ischemia_anterior"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_anterior_md"] = TensorMap(
+tmaps["ischemia_anterior_md"] = TensorMap(
     "ischemia_anterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -1960,12 +1964,12 @@ TMAPS["ischemia_anterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_anterior_pc"] = TensorMap(
+tmaps["ischemia_anterior_pc"] = TensorMap(
     "ischemia_anterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -1979,7 +1983,7 @@ TMAPS["ischemia_anterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_lateral"] = TensorMap(
+tmaps["ischemia_lateral"] = TensorMap(
     "ischemia_lateral",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -1991,7 +1995,7 @@ TMAPS["ischemia_lateral"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_lateral_md"] = TensorMap(
+tmaps["ischemia_lateral_md"] = TensorMap(
     "ischemia_lateral_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2003,7 +2007,7 @@ TMAPS["ischemia_lateral_md"] = TensorMap(
     ),
 )
 
-TMAPS["ischemia_lateral_pc"] = TensorMap(
+tmaps["ischemia_lateral_pc"] = TensorMap(
     "ischemia_lateral_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2015,12 +2019,12 @@ TMAPS["ischemia_lateral_pc"] = TensorMap(
     ),
 )
 
-TMAPS["st_abnormality"] = TensorMap(
+tmaps["st_abnormality"] = TensorMap(
     "st_abnormality",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"st_elevation": 0, "st_depression": 1, "unspecified": 2},
+    channel_map={"st_depression": 0, "st_elevation": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -2034,7 +2038,7 @@ TMAPS["st_abnormality"] = TensorMap(
                 "inferior st segment elevation and q waves",
                 "diffuse st segment elevation",
                 "diffuse elevation of st segments",
-                "ST segment elevation",
+                "st segment elevation",
             ],
             "st_depression": [
                 "st segment depressions more marked",
@@ -2059,19 +2063,19 @@ TMAPS["st_abnormality"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
             ],
         },
     ),
 )
 
-TMAPS["st_abnormality_md"] = TensorMap(
+tmaps["st_abnormality_md"] = TensorMap(
     "st_abnormality_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"st_elevation": 0, "st_depression": 1, "unspecified": 2},
+    channel_map={"st_depression": 0, "st_elevation": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -2085,7 +2089,7 @@ TMAPS["st_abnormality_md"] = TensorMap(
                 "inferior st segment elevation and q waves",
                 "diffuse st segment elevation",
                 "diffuse elevation of st segments",
-                "ST segment elevation",
+                "st segment elevation",
             ],
             "st_depression": [
                 "st segment depressions more marked",
@@ -2110,19 +2114,19 @@ TMAPS["st_abnormality_md"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
             ],
         },
     ),
 )
 
-TMAPS["st_abnormality_pc"] = TensorMap(
+tmaps["st_abnormality_pc"] = TensorMap(
     "st_abnormality_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"st_elevation": 0, "st_depression": 1, "unspecified": 2},
+    channel_map={"st_depression": 0, "st_elevation": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -2136,7 +2140,7 @@ TMAPS["st_abnormality_pc"] = TensorMap(
                 "inferior st segment elevation and q waves",
                 "diffuse st segment elevation",
                 "diffuse elevation of st segments",
-                "ST segment elevation",
+                "st segment elevation",
             ],
             "st_depression": [
                 "st segment depressions more marked",
@@ -2161,37 +2165,37 @@ TMAPS["st_abnormality_pc"] = TensorMap(
                 "anterolateral st segment depression",
                 "anterior st segment depression",
                 "widespread st segment depression",
-                "ST segment depression",
-                "ST depression",
+                "st segment depression",
+                "st depression",
             ],
         },
     ),
 )
 
-TMAPS["nodal_infranodal_rhythms"] = TensorMap(
+tmaps["nodal_infranodal_rhythms"] = TensorMap(
     "nodal_infranodal_rhythms",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
         "Ventricular_tachycardia": 0,
-        "Junctional_rhythm": 1,
-        "Fascicular_rhythm": 2,
-        "Idioventricular_rhythm": 3,
-        "Fusion_complexes": 4,
-        "Parasystole": 5,
-        "ventricular_fibrillation": 6,
-        "wide_qrs_rhythm": 7,
+        "ventricular_fibrillation": 1,
+        "Parasystole": 2,
+        "Fascicular_rhythm": 3,
+        "Idioventricular_rhythm": 4,
+        "Fusion_complexes": 5,
+        "wide_qrs_rhythm": 6,
+        "Junctional_rhythm": 7,
         "unspecified": 8,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
-            "Fusion_complexes": ["Fusion complexes", "fusion beats"],
-            "Idioventricular_rhythm": ["Idioventricular rhythm"],
-            "Fascicular_rhythm": ["Fascicular rhythm"],
-            "Parasystole": ["Parasystole"],
-            "Junctional_rhythm": ["Junctional rhythm"],
+            "Fusion_complexes": ["fusion complexes", "fusion beats"],
+            "Idioventricular_rhythm": ["idioventricular rhythm"],
+            "Fascicular_rhythm": ["fascicular rhythm"],
+            "Parasystole": ["parasystole"],
+            "Junctional_rhythm": ["junctional rhythm"],
             "Ventricular_tachycardia": [
                 "\\w*(?<!supra)(ventricular tachycardia)",
                 " ventricular tachy",
@@ -2202,30 +2206,30 @@ TMAPS["nodal_infranodal_rhythms"] = TensorMap(
     ),
 )
 
-TMAPS["nodal_infranodal_rhythms_md"] = TensorMap(
+tmaps["nodal_infranodal_rhythms_md"] = TensorMap(
     "nodal_infranodal_rhythms_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
         "Ventricular_tachycardia": 0,
-        "Junctional_rhythm": 1,
-        "Fascicular_rhythm": 2,
-        "Idioventricular_rhythm": 3,
-        "Fusion_complexes": 4,
-        "Parasystole": 5,
-        "ventricular_fibrillation": 6,
-        "wide_qrs_rhythm": 7,
+        "ventricular_fibrillation": 1,
+        "Parasystole": 2,
+        "Fascicular_rhythm": 3,
+        "Idioventricular_rhythm": 4,
+        "Fusion_complexes": 5,
+        "wide_qrs_rhythm": 6,
+        "Junctional_rhythm": 7,
         "unspecified": 8,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
-            "Fusion_complexes": ["Fusion complexes", "fusion beats"],
-            "Idioventricular_rhythm": ["Idioventricular rhythm"],
-            "Fascicular_rhythm": ["Fascicular rhythm"],
-            "Parasystole": ["Parasystole"],
-            "Junctional_rhythm": ["Junctional rhythm"],
+            "Fusion_complexes": ["fusion complexes", "fusion beats"],
+            "Idioventricular_rhythm": ["idioventricular rhythm"],
+            "Fascicular_rhythm": ["fascicular rhythm"],
+            "Parasystole": ["parasystole"],
+            "Junctional_rhythm": ["junctional rhythm"],
             "Ventricular_tachycardia": [
                 "\\w*(?<!supra)(ventricular tachycardia)",
                 " ventricular tachy",
@@ -2236,30 +2240,30 @@ TMAPS["nodal_infranodal_rhythms_md"] = TensorMap(
     ),
 )
 
-TMAPS["nodal_infranodal_rhythms_pc"] = TensorMap(
+tmaps["nodal_infranodal_rhythms_pc"] = TensorMap(
     "nodal_infranodal_rhythms_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
         "Ventricular_tachycardia": 0,
-        "Junctional_rhythm": 1,
-        "Fascicular_rhythm": 2,
-        "Idioventricular_rhythm": 3,
-        "Fusion_complexes": 4,
-        "Parasystole": 5,
-        "ventricular_fibrillation": 6,
-        "wide_qrs_rhythm": 7,
+        "ventricular_fibrillation": 1,
+        "Parasystole": 2,
+        "Fascicular_rhythm": 3,
+        "Idioventricular_rhythm": 4,
+        "Fusion_complexes": 5,
+        "wide_qrs_rhythm": 6,
+        "Junctional_rhythm": 7,
         "unspecified": 8,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
-            "Fusion_complexes": ["Fusion complexes", "fusion beats"],
-            "Idioventricular_rhythm": ["Idioventricular rhythm"],
-            "Fascicular_rhythm": ["Fascicular rhythm"],
-            "Parasystole": ["Parasystole"],
-            "Junctional_rhythm": ["Junctional rhythm"],
+            "Fusion_complexes": ["fusion complexes", "fusion beats"],
+            "Idioventricular_rhythm": ["idioventricular rhythm"],
+            "Fascicular_rhythm": ["fascicular rhythm"],
+            "Parasystole": ["parasystole"],
+            "Junctional_rhythm": ["junctional rhythm"],
             "Ventricular_tachycardia": [
                 "\\w*(?<!supra)(ventricular tachycardia)",
                 " ventricular tachy",
@@ -2270,7 +2274,7 @@ TMAPS["nodal_infranodal_rhythms_pc"] = TensorMap(
     ),
 )
 
-TMAPS["first_degree_av_block"] = TensorMap(
+tmaps["first_degree_av_block"] = TensorMap(
     "first_degree_av_block",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2280,20 +2284,20 @@ TMAPS["first_degree_av_block"] = TensorMap(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "First_degree_AV_block": [
-                "First degree AV block",
-                "First degree atrioventricular block",
+                "first degree av block",
+                "first degree atrioventricular block",
                 "first degree avb",
-                "FIRST DEGREE ATRIOVENTRICULAR BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR BLOCK ",
-                "1ST DEGREE ATRIOVENTRICULAR  BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR  BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR",
+                "first degree atrioventricular block",
+                "first degree atrioventricular block ",
+                "1st degree atrioventricular  block",
+                "first degree atrioventricular  block",
+                "first degree atrioventricular",
             ],
         },
     ),
 )
 
-TMAPS["first_degree_av_block_md"] = TensorMap(
+tmaps["first_degree_av_block_md"] = TensorMap(
     "first_degree_av_block_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2303,20 +2307,20 @@ TMAPS["first_degree_av_block_md"] = TensorMap(
         keys="read_md_clean",
         dict_of_list={
             "First_degree_AV_block": [
-                "First degree AV block",
-                "First degree atrioventricular block",
+                "first degree av block",
+                "first degree atrioventricular block",
                 "first degree avb",
-                "FIRST DEGREE ATRIOVENTRICULAR BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR BLOCK ",
-                "1ST DEGREE ATRIOVENTRICULAR  BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR  BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR",
+                "first degree atrioventricular block",
+                "first degree atrioventricular block ",
+                "1st degree atrioventricular  block",
+                "first degree atrioventricular  block",
+                "first degree atrioventricular",
             ],
         },
     ),
 )
 
-TMAPS["first_degree_av_block_pc"] = TensorMap(
+tmaps["first_degree_av_block_pc"] = TensorMap(
     "first_degree_av_block_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2326,215 +2330,215 @@ TMAPS["first_degree_av_block_pc"] = TensorMap(
         keys="read_pc_clean",
         dict_of_list={
             "First_degree_AV_block": [
-                "First degree AV block",
-                "First degree atrioventricular block",
+                "first degree av block",
+                "first degree atrioventricular block",
                 "first degree avb",
-                "FIRST DEGREE ATRIOVENTRICULAR BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR BLOCK ",
-                "1ST DEGREE ATRIOVENTRICULAR  BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR  BLOCK",
-                "FIRST DEGREE ATRIOVENTRICULAR",
+                "first degree atrioventricular block",
+                "first degree atrioventricular block ",
+                "1st degree atrioventricular  block",
+                "first degree atrioventricular  block",
+                "first degree atrioventricular",
             ],
         },
     ),
 )
 
-TMAPS["intraventricular_intraatrial_conduction"] = TensorMap(
+tmaps["intraventricular_intraatrial_conduction"] = TensorMap(
     "intraventricular_intraatrial_conduction",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "Right_atrial_conduction_abnormality": 0,
-        "bundle_branch_block": 1,
+        "Left_posterior_fascicular_block": 0,
+        "Incomplete_right_bundle_branch_block": 1,
         "Left_bundle_branch_block": 2,
-        "Incomplete_right_bundle_branch_block": 3,
-        "Left_anterior_fascicular_block": 4,
-        "Intraventricular_conduction_delay": 5,
-        "Left_posterior_fascicular_block": 6,
-        "Incomplete_left_bundle_branch_block": 7,
-        "Ventricular_preexcitation": 8,
-        "Epsilon_wave": 9,
-        "Right_bundle_branch_block": 10,
-        "Left_atrial_conduction_abnormality": 11,
-        "Aberrant_conduction_of_supraventricular_beats": 12,
-        "Crista_pattern": 13,
-        "nonspecific_IVCD": 14,
+        "Right_bundle_branch_block": 3,
+        "Crista_pattern": 4,
+        "Left_anterior_fascicular_block": 5,
+        "Aberrant_conduction_of_supraventricular_beats": 6,
+        "bundle_branch_block": 7,
+        "Right_atrial_conduction_abnormality": 8,
+        "Intraventricular_conduction_delay": 9,
+        "nonspecific_IVCD": 10,
+        "Epsilon_wave": 11,
+        "Incomplete_left_bundle_branch_block": 12,
+        "Ventricular_preexcitation": 13,
+        "Left_atrial_conduction_abnormality": 14,
         "unspecified": 15,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "Aberrant_conduction_of_supraventricular_beats": [
-                "Aberrant conduction of supraventricular beats",
+                "aberrant conduction of supraventricular beats",
                 "aberrant conduction",
             ],
             "Left_anterior_fascicular_block": [
-                "Left anterior fascicular block",
+                "left anterior fascicular block",
                 "left anterior hemiblock",
             ],
             "Left_posterior_fascicular_block": [
-                "Left posterior fascicular block",
+                "left posterior fascicular block",
                 "left posterior hemiblock",
             ],
-            "Left_bundle_branch_block": ["Left bundle branch block"],
+            "Left_bundle_branch_block": ["left bundle branch block"],
             "Incomplete_left_bundle_branch_block": [
-                "Incomplete left bundle branch block",
+                "incomplete left bundle branch block",
             ],
-            "Right_bundle_branch_block": ["Right bundle branch block"],
+            "Right_bundle_branch_block": ["right bundle branch block"],
             "Incomplete_right_bundle_branch_block": [
-                "Incomplete right bundle branch block",
+                "incomplete right bundle branch block",
             ],
             "Intraventricular_conduction_delay": [
-                "Intraventricular conduction delay",
+                "intraventricular conduction delay",
                 "intraventricular conduction defect",
             ],
-            "Ventricular_preexcitation": ["Ventricular preexcitation"],
+            "Ventricular_preexcitation": ["ventricular preexcitation"],
             "Right_atrial_conduction_abnormality": [
-                "Right atrial conduction abnormality",
+                "right atrial conduction abnormality",
             ],
             "Left_atrial_conduction_abnormality": [
-                "Left atrial conduction abnormality",
+                "left atrial conduction abnormality",
             ],
-            "Epsilon_wave": ["Epsilon wave"],
-            "Crista_pattern": ["Crista pattern"],
-            "bundle_branch_block": ["bundle branch block", "BBB"],
-            "nonspecific_IVCD": ["nonspecific IVCD"],
+            "Epsilon_wave": ["epsilon wave"],
+            "Crista_pattern": ["crista pattern"],
+            "bundle_branch_block": ["bundle branch block", "bbb"],
+            "nonspecific_IVCD": ["nonspecific ivcd"],
         },
     ),
 )
 
-TMAPS["intraventricular_intraatrial_conduction_md"] = TensorMap(
+tmaps["intraventricular_intraatrial_conduction_md"] = TensorMap(
     "intraventricular_intraatrial_conduction_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "Right_atrial_conduction_abnormality": 0,
-        "bundle_branch_block": 1,
+        "Left_posterior_fascicular_block": 0,
+        "Incomplete_right_bundle_branch_block": 1,
         "Left_bundle_branch_block": 2,
-        "Incomplete_right_bundle_branch_block": 3,
-        "Left_anterior_fascicular_block": 4,
-        "Intraventricular_conduction_delay": 5,
-        "Left_posterior_fascicular_block": 6,
-        "Incomplete_left_bundle_branch_block": 7,
-        "Ventricular_preexcitation": 8,
-        "Epsilon_wave": 9,
-        "Right_bundle_branch_block": 10,
-        "Left_atrial_conduction_abnormality": 11,
-        "Aberrant_conduction_of_supraventricular_beats": 12,
-        "Crista_pattern": 13,
-        "nonspecific_IVCD": 14,
+        "Right_bundle_branch_block": 3,
+        "Crista_pattern": 4,
+        "Left_anterior_fascicular_block": 5,
+        "Aberrant_conduction_of_supraventricular_beats": 6,
+        "bundle_branch_block": 7,
+        "Right_atrial_conduction_abnormality": 8,
+        "Intraventricular_conduction_delay": 9,
+        "nonspecific_IVCD": 10,
+        "Epsilon_wave": 11,
+        "Incomplete_left_bundle_branch_block": 12,
+        "Ventricular_preexcitation": 13,
+        "Left_atrial_conduction_abnormality": 14,
         "unspecified": 15,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "Aberrant_conduction_of_supraventricular_beats": [
-                "Aberrant conduction of supraventricular beats",
+                "aberrant conduction of supraventricular beats",
                 "aberrant conduction",
             ],
             "Left_anterior_fascicular_block": [
-                "Left anterior fascicular block",
+                "left anterior fascicular block",
                 "left anterior hemiblock",
             ],
             "Left_posterior_fascicular_block": [
-                "Left posterior fascicular block",
+                "left posterior fascicular block",
                 "left posterior hemiblock",
             ],
-            "Left_bundle_branch_block": ["Left bundle branch block"],
+            "Left_bundle_branch_block": ["left bundle branch block"],
             "Incomplete_left_bundle_branch_block": [
-                "Incomplete left bundle branch block",
+                "incomplete left bundle branch block",
             ],
-            "Right_bundle_branch_block": ["Right bundle branch block"],
+            "Right_bundle_branch_block": ["right bundle branch block"],
             "Incomplete_right_bundle_branch_block": [
-                "Incomplete right bundle branch block",
+                "incomplete right bundle branch block",
             ],
             "Intraventricular_conduction_delay": [
-                "Intraventricular conduction delay",
+                "intraventricular conduction delay",
                 "intraventricular conduction defect",
             ],
-            "Ventricular_preexcitation": ["Ventricular preexcitation"],
+            "Ventricular_preexcitation": ["ventricular preexcitation"],
             "Right_atrial_conduction_abnormality": [
-                "Right atrial conduction abnormality",
+                "right atrial conduction abnormality",
             ],
             "Left_atrial_conduction_abnormality": [
-                "Left atrial conduction abnormality",
+                "left atrial conduction abnormality",
             ],
-            "Epsilon_wave": ["Epsilon wave"],
-            "Crista_pattern": ["Crista pattern"],
-            "bundle_branch_block": ["bundle branch block", "BBB"],
-            "nonspecific_IVCD": ["nonspecific IVCD"],
+            "Epsilon_wave": ["epsilon wave"],
+            "Crista_pattern": ["crista pattern"],
+            "bundle_branch_block": ["bundle branch block", "bbb"],
+            "nonspecific_IVCD": ["nonspecific ivcd"],
         },
     ),
 )
 
-TMAPS["intraventricular_intraatrial_conduction_pc"] = TensorMap(
+tmaps["intraventricular_intraatrial_conduction_pc"] = TensorMap(
     "intraventricular_intraatrial_conduction_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "Right_atrial_conduction_abnormality": 0,
-        "bundle_branch_block": 1,
+        "Left_posterior_fascicular_block": 0,
+        "Incomplete_right_bundle_branch_block": 1,
         "Left_bundle_branch_block": 2,
-        "Incomplete_right_bundle_branch_block": 3,
-        "Left_anterior_fascicular_block": 4,
-        "Intraventricular_conduction_delay": 5,
-        "Left_posterior_fascicular_block": 6,
-        "Incomplete_left_bundle_branch_block": 7,
-        "Ventricular_preexcitation": 8,
-        "Epsilon_wave": 9,
-        "Right_bundle_branch_block": 10,
-        "Left_atrial_conduction_abnormality": 11,
-        "Aberrant_conduction_of_supraventricular_beats": 12,
-        "Crista_pattern": 13,
-        "nonspecific_IVCD": 14,
+        "Right_bundle_branch_block": 3,
+        "Crista_pattern": 4,
+        "Left_anterior_fascicular_block": 5,
+        "Aberrant_conduction_of_supraventricular_beats": 6,
+        "bundle_branch_block": 7,
+        "Right_atrial_conduction_abnormality": 8,
+        "Intraventricular_conduction_delay": 9,
+        "nonspecific_IVCD": 10,
+        "Epsilon_wave": 11,
+        "Incomplete_left_bundle_branch_block": 12,
+        "Ventricular_preexcitation": 13,
+        "Left_atrial_conduction_abnormality": 14,
         "unspecified": 15,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "Aberrant_conduction_of_supraventricular_beats": [
-                "Aberrant conduction of supraventricular beats",
+                "aberrant conduction of supraventricular beats",
                 "aberrant conduction",
             ],
             "Left_anterior_fascicular_block": [
-                "Left anterior fascicular block",
+                "left anterior fascicular block",
                 "left anterior hemiblock",
             ],
             "Left_posterior_fascicular_block": [
-                "Left posterior fascicular block",
+                "left posterior fascicular block",
                 "left posterior hemiblock",
             ],
-            "Left_bundle_branch_block": ["Left bundle branch block"],
+            "Left_bundle_branch_block": ["left bundle branch block"],
             "Incomplete_left_bundle_branch_block": [
-                "Incomplete left bundle branch block",
+                "incomplete left bundle branch block",
             ],
-            "Right_bundle_branch_block": ["Right bundle branch block"],
+            "Right_bundle_branch_block": ["right bundle branch block"],
             "Incomplete_right_bundle_branch_block": [
-                "Incomplete right bundle branch block",
+                "incomplete right bundle branch block",
             ],
             "Intraventricular_conduction_delay": [
-                "Intraventricular conduction delay",
+                "intraventricular conduction delay",
                 "intraventricular conduction defect",
             ],
-            "Ventricular_preexcitation": ["Ventricular preexcitation"],
+            "Ventricular_preexcitation": ["ventricular preexcitation"],
             "Right_atrial_conduction_abnormality": [
-                "Right atrial conduction abnormality",
+                "right atrial conduction abnormality",
             ],
             "Left_atrial_conduction_abnormality": [
-                "Left atrial conduction abnormality",
+                "left atrial conduction abnormality",
             ],
-            "Epsilon_wave": ["Epsilon wave"],
-            "Crista_pattern": ["Crista pattern"],
-            "bundle_branch_block": ["bundle branch block", "BBB"],
-            "nonspecific_IVCD": ["nonspecific IVCD"],
+            "Epsilon_wave": ["epsilon wave"],
+            "Crista_pattern": ["crista pattern"],
+            "bundle_branch_block": ["bundle branch block", "bbb"],
+            "nonspecific_IVCD": ["nonspecific ivcd"],
         },
     ),
 )
 
-TMAPS["av_dissociation"] = TensorMap(
+tmaps["av_dissociation"] = TensorMap(
     "av_dissociation",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2547,13 +2551,13 @@ TMAPS["av_dissociation"] = TensorMap(
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
-            "AV_dissociation": ["AV dissociation"],
+            "AV_dissociation": ["av dissociation"],
             "atrioventricular_dissociation": ["atrioventricular dissociation"],
         },
     ),
 )
 
-TMAPS["av_dissociation_md"] = TensorMap(
+tmaps["av_dissociation_md"] = TensorMap(
     "av_dissociation_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2566,13 +2570,13 @@ TMAPS["av_dissociation_md"] = TensorMap(
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
-            "AV_dissociation": ["AV dissociation"],
+            "AV_dissociation": ["av dissociation"],
             "atrioventricular_dissociation": ["atrioventricular dissociation"],
         },
     ),
 )
 
-TMAPS["av_dissociation_pc"] = TensorMap(
+tmaps["av_dissociation_pc"] = TensorMap(
     "av_dissociation_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -2585,26 +2589,26 @@ TMAPS["av_dissociation_pc"] = TensorMap(
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
-            "AV_dissociation": ["AV dissociation"],
+            "AV_dissociation": ["av dissociation"],
             "atrioventricular_dissociation": ["atrioventricular dissociation"],
         },
     ),
 )
 
-TMAPS["av_conduction"] = TensorMap(
+tmaps["av_conduction"] = TensorMap(
     "av_conduction",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "third_degree_avb": 0,
-        "av_dissociation": 1,
-        "variable_avb": 2,
-        "Mobitz_type_II_Second_degree_AV_block": 3,
-        "Mobitz_type_I_Second_degree_AV_block_": 4,
-        "unspecified_avb": 5,
-        "_4_to_1_AV_block": 6,
-        "_2_to_1_AV_block": 7,
+        "variable_avb": 0,
+        "third_degree_avb": 1,
+        "Mobitz_type_I_Second_degree_AV_block_": 2,
+        "unspecified_avb": 3,
+        "Mobitz_type_II_Second_degree_AV_block": 4,
+        "_4_to_1_AV_block": 5,
+        "_2_to_1_AV_block": 6,
+        "av_dissociation": 7,
         "unspecified": 8,
     },
     tensor_from_file=make_ecg_label(
@@ -2614,65 +2618,65 @@ TMAPS["av_conduction"] = TensorMap(
                 "second degree ",
                 "fixed block",
                 "second degree type 1",
-                "MOBITZ TYPE 1",
-                "Wenckebach",
-                "MOBITZ I",
-                "MOBITZ 1 BLOCK",
+                "mobitz type 1",
+                "wenckebach",
+                "mobitz i",
+                "mobitz 1 block",
             ],
             "Mobitz_type_II_Second_degree_AV_block": [
-                "MOBITZ II",
-                "2ND DEGREE SA BLOCK",
+                "mobitz ii",
+                "2nd degree sa block",
                 "hay block",
                 "second degree type 2",
             ],
             "_2_to_1_AV_block": [
-                "2:1 BLOCK",
-                "2:1 AV block",
-                "2:1 AV block",
+                "2:1 block",
+                "2:1 av block",
+                "2:1 av block",
                 "2:1 atrioventricular block",
                 "2 to 1 atrioventricular block",
-                "2 to 1 AV block",
+                "2 to 1 av block",
             ],
-            "_4_to_1_AV_block": ["4:1ATRIOVENTRICULAR CONDUCTION"],
+            "_4_to_1_AV_block": ["4:1atrioventricular conduction"],
             "third_degree_avb": [
-                "THIRD DEGREE ATRIOVENTRICULAR BLOCK",
+                "third degree atrioventricular block",
                 "3rd degree atrioventricular block",
                 "3rd degree av block",
-                "third degree AV block",
+                "third degree av block",
                 "complete heart block",
             ],
             "av_dissociation": [
                 "av dissociation",
-                "ATRIOVENTRICULAR DISSOCIATION",
-                "ATRIOVENTRICULAR DISSOCIATION",
+                "atrioventricular dissociation",
+                "atrioventricular dissociation",
             ],
-            "variable_avb": ["VARYING DEGREE OF BLOCK", "variable block"],
+            "variable_avb": ["varying degree of block", "variable block"],
             "unspecified_avb": [
-                "HIGH GRADE ATRIOVENTRICULAR BLOCK",
-                "HEARTBLOCK",
-                "AV block",
+                "high grade atrioventricular block",
+                "heartblock",
+                "av block",
                 "heart block",
-                "ATRIOVENTRICULAR BLOCK",
-                "HIGH DEGREE OF BLOCK",
+                "atrioventricular block",
+                "high degree of block",
             ],
         },
     ),
 )
 
-TMAPS["av_conduction_md"] = TensorMap(
+tmaps["av_conduction_md"] = TensorMap(
     "av_conduction_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "third_degree_avb": 0,
-        "av_dissociation": 1,
-        "variable_avb": 2,
-        "Mobitz_type_II_Second_degree_AV_block": 3,
-        "Mobitz_type_I_Second_degree_AV_block_": 4,
-        "unspecified_avb": 5,
-        "_4_to_1_AV_block": 6,
-        "_2_to_1_AV_block": 7,
+        "variable_avb": 0,
+        "third_degree_avb": 1,
+        "Mobitz_type_I_Second_degree_AV_block_": 2,
+        "unspecified_avb": 3,
+        "Mobitz_type_II_Second_degree_AV_block": 4,
+        "_4_to_1_AV_block": 5,
+        "_2_to_1_AV_block": 6,
+        "av_dissociation": 7,
         "unspecified": 8,
     },
     tensor_from_file=make_ecg_label(
@@ -2682,65 +2686,65 @@ TMAPS["av_conduction_md"] = TensorMap(
                 "second degree ",
                 "fixed block",
                 "second degree type 1",
-                "MOBITZ TYPE 1",
-                "Wenckebach",
-                "MOBITZ I",
-                "MOBITZ 1 BLOCK",
+                "mobitz type 1",
+                "wenckebach",
+                "mobitz i",
+                "mobitz 1 block",
             ],
             "Mobitz_type_II_Second_degree_AV_block": [
-                "MOBITZ II",
-                "2ND DEGREE SA BLOCK",
+                "mobitz ii",
+                "2nd degree sa block",
                 "hay block",
                 "second degree type 2",
             ],
             "_2_to_1_AV_block": [
-                "2:1 BLOCK",
-                "2:1 AV block",
-                "2:1 AV block",
+                "2:1 block",
+                "2:1 av block",
+                "2:1 av block",
                 "2:1 atrioventricular block",
                 "2 to 1 atrioventricular block",
-                "2 to 1 AV block",
+                "2 to 1 av block",
             ],
-            "_4_to_1_AV_block": ["4:1ATRIOVENTRICULAR CONDUCTION"],
+            "_4_to_1_AV_block": ["4:1atrioventricular conduction"],
             "third_degree_avb": [
-                "THIRD DEGREE ATRIOVENTRICULAR BLOCK",
+                "third degree atrioventricular block",
                 "3rd degree atrioventricular block",
                 "3rd degree av block",
-                "third degree AV block",
+                "third degree av block",
                 "complete heart block",
             ],
             "av_dissociation": [
                 "av dissociation",
-                "ATRIOVENTRICULAR DISSOCIATION",
-                "ATRIOVENTRICULAR DISSOCIATION",
+                "atrioventricular dissociation",
+                "atrioventricular dissociation",
             ],
-            "variable_avb": ["VARYING DEGREE OF BLOCK", "variable block"],
+            "variable_avb": ["varying degree of block", "variable block"],
             "unspecified_avb": [
-                "HIGH GRADE ATRIOVENTRICULAR BLOCK",
-                "HEARTBLOCK",
-                "AV block",
+                "high grade atrioventricular block",
+                "heartblock",
+                "av block",
                 "heart block",
-                "ATRIOVENTRICULAR BLOCK",
-                "HIGH DEGREE OF BLOCK",
+                "atrioventricular block",
+                "high degree of block",
             ],
         },
     ),
 )
 
-TMAPS["av_conduction_pc"] = TensorMap(
+tmaps["av_conduction_pc"] = TensorMap(
     "av_conduction_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "third_degree_avb": 0,
-        "av_dissociation": 1,
-        "variable_avb": 2,
-        "Mobitz_type_II_Second_degree_AV_block": 3,
-        "Mobitz_type_I_Second_degree_AV_block_": 4,
-        "unspecified_avb": 5,
-        "_4_to_1_AV_block": 6,
-        "_2_to_1_AV_block": 7,
+        "variable_avb": 0,
+        "third_degree_avb": 1,
+        "Mobitz_type_I_Second_degree_AV_block_": 2,
+        "unspecified_avb": 3,
+        "Mobitz_type_II_Second_degree_AV_block": 4,
+        "_4_to_1_AV_block": 5,
+        "_2_to_1_AV_block": 6,
+        "av_dissociation": 7,
         "unspecified": 8,
     },
     tensor_from_file=make_ecg_label(
@@ -2750,78 +2754,78 @@ TMAPS["av_conduction_pc"] = TensorMap(
                 "second degree ",
                 "fixed block",
                 "second degree type 1",
-                "MOBITZ TYPE 1",
-                "Wenckebach",
-                "MOBITZ I",
-                "MOBITZ 1 BLOCK",
+                "mobitz type 1",
+                "wenckebach",
+                "mobitz i",
+                "mobitz 1 block",
             ],
             "Mobitz_type_II_Second_degree_AV_block": [
-                "MOBITZ II",
-                "2ND DEGREE SA BLOCK",
+                "mobitz ii",
+                "2nd degree sa block",
                 "hay block",
                 "second degree type 2",
             ],
             "_2_to_1_AV_block": [
-                "2:1 BLOCK",
-                "2:1 AV block",
-                "2:1 AV block",
+                "2:1 block",
+                "2:1 av block",
+                "2:1 av block",
                 "2:1 atrioventricular block",
                 "2 to 1 atrioventricular block",
-                "2 to 1 AV block",
+                "2 to 1 av block",
             ],
-            "_4_to_1_AV_block": ["4:1ATRIOVENTRICULAR CONDUCTION"],
+            "_4_to_1_AV_block": ["4:1atrioventricular conduction"],
             "third_degree_avb": [
-                "THIRD DEGREE ATRIOVENTRICULAR BLOCK",
+                "third degree atrioventricular block",
                 "3rd degree atrioventricular block",
                 "3rd degree av block",
-                "third degree AV block",
+                "third degree av block",
                 "complete heart block",
             ],
             "av_dissociation": [
                 "av dissociation",
-                "ATRIOVENTRICULAR DISSOCIATION",
-                "ATRIOVENTRICULAR DISSOCIATION",
+                "atrioventricular dissociation",
+                "atrioventricular dissociation",
             ],
-            "variable_avb": ["VARYING DEGREE OF BLOCK", "variable block"],
+            "variable_avb": ["varying degree of block", "variable block"],
             "unspecified_avb": [
-                "HIGH GRADE ATRIOVENTRICULAR BLOCK",
-                "HEARTBLOCK",
-                "AV block",
+                "high grade atrioventricular block",
+                "heartblock",
+                "av block",
                 "heart block",
-                "ATRIOVENTRICULAR BLOCK",
-                "HIGH DEGREE OF BLOCK",
+                "atrioventricular block",
+                "high degree of block",
             ],
         },
     ),
 )
 
-TMAPS["ectopy"] = TensorMap(
+tmaps["ectopy"] = TensorMap(
     "ectopy",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "no_ectopy": 0,
-        "Junctional_premature_complexes": 1,
-        "Atrial_premature_complexes": 2,
-        "Ventricular_premature_complexes": 3,
-        "ectopy": 4,
-        "premature_supraventricular_complexes": 5,
+        "ectopy": 0,
+        "Atrial_premature_complexes": 1,
+        "Ventricular_premature_complexes": 2,
+        "premature_supraventricular_complexes": 3,
+        "Junctional_premature_complexes": 4,
+        "no_ectopy": 5,
         "unspecified": 6,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "Atrial_premature_complexes": [
-                "Atrial premature complexes",
-                "Atrial premature complexes",
-                "Atrial premature complexes",
-                "PREMATURE ATRIAL COMPLEXES",
+                "atrial premature complexes",
+                "atrial premature complexes",
+                "atrial premature complexes",
+                "premature atrial complexes",
                 "premature atrial co",
                 "atrial ectopy",
                 "atrial bigeminy",
                 "atrial trigeminy",
-                "Isolated premature atrial contractions",
+                "isolated premature atrial contractions",
                 "ectopic atrial complexes",
                 "premature atrial complexes",
                 "atrial premature beat",
@@ -2832,18 +2836,18 @@ TMAPS["ectopy"] = TensorMap(
                 "premature supraventricular complexes",
             ],
             "Junctional_premature_complexes": [
-                "Junctional premature complexes",
-                "Junctional premature complexes",
-                "Junctional premature complexes",
+                "junctional premature complexes",
+                "junctional premature complexes",
+                "junctional premature complexes",
                 "junctional premature beats",
             ],
             "Ventricular_premature_complexes": [
-                "Ventricular premature complexes",
-                "Ventricular premature complexes",
-                "Ventricular premature complexes",
+                "ventricular premature complexes",
+                "ventricular premature complexes",
+                "ventricular premature complexes",
                 "occasional premature ventricular complexes ",
                 "frequent premature ventricular or aberrantly conducted complexes ",
-                "Premature ventricular complexes",
+                "premature ventricular complexes",
                 "premature ventricular beat",
                 "premature ventricular complexe",
                 "ventricular ectopy",
@@ -2851,11 +2855,11 @@ TMAPS["ectopy"] = TensorMap(
                 "ventricular premature beat",
                 "premature ventricular compl",
                 "ventricular ectopy",
-                "Ventricular bigeminy",
-                "Ventricular trigeminy",
+                "ventricular bigeminy",
+                "ventricular trigeminy",
                 "premature ventricular and fusion complexes",
                 "ventriculaar ectopy is now present",
-                "Isolated premature ventricular contractions",
+                "isolated premature ventricular contractions",
                 "ventricular premature beat",
             ],
             "ectopy": [
@@ -2879,33 +2883,33 @@ TMAPS["ectopy"] = TensorMap(
     ),
 )
 
-TMAPS["ectopy_md"] = TensorMap(
+tmaps["ectopy_md"] = TensorMap(
     "ectopy_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "no_ectopy": 0,
-        "Junctional_premature_complexes": 1,
-        "Atrial_premature_complexes": 2,
-        "Ventricular_premature_complexes": 3,
-        "ectopy": 4,
-        "premature_supraventricular_complexes": 5,
+        "ectopy": 0,
+        "Atrial_premature_complexes": 1,
+        "Ventricular_premature_complexes": 2,
+        "premature_supraventricular_complexes": 3,
+        "Junctional_premature_complexes": 4,
+        "no_ectopy": 5,
         "unspecified": 6,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "Atrial_premature_complexes": [
-                "Atrial premature complexes",
-                "Atrial premature complexes",
-                "Atrial premature complexes",
-                "PREMATURE ATRIAL COMPLEXES",
+                "atrial premature complexes",
+                "atrial premature complexes",
+                "atrial premature complexes",
+                "premature atrial complexes",
                 "premature atrial co",
                 "atrial ectopy",
                 "atrial bigeminy",
                 "atrial trigeminy",
-                "Isolated premature atrial contractions",
+                "isolated premature atrial contractions",
                 "ectopic atrial complexes",
                 "premature atrial complexes",
                 "atrial premature beat",
@@ -2916,18 +2920,18 @@ TMAPS["ectopy_md"] = TensorMap(
                 "premature supraventricular complexes",
             ],
             "Junctional_premature_complexes": [
-                "Junctional premature complexes",
-                "Junctional premature complexes",
-                "Junctional premature complexes",
+                "junctional premature complexes",
+                "junctional premature complexes",
+                "junctional premature complexes",
                 "junctional premature beats",
             ],
             "Ventricular_premature_complexes": [
-                "Ventricular premature complexes",
-                "Ventricular premature complexes",
-                "Ventricular premature complexes",
+                "ventricular premature complexes",
+                "ventricular premature complexes",
+                "ventricular premature complexes",
                 "occasional premature ventricular complexes ",
                 "frequent premature ventricular or aberrantly conducted complexes ",
-                "Premature ventricular complexes",
+                "premature ventricular complexes",
                 "premature ventricular beat",
                 "premature ventricular complexe",
                 "ventricular ectopy",
@@ -2935,11 +2939,11 @@ TMAPS["ectopy_md"] = TensorMap(
                 "ventricular premature beat",
                 "premature ventricular compl",
                 "ventricular ectopy",
-                "Ventricular bigeminy",
-                "Ventricular trigeminy",
+                "ventricular bigeminy",
+                "ventricular trigeminy",
                 "premature ventricular and fusion complexes",
                 "ventriculaar ectopy is now present",
-                "Isolated premature ventricular contractions",
+                "isolated premature ventricular contractions",
                 "ventricular premature beat",
             ],
             "ectopy": [
@@ -2963,33 +2967,33 @@ TMAPS["ectopy_md"] = TensorMap(
     ),
 )
 
-TMAPS["ectopy_pc"] = TensorMap(
+tmaps["ectopy_pc"] = TensorMap(
     "ectopy_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "no_ectopy": 0,
-        "Junctional_premature_complexes": 1,
-        "Atrial_premature_complexes": 2,
-        "Ventricular_premature_complexes": 3,
-        "ectopy": 4,
-        "premature_supraventricular_complexes": 5,
+        "ectopy": 0,
+        "Atrial_premature_complexes": 1,
+        "Ventricular_premature_complexes": 2,
+        "premature_supraventricular_complexes": 3,
+        "Junctional_premature_complexes": 4,
+        "no_ectopy": 5,
         "unspecified": 6,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "Atrial_premature_complexes": [
-                "Atrial premature complexes",
-                "Atrial premature complexes",
-                "Atrial premature complexes",
-                "PREMATURE ATRIAL COMPLEXES",
+                "atrial premature complexes",
+                "atrial premature complexes",
+                "atrial premature complexes",
+                "premature atrial complexes",
                 "premature atrial co",
                 "atrial ectopy",
                 "atrial bigeminy",
                 "atrial trigeminy",
-                "Isolated premature atrial contractions",
+                "isolated premature atrial contractions",
                 "ectopic atrial complexes",
                 "premature atrial complexes",
                 "atrial premature beat",
@@ -3000,18 +3004,18 @@ TMAPS["ectopy_pc"] = TensorMap(
                 "premature supraventricular complexes",
             ],
             "Junctional_premature_complexes": [
-                "Junctional premature complexes",
-                "Junctional premature complexes",
-                "Junctional premature complexes",
+                "junctional premature complexes",
+                "junctional premature complexes",
+                "junctional premature complexes",
                 "junctional premature beats",
             ],
             "Ventricular_premature_complexes": [
-                "Ventricular premature complexes",
-                "Ventricular premature complexes",
-                "Ventricular premature complexes",
+                "ventricular premature complexes",
+                "ventricular premature complexes",
+                "ventricular premature complexes",
                 "occasional premature ventricular complexes ",
                 "frequent premature ventricular or aberrantly conducted complexes ",
-                "Premature ventricular complexes",
+                "premature ventricular complexes",
                 "premature ventricular beat",
                 "premature ventricular complexe",
                 "ventricular ectopy",
@@ -3019,11 +3023,11 @@ TMAPS["ectopy_pc"] = TensorMap(
                 "ventricular premature beat",
                 "premature ventricular compl",
                 "ventricular ectopy",
-                "Ventricular bigeminy",
-                "Ventricular trigeminy",
+                "ventricular bigeminy",
+                "ventricular trigeminy",
                 "premature ventricular and fusion complexes",
                 "ventriculaar ectopy is now present",
-                "Isolated premature ventricular contractions",
+                "isolated premature ventricular contractions",
                 "ventricular premature beat",
             ],
             "ectopy": [
@@ -3047,7 +3051,7 @@ TMAPS["ectopy_pc"] = TensorMap(
     ),
 )
 
-TMAPS["mi"] = TensorMap(
+tmaps["mi"] = TensorMap(
     "mi",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -3227,7 +3231,7 @@ TMAPS["mi"] = TensorMap(
     ),
 )
 
-TMAPS["mi_md"] = TensorMap(
+tmaps["mi_md"] = TensorMap(
     "mi_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -3407,7 +3411,7 @@ TMAPS["mi_md"] = TensorMap(
     ),
 )
 
-TMAPS["mi_pc"] = TensorMap(
+tmaps["mi_pc"] = TensorMap(
     "mi_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -3587,23 +3591,23 @@ TMAPS["mi_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI"] = TensorMap(
+tmaps["MI"] = TensorMap(
     "MI",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "old": 1,
-        "inferior": 2,
-        "indeterminate_age": 3,
-        "lateral": 4,
+        "apical": 0,
+        "inferior": 1,
+        "indeterminate_age": 2,
+        "acute": 3,
+        "transmural": 4,
         "subendocardial": 5,
-        "septal": 6,
-        "posterior": 7,
-        "acute": 8,
-        "apical": 9,
-        "transmural": 10,
+        "old": 6,
+        "lateral": 7,
+        "septal": 8,
+        "posterior": 9,
+        "anterior": 10,
         "unspecified": 11,
     },
     tensor_from_file=make_ecg_label(
@@ -3780,23 +3784,23 @@ TMAPS["MI"] = TensorMap(
     ),
 )
 
-TMAPS["MI_md"] = TensorMap(
+tmaps["MI_md"] = TensorMap(
     "MI_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "old": 1,
-        "inferior": 2,
-        "indeterminate_age": 3,
-        "lateral": 4,
+        "apical": 0,
+        "inferior": 1,
+        "indeterminate_age": 2,
+        "acute": 3,
+        "transmural": 4,
         "subendocardial": 5,
-        "septal": 6,
-        "posterior": 7,
-        "acute": 8,
-        "apical": 9,
-        "transmural": 10,
+        "old": 6,
+        "lateral": 7,
+        "septal": 8,
+        "posterior": 9,
+        "anterior": 10,
         "unspecified": 11,
     },
     tensor_from_file=make_ecg_label(
@@ -3973,23 +3977,23 @@ TMAPS["MI_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_pc"] = TensorMap(
+tmaps["MI_pc"] = TensorMap(
     "MI_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "old": 1,
-        "inferior": 2,
-        "indeterminate_age": 3,
-        "lateral": 4,
+        "apical": 0,
+        "inferior": 1,
+        "indeterminate_age": 2,
+        "acute": 3,
+        "transmural": 4,
         "subendocardial": 5,
-        "septal": 6,
-        "posterior": 7,
-        "acute": 8,
-        "apical": 9,
-        "transmural": 10,
+        "old": 6,
+        "lateral": 7,
+        "septal": 8,
+        "posterior": 9,
+        "anterior": 10,
         "unspecified": 11,
     },
     tensor_from_file=make_ecg_label(
@@ -4166,17 +4170,17 @@ TMAPS["MI_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old"] = TensorMap(
+tmaps["MI_old"] = TensorMap(
     "MI_old",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "inferior": 1,
-        "lateral": 2,
-        "septal": 3,
-        "posterior": 4,
+        "inferior": 0,
+        "lateral": 1,
+        "septal": 2,
+        "posterior": 3,
+        "anterior": 4,
         "unspecified": 5,
     },
     tensor_from_file=make_ecg_label(
@@ -4241,17 +4245,17 @@ TMAPS["MI_old"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_md"] = TensorMap(
+tmaps["MI_old_md"] = TensorMap(
     "MI_old_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "inferior": 1,
-        "lateral": 2,
-        "septal": 3,
-        "posterior": 4,
+        "inferior": 0,
+        "lateral": 1,
+        "septal": 2,
+        "posterior": 3,
+        "anterior": 4,
         "unspecified": 5,
     },
     tensor_from_file=make_ecg_label(
@@ -4316,17 +4320,17 @@ TMAPS["MI_old_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_pc"] = TensorMap(
+tmaps["MI_old_pc"] = TensorMap(
     "MI_old_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
-        "inferior": 1,
-        "lateral": 2,
-        "septal": 3,
-        "posterior": 4,
+        "inferior": 0,
+        "lateral": 1,
+        "septal": 2,
+        "posterior": 3,
+        "anterior": 4,
         "unspecified": 5,
     },
     tensor_from_file=make_ecg_label(
@@ -4391,7 +4395,7 @@ TMAPS["MI_old_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_posterior"] = TensorMap(
+tmaps["MI_old_posterior"] = TensorMap(
     "MI_old_posterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4412,7 +4416,7 @@ TMAPS["MI_old_posterior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_posterior_md"] = TensorMap(
+tmaps["MI_old_posterior_md"] = TensorMap(
     "MI_old_posterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4433,7 +4437,7 @@ TMAPS["MI_old_posterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_posterior_pc"] = TensorMap(
+tmaps["MI_old_posterior_pc"] = TensorMap(
     "MI_old_posterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4454,12 +4458,12 @@ TMAPS["MI_old_posterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_inferior"] = TensorMap(
+tmaps["MI_old_inferior"] = TensorMap(
     "MI_old_inferior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -4472,12 +4476,12 @@ TMAPS["MI_old_inferior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_inferior_md"] = TensorMap(
+tmaps["MI_old_inferior_md"] = TensorMap(
     "MI_old_inferior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -4490,12 +4494,12 @@ TMAPS["MI_old_inferior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_inferior_pc"] = TensorMap(
+tmaps["MI_old_inferior_pc"] = TensorMap(
     "MI_old_inferior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -4508,12 +4512,12 @@ TMAPS["MI_old_inferior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_anterior"] = TensorMap(
+tmaps["MI_old_anterior"] = TensorMap(
     "MI_old_anterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "septal": 1, "inferior": 2, "unspecified": 3},
+    channel_map={"lateral": 0, "inferior": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -4531,12 +4535,12 @@ TMAPS["MI_old_anterior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_anterior_md"] = TensorMap(
+tmaps["MI_old_anterior_md"] = TensorMap(
     "MI_old_anterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "septal": 1, "inferior": 2, "unspecified": 3},
+    channel_map={"lateral": 0, "inferior": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -4554,12 +4558,12 @@ TMAPS["MI_old_anterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_anterior_pc"] = TensorMap(
+tmaps["MI_old_anterior_pc"] = TensorMap(
     "MI_old_anterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "septal": 1, "inferior": 2, "unspecified": 3},
+    channel_map={"lateral": 0, "inferior": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -4577,12 +4581,12 @@ TMAPS["MI_old_anterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_posterior_inferior"] = TensorMap(
+tmaps["MI_old_posterior_inferior"] = TensorMap(
     "MI_old_posterior_inferior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -4595,12 +4599,12 @@ TMAPS["MI_old_posterior_inferior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_posterior_inferior_md"] = TensorMap(
+tmaps["MI_old_posterior_inferior_md"] = TensorMap(
     "MI_old_posterior_inferior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -4613,12 +4617,12 @@ TMAPS["MI_old_posterior_inferior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_posterior_inferior_pc"] = TensorMap(
+tmaps["MI_old_posterior_inferior_pc"] = TensorMap(
     "MI_old_posterior_inferior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "unspecified": 2},
+    channel_map={"apical": 0, "lateral": 1, "unspecified": 2},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -4631,7 +4635,7 @@ TMAPS["MI_old_posterior_inferior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_lateral"] = TensorMap(
+tmaps["MI_old_lateral"] = TensorMap(
     "MI_old_lateral",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4643,7 +4647,7 @@ TMAPS["MI_old_lateral"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_lateral_md"] = TensorMap(
+tmaps["MI_old_lateral_md"] = TensorMap(
     "MI_old_lateral_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4655,7 +4659,7 @@ TMAPS["MI_old_lateral_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_old_lateral_pc"] = TensorMap(
+tmaps["MI_old_lateral_pc"] = TensorMap(
     "MI_old_lateral_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4667,18 +4671,18 @@ TMAPS["MI_old_lateral_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age"] = TensorMap(
+tmaps["MI_indeterminate_age"] = TensorMap(
     "MI_indeterminate_age",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
+        "apical": 0,
         "inferior": 1,
-        "lateral": 2,
-        "extensive": 3,
+        "extensive": 2,
+        "lateral": 3,
         "posterior": 4,
-        "apical": 5,
+        "anterior": 5,
         "unspecified": 6,
     },
     tensor_from_file=make_ecg_label(
@@ -4715,18 +4719,18 @@ TMAPS["MI_indeterminate_age"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_md"] = TensorMap(
+tmaps["MI_indeterminate_age_md"] = TensorMap(
     "MI_indeterminate_age_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
+        "apical": 0,
         "inferior": 1,
-        "lateral": 2,
-        "extensive": 3,
+        "extensive": 2,
+        "lateral": 3,
         "posterior": 4,
-        "apical": 5,
+        "anterior": 5,
         "unspecified": 6,
     },
     tensor_from_file=make_ecg_label(
@@ -4763,18 +4767,18 @@ TMAPS["MI_indeterminate_age_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_pc"] = TensorMap(
+tmaps["MI_indeterminate_age_pc"] = TensorMap(
     "MI_indeterminate_age_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "anterior": 0,
+        "apical": 0,
         "inferior": 1,
-        "lateral": 2,
-        "extensive": 3,
+        "extensive": 2,
+        "lateral": 3,
         "posterior": 4,
-        "apical": 5,
+        "anterior": 5,
         "unspecified": 6,
     },
     tensor_from_file=make_ecg_label(
@@ -4811,7 +4815,7 @@ TMAPS["MI_indeterminate_age_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_lateral"] = TensorMap(
+tmaps["MI_lateral"] = TensorMap(
     "MI_lateral",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4823,7 +4827,7 @@ TMAPS["MI_lateral"] = TensorMap(
     ),
 )
 
-TMAPS["MI_lateral_md"] = TensorMap(
+tmaps["MI_lateral_md"] = TensorMap(
     "MI_lateral_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4835,7 +4839,7 @@ TMAPS["MI_lateral_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_lateral_pc"] = TensorMap(
+tmaps["MI_lateral_pc"] = TensorMap(
     "MI_lateral_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -4847,12 +4851,12 @@ TMAPS["MI_lateral_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_anterior"] = TensorMap(
+tmaps["MI_indeterminate_age_anterior"] = TensorMap(
     "MI_indeterminate_age_anterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "septal": 2, "unspecified": 3},
+    channel_map={"apical": 0, "lateral": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -4866,12 +4870,12 @@ TMAPS["MI_indeterminate_age_anterior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_anterior_md"] = TensorMap(
+tmaps["MI_indeterminate_age_anterior_md"] = TensorMap(
     "MI_indeterminate_age_anterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "septal": 2, "unspecified": 3},
+    channel_map={"apical": 0, "lateral": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -4885,12 +4889,12 @@ TMAPS["MI_indeterminate_age_anterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_anterior_pc"] = TensorMap(
+tmaps["MI_indeterminate_age_anterior_pc"] = TensorMap(
     "MI_indeterminate_age_anterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "septal": 2, "unspecified": 3},
+    channel_map={"apical": 0, "lateral": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -4904,12 +4908,12 @@ TMAPS["MI_indeterminate_age_anterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_anterior"] = TensorMap(
+tmaps["MI_anterior"] = TensorMap(
     "MI_anterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "septal": 2, "unspecified": 3},
+    channel_map={"apical": 0, "lateral": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -4936,12 +4940,12 @@ TMAPS["MI_anterior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_anterior_md"] = TensorMap(
+tmaps["MI_anterior_md"] = TensorMap(
     "MI_anterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "septal": 2, "unspecified": 3},
+    channel_map={"apical": 0, "lateral": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -4968,12 +4972,12 @@ TMAPS["MI_anterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_anterior_pc"] = TensorMap(
+tmaps["MI_anterior_pc"] = TensorMap(
     "MI_anterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"lateral": 0, "apical": 1, "septal": 2, "unspecified": 3},
+    channel_map={"apical": 0, "lateral": 1, "septal": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -5000,7 +5004,7 @@ TMAPS["MI_anterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_posterior"] = TensorMap(
+tmaps["MI_posterior"] = TensorMap(
     "MI_posterior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5015,7 +5019,7 @@ TMAPS["MI_posterior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_posterior_md"] = TensorMap(
+tmaps["MI_posterior_md"] = TensorMap(
     "MI_posterior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5030,7 +5034,7 @@ TMAPS["MI_posterior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_posterior_pc"] = TensorMap(
+tmaps["MI_posterior_pc"] = TensorMap(
     "MI_posterior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5045,7 +5049,7 @@ TMAPS["MI_posterior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_inferior"] = TensorMap(
+tmaps["MI_inferior"] = TensorMap(
     "MI_inferior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5062,7 +5066,7 @@ TMAPS["MI_inferior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_inferior_md"] = TensorMap(
+tmaps["MI_inferior_md"] = TensorMap(
     "MI_inferior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5079,7 +5083,7 @@ TMAPS["MI_inferior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_inferior_pc"] = TensorMap(
+tmaps["MI_inferior_pc"] = TensorMap(
     "MI_inferior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5096,7 +5100,7 @@ TMAPS["MI_inferior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_inferior"] = TensorMap(
+tmaps["MI_indeterminate_age_inferior"] = TensorMap(
     "MI_indeterminate_age_inferior",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5113,7 +5117,7 @@ TMAPS["MI_indeterminate_age_inferior"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_inferior_md"] = TensorMap(
+tmaps["MI_indeterminate_age_inferior_md"] = TensorMap(
     "MI_indeterminate_age_inferior_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5130,7 +5134,7 @@ TMAPS["MI_indeterminate_age_inferior_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_inferior_pc"] = TensorMap(
+tmaps["MI_indeterminate_age_inferior_pc"] = TensorMap(
     "MI_indeterminate_age_inferior_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5147,7 +5151,7 @@ TMAPS["MI_indeterminate_age_inferior_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_inferior_lateral"] = TensorMap(
+tmaps["MI_inferior_lateral"] = TensorMap(
     "MI_inferior_lateral",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5159,7 +5163,7 @@ TMAPS["MI_inferior_lateral"] = TensorMap(
     ),
 )
 
-TMAPS["MI_inferior_lateral_md"] = TensorMap(
+tmaps["MI_inferior_lateral_md"] = TensorMap(
     "MI_inferior_lateral_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5171,7 +5175,7 @@ TMAPS["MI_inferior_lateral_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_inferior_lateral_pc"] = TensorMap(
+tmaps["MI_inferior_lateral_pc"] = TensorMap(
     "MI_inferior_lateral_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5183,12 +5187,12 @@ TMAPS["MI_inferior_lateral_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_acute"] = TensorMap(
+tmaps["MI_acute"] = TensorMap(
     "MI_acute",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"anterior": 0, "inferior": 1, "posterior": 2, "unspecified": 3},
+    channel_map={"inferior": 0, "posterior": 1, "anterior": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
@@ -5210,12 +5214,12 @@ TMAPS["MI_acute"] = TensorMap(
     ),
 )
 
-TMAPS["MI_acute_md"] = TensorMap(
+tmaps["MI_acute_md"] = TensorMap(
     "MI_acute_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"anterior": 0, "inferior": 1, "posterior": 2, "unspecified": 3},
+    channel_map={"inferior": 0, "posterior": 1, "anterior": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
@@ -5237,12 +5241,12 @@ TMAPS["MI_acute_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_acute_pc"] = TensorMap(
+tmaps["MI_acute_pc"] = TensorMap(
     "MI_acute_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
-    channel_map={"anterior": 0, "inferior": 1, "posterior": 2, "unspecified": 3},
+    channel_map={"inferior": 0, "posterior": 1, "anterior": 2, "unspecified": 3},
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
@@ -5264,7 +5268,7 @@ TMAPS["MI_acute_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_anterior_lateral"] = TensorMap(
+tmaps["MI_anterior_lateral"] = TensorMap(
     "MI_anterior_lateral",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5279,7 +5283,7 @@ TMAPS["MI_anterior_lateral"] = TensorMap(
     ),
 )
 
-TMAPS["MI_anterior_lateral_md"] = TensorMap(
+tmaps["MI_anterior_lateral_md"] = TensorMap(
     "MI_anterior_lateral_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5294,7 +5298,7 @@ TMAPS["MI_anterior_lateral_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_anterior_lateral_pc"] = TensorMap(
+tmaps["MI_anterior_lateral_pc"] = TensorMap(
     "MI_anterior_lateral_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5309,7 +5313,7 @@ TMAPS["MI_anterior_lateral_pc"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_anterior_lateral"] = TensorMap(
+tmaps["MI_indeterminate_age_anterior_lateral"] = TensorMap(
     "MI_indeterminate_age_anterior_lateral",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5321,7 +5325,7 @@ TMAPS["MI_indeterminate_age_anterior_lateral"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_anterior_lateral_md"] = TensorMap(
+tmaps["MI_indeterminate_age_anterior_lateral_md"] = TensorMap(
     "MI_indeterminate_age_anterior_lateral_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5333,7 +5337,7 @@ TMAPS["MI_indeterminate_age_anterior_lateral_md"] = TensorMap(
     ),
 )
 
-TMAPS["MI_indeterminate_age_anterior_lateral_pc"] = TensorMap(
+tmaps["MI_indeterminate_age_anterior_lateral_pc"] = TensorMap(
     "MI_indeterminate_age_anterior_lateral_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5345,55 +5349,55 @@ TMAPS["MI_indeterminate_age_anterior_lateral_pc"] = TensorMap(
     ),
 )
 
-TMAPS["voltage"] = TensorMap(
+tmaps["voltage"] = TensorMap(
     "voltage",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "poor_R_wave_progression": 0,
-        "Right_superior_axis": 1,
-        "Left_axis_deviation": 2,
-        "normal_axis": 3,
-        "ignore": 4,
-        "reverse_r_wave_progression": 5,
-        "Indeterminate_axis": 6,
-        "Low_voltage": 7,
-        "Right_axis_deviation": 8,
-        "Electrical_alternans": 9,
-        "Abnormal_P_wave_axis": 10,
+        "Left_axis_deviation": 0,
+        "normal_axis": 1,
+        "Indeterminate_axis": 2,
+        "Electrical_alternans": 3,
+        "Abnormal_P_wave_axis": 4,
+        "Low_voltage": 5,
+        "poor_R_wave_progression": 6,
+        "Right_superior_axis": 7,
+        "ignore": 8,
+        "Right_axis_deviation": 9,
+        "reverse_r_wave_progression": 10,
         "unspecified": 11,
     },
     tensor_from_file=make_ecg_label(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "Right_axis_deviation": [
-                "Right axis deviation",
+                "right axis deviation",
                 "right superior axis deviation",
                 "rightward axis",
                 "axis shifted right",
             ],
             "Left_axis_deviation": [
-                "Left axis deviation",
+                "left axis deviation",
                 "leftward axis",
                 "axis shifted left",
             ],
-            "Right_superior_axis": ["Right superior axis"],
+            "Right_superior_axis": ["right superior axis"],
             "Indeterminate_axis": [
-                "Indeterminate axis",
-                "Indeterminate qrs axis",
+                "indeterminate axis",
+                "indeterminate qrs axis",
                 "northwest axis",
             ],
             "reverse_r_wave_progression": [
                 "reverse r wave progression",
                 "reversed r wave progression",
             ],
-            "Electrical_alternans": ["Electrical alternans"],
-            "Low_voltage": ["Low voltage"],
+            "Electrical_alternans": ["electrical alternans"],
+            "Low_voltage": ["low voltage"],
             "poor_R_wave_progression": [
-                "Abnormal precordial R wave progression",
-                "poor R wave progression",
-                "Abnormal precordial R wave progression or poor R wave progression",
+                "abnormal precordial r wave progression",
+                "poor r wave progression",
+                "abnormal precordial r wave progression or poor r wave progression",
                 "poor precordial r wave progression",
                 "slowprecordial r wave progression",
                 "slow precordial r wave progression",
@@ -5402,60 +5406,60 @@ TMAPS["voltage"] = TensorMap(
             ],
             "ignore": ["r wave progression has improved"],
             "normal_axis": ["normal axis"],
-            "Abnormal_P_wave_axis": ["Abnormal P wave axis"],
+            "Abnormal_P_wave_axis": ["abnormal p wave axis"],
         },
     ),
 )
 
-TMAPS["voltage_md"] = TensorMap(
+tmaps["voltage_md"] = TensorMap(
     "voltage_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "poor_R_wave_progression": 0,
-        "Right_superior_axis": 1,
-        "Left_axis_deviation": 2,
-        "normal_axis": 3,
-        "ignore": 4,
-        "reverse_r_wave_progression": 5,
-        "Indeterminate_axis": 6,
-        "Low_voltage": 7,
-        "Right_axis_deviation": 8,
-        "Electrical_alternans": 9,
-        "Abnormal_P_wave_axis": 10,
+        "Left_axis_deviation": 0,
+        "normal_axis": 1,
+        "Indeterminate_axis": 2,
+        "Electrical_alternans": 3,
+        "Abnormal_P_wave_axis": 4,
+        "Low_voltage": 5,
+        "poor_R_wave_progression": 6,
+        "Right_superior_axis": 7,
+        "ignore": 8,
+        "Right_axis_deviation": 9,
+        "reverse_r_wave_progression": 10,
         "unspecified": 11,
     },
     tensor_from_file=make_ecg_label(
         keys="read_md_clean",
         dict_of_list={
             "Right_axis_deviation": [
-                "Right axis deviation",
+                "right axis deviation",
                 "right superior axis deviation",
                 "rightward axis",
                 "axis shifted right",
             ],
             "Left_axis_deviation": [
-                "Left axis deviation",
+                "left axis deviation",
                 "leftward axis",
                 "axis shifted left",
             ],
-            "Right_superior_axis": ["Right superior axis"],
+            "Right_superior_axis": ["right superior axis"],
             "Indeterminate_axis": [
-                "Indeterminate axis",
-                "Indeterminate qrs axis",
+                "indeterminate axis",
+                "indeterminate qrs axis",
                 "northwest axis",
             ],
             "reverse_r_wave_progression": [
                 "reverse r wave progression",
                 "reversed r wave progression",
             ],
-            "Electrical_alternans": ["Electrical alternans"],
-            "Low_voltage": ["Low voltage"],
+            "Electrical_alternans": ["electrical alternans"],
+            "Low_voltage": ["low voltage"],
             "poor_R_wave_progression": [
-                "Abnormal precordial R wave progression",
-                "poor R wave progression",
-                "Abnormal precordial R wave progression or poor R wave progression",
+                "abnormal precordial r wave progression",
+                "poor r wave progression",
+                "abnormal precordial r wave progression or poor r wave progression",
                 "poor precordial r wave progression",
                 "slowprecordial r wave progression",
                 "slow precordial r wave progression",
@@ -5464,60 +5468,60 @@ TMAPS["voltage_md"] = TensorMap(
             ],
             "ignore": ["r wave progression has improved"],
             "normal_axis": ["normal axis"],
-            "Abnormal_P_wave_axis": ["Abnormal P wave axis"],
+            "Abnormal_P_wave_axis": ["abnormal p wave axis"],
         },
     ),
 )
 
-TMAPS["voltage_pc"] = TensorMap(
+tmaps["voltage_pc"] = TensorMap(
     "voltage_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "poor_R_wave_progression": 0,
-        "Right_superior_axis": 1,
-        "Left_axis_deviation": 2,
-        "normal_axis": 3,
-        "ignore": 4,
-        "reverse_r_wave_progression": 5,
-        "Indeterminate_axis": 6,
-        "Low_voltage": 7,
-        "Right_axis_deviation": 8,
-        "Electrical_alternans": 9,
-        "Abnormal_P_wave_axis": 10,
+        "Left_axis_deviation": 0,
+        "normal_axis": 1,
+        "Indeterminate_axis": 2,
+        "Electrical_alternans": 3,
+        "Abnormal_P_wave_axis": 4,
+        "Low_voltage": 5,
+        "poor_R_wave_progression": 6,
+        "Right_superior_axis": 7,
+        "ignore": 8,
+        "Right_axis_deviation": 9,
+        "reverse_r_wave_progression": 10,
         "unspecified": 11,
     },
     tensor_from_file=make_ecg_label(
         keys="read_pc_clean",
         dict_of_list={
             "Right_axis_deviation": [
-                "Right axis deviation",
+                "right axis deviation",
                 "right superior axis deviation",
                 "rightward axis",
                 "axis shifted right",
             ],
             "Left_axis_deviation": [
-                "Left axis deviation",
+                "left axis deviation",
                 "leftward axis",
                 "axis shifted left",
             ],
-            "Right_superior_axis": ["Right superior axis"],
+            "Right_superior_axis": ["right superior axis"],
             "Indeterminate_axis": [
-                "Indeterminate axis",
-                "Indeterminate qrs axis",
+                "indeterminate axis",
+                "indeterminate qrs axis",
                 "northwest axis",
             ],
             "reverse_r_wave_progression": [
                 "reverse r wave progression",
                 "reversed r wave progression",
             ],
-            "Electrical_alternans": ["Electrical alternans"],
-            "Low_voltage": ["Low voltage"],
+            "Electrical_alternans": ["electrical alternans"],
+            "Low_voltage": ["low voltage"],
             "poor_R_wave_progression": [
-                "Abnormal precordial R wave progression",
-                "poor R wave progression",
-                "Abnormal precordial R wave progression or poor R wave progression",
+                "abnormal precordial r wave progression",
+                "poor r wave progression",
+                "abnormal precordial r wave progression or poor r wave progression",
                 "poor precordial r wave progression",
                 "slowprecordial r wave progression",
                 "slow precordial r wave progression",
@@ -5526,21 +5530,186 @@ TMAPS["voltage_pc"] = TensorMap(
             ],
             "ignore": ["r wave progression has improved"],
             "normal_axis": ["normal axis"],
-            "Abnormal_P_wave_axis": ["Abnormal P wave axis"],
+            "Abnormal_P_wave_axis": ["abnormal p wave axis"],
         },
     ),
 )
 
-TMAPS["pacemaker"] = TensorMap(
+tmaps["hypertrophy_enlargement"] = TensorMap(
+    "hypertrophy_enlargement",
+    interpretation=Interpretation.CATEGORICAL,
+    time_series_limit=0,
+    path_prefix="partners_ecg_rest",
+    channel_map={
+        "RAE": 0,
+        "LAE": 1,
+        "RVH": 2,
+        "LVH": 3,
+        "BAE": 4,
+        "SH": 5,
+        "unspecified": 6,
+    },
+    tensor_from_file=make_ecg_label(
+        keys=["read_md_clean", "read_pc_clean"],
+        dict_of_list={
+            "LAE": [
+                "left atrial enlargement",
+                "left atrial enlarge",
+                "right atrial enla",
+                "combined atrial enlargement",
+                "biatrial hypertrophy",
+            ],
+            "RAE": [
+                "right atrial enlargement",
+                "combined atrial enlargement",
+                "biatrial hypertrophy",
+            ],
+            "BAE": ["biatrial enlargement", "biatrial enlargement"],
+            "LVH": [
+                "left ventricular hypertrophy",
+                "left ventricular hypertr",
+                "left ventricular hypertroph",
+                "left ventricular hypertrophy",
+                "left ventricular hypertro",
+                "left ventricular hypertrophy",
+                "leftventricular hypertrophy",
+                "biventricular hypertrophy",
+                "combined ventricular hypertrophy",
+                "biventriclar hypertrophy",
+            ],
+            "RVH": [
+                "right ventricular enlargement",
+                "rightventricular hypertrophy",
+                "right ventricular hypertrophy",
+                "biventricular hypertrophy",
+                "combined ventricular hypertrophy",
+                "biventriclar hypertrophy",
+            ],
+            "SH": ["septal lipomatous hypertrophy", "septal hypertrophy"],
+        },
+    ),
+)
+
+tmaps["hypertrophy_enlargement_md"] = TensorMap(
+    "hypertrophy_enlargement_md",
+    interpretation=Interpretation.CATEGORICAL,
+    time_series_limit=0,
+    path_prefix="partners_ecg_rest",
+    channel_map={
+        "RAE": 0,
+        "LAE": 1,
+        "RVH": 2,
+        "LVH": 3,
+        "BAE": 4,
+        "SH": 5,
+        "unspecified": 6,
+    },
+    tensor_from_file=make_ecg_label(
+        keys="read_md_clean",
+        dict_of_list={
+            "LAE": [
+                "left atrial enlargement",
+                "left atrial enlarge",
+                "right atrial enla",
+                "combined atrial enlargement",
+                "biatrial hypertrophy",
+            ],
+            "RAE": [
+                "right atrial enlargement",
+                "combined atrial enlargement",
+                "biatrial hypertrophy",
+            ],
+            "BAE": ["biatrial enlargement", "biatrial enlargement"],
+            "LVH": [
+                "left ventricular hypertrophy",
+                "left ventricular hypertr",
+                "left ventricular hypertroph",
+                "left ventricular hypertrophy",
+                "left ventricular hypertro",
+                "left ventricular hypertrophy",
+                "leftventricular hypertrophy",
+                "biventricular hypertrophy",
+                "combined ventricular hypertrophy",
+                "biventriclar hypertrophy",
+            ],
+            "RVH": [
+                "right ventricular enlargement",
+                "rightventricular hypertrophy",
+                "right ventricular hypertrophy",
+                "biventricular hypertrophy",
+                "combined ventricular hypertrophy",
+                "biventriclar hypertrophy",
+            ],
+            "SH": ["septal lipomatous hypertrophy", "septal hypertrophy"],
+        },
+    ),
+)
+
+tmaps["hypertrophy_enlargement_pc"] = TensorMap(
+    "hypertrophy_enlargement_pc",
+    interpretation=Interpretation.CATEGORICAL,
+    time_series_limit=0,
+    path_prefix="partners_ecg_rest",
+    channel_map={
+        "RAE": 0,
+        "LAE": 1,
+        "RVH": 2,
+        "LVH": 3,
+        "BAE": 4,
+        "SH": 5,
+        "unspecified": 6,
+    },
+    tensor_from_file=make_ecg_label(
+        keys="read_pc_clean",
+        dict_of_list={
+            "LAE": [
+                "left atrial enlargement",
+                "left atrial enlarge",
+                "right atrial enla",
+                "combined atrial enlargement",
+                "biatrial hypertrophy",
+            ],
+            "RAE": [
+                "right atrial enlargement",
+                "combined atrial enlargement",
+                "biatrial hypertrophy",
+            ],
+            "BAE": ["biatrial enlargement", "biatrial enlargement"],
+            "LVH": [
+                "left ventricular hypertrophy",
+                "left ventricular hypertr",
+                "left ventricular hypertroph",
+                "left ventricular hypertrophy",
+                "left ventricular hypertro",
+                "left ventricular hypertrophy",
+                "leftventricular hypertrophy",
+                "biventricular hypertrophy",
+                "combined ventricular hypertrophy",
+                "biventriclar hypertrophy",
+            ],
+            "RVH": [
+                "right ventricular enlargement",
+                "rightventricular hypertrophy",
+                "right ventricular hypertrophy",
+                "biventricular hypertrophy",
+                "combined ventricular hypertrophy",
+                "biventriclar hypertrophy",
+            ],
+            "SH": ["septal lipomatous hypertrophy", "septal hypertrophy"],
+        },
+    ),
+)
+
+tmaps["pacemaker"] = TensorMap(
     "pacemaker",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "pacemaker": 0,
+        "v_pacing": 0,
         "other": 1,
         "lv_or_bv_pacing": 2,
-        "v_pacing": 3,
+        "pacemaker": 3,
         "rv_pacing": 4,
         "unspecified": 5,
     },
@@ -5548,77 +5717,77 @@ TMAPS["pacemaker"] = TensorMap(
         keys=["read_md_clean", "read_pc_clean"],
         dict_of_list={
             "pacemaker": [
-                "A TRIGGERED V-PACED RHYTHM",
+                "a triggered v-paced rhythm",
                 "dual chamber pacing",
-                "SEQUENTIAL PACING",
+                "sequential pacing",
                 "shows dual chamber pacing",
-                "V-PACED",
+                "v-paced",
                 "ventricular demand pacing",
                 "ventricular pacing",
                 "electronic pacemaker",
-                "UNIPOLAR RIGHT VENTRICULAR  PACING",
+                "unipolar right ventricular  pacing",
                 "demand v-pacing",
                 "demand ventricular pacemaker",
                 "v-paced beats",
-                "V-PACED RHYTHM",
-                "VENTRICULAR PACED",
+                "v-paced rhythm",
+                "ventricular paced",
                 "ventricular pacing has replaced av pacing",
-                "ATRIALLY TRIGGERED V PACED",
+                "atrially triggered v paced",
                 "atrial triggered ventricular pacing",
                 "competitive av pacing",
-                "Atrial-paced complexes ",
-                "Atrial-paced rhythm",
-                "Ventricular-paced complexes",
-                "Ventricular-paced rhythm",
-                "Atrial-sensed ventricular-paced rhythm",
-                "Atrial-sensed ventricular-paced complexes",
-                "AV dual-paced rhythm",
-                "AV dual-paced complexes",
-                "Biventricular-paced rhythm",
-                "Biventricular-paced complexes",
-                "Failure to capture atrial",
-                "Failure to capture ventricular",
-                "Failure to inhibit atrial",
-                "Failure to inhibit ventricular",
-                "Failure to pace atrial",
-                "Failure to pace ventricular",
+                "atrial-paced complexes ",
+                "atrial-paced rhythm",
+                "ventricular-paced complexes",
+                "ventricular-paced rhythm",
+                "atrial-sensed ventricular-paced rhythm",
+                "atrial-sensed ventricular-paced complexes",
+                "av dual-paced rhythm",
+                "av dual-paced complexes",
+                "biventricular-paced rhythm",
+                "biventricular-paced complexes",
+                "failure to capture atrial",
+                "failure to capture ventricular",
+                "failure to inhibit atrial",
+                "failure to inhibit ventricular",
+                "failure to pace atrial",
+                "failure to pace ventricular",
             ],
             "lv_or_bv_pacing": [
-                "A TRIGGERED V-PACED RHYTHM",
+                "a triggered v-paced rhythm",
                 "dual chamber pacing",
-                "SEQUENTIAL PACING",
+                "sequential pacing",
                 "shows dual chamber pacing",
-                "V-PACED",
+                "v-paced",
                 "ventricular demand pacing",
                 "ventricular pacing",
             ],
             "other": ["electronic pacemaker"],
-            "rv_pacing": ["UNIPOLAR RIGHT VENTRICULAR  PACING"],
+            "rv_pacing": ["unipolar right ventricular  pacing"],
             "v_pacing": [
                 "demand v-pacing",
                 "demand ventricular pacemaker",
                 "v-paced beats",
-                "V-PACED RHYTHM",
-                "VENTRICULAR PACED",
+                "v-paced rhythm",
+                "ventricular paced",
                 "ventricular pacing has replaced av pacing",
-                "ATRIALLY TRIGGERED V PACED",
-                "Ventricular-paced complexes",
-                "Ventricular-paced rhythm",
+                "atrially triggered v paced",
+                "ventricular-paced complexes",
+                "ventricular-paced rhythm",
             ],
         },
     ),
 )
 
-TMAPS["pacemaker_md"] = TensorMap(
+tmaps["pacemaker_md"] = TensorMap(
     "pacemaker_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "pacemaker": 0,
+        "v_pacing": 0,
         "other": 1,
         "lv_or_bv_pacing": 2,
-        "v_pacing": 3,
+        "pacemaker": 3,
         "rv_pacing": 4,
         "unspecified": 5,
     },
@@ -5626,77 +5795,77 @@ TMAPS["pacemaker_md"] = TensorMap(
         keys="read_md_clean",
         dict_of_list={
             "pacemaker": [
-                "A TRIGGERED V-PACED RHYTHM",
+                "a triggered v-paced rhythm",
                 "dual chamber pacing",
-                "SEQUENTIAL PACING",
+                "sequential pacing",
                 "shows dual chamber pacing",
-                "V-PACED",
+                "v-paced",
                 "ventricular demand pacing",
                 "ventricular pacing",
                 "electronic pacemaker",
-                "UNIPOLAR RIGHT VENTRICULAR  PACING",
+                "unipolar right ventricular  pacing",
                 "demand v-pacing",
                 "demand ventricular pacemaker",
                 "v-paced beats",
-                "V-PACED RHYTHM",
-                "VENTRICULAR PACED",
+                "v-paced rhythm",
+                "ventricular paced",
                 "ventricular pacing has replaced av pacing",
-                "ATRIALLY TRIGGERED V PACED",
+                "atrially triggered v paced",
                 "atrial triggered ventricular pacing",
                 "competitive av pacing",
-                "Atrial-paced complexes ",
-                "Atrial-paced rhythm",
-                "Ventricular-paced complexes",
-                "Ventricular-paced rhythm",
-                "Atrial-sensed ventricular-paced rhythm",
-                "Atrial-sensed ventricular-paced complexes",
-                "AV dual-paced rhythm",
-                "AV dual-paced complexes",
-                "Biventricular-paced rhythm",
-                "Biventricular-paced complexes",
-                "Failure to capture atrial",
-                "Failure to capture ventricular",
-                "Failure to inhibit atrial",
-                "Failure to inhibit ventricular",
-                "Failure to pace atrial",
-                "Failure to pace ventricular",
+                "atrial-paced complexes ",
+                "atrial-paced rhythm",
+                "ventricular-paced complexes",
+                "ventricular-paced rhythm",
+                "atrial-sensed ventricular-paced rhythm",
+                "atrial-sensed ventricular-paced complexes",
+                "av dual-paced rhythm",
+                "av dual-paced complexes",
+                "biventricular-paced rhythm",
+                "biventricular-paced complexes",
+                "failure to capture atrial",
+                "failure to capture ventricular",
+                "failure to inhibit atrial",
+                "failure to inhibit ventricular",
+                "failure to pace atrial",
+                "failure to pace ventricular",
             ],
             "lv_or_bv_pacing": [
-                "A TRIGGERED V-PACED RHYTHM",
+                "a triggered v-paced rhythm",
                 "dual chamber pacing",
-                "SEQUENTIAL PACING",
+                "sequential pacing",
                 "shows dual chamber pacing",
-                "V-PACED",
+                "v-paced",
                 "ventricular demand pacing",
                 "ventricular pacing",
             ],
             "other": ["electronic pacemaker"],
-            "rv_pacing": ["UNIPOLAR RIGHT VENTRICULAR  PACING"],
+            "rv_pacing": ["unipolar right ventricular  pacing"],
             "v_pacing": [
                 "demand v-pacing",
                 "demand ventricular pacemaker",
                 "v-paced beats",
-                "V-PACED RHYTHM",
-                "VENTRICULAR PACED",
+                "v-paced rhythm",
+                "ventricular paced",
                 "ventricular pacing has replaced av pacing",
-                "ATRIALLY TRIGGERED V PACED",
-                "Ventricular-paced complexes",
-                "Ventricular-paced rhythm",
+                "atrially triggered v paced",
+                "ventricular-paced complexes",
+                "ventricular-paced rhythm",
             ],
         },
     ),
 )
 
-TMAPS["pacemaker_pc"] = TensorMap(
+tmaps["pacemaker_pc"] = TensorMap(
     "pacemaker_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
     path_prefix="partners_ecg_rest",
     channel_map={
-        "pacemaker": 0,
+        "v_pacing": 0,
         "other": 1,
         "lv_or_bv_pacing": 2,
-        "v_pacing": 3,
+        "pacemaker": 3,
         "rv_pacing": 4,
         "unspecified": 5,
     },
@@ -5704,68 +5873,68 @@ TMAPS["pacemaker_pc"] = TensorMap(
         keys="read_pc_clean",
         dict_of_list={
             "pacemaker": [
-                "A TRIGGERED V-PACED RHYTHM",
+                "a triggered v-paced rhythm",
                 "dual chamber pacing",
-                "SEQUENTIAL PACING",
+                "sequential pacing",
                 "shows dual chamber pacing",
-                "V-PACED",
+                "v-paced",
                 "ventricular demand pacing",
                 "ventricular pacing",
                 "electronic pacemaker",
-                "UNIPOLAR RIGHT VENTRICULAR  PACING",
+                "unipolar right ventricular  pacing",
                 "demand v-pacing",
                 "demand ventricular pacemaker",
                 "v-paced beats",
-                "V-PACED RHYTHM",
-                "VENTRICULAR PACED",
+                "v-paced rhythm",
+                "ventricular paced",
                 "ventricular pacing has replaced av pacing",
-                "ATRIALLY TRIGGERED V PACED",
+                "atrially triggered v paced",
                 "atrial triggered ventricular pacing",
                 "competitive av pacing",
-                "Atrial-paced complexes ",
-                "Atrial-paced rhythm",
-                "Ventricular-paced complexes",
-                "Ventricular-paced rhythm",
-                "Atrial-sensed ventricular-paced rhythm",
-                "Atrial-sensed ventricular-paced complexes",
-                "AV dual-paced rhythm",
-                "AV dual-paced complexes",
-                "Biventricular-paced rhythm",
-                "Biventricular-paced complexes",
-                "Failure to capture atrial",
-                "Failure to capture ventricular",
-                "Failure to inhibit atrial",
-                "Failure to inhibit ventricular",
-                "Failure to pace atrial",
-                "Failure to pace ventricular",
+                "atrial-paced complexes ",
+                "atrial-paced rhythm",
+                "ventricular-paced complexes",
+                "ventricular-paced rhythm",
+                "atrial-sensed ventricular-paced rhythm",
+                "atrial-sensed ventricular-paced complexes",
+                "av dual-paced rhythm",
+                "av dual-paced complexes",
+                "biventricular-paced rhythm",
+                "biventricular-paced complexes",
+                "failure to capture atrial",
+                "failure to capture ventricular",
+                "failure to inhibit atrial",
+                "failure to inhibit ventricular",
+                "failure to pace atrial",
+                "failure to pace ventricular",
             ],
             "lv_or_bv_pacing": [
-                "A TRIGGERED V-PACED RHYTHM",
+                "a triggered v-paced rhythm",
                 "dual chamber pacing",
-                "SEQUENTIAL PACING",
+                "sequential pacing",
                 "shows dual chamber pacing",
-                "V-PACED",
+                "v-paced",
                 "ventricular demand pacing",
                 "ventricular pacing",
             ],
             "other": ["electronic pacemaker"],
-            "rv_pacing": ["UNIPOLAR RIGHT VENTRICULAR  PACING"],
+            "rv_pacing": ["unipolar right ventricular  pacing"],
             "v_pacing": [
                 "demand v-pacing",
                 "demand ventricular pacemaker",
                 "v-paced beats",
-                "V-PACED RHYTHM",
-                "VENTRICULAR PACED",
+                "v-paced rhythm",
+                "ventricular paced",
                 "ventricular pacing has replaced av pacing",
-                "ATRIALLY TRIGGERED V PACED",
-                "Ventricular-paced complexes",
-                "Ventricular-paced rhythm",
+                "atrially triggered v paced",
+                "ventricular-paced complexes",
+                "ventricular-paced rhythm",
             ],
         },
     ),
 )
 
-TMAPS["overall_interpretation"] = TensorMap(
+tmaps["overall_interpretation"] = TensorMap(
     "overall_interpretation",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5784,16 +5953,16 @@ TMAPS["overall_interpretation"] = TensorMap(
                 "tracing is within normal limits",
                 "sinus tachycardia",
                 "sinus rhythm",
-                "normal ECG",
+                "normal ecg",
                 "normal tracing",
             ],
-            "abnormal_ECG": ["abnormal ECG", "abnormal"],
-            "Uninterpretable_ECG": ["Uninterpretable ECG"],
+            "abnormal_ECG": ["abnormal ecg", "abnormal"],
+            "Uninterpretable_ECG": ["uninterpretable ecg"],
         },
     ),
 )
 
-TMAPS["overall_interpretation_md"] = TensorMap(
+tmaps["overall_interpretation_md"] = TensorMap(
     "overall_interpretation_md",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5812,16 +5981,16 @@ TMAPS["overall_interpretation_md"] = TensorMap(
                 "tracing is within normal limits",
                 "sinus tachycardia",
                 "sinus rhythm",
-                "normal ECG",
+                "normal ecg",
                 "normal tracing",
             ],
-            "abnormal_ECG": ["abnormal ECG", "abnormal"],
-            "Uninterpretable_ECG": ["Uninterpretable ECG"],
+            "abnormal_ECG": ["abnormal ecg", "abnormal"],
+            "Uninterpretable_ECG": ["uninterpretable ecg"],
         },
     ),
 )
 
-TMAPS["overall_interpretation_pc"] = TensorMap(
+tmaps["overall_interpretation_pc"] = TensorMap(
     "overall_interpretation_pc",
     interpretation=Interpretation.CATEGORICAL,
     time_series_limit=0,
@@ -5840,176 +6009,11 @@ TMAPS["overall_interpretation_pc"] = TensorMap(
                 "tracing is within normal limits",
                 "sinus tachycardia",
                 "sinus rhythm",
-                "normal ECG",
+                "normal ecg",
                 "normal tracing",
             ],
-            "abnormal_ECG": ["abnormal ECG", "abnormal"],
-            "Uninterpretable_ECG": ["Uninterpretable ECG"],
-        },
-    ),
-)
-
-TMAPS["hypertrophy_enlargement"] = TensorMap(
-    "hypertrophy_enlargement",
-    interpretation=Interpretation.CATEGORICAL,
-    time_series_limit=0,
-    path_prefix="partners_ecg_rest",
-    channel_map={
-        "SH": 0,
-        "RAE": 1,
-        "BAE": 2,
-        "LVH": 3,
-        "RVH": 4,
-        "LAE": 5,
-        "unspecified": 6,
-    },
-    tensor_from_file=make_ecg_label(
-        keys=["read_md_clean", "read_pc_clean"],
-        dict_of_list={
-            "LAE": [
-                "left atrial enlargement",
-                "left atrial enlarge",
-                "right atrial enla",
-                "combined atrial enlargement",
-                "biatrial hypertrophy",
-            ],
-            "RAE": [
-                "right atrial enlargement",
-                "combined atrial enlargement",
-                "biatrial hypertrophy",
-            ],
-            "BAE": ["biatrial enlargement", "biatrial enlargement"],
-            "LVH": [
-                "left ventricular hypertrophy",
-                "left ventricular hypertr",
-                "left ventricular hypertroph",
-                "left ventricular hypertrophy",
-                "left ventricular hypertro",
-                "left ventricular hypertrophy",
-                "leftventricular hypertrophy",
-                "biventricular hypertrophy",
-                "combined ventricular hypertrophy",
-                "biventriclar hypertrophy",
-            ],
-            "RVH": [
-                "right ventricular enlargement",
-                "rightventricular hypertrophy",
-                "right ventricular hypertrophy",
-                "biventricular hypertrophy",
-                "combined ventricular hypertrophy",
-                "biventriclar hypertrophy",
-            ],
-            "SH": ["septal lipomatous hypertrophy", "septal hypertrophy"],
-        },
-    ),
-)
-
-TMAPS["hypertrophy_enlargement_md"] = TensorMap(
-    "hypertrophy_enlargement_md",
-    interpretation=Interpretation.CATEGORICAL,
-    time_series_limit=0,
-    path_prefix="partners_ecg_rest",
-    channel_map={
-        "SH": 0,
-        "RAE": 1,
-        "BAE": 2,
-        "LVH": 3,
-        "RVH": 4,
-        "LAE": 5,
-        "unspecified": 6,
-    },
-    tensor_from_file=make_ecg_label(
-        keys="read_md_clean",
-        dict_of_list={
-            "LAE": [
-                "left atrial enlargement",
-                "left atrial enlarge",
-                "right atrial enla",
-                "combined atrial enlargement",
-                "biatrial hypertrophy",
-            ],
-            "RAE": [
-                "right atrial enlargement",
-                "combined atrial enlargement",
-                "biatrial hypertrophy",
-            ],
-            "BAE": ["biatrial enlargement", "biatrial enlargement"],
-            "LVH": [
-                "left ventricular hypertrophy",
-                "left ventricular hypertr",
-                "left ventricular hypertroph",
-                "left ventricular hypertrophy",
-                "left ventricular hypertro",
-                "left ventricular hypertrophy",
-                "leftventricular hypertrophy",
-                "biventricular hypertrophy",
-                "combined ventricular hypertrophy",
-                "biventriclar hypertrophy",
-            ],
-            "RVH": [
-                "right ventricular enlargement",
-                "rightventricular hypertrophy",
-                "right ventricular hypertrophy",
-                "biventricular hypertrophy",
-                "combined ventricular hypertrophy",
-                "biventriclar hypertrophy",
-            ],
-            "SH": ["septal lipomatous hypertrophy", "septal hypertrophy"],
-        },
-    ),
-)
-
-TMAPS["hypertrophy_enlargement_pc"] = TensorMap(
-    "hypertrophy_enlargement_pc",
-    interpretation=Interpretation.CATEGORICAL,
-    time_series_limit=0,
-    path_prefix="partners_ecg_rest",
-    channel_map={
-        "SH": 0,
-        "RAE": 1,
-        "BAE": 2,
-        "LVH": 3,
-        "RVH": 4,
-        "LAE": 5,
-        "unspecified": 6,
-    },
-    tensor_from_file=make_ecg_label(
-        keys="read_pc_clean",
-        dict_of_list={
-            "LAE": [
-                "left atrial enlargement",
-                "left atrial enlarge",
-                "right atrial enla",
-                "combined atrial enlargement",
-                "biatrial hypertrophy",
-            ],
-            "RAE": [
-                "right atrial enlargement",
-                "combined atrial enlargement",
-                "biatrial hypertrophy",
-            ],
-            "BAE": ["biatrial enlargement", "biatrial enlargement"],
-            "LVH": [
-                "left ventricular hypertrophy",
-                "left ventricular hypertr",
-                "left ventricular hypertroph",
-                "left ventricular hypertrophy",
-                "left ventricular hypertro",
-                "left ventricular hypertrophy",
-                "leftventricular hypertrophy",
-                "biventricular hypertrophy",
-                "combined ventricular hypertrophy",
-                "biventriclar hypertrophy",
-            ],
-            "RVH": [
-                "right ventricular enlargement",
-                "rightventricular hypertrophy",
-                "right ventricular hypertrophy",
-                "biventricular hypertrophy",
-                "combined ventricular hypertrophy",
-                "biventriclar hypertrophy",
-            ],
-            "SH": ["septal lipomatous hypertrophy", "septal hypertrophy"],
+            "abnormal_ECG": ["abnormal ecg", "abnormal"],
+            "Uninterpretable_ECG": ["uninterpretable ecg"],
         },
     ),
 )

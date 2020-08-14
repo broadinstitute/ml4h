@@ -6,10 +6,13 @@ from unittest import mock as mock
 import pytest
 
 # Imports: first party
-from ml4cvd.arguments import TMAPS, parse_args
+from ml4cvd.arguments import parse_args
+
+# TODO what are tmaps here?
+tmaps = {}
 
 
-@mock.patch.dict(TMAPS, pytest.MOCK_TMAPS)
+@mock.patch.dict(tmaps, pytest.MOCK_TMAPS)
 class TestUConnect:
     def test_no_u(self, tmpdir):
         sys.argv = [

@@ -1,13 +1,5 @@
-# TensorMap.py
-#
-# The TensorMap takes any kind of data stored in an hd5 file
-# tags it with a semantic interpretation and converts it into a structured numpy tensor.
-# TensorMaps can be used as inputs, outputs, or hidden layers of models made by the model factory.
-# TensorMaps can perform any computation by providing a callback function called tensor_from_file.
-# A default tensor_from_file will be attempted when a callback tensor_from_file is not provided.
-# TensorMaps guarantee shape, name, interpretation and mapping from hd5 to numpy array.
-
 # Imports: standard library
+import os
 import logging
 import datetime
 from enum import Enum, auto
@@ -37,7 +29,7 @@ from ml4cvd.metrics import (
     survival_likelihood_loss,
 )
 from ml4cvd.normalizer import Normalizer, Standardize, ZeroMeanStd1
-from ml4cvd.definitions import JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT, StorageType
+from ml4cvd.definitions import JOIN_CHAR, STOP_CHAR, ECG_READ_TEXT, StorageType
 
 MEAN_IDX = 0
 STD_IDX = 1
@@ -71,20 +63,6 @@ class TimeSeriesOrder(Enum):
     NEWEST = "NEWEST"
     OLDEST = "OLDEST"
     RANDOM = "RANDOM"
-
-
-def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
-    """
-    For backward compatibility. New TensorMaps should use a Normalizer.
-    """
-    if normalization is None:
-        return
-    if "mean" in normalization and "std" in normalization:
-        return Standardize(mean=normalization["mean"], std=normalization["std"])
-    if "zero_mean_std1" in normalization:
-        return ZeroMeanStd1()
-    else:
-        raise NotImplementedError(f"Cannot convert {normalization}")
 
 
 class TensorMap(object):
@@ -398,25 +376,18 @@ class TensorMap(object):
             self.metrics = []
 
 
-class RangeValidator:
-    def __init__(self, minimum: float, maximum: float):
-        self.minimum = minimum
-        self.maximum = maximum
-
-    def __call__(self, tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-        if not ((tensor > self.minimum).all() and (tensor < self.maximum).all()):
-            raise ValueError(f"TensorMap {tm.name} failed range check.")
-
-    def __str__(self):
-        return f"Range Validator (min, max) = ({self.minimum}, {self.maximum})"
-
-    def __repr__(self):
-        return self.__str__()
-
-
-def no_nans(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
-    if np.isnan(tensor).any():
-        raise ValueError(f"Skipping TensorMap {tm.name} with NaNs.")
+def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
+    """
+    For backward compatibility. New TensorMaps should use a Normalizer.
+    """
+    if normalization is None:
+        return
+    if "mean" in normalization and "std" in normalization:
+        return Standardize(mean=normalization["mean"], std=normalization["std"])
+    if "zero_mean_std1" in normalization:
+        return ZeroMeanStd1()
+    else:
+        raise NotImplementedError(f"Cannot convert {normalization}")
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):
@@ -425,13 +396,6 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
     val *= new_max - new_min
     val += new_min
     return val
-
-
-def str2date(d):
-    parts = d.split("-")
-    if len(parts) < 2:
-        raise ValueError(f"cant make date from {d}")
-    return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
 def _is_equal_field(field1: Any, field2: Any) -> bool:
@@ -550,7 +514,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         return tm.model.predict(input_dict)
     elif tm.is_language():
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if PARTNERS_READ_TEXT in tm.name:
+        if ECG_READ_TEXT in tm.name:
             caption = decompress_data(
                 data_compressed=hd5[tm.name][()], dtype=hd5[tm.name].attrs["dtype"],
             )
@@ -596,3 +560,75 @@ def decompress_data(data_compressed: np.array, dtype: str) -> np.array:
     else:
         data = np.frombuffer(data_decompressed, dtype)
     return data
+
+
+def outcome_channels(outcome: str):
+    return {f"no_{outcome}": 0, f"{outcome}": 1}
+
+
+def id_from_filename(fpath: str) -> int:
+    return int(os.path.basename(fpath).split(".")[0])
+
+
+def update_tmaps(tmap_name: str, tmaps: Dict[str, TensorMap]) -> Dict[str, TensorMap]:
+    """
+    Given name of desired TMap, and dict of all TMaps generated thus far, look if the
+    desired TMap is in tmaps. If yes, return that TMap. If no, build more TMaps,
+    update tmaps dict, and try to find the desired TMap again.
+
+    :param tmap_name: name of the desired TMap that we want in the master dict
+    :param tmaps: dict of all TMaps we've built so far
+    """
+    # If desired tmap in tmaps, return tmaps
+    if tmap_name in tmaps:
+        return tmaps
+
+    # fmt: off
+
+    # Base tmaps: ECG
+    from ml4cvd.tensor_maps_ecg import tmaps as tmaps_ecg  # isort:skip
+    tmaps.update(tmaps_ecg)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # Base tmaps: STS
+    from ml4cvd.tensor_maps_sts import tmaps as tmaps_sts  # isort:skip
+    tmaps.update(tmaps_sts)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # Base tmaps: ECG labels
+    from ml4cvd.tensor_maps_ecg_labels import tmaps as tmaps_ecg_labels  # isort:skip
+    tmaps.update(tmaps_ecg_labels)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # Base tmaps: ECG voltage
+    from ml4cvd.tensor_map_updaters import update_tmaps_ecg_voltage  # isort:skip
+    tmaps = update_tmaps_ecg_voltage(tmap_name=tmap_name, tmaps=tmaps)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # Modify: weighted loss
+    from ml4cvd.tensor_map_updaters import update_tmaps_weighted_loss  # isort:skip
+    tmaps = update_tmaps_weighted_loss(tmap_name=tmap_name, tmaps=tmaps)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # Modify: STS window (e.g. preop)
+    from ml4cvd.tensor_map_updaters import update_tmaps_sts_window  # isort:skip
+    tmaps = update_tmaps_sts_window(tmap_name=tmap_name, tmaps=tmaps)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # Modify: time series
+    from ml4cvd.tensor_map_updaters import update_tmaps_time_series  # isort:skip
+    tmaps = update_tmaps_time_series(tmap_name=tmap_name, tmaps=tmaps)
+    if tmap_name in tmaps:
+        return tmaps
+
+    # fmt: on
+
+    raise ValueError(
+        f"{tmap_name} cannot be found in tmaps despite building every TMap we can",
+    )

@@ -10,9 +10,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 COPY ./config/* /app/
 WORKDIR /app
 
-# Note that some layers are kept separate to encourage layer re-use and to try
-# to minimize full recompilation where possible.
-
 # Basic setup
 RUN ./ubuntu.sh
 

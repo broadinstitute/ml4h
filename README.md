@@ -7,6 +7,7 @@ Machine Learning for CardioVascular Disease - MGH/MIT edition!
 - [Jupyer Lab](#jupyter-lab)
 - [Run scripts](#run-scripts)
 - [Tests](#tests)
+- [TensorMaps](#tensormaps)
 - [Tensorize ECGs](docs/tensorize_ecgs.md)
 - [Deidentify data](docs/deidentify.md)
 - [Contribute](#contribute)
@@ -130,6 +131,32 @@ pytest can also run specific tests using `::`. For example
 
 For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
 
+
+## TensorMaps
+A TensorMap takes any kind of data stored in an hd5 file, tags it with a semantic interpretation and converts it into a structured numpy tensor.
+
+TensorMaps can be used as inputs, outputs, or hidden layers of models made by the model factory.
+
+TensorMaps can perform any computation by providing a callback function called `tensor_from_file`.
+
+A default `tensor_from_file` will be attempted when a callback `tensor_from_file` is not provided.
+
+TensorMaps guarantee shape, name, interpretation and mapping from hd5 to numpy array.
+
+### Build TMaps for labels from ECG reads
+ECG reads contain valuable information that can be parsed into labels via TMaps. For example, one can train a model to classify an ECG as AFib or not by using a TMap that looks for matching phrases in the ECG read.
+
+Our system involves a number of `c_$TASK.xlsx` files stored in Dropbox (under the `ecg/labeling` folder). We call these spreadsheets "label maps". They are simple for clinical collaborators (most of whom are nontechnical) to revise. The first column contains source phrases, e.g. `atrial fibrillation`. The second through N'th column contain the string of the label, e.g. `afib`.
+
+The script `scripts/make_tensor_maps_for_ecg_labels.py` parses label maps into code, resulting in the creation of `ml4cvd/tensor_maps_ecg_labels.py`.
+
+Whenever label maps are updated, re-run the generating script to update the TMaps; note the `-c` flag to use the CPU image, and the `-t` flag for interactive mode in case you need to place breakpoints and debug.
+
+```
+./scripts/run.sh -c -t $PWD/scripts/make_tensor_maps_for_ecg_labels.py
+```
+
+The generated script is not initially formatted with `Black`. However, `pre-commit` should fix that prior to the script being committed to the repo.
 
 ## Contribute
 

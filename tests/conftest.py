@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 # Imports: first party
-from ml4cvd.arguments import TMAPS, parse_args
+from ml4cvd.arguments import parse_args
 from ml4cvd.TensorMap import TensorMap, Interpretation
 from ml4cvd.definitions import TENSOR_EXT
 
@@ -115,7 +115,6 @@ def utils():
 
 
 @pytest.fixture(scope="function")
-@mock.patch.dict(TMAPS, pytest.MOCK_TMAPS)
 def default_arguments(tmpdir_factory, utils):
     temp_dir = tmpdir_factory.mktemp("data")
     utils.build_hdf5s(temp_dir, pytest.MOCK_TMAPS.values(), n=pytest.N_TENSORS)

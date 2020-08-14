@@ -15,14 +15,7 @@ import numpy as np
 # Imports: first party
 from ml4cvd.logger import load_config
 from ml4cvd.models import BottleneckType, parent_sort, check_no_bottleneck
-from ml4cvd.TensorMap import TensorMap
-from ml4cvd.tensor_maps_ecg import (
-    build_binary_tensor_map,
-    build_ecg_voltage_tensor_map,
-    build_cardiac_surgery_tensor_maps,
-    build_ecg_time_series_tensor_maps,
-)
-from ml4cvd.tensor_maps_ecg_labels import TMAPS
+from ml4cvd.TensorMap import TensorMap, update_tmaps
 
 BOTTLENECK_STR_TO_ENUM = {
     "flatten_restructure": BottleneckType.FlattenRestructure,
@@ -35,7 +28,7 @@ BOTTLENECK_STR_TO_ENUM = {
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--mode", default="mlp", help="What would you like to do?")
+    parser.add_argument("--mode", default="train", help="What would you like to do?")
 
     # Config arguments
     parser.add_argument(
@@ -680,48 +673,18 @@ def parse_args():
     return args
 
 
-def _get_tmap(name: str, needed_tensor_maps: List[str]) -> TensorMap:
-    """
-    Only import necessary TMaps
-    """
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_ecg_voltage_tensor_map(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_cardiac_surgery_tensor_maps(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_ecg_time_series_tensor_maps(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    TMAPS.update(build_binary_tensor_map(needed_tensor_maps))
-    if name in TMAPS:
-        return TMAPS[name]
-
-    # Imports: first party
-    from ml4cvd.tensor_maps_ecg_labels import TMAPS as _ecg_label_tmaps
-
-    TMAPS.update(_ecg_label_tmaps)
-
-    if name in TMAPS:
-        return TMAPS[name]
-
-    return TMAPS[name]
-
-
 def _process_u_connect_args(
     u_connect: Optional[List[List]],
 ) -> Dict[TensorMap, Set[TensorMap]]:
     u_connect = u_connect or []
     new_u_connect = defaultdict(set)
+    tmaps = {}
     for connect_pair in u_connect:
         tmap_key_in, tmap_key_out = connect_pair[0], connect_pair[1]
-        tmap_in, tmap_out = _get_tmap(tmap_key_in, []), _get_tmap(tmap_key_out, [])
+        tmaps = update_tmaps(tmap_name=tmap_key_in, tmaps=tmaps)
+        tmap_in = tmaps[tmap_key_in]
+        tmaps = update_tmaps(tmap_name=tmap_key_out, tmaps=tmaps)
+        tmap_out = tmaps[tmap_key_out]
         if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
             raise TypeError(
                 f"u_connect of {tmap_in} {tmap_out} requires matching shapes besides"
@@ -751,27 +714,28 @@ def _process_args(args):
         "log_" + now_string,
     )
     args.u_connect = _process_u_connect_args(args.u_connect)
-    needed_tensor_maps = (
+
+    # Create list of names of all needed TMaps
+    needed_tmaps_names = (
         args.input_tensors + args.output_tensors + [args.sample_weight]
         if args.sample_weight
         else args.input_tensors + args.output_tensors
     )
-    args.tensor_maps_in = [
-        _get_tmap(it, needed_tensor_maps) for it in args.input_tensors
-    ]
-    args.sample_weight = (
-        _get_tmap(args.sample_weight, needed_tensor_maps)
-        if args.sample_weight
-        else None
-    )
+
+    # Update dict of tmaps to include all needed tmaps
+    tmaps = {}
+    for tmap_name in needed_tmaps_names:
+        tmaps = update_tmaps(tmap_name=tmap_name, tmaps=tmaps)
+
+    # Update args with TMaps
+    args.tensor_maps_in = [tmaps[tmap_name] for tmap_name in args.input_tensors]
+
+    args.tensor_maps_out = [tmaps[tmap_name] for tmap_name in args.output_tensors]
+    args.tensor_maps_out = parent_sort(args.tensor_maps_out)
+
+    args.sample_weight = tmaps[args.sample_weight] if args.sample_weight else None
     if args.sample_weight:
         assert args.sample_weight.shape == (1,)
-
-    args.tensor_maps_out = []
-    args.tensor_maps_out.extend(
-        [_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors],
-    )
-    args.tensor_maps_out = parent_sort(args.tensor_maps_out)
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
     if args.bottleneck_type == BottleneckType.NoBottleNeck:
@@ -786,7 +750,7 @@ def _process_args(args):
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was: {command_line}")
-    logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
+    logging.info(f"Total TensorMaps: {len(tmaps)} Arguments are {args}")
 
     if args.eager:
         # Imports: third party
