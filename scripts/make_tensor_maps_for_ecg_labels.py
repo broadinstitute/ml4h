@@ -1,9 +1,50 @@
+"""
+Create a python file with TensorMaps for labeling ECGs, using c_task input files to define the label mappings.
+
+c_task files are formatted as follows:
+
+Term                      |     Label | SubLabel_1 | SubLabel_2 | ...
+--------------------------+-----------+------------+------------+-----
+myocardial infarcation    |        mi |            |            |
+old myocardial infarction |        mi |        old |            |
+acute mi                  |        mi |      acute |            |
+pacemaker                 | pacemaker |            |            |
+ventricular pacing        | pacemaker |            |   v_pacing |
+...
+
+Where:
+- Term is the term found in the read from the ECG. These can be regex patterns.
+- Label is the task being predicted. Each label gets a unique binary TensorMap
+  that gives a positive label if term is present in the read, otherwise a negative label.
+  For example:
+
+    TensorMap(
+      name = "mi",
+      channel_map = {"no_mi": 0, "mi": 1},
+    )
+
+- SubLabels are sub tasks relative to the primary task. Each level of SubLabel gets a
+  TensorMap whose channels are all the unique SubLabels of the primary Label at the current
+  level. For example, the subclasses above result in:
+
+    TensorMap(
+      name = "mi_old_acute",
+      channel_map = {"other": 0, "old": 1, "acute": 2},
+    )
+
+    TensorMap(
+      name = "pacemaker_v_pacing",
+      channel_map = {"no_v_pacing": 0, "v_pacing": 1},
+    )
+
+Notes:
+- All Terms, Labels, and SubLabels are lower-cased.
+"""
+
 # Imports: standard library
 import os
-import csv
 import argparse
-from typing import Dict, List
-from collections import defaultdict
+from typing import Set, Dict, List, TextIO
 
 # Imports: third party
 import pandas as pd
@@ -14,63 +55,56 @@ TENSOR_PATH_PREFIX = "partners_ecg_rest"
 NEW_SCRIPT_NAME = "tensor_maps_ecg_labels.py"
 
 
-def _clean_label_string(string):
+def _clean_label(label: str) -> str:
     """Replace spaces and slashes with JOIN_CHAR,
     and remove parentheses and commas. Channels
     cannot start with numbers because of the way
     TensorMap infers metrics so prefix with JOIN_CHAR."""
-    string = string.replace(" ", JOIN_CHAR)
-    string = string.replace("/", JOIN_CHAR)
-    string = string.replace("(", "")
-    string = string.replace(")", "")
-    string = string.replace(",", "")
+    label = label.replace(" ", JOIN_CHAR)
+    label = label.replace("/", JOIN_CHAR)
+    label = label.replace("(", "")
+    label = label.replace(")", "")
+    label = label.replace(",", "")
     try:
-        int(string[0])
-        string = JOIN_CHAR + string
+        int(label[0])
+        label = JOIN_CHAR + label
     except ValueError:
         pass
-    return string
+    return label
 
 
-def _write_tmap_to_py(
-    py_file, label_maps: str, channel_maps: Dict[str, str], hd5_keys: List[str],
+def _write_tmap(
+    py_file: TextIO,
+    task: str,
+    channel_terms: Dict[str, Set[str]],
+    keys: List[str],
+    not_found_channel: str,
 ):
-    """Given label_maps (which associates labels with source phrases)
-    and channel_maps (which associates labels with unique sublabels),
-    define the tensormaps to associate source phrases with precise labels,
-    and write these maps in a python script
     """
+    Writes a TensorMap named task to py_file that searches the data accessed
+    at keys to match terms in channel_terms to the corresponding channel.
+    """
+    channel_map = {
+        channel: idx
+        for idx, channel in enumerate([not_found_channel] + list(channel_terms))
+    }
 
-    for label in label_maps:
-        cm = "{"
-
-        for i, channel in enumerate(channel_maps[label]):
-            cm += f"'{channel}': {i}, "
-
-        # At this point, i = len(channel_maps[label])-1
-        # If 'unspecified' is not a label, we need to add and index it
-        if "unspecified" not in channel_maps[label]:
-            cm += f"'unspecified': {i+1}"
-
-        cm += "}"
-
-        key_list_string = "['" + "', '".join(hd5_keys) + "']"
-        py_file.write(
-            f"tmaps['{label}'] = TensorMap('{label}',"
-            " interpretation=Interpretation.CATEGORICAL, time_series_limit=0,"
-            f" path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm},"
-            f" tensor_from_file={TENSOR_FUNC_NAME}(keys={key_list_string}, dict_of_list ="
-            f" {dict(label_maps[label])})) \n\n",
-        )
-        for key in hd5_keys:
-            short_key = "md" if "_md" in key else "pc" if "_pc" in key else key
-            py_file.write(
-                f"tmaps['{label}_{short_key}'] = TensorMap('{label}_{short_key}',"
-                " interpretation=Interpretation.CATEGORICAL, time_series_limit=0,"
-                f" path_prefix='{TENSOR_PATH_PREFIX}', channel_map={cm},"
-                f" tensor_from_file={TENSOR_FUNC_NAME}(keys='{key}', dict_of_list ="
-                f" {dict(label_maps[label])})) \n\n",
-            )
+    # fmt: off
+    py_file.write(
+        f"tmaps['{task}'] = TensorMap(\n"
+        f"    '{task}',\n"
+        f"    interpretation=Interpretation.CATEGORICAL,\n"
+        f"    time_series_limit=0,\n"
+        f"    path_prefix='{TENSOR_PATH_PREFIX}',\n"
+        f"    channel_map={channel_map},\n"
+        f"    tensor_from_file={TENSOR_FUNC_NAME}(\n"
+        f"        keys={keys},\n"
+        f"        channel_terms={channel_terms},\n"
+        f"        not_found_channel='{not_found_channel}',\n"
+        f"    ),\n"
+        f")\n\n\n".replace("'", "\""),
+    )
+    # fmt: on
 
 
 if __name__ == "__main__":
@@ -101,70 +135,42 @@ if __name__ == "__main__":
         py_file.write("tmaps: Dict[str, TensorMap] = {}\n")
 
         for file in os.listdir(args.label_maps_dir):
-            if not file.startswith("c_") or not (
-                file.endswith(".csv") or file.endswith(".xlsx")
-            ):
+            if not file.startswith("c_"):
                 continue
 
-            task = file.replace("c_", "").replace(".csv", "").replace(".xlsx", "")
             path = os.path.join(args.label_maps_dir, file)
-
             ext = os.path.splitext(file)[-1]
             if ext == ".csv":
                 df = pd.read_csv(path).fillna("")
             elif ext == ".xlsx":
                 df = pd.read_excel(path).fillna("")
             else:
-                raise NotImplementedError(
-                    f"Creating labels from {ext} files not supported.",
+                print(f"Creating labels from {ext} files not supported: {path}")
+                continue
+
+            if len(df.columns) < 2 or (df[df.columns[1]] == "").any():
+                print(f"Label mapping table has empty labels: {path}")
+                continue
+
+            df = df.apply(lambda x: x.str.lower())
+            term_col = df.columns[0]
+            label_col = df.columns[1]
+            for label, group in df.groupby(label_col):
+                label = _clean_label(label)
+                terms = set(group[term_col])
+                channel_terms = {label: terms}
+                _write_tmap(
+                    py_file=py_file,
+                    task=label,
+                    channel_terms=channel_terms,
+                    keys=args.hd5_keys,
+                    not_found_channel=f"no_{label}",
                 )
 
-            # Associate labels with source phrases in dict of dicts:
-            #   keys   - task name and all oot-level labels in hierarchy
-            #   values - dicts:
-            #       keys   - labels (next level down in hierarchy)
-            #       values - list of source phrases that map to a given label
-            # Note: because the first key is the task name, keys of dicts in
-            # label_map[task] are the remaining keys in label_map itself
-            label_maps = defaultdict(lambda: defaultdict(list))
-
-            # Associate labels with unique set of sublabels in dict of sets
-            # keys   - every label in hierarchy with children
-            # values - set of all child labels within a given label
-            channel_maps = defaultdict(set)
-
-            # Iterate through every source phrase in list of lists (label map)
-            for idx in range(len(df)):
-                row = df.iloc[idx]
-                prefix = []
-
-                # First element in row is source phrase, all other elements are label strings
-                for label_str in row[1:]:
-                    if label_str == "":
-                        continue
-                    label_str = _clean_label_string(label_str)
-
-                    # Isolate source phrase
-                    source_phrase = row[0].lower()
-
-                    # Append source phrase to list of source phrases for this task and label string
-                    if len(prefix) == 0:
-                        channel_maps[task].add(label_str)
-                        label_maps[task][label_str].append(source_phrase)
-                    else:
-                        prefix_merged = JOIN_CHAR.join(prefix)
-                        channel_maps[prefix_merged].add(label_str)
-                        label_maps[prefix_merged][label_str].append(source_phrase)
-
-                    prefix.append(label_str)
-
-            # Use assembled label and channel maps and write tmap to py file
-            _write_tmap_to_py(
-                py_file=py_file,
-                label_maps=label_maps,
-                channel_maps=channel_maps,
-                hd5_keys=args.hd5_keys,
-            )
+                # TODO subclasses
+                # for sublevel in df.columns[2:]:
+                #     for sublabel, subgroup in df.groupby(sublevel):
+                #         pass
 
             print(f"Created tmaps from label map: {file}")
 

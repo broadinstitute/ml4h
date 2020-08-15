@@ -4,7 +4,7 @@ import re
 import copy
 import logging
 import datetime
-from typing import Dict, List, Tuple, Union, Callable, Optional
+from typing import Set, Dict, List, Tuple, Union, Callable, Optional
 
 # Imports: third party
 import h5py
@@ -79,7 +79,7 @@ def _is_dynamic_shape(tm: TensorMap, num_ecgs: int) -> Tuple[bool, Tuple[int, ..
     return False, tm.shape
 
 
-def _make_hd5_path(tm, ecg_date, value_key):
+def _make_hd5_path(tm: TensorMap, ecg_date: str, value_key: str) -> str:
     return f"{tm.path_prefix}/{ecg_date}/{value_key}"
 
 
@@ -249,48 +249,40 @@ tmaps["voltage_len"] = TensorMap(
 
 
 def make_ecg_label(
-    keys: Union[str, List[str]] = "read_md_clean",
-    dict_of_list: Dict = dict(),
-    not_found_key: str = "unspecified",
+    keys: List[str], channel_terms: Dict[str, Set[str]], not_found_channel: str,
 ):
-    if type(keys) == str:
-        keys = [keys]
-
     def get_ecg_label(tm, hd5, dependents={}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
-        label_array = np.zeros(shape, dtype=np.float32)
-        for i, ecg_date in enumerate(ecg_dates):
-            found = False
-            for channel, idx in sorted(tm.channel_map.items(), key=lambda cm: cm[1]):
-                if channel not in dict_of_list:
+        tensor = np.zeros(shape, dtype=np.float32)
+        for ecg_idx, ecg_date in enumerate(ecg_dates):
+            read = ""
+            for key in keys:
+                path = _make_hd5_path(tm, ecg_date, key)
+                if path not in hd5:
                     continue
-                for key in keys:
-                    path = _make_hd5_path(tm, ecg_date, key)
-                    if path not in hd5:
-                        continue
-                    read = decompress_data(
-                        data_compressed=hd5[path][()], dtype=hd5[path].attrs["dtype"],
-                    )
-                    for string in dict_of_list[channel]:
-                        if string.lower() not in read.lower():
-                            continue
-                        slices = (i, idx) if dynamic else (idx,)
-                        label_array[slices] = 1
-                        found = True
-                        break
-                    if found:
-                        break
-                if found:
+                read += decompress_data(data_compressed=hd5[path][()], dtype="str")
+            read = read.lower()
+
+            found = False
+            for channel, channel_idx in sorted(
+                tm.channel_map.items(), key=lambda cm: cm[1],
+            ):
+                if channel not in channel_terms:
+                    continue
+                if any(
+                    re.match(term.lower(), read) is not None
+                    for term in channel_terms[channel]
+                ):
+                    slices = (ecg_idx, channel_idx) if dynamic else (channel_idx,)
+                    tensor[slices] = 1
+                    found = True
                     break
             if not found:
-                slices = (
-                    (i, tm.channel_map[not_found_key])
-                    if dynamic
-                    else (tm.channel_map[not_found_key],)
-                )
-                label_array[slices] = 1
-        return label_array
+                not_found_idx = tm.channel_map[not_found_channel]
+                slices = (ecg_idx, not_found_idx) if dynamic else (not_found_idx,)
+                tensor[slices] = 1
+        return tensor
 
     return get_ecg_label
 
