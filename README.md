@@ -160,6 +160,46 @@ The generated script is not initially formatted with `Black`. However, `pre-comm
 
 ## Contribute
 
-Submit a new feature request, bug report, etc. by creating a [new issue with the ml4cvd template](https://github.com/aguirre-lab/ml/issues/new/choose).
+### Issues
+Every task has an issue, and each issue is labeled to help us stay organized.
 
-TODO discuss PR and review norms
+New issues are created using one of our three [issue templates](https://github.com/aguirre-lab/ml/issues/new/choose): 1) new feature request or enhancement, 2) bug report, or 3) question.
+
+We track issues and PRs on our [ECG project board](https://github.com/orgs/aguirre-lab/projects/3).
+
+Good issues are clearly written and sufficiently small in scope to be addressed in one sprint of work (1-5 days).
+
+If a new issue is low priority, it is added to the `To do (backlog)` column.
+
+If a new issue is high priority, it is added to the `To do (current sprint)` column and addressed the current week.
+
+Issues that are being actively worked on are moved to the `In progress (issues)` column.
+
+Issues do not go in `In review (PRs)` column. Only PRs go there.
+
+We prefer to close linked issues via PR instead of manually closing issues.
+
+### Branches
+Name your branch with your initials, a description of the purpose of the branch, and dashes between words:
+
+```
+git checkout -B er-fix-grid-ecg-plot
+```
+
+### Commit messages
+We do not enforce strict commit message style, but try to follow good practices as described in this blog post: https://chris.beams.io/posts/git-commit/#capitalize.
+
+### PRs
+To contribute code or documentation changes from your branch to the `master` branch in the repo, open a PR.
+
+Select `aguirre-lab/ml` instead of `broadinstitute/ml` (the core Broad repo) as the destination for your PR.
+
+New PRs use our repo template by default. Describe the major changes, at a high level.
+
+Assign at least one reviewer from Aguirre Lab.
+
+Reviewers approve PRs before code is merged to `master`.
+
+Reviewers review their assigned PRs within 48 hours. If your requested PR review is overdue, remind the reviewer on Slack.
+
+When PRs are approved, all commits are "squash merged", e.g. combine all commits from the head branch into a single commit in the base branch. Also, the branch is automatically deleted.
