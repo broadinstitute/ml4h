@@ -314,31 +314,6 @@ date_interval_lookup = build_date_interval_lookup(sts_features=sts_surgery_dates
 # Get STS features from CSV as dict
 sts_features = _get_sts_features_dict()
 
-# Operative features
-tmap_name = "bypass_time"
-tmaps[tmap_name] = TensorMap(
-    name=tmap_name,
-    interpretation=Interpretation.CONTINUOUS,
-    path_prefix=ECG_PREFIX,
-    tensor_from_file=_make_sts_tff_continuous(
-        sts_features=sts_features, key="perfustm",
-    ),
-    channel_map={"perfustm": 0},
-    validator=validator_no_nans,
-)
-
-tmap_name = "crossclamp_time"
-tmaps[tmap_name] = TensorMap(
-    name=tmap_name,
-    interpretation=Interpretation.CONTINUOUS,
-    path_prefix=ECG_PREFIX,
-    tensor_from_file=_make_sts_tff_continuous(
-        sts_features=sts_features, key="xclamptm",
-    ),
-    channel_map={"xclamptm": 0},
-    validator=validator_no_nans,
-)
-
 # Categorical (non-binary)
 for tmap_name in sts_features_categorical:
     interpretation = Interpretation.CATEGORICAL
