@@ -1537,7 +1537,11 @@ def train_model_from_generators(
         )
 
     generate_train.reset()
-    generate_valid.reset()
+
+    # Shallow models do not always use validation split
+    if generate_valid is not None:
+        generate_valid.reset()
+
     history = model.fit(
         generate_train,
         steps_per_epoch=training_steps,

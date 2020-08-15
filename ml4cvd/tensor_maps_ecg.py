@@ -50,7 +50,6 @@ def _get_ecg_dates(tm, hd5):
     mrn = id_from_filename(hd5.filename)
     if (mrn, tm.time_series_order, tm.shape) in _get_ecg_dates.mrn_lookup:
         return _get_ecg_dates.mrn_lookup[(mrn, tm.time_series_order, tm.shape)]
-
     dates = list(hd5[tm.path_prefix])
     if tm.time_series_lookup is not None:
         start, end = tm.time_series_lookup[mrn]

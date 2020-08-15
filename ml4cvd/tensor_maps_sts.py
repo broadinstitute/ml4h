@@ -17,7 +17,7 @@ from ml4cvd.TensorMap import (
     id_from_filename,
     outcome_channels,
 )
-from ml4cvd.normalizer import Standardize
+from ml4cvd.normalizer import RobustScaler
 from ml4cvd.validators import (
     validator_no_nans,
     validator_no_empty,
@@ -95,21 +95,25 @@ sts_features_categorical = {
     "status": [1, 2, 3, 4],
 }
 
+# Define the name, median, and IQR of continuous features to enable standardization
+# These values are calculated from the entire STS MGH cohort using a Jupyter Notebook
+# fmt: off
 sts_features_continuous = {
-    "age",
-    "creatlst",
-    "hct",
-    "hdef",
-    "heightcm",
-    "platelets",
-    "wbc",
-    "weightkg",
-    "perfustm",
-    "xclamptm",
+    "age":       {"median": 67, "iqr": 18},
+    "creatlst":  {"median": 1, "iqr": 0.36},
+    "hct":       {"median": 39, "iqr": 8},
+    "hdef":      {"median": 60, "iqr": 16},
+    "heightcm":  {"median": 173, "iqr": 15},
+    "platelets": {"median": 20700, "iqr": 90000},
+    "wbc":       {"median": 7.3, "iqr": 3},
+    "weightkg":  {"median": 82, "iqr": 24},
+    "perfustm":  {"median": 123, "iqr": 72},
+    "xclamptm":  {"median": 90, "iqr": 65},
 }
+# fmt: on
 
-
-# Binary features are pre-op features minus categorical and continuous, plus cabg and valve
+# Binary features are all pre-op features minus categorical and continuous features,
+# plus cabg and valve procedures (binary)
 sts_features_binary = (
     set(sts_features_preoperative)
     - set(sts_features_categorical)
@@ -118,16 +122,18 @@ sts_features_binary = (
 sts_features_binary.add("opcab")
 sts_features_binary.add("opvalve")
 
+# fmt: off
 sts_outcomes = {
-    "sts_death": "mtopd",
-    "sts_stroke": "cnstrokp",
-    "sts_renal_failure": "crenfail",
+    "sts_death":                 "mtopd",
+    "sts_stroke":                "cnstrokp",
+    "sts_renal_failure":         "crenfail",
     "sts_prolonged_ventilation": "cpvntlng",
-    "sts_dsw_infection": "deepsterninf",
-    "sts_reoperation": "reop",
-    "sts_any_morbidity": "anymorbidity",
-    "sts_long_stay": "llos",
+    "sts_dsw_infection":         "deepsterninf",
+    "sts_reoperation":           "reop",
+    "sts_any_morbidity":         "anymorbidity",
+    "sts_long_stay":             "llos",
 }
+# fmt: on
 
 
 def _get_sts_features_dict(
@@ -238,9 +244,11 @@ def get_sts_surgery_dates(
 ) -> Dict[int, Dict[str, Union[int, str]]]:
     keys = [date_column] + additional_columns
     sts_surgery_dates = {}
-    df = pd.read_csv(
-        filename, low_memory=False, usecols=[patient_column] + keys,
-    ).sort_values(by=[patient_column, date_column]).drop_duplicates(patient_column, keep="last")
+    df = (
+        pd.read_csv(filename, low_memory=False, usecols=[patient_column] + keys)
+        .sort_values(by=[patient_column, date_column])
+        .drop_duplicates(patient_column, keep="last")
+    )
 
     list_of_dicts = df.to_dict("records")
 
@@ -368,18 +376,32 @@ for tmap_name in sts_features_binary:
 # Continuous
 for tmap_name in sts_features_continuous:
     interpretation = Interpretation.CONTINUOUS
-    tff = _make_sts_tff_continuous(sts_features=sts_features)
-    channel_map = {tmap_name: 0}
+
+    # Note the need to set the key; otherwise, tff will use the tmap name
+    # "foo_scaled" for the key, instead of "foo"
+    tff = _make_sts_tff_continuous(sts_features=sts_features, key=tmap_name)
     validator = validator_no_nans
 
-    tmaps[tmap_name] = TensorMap(
-        name=tmap_name,
-        interpretation=interpretation,
-        path_prefix=ECG_PREFIX,
-        tensor_from_file=tff,
-        channel_map=channel_map,
-        validator=validator,
-    )
+    # Make tmaps for both raw and scaled data
+    for standardize in ["", "_scaled"]:
+        channel_map = {tmap_name + standardize: 0}
+        normalizer = (
+            RobustScaler(
+                median=sts_features_continuous[tmap_name]["median"],
+                iqr=sts_features_continuous[tmap_name]["iqr"],
+            )
+            if standardize == "_scaled"
+            else None
+        )
+        tmaps[tmap_name + standardize] = TensorMap(
+            name=tmap_name + standardize,
+            interpretation=interpretation,
+            path_prefix=ECG_PREFIX,
+            tensor_from_file=tff,
+            channel_map=channel_map,
+            validator=validator,
+            normalization=normalizer,
+        )
 
 # Outcomes
 for tmap_name in sts_outcomes:

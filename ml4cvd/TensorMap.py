@@ -155,11 +155,7 @@ class TensorMap(object):
         self.channel_map = channel_map
         self.storage_type = storage_type
         self.augmentations = augmentations
-        self.normalization = (
-            normalization
-            if isinstance(normalization, Normalizer)
-            else _convert_old_normalization(normalization)
-        )
+        self.normalization = normalization
         self.dependent_map = dependent_map
         self.annotation_units = annotation_units
         self.tensor_from_file = tensor_from_file
@@ -374,20 +370,6 @@ class TensorMap(object):
             self.metrics = [pearson]
         elif self.metrics is None:
             self.metrics = []
-
-
-def _convert_old_normalization(normalization: Optional[Dict]) -> Optional[Normalizer]:
-    """
-    For backward compatibility. New TensorMaps should use a Normalizer.
-    """
-    if normalization is None:
-        return
-    if "mean" in normalization and "std" in normalization:
-        return Standardize(mean=normalization["mean"], std=normalization["std"])
-    if "zero_mean_std1" in normalization:
-        return ZeroMeanStd1()
-    else:
-        raise NotImplementedError(f"Cannot convert {normalization}")
 
 
 def _translate(val, cur_min, cur_max, new_min, new_max):

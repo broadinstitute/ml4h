@@ -24,10 +24,21 @@ class Standardize(Normalizer):
         self.mean, self.std = mean, std
 
     def normalize(self, tensor: np.ndarray) -> np.ndarray:
-        return (tensor - self.mean) / self.std
+        return (tensor - self.mean) / (self.std + EPS)
 
     def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
-        return tensor * self.std + self.mean
+        return tensor * (self.std + EPS) + self.mean
+
+
+class RobustScaler(Normalizer):
+    def __init__(self, median: float, iqr: float):
+        self.median, self.iqr = median, iqr
+
+    def normalize(self, tensor: np.ndarray) -> np.ndarray:
+        return (tensor - self.median) / (self.iqr + EPS)
+
+    def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
+        return tensor * (self.iqr + EPS) + self.median
 
 
 class ZeroMeanStd1(Normalizer):
