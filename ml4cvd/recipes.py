@@ -633,6 +633,19 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
+        elif tm.is_categorical() and tm.axes() == 3:
+            for p in predictions[tm]:
+                y = predictions[tm][p]
+                melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
+                predictions[tm][p] = y.reshape(melt_shape)
+
+            y_truth = outputs[tm.output_name()].reshape(melt_shape)
+            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
+            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
+            roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
+            precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
+            aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
+            log_aucs(**aucs)
         elif tm.is_continuous() and tm.axes() == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, paths)
