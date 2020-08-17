@@ -45,40 +45,17 @@ def predictions_to_pngs(
     input_map = tensor_maps_in[0]
     if not os.path.exists(folder):
         os.makedirs(folder)
+    _save_tensor_map_tensors_as_pngs(tensor_maps_in, data, paths, folder)
     for y, tm in zip(predictions, tensor_maps_out):
         if not isinstance(predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = predictions
         for im in tensor_maps_in:
             if tm.is_categorical() and im.dependent_map == tm:
                 input_map = im
-            elif len(tm.shape) == len(im.shape):
+            elif tm.shape == im.shape:
                 input_map = im
         logging.info(f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
         if tm.is_mesh():
-            vmin = np.min(data[input_map.input_name()])
-            vmax = np.max(data[input_map.input_name()])
-            for i in range(y.shape[0]):
-                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
-                if input_map.axes() == 4 and input_map.shape[-1] == 1:
-                    sample_data = data[input_map.input_name()][i, ..., 0]
-                    cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
-                    rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
-                    path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
-                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
-                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
-                else:
-                    fig, ax = plt.subplots(1)
-                    if input_map.axes() == 3 and input_map.shape[-1] == 1:
-                        ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
-                    elif input_map.axes() == 2:
-                        ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
-                    corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
-                    ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
-                    y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
-                    ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
-                    logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
-                plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
-        elif len(tm.shape) in [1, 2]:
             vmin = np.min(data[input_map.input_name()])
             vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
@@ -106,35 +83,39 @@ def predictions_to_pngs(
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical():
-                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1, cmap='gray'))
+                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1), cmap='gray')
                     plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='gray')
-                    if input_map is not None:
-                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, 0], cmap='gray')
-                else:
+                elif len(y.shape) == 4:
                     for j in range(y.shape[3]):
-                        plt.imsave(f"{folder}{sample_id}_truth_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j], cmap='gray')
-                        plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j], cmap='gray')
-                        plt.imsave(f"{folder}{sample_id}_mri_slice_{i:02d}_{j:02d}{IMAGE_EXT}", data[input_map.input_name()][i, :, :, j], cmap='gray')
+                        plt.imsave(f"{folder}{sample_id}_truth_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j], cmap='gray')
+                        plt.imsave(f"{folder}{sample_id}_prediction_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j], cmap='gray')
         elif len(tm.shape) == 4:
-            for im in tensor_maps_in:
-                if im.dependent_map == tm:
-                    break
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 for j in range(y.shape[3]):
+                    image_path_base = f'{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}'
                     if tm.is_categorical():
                         truth = np.argmax(labels[tm.output_name()][i, :, :, j, :], axis=-1)
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)
-                        true_donut = np.ma.masked_where(truth == 2, data[im.input_name()][i, :, :, j, 0])
-                        predict_donut = np.ma.masked_where(prediction == 2, data[im.input_name()][i, :, :, j, 0])
-                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, truth, cmap='gray')
-                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, prediction, cmap='gray')
-                        plt.imsave(folder+sample_id+'_mri_slice_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, data[im.input_name()][i, :, :, j, 0], cmap='gray')
-                        plt.imsave(folder+sample_id + '_true_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, true_donut, cmap='gray')
-                        plt.imsave(folder + sample_id + '_predict_donut_{0:03d}_{1:03d}'.format(i, j) + IMAGE_EXT, predict_donut, cmap='gray')
+                        plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='gray')
+                        plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='gray')
                     else:
-                        plt.imsave(folder+sample_id+'_truth_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
-                        plt.imsave(folder+sample_id+'_prediction_{0:03d}_{1:03d}'.format(i, j)+IMAGE_EXT, y[i, :, :, j, 0], cmap='gray')
+                        plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
+                        plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', y[i, :, :, j, :], cmap='gray')
+
+
+def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict[str, np.ndarray], paths, folder):
+    for tm in tensor_maps_in:
+        tensor = data[tm.input_name()]
+        for i in range(tensor.shape[0]):
+            sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+            if len(tm.shape) not in [3, 4]:
+                continue
+            for j in range(tensor.shape[3]):
+                if len(tm.shape) == 3:
+                    plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j], cmap='gray')
+                elif len(tm.shape) == 4:
+                    plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j, 0], cmap='gray')
 
 
 def plot_while_learning(
