@@ -54,7 +54,7 @@ def predictions_to_pngs(
                 input_map = im
             elif tm.shape == im.shape:
                 input_map = im
-        logging.info(f"Write predictions as PNGs y:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
+        logging.info(f"Write predictions as PNGs TensorMap:{tm.name}, y shape:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
         if tm.is_mesh():
             vmin = np.min(data[input_map.input_name()])
             vmax = np.max(data[input_map.input_name()])
