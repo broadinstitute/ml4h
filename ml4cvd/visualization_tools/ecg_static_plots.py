@@ -53,8 +53,8 @@ def display_resting_ecg(sample_id, folder=None):
     try:
       # We don't need the resulting SVG, so send it to a temporary directory.
       with tempfile.TemporaryDirectory() as tmpdirname:
-        plot_ecg_rest(tensor_paths = [local_path], rows=[0], out_folder=tmpdirname, is_blind=False)
-    except Exception as e:
+        plot_ecg_rest(tensor_paths=[local_path], rows=[0], out_folder=tmpdirname, is_blind=False)
+    except Exception as e:  # pylint: disable=broad-except
       return HTML(f'''
         <div class="alert alert-block alert-danger">
         <b>Warning:</b> Unable to render static plot of resting ECG for sample {sample_id} from {hd5_folder}:

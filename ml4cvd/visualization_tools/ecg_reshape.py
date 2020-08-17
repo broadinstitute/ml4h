@@ -38,7 +38,7 @@ EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 def _examine_available_keys(hd5):
   print(f'hd5 ECG keys {[k for k in hd5.keys() if "ecg" in k]}')
   for key in [k for k in hd5.keys() if 'ecg' in k]:
-    print(f'hd5 {key} keys {[k for k in hd5[key].keys()]}')
+    print(f'hd5 {key} keys {k for k in hd5[key]}')
 
 
 def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):

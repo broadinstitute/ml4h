@@ -2,9 +2,9 @@
 
 import abc
 import datetime
-import pandas as pd
 from google.cloud import bigquery
 from google.cloud.bigquery import magics as bqmagics
+import pandas as pd
 
 
 class AnnotationStorage(abc.ABC):
@@ -16,7 +16,6 @@ class AnnotationStorage(abc.ABC):
   @abc.abstractmethod
   def describe(self):
     """Return a string describing how annotations are stored."""
-    pass
 
   @abc.abstractmethod
   def submit_annotation(self, sample_id, annotator, key, value_numeric, value_string, comment):
@@ -32,7 +31,6 @@ class AnnotationStorage(abc.ABC):
     Returns:
       Whether the submission was successful. Throws an Exception on failure.
     """
-    pass
 
   @abc.abstractmethod
   def view_recent_submissions(self, count=10):
@@ -44,7 +42,6 @@ class AnnotationStorage(abc.ABC):
     Returns:
       A dataframe of the most recent annotations.
     """
-    pass
 
 
 class TransientAnnotationStorage(AnnotationStorage):

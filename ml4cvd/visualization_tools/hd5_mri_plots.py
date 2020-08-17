@@ -4,9 +4,9 @@ from enum import Enum, auto
 import os
 import tempfile
 
-import h5py
 from IPython.display import display
 from IPython.display import HTML
+import h5py
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from ml4cvd.runtime_data_defines import get_mri_hd5_folder
@@ -16,14 +16,17 @@ import numpy as np
 import tensorflow as tf
 
 # Discover applicable TMAPS.
-CARDIAC_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if ('_lax_' in k or '_sax_' in k) and TMAPS[k].axes() == 3]
+CARDIAC_MRI_TMAP_NAMES = [k for k in TMAPS if ('_lax_' in k or '_sax_' in k) and TMAPS[k].axes() == 3]
 CARDIAC_MRI_TMAP_NAMES.extend(
-    [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_cardiac_mri' and TMAPS[k].axes() == 3],
+    [k for k in TMAPS if TMAPS[k].path_prefix == 'ukb_cardiac_mri' and TMAPS[k].axes() == 3],
 )
-LIVER_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_liver_mri' and TMAPS[k].axes() == 3]
-BRAIN_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].path_prefix == 'ukb_brain_mri' and TMAPS[k].axes() == 3]
+LIVER_MRI_TMAP_NAMES = [k for k in TMAPS if TMAPS[k].path_prefix == 'ukb_liver_mri' and TMAPS[k].axes() == 3]
+BRAIN_MRI_TMAP_NAMES = [k for k in TMAPS if TMAPS[k].path_prefix == 'ukb_brain_mri' and TMAPS[k].axes() == 3]
 # This includes more than just MRI TMAPS, it is a best effort.
-BEST_EFFORT_MRI_TMAP_NAMES = [k for k in TMAPS.keys() if TMAPS[k].interpretation == Interpretation.CONTINUOUS and TMAPS[k].axes() == 3]
+BEST_EFFORT_MRI_TMAP_NAMES = [
+    k for k in TMAPS
+    if TMAPS[k].interpretation == Interpretation.CONTINUOUS and TMAPS[k].axes() == 3
+]
 
 MIN_IMAGE_WIDTH = 8
 DEFAULT_IMAGE_WIDTH = 12
@@ -54,15 +57,24 @@ class TensorMapCache:
     return self.tensor
 
 
-def choose_cardiac_mri_tmap(sample_id, folder=None, tmap_name='cine_lax_4ch_192', default_tmap_names=CARDIAC_MRI_TMAP_NAMES):
+def choose_cardiac_mri_tmap(
+    sample_id, folder=None, tmap_name='cine_lax_4ch_192',
+    default_tmap_names=CARDIAC_MRI_TMAP_NAMES,
+):
   choose_mri_tmap(sample_id, folder, tmap_name, default_tmap_names)
 
 
-def choose_brain_mri_tmap(sample_id, folder=None, tmap_name='t2_flair_sag_p2_1mm_fs_ellip_pf78_1', default_tmap_names=BRAIN_MRI_TMAP_NAMES):
+def choose_brain_mri_tmap(
+    sample_id, folder=None, tmap_name='t2_flair_sag_p2_1mm_fs_ellip_pf78_1',
+    default_tmap_names=BRAIN_MRI_TMAP_NAMES,
+):
   choose_mri_tmap(sample_id, folder, tmap_name, default_tmap_names)
 
 
-def choose_liver_mri_tmap(sample_id, folder=None, tmap_name='liver_shmolli_segmented', default_tmap_names=LIVER_MRI_TMAP_NAMES):
+def choose_liver_mri_tmap(
+    sample_id, folder=None, tmap_name='liver_shmolli_segmented',
+    default_tmap_names=LIVER_MRI_TMAP_NAMES,
+):
   choose_mri_tmap(sample_id, folder, tmap_name, default_tmap_names)
 
 
@@ -74,9 +86,6 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
     folder: The local or Cloud Storage folder under which the files reside.
     tmap_name: The TMAP name for the 3D MRI tensor to visualize.
     default_tmap_names: Other TMAP names to offer for visualization, if present in the hd5.
-
-  Returns:
-    ipywidget or HTML upon error.
   """
   if folder is None:
     folder = get_mri_hd5_folder(sample_id)
@@ -88,12 +97,14 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
       tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
       hd5 = h5py.File(local_path, mode='r')
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      return HTML(f'''
-      <div class="alert alert-block alert-danger">
+      display(
+          HTML(f'''<div class="alert alert-block alert-danger">
       <b>Warning:</b> MRI HD5 file not available for sample {sample_id} in folder {folder}:
       <hr><p><pre>{e.message}</pre></p>
       Use the <kbd>folder</kbd> parameter to read HD5s from a different local directory or Cloud Storage bucket.
-      </div>''')
+      </div>'''),
+      )
+      return
 
     sample_tmap_names = []
     # Add the passed tmap_name parameter, if it is present in this hd5.
@@ -106,15 +117,16 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
       else:
         print(f'{tmap_name} is not available in {sample_id}')
     # Also discover applicable TMAPS for this particular sample's HD5 file.
-    sample_tmap_names.extend(
-        sorted(set([k for k in default_tmap_names if TMAPS[k].hd5_key_guess() in hd5])),
-    )
+    sample_tmap_names.extend(sorted({k for k in default_tmap_names if TMAPS[k].hd5_key_guess() in hd5}))
 
     if not sample_tmap_names:
-      return HTML(f'''<div class="alert alert-block alert-danger">
+      display(
+          HTML(f'''<div class="alert alert-block alert-danger">
       Neither {tmap_name} nor any of {default_tmap_names} are present in this HD5 for sample {sample_id} in {folder}.
       Use the tmap_name parameter to try a different TMAP or the folder parameter to try a different hd5 for the sample.
-      </div>''')
+      </div>'''),
+      )
+      return
 
     default_tmap_name_value = sample_tmap_names[0]
     # Display the middle instance by default in the interactive view.
@@ -236,9 +248,6 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
     transpose: Whether to transpose the images.
     fig_width: The desired width of the figure. Note that height computed as
       the proportion of the width based on the data to be plotted.
-
-  Returns:
-    The plot or a notebook-friendly error message.
   """
   title_prefix = f'{tmap_name} from MRI {sample_id}'
   mri_tensor = tmap_cache.get(tmap_name)
@@ -266,7 +275,7 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
         title_prefix=title_prefix,
     )
   else:
-    return HTML(f'''<div class="alert alert-block alert-danger">Invalid plot type: {plot_type}</div>''')
+    HTML(f'''<div class="alert alert-block alert-danger">Invalid plot type: {plot_type}</div>''')
 
 
 def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
@@ -324,7 +333,10 @@ def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, fig_width
   )
 
 
-def plot_mri_tensor_as_animation(mri_tensor, instance, vmin, vmax, transpose=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
+def plot_mri_tensor_as_animation(
+    mri_tensor, instance, vmin, vmax, transpose=False,
+    fig_width=DEFAULT_IMAGE_WIDTH, title_prefix='',
+):
   """Visualize an MRI series from a 3D tensor as an animation rendered one panel at a time.
 
   Args:
@@ -355,7 +367,7 @@ def plot_mri_tensor_as_animation(mri_tensor, instance, vmin, vmax, transpose=Fal
   _, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='beige')
   ax.imshow(pixels.T if transpose else pixels, cmap='gray', vmin=vmin, vmax=vmax)
   ax.set_title(
-      f'{title_prefix}, Instance: {instance}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Figure size:{fig_width}x{fig_height}',
+      f'{title_prefix}, Instance: {instance}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Figure size:{fig_width}x{fig_height}',  # pylint: disable=line-too-long
       fontsize=fig_width,
   )
   ax.set_yticklabels([])

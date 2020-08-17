@@ -25,7 +25,7 @@ if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
     FACETS_DEPENDENCIES[dep] = os.path.basename(url)
 
 
-class FacetsOverview(object):
+class FacetsOverview():
   """Methods for Facets Overview notebook integration."""
 
   def __init__(self, data):
@@ -57,7 +57,7 @@ class FacetsOverview(object):
     return html
 
 
-class FacetsDive(object):
+class FacetsDive():
   """Methods for Facets Dive notebook integration."""
 
   def __init__(self, data, height=1000):

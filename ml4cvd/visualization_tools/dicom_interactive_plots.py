@@ -33,9 +33,6 @@ def choose_mri(sample_id, folder=None):
   Args:
     sample_id: The id of the sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
-
-  Returns:
-    ipywidget or HTML upon error.
   """
   if folder is None:
     folders = get_mri_folders(sample_id)
@@ -45,22 +42,26 @@ def choose_mri(sample_id, folder=None):
   sample_mris = []
   sample_mri_glob = str(sample_id) + '_*.zip'
   try:
-    for folder in folders:
-      sample_mris.extend(tf.io.gfile.glob(pattern=os.path.join(folder, sample_mri_glob)))
+    for f in folders:
+      sample_mris.extend(tf.io.gfile.glob(pattern=os.path.join(f, sample_mri_glob)))
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-    return HTML(f'''
-    <div class="alert alert-block alert-danger">
+    display(
+        HTML(f'''<div class="alert alert-block alert-danger">
     <b>Warning:</b> MRI not available for sample {sample_id} in {folders}:
     <hr><p><pre>{e.message}</pre></p>
     Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
-    </div>''')
+    </div>'''),
+    )
+    return
 
   if not sample_mris:
-    return HTML(f'''
-    <div class="alert alert-block alert-danger">
+    display(
+        HTML(f'''<div class="alert alert-block alert-danger">
     <b>Warning:</b> MRI DICOMs not available for sample {sample_id} in {folders}.<br>
     Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
-    </div>''')
+    </div>'''),
+    )
+    return
 
   mri_chooser = widgets.Dropdown(
       options=sample_mris,
@@ -82,9 +83,6 @@ def choose_mri_series(sample_mri):
 
   Args:
     sample_mri: The local or Cloud Storage path to the MRI file.
-
-  Returns:
-    ipywidget or HTML upon error.
   """
   with tempfile.TemporaryDirectory() as tmpdirname:
     local_path = os.path.join(tmpdirname, os.path.basename(sample_mri))
@@ -93,11 +91,13 @@ def choose_mri_series(sample_mri):
       with zipfile.ZipFile(local_path, 'r') as zip_ref:
         zip_ref.extractall(tmpdirname)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      return HTML(f'''
-      <div class="alert alert-block alert-danger">
+      display(
+          HTML(f'''<div class="alert alert-block alert-danger">
       <b>Warning:</b> Cardiac MRI not available for sample {os.path.basename(sample_mri)}:
       <hr><p><pre>{e.message}</pre></p>
-      </div>''')
+      </div>'''),
+      )
+      return
 
     unordered_dicoms = collections.defaultdict(dict)
     for dcm_file in os.listdir(tmpdirname):
@@ -112,8 +112,13 @@ def choose_mri_series(sample_mri):
       unordered_dicoms[key1][key2] = dcm
 
   if not unordered_dicoms:
-    print(f'\n\nNo series available in MRI for sample {os.path.basename(sample_mri)}\n\nTry a different MRI.')
-    return None
+    display(
+        HTML(f'''<div class="alert alert-block alert-warning">
+    No series available in MRI for sample {os.path.basename(sample_mri)}.
+    Try a different MRI.
+    </div>'''),
+    )
+    return
 
   # Convert from dict of dicts to dict of ordered lists.
   dicoms = {}
@@ -250,7 +255,7 @@ def dicom_animation(
     dcm = dicoms[series_name][instance - 1]
     if instance != dcm.InstanceNumber:
       # Notice invalid input, but don't throw an error.
-      print(f'WARNING: Instance parameter {str(instance)} and dicom instance number {str(dcm.InstanceNumber)} do not match.')
+      print(f'WARNING: Instance parameter {str(instance)} and instance number {str(dcm.InstanceNumber)} do not match.')
 
   if transpose:
     height = dcm.pixel_array.T.shape[0]

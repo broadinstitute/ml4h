@@ -3,8 +3,8 @@
 import os
 import tempfile
 
-import altair as alt  # Interactive data visualization for plots.
 from IPython.display import HTML
+import altair as alt  # Interactive data visualization for plots.
 from ml4cvd.visualization_tools.ecg_reshape import DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME
 from ml4cvd.visualization_tools.ecg_reshape import reshape_exercise_ecg_to_tidy
 from ml4cvd.visualization_tools.ecg_reshape import reshape_resting_ecg_to_tidy
@@ -140,7 +140,8 @@ def exercise_ecg_interactive_plot(sample_id, folder=None, time_interval_seconds=
       lead_select,
   ).transform_filter(
       # https://github.com/altair-viz/altair/issues/1960
-      f'((toNumber({brush.name}.time) - {time_interval_seconds/2.0}) < datum.time) && (datum.time < toNumber({brush.name}.time) + {time_interval_seconds/2.0})',
+      f'''((toNumber({brush.name}.time) - {time_interval_seconds/2.0}) < datum.time)
+           && (datum.time < toNumber({brush.name}.time) + {time_interval_seconds/2.0})''',
   )
 
   return trend.encode(y='heartrate:Q') & trend.encode(y='load:Q') & signal
