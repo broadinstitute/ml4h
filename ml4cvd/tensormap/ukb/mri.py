@@ -816,15 +816,6 @@ lax_4ch_diastole_slice0 = TensorMap(
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
 )
-lax_3ch_diastole_slice0 = TensorMap(
-    'lax_3ch_diastole_slice0',
-    Interpretation.CONTINUOUS,
-    shape=(256, 256),
-    loss='logcosh',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0),
-)
 cine_segmented_ao_dist_slice0 = TensorMap(
     'cine_segmented_ao_dist_slice0',
     Interpretation.CONTINUOUS,
