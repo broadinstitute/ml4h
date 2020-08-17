@@ -3,6 +3,7 @@ import base64
 import os
 
 from facets_overview.generic_feature_statistics_generator import GenericFeatureStatisticsGenerator
+import pandas as pd
 
 FACETS_DEPENDENCIES = {
     'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',
@@ -28,7 +29,7 @@ if 'GOOGLE_PROJECT' in os.environ:  # This is Terra.
 class FacetsOverview():
   """Methods for Facets Overview notebook integration."""
 
-  def __init__(self, data):
+  def __init__(self, data: pd.DataFrame):
     # This takes the dataframe and computes all the inputs to the Facets
     # Overview plots such as:
     # - numeric variables: histogram bins, mean, min, median, max, etc..
@@ -39,7 +40,7 @@ class FacetsOverview():
         [{'name': 'data', 'table': data}],
     )
 
-  def _repr_html_(self):
+  def _repr_html_(self) -> str:
     """Html representation of Facets Overview for use in a Jupyter notebook."""
     protostr = base64.b64encode(self._proto.SerializeToString()).decode('utf-8')
     html_template = '''
@@ -60,11 +61,11 @@ class FacetsOverview():
 class FacetsDive():
   """Methods for Facets Dive notebook integration."""
 
-  def __init__(self, data, height=1000):
+  def __init__(self, data: pd.DataFrame, height: int = 1000):
     self._data = data
     self.height = height
 
-  def _repr_html_(self):
+  def _repr_html_(self) -> str:
     """Html representation of Facets Dive for use in a Jupyter notebook."""
     html_template = """
         <script src="{webcomponents_js}"></script>

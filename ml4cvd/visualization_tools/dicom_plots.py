@@ -3,6 +3,7 @@
 import collections
 import os
 import tempfile
+from typing import Dict, List, Optional, Tuple, Union
 import zipfile
 
 from IPython.display import display
@@ -27,7 +28,7 @@ MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
 
 
-def _is_mitral_valve_segmentation(d):  # -> bool:
+def _is_mitral_valve_segmentation(d: pydicom.FileDataset) -> bool:
   """Determine whether a dicom has mitral valve segmentation.
 
   This is used for visualization of CINE_segmented_SAX_InlineVF.
@@ -41,7 +42,7 @@ def _is_mitral_valve_segmentation(d):  # -> bool:
   return d.SliceThickness == 6
 
 
-def _get_overlay_from_dicom(d):
+def _get_overlay_from_dicom(d: pydicom.FileDataset) -> Tuple[int, int, int]:
   """Get an overlay from a DICOM file.
 
   Morphological operators are used to transform the pixel outline of the
@@ -100,7 +101,7 @@ def _get_overlay_from_dicom(d):
   return overlay, anatomical_mask, ventricle_pixels
 
 
-def _unit_disk(r):  # -> np.ndarray:
+def _unit_disk(r: int) -> np.ndarray:
   """Get the unit disk for a radius.
 
   This is used for visualization of CINE_segmented_SAX_InlineVF.
@@ -115,7 +116,9 @@ def _unit_disk(r):  # -> np.ndarray:
   return (x ** 2 + y ** 2 <= r ** 2).astype(np.int)
 
 
-def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
+def plot_cardiac_long_axis(
+    b_series: List[pydicom.FileDataset], sides: int = 7, fig_width: int = 18, title_prefix: str = '',
+) -> None:
   """Visualize CINE_segmented_SAX_InlineVF series.
 
   Args:
@@ -169,9 +172,9 @@ def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
 
 
 def plot_cardiac_short_axis(
-    series, transpose=False, fig_width=18,
-    title_prefix='',
-):
+    series: List[pydicom.FileDataset], transpose: bool = False, fig_width: int = 18,
+    title_prefix: str = '',
+) -> None:
   """Visualize CINE_segmented_LAX series.
 
   Args:
@@ -226,9 +229,9 @@ def plot_cardiac_short_axis(
 
 
 def plot_mri_series(
-    sample_mri, dicoms, series_name, sax_sides,
-    lax_transpose, fig_width,
-):
+    sample_mri: str, dicoms: Dict[str, pydicom.FileDataset], series_name: str, sax_sides: int,
+    lax_transpose: bool, fig_width: int,
+) -> None:
   """Visualize the applicable series within this DICOM.
 
   Args:
@@ -261,7 +264,7 @@ def plot_mri_series(
     print(f'Visualization not currently implemented for {series_name}.')
 
 
-def choose_mri_series(sample_mri):
+def choose_mri_series(sample_mri: str) -> None:
   """Render widgets and plots for cardiac MRIs.
 
   Visualization is supported for CINE_segmented_SAX_InlineVF series and
@@ -357,7 +360,7 @@ def choose_mri_series(sample_mri):
       )
 
 
-def choose_cardiac_mri(sample_id, folder=None):
+def choose_cardiac_mri(sample_id: Union[int, str], folder: Optional[str] = None) -> None:
   """Render widget to choose the cardiac MRI to plot.
 
   Args:

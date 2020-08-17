@@ -1,6 +1,7 @@
 """Methods for integration of static plots within notebooks."""
 import os
 import tempfile
+from typing import List, Optional, Union
 
 from IPython.display import HTML
 from IPython.display import SVG
@@ -11,7 +12,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def display_resting_ecg(sample_id, folder=None):
+def display_resting_ecg(sample_id: Union[int, str], folder: Optional[str] = None) -> Union[HTML, SVG]:
   """Retrieve (or render) and display the SVG of the resting ECG.
 
   Args:
@@ -53,7 +54,7 @@ def display_resting_ecg(sample_id, folder=None):
     try:
       # We don't need the resulting SVG, so send it to a temporary directory.
       with tempfile.TemporaryDirectory() as tmpdirname:
-        plot_ecg_rest(tensor_paths=[local_path], rows=[0], out_folder=tmpdirname, is_blind=False)
+        return plot_ecg_rest(tensor_paths=[local_path], rows=[0], out_folder=tmpdirname, is_blind=False)
     except Exception as e:  # pylint: disable=broad-except
       return HTML(f'''
         <div class="alert alert-block alert-danger">
@@ -62,7 +63,7 @@ def display_resting_ecg(sample_id, folder=None):
         </div>''')
 
 
-def major_breaks_x_resting_ecg(limits):
+def major_breaks_x_resting_ecg(limits: List[float]) -> np.array:
   """Method to compute breaks for plotnine plots of ECG resting data.
 
   Args:

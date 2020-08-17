@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from typing import Optional, Union
 
 from IPython.display import HTML
 import altair as alt  # Interactive data visualization for plots.
@@ -31,7 +32,10 @@ EXERCISE_ECG_SIGNAL_DATA_FILE = tempfile.NamedTemporaryFile(
 )
 
 
-def resting_ecg_interactive_plot(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):
+def resting_ecg_interactive_plot(
+    sample_id: Union[int, str], folder: Optional[str] = None,
+    tmap_name: str = DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME,
+) -> Union[HTML, alt.Chart]:
   """Wrangle resting ECG data to tidy and present it as an interactive plot.
 
   Args:
@@ -85,7 +89,9 @@ def resting_ecg_interactive_plot(sample_id, folder=None, tmap_name=DEFAULT_RESTI
   return upper & lower
 
 
-def exercise_ecg_interactive_plot(sample_id, folder=None, time_interval_seconds=10):
+def exercise_ecg_interactive_plot(
+    sample_id: Union[int, str], folder: Optional[str] = None, time_interval_seconds: int = 10,
+) -> Union[HTML, alt.Chart]:
   """Wrangle exercise ECG data to tidy and present it as an interactive plot.
 
   Args:

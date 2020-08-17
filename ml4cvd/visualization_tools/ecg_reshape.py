@@ -1,6 +1,7 @@
 """Methods for reshaping raw ECG signal data for use in the pandas ecosystem."""
 import os
 import tempfile
+from typing import Any, Dict, Optional, Tuple, Union
 
 from biosppy.signals.tools import filter_signal
 import h5py
@@ -35,13 +36,15 @@ EXERCISE_ECG_TREND_TMAPS = [
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
 
-def _examine_available_keys(hd5):
+def _examine_available_keys(hd5: Dict[str, Any]) -> None:
   print(f'hd5 ECG keys {[k for k in hd5.keys() if "ecg" in k]}')
   for key in [k for k in hd5.keys() if 'ecg' in k]:
     print(f'hd5 {key} keys {k for k in hd5[key]}')
 
 
-def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME):
+def reshape_resting_ecg_to_tidy(
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap_name: str = DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME,
+) -> pd.DataFrame:
   """Wrangle resting ECG data to tidy.
 
   Args:
@@ -55,7 +58,7 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTIN
   if folder is None:
     folder = get_resting_ecg_hd5_folder(sample_id)
 
-  data = {'lead': [], 'raw': [], 'ts_reference': [], 'filtered': [], 'filtered_1': [], 'filtered_2': []}
+  data: Dict[str, Any] = {'lead': [], 'raw': [], 'ts_reference': [], 'filtered': [], 'filtered_1': [], 'filtered_2': []}
 
   with tempfile.TemporaryDirectory() as tmpdirname:
     sample_hd5 = str(sample_id) + '.hd5'
@@ -136,7 +139,9 @@ def reshape_resting_ecg_to_tidy(sample_id, folder=None, tmap_name=DEFAULT_RESTIN
   return tidy_signal_df
 
 
-def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
+def reshape_exercise_ecg_to_tidy(
+    sample_id: Union[int, str], folder: Optional[str] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Wrangle exercise ECG signal data to tidy format.
 
   Args:
@@ -208,7 +213,9 @@ def reshape_exercise_ecg_to_tidy(sample_id, folder=None):
   return (trend_df, tidy_signal_df)
 
 
-def reshape_exercise_ecg_and_trend_to_tidy(sample_id, folder=None):
+def reshape_exercise_ecg_and_trend_to_tidy(
+    sample_id: Union[int, str], folder: Optional[str] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Wrangle exercise ECG signal and trend data to tidy format.
 
   Args:

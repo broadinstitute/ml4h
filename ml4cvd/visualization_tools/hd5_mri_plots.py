@@ -3,6 +3,7 @@
 from enum import Enum, auto
 import os
 import tempfile
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from IPython.display import display
 from IPython.display import HTML
@@ -44,13 +45,13 @@ class PlotType(Enum):
 class TensorMapCache:
   """Cache the tensor to display for reuse when re-plotting the same TMAP with different plot parameters."""
 
-  def __init__(self, hd5, tmap_name):
+  def __init__(self, hd5: Dict[str, Any], tmap_name: str):
     self.hd5 = hd5
-    self.tmap_name = None
+    self.tmap_name: Optional[str] = None
     self.tensor = None
     _ = self.get(tmap_name)
 
-  def get(self, tmap_name):
+  def get(self, tmap_name: str) -> np.array:
     if self.tmap_name != tmap_name:
       self.tensor = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], self.hd5)
       self.tmap_name = tmap_name
@@ -58,27 +59,30 @@ class TensorMapCache:
 
 
 def choose_cardiac_mri_tmap(
-    sample_id, folder=None, tmap_name='cine_lax_4ch_192',
-    default_tmap_names=CARDIAC_MRI_TMAP_NAMES,
-):
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap_name: str = 'cine_lax_4ch_192',
+    default_tmap_names: List[str] = CARDIAC_MRI_TMAP_NAMES,
+) -> None:
   choose_mri_tmap(sample_id, folder, tmap_name, default_tmap_names)
 
 
 def choose_brain_mri_tmap(
-    sample_id, folder=None, tmap_name='t2_flair_sag_p2_1mm_fs_ellip_pf78_1',
-    default_tmap_names=BRAIN_MRI_TMAP_NAMES,
-):
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap_name: str = 't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
+    default_tmap_names: List[str] = BRAIN_MRI_TMAP_NAMES,
+) -> None:
   choose_mri_tmap(sample_id, folder, tmap_name, default_tmap_names)
 
 
 def choose_liver_mri_tmap(
-    sample_id, folder=None, tmap_name='liver_shmolli_segmented',
-    default_tmap_names=LIVER_MRI_TMAP_NAMES,
-):
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap_name: str = 'liver_shmolli_segmented',
+    default_tmap_names: List[str] = LIVER_MRI_TMAP_NAMES,
+) -> None:
   choose_mri_tmap(sample_id, folder, tmap_name, default_tmap_names)
 
 
-def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=BEST_EFFORT_MRI_TMAP_NAMES):
+def choose_mri_tmap(
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap_name: Optional[str] = None,
+    default_tmap_names: List[str] = BEST_EFFORT_MRI_TMAP_NAMES,
+) -> None:
   """Render widgets and plots for MRI tensors.
 
   Args:
@@ -226,22 +230,25 @@ def choose_mri_tmap(sample_id, folder=None, tmap_name=None, default_tmap_names=B
     display(viz_controls_ui, viz_controls_output)
 
 
-def compute_color_range(hd5, tmap_name):
+def compute_color_range(hd5: Dict[str, Any], tmap_name: str) -> List[int]:
   """Compute the mean values for the color ranges of instances in the MRI series."""
   mri_tensor = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], hd5)
   vmin = np.mean([np.min(mri_tensor[:, :, i]) for i in range(0, mri_tensor.shape[2])])
   vmax = np.mean([np.max(mri_tensor[:, :, i]) for i in range(0, mri_tensor.shape[2])])
-  return[vmin, vmax]
+  return [vmin, vmax]
 
 
-def compute_instance_range(tmap_name):
+def compute_instance_range(tmap_name: str) -> Tuple[int, int]:
   """Compute middle and max instances."""
   middle_instance = int(TMAPS[tmap_name].shape[2] / 2)
   max_instance = TMAPS[tmap_name].shape[2]
-  return(middle_instance, max_instance)
+  return (middle_instance, max_instance)
 
 
-def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_range, transpose, flip, fig_width):
+def plot_mri_tmap(
+    sample_id: Union[int, str], tmap_cache: TensorMapCache, tmap_name: str, plot_type: PlotType,
+    instance: int, color_range: Tuple[int, int], transpose: bool, flip: bool, fig_width: int,
+) -> None:
   """Visualize the applicable MRI series within this HD5 file.
 
   Args:
@@ -287,7 +294,10 @@ def plot_mri_tmap(sample_id, tmap_cache, tmap_name, plot_type, instance, color_r
     HTML(f'''<div class="alert alert-block alert-danger">Invalid plot type: {plot_type}</div>''')
 
 
-def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, flip=False, fig_width=DEFAULT_IMAGE_WIDTH, title_prefix=''):
+def plot_mri_tensor_as_panels(
+    mri_tensor: np.array, vmin: int, vmax: int, transpose: bool = False, flip: bool = False,
+    fig_width: int = DEFAULT_IMAGE_WIDTH, title_prefix: str = '',
+) -> None:
   """Visualize an MRI series from a 3D tensor as a panel of static plots.
 
   Args:
@@ -323,7 +333,7 @@ def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, flip=Fals
     axes[row, col].set_yticklabels([])
     axes[row, col].set_xticklabels([])
   fig.suptitle(
-      f'{title_prefix}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Flip: {flip}, Figure size:{fig_width}x{fig_height}',
+      f'{title_prefix}\nColor range: {vmin}-{vmax}, Transpose: {transpose}, Flip: {flip}, Figure size:{fig_width}x{fig_height}',  # pylint: disable=line-too-long
       fontsize=fig_width,
   )
   fig.subplots_adjust(
@@ -336,9 +346,10 @@ def plot_mri_tensor_as_panels(mri_tensor, vmin, vmax, transpose=False, flip=Fals
 
 
 def plot_mri_tensor_as_animation(
-    mri_tensor, instance, vmin, vmax, transpose=False, flip=False,
-    fig_width=DEFAULT_IMAGE_WIDTH, title_prefix='',
-):
+    mri_tensor: np.array, instance: int, vmin: int, vmax: int,
+    transpose: bool = False, flip: bool = False,
+    fig_width: int = DEFAULT_IMAGE_WIDTH, title_prefix: str = '',
+) -> None:
   """Visualize an MRI series from a 3D tensor as an animation rendered one panel at a time.
 
   Args:

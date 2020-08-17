@@ -8,6 +8,7 @@ TODO:
 import collections
 import os
 import tempfile
+from typing import Any, DefaultDict, Dict, Optional, Tuple
 import zipfile
 
 from IPython.display import display
@@ -27,7 +28,7 @@ MIN_COLOR_RANGE = 0
 MAX_COLOR_RANGE = 6000
 
 
-def choose_mri(sample_id, folder=None):
+def choose_mri(sample_id, folder: Optional[str] = None) -> None:
   """Render widget to choose the MRI to plot.
 
   Args:
@@ -78,7 +79,7 @@ def choose_mri(sample_id, folder=None):
   display(file_controls_ui, file_controls_output)
 
 
-def choose_mri_series(sample_mri):
+def choose_mri_series(sample_mri: str) -> None:
   """Render widgets and interactive plots for MRIs.
 
   Args:
@@ -99,7 +100,7 @@ def choose_mri_series(sample_mri):
       )
       return
 
-    unordered_dicoms = collections.defaultdict(dict)
+    unordered_dicoms: DefaultDict[Any, Any] = collections.defaultdict(dict)
     for dcm_file in os.listdir(tmpdirname):
       if not dcm_file.endswith('.dcm'):
         continue
@@ -217,24 +218,24 @@ def choose_mri_series(sample_mri):
   display(viz_controls_ui, viz_controls_output)
 
 
-def compute_color_range(dicoms, series_name):
+def compute_color_range(dicoms: Dict[str, Any], series_name: str) -> Tuple[int, int]:
   """Compute the mean values for the color ranges of instances in the series."""
   vmin = np.mean([np.min(d.pixel_array) for d in dicoms[series_name]])
   vmax = np.mean([np.max(d.pixel_array) for d in dicoms[series_name]])
-  return(vmin, vmax)
+  return (vmin, vmax)
 
 
-def compute_instance_range(dicoms, series_name):
+def compute_instance_range(dicoms: Dict[str, Any], series_name: str) -> Tuple[int, int]:
   """Compute middle and max instances."""
   middle_instance = int(len(dicoms[series_name]) / 2)
   max_instance = len(dicoms[series_name])
-  return(middle_instance, max_instance)
+  return (middle_instance, max_instance)
 
 
 def dicom_animation(
-    dicoms, series_name, instance, vmin, vmax, transpose,
-    fig_width, title_prefix='',
-):
+    dicoms: Dict[str, Any], series_name: str, instance: int, vmin: int, vmax: int, transpose: bool,
+    fig_width: int, title_prefix: str = '',
+) -> None:
   """Render one frame of a dicom animation.
 
   Args:

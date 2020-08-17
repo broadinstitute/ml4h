@@ -2,6 +2,8 @@
 
 import abc
 import datetime
+from typing import Optional, Union
+
 from google.cloud import bigquery
 from google.cloud.bigquery import magics as bqmagics
 import pandas as pd
@@ -14,11 +16,14 @@ class AnnotationStorage(abc.ABC):
   """
 
   @abc.abstractmethod
-  def describe(self):
+  def describe(self) -> str:
     """Return a string describing how annotations are stored."""
 
   @abc.abstractmethod
-  def submit_annotation(self, sample_id, annotator, key, value_numeric, value_string, comment):
+  def submit_annotation(
+      self, sample_id: Union[int, str], annotator: str, key: str,
+      value_numeric: Optional[Union[int, float]], value_string: Optional[str], comment: str,
+  ) -> bool:
     """Add an annotation to the collection of annotations.
 
     Args:
@@ -33,7 +38,7 @@ class AnnotationStorage(abc.ABC):
     """
 
   @abc.abstractmethod
-  def view_recent_submissions(self, count=10):
+  def view_recent_submissions(self, count: int = 10) -> pd.DataFrame:
     """View a dataframe of up to [count] most recent submissions.
 
     Args:
@@ -53,11 +58,14 @@ class TransientAnnotationStorage(AnnotationStorage):
   def __init__(self):
     self.annotations = []
 
-  def describe(self):
+  def describe(self) -> str:
     return '''Annotations will be stored in memory only during the duration of this demo.\n
     For durable storage of annotations, use BigQueryAnnotationStorage instead.'''
 
-  def submit_annotation(self, sample_id, annotator, key, value_numeric, value_string, comment):
+  def submit_annotation(
+      self, sample_id: Union[int, str], annotator: str, key: str,
+      value_numeric: Optional[Union[int, float]], value_string: Optional[str], comment: str,
+  ) -> bool:
     """Add this annotation to our in-memory collection of annotations.
 
     Args:
@@ -82,7 +90,7 @@ class TransientAnnotationStorage(AnnotationStorage):
     self.annotations.append(annotation)
     return True
 
-  def view_recent_submissions(self, count=10):
+  def view_recent_submissions(self, count: int = 10) -> pd.DataFrame:
     """View a dataframe of up to [count] most recent submissions.
 
     Args:
@@ -107,14 +115,17 @@ class BigQueryAnnotationStorage(AnnotationStorage):
       annotations_schema.json
   """
 
-  def __init__(self, table):
+  def __init__(self, table: str):
     """This table should already exist."""
     self.table = table
 
-  def describe(self):
+  def describe(self) -> str:
     return f'''Annotations are stored in BigQuery table {self.table}'''
 
-  def submit_annotation(self, sample_id, annotator, key, value_numeric, value_string, comment):
+  def submit_annotation(
+      self, sample_id: Union[int, str], annotator: str, key: str,
+      value_numeric: Optional[Union[int, float]], value_string: Optional[str], comment: str,
+  ) -> bool:
     """Call a BigQuery INSERT statement to add a row containing annotation information.
 
     Args:
@@ -147,7 +158,7 @@ class BigQueryAnnotationStorage(AnnotationStorage):
     # Return whether the submission completed.
     return submission.done()
 
-  def view_recent_submissions(self, count=10):
+  def view_recent_submissions(self, count: int = 10) -> pd.DataFrame:
     """View a dataframe of up to [count] most recent submissions.
 
     This is a convenience method for use within the annotation flow. For full access to the underlying annotations,

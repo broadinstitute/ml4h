@@ -2,16 +2,19 @@
 
 import os
 import socket
+from typing import Any, Dict, Union
+
 from IPython.display import display
 from IPython.display import HTML
 import ipywidgets as widgets
 from ml4cvd.visualization_tools.annotation_storage import AnnotationStorage
 from ml4cvd.visualization_tools.annotation_storage import TransientAnnotationStorage
+import pandas as pd
 
 DEFAULT_ANNOTATION_STORAGE = TransientAnnotationStorage()
 
 
-def _get_df_sample(sample_info, sample_id):
+def _get_df_sample(sample_info: pd.DataFrame, sample_id: Union[int, str]) ->  pd.DataFrame:
   """Return a dataframe containing only the row for the indicated sample_id."""
   df_sample = sample_info[sample_info['sample_id'] == str(sample_id)]
   if df_sample.shape[0] == 0: df_sample = sample_info.query('sample_id == ' + str(sample_id))
@@ -19,10 +22,10 @@ def _get_df_sample(sample_info, sample_id):
 
 
 def display_annotation_collector(
-    sample_info, sample_id,
+    sample_info: pd.DataFrame, sample_id: Union[int, str],
     annotation_storage: AnnotationStorage = DEFAULT_ANNOTATION_STORAGE,
-    custom_annotation_key=None,
-):
+    custom_annotation_key: str = None,
+) -> None:
   """Method to create a gui (set of widgets) through which the user can create an annotation and submit it to storage.
 
   Args:
@@ -127,7 +130,9 @@ def display_annotation_collector(
   display(sample, box1, comment, submit_button, output)
 
 
-def _format_annotation(sample_id, key, keyvalue, comment):
+def _format_annotation(
+    sample_id: Union[int, str], key: str, keyvalue: Union[int, float, str], comment: str,
+) -> Dict[str, Any]:
   """Helper method to clean and reshape info from the widgets and the environment into a dictionary representing the annotation."""
   # Programmatically get the identity of the person running this Terra notebook.
   current_user = os.getenv('OWNER_EMAIL')
@@ -135,11 +140,10 @@ def _format_annotation(sample_id, key, keyvalue, comment):
   if current_user is None:
     current_user = socket.gethostname()  # By convention, we prefix the hostname with our username.
 
+  value_numeric = None
+  value_string = None
   # Check whether the value is string or numeric.
-  if keyvalue is None:
-    value_numeric = None
-    value_string = None
-  else:
+  if keyvalue is not None:
     try:
       value_numeric = float(keyvalue)  # this will fail if the value is text
       value_string = None
