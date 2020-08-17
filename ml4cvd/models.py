@@ -1253,9 +1253,10 @@ def _inspect_model(
     train_speed = (t1 - t0) / n
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds training, Samples trained on:{n} Per sample training speed:{train_speed:0.3f} seconds.')
     t0 = time.time()
-    _ = model.predict(generate_valid, steps=training_steps, verbose=1)
+    n_inference = n//8
+    _ = model.predict(generate_valid, steps=n_inference//batch_size, verbose=1)
     t1 = time.time()
-    inference_speed = (t1 - t0) / n
+    inference_speed = (t1 - t0) / n_inference
     logging.info(f'Spent:{(t1 - t0):0.2f} seconds predicting, Samples inferred:{n} Per sample inference speed:{inference_speed:0.4f} seconds.')
     return model
 
