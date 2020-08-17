@@ -994,7 +994,7 @@ lax_3ch_segmented = TensorMap(
     'lax_3ch_segmented',
     Interpretation.CATEGORICAL,
     shape=(256, 256, 50, 6),
-    tensor_from_file=_segmented_dicom_slices( 'cine_segmented_lax_3ch_annotated_'),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_3ch_annotated_'),
     channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
 )
 lax_3ch_segmented_192_160 = TensorMap(
