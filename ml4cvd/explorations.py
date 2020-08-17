@@ -100,10 +100,9 @@ def predictions_to_pngs(
                         plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', y[i, :, :, j, :], cmap='gray')
         if len(y.shape) == 4:
             for j in range(y.shape[3]):
-                plt.imsave(f"{folder}{sample_id}_truth_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", labels[tm.output_name()][i, :, :, j], cmap='gray')
                 plt.imsave(f"{folder}{sample_id}_prediction_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j], cmap='gray')
 
-                
+
 def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict[str, np.ndarray], paths, folder):
     for tm in tensor_maps_in:
         tensor = data[tm.input_name()]
