@@ -132,6 +132,7 @@ def plot_while_learning(
         predictions = model.predict(test_data, batch_size=batch_size)
         if len(tensor_maps_out) == 1:
             predictions = [predictions]
+        tensor_maps_out.reverse()
         for y, tm in zip(predictions, tensor_maps_out):
             for im in tensor_maps_in:
                 if im.dependent_map == tm:
