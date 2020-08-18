@@ -1,4 +1,4 @@
-"""Methods for integration of dicom plots within notebooks."""
+"""Methods for integration of DICOM plots within notebooks."""
 
 import collections
 import os
@@ -29,15 +29,15 @@ MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
 
 
 def _is_mitral_valve_segmentation(d: pydicom.FileDataset) -> bool:
-  """Determine whether a dicom has mitral valve segmentation.
+  """Determine whether a DICOM has mitral valve segmentation.
 
   This is used for visualization of CINE_segmented_SAX_InlineVF.
 
   Args:
-    d: the dicom file
+    d: the DICOM file
 
   Returns:
-    Whether or not the dicom has mitral valve segmentation
+    Whether or not the DICOM has mitral valve segmentation
   """
   return d.SliceThickness == 6
 
@@ -50,7 +50,7 @@ def _get_overlay_from_dicom(d: pydicom.FileDataset) -> Tuple[int, int, int]:
   is used for visualization of CINE_segmented_SAX_InlineVF.
 
   Args:
-    d: the dicom file
+    d: the DICOM file
 
   Returns:
     Raw overlay array with myocardium outline, anatomical mask (a pixel
@@ -236,7 +236,7 @@ def plot_mri_series(
 
   Args:
     sample_mri: The local or Cloud Storage path to the MRI file.
-    dicoms: A dictionary of dicoms.
+    dicoms: A dictionary of DICOMs.
     series_name: The name of the chosen series.
     sax_sides: How many sides to display for CINE_segmented_SAX_InlineVF.
     lax_transpose: Whether to transpose when plotting CINE_segmented_LAX.

@@ -1,4 +1,4 @@
-"""Methods for integration of interactive dicom plots within notebooks.
+"""Methods for integration of interactive DICOM plots within notebooks.
 
 TODO:
 * Continue to *pragmatically* improve this to make the visualization controls
@@ -140,7 +140,7 @@ def choose_mri_series(sample_mri: str) -> None:
       style={'description_width': 'initial'},
       layout=widgets.Layout(width='800px'),
   )
-  # Slide through dicom image instances using a slide bar.
+  # Slide through DICOM image instances using a slide bar.
   instance_chooser = widgets.IntSlider(
       continuous_update=True,
       value=default_instance_value,
@@ -236,7 +236,7 @@ def dicom_animation(
     dicoms: Dict[str, Any], series_name: str, instance: int, vmin: int, vmax: int, transpose: bool,
     fig_width: int, title_prefix: str = '',
 ) -> None:
-  """Render one frame of a dicom animation.
+  """Render one frame of a DICOM animation.
 
   Args:
     dicoms: the dictionary DICOM series and instances lists
