@@ -128,8 +128,9 @@ class BatchImageAnnotator():
     results = f'''
         <hr>
         <h2>Prior sample's submitted annotations</h2>
-        The <b>{self.SUBMIT_BUTTON_DESCRIPTION}</b> button is simply printing out the polygons (if any) but other
-        logic could be added to process them as desired.
+        The <b>{self.SUBMIT_BUTTON_DESCRIPTION}</b> button is both printing out the polygons below and storing the polygons
+        via strategy {self.annotation_storage.__class__.__name__}.<br>
+        Details: <i>{self.annotation_storage.describe()}</i>
         <h3>sample info</h3>
         {self._format_info_for_current_sample()}
         <h3>canvas coordinates</h3>
