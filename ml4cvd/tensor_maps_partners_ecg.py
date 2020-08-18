@@ -151,6 +151,24 @@ def voltage_from_file_no_resample(tm, hd5, dependents=None):
     return tensor
 
 
+def voltage_from_file_no_resample_random_lead(tm, hd5, dependents=None):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=np.float32)
+    for i, ecg_date in enumerate(ecg_dates):
+        cm = np.random.choice(tm.channel_map)
+        try:
+            path = _make_hd5_path(tm, ecg_date, cm)
+            voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            if len(voltage) < tm.shape[0]:
+                raise ValueError(f'Voltage is not the right length for TensorMap {tm.name}.')
+            slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
+            tensor[slices] = voltage[:tm.shape[0]]
+        except KeyError:
+            logging.warning(f'KeyError for channel {cm} in {tm.name}')
+    return tensor
+
+
 def _find_max_zero_run(x: np.ndarray):
     assert x.ndim == 1
     run_ends = np.flatnonzero(np.diff(x, append=np.nan))
@@ -188,6 +206,56 @@ for scale in [1000, 100, 10, 1, 1e-1, 1e-2]:
         normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
         cacheable=False,
     )
+
+
+TMAPS['partners_ecg_5000_only_random_lead'] = TensorMap(
+    'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=voltage_from_file_no_resample_random_lead, loss='mse',
+    normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS,
+    validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False,
+)
+
+
+def _warp_ecg(ecg):
+    warp_strength = .02
+    i = np.linspace(0, 1, len(ecg))
+    envelope = warp_strength * (.5 - np.abs(.5 - i))
+    warped = i + envelope * (
+        np.sin(np.random.rand() * 5 + np.random.randn() * 5)
+        + np.cos(np.random.rand() * 5 + np.random.randn() * 5)
+    )
+    warped_ecg = np.zeros_like(ecg)
+    for j in range(ecg.shape[1]):
+        warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
+    return warped_ecg
+
+
+def _random_crop_ecg(ecg):
+    cropped_ecg = ecg.copy()
+    for j in range(ecg.shape[1]):
+        crop_len = np.random.randint(len(ecg)) // 3
+        crop_start = max(0, np.random.randint(-crop_len, len(ecg)))
+        cropped_ecg[:, j][crop_start: crop_start + crop_len] = np.random.randn()
+    return cropped_ecg
+
+
+def _rand_add_noise(ecg):
+    noise_frac = np.random.rand() * .2
+    return ecg + noise_frac * ecg.std(axis=0) * np.random.randn(*ecg.shape)
+
+
+def _apply_aug_rate(augmentation: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], np.ndarray]:
+    return lambda a: augmentation(a) if np.random.rand() < .5 else a
+
+
+TMAPS['partners_ecg_5000_only_random_lead_augment'] = TensorMap(
+    'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX,
+    tensor_from_file=voltage_from_file_no_resample_random_lead, loss='mse',
+    normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS,
+    validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_warp_ecg, _random_crop_ecg, _rand_add_noise,)]
+)
 
 
 # Creates 12 TMaps:
