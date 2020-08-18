@@ -426,11 +426,6 @@ ecg_rest_stft_512 = TensorMap(
     tensor_from_file=_make_ecg_rest(short_time_nperseg=512, short_time_noverlap=496), normalization={'zero_mean_std1': 1.0},
 )
 
-ecg_rest = TensorMap(
-    'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
-)
-
 ecg_rest_stack = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(600, 12, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
