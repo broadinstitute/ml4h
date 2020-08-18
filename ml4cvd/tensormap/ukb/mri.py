@@ -1013,17 +1013,20 @@ lax_3ch_segmented_192_16_3 = TensorMap(
 lax_4ch_segmented = TensorMap(
     'lax_4ch_segmented',
     Interpretation.CATEGORICAL,
-    shape=(256, 256, 50, 14),
-    tensor_from_file=_segmented_dicom_slices(
-        'cine_segmented_lax_4ch_annotated_'),
+    shape=(256, 256, 50, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_'),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
 )
-
-lax_4ch_segmented_224_16_3_w = TensorMap(
-    'lax_4ch_segmented_224_16_3', Interpretation.CATEGORICAL, shape=(160, 224, 16, 14),
+lax_4ch_segmented_224_16_3 = TensorMap(
+    'lax_4ch_segmented_224_16_3', Interpretation.CATEGORICAL, shape=(160, 224, 16, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
     channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5]),
+)
+lax_4ch_segmented_224_16_3_w = TensorMap(
+    'lax_4ch_segmented_224_16_3', Interpretation.CATEGORICAL, shape=(160, 224, 16, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lax_4ch_annotated_', step=3),
+    channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy([0.01, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 5.0, 0.5, 10.0, 10.0]),
 )
 sax_segmented_b6 = TensorMap(
     'sax_segmented_b6',
