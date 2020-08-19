@@ -15,7 +15,6 @@ from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
-from ml4cvd.tensormap.partners.dynamic import _partners_str2date
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
@@ -51,6 +50,11 @@ def _get_ecg_dates(tm, hd5):
     dates.sort(reverse=True)
     _get_ecg_dates.mrn_lookup[mrn] = dates
     return dates
+
+
+# Date formatting
+def _partners_str2date(d) -> datetime.date:
+    return datetime.datetime.strptime(d, PARTNERS_DATE_FORMAT).date()
 
 
 def validator_no_empty(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
