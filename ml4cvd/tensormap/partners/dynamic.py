@@ -63,6 +63,16 @@ def make_waveform_maps(desired_map_name: str):
                 time_series_limit=0,
                 validator=validator_not_all_zero,
             )
+        elif f'{name}_newest' == desired_map_name:
+            return TensorMap(
+                name,
+                shape=(length, 12),
+                path_prefix=PARTNERS_PREFIX,
+                tensor_from_file=make_voltage(exact_length),
+                normalization=normalization,
+                channel_map=ECG_REST_AMP_LEADS,
+                validator=validator_not_all_zero,
+            )
 
 
 def make_lead_maps(desired_map_name: str):
