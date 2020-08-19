@@ -425,7 +425,6 @@ def _predict_and_evaluate(model, test_data, test_labels, tensor_maps_in, tensor_
     rocs = []
 
     y_predictions = model.predict(test_data, batch_size=batch_size)
-    tensor_maps_out.reverse()
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
