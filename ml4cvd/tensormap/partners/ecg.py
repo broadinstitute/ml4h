@@ -842,7 +842,7 @@ partners_ecg_weight_lbs = TensorMap(
 )
 
 
-def partners_ecg_age(tm, hd5, dependents={}):
+def _partners_ecg_age_from_hd5(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=float)
@@ -864,8 +864,8 @@ def partners_ecg_age(tm, hd5, dependents={}):
     return tensor
 
 
-partners_ecg_age = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(None, 1), time_series_limit=0)
-partners_ecg_age_newest = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(1,))
+partners_ecg_age = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=_partners_ecg_age_from_hd5, shape=(None, 1), time_series_limit=0)
+partners_ecg_age_newest = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=_partners_ecg_age_from_hd5, shape=(1,))
 
 
 def partners_ecg_acquisition_year(tm, hd5, dependents={}):
