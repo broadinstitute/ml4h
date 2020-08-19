@@ -842,6 +842,194 @@ partners_ecg_weight_lbs = TensorMap(
 )
 
 
+partners_ecg_rate_pc_newest = TensorMap(
+    "partners_ecg_rate_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
+    shape=(1,),
+    normalization=Standardize(mean=59.3, std=10.6),
+    validator=make_range_validator(10, 200),
+)
+
+
+partners_ecg_rate_md_newest = TensorMap(
+    "partners_ecg_rate_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
+    shape=(1,),
+    validator=make_range_validator(10, 200),
+)
+
+
+partners_ecg_qrs_pc_newest = TensorMap(
+    "partners_ecg_qrs_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qrsduration_pc"),
+    shape=(1,),
+    validator=make_range_validator(20, 400),
+)
+
+
+partners_ecg_qrs_md_newest = TensorMap(
+    "partners_ecg_qrs_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
+    shape=(1,),
+    validator=make_range_validator(20, 400),
+)
+
+
+partners_ecg_pr_pc_newest = TensorMap(
+    "partners_ecg_pr_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
+    shape=(1,),
+    validator=make_range_validator(50, 500),
+)
+
+
+partners_ecg_pr_md_newest = TensorMap(
+    "partners_ecg_pr_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
+    shape=(1,),
+    validator=make_range_validator(50, 500),
+)
+
+
+partners_ecg_qt_pc_newest = TensorMap(
+    "partners_ecg_qt_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtinterval_pc"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
+
+partners_ecg_qt_md_newest = TensorMap(
+    "partners_ecg_qt_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtinterval_md"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
+
+partners_ecg_qtc_pc_newest = TensorMap(
+    "partners_ecg_qtc_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_pc"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
+
+partners_ecg_qtc_md_newest = TensorMap(
+    "partners_ecg_qtc_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_md"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
+
+partners_ecg_paxis_pc_newest = TensorMap(
+    "partners_ecg_paxis_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_pc", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_paxis_md_newest = TensorMap(
+    "partners_ecg_paxis_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="paxis_md", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_raxis_pc_newest = TensorMap(
+    "partners_ecg_raxis_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_pc", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_raxis_md_newest = TensorMap(
+    "partners_ecg_raxis_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_taxis_pc_newest = TensorMap(
+    "partners_ecg_taxis_pc_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_taxis_md_newest = TensorMap(
+    "partners_ecg_taxis_md_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="taxis_md", fill=999),
+    shape=(1,),
+    validator=make_range_validator(-180, 180),
+)
+
+
+partners_ecg_weight_lbs_newest = TensorMap(
+    "partners_ecg_weight_lbs_newest",
+    interpretation=Interpretation.CONTINUOUS,
+    path_prefix=PARTNERS_PREFIX,
+    loss='logcosh',
+    tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
+    shape=(1,),
+    validator=make_range_validator(100, 800),
+)
+
+
 def _partners_ecg_age_from_hd5(tm, hd5, dependents={}):
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
