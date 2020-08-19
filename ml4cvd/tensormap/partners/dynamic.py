@@ -51,6 +51,7 @@ def make_waveform_maps(desired_map_name: str):
         norm = '' if isinstance(normalization, ZeroMeanStd1) else '_std' if isinstance(normalization, Standardize) else '_raw'
         exact = '_exact' if exact_length else ''
         name = f'partners_ecg_{length}{norm}{exact}'
+        logging.info(f'name {name} needed {desired_map_name}')
         if name == desired_map_name:
             return TensorMap(
                 name,
