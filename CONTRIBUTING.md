@@ -78,15 +78,18 @@ Use `pylint` to check your Python changes:
 pylint --rcfile=${HOME}/ml/pylintrc myfile.py
 ```
 
-Any messages returned by `pylint` are intended to be self-explanatory, but that isn't always the case. Search for `pylint <alphanumeric code>` or `pylint <keyword-code>` for more details on the recommended code change or add comment `# pylint: disable=<keyword-code>` to the end of the line of code.
+Any messages returned by `pylint` are intended to be self-explanatory, but that isn't always the case.
+
+* Search for `pylint <alphanumeric code>` or `pylint <keyword-code>` for more details on the recommended code change to resolve the lint issue.
+* Or add comment `# pylint: disable=<keyword-code>` to the end of the line of code.
 
 # Testing
 
-## Testing `recipes`
+## Testing of `recipes`
 
 TODO(everyone) add more here
 
-## Testing `visualization_tools`
+## Testing of `visualization_tools`
 
 The code in [ml4cvd/visualization_tools](https://github.com/broadinstitute/ml/tree/master/ml4cvd/visualization_tools) is primarily interactive so we add test cases to notebook [test_error_handling_for_notebook_visualizations.ipynb](https://github.com/broadinstitute/ml/blob/master/notebooks/review_results/test_error_handling_for_notebook_visualizations.ipynb) and visually inspect the output of `Cells -> Run all`.
 
