@@ -1,7 +1,7 @@
 # %%
 import h5py
 
-ff_trad = h5py.File('/home/pdiachil/projects/atria/2922335.hd5', 'r')
+ff_trad = h5py.File('/mnt/disks/segmented-sax-lax/2020-07-07/2922335.hd5', 'r')
 ff_view = h5py.File('/home/pdiachil/projects/atria/2922335_newviews.hd5', 'r')
 
 
@@ -15,7 +15,7 @@ for view in ['3ch', '2ch', '4ch']:
                                                   concatenate=True, annotation=True,
                                                   save_path=None, order='F'))
 
-dss_valve.append(_mri_hd5_to_structured_grids(ff_view, f'cine_segmented_lax_inlinevf_zoom_segmented',
+dss_valve.append(_mri_hd5_to_structured_grids(ff_trad, f'cine_segmented_lax_inlinevf_zoom_segmented',
                                               view_name=f'cine_segmented_lax_inlinevf', 
                                               concatenate=True, annotation=False,
                                               save_path=None, order='F'))
