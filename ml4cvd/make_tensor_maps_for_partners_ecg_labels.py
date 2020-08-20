@@ -5,7 +5,7 @@ from getpass import getuser
 from collections import defaultdict
 
 JOIN_CHAR = '_'
-SCRIPT_PATH = 'tensormap/partners/tensor_maps_partners_ecg_labels.py'
+SCRIPT_PATH = 'tensormap/mgb/tensor_maps_partners_ecg_labels.py'
 TENSOR_FROM_FILE_MAKER = "make_partners_ecg_label"
 PREFIX = "partners_ecg"
 TENSOR_PATH_PREFIX = "partners_ecg_rest"
@@ -32,7 +32,7 @@ def _write_tmap_to_py(write_imports, py_file, label_maps, channel_maps, keys_in_
     # Add import statements to .py
     if write_imports:
         py_file.write(f"from ml4cvd.TensorMap import TensorMap, Interpretation\n")
-        py_file.write(f"from ml4cvd.tensormap.partners.ecg import {TENSOR_FROM_FILE_MAKER}\n\n")
+        py_file.write(f"from ml4cvd.tensormap.mgb.ecg import {TENSOR_FROM_FILE_MAKER}\n\n")
 
     for label in label_maps:
         cm = '{'
@@ -56,7 +56,7 @@ def _write_partners_ecg_tmap_script(py_file, partners_ecg_label_dir, keys_in_hd5
     # Set flag for writing import statements to true
     write_imports = True
 
-    # Iterate through all files in the partners CSV labels folder
+    # Iterate through all files in the mgb CSV labels folder
     for file in os.listdir(partners_ecg_label_dir):
 
         # Ignore files that do not end in .csv
