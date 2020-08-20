@@ -13,7 +13,7 @@ import pandas as pd
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
-from ml4cvd.tensormap.partners.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int
+from ml4cvd.tensormap.partners.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int, _resample_voltage
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, ECG_REST_UKB_LEADS
 
@@ -467,6 +467,30 @@ def make_wide_file_tensor_maps(desired_map_name: str) -> Union[TensorMap, None]:
     elif desired_map_name == 'survival_curve_hf_wide_csv':
         tff = tensor_from_wide(wide_csv, target='survival_curve')
         return TensorMap('survival_curve_hf', Interpretation.SURVIVAL_CURVE, tensor_from_file=tff, shape=(50,), days_window=days_window)
+
+
+def _date_from_dates(ecg_dates, target_date=None, earliest_date=None):
+    if target_date:
+        if target_date and earliest_date:
+            incident_dates = [d for d in ecg_dates if earliest_date < datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT) < target_date]
+        else:
+            incident_dates = [d for d in ecg_dates if datetime.datetime.strptime(d, PARTNERS_DATETIME_FORMAT) < target_date]
+        if len(incident_dates) == 0:
+            raise ValueError('No ECGs prior to target were found.')
+        return np.random.choice(incident_dates)
+    return np.random.choice(ecg_dates)
+
+
+def _ecg_tensor_from_date(tm: TensorMap, hd5: h5py.File, ecg_date: str, population_normalize: int = None):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    for cm in tm.channel_map:
+        path = _make_hd5_path(tm, ecg_date, cm)
+        voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+        voltage = _resample_voltage(voltage, tm.shape[0])
+        tensor[..., tm.channel_map[cm]] = voltage
+    if population_normalize is not None:
+        tensor /= population_normalize
+    return tensor
 
 
 def _to_float_or_none(s):
