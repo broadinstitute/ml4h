@@ -11,13 +11,11 @@ import h5py
 import numpy as np
 import pandas as pd
 
-#from ml4cvd.arguments import tensormap_lookup
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
 from ml4cvd.tensormap.partners.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT
-
+from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, ECG_REST_UKB_LEADS
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
@@ -26,7 +24,7 @@ PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
 def make_partners_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps]
+    dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_tensor_maps]
     for map_maker_function in dynamic_tensor_map_makers:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
@@ -51,7 +49,6 @@ def make_waveform_maps(desired_map_name: str):
         norm = '' if isinstance(normalization, ZeroMeanStd1) else '_std' if isinstance(normalization, Standardize) else '_raw'
         exact = '_exact' if exact_length else ''
         name = f'partners_ecg_{length}{norm}{exact}'
-        logging.info(f'name {name} needed {desired_map_name}')
         if name == desired_map_name:
             return TensorMap(
                 name,
@@ -437,6 +434,162 @@ def make_partners_diagnosis_maps(desired_map_name: str) -> Union[TensorMap, None
             if name == desired_map_name:
                 tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
                 return TensorMap(f'{name}', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
+
+
+def make_wide_file_tensor_maps(desired_map_name: str) -> Union[TensorMap, None]:
+    days_window = 1825
+    wide_csv = '/home/sam/ml/mgh-wide-2020-06-25-with-mrn.tsv'
+
+    if desired_map_name == 'sex_from_wide_csv':
+        csv_tff = tensor_from_wide(wide_csv, target='sex')
+        return TensorMap('sex_from_wide', Interpretation.CATEGORICAL, annotation_units=2, tensor_from_file=csv_tff,
+                         channel_map={'female': 0, 'male': 1})
+    elif desired_map_name == 'age_from_wide_csv':
+        csv_tff = tensor_from_wide(wide_csv, target='age')
+        return TensorMap('age_from_wide', Interpretation.CONTINUOUS, shape=(1,),
+                         tensor_from_file=csv_tff, channel_map={'age': 0},
+                         normalization={'mean': 63.35798891483556, 'std': 7.554638350423902})
+    elif desired_map_name == 'bmi_from_wide_csv':
+        csv_tff = csv_tff = tensor_from_wide(wide_csv, target='bmi')
+        return TensorMap('bmi_from_wide', Interpretation.CONTINUOUS, shape=(1,), channel_map={'bmi': 0},
+                         annotation_units=1, normalization={'mean': 27.3397, 'std': 4.77216}, tensor_from_file=csv_tff)
+    elif desired_map_name == 'ecg_2500_from_wide_csv':
+        tff = tensor_from_wide(wide_csv, target='ecg')
+        return TensorMap('ecg_rest_raw', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
+                         cacheable=False, channel_map=ECG_REST_UKB_LEADS)
+    elif desired_map_name == 'ecg_5000_from_wide_csv':
+        tff = tensor_from_wide(wide_csv, target='ecg')
+        return TensorMap('ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
+                         cacheable=False, channel_map=ECG_REST_UKB_LEADS)
+    elif desired_map_name == 'time_to_hf_wide_csv':
+        tff = tensor_from_wide(wide_csv, target='time_to_event')
+        return TensorMap('time_to_hf', Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
+    elif desired_map_name == 'survival_curve_hf_wide_csv':
+        tff = tensor_from_wide(wide_csv, target='survival_curve')
+        return TensorMap('survival_curve_hf', Interpretation.SURVIVAL_CURVE, tensor_from_file=tff, shape=(50,), days_window=days_window)
+
+
+def _to_float_or_none(s):
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _time_to_event_tensor_from_days(tm: TensorMap, has_disease: int, follow_up_days: int):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    if follow_up_days > tm.days_window:
+        has_disease = 0
+        follow_up_days = tm.days_window + 1
+    tensor[0] = has_disease
+    tensor[1] = follow_up_days
+    return tensor
+
+
+def _survival_curve_tensor_from_dates(tm: TensorMap, has_disease: int, assessment_date: datetime.datetime, censor_date: datetime.datetime):
+    intervals = tm.shape[0] // 2
+    days_per_interval = tm.days_window / intervals
+    survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
+    for i, day_delta in enumerate(np.arange(0, tm.days_window, days_per_interval)):
+        cur_date = assessment_date + datetime.timedelta(days=day_delta)
+        survival_then_censor[i] = float(cur_date < censor_date)
+        survival_then_censor[intervals + i] = has_disease * float(censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+        if i == 0 and censor_date <= cur_date:  # Handle prevalent diseases
+            survival_then_censor[intervals] = has_disease
+    return survival_then_censor
+
+
+def tensor_from_wide(
+    file_name: str, patient_column: str = 'Mrn', age_column: str = 'age', bmi_column: str = 'bmi', sex_column: str = 'sex',
+    hf_column: str = 'any_hf_age', start_column: str = 'start_fu', end_column: str = 'last_encounter',
+    delimiter: str = '\t', population_normalize: int = 2000, target: str = 'ecg',
+    skip_prevalent: bool = True,
+) -> Callable:
+    """Build a tensor_from_file function for ECGs in the legacy cohort.
+
+    :param file_name: CSV or TSV file with header of patient IDs (MRNs) dates of enrollment and dates of diagnosis
+    :param patient_column: The header name of the column of patient ids
+    :param delimiter: The delimiter separating columns of the TSV or CSV
+    :return: The tensor_from_file function to provide to TensorMap constructors
+    """
+    with open(file_name, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        header = next(reader)
+        hf_index = header.index(hf_column)
+        age_index = header.index(age_column)
+        bmi_index = header.index(bmi_column)
+        sex_index = header.index(sex_column)
+        end_index = header.index(end_column)
+        start_index = header.index(start_column)
+        patient_index = header.index(patient_column)
+        patient_data = defaultdict(dict)
+        for row in reader:
+            try:
+                patient_key = int(float(row[patient_index]))
+                patient_data[patient_key] = {
+                    'age': _to_float_or_none(row[age_index]), 'bmi': _to_float_or_none(row[bmi_index]), 'sex': row[sex_index],
+                    'hf_age': _to_float_or_none(row[hf_index]), 'end_age': _to_float_or_none(row[end_index]),
+                    'start_date': datetime.datetime.strptime(row[start_index], CARDIAC_SURGERY_DATE_FORMAT)
+                }
+
+            except ValueError as e:
+                logging.debug(f'val err {e}')
+        logging.info(f'Done processing. Got {len(patient_data)} patient rows.')
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
+        if mrn_int not in patient_data:
+            raise KeyError(f'{tm.name} mrn not in legacy csv.')
+        if patient_data[mrn_int]['end_age'] is None or patient_data[mrn_int]['age'] is None:
+            raise ValueError(f'{tm.name} could not find ages.')
+
+        if patient_data[mrn_int]['hf_age'] is None:
+            has_disease = 0
+            follow_up_days = (patient_data[mrn_int]['end_age'] - patient_data[mrn_int]['age']) * YEAR_DAYS
+        elif patient_data[mrn_int]['hf_age'] > patient_data[mrn_int]['age']:
+            has_disease = 1
+            follow_up_days = (patient_data[mrn_int]['hf_age'] - patient_data[mrn_int]['age']) * YEAR_DAYS
+        elif skip_prevalent and patient_data[mrn_int]['age'] > patient_data[mrn_int]['hf_age']:
+            raise ValueError(f'{tm.name} skips prevalent cases.')
+        else:
+            has_disease = 1
+            follow_up_days = (patient_data[mrn_int]['hf_age'] - patient_data[mrn_int]['age']) * YEAR_DAYS
+
+        if target == 'time_to_event':
+            tensor = _time_to_event_tensor_from_days(tm, has_disease, follow_up_days)
+            logging.debug(f'Returning {tensor} for {patient_data[mrn_int]} key {mrn_int}')
+            return tensor
+        elif target == 'survival_curve':
+            end_date = patient_data[mrn_int]['start_date'] + datetime.timedelta(days=follow_up_days)
+            tensor = _survival_curve_tensor_from_dates(tm, has_disease, patient_data[mrn_int]['start_date'], end_date)
+            logging.debug(
+                f"Got survival disease {has_disease}, censor: {end_date}, assess {patient_data[mrn_int]['start_date']}, age {patient_data[mrn_int]['age']} "
+                f"end age: {patient_data[mrn_int]['end_age']} hf age: {patient_data[mrn_int]['hf_age']} "
+                f"fu total {follow_up_days/YEAR_DAYS} tensor:{tensor[:4]} mid tense: {tensor[tm.shape[0] // 2:(tm.shape[0] // 2)+4]} ",
+            )
+            return tensor
+        elif target == 'ecg':
+            ecg_dates = list(hd5[tm.path_prefix])
+            earliest = patient_data[mrn_int]['start_date'] - datetime.timedelta(days=3*YEAR_DAYS)
+            ecg_date_key = _date_from_dates(ecg_dates, patient_data[mrn_int]['start_date'], earliest)
+            return _ecg_tensor_from_date(tm, hd5, ecg_date_key, population_normalize)
+        elif target in ['age', 'bmi']:
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            if patient_data[mrn_int][target] is None:
+                raise ValueError(f'Missing target value {target}')
+            tensor[0] = patient_data[mrn_int][target]
+            return tensor
+        elif target == 'sex':
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            if patient_data[mrn_int][target].lower() == 'female':
+                tensor[0] = 1.0
+            elif patient_data[mrn_int][target].lower() == 'male':
+                tensor[1] = 1.0
+            logging.debug(f'Returning {tensor} for {patient_data[mrn_int][target]} key {mrn_int}')
+            return tensor
+        else:
+            raise ValueError(f'{tm.name} has no way to handle target {target}')
+    return tensor_from_file
 
 
 def build_cardiac_surgery_dict(
