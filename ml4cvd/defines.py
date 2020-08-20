@@ -95,6 +95,9 @@ ECG_REST_AMP_LEADS = {
     'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
     'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11,
 }
+ECG_REST_UKB_LEADS = {
+    'I': 0, 'II': 1, 'III': 2, 'V1': 3, 'V2': 4, 'V3': 5, 'V4': 6, 'V5': 7, 'V6': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11,
+}
 ECG_SEGMENTED_CHANNEL_MAP = {'unknown': 0, 'TP_segment': 1, 'P_wave': 2, 'PQ_segment': 3, 'QRS_complex': 4, 'ST_segment': 5, 'T_wave': 6, 'U_wave': 7}
 
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}

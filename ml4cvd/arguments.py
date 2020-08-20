@@ -320,7 +320,7 @@ def parse_args():
 
 def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     tm = make_partners_dynamic_tensor_maps(module_string)
-    if isinstance(tm, TensorMap):
+    if isinstance(tm, TensorMap) == True:
         return tm
     if isinstance(module_string, str) == False:
         raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
