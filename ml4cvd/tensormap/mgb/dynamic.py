@@ -13,7 +13,7 @@ import pandas as pd
 
 from ml4cvd.metrics import weighted_crossentropy
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
-from ml4cvd.tensormap.partners.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int, _resample_voltage
+from ml4cvd.tensormap.mgb.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int, _resample_voltage
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, ECG_REST_UKB_LEADS
 
@@ -24,7 +24,7 @@ PARTNERS_PREFIX = 'partners_ecg_rest'
 
 
 def make_partners_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_tensor_maps]
+    dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
     for map_maker_function in dynamic_tensor_map_makers:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
@@ -436,7 +436,7 @@ def make_partners_diagnosis_maps(desired_map_name: str) -> Union[TensorMap, None
                 return TensorMap(f'{name}', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
 
 
-def make_wide_file_tensor_maps(desired_map_name: str) -> Union[TensorMap, None]:
+def make_wide_file_maps(desired_map_name: str) -> Union[TensorMap, None]:
     days_window = 1825
     wide_csv = '/home/sam/ml/mgh-wide-2020-06-25-with-mrn.tsv'
 
@@ -696,7 +696,7 @@ def build_partners_time_series_tensor_maps(
         #     continue
 
         # time_tmap = copy.deepcopy(TMAPS[base_name])
-        #time_tmap = copy.deepcopy(tensormap_lookup(base_name, preix="ml4cvd.tensormap.partners"))
+        #time_tmap = copy.deepcopy(tensormap_lookup(base_name, preix="ml4cvd.tensormap.mgb"))
         time_tmap.name = needed_name
         time_tmap.shape = time_tmap.shape[1:]
         time_tmap.time_series_limit = time_series_limit
