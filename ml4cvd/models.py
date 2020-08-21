@@ -526,8 +526,8 @@ def pairwise_cosine_difference(t1, t2):
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
-    def __init__(self, weight):
-        super(CosineLossLayer, self).__init__()
+    def __init__(self, weight, **kwargs):
+        super(CosineLossLayer, self).__init__(**kwargs)
         self.weight = weight
 
     def get_config(self):
@@ -545,8 +545,8 @@ class CosineLossLayer(Layer):
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
 
-    def __init__(self, weight):
-        super(L2LossLayer, self).__init__()
+    def __init__(self, weight, **kwargs):
+        super(L2LossLayer, self).__init__(**kwargs)
         self.weight = weight
 
     def get_config(self):
