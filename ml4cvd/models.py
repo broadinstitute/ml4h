@@ -558,7 +558,7 @@ class L2LossLayer(Layer):
         self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
         return inputs
 
-    
+
 class VariationalDiagNormal(Layer):
     def __init__(
             self,
@@ -850,7 +850,7 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal],
+            [VariationalDiagNormal, L2LossLayer, CosineLossLayer],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
