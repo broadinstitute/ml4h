@@ -498,6 +498,67 @@ class UConnectBottleNeck:
         return out
 
 
+def l2_norm(x, axis=None):
+    """
+    takes an input tensor and returns the l2 norm along specified axis
+    """
+
+    square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
+    norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
+
+    return norm
+
+
+def pairwise_cosine_difference(t1, t2):
+    """
+    A [batch x n x d] tensor of n rows with d dimensions
+    B [batch x m x d] tensor of n rows with d dimensions
+
+    returns:
+    D [batch x n x m] tensor of cosine similarity scores between each point i<n, j<m
+    """
+    t1_norm = t1 / l2_norm(t1, axis=-1)
+    t2_norm = t2 / l2_norm(t2, axis=-1)
+    dot = K.clip(K.batch_dot(t1, t2), -1, 1)
+    return tf.acos(dot)
+
+
+class CosineLossLayer(Layer):
+    """Layer that creates an Cosine loss."""
+
+    def __init__(self, weight):
+        super(CosineLossLayer, self).__init__()
+        self.weight = weight
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'weight': self.weight})
+        return config
+
+    def call(self, inputs):
+        # We use `add_loss` to create a regularization loss
+        # that depends on the inputs.
+        self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
+        return inputs
+
+
+class L2LossLayer(Layer):
+    """Layer that creates an L2 loss."""
+
+    def __init__(self, weight):
+        super(L2LossLayer, self).__init__()
+        self.weight = weight
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'weight': self.weight})
+        return config
+
+    def call(self, inputs):
+        self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
+        return inputs
+
+    
 class VariationalDiagNormal(Layer):
     def __init__(
             self,
