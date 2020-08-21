@@ -83,8 +83,11 @@ def predictions_to_pngs(
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical():
-                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1), cmap='gray')
-                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='gray')
+                    plt.imsave(f"{folder}{sample_id}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1), cmap='plasma')
+                    plt.imsave(f"{folder}{sample_id}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='plasma')
+                else:
+                    plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', labels[tm.output_name()][i, :, :, 0], cmap='gray')
+                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', y[i, :, :, 0], cmap='gray')
         elif len(tm.shape) == 4:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
@@ -93,14 +96,11 @@ def predictions_to_pngs(
                     if tm.is_categorical():
                         truth = np.argmax(labels[tm.output_name()][i, :, :, j, :], axis=-1)
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)
-                        plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='gray')
-                        plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='gray')
+                        plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='plasma')
+                        plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='plasma')
                     else:
                         plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
                         plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', y[i, :, :, j, :], cmap='gray')
-        if len(y.shape) == 4:
-            for j in range(y.shape[3]):
-                plt.imsave(f"{folder}{sample_id}_prediction_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", y[i, :, :, j], cmap='gray')
 
 
 def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict[str, np.ndarray], paths, folder):
