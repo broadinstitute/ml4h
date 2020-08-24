@@ -524,7 +524,7 @@ def _survival_curve_tensor_from_dates(tm: TensorMap, has_disease: int, assessmen
 
 
 def tensor_from_wide(
-    file_name: str, patient_column: str = 'Mrn', age_column: str = 'age', bmi_column: str = 'bmi', sex_column: str = 'sex',
+    file_name: str, patient_column: str = 'fpath', age_column: str = 'age', bmi_column: str = 'bmi', sex_column: str = 'sex',
     hf_column: str = 'any_hf_age', start_column: str = 'start_fu', end_column: str = 'last_encounter',
     delimiter: str = '\t', population_normalize: int = 2000, target: str = 'ecg',
     skip_prevalent: bool = True,
