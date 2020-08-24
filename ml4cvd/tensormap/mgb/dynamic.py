@@ -21,7 +21,8 @@ YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
-WIDE_FILE = 'hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
+WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
+
 
 def make_partners_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
