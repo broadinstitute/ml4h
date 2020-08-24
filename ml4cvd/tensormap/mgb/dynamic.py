@@ -21,7 +21,7 @@ YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
-
+WIDE_FILE = 'hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
 
 def make_partners_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
@@ -438,34 +438,33 @@ def make_partners_diagnosis_maps(desired_map_name: str) -> Union[TensorMap, None
 
 def make_wide_file_maps(desired_map_name: str) -> Union[TensorMap, None]:
     days_window = 1825
-    wide_csv = '/home/sam/ml/mgh-wide-2020-06-25-with-mrn.tsv'
 
     if desired_map_name == 'sex_from_wide_csv':
-        csv_tff = tensor_from_wide(wide_csv, target='sex')
+        csv_tff = tensor_from_wide(WIDE_FILE, target='sex')
         return TensorMap('sex_from_wide', Interpretation.CATEGORICAL, annotation_units=2, tensor_from_file=csv_tff,
                          channel_map={'female': 0, 'male': 1})
     elif desired_map_name == 'age_from_wide_csv':
-        csv_tff = tensor_from_wide(wide_csv, target='age')
+        csv_tff = tensor_from_wide(WIDE_FILE, target='age')
         return TensorMap('age_from_wide', Interpretation.CONTINUOUS, shape=(1,),
                          tensor_from_file=csv_tff, channel_map={'age': 0},
                          normalization={'mean': 63.35798891483556, 'std': 7.554638350423902})
     elif desired_map_name == 'bmi_from_wide_csv':
-        csv_tff = csv_tff = tensor_from_wide(wide_csv, target='bmi')
+        csv_tff = csv_tff = tensor_from_wide(WIDE_FILE, target='bmi')
         return TensorMap('bmi_from_wide', Interpretation.CONTINUOUS, shape=(1,), channel_map={'bmi': 0},
                          annotation_units=1, normalization={'mean': 27.3397, 'std': 4.77216}, tensor_from_file=csv_tff)
     elif desired_map_name == 'ecg_2500_from_wide_csv':
-        tff = tensor_from_wide(wide_csv, target='ecg')
+        tff = tensor_from_wide(WIDE_FILE, target='ecg')
         return TensorMap('ecg_rest_raw', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
                          cacheable=False, channel_map=ECG_REST_UKB_LEADS)
     elif desired_map_name == 'ecg_5000_from_wide_csv':
-        tff = tensor_from_wide(wide_csv, target='ecg')
+        tff = tensor_from_wide(WIDE_FILE, target='ecg')
         return TensorMap('ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
                          cacheable=False, channel_map=ECG_REST_UKB_LEADS)
     elif desired_map_name == 'time_to_hf_wide_csv':
-        tff = tensor_from_wide(wide_csv, target='time_to_event')
+        tff = tensor_from_wide(WIDE_FILE, target='time_to_event')
         return TensorMap('time_to_hf', Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
     elif desired_map_name == 'survival_curve_hf_wide_csv':
-        tff = tensor_from_wide(wide_csv, target='survival_curve')
+        tff = tensor_from_wide(WIDE_FILE, target='survival_curve')
         return TensorMap('survival_curve_hf', Interpretation.SURVIVAL_CURVE, tensor_from_file=tff, shape=(50,), days_window=days_window)
 
 
