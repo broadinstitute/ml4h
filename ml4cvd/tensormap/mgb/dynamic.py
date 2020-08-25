@@ -567,6 +567,8 @@ def tensor_from_wide(
             raise KeyError(f'{tm.name} mrn not in legacy csv.')
         if patient_data[mrn_int]['end_age'] is None or patient_data[mrn_int]['age'] is None:
             raise ValueError(f'{tm.name} could not find ages.')
+        if patient_data[mrn_int]['end_age'] - patient_data[mrn_int]['age'] < 0:
+            raise ValueError(f'{tm.name} has negative follow up time.')
 
         if patient_data[mrn_int]['hf_age'] is None:
             has_disease = 0
