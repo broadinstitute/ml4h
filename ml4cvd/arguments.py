@@ -12,6 +12,7 @@
 # Imports
 import os
 import sys
+import copy
 import logging
 import argparse
 import operator
@@ -22,10 +23,10 @@ from typing import Set, Dict, List, Optional
 from collections import defaultdict
 
 from ml4cvd.logger import load_config
-from ml4cvd.TensorMap import TensorMap
+from ml4cvd.TensorMap import TensorMap, TimeSeriesOrder
 from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
-from ml4cvd.tensormap.mgb.dynamic import make_partners_dynamic_tensor_maps
+from ml4cvd.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
 
@@ -319,9 +320,14 @@ def parse_args():
 
 
 def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
-    tm = make_partners_dynamic_tensor_maps(module_string)
+    tm = make_mgb_dynamic_tensor_maps(module_string)
     if isinstance(tm, TensorMap) == True:
         return tm
+
+    tm = _build_mgb_time_series_tensor_maps(module_string)
+    if isinstance(tm, TensorMap) == True:
+        return tm
+
     if isinstance(module_string, str) == False:
         raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
     if len(module_string) == 0:
@@ -342,11 +348,12 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
     except ModuleNotFoundError:
         raise ModuleNotFoundError(f"Could not resolve library {'.'.join(path_string.split('.')[:-1])} for target tensormap {module_string}")
     try:
-        tm = getattr(i,path_string.split('.')[-1])
+        tm = getattr(i, path_string.split('.')[-1])
     except AttributeError:
         raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
     if isinstance(tm, TensorMap) == False:
         raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
+
     return tm
 
 
@@ -377,8 +384,6 @@ def _process_args(args):
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect, args.tensormap_prefix)
     needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
-    # args.tensor_maps_in = [_get_tmap(it, needed_tensor_maps) for it in args.input_tensors]
-    # args.sample_weight = _get_tmap(args.sample_weight, needed_tensor_maps) if args.sample_weight else None
     args.tensor_maps_in = [tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors]
     args.sample_weight = tensormap_lookup(args.sample_weight, args.tensormap_prefix) if args.sample_weight else None
     
@@ -397,8 +402,6 @@ def _process_args(args):
                 args.continuous_file_discretization_bounds,
             ),
         )
-    # args.tensor_maps_out.extend([_get_tmap(ot, needed_tensor_maps) for ot in args.output_tensors])
-    # args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
 
@@ -412,8 +415,36 @@ def _process_args(args):
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was: {command_line}")
-    # logging.info(f"Total TensorMaps: {len(TMAPS)} Arguments are {args}")
+    logging.info(f"Arguments are {args}\n")
 
     if args.eager:
         import tensorflow as tf
         tf.config.experimental_run_functions_eagerly(True)
+
+
+def _build_mgb_time_series_tensor_maps(
+        needed_name: str,
+        time_series_limit: int = 1,
+) -> Dict[str, TensorMap]:
+    if needed_name.endswith('_newest'):
+        base_split = '_newest'
+        time_series_order = TimeSeriesOrder.NEWEST
+    elif needed_name.endswith('_oldest'):
+        base_split = '_oldest'
+        time_series_order = TimeSeriesOrder.OLDEST
+    elif needed_name.endswith('_random'):
+        base_split = '_random'
+        time_series_order = TimeSeriesOrder.RANDOM
+    else:
+        return None
+
+    base_name = needed_name.split(base_split)[0]
+    time_tmap = copy.deepcopy(tensormap_lookup(base_name, prefix="ml4cvd.tensormap.mgb"))
+    time_tmap.name = needed_name
+    time_tmap.shape = time_tmap.shape[1:]
+    time_tmap.time_series_limit = time_series_limit
+    time_tmap.time_series_order = time_series_order
+    time_tmap.metrics = None
+    time_tmap.infer_metrics()
+
+    return time_tmap

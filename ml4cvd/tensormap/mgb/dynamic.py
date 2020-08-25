@@ -24,7 +24,7 @@ PARTNERS_PREFIX = 'partners_ecg_rest'
 WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
 
 
-def make_partners_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
+def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
     for map_maker_function in dynamic_tensor_map_makers:
         desired_map = map_maker_function(desired_map_name)
@@ -672,92 +672,48 @@ def make_cardiac_surgery_outcome_tensor_from_file(
     return tensor_from_file
 
 
-def build_partners_time_series_tensor_maps(
-        needed_tensor_maps: List[str],
-        time_series_limit: int = 1,
-) -> Dict[str, TensorMap]:
-    name2tensormap: Dict[str:TensorMap] = {}
+def build_cardiac_surgery_tensor_maps(
+    needed_name: str,
+) -> TensorMap:
+    outcome2column = {
+        "sts_death": "mtopd",
+        "sts_stroke": "cnstrokp",
+        "sts_renal_failure": "crenfail",
+        "sts_prolonged_ventilation": "cpvntlng",
+        "sts_dsw_infection": "deepsterninf",
+        "sts_reoperation": "reop",
+        "sts_any_morbidity": "anymorbidity",
+        "sts_long_stay": "llos",
+    }
 
-    for needed_name in needed_tensor_maps:
-        if needed_name.endswith('_newest'):
-            base_split = '_newest'
-            time_series_order = TimeSeriesOrder.NEWEST
-        elif needed_name.endswith('_oldest'):
-            base_split = '_oldest'
-            time_series_order = TimeSeriesOrder.OLDEST
-        elif needed_name.endswith('_random'):
-            base_split = '_random'
-            time_series_order = TimeSeriesOrder.RANDOM
+    cardiac_surgery_dict = None
+    date_interval_lookup = None
+    if needed_name in outcome2column:
+        if cardiac_surgery_dict is None:
+            cardiac_surgery_dict = build_cardiac_surgery_dict(
+                additional_columns=[outcome2column[needed_name]])
+            channel_map = _outcome_channels(needed_name)
+            sts_tmap = TensorMap(
+                needed_name,
+                Interpretation.CATEGORICAL,
+                path_prefix=PARTNERS_PREFIX,
+                tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(
+                    cardiac_surgery_dict, outcome2column[needed_name]),
+                channel_map=channel_map,
+                validator=validator_not_all_zero,
+            )
         else:
-            continue
+            if needed_name.endswith('_sts'):
+                base_name = needed_name.split('_sts')[0]
+                tmap_map = build_partners_time_series_tensor_maps([base_name])
 
-        base_name = needed_name.split(base_split)[0]
-        # if base_name not in TMAPS:
-        #     continue
+                if cardiac_surgery_dict is None:
+                    cardiac_surgery_dict = build_cardiac_surgery_dict(
+                        additional_columns=[outcome2column[needed_name]])
+                if date_interval_lookup is None:
+                    date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
+                sts_tmap = copy.deepcopy(tmap_map[base_name])
+                sts_tmap.name = needed_name
+                sts_tmap.time_series_lookup = date_interval_lookup
 
-        # time_tmap = copy.deepcopy(TMAPS[base_name])
-        #time_tmap = copy.deepcopy(tensormap_lookup(base_name, preix="ml4cvd.tensormap.mgb"))
-        time_tmap.name = needed_name
-        time_tmap.shape = time_tmap.shape[1:]
-        time_tmap.time_series_limit = time_series_limit
-        time_tmap.time_series_order = time_series_order
-        time_tmap.metrics = None
-        time_tmap.infer_metrics()
-
-        name2tensormap[needed_name] = time_tmap
-    return name2tensormap
-
-
-
-# MDRK: Disabled during update of TensorMaps
-# def build_cardiac_surgery_tensor_maps(
-#     needed_tensor_maps: List[str],
-# ) -> Dict[str, TensorMap]:
-#     name2tensormap: Dict[str, TensorMap] = {}
-#     outcome2column = {
-#         "sts_death": "mtopd",
-#         "sts_stroke": "cnstrokp",
-#         "sts_renal_failure": "crenfail",
-#         "sts_prolonged_ventilation": "cpvntlng",
-#         "sts_dsw_infection": "deepsterninf",
-#         "sts_reoperation": "reop",
-#         "sts_any_morbidity": "anymorbidity",
-#         "sts_long_stay": "llos",
-#     }
-
-#     cardiac_surgery_dict = None
-#     date_interval_lookup = None
-#     for needed_name in needed_tensor_maps:
-#         if needed_name in outcome2column:
-#             if cardiac_surgery_dict is None:
-#                 cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
-#             channel_map = _outcome_channels(needed_name)
-#             sts_tmap = TensorMap(
-#                 needed_name,
-#                 Interpretation.CATEGORICAL,
-#                 path_prefix=PARTNERS_PREFIX,
-#                 tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(cardiac_surgery_dict, outcome2column[needed_name]),
-#                 channel_map=channel_map,
-#                 validator=validator_not_all_zero,
-#             )
-#         else:
-#             if not needed_name.endswith('_sts'):
-#                 continue
-
-#             base_name = needed_name.split('_sts')[0]
-#             if base_name not in TMAPS:
-#                 TMAPS.update(build_partners_time_series_tensor_maps([base_name]))
-#                 if base_name not in TMAPS:
-#                     continue
-
-#             if cardiac_surgery_dict is None:
-#                 cardiac_surgery_dict = build_cardiac_surgery_dict(additional_columns=[column for outcome, column in outcome2column.items() if outcome in needed_tensor_maps])
-#             if date_interval_lookup is None:
-#                 date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
-#             sts_tmap = copy.deepcopy(TMAPS[base_name])
-#             sts_tmap.name = needed_name
-#             sts_tmap.time_series_lookup = date_interval_lookup
-
-#         name2tensormap[needed_name] = sts_tmap
-
-#     return name2tensormap
+    return sts_tmap
