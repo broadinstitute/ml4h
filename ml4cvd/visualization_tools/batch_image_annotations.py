@@ -165,6 +165,9 @@ class BatchImageAnnotator():
     """
     if self.current_sample >= self.samples.shape[0]:
       self.annotation_widget.canvas.clear()
+      # Note: the above command clears the canvas, but any incomplete polygons will be redrawn. Call this
+      # private method to clear those. TODO(deflaux) remove this after https://github.com/janfreyberg/ipyannotations/issues/15
+      self.annotation_widget.canvas._init_empty_data()  # pylint: disable=protected-access
       self.title_widget.value = '<h1>Annotation batch complete!</h1>Thank you for making the model better.'
       return
 
@@ -181,6 +184,9 @@ class BatchImageAnnotator():
         hd5 = h5py.File(local_path, mode='r')
       except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
         self.annotation_widget.canvas.clear()
+        # Note: the above command clears the canvas, but any incomplete polygons will be redrawn. Call this
+        # private method to clear those. TODO(deflaux) remove this after https://github.com/janfreyberg/ipyannotations/issues/15
+        self.annotation_widget.canvas._init_empty_data()  # pylint: disable=protected-access
         self.title_widget.value = f'''
             <div class="alert alert-block alert-danger">
             <H2>Warning: MRI HD5 file not available for sample {sample_id} in folder {folder}</h2>
