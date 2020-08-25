@@ -9,7 +9,7 @@ set -o nounset
 
 
 #SET THESE ARGUMENTS -- not passing these in -- just gets too messy.
-BUCKET_ROOT="" #gs://ml4h/projects/pbatra"
+BUCKET_ROOT="" #gs://ml4cvd/projects/pbatra"
 DATASET="" #pb_test_2" if dataset exists already, will error out.
 PHENO_FOLDER="" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/pheno_test_files" #folder that contains multiple pheno.csv files
 HESIN_FOLDER="" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/hesin_files" #folder that contains all hesin files

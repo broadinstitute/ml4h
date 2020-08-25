@@ -25,7 +25,7 @@ gcloud compute instances create ${NAME} \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
 --machine-type ${INSTANCE_TYPE} \
---metadata startup-script-url=gs://ml4h/projects/jamesp/home/startup.sh \
+--metadata startup-script-url=gs://ml4cvd/projects/jamesp/home/startup.sh \
 "$@"
 
 # Previously used the base ubuntu:

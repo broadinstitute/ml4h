@@ -50,10 +50,10 @@ FOLDERS[Runtime.TERRA] = {
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
-        DataType.EXERCISE_ECG_HD5: 'gs://ml4h/projects/fake_hd5s/',
-        DataType.RESTING_ECG_HD5: 'gs://ml4h/projects/fake_hd5s/',
+        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
+        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
         DataType.RESTING_ECG_SVG: 'gs://ml4h/ecg_views_fake/',
-        DataType.MRI_HD5: 'gs://ml4h/projects/fake_hd5s/',
+        DataType.MRI_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
         DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
         DataType.CARDIAC_MRI_DICOM: 'gs://ml4h/data/mris/cardiac/',
     },

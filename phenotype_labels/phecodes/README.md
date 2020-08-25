@@ -8,10 +8,10 @@ To put Phecodes on top of a UKBB dataset (ingested into bigquery according to th
 3. load that csv file into bigquery manually, for example with 
 
 ```
-gsutil cp ukbb_dev_phecode_mapping.csv.gz gs://ml4h/projects/pbatra/ukbb_dev/
+gsutil cp ukbb_dev_phecode_mapping.csv.gz gs://ml4cvd/projects/pbatra/ukbb_dev/
 bq load \
  --replace \
  --source_format=CSV \
  --schema  phecode_mapping.json \
- ukbb_dev.phecode_mapping gs://ml4h/projects/pbatra/ukbb_dev/ukbb_dev_phecode_mapping.csv.gz
+ ukbb_dev.phecode_mapping gs://ml4cvd/projects/pbatra/ukbb_dev/ukbb_dev_phecode_mapping.csv.gz
 ```
