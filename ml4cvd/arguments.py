@@ -17,6 +17,7 @@ import logging
 import argparse
 import operator
 import datetime
+import importlib
 import numpy as np
 import multiprocessing
 from typing import Set, Dict, List, Optional
@@ -343,11 +344,11 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
             raise TypeError(f"Prefix must be a string. Given: {type(prefix)}")
         if len(prefix) == 0:
             raise ValueError(f"Prefix cannot be set to an emtpy string.")
-        path_string = '.'.join([prefix,module_string])
+        path_string = '.'.join([prefix, module_string])
     else:
         if '.'.join(path_string.split('.')[0:2]) != 'ml4cvd.tensormap':
             raise ValueError(f"TensorMaps must reside in the path 'ml4cvd.tensormap.*'. Given: {module_string}")
-    import importlib
+
     try:
         i = importlib.import_module('.'.join(path_string.split('.')[:-1]))
     except ModuleNotFoundError:
@@ -356,6 +357,7 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4cvd.tensormap"):
         tm = getattr(i, path_string.split('.')[-1])
     except AttributeError:
         raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
+
     if isinstance(tm, TensorMap) == False:
         raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
 
@@ -455,7 +457,7 @@ def _build_mgb_time_series_tensor_maps(
         return None
 
     base_name = needed_name.split(base_split)[0]
-    time_tmap = copy.deepcopy(tensormap_lookup(base_name, prefix="ml4cvd.tensormap.mgb"))
+    time_tmap = copy.deepcopy(tensormap_lookup(base_name, prefix="ml4cvd.tensormap.mgb.ecg"))
     time_tmap.name = needed_name
     time_tmap.shape = time_tmap.shape[1:]
     time_tmap.time_series_limit = time_series_limit
