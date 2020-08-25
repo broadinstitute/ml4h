@@ -11,7 +11,7 @@ set -e
 
 ################### VARIABLES ############################################
 
-REPO="gcr.io/broad-ml4h/deeplearning"
+REPO="gcr.io/broad-ml4cvd/deeplearning"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
@@ -54,6 +54,7 @@ usage()
                             Default: Build image to run on GPU-enabled machines and tag image also as '${LATEST_TAG_GPU}'.
 
         -p                  Push to Google Container Register
+        -P                  Push to latest tag
 
         -h                  Print this help text
 

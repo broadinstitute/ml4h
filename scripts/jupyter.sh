@@ -7,8 +7,8 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4h/deeplearning:tf2-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4h/deeplearning:tf2-latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="docker"
 PORT="8888"
@@ -25,7 +25,7 @@ usage()
 
     Usage: ${SCRIPT_NAME} [-nth] [-i <image>] module [arg ...]
 
-    Example: ./${SCRIPT_NAME} -n -p 8889  -i gcr.io/broad-ml4h/deeplearning:latest-cpu
+    Example: ./${SCRIPT_NAME} -n -p 8889  -i gcr.io/broad-ml4cvd/deeplearning:latest-cpu
 
         -c                  Use CPU docker image and use the regular 'docker' launcher.
                             By default, 'nvidia-docker' wrapper is used to launch Docker assuming the machine is GPU-enabled.

@@ -7,8 +7,8 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4h/deeplearning:tf2-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4h/deeplearning:tf2-latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
@@ -59,7 +59,7 @@ usage()
 
     Usage: ${SCRIPT_NAME} [-nth] [-i <image>] module [arg ...]
 
-    Example: ./${SCRIPT_NAME} -n -t -i gcr.io/broad-ml4h/deeplearning:latest-cpu recipes.py --mode tensorize ...
+    Example: ./${SCRIPT_NAME} -n -t -i gcr.io/broad-ml4cvd/deeplearning:latest-cpu recipes.py --mode tensorize ...
 
         -c                  if set use CPU docker image and machine and use the regular 'docker' launcher.
                             By default, we assume the machine is GPU-enabled.
