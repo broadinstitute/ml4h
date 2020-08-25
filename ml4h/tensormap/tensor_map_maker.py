@@ -12,7 +12,7 @@ from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4h.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
 from ml4h.tensormap.text import random_text_window_tensor, token_dictionary_and_text_from_file
-from ml4h.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
+from ml4h.tensorize.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 
 LESS_THAN_CODES = "('Less than a year', 'Less than once a week', 'Less than one mile', 'Less than an hour a day', 'Less than one a day', 'Less than one', 'Less than once a year', 'Less than 1 year ago', 'Less than a year ago', 'Less than one year', 'Less than one cigarette per day')"
