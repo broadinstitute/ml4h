@@ -156,13 +156,13 @@ def voltage_from_file_no_resample_random_lead(tm, hd5, dependents=None):
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=np.float32)
     for i, ecg_date in enumerate(ecg_dates):
-        cm = np.random.choice(tm.channel_map)
+        cm = np.random.choice(list(tm.channel_map))
         try:
             path = _make_hd5_path(tm, ecg_date, cm)
             voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
             if len(voltage) < tm.shape[0]:
                 raise ValueError(f'Voltage is not the right length for TensorMap {tm.name}.')
-            slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
+            slices = (i, ..., 0) if dynamic else (..., 0)
             tensor[slices] = voltage[:tm.shape[0]]
         except KeyError:
             logging.warning(f'KeyError for channel {cm} in {tm.name}')
@@ -211,7 +211,7 @@ for scale in [1000, 100, 10, 1, 1e-1, 1e-2]:
 TMAPS['partners_ecg_5000_only_random_lead'] = TensorMap(
     'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX,
     tensor_from_file=voltage_from_file_no_resample_random_lead, loss='mse',
-    normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS,
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS,
     validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False,
 )
@@ -247,6 +247,13 @@ def _rand_add_noise(ecg):
 
 def _apply_aug_rate(augmentation: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], np.ndarray]:
     return lambda a: augmentation(a) if np.random.rand() < .5 else a
+
+
+TMAPS[f'partners_ecg_5000_only_augment_lead_I'] = TensorMap(
+    'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    normalization=ZeroMeanStd1(), channel_map={'I': 0}, validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_warp_ecg, _random_crop_ecg, _rand_add_noise,)],
+)
 
 
 TMAPS['partners_ecg_5000_only_random_lead_augment'] = TensorMap(
