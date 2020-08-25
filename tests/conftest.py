@@ -2,7 +2,7 @@ import sys
 import mock
 import pytest
 
-from ml4h.arguments import parse_args, TMAPS
+from ml4h.arguments import parse_args
 from ml4h.test_utils import TMAPS as MOCK_TMAPS
 from ml4h.test_utils import build_hdf5s
 
@@ -11,8 +11,8 @@ def pytest_configure():
     pytest.N_TENSORS = 50
 
 
+#@mock.patch.dict(TMAPS, MOCK_TMAPS)
 @pytest.fixture(scope='class')
-@mock.patch.dict(TMAPS, MOCK_TMAPS)
 def default_arguments(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp('data')
     build_hdf5s(temp_dir, MOCK_TMAPS.values(), n=pytest.N_TENSORS)
