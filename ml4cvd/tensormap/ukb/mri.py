@@ -1217,6 +1217,11 @@ lax_4ch_slice_jamesp = TensorMap(
     'lax_4ch_slice_jamesp', shape=(160, 224, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lax_4ch/instance_0', 'cine_segmented_lax_4ch_jamesp_annotated_'),
 )
+lax_4ch_diastole_slice = TensorMap(
+    'lax_4ch_daistole_slice', shape=(160, 224, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lax_4ch/instance_0', 'cine_segmented_lax_4ch_annotated_'),
+)
+
 
 
 def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=100):
