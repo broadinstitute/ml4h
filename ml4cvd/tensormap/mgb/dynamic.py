@@ -11,38 +11,43 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from ml4cvd.metrics import weighted_crossentropy
+from ml4cvd.defines import CARDIAC_SURGERY_DATE_FORMAT
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1
-from ml4cvd.tensormap.mgb.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, validator_not_all_zero, make_voltage, _hd5_filename_to_mrn_int, _resample_voltage
-from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
-from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, ECG_REST_UKB_LEADS
+from ml4cvd.defines import ECG_REST_AMP_LEADS, ECG_REST_UKB_LEADS
+from ml4cvd.defines import PARTNERS_DATE_FORMAT, PARTNERS_DATETIME_FORMAT
+from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, decompress_data
+from ml4cvd.tensormap.mgb.ecg import _get_ecg_dates, _is_dynamic_shape, _make_hd5_path, make_voltage
+from ml4cvd.tensormap.mgb.ecg import validator_not_all_zero, _hd5_filename_to_mrn_int, _resample_voltage
 
 YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
+DYNAMIC_TENSOR_MAP_MAKERS = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
 
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    dynamic_tensor_map_makers = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
-    for map_maker_function in dynamic_tensor_map_makers:
+    for map_maker_function in DYNAMIC_TENSOR_MAP_MAKERS:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
             return desired_map
 
 
-# Creates 12 TMaps:
-# partners_ecg_2500      partners_ecg_2500_exact      partners_ecg_5000      partners_ecg_5000_exact
-# partners_ecg_2500_std  partners_ecg_2500_std_exact  partners_ecg_5000_std  partners_ecg_5000_std_exact
-# partners_ecg_2500_raw  partners_ecg_2500_raw_exact  partners_ecg_5000_raw  partners_ecg_5000_raw_exact
-#
-# default normalizes with ZeroMeanStd1 and resamples
-# _std normalizes with Standardize mean = 0, std = 2000
-# _raw does not normalize
-# _exact does not resample
+def make_waveform_maps(desired_map_name: str) -> TensorMap:
+    """Creates 12 possible Tensor Maps and returns the desired one or None:
 
-def make_waveform_maps(desired_map_name: str):
+        partners_ecg_2500      partners_ecg_2500_exact      partners_ecg_5000      partners_ecg_5000_exact
+        partners_ecg_2500_std  partners_ecg_2500_std_exact  partners_ecg_5000_std  partners_ecg_5000_std_exact
+        partners_ecg_2500_raw  partners_ecg_2500_raw_exact  partners_ecg_5000_raw  partners_ecg_5000_raw_exact
+
+        default normalizes with ZeroMeanStd1 and resamples
+        _std normalizes with Standardize mean = 0, std = 2000
+        _raw does not normalize
+        _exact does not resample
+    :param desired_map_name: The name of the TensorMap and
+    :return: The desired TensorMap
+    """
     length_options = [2500, 5000]
     exact_options = [True, False]
     normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
@@ -61,19 +66,9 @@ def make_waveform_maps(desired_map_name: str):
                 time_series_limit=0,
                 validator=validator_not_all_zero,
             )
-        elif f'{name}_newest' == desired_map_name:
-            return TensorMap(
-                name,
-                shape=(length, 12),
-                path_prefix=PARTNERS_PREFIX,
-                tensor_from_file=make_voltage(exact_length),
-                normalization=normalization,
-                channel_map=ECG_REST_AMP_LEADS,
-                validator=validator_not_all_zero,
-            )
 
 
-def make_lead_maps(desired_map_name: str):
+def make_lead_maps(desired_map_name: str) -> TensorMap:
     for lead in ECG_REST_AMP_LEADS:
         tensormap_name = f'lead_{lead}_len'
         if desired_map_name == tensormap_name:
