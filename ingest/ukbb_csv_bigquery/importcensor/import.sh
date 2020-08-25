@@ -3,7 +3,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 #pass in
-BUCKET=$1 #e.g. "gs://ml4cvd/projects/jamesp/bigquery/201903"
+BUCKET=$1 #e.g. "gs://ml4h/projects/jamesp/bigquery/201903"
 DATASET=$2 #e.g. "ukbb7089_201903"
 
 #specific to this func

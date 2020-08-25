@@ -1,9 +1,9 @@
 # Create and Use VM Boot Images
 Everytime we want new persistent disks automatically added to our VMs, we need to update the `mount`s in
-`scripts/vm_image/ml4cvd-image.sh`, and the `--disk` arguments in `scripts/vm_launch/launch_instance.sh` and
+`scripts/vm_image/ml4h-image.sh`, and the `--disk` arguments in `scripts/vm_launch/launch_instance.sh` and
 `scripts/vm_launch/launch_dl_instance.sh`, and then follow the steps listed in this section.
 
-* Verify that `scripts/vm_image/ml4cvd-image.sh` has the
+* Verify that `scripts/vm_image/ml4h-image.sh` has the
 desired auto-mounting specified under the `# Mount the persistent disks` section that should look something like
     ```
     # Mount the persistent disks
@@ -25,7 +25,7 @@ With [Homebrew](https://brew.sh/), you can use
 
 * Set up some environment variables to use throughout the rest of the section:
     ```
-    export PROJECT=broad-ml4cvd
+    export PROJECT=broad-ml4h
     export SERVICE_ACCOUNT=783282864357-compute@developer.gserviceaccount.com 
     export ZONE=us-central1-a
     export DATE=`date +%Y-%m-%d`
@@ -34,7 +34,7 @@ With [Homebrew](https://brew.sh/), you can use
     export MACHINE_TYPE=n1-standard-1
     export BASE_IMAGE=ubuntu-1804-bionic-v20190429
     export BASE_IMAGE_PROJECT=ubuntu-os-cloud
-    export CPU_IMAGE=ml4cvd-image
+    export CPU_IMAGE=ml4h-image
     export GPU_IMAGE=dl-image
     export CPU_VM=${USER}-create-cpu-image
     export CPU_TEST_VM=${USER}-test-cpu-image
@@ -111,7 +111,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
 
 * If you're creating a **CPU** image, run the following script (**without sudo**):  
     ```
-    ./ml4cvd-image.sh
+    ./ml4h-image.sh
     ```
   If you're creating a **GPU** image, first run:
     ```
@@ -147,7 +147,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
         --source-disk-zone=${ZONE}
     ```
 
-* Verify that you can view your newly created image on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4cvd&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
+* Verify that you can view your newly created image on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4h&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
 
 * Delete the VM:
     ```
@@ -173,7 +173,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
 * If you created a CPU image, that new image will be selected automatically because it is the latest
   one in the specified image family. Now, verify that the correct disk(s) are mounted and bucket(s) are `gcsfuse`d.
     ```
-    ls /mnt/ml4cvd && ls /mnt/disks/*
+    ls /mnt/ml4h && ls /mnt/disks/*
     ``` 
     
 * Set up your SSH keys on the VM for GitHub to be able to clone the `ml` repo.
@@ -199,7 +199,7 @@ instances from GCP's gcr.io. Run this while you're logged into your VM:
     ```
   You need to log out after that (`exit`) then ssh back in so everything takes effect.
 
-* Run the tests (`ml/ml4cvd/DATA_MODELING_TESTS.md`)
+* Run the tests (`ml/ml4h/DATA_MODELING_TESTS.md`)
 
 * Exit out of the VM and delete it:
     ```

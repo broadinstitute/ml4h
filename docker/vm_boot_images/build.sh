@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
+# This script can be used to build and tag a 'ml4h' image, optionally push it to Google Container Registry,
 # and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 #
 # It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
@@ -11,7 +11,7 @@ set -e
 
 ################### VARIABLES ############################################
 
-REPO="gcr.io/broad-ml4cvd/deeplearning"
+REPO="gcr.io/broad-ml4h/deeplearning"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
@@ -36,7 +36,7 @@ usage()
 {
     cat <<USAGE_MESSAGE
 
-    This script can be used to build and tag a 'ml4cvd' image, optionally push it to Google Container Registry,
+    This script can be used to build and tag a 'ml4h' image, optionally push it to Google Container Registry,
     and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 
     It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
@@ -44,7 +44,7 @@ usage()
 
     Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-chp]
 
-    Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4cvd/jamesp/docker/deeplearning -cp
+    Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4h/jamesp/docker/deeplearning -cp
 
         -d      <path>      Path to directory where Dockerfile is located. Default: '${CONTEXT}'
 

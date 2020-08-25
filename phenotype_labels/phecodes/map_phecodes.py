@@ -23,7 +23,7 @@ PARAMS = {
     'pheno_dataset': PHENO_DATASET,
     'phecode_dict': PHECODES_DATASET + '.phecode_dictionary',
     'phecode_icd10': PHECODES_DATASET + '.phecode_icd10',
-    'gs_bucket': 'ml4cvd',
+    'gs_bucket': 'ml4h',
     'gs_location': 'data/tmp/',
     'output_schema': os.path.join(CWD, 'phecode_mapping.json'),
     'output_file': PHENO_DATASET + '_phecode_mapping.csv.gz',
@@ -169,7 +169,7 @@ def create_phecode_match_file():
 #
 #
 #    table_ref=client.dataset(PHENO_DATASET).table(PARAMS['output_table'])
-#    table = client.create_table(bigquery.Table('broad-ml4cvd.lubitz.phecode_mapping', schema=bq_schema))
+#    table = client.create_table(bigquery.Table('broad-ml4h.lubitz.phecode_mapping', schema=bq_schema))
 #    with open(os.path.join(CWD, PARAMS['output_file']), 'rb') as f:
 #        job=client.load_table_from_file(
 #            f,table)
