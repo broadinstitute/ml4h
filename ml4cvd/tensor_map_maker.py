@@ -258,4 +258,3 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: 
         cacheable=False,
     )
     return input_map, burn_in, output_map
->>>>>>> master
