@@ -64,20 +64,20 @@ FOLDERS[Runtime.TERRA] = {
 # the preferred source in this runtime environment.]
 FOLDERS[Runtime.ml4h_VM] = {
     Dataset.UKB: {
-        DataType.EXERCISE_ECG_HD5: '/mnt/ml4h/deflaux/ukbb_tensors/',
-        DataType.RESTING_ECG_HD5: '/mnt/ml4h/deflaux/ukbb_tensors/',
-        DataType.RESTING_ECG_SVG: '/mnt/ml4h/ecg_views_11_04_2019_svg/',
-        DataType.MRI_HD5: '/mnt/ml4h/deflaux/ukbb_tensors/',
+        DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
+        DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
+        DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_11_04_2019_svg/',
+        DataType.MRI_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
         DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI_DICOM: '/mnt/ml4h/data/mris/cardiac/',
+        DataType.CARDIAC_MRI_DICOM: '/mnt/ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
-        DataType.EXERCISE_ECG_HD5: '/mnt/ml4h/projects/fake_hd5s/',
-        DataType.RESTING_ECG_HD5: '/mnt/ml4h/projects/fake_hd5s/',
-        DataType.RESTING_ECG_SVG: '/mnt/ml4h/ecg_views_fake/',
-        DataType.MRI_HD5: '/mnt/ml4h/projects/fake_hd5s/',
+        DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
+        DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
+        DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_fake/',
+        DataType.MRI_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
         DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
         DataType.CARDIAC_MRI_DICOM: '/ml4h/data/mris/cardiac/',
     },

@@ -93,7 +93,7 @@ echo $(tput setaf 1)$(tput setab 7)"ssh -nNT -L ${PORT}:localhost:${PORT} ${WANI
 mkdir -p /home/${USER}/jupyter/
 chmod o+w /home/${USER}/jupyter/
 
-mkdir -p /mnt/ml4h/projects/${USER}/projects/jupyter/auto/
+mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
 ${DOCKER_COMMAND} run -it \
 ${GPU_DEVICE} \
@@ -106,5 +106,5 @@ ${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook 
 
 
 # Automatically back up any local notebooks and artifacts non-recursively (no subfolders)
-echo 'Backing up local files to' /mnt/ml4h/projects/${USER}/projects/jupyter/auto/
-cp /home/${USER}/jupyter/* /mnt/ml4h/projects/${USER}/projects/jupyter/auto/
+echo 'Backing up local files to' /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
+cp /home/${USER}/jupyter/* /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/

@@ -62,14 +62,14 @@ def parse_args():
 
     # Input and Output files and directories
     parser.add_argument(
-        '--bigquery_credentials_file', default='/mnt/ml4h/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
+        '--bigquery_credentials_file', default='/mnt/ml4cvd/projects/jamesp/bigquery/bigquery-viewer-credentials.json',
         help='Path to service account credentials for looking up BigQuery tables.',
     )
     parser.add_argument('--bigquery_dataset', default='broad-ml4h.ukbb7089_r10data', help='BigQuery dataset containing tables we want to query.')
     parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/', help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
     parser.add_argument('--phenos_folder', default='gs://ml4h/phenotypes/', help='Path to folder of phenotype defining CSVs.')
-    parser.add_argument('--phecode_definitions', default='/mnt/ml4h/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
+    parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--sample_csv', default=None, help='Path to CSV with Sample IDs to restrict tensor paths')
     parser.add_argument('--tsv_style', default='standard', choices=['standard', 'genetics'], help='Format choice for the TSV file produced in output by infer and explore modes.')

@@ -111,7 +111,7 @@ while getopts ":i:d:m:ctjrhT" opt ; do
             mkdir -p /home/${USER}/jupyter/
             chmod o+w /home/${USER}/jupyter/
             mkdir -p /home/${USER}/jupyter/root/
-            mkdir -p /mnt/ml4h/projects/${USER}/projects/jupyter/auto/
+            mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
             ;;
         r) # Output owned by root
             CALL_DOCKER_AS_USER=""
