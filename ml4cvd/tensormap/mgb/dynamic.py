@@ -24,11 +24,11 @@ INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
 WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
-DYNAMIC_TENSOR_MAP_MAKERS = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
 
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    for map_maker_function in DYNAMIC_TENSOR_MAP_MAKERS:
+    tensor_map_maker_fxns = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
+    for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
             return desired_map
