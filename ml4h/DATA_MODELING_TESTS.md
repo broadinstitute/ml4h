@@ -11,7 +11,7 @@ To access the data using `sqlite`:
 
 `sqlite3 /mnt/disks/data/raw/sql/ukbb7089.r10data.db`
 
-The data can also be accessed through [BigQuery](https://console.cloud.google.com/bigquery?project=broad-ml4h&p=broad-ml4h&page=project).
+The data can also be accessed through [BigQuery](https://console.cloud.google.com/bigquery?project=broad-ml4cvd&p=broad-ml4cvd&page=project).
 
 
 ### Cardiac MRI

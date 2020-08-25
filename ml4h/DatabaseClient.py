@@ -53,7 +53,7 @@ if '__main__' == __name__:
     credentials_file = '/Users/kyuksel/ml4h/bigquery-viewer-credentials.json'
     db_client = BigQueryDatabaseClient(credentials_file=credentials_file)
 
-    dataset = 'broad-ml4h.ukbb7089_r10data'
+    dataset = 'broad-ml4cvd.ukbb7089_r10data'
 
     dictionary_table = f"`{dataset}.dictionary`"
     phenotype_table = f"`{dataset}.phenotype`"

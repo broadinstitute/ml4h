@@ -14,9 +14,9 @@ echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE
 echo "$@"
 
 gcloud compute instances create ${NAME} \
---project broad-ml4h \
+--project broad-ml4cvd \
 --zone us-central1-a \
---image-project broad-ml4h \
+--image-project broad-ml4cvd \
 --image-family dl-image \
 --accelerator=type=${ACCEL},count=1 \
 --maintenance-policy=TERMINATE \

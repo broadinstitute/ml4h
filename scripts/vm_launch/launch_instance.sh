@@ -12,9 +12,9 @@ echo "Creating instance ${NAME} from family ml4h-image of type ${INSTANCE_TYPE}.
 echo "$@"
 
 gcloud compute instances create ${NAME} \
---project broad-ml4h \
+--project broad-ml4cvd \
 --zone us-central1-a \
---image-project broad-ml4h \
+--image-project broad-ml4cvd \
 --image-family ml4h-image \
 --boot-disk-type=pd-ssd \
 --boot-disk-size=${DISK_SIZE} \

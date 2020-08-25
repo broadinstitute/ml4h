@@ -39,7 +39,7 @@ def parse_args():
         help='Root directory of the cloned ml repo',
     )
     parser.add_argument(
-        '--gcp_project', default='broad-ml4h',
+        '--gcp_project', default='broad-ml4cvd',
         help='Name of the Google Cloud Platform project',
     )
     parser.add_argument(

@@ -25,7 +25,7 @@ With [Homebrew](https://brew.sh/), you can use
 
 * Set up some environment variables to use throughout the rest of the section:
     ```
-    export PROJECT=broad-ml4h
+    export project=broad-ml4cvd
     export SERVICE_ACCOUNT=783282864357-compute@developer.gserviceaccount.com 
     export ZONE=us-central1-a
     export DATE=`date +%Y-%m-%d`
@@ -147,7 +147,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
         --source-disk-zone=${ZONE}
     ```
 
-* Verify that you can view your newly created image on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4h&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
+* Verify that you can view your newly created image on GCP Console's [Images Page](https://console.cloud.google.com/compute/images?_ga=2.132530574.-1060415104.1522950615&project=broad-ml4cvd&folder&organizationId=548622027621&imagessize=50&imagesquery=%255B%255D).
 
 * Delete the VM:
     ```

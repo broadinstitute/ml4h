@@ -56,7 +56,7 @@ func main() {
 		acknowledge bool
 		BQ          = &WrappedBigQuery{}
 	)
-	flag.StringVar(&BQ.Project, "project", "broad-ml4h", "Name of the Google Cloud project that hosts your BigQuery database instance")
+	flag.StringVar(&BQ.Project, "project", "broad-ml4cvd", "Name of the Google Cloud project that hosts your BigQuery database instance")
 	flag.StringVar(&BQ.Database, "bigquery", "", "BigQuery phenotype database name")
 	flag.Var(&phenoPaths, "pheno", "phenotype file for the UKBB. Pass this flag once per file if you want to process multiple files at once. Every FieldID that is seen in an earlier file will be ignored in later files.")
 	flag.BoolVar(&acknowledge, "ack", false, "Acknowledge the limitations of the tool")

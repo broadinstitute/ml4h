@@ -47,7 +47,7 @@ done
 BUCKET=${BUCKET_ROOT}/${DATASET} #gs target location for all generated data
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_DATA_FOLDER=${__dir}/${DATASET} #local storage location
-bq mk --dataset broad-ml4h:${DATASET} #make dataset in bigquery, error if already there
+bq mk --dataset broad-ml4cvd:${DATASET} #make dataset in bigquery, error if already there
 mkdir ${LOCAL_DATA_FOLDER} #will error if already exists
 echo "storing data locally in ${LOCAL_DATA_FOLDER}"
 

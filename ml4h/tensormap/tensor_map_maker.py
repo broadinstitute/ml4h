@@ -97,7 +97,7 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
                 pheno = pheno.replace(c, '_')
             pheno = pheno.lower().strip('_').replace('___', '_').replace('__', '_')
             phecode2phenos['phecode_'+row[0].lstrip('0').strip()] = pheno
-    query = f"select disease, count(disease) as total from `broad-ml4h.ukbb7089_201904.phecodes_nonzero` GROUP BY disease"
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` GROUP BY disease"
     count_result = db_client.execute(query)
     phecode2counts = {}
     for row in count_result:
@@ -112,13 +112,13 @@ def _write_phecode_tensor_maps(f: TextIO, phecode_csv, db_client: DatabaseClient
                 f"storage_type=StorageType.CATEGORICAL_FLAG, loss=weighted_crossentropy([1.0, {factor}], '{k.replace('.', '_')}'))\n",
             )
 
-    query = f"select disease, count(disease) as total from `broad-ml4h.ukbb7089_201904.phecodes_nonzero` WHERE prevalent_disease=1 GROUP BY disease"
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE prevalent_disease=1 GROUP BY disease"
     count_result = db_client.execute(query)
     phecode2prevalent = {}
     for row in count_result:
         phecode2prevalent[row['disease']] = float(row['total'])
 
-    query = f"select disease, count(disease) as total from `broad-ml4h.ukbb7089_201904.phecodes_nonzero` WHERE incident_disease=1 GROUP BY disease"
+    query = f"select disease, count(disease) as total from `broad-ml4cvd.ukbb7089_201904.phecodes_nonzero` WHERE incident_disease=1 GROUP BY disease"
     count_result = db_client.execute(query)
     phecode2incident = {}
     for row in count_result:

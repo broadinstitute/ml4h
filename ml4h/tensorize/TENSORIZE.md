@@ -21,7 +21,7 @@ attached to more than one VM in `read-write` mode at any given time. Furthermore
 The following command line creates a solid state drive (SSD) persistent disk of size `100GB` named `my-disk` 
 (disk names must contain lowercase letters, numbers, or hyphens only):
 ```
-gcloud beta compute disks create my-disk --project broad-ml4h --type pd-ssd --size 100GB --zone us-central1-a
+gcloud beta compute disks create my-disk --project broad-ml4cvd --type pd-ssd --size 100GB --zone us-central1-a
 ```
 
 If you don't have `gcloud Beta Commands` installed (in addition to `google-cloud-sdk`), you will get a prompt saying
@@ -40,7 +40,7 @@ If so, enter `Y`, and it will start creating the disk after installing `gcloud B
 Upon successful disk creation, you will see a note saying
 
 ```
-Created [https://www.googleapis.com/compute/beta/projects/broad-ml4h/zones/us-central1-a/disks/my-disk].
+Created [https://www.googleapis.com/compute/beta/projects/broad-ml4cvd/zones/us-central1-a/disks/my-disk].
 NAME          ZONE           SIZE_GB  TYPE    STATUS
 my-disk       us-central1-a  100      pd-ssd  READY
 
@@ -66,7 +66,7 @@ To be able to format and mount a disk, we need to know what device name it is as
 let's log onto our VM:
 
 ```
-gcloud --project broad-ml4h compute ssh my-vm --zone us-central1-a
+gcloud --project broad-ml4cvd compute ssh my-vm --zone us-central1-a
 ```
 
 and run 

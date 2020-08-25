@@ -25,7 +25,7 @@ To set credentials for bigquery:
 `gcloud auth application-default login`
 
 To setup a new toplevel dataset in bigquery:
-`bq mk --dataset broad-ml4h:pb_test`
+`bq mk --dataset broad-ml4cvd:pb_test`
 
 ## GCS setup
 Follow the instructions in [the main README](../../README.md) to set up your instance.
