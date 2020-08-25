@@ -13,7 +13,7 @@ import os
 
 class Runtime(Enum):
   TERRA = auto()
-  ml4h_VM = auto()
+  ML4H_VM = auto()
   DEFAULT = auto()  # Such as an AI Platform Notebooks VM.
   # TODO(sam): PARTNERS = 4
 
@@ -40,35 +40,35 @@ FOLDERS = collections.defaultdict(lambda: collections.defaultdict(dict))
 # fake data so that it could be make publicly available.
 FOLDERS[Runtime.TERRA] = {
     Dataset.UKB: {
-        DataType.EXERCISE_ECG_HD5: 'gs://ml4h/deflaux/ukbb_tensors/',
-        DataType.RESTING_ECG_HD5: 'gs://ml4h/deflaux/ukbb_tensors/',
-        DataType.RESTING_ECG_SVG: 'gs://ml4h/ecg_views_11_04_2019_svg/',
-        DataType.MRI_HD5: 'gs://ml4h/deflaux/ukbb_tensors/',
-        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI_DICOM: 'gs://ml4h/data/mris/cardiac/',
+        DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors/',
+        DataType.RESTING_ECG_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors/',
+        DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_11_04_2019_svg/',
+        DataType.MRI_HD5: 'gs://ml4cvd/deflaux/ukbb_tensors/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
         DataType.EXERCISE_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
         DataType.RESTING_ECG_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
-        DataType.RESTING_ECG_SVG: 'gs://ml4h/ecg_views_fake/',
+        DataType.RESTING_ECG_SVG: 'gs://ml4cvd/ecg_views_fake/',
         DataType.MRI_HD5: 'gs://ml4cvd/projects/fake_hd5s/',
-        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI_DICOM: 'gs://ml4h/data/mris/cardiac/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: 'gs://ml4cvd/data/mris/cardiac/',
     },
 }
 
 # The full data is available on an attached persistent disk, read from there.
 # [Reading from Cloud Storage would also work in this environment, but its not
 # the preferred source in this runtime environment.]
-FOLDERS[Runtime.ml4h_VM] = {
+FOLDERS[Runtime.ML4H_VM] = {
     Dataset.UKB: {
         DataType.EXERCISE_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
         DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
         DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_11_04_2019_svg/',
         DataType.MRI_HD5: '/mnt/ml4cvd/deflaux/ukbb_tensors/',
-        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
         DataType.CARDIAC_MRI_DICOM: '/mnt/ml4cvd/data/mris/cardiac/',
     },
     Dataset.FAKE: {
@@ -78,8 +78,8 @@ FOLDERS[Runtime.ml4h_VM] = {
         DataType.RESTING_ECG_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
         DataType.RESTING_ECG_SVG: '/mnt/ml4cvd/ecg_views_fake/',
         DataType.MRI_HD5: '/mnt/ml4cvd/projects/fake_hd5s/',
-        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4h/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
-        DataType.CARDIAC_MRI_DICOM: '/ml4h/data/mris/cardiac/',
+        DataType.BRAIN_MRI_DICOM: 'gs://bulkml4cvd/brainmri/t1_structural_07_26_2019/zipped_t1_dicoms/',
+        DataType.CARDIAC_MRI_DICOM: '/ml4cvd/data/mris/cardiac/',
     },
 }
 
@@ -93,7 +93,7 @@ def determine_runtime():
   if 'GOOGLE_PROJECT' in os.environ:
     return Runtime.TERRA
   elif os.path.isdir('/mnt/disks/'):
-    return Runtime.ml4h_VM
+    return Runtime.ML4H_VM
   else:
     return Runtime.DEFAULT
 
