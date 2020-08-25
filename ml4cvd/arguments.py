@@ -28,7 +28,7 @@ from ml4cvd.models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4cvd.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4cvd.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4cvd.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file
+from ml4cvd.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
 
 
 BOTTLENECK_STR_TO_ENUM = {
@@ -51,11 +51,13 @@ def parse_args():
     )
 
     # Tensor Map arguments
-    parser.add_argument('--input_tensors', default=[], nargs='+')
-    parser.add_argument('--output_tensors', default=[], nargs='+')
-    parser.add_argument('--sample_weight', default=None,  help='TensorMap key for sample weight in training.')
+    parser.add_argument('--input_tensors', default=[], nargs='*')
+    parser.add_argument('--output_tensors', default=[], nargs='*')
+    parser.add_argument('--protected_tensors', default=[], nargs='*')
+    parser.add_argument('--sample_weight', default=None, help='TensorMap key for sample weight in training.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
+    parser.add_argument('--tensor_maps_protected', default=[], help='Do not set this directly. Use protected_tensors')
 
     # Input and Output files and directories
     parser.add_argument(
@@ -77,6 +79,7 @@ def parse_args():
     parser.add_argument('--model_files', nargs='*', default=[], help='List of paths to saved model architectures and weights (hd5).')
     parser.add_argument('--model_layers', help='Path to a model file (hd5) which will be loaded by layer, useful for transfer learning.')
     parser.add_argument('--freeze_model_layers', default=False, action='store_true', help='Whether to freeze the layers from model_layers.')
+    parser.add_argument('--text_file', default=None, help='Path to a file with text.')
     parser.add_argument(
         '--continuous_file', default=None, help='Path to a file containing continuous values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
@@ -84,6 +87,8 @@ def parse_args():
     )
 
     # Data selection parameters
+    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
+    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
@@ -383,14 +388,21 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect, args.tensormap_prefix)
-    needed_tensor_maps = args.input_tensors + args.output_tensors + [args.sample_weight] if args.sample_weight else args.input_tensors + args.output_tensors
-    args.tensor_maps_in = [tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors]
-    args.sample_weight = tensormap_lookup(args.sample_weight, args.tensormap_prefix) if args.sample_weight else None
-    
-    if args.sample_weight:
-        assert args.sample_weight.shape == (1,)
 
+    args.tensor_maps_in = []
     args.tensor_maps_out = []
+    if args.text_file is not None:
+        del args.input_tensors[:2]
+        del args.output_tensors[0]
+        input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
+        if args.text_one_hot:
+            args.tensor_maps_in.append(input_map)
+        else:
+            args.tensor_maps_in.extend([input_map, burn_in])
+        args.tensor_maps_out.append(output_map)
+
+    args.tensor_maps_in = [tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors]
+
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
         args.tensor_maps_out.append(
@@ -404,6 +416,10 @@ def _process_args(args):
         )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
+    args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
+    args.sample_weight = tensormap_lookup(args.sample_weight, args.tensormap_prefix) if args.sample_weight else None
+    if args.sample_weight:
+        assert args.sample_weight.shape == (1,)
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
     if args.bottleneck_type == BottleneckType.NoBottleNeck:
