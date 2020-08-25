@@ -7,14 +7,11 @@ from typing.io import TextIO
 from typing import List, Tuple
 
 from ml4cvd.TensorMap import TensorMap, Interpretation
-<<<<<<< HEAD
 from ml4cvd.tensormap.general import build_tensor_from_file
-=======
->>>>>>> master
 from ml4cvd.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4cvd.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4cvd.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
-from ml4cvd.tensor_from_file import _build_tensor_from_file, random_text_window_tensor, token_dictionary_and_text_from_file
+from ml4cvd.tensormap.text import random_text_window_tensor, token_dictionary_and_text_from_file
 from ml4cvd.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 
@@ -234,7 +231,6 @@ def generate_continuous_tensor_map_from_file(
             f'{tensor_map_name}', channel_map={tensor_map_name: 0},
             tensor_from_file=build_tensor_from_file(file_name, column_name, normalization),
         )
-
 
 
 def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: bool = True) -> Tuple[TensorMap, TensorMap]:
