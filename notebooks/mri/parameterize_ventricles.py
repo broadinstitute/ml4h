@@ -1,62 +1,27 @@
 # %%
-import vtk
 import h5py
-import pandas as pd
-from parameterize_segmentation import annotation_to_poisson
+
+ff_trad = h5py.File('/mnt/disks/segmented-sax-lax/2020-07-07/2922335.hd5', 'r')
+ff_view = h5py.File('/home/pdiachil/projects/atria/2922335_newviews.hd5', 'r')
+
+
+# %%
 from ml4cvd.tensor_from_file import _mri_hd5_to_structured_grids, _mri_tensor_4d
-from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
-
-# %%
-views = ['3ch', '2ch', '4ch']
-view_format_string = 'cine_segmented_lax_{view}'
-annot_format_string = 'cine_segmented_lax_{view}_annotated'
-annot_time_format_string = 'cine_segmented_lax_{view}_annotated_{t}'
-
-channels = [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-            MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LA_cavity'], 
-            MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]
-
-petersen = pd.read_csv('/home/pdiachil/returned_lv_mass.tsv', sep='\t')
-petersen = petersen.dropna()
-
-# %%
-for i, patient in petersen.iterrows():
-    annot_datasets = []
-    with h5py.File(f'/mnt/disks/segmented-sax-lax/2020-07-07/{patient.sample_id}.hd5') as ff_trad:
-        for view in views:
-            annot_datasets.append(_mri_hd5_to_structured_grids(ff_trad, annot_format_string.format(view=view),
-                                                            view_name=view_format_string.format(view=view), 
-                                                            concatenate=True, annotation=True,
-                                                            save_path=None, order='F')[0])
-
-    
-
-    poisson_atria, poisson_volumes = annotation_to_poisson(annot_datasets, channels, views, annot_time_format_string, range(MRI_FRAMES))
-
-for i, atrium in enumerate(poisson_atria):
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetInputData(atrium)                                        
-    writer.SetFileName(f'/home/pdiachil/projects/atria/poisson_atria_{i}.vtp')
-    writer.Update()
-
-
-# %%
-
 dss_annot = []
 dss_valve = []
 for view in ['3ch', '2ch', '4ch']:
     dss_annot.append(_mri_hd5_to_structured_grids(ff_trad, f'cine_segmented_lax_{view}_annotated',
                                                   view_name=f'cine_segmented_lax_{view}', 
                                                   concatenate=True, annotation=True,
-                                                  save_path=None, order='F')[0])
+                                                  save_path=None, order='F'))
 
 dss_valve.append(_mri_hd5_to_structured_grids(ff_view, f'cine_segmented_lax_inlinevf_zoom_segmented',
                                               view_name=f'cine_segmented_lax_inlinevf', 
                                               concatenate=True, annotation=False,
-                                              save_path=None, order='F')[0])
+                                              save_path=None, order='F'))
 
 from ml4cvd.tensor_from_file import _mri_project_grids
-
+from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from utils import to_xdmf
 import vtk
 from vtk.util import numpy_support as ns
@@ -73,19 +38,20 @@ xs = np.zeros((MRI_FRAMES//step, 3))
 ys = np.zeros((MRI_FRAMES//step, 3))
 zs = np.zeros((MRI_FRAMES//step, 3))
 origins = np.zeros((MRI_FRAMES//step, 3))
+indices = list(range(0, MRI_FRAMES//step))
 
 for t in range(0, MRI_FRAMES, step):
     print(t)
     for i, (ds_valve, ds_annot, view, la_value) in enumerate(zip(dss_valve[0], dss_annot, 
                                                 ['3ch', '2ch', '4ch'],
-                                                [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                                MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LA_cavity'],
-                                                MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']])):
+                                                [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity'],
+                                                MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_cavity'],
+                                                MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LV_cavity']])):
         projected_dss = _mri_project_grids([ds_valve], ds_annot, 'cine_segmented_lax_inlinevf_zoom_segmented')
             
         arr_valve = ns.vtk_to_numpy(projected_dss[0].GetCellData().GetArray(f'cine_segmented_lax_inlinevf_zoom_segmented_projected_{t}'))
         arr_annot = ns.vtk_to_numpy(projected_dss[0].GetCellData().GetArray(f'cine_segmented_lax_{view}_annotated_{t}'))
-        arr_valve[:] = np.logical_and(arr_valve>0.5, arr_annot==la_value)
+        #arr_valve[:] = np.logical_and(arr_valve>0.5, arr_annot==la_value)
         
         threshold = vtk.vtkThreshold()
         threshold.SetInputData(projected_dss[0])
@@ -111,8 +77,10 @@ for t in range(0, MRI_FRAMES, step):
             directions[3*t//step+i] = u[:, 0]
             center[3*t//step+i] = center_direction
         except AttributeError:
+            if i in indices:
+                indices.remove(i)
             continue
-    zs[t//step] = np.cross(directions[1], directions[0])
+    zs[t//step] = np.cross(directions[indices[1]], directions[indices[0]])
     xs[t//step] = directions[0]
     ys[t//step] = np.cross(zs[-1], xs[-1])
     origins[t//step] = np.mean(center, axis=0)
@@ -174,7 +142,7 @@ for view in ['3ch', '2ch', '4ch']:
     dss_annot.append(_mri_hd5_to_structured_grids(ff_trad, f'cine_segmented_lax_{view}_annotated',
                                                   view_name=f'cine_segmented_lax_{view}', 
                                                   concatenate=True, annotation=True,
-                                                  save_path=None, order='F'))
+                                                  save_path=f'/home/pdiachil/projects/ventricles/annotated_{view}.', order='F'))
 
 dss_valve.append(_mri_hd5_to_structured_grids(ff_view, f'cine_segmented_lax_inlinevf_zoom_segmented',
                                               view_name=f'cine_segmented_lax_inlinevf', 
@@ -192,9 +160,9 @@ for t in range(0, MRI_FRAMES, step):
     append_filter = vtk.vtkAppendFilter()
     for ds_valve, ds_annot, view, la_value in zip(dss_valve[0], dss_annot, 
                                                 ['3ch', '2ch', '4ch'],
-                                                [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                                MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LA_cavity'],
-                                                MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
+                                                [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity'],
+                                                MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_cavity'],
+                                                MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LV_cavity']]):
         projected_dss = _mri_project_grids([ds_valve], ds_annot, 'cine_segmented_lax_inlinevf_zoom_segmented')
     
         arr_annot = ns.vtk_to_numpy(projected_dss[0].GetCellData().GetArray(f'cine_segmented_lax_{view}_annotated_{t}'))        
@@ -203,6 +171,7 @@ for t in range(0, MRI_FRAMES, step):
         app = cv2.drawContours(im, contours, 0, 255, 1)
         # f, ax = plt.subplots()
         # plt.imshow(app)
+        
         arr_annot[:] = app.ravel() > 128
 
         threshold = vtk.vtkThreshold()
@@ -223,7 +192,7 @@ for t in range(0, MRI_FRAMES, step):
     append_vertex_normals.append(np.vstack(append_normals))
     append_vertex_normals[-1] /= np.linalg.norm(append_vertex_normals[-1], axis=1).reshape(-1, 1)
     append_vertices.append(ns.vtk_to_numpy(append_filter.GetOutput().GetPoints().GetData()))
-    keep = np.dot((append_vertices[-1] - origins[t//step]), zs[t//step]) > 0.0
+    keep = np.dot((append_vertices[-1] - origins[t//step]), zs[t//step]) < 0.0
     append_kept_vertices.append(append_vertices[-1][keep])
     append_kept_normals.append(append_vertex_normals[-1][keep])
     append_filter.GetOutput().GetPoints().SetData(ns.numpy_to_vtk(append_kept_vertices[-1]))
@@ -236,10 +205,10 @@ for t in range(0, MRI_FRAMES, step):
     # image.SetInputConnection(reconstruction.GetOutputPort())
     # image.SetFileName('/home/pdiachil/projects/atria/reconstructed.vti')
     # image.Update()
-    # append_writer = vtk.vtkXMLUnstructuredGridWriter()
-    # append_writer.SetInputConnection(append_filter.GetOutputPort())
-    # append_writer.SetFileName(f'/home/pdiachil/projects/atria/append_{t}.vtu')
-    # append_writer.Update()
+    append_writer = vtk.vtkXMLUnstructuredGridWriter()
+    append_writer.SetInputConnection(append_filter.GetOutputPort())
+    append_writer.SetFileName(f'/home/pdiachil/projects/ventricles/append_{t}.vtu')
+    append_writer.Update()
 
 # %%
 from pypoisson import poisson_reconstruction
@@ -260,12 +229,13 @@ for t in range(0, MRI_FRAMES, step):
     polydata.SetPolys(polydata_cells)
 
     plane = vtk.vtkPlane()
-    plane.SetOrigin(origins[t//step]+3*zs[t//step])
+    plane.SetOrigin(origins[t//step]-zs[t//step])
     plane.SetNormal(zs[t//step])
 
     clip = vtk.vtkClipPolyData()
     clip.SetInputData(polydata)
     clip.SetClipFunction(plane)
+    clip.InsideOutOn()
     clip.Update()
 
     connectivity = vtk.vtkPolyDataConnectivityFilter()
@@ -275,9 +245,8 @@ for t in range(0, MRI_FRAMES, step):
 
     poisson = vtk.vtkXMLPolyDataWriter()
     poisson.SetInputData(connectivity.GetOutput())
-    poisson.SetFileName(f'/home/pdiachil/projects/atria/poisson_{t}.vtp')
+    poisson.SetFileName(f'/home/pdiachil/projects/ventricles/poisson_{t}.vtp')
     poisson.Update()
-
 # %%
 import igl
 from scipy.interpolate import Rbf
