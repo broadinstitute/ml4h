@@ -139,4 +139,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; cd ${WORKDIR}; mkdir -p atria; cd atria; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; pip install opencv-python ; cd /home/pdiachil/pypoisson ; python setup.py install ; cd ${WORKDIR}/notebooks/mri; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
