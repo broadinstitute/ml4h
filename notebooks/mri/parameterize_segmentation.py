@@ -64,7 +64,7 @@ def points_normals_to_poisson(points: np.ndarray,
     triangle_filter.SetInputConnection(clean.GetOutputPort())
     triangle_filter.Update()   
 
-    return polydata
+    return triangle_filter.GetOutput()
                               
                               
 def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
