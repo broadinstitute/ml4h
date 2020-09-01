@@ -3,11 +3,15 @@ import vtk
 import h5py
 import time
 import sys
+import glob
 import pandas as pd
+
 from parameterize_segmentation import annotation_to_poisson
 from ml4cvd.tensor_from_file import _mri_hd5_to_structured_grids, _mri_tensor_4d
 from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 
+# %%
+hd5s = glob.glob('/mnt/disks/segmented-sax-lax/2020-07-07/*.hd5')
 # %%
 start = int(sys.argv[1])
 end = int(sys.argv[2])

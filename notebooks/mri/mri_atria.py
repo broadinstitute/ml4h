@@ -14,10 +14,10 @@ import imageio
 XDMF_TRIANGLE=4
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {}
 MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'] = 11
-petersen = pd.read_csv('/home/pdiachil/ml/atria/returned_lv_mass.tsv', sep='\t')
-petersen_idxs = petersen['sample_id'].values
-for t in range(MRI_FRAMES):
-    petersen[f'LA_poisson_{t}'] = 0.0
+# petersen = pd.read_csv('/home/pdiachil/ml/atria/returned_lv_mass.tsv', sep='\t')
+# petersen_idxs = petersen['sample_id'].values
+# for t in range(MRI_FRAMES):
+#    petersen[f'LA_poisson_{t}'] = 0.0
 
 def project_3dpts_plane(pts):
     

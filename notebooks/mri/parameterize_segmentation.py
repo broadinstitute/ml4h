@@ -71,7 +71,8 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
                           channels: List[int],
                           views: List[str],
                           format_view: str,
-                          times: List[int])->List[vtk.vtkPolyData]:
+                          times: List[int],
+                          save_path: str = None)->List[vtk.vtkPolyData]:
     ncols = 256
     ncolors = 256
 
@@ -99,6 +100,15 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
             
             dataset_points = vtk.util.numpy_support.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())
             dataset_normals = dataset_points - np.mean(dataset_points, axis=0)
+
+            if save_path:
+                normals_arr = vtk.util.numpy_support.numpy_to_vtk(dataset_normals)
+                normals_arr.SetName('Normals')
+                centers.GetOutput().GetPointData().AddArray(normals_arr)
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetInputConnection(centers.GetOutputPort())
+                writer.SetFileName(f'{save_path}_{view}_{t}.vtp')
+                writer.Update()
 
             points.append(dataset_points)
             normals.append(dataset_normals)
