@@ -83,10 +83,13 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
         normals = []
         for dataset, channel, view in zip(datasets, channels, views):
             arr_annot = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(format_view.format(view=view, t=t)))
+            arr_annot_copy = np.copy(arr_annot)
             # Extract contours of the segmentation
             im = (arr_annot==channel).reshape(-1, ncols).astype(np.uint8)
-            contours, hierarchy  = cv2.findContours(im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            app = cv2.drawContours(im, contours, 0, ncolors-1, 1)
+            contours, hierarchy  = cv2.findContours(im, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            areas = [cv2.contourArea(c) for c in contours]
+            max_index = np.argmax(areas)
+            app = cv2.drawContours(im, [contours[max_index]], 0, ncolors-1, 1)
             arr_annot[:] = app.ravel() > (ncolors//2)
 
             threshold = vtk.vtkThreshold()
@@ -99,7 +102,8 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
             centers.Update()
             
             dataset_points = vtk.util.numpy_support.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())
-            dataset_normals = dataset_points - np.mean(dataset_points, axis=0)
+            dataset_normals = np.zeros_like(dataset_points)
+            dataset_normals[:] = dataset_points - np.mean(dataset_points, axis=0)
 
             if save_path:
                 normals_arr = vtk.util.numpy_support.numpy_to_vtk(dataset_normals)
@@ -112,6 +116,8 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
 
             points.append(dataset_points)
             normals.append(dataset_normals)
+
+            arr_annot[:] = arr_annot_copy
 
         points_arr = np.vstack(points)
         normals_arr = np.vstack(normals)
