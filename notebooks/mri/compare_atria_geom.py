@@ -4,13 +4,18 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from scipy.ndimage import median_filter
-df_poi = pd.concat([pd.read_csv(f'/home/pdiachil/atria_boundary/petersen_processed_{d}_{d+100}.csv') for d in range(0, 4000, 100)])
+
+df_poi = pd.concat([pd.read_csv(f'/home/pdiachil/atria_boundary_v20200901/atria_processed_{d}_{d+50}.csv') for d in range(0, 45000, 50)])
 df_poi = df_poi.reset_index()
+df_poi = df_poi.dropna()
+df_poi.to_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_v20200901.csv')
 
 df_pet = pd.read_csv('/home/pdiachil/ml/notebooks/mri/returned_lv_mass.tsv', sep='\t')
 df_pet = df_pet.merge(df_poi, on='sample_id')
 
-# df_pet.to_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary.csv')
+df_pet = df_pet.dropna()
+df_pet.to_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_v20200901.csv')
+
 
 # %%
 import scipy.signal
@@ -92,6 +97,7 @@ def plot_volume(df, idx):
 # #ax.plot(df[keys].values[idx])
 
 # %%
+%matplotlib inline
 cleaned_dfs = []
 idxs_sorted = []
 import seaborn as sns
@@ -114,16 +120,16 @@ for df, label in zip([df_pet], ['poisson']):
     petersen_min = df['LA_Biplan_vol_min'].values
     petersen_mean = 0.33*df['LA_Biplan_vol_max']+0.67*df['LA_Biplan_vol_min']
 
-    # cleaned_dfs[-1].to_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_cleaned.csv')
-
-    err  = ((ell_max-petersen_max)**2.0) / petersen_max / petersen_max
+    err  = ((ell_max-petersen_max)**2.0 + (ell_min-petersen_min)**2.0) / 0.5 / (petersen_max + petersen_min)**2.0
     idxs = err.argsort()
     idxs_sorted.append(idxs)
 
-    for nidxs in [1000, 2000, 3000, 4000]:
+    cleaned_dfs[-1].iloc[idxs_sorted[-1].values[:4000]].to_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_cleaned.csv')
+
+    for nidxs in [1000, 2000, 3000, 4000, 5000]:
         f, ax = plt.subplots()
         f.set_size_inches(3, 3)
-        ax.hexbin(ell_max[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
+        ax.hexbin(ell_max.values[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
         ax.set_xlim([0, 200])
         ax.set_ylim([0, 200])
         ax.set_aspect('equal')
@@ -132,14 +138,14 @@ for df, label in zip([df_pet], ['poisson']):
         ax.set_ylabel('LA biplane volume at max (ml)')
         ax.set_xticks([0, 50, 100, 150, 200])
         ax.set_yticks([0, 50, 100, 150, 200])
-        ax.set_title(f'n={len(ell_max[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_max[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs])[0]:.2f}')
+        ax.set_title(f'n={len(ell_max.values[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_max.values[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs])[0]:.2f}')
         plt.tight_layout()
-        f.savefig(f'/home/pdiachil/ml/notebooks/mri/{label}_vol_boundary_max_{nidxs}.png', dpi=500)
+        f.savefig(f'/home/pdiachil/ml/notebooks/mri/{label}_vol_boundary_v20200901_max_{nidxs}.png', dpi=500)
 
-    for nidxs in [1000, 2000, 3000, 4000]:
+    for nidxs in [1000, 2000, 3000, 4000, 5000]:
         f, ax = plt.subplots()
         f.set_size_inches(3, 3)
-        ax.hexbin(ell_min[idxs_sorted[-1]][:nidxs], petersen_min[idxs_sorted[-1]][:nidxs], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
+        ax.hexbin(ell_min.values[idxs_sorted[-1]][:nidxs], petersen_min[idxs_sorted[-1]][:nidxs], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
         ax.set_xlim([0, 150])
         ax.set_ylim([0, 150])
         ax.set_aspect('equal')
@@ -148,19 +154,18 @@ for df, label in zip([df_pet], ['poisson']):
         ax.set_ylabel('LA biplane volume at min (ml)')
         ax.set_xticks([0, 50, 100, 150])
         ax.set_yticks([0, 50, 100, 150])
-        ax.set_title(f'n={len(ell_max[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_min[idxs_sorted[-1]][:nidxs], petersen_min[idxs_sorted[-1]][:nidxs])[0]:.2f}')
+        ax.set_title(f'n={len(ell_min.values[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_min.values[idxs_sorted[-1]][:nidxs], petersen_min[idxs_sorted[-1]][:nidxs])[0]:.2f}')
 
         plt.tight_layout()
         f.savefig(f'/home/pdiachil/ml/notebooks/mri/{label}_vol_boundary_min_{nidxs}.png', dpi=500)
 
 
 # %%
-for idx in range(0, 3000, 100):
+for idx in range(0, 3000, 500):
     f, ax = plt.subplots()
-    ax.plot(cleaned_dfs[1].iloc[idxs[idx]][keys]/1000.0)
-    ax.plot(df.iloc[idxs[idx]][keys]/1000.0)
-    ax.plot([0, 50], [petersen_max[idxs[idx]], petersen_max[idxs[idx]]])
-    ax.plot([0, 50], [petersen_min[idxs[idx]], petersen_min[idxs[idx]]])
+    ax.plot(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]][keys])
+    ax.plot([0, 50], [petersen_max[idxs_sorted[-1].values[idx]], petersen_max[idxs_sorted[-1].values[idx]]])
+    ax.plot([0, 50], [petersen_min[idxs_sorted[-1].values[idx]], petersen_min[idxs_sorted[-1].values[idx]]])
     ax.set_xticks(np.arange(0, 60, 10))
     ax.set_xticklabels(np.arange(0, 60, 10))
 

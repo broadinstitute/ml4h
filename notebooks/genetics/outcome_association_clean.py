@@ -6,20 +6,21 @@ from outcome_association_utils import odds_ratios, hazard_ratios, plot_or_hr, un
 # %%
 ########### Pretest exercise ECGs ###########################
 # Read phenotype and covariates
-phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/la_volumes_all_covariates.csv')
+phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/la_volumes_petersen_covariates.csv')
 
-phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min']
+phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min', 'LA_Biplan_vol_max', 'LA_Biplan_vol_min']
 for pheno in phenos_to_binarize:
     phenotypes[f'{pheno}_binary'] = (phenotypes[pheno] > phenotypes[pheno].quantile(0.80)).apply(float)
 
 label_dic = {
-    'LA_Biplan_vol_max': ['LA$_{max}$ (biplane)', 'ml'],
-    'LA_Biplan_vol_min': ['LA$_{min}$ (biplane)', 'ml'],
-    'LA_poisson_cleaned_max': ['LA$_{max}$ (poisson)', 'ml'],
-    'LA_poisson_cleaned_min': ['LA$_{min}$ (poisson)', 'ml'],
-    'LA_Biplan_vol_max_binary': ['enlarged LA (biplane)', ''],     
-    'LA_poisson_cleaned_min_binary': ['enlarged LA$_{min}$ (poisson)', ''],     
-    'LA_poisson_cleaned_max_binary': ['enlarged LA (poisson)', ''],    
+    'LA_Biplan_vol_max': ['LA volume at max (biplane)', 'ml'],
+    'LA_Biplan_vol_min': ['LA volume at min (biplane)', 'ml'],
+    'LA_poisson_cleaned_max': ['LA volume at max (poisson)', 'ml'],
+    'LA_poisson_cleaned_min': ['LA volume at min (poisson)', 'ml'],
+    'LA_Biplan_vol_max_binary': ['enlarged LA at max (biplane)', ''],
+    'LA_Biplan_vol_min_binary': ['enlarged LA at min (biplane)', ''],      
+    'LA_poisson_cleaned_max_binary': ['enlarged LA at max (poisson)', ''],     
+    'LA_poisson_cleaned_min_binary': ['enlarged LA at min (poisson)', ''],    
     'resting_hr': ['Rest HR', 'beats'],
     'age': ['Age', 'yrs'],
     'male': ['Male', ''],
@@ -80,9 +81,14 @@ plot_or_hr(hazard_ratio_univariable, label_dic, disease_list, f'hr_univariate_li
 covariates = ['age', 'male']
 
 phenotype_subset = ['LA_poisson_cleaned_max_binary',
+                    'LA_Biplan_vol_max_binary',
                     'LA_poisson_cleaned_min_binary',
+                    'LA_Biplan_vol_min_binary',
                     'LA_poisson_cleaned_max', 
-                    'LA_poisson_cleaned_min']
+                    'LA_Biplan_vol_max',
+                    'LA_poisson_cleaned_min',
+                    'LA_Biplan_vol_min',
+                    ]
 labels = {key: label_dic[key] for key in phenotype_subset}
 
 odds_ratio_multivariable = odds_ratios(phenotypes, diseases_unpack, labels,
