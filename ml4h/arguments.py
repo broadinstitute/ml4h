@@ -68,7 +68,7 @@ def parse_args():
     parser.add_argument('--bigquery_dataset', default='broad-ml4cvd.ukbb7089_r10data', help='BigQuery dataset containing tables we want to query.')
     parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/', help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
-    parser.add_argument('--phenos_folder', default='gs://ml4h/phenotypes/', help='Path to folder of phenotype defining CSVs.')
+    parser.add_argument('--phenos_folder', default='gs://ml4cvd/phenotypes/', help='Path to folder of phenotype defining CSVs.')
     parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--sample_csv', default=None, help='Path to CSV with Sample IDs to restrict tensor paths')

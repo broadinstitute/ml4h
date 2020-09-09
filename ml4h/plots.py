@@ -1321,8 +1321,10 @@ def plot_categorical_tmap_over_time(counts, tmap_name, dates, fpath):
     bottom = np.zeros(len(dates)-1)
     for i, (cm, counts_cm) in enumerate(sorted(counts.items(), key=lambda kv: np.sum(kv[1]), reverse=True)):
         label = cm + f', n={int(np.sum(counts_cm))}' if i < 20 else None
-        ax.bar(range(1, len(dates)), counts_cm, width=1, bottom=bottom, edgecolor='black', linewidth=.5,
-               label=label, color=colors[i])
+        ax.bar(
+            range(1, len(dates)), counts_cm, width=1, bottom=bottom, edgecolor='black', linewidth=.5,
+            label=label, color=colors[i],
+        )
         bottom += np.array(counts_cm)
         ax.legend()
     ax.set_xlim(1, len(dates))

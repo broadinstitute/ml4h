@@ -1,9 +1,9 @@
 # Create and Use VM Boot Images
 Everytime we want new persistent disks automatically added to our VMs, we need to update the `mount`s in
-`scripts/vm_image/ml4h-image.sh`, and the `--disk` arguments in `scripts/vm_launch/launch_instance.sh` and
+`scripts/vm_image/ml4cvd-image.sh`, and the `--disk` arguments in `scripts/vm_launch/launch_instance.sh` and
 `scripts/vm_launch/launch_dl_instance.sh`, and then follow the steps listed in this section.
 
-* Verify that `scripts/vm_image/ml4h-image.sh` has the
+* Verify that `scripts/vm_image/ml4cvd-image.sh` has the
 desired auto-mounting specified under the `# Mount the persistent disks` section that should look something like
     ```
     # Mount the persistent disks
@@ -25,7 +25,7 @@ With [Homebrew](https://brew.sh/), you can use
 
 * Set up some environment variables to use throughout the rest of the section:
     ```
-    export project=broad-ml4cvd
+    export PROJECT=broad-ml4cvd
     export SERVICE_ACCOUNT=783282864357-compute@developer.gserviceaccount.com 
     export ZONE=us-central1-a
     export DATE=`date +%Y-%m-%d`
@@ -111,7 +111,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
 
 * If you're creating a **CPU** image, run the following script (**without sudo**):  
     ```
-    ./ml4h-image.sh
+    ./ml4cvd-image.sh
     ```
   If you're creating a **GPU** image, first run:
     ```
