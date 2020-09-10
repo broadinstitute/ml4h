@@ -437,25 +437,35 @@ def make_wide_file_maps(desired_map_name: str) -> Union[TensorMap, None]:
 
     if desired_map_name == 'sex_from_wide_csv':
         csv_tff = tensor_from_wide(WIDE_FILE, target='sex')
-        return TensorMap('sex_from_wide', Interpretation.CATEGORICAL, annotation_units=2, tensor_from_file=csv_tff,
-                         channel_map={'female': 0, 'male': 1})
+        return TensorMap(
+            'sex_from_wide', Interpretation.CATEGORICAL, annotation_units=2, tensor_from_file=csv_tff,
+            channel_map={'female': 0, 'male': 1},
+        )
     elif desired_map_name == 'age_from_wide_csv':
         csv_tff = tensor_from_wide(WIDE_FILE, target='age')
-        return TensorMap('age_from_wide', Interpretation.CONTINUOUS, shape=(1,),
-                         tensor_from_file=csv_tff, channel_map={'age': 0},
-                         normalization={'mean': 63.35798891483556, 'std': 7.554638350423902})
+        return TensorMap(
+            'age_from_wide', Interpretation.CONTINUOUS, shape=(1,),
+            tensor_from_file=csv_tff, channel_map={'age': 0},
+            normalization={'mean': 63.35798891483556, 'std': 7.554638350423902},
+        )
     elif desired_map_name == 'bmi_from_wide_csv':
         csv_tff = csv_tff = tensor_from_wide(WIDE_FILE, target='bmi')
-        return TensorMap('bmi_from_wide', Interpretation.CONTINUOUS, shape=(1,), channel_map={'bmi': 0},
-                         annotation_units=1, normalization={'mean': 27.3397, 'std': 4.77216}, tensor_from_file=csv_tff)
+        return TensorMap(
+            'bmi_from_wide', Interpretation.CONTINUOUS, shape=(1,), channel_map={'bmi': 0},
+            annotation_units=1, normalization={'mean': 27.3397, 'std': 4.77216}, tensor_from_file=csv_tff,
+        )
     elif desired_map_name == 'ecg_2500_from_wide_csv':
         tff = tensor_from_wide(WIDE_FILE, target='ecg')
-        return TensorMap('ecg_rest_raw', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
-                         cacheable=False, channel_map=ECG_REST_UKB_LEADS)
+        return TensorMap(
+            'ecg_rest_raw', shape=(2500, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
+            cacheable=False, channel_map=ECG_REST_UKB_LEADS,
+        )
     elif desired_map_name == 'ecg_5000_from_wide_csv':
         tff = tensor_from_wide(WIDE_FILE, target='ecg')
-        return TensorMap('ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
-                         cacheable=False, channel_map=ECG_REST_UKB_LEADS)
+        return TensorMap(
+            'ecg_rest_raw', shape=(5000, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=tff,
+            cacheable=False, channel_map=ECG_REST_UKB_LEADS,
+        )
     elif desired_map_name == 'time_to_hf_wide_csv':
         tff = tensor_from_wide(WIDE_FILE, target='time_to_event')
         return TensorMap('time_to_hf', Interpretation.TIME_TO_EVENT, tensor_from_file=tff)
@@ -554,7 +564,7 @@ def tensor_from_wide(
                 patient_data[patient_key] = {
                     'age': _days_to_years_float(row[age_index]), 'bmi': _to_float_or_none(row[bmi_index]), 'sex': row[sex_index],
                     'hf_age': _days_to_years_float(row[hf_index]), 'end_age': _days_to_years_float(row[end_index]),
-                    'start_date': datetime.datetime.strptime(row[start_index], CARDIAC_SURGERY_DATE_FORMAT)
+                    'start_date': datetime.datetime.strptime(row[start_index], CARDIAC_SURGERY_DATE_FORMAT),
                 }
 
             except ValueError as e:
@@ -694,14 +704,16 @@ def build_cardiac_surgery_tensor_maps(
     if needed_name in outcome2column:
         if cardiac_surgery_dict is None:
             cardiac_surgery_dict = build_cardiac_surgery_dict(
-                additional_columns=[outcome2column[needed_name]])
+                additional_columns=[outcome2column[needed_name]],
+            )
             channel_map = _outcome_channels(needed_name)
             sts_tmap = TensorMap(
                 needed_name,
                 Interpretation.CATEGORICAL,
                 path_prefix=PARTNERS_PREFIX,
                 tensor_from_file=make_cardiac_surgery_outcome_tensor_from_file(
-                    cardiac_surgery_dict, outcome2column[needed_name]),
+                    cardiac_surgery_dict, outcome2column[needed_name],
+                ),
                 channel_map=channel_map,
                 validator=validator_not_all_zero,
             )
@@ -712,7 +724,8 @@ def build_cardiac_surgery_tensor_maps(
 
                 if cardiac_surgery_dict is None:
                     cardiac_surgery_dict = build_cardiac_surgery_dict(
-                        additional_columns=[outcome2column[needed_name]])
+                        additional_columns=[outcome2column[needed_name]],
+                    )
                 if date_interval_lookup is None:
                     date_interval_lookup = build_date_interval_lookup(cardiac_surgery_dict)
                 sts_tmap = copy.deepcopy(tmap_map[base_name])

@@ -24,8 +24,10 @@ def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -
     return one_hot
 
 
-mnist_label = TensorMap('mnist_label', Interpretation.CATEGORICAL, tensor_from_file=mnist_label_from_hd5,
-                        channel_map={f'digit_{i}': i for i in range(10)})
+mnist_label = TensorMap(
+    'mnist_label', Interpretation.CATEGORICAL, tensor_from_file=mnist_label_from_hd5,
+    channel_map={f'digit_{i}': i for i in range(10)},
+)
 
 
 def mnist_label_as_time_to_event(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
@@ -36,8 +38,10 @@ def mnist_label_as_time_to_event(tm: TensorMap, hd5: h5py.File, dependents: Dict
     return tensor
 
 
-mnist_time_to_event = TensorMap('mnist_time_to_event', Interpretation.TIME_TO_EVENT,
-                                tensor_from_file=mnist_label_as_time_to_event)
+mnist_time_to_event = TensorMap(
+    'mnist_time_to_event', Interpretation.TIME_TO_EVENT,
+    tensor_from_file=mnist_label_as_time_to_event,
+)
 
 
 def mnist_label_as_survival_curve(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
@@ -55,8 +59,10 @@ def mnist_label_as_survival_curve(tm: TensorMap, hd5: h5py.File, dependents: Dic
     return survival_then_censor
 
 
-mnist_survival_curve = TensorMap('mnist_survival_curve', Interpretation.SURVIVAL_CURVE, shape=(50,),
-                                 tensor_from_file=mnist_label_as_survival_curve)
+mnist_survival_curve = TensorMap(
+    'mnist_survival_curve', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=mnist_label_as_survival_curve,
+)
 
 
 def mnist_as_hd5(hd5_folder):

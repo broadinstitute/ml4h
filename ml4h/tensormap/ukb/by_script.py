@@ -5928,4 +5928,3 @@ ukb_100025_0 = TensorMap('100025_Vitamin-E_0_0', loss='logcosh', path_prefix='co
 ukb_100025_1 = TensorMap('100025_Vitamin-E_1_0', loss='logcosh', path_prefix='continuous', normalization={'mean': 9.42730514219824, 'std': 5.3821109971739505}, annotation_units=1, channel_map={'100025_Vitamin-E_1_0': 0, })
 ukb_100025_3 = TensorMap('100025_Vitamin-E_3_0', loss='logcosh', path_prefix='continuous', normalization={'mean': 9.175370215143888, 'std': 5.253523156045647}, annotation_units=1, channel_map={'100025_Vitamin-E_3_0': 0, })
 ukb_100025_2 = TensorMap('100025_Vitamin-E_2_0', loss='logcosh', path_prefix='continuous', normalization={'mean': 9.485245541343879, 'std': 5.431265583618386}, annotation_units=1, channel_map={'100025_Vitamin-E_2_0': 0, })
-

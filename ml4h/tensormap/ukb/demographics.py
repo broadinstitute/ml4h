@@ -15,12 +15,16 @@ def is_genetic_woman(hd5):
     return 'Genetic-sex_Female_0_0' in hd5['categorical']
 
 
-def age_in_years_tensor(date_key,
-                         birth_key='continuous/34_Year-of-birth_0_0',
-                         population_normalize=False):
-    def age_at_tensor_from_file(tm: TensorMap,
-                                hd5: h5py.File,
-                                dependents=None):
+def age_in_years_tensor(
+    date_key,
+    birth_key='continuous/34_Year-of-birth_0_0',
+    population_normalize=False,
+):
+    def age_at_tensor_from_file(
+        tm: TensorMap,
+        hd5: h5py.File,
+        dependents=None,
+    ):
         try:
             age = np.array([hd5['ecg/latest/patient_info/Age'][()]])
         except:
@@ -35,9 +39,11 @@ def age_in_years_tensor(date_key,
 
 
 def prevalent_incident_tensor(start_date_key, event_date_key):
-    def _prevalent_incident_tensor_from_file(tm: TensorMap,
-                                             hd5: h5py.File,
-                                             dependents=None):
+    def _prevalent_incident_tensor_from_file(
+        tm: TensorMap,
+        hd5: h5py.File,
+        dependents=None,
+    ):
         index = 0
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
         if tm.hd5_key_guess() in hd5:
@@ -51,7 +57,7 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
             categorical_data[index] = 1.0
         else:
             raise ValueError(
-                f"No HD5 Key at prefix {tm.path_prefix} found for tensor map: {tm.name}."
+                f"No HD5 Key at prefix {tm.path_prefix} found for tensor map: {tm.name}.",
             )
 
         if index != 0:
@@ -77,7 +83,7 @@ def preprocess_with_function(fxn, hd5_key=None):
             continuous_data[0] = tm.hd5_first_dataset_in_group(hd5, my_key)[0]
         if missing and tm.sentinel is None:
             raise ValueError(
-                f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.'
+                f'No value found for {tm.name}, a continuous TensorMap with no sentinel value, and channel keys:{list(tm.channel_map.keys())}.',
             )
         elif missing:
             continuous_data[:] = tm.sentinel
@@ -99,7 +105,8 @@ def _weekly_alcohol(instance):
         drinks = 0
         for k in alcohol_keys:
             data = tm.hd5_first_dataset_in_group(
-                hd5, key_prefix=f'{tm.path_prefix}/{k}')
+                hd5, key_prefix=f'{tm.path_prefix}/{k}',
+            )
             drinks += float(data[0])
         return np.array([drinks], dtype=np.float32)
 
@@ -112,7 +119,7 @@ log_25781_2 = TensorMap(
     path_prefix='continuous',
     normalization={
         'mean': 7,
-        'std': 8
+        'std': 8,
     },
     tensor_from_file=preprocess_with_function(np.log),
     channel_map={'white-matter-hyper-intensities': 0},
@@ -123,29 +130,37 @@ weight_lbs_2 = TensorMap(
     Interpretation.CONTINUOUS,
     normalization={
         'mean': 168.74,
-        'std': 34.1
+        'std': 34.1,
     },
     loss='logcosh',
     channel_map={'weight_lbs': 0},
-    tensor_from_file=preprocess_with_function(lambda x: x * 2.20462,
-                                              'continuous/21002_Weight_2_0'),
+    tensor_from_file=preprocess_with_function(
+        lambda x: x * 2.20462,
+        'continuous/21002_Weight_2_0',
+    ),
 )
 
-weekly_alcohol_0 = TensorMap('weekly_alcohol_0',
-                             loss='logcosh',
-                             path_prefix='continuous',
-                             channel_map={'weekly_alcohol_0': 0},
-                             tensor_from_file=_weekly_alcohol(0))
-weekly_alcohol_1 = TensorMap('weekly_alcohol_1',
-                             loss='logcosh',
-                             path_prefix='continuous',
-                             channel_map={'weekly_alcohol_1': 0},
-                             tensor_from_file=_weekly_alcohol(1))
-weekly_alcohol_2 = TensorMap('weekly_alcohol_2',
-                             loss='logcosh',
-                             path_prefix='continuous',
-                             channel_map={'weekly_alcohol_2': 0},
-                             tensor_from_file=_weekly_alcohol(2))
+weekly_alcohol_0 = TensorMap(
+    'weekly_alcohol_0',
+    loss='logcosh',
+    path_prefix='continuous',
+    channel_map={'weekly_alcohol_0': 0},
+    tensor_from_file=_weekly_alcohol(0),
+)
+weekly_alcohol_1 = TensorMap(
+    'weekly_alcohol_1',
+    loss='logcosh',
+    path_prefix='continuous',
+    channel_map={'weekly_alcohol_1': 0},
+    tensor_from_file=_weekly_alcohol(1),
+)
+weekly_alcohol_2 = TensorMap(
+    'weekly_alcohol_2',
+    loss='logcosh',
+    path_prefix='continuous',
+    channel_map={'weekly_alcohol_2': 0},
+    tensor_from_file=_weekly_alcohol(2),
+)
 
 ###
 weight_kg = TensorMap('weight_kg',  Interpretation.CONTINUOUS, normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh', channel_map={'weight_kg': 0})
@@ -636,4 +651,3 @@ categorical_phenotypes_134 = TensorMap(
             'Workplace-very-dusty_Rarelynever_0_0': 127, 'Workplace-very-dusty_Rarelynever_0_1': 128,
         },
 )
-

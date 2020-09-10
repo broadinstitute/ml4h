@@ -29,10 +29,16 @@ def _ttn_tensor_from_file(tm, hd5, dependents={}):
     return categorical_data
 
 
-ttntv = TensorMap('has_ttntv',  Interpretation.CATEGORICAL, channel_map={
-                           'no_TTN_tv': 0, 'TTN_tv': 1}, tensor_from_file=_ttn_tensor_from_file)
-ttntv_10x = TensorMap('has_ttntv',  Interpretation.CATEGORICAL, channel_map={
-                               'no_TTN_tv': 0, 'TTN_tv': 1}, loss_weight=10.0, tensor_from_file=_ttn_tensor_from_file)
+ttntv = TensorMap(
+    'has_ttntv',  Interpretation.CATEGORICAL, channel_map={
+    'no_TTN_tv': 0, 'TTN_tv': 1,
+    }, tensor_from_file=_ttn_tensor_from_file,
+)
+ttntv_10x = TensorMap(
+    'has_ttntv',  Interpretation.CATEGORICAL, channel_map={
+    'no_TTN_tv': 0, 'TTN_tv': 1,
+    }, loss_weight=10.0, tensor_from_file=_ttn_tensor_from_file,
+)
 
 
 bsa_mosteller = TensorMap('bsa_mosteller',  Interpretation.CONTINUOUS, normalization={'mean': 1.8894831981880114, 'std': 0.22169301057810176}, loss='logcosh', channel_map={'bsa_mosteller': 0})
@@ -76,4 +82,3 @@ genetic_caucasian_weighted = TensorMap(
     'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical',
     channel_map={'no_caucasian': 0, 'caucasian': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'),
 )
-

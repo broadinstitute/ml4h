@@ -7,7 +7,7 @@ import numpy as np
 
 def token_dictionary_and_text_from_file(
         text_file: str,
-        remove_special_chars: bool = True
+        remove_special_chars: bool = True,
 ) -> Tuple[str, Dict[str, int]]:
     texts = []
     characters = set()
@@ -25,9 +25,11 @@ def token_dictionary_and_text_from_file(
     return ''.join(texts), char2index
 
 
-def random_text_window_tensor(text: str,
-                              window_size: int,
-                              one_hot: bool = True) -> Callable:
+def random_text_window_tensor(
+    text: str,
+    window_size: int,
+    one_hot: bool = True,
+) -> Callable:
     def text_from_file(tm, _, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         random_index = np.random.randint(window_size, len(text)-window_size)

@@ -72,8 +72,11 @@ def _healthy_hrr(tm: TensorMap, hd5: h5py.File, dependents=None):
 def _median_pretest(tm: TensorMap, hd5: h5py.File, dependents=None):
     _healthy_check(hd5)
     times = get_tensor_at_first_date(hd5, 'ecg_bike', 'trend_time')
-    tensor = np.abs(get_tensor_at_first_date(
-        hd5, tm.path_prefix, 'float_array', tm.name))
+    tensor = np.abs(
+        get_tensor_at_first_date(
+        hd5, tm.path_prefix, 'float_array', tm.name,
+        ),
+    )
     return np.median(tensor[times <= 15])
 
 
@@ -128,27 +131,34 @@ def _make_ecg_rest(
             roll = np.random.randint(2500)
         if tm.dependent_map is not None:
             dependents[tm.dependent_map] = np.zeros(
-                tm.dependent_map.shape, dtype=np.float32)
+                tm.dependent_map.shape, dtype=np.float32,
+            )
             key_choices = [k for k in hd5[tm.path_prefix] if tm.name in k]
             lead_idx = np.random.choice(key_choices)
             tensor = np.reshape(
-                hd5[tm.path_prefix][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F')
+                hd5[tm.path_prefix][lead_idx][: tensor.shape[0] * tensor.shape[1]], tensor.shape, order='F',
+            )
             dependents[tm.dependent_map][:, 0] = np.array(
-                hd5[tm.path_prefix][lead_idx.replace(tm.name, tm.dependent_map.name)])
+                hd5[tm.path_prefix][lead_idx.replace(tm.name, tm.dependent_map.name)],
+            )
             dependents[tm.dependent_map] = tm.zero_mean_std1(
-                dependents[tm.dependent_map])
+                dependents[tm.dependent_map],
+            )
         else:
             for k in hd5[tm.path_prefix]:
                 if k in tm.channel_map:
                     data = tm.hd5_first_dataset_in_group(
-                        hd5, f'{tm.path_prefix}/{k}/')
+                        hd5, f'{tm.path_prefix}/{k}/',
+                    )
                     if short_time_nperseg > 0 and short_time_noverlap > 0:
                         f, t, short_time_ft = scipy.signal.stft(
-                            data, nperseg=short_time_nperseg, noverlap=short_time_noverlap)
+                            data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
+                        )
                         tensor[..., tm.channel_map[k]] = short_time_ft
                     elif downsample_steps > 1:
                         tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[
-                                                                ::downsample_steps]
+                                                                ::downsample_steps
+                        ]
                     elif random_roll:
                         tensor[:, tm.channel_map[k]] = np.roll(data, roll)
                     else:
@@ -174,8 +184,11 @@ def _get_lead_cm(length):
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
         categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        ecg_interpretation = str(tm.hd5_first_dataset_in_group(
-            hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
+        ecg_interpretation = str(
+            tm.hd5_first_dataset_in_group(
+            hd5, 'ukb_ecg_rest/ecg_rest_text/',
+            )[()],
+        )
         if skip_poor and 'Poor data quality' in ecg_interpretation:
             raise ValueError(f'Poor data quality skipped by {tm.name}.')
         for channel in tm.channel_map:
@@ -193,8 +206,11 @@ def _make_rhythm_tensor(skip_poor=True):
 
 def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    ecg_interpretation = str(tm.hd5_first_dataset_in_group(
-        hd5, 'ukb_ecg_rest/ecg_rest_text/')[()])
+    ecg_interpretation = str(
+        tm.hd5_first_dataset_in_group(
+        hd5, 'ukb_ecg_rest/ecg_rest_text/',
+        )[()],
+    )
     for channel in tm.channel_map:
         if channel in ecg_interpretation:
             categorical_data[tm.channel_map[channel]] = 1.0
@@ -204,7 +220,8 @@ def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
         return categorical_data
     else:
         raise ValueError(
-            f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}")
+            f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}",
+        )
 
 
 # Extract RAmplitude and SAmplitude for LVH criteria
@@ -212,9 +229,11 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
     def ukb_ecg_rest_from_file(tm, hd5, dependents={}):
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError(
-                'Group with R and S amplitudes not present in hd5')
+                'Group with R and S amplitudes not present in hd5',
+            )
         tensor = get_tensor_at_first_date(
-            hd5, tm.path_prefix, tm.name, pass_nan)
+            hd5, tm.path_prefix, tm.name, pass_nan,
+        )
         try:
             if population_normalize is None:
                 tensor = tm.zero_mean_std1(tensor)
@@ -236,16 +255,20 @@ def _make_ukb_ecg_rest_lvh():
         cornell_male_min = 2800.0
         if 'ukb_ecg_rest' not in hd5:
             raise ValueError(
-                'Group with R and S amplitudes not present in hd5')
+                'Group with R and S amplitudes not present in hd5',
+            )
         tensor_ramp = get_tensor_at_first_date(
-            hd5, tm.path_prefix, 'ramplitude', pass_nan)
+            hd5, tm.path_prefix, 'ramplitude', pass_nan,
+        )
         tensor_samp = get_tensor_at_first_date(
-            hd5, tm.path_prefix, 'samplitude', pass_nan)
+            hd5, tm.path_prefix, 'samplitude', pass_nan,
+        )
         criteria_sleads = [lead_order[l] for l in ['V1', 'V3']]
         criteria_rleads = [lead_order[l] for l in ['aVL', 'V5', 'V6']]
         if np.any(np.isnan(np.union1d(tensor_ramp[criteria_rleads], tensor_samp[criteria_sleads]))):
             raise ValueError(
-                'Missing some of the R and S amplitude readings needed to evaluate LVH criteria')
+                'Missing some of the R and S amplitude readings needed to evaluate LVH criteria',
+            )
         is_female = 'Genetic-sex_Female_0_0' in hd5['categorical']
         is_male = 'Genetic-sex_Male_0_0' in hd5['categorical']
         # If genetic sex not available, try phenotypic
@@ -269,7 +292,8 @@ def _make_ukb_ecg_rest_lvh():
                 is_lvh = is_lvh > cornell_male_min
         else:
             raise ValueError(
-                f'{tm.name} criterion for LVH is not accounted for')
+                f'{tm.name} criterion for LVH is not accounted for',
+            )
         # Following convention from categorical TMAPS, positive has cmap index 1
         tensor = np.zeros(tm.shape, dtype=np.float32)
         index = 0
@@ -284,7 +308,8 @@ def _ecg_rest_to_segment(population_normalize=None, hertz=500, random_offset_sec
     def ecg_rest_section_to_segment(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         segmented = tm.dependent_map.hd5_first_dataset_in_group(
-            hd5, tm.dependent_map.hd5_key_guess())
+            hd5, tm.dependent_map.hd5_key_guess(),
+        )
         offset_seconds = float(segmented.attrs['offset_seconds'])
         random_offset_samples = 0
         if random_offset_seconds > 0:
@@ -293,13 +318,16 @@ def _ecg_rest_to_segment(population_normalize=None, hertz=500, random_offset_sec
             random_offset_samples = int(random_offset_begin * hertz)
         offset_begin = int(offset_seconds * hertz)
         segment_index = np.array(
-            segmented[random_offset_samples:random_offset_samples+tm.dependent_map.shape[0]], dtype=np.float32)
+            segmented[random_offset_samples:random_offset_samples+tm.dependent_map.shape[0]], dtype=np.float32,
+        )
         dependents[tm.dependent_map] = to_categorical(
-            segment_index, tm.dependent_map.shape[-1])
+            segment_index, tm.dependent_map.shape[-1],
+        )
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
                 tensor[:, tm.channel_map[k]] = np.array(hd5[tm.path_prefix][k], dtype=np.float32)[
-                                                        offset_begin:offset_begin+tm.shape[0]]
+                                                        offset_begin:offset_begin+tm.shape[0]
+                ]
         if population_normalize is None:
             tm.normalization = {'zero_mean_std1': 1.0}
         else:
@@ -354,14 +382,20 @@ ecg_bike_recovery = TensorMap(
 )
 ecg_bike_pretest = TensorMap(
     'full', shape=(500 * 15 - 4, 3), path_prefix='ecg_bike', validator=no_nans,
-    normalization={'mean': np.array(
-        [7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
+    normalization={
+        'mean': np.array(
+        [7, -7, 3.5],
+        )[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis],
+    },
     tensor_from_file=_first_date_bike_pretest,
 )
 ecg_bike_pretest_5k = TensorMap(
     'full', shape=(5000, 3), path_prefix='ecg_bike', validator=no_nans,
-    normalization={'mean': np.array(
-        [7, -7, 3.5])[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis]},
+    normalization={
+        'mean': np.array(
+        [7, -7, 3.5],
+        )[np.newaxis], 'std': np.array([31, 30, 16])[np.newaxis],
+    },
     tensor_from_file=_first_date_bike_pretest,
 )
 ecg_bike_new_hrr = TensorMap(
@@ -378,7 +412,8 @@ ecg_bike_hrr_student = TensorMap(
     'hrr', path_prefix='ecg_bike', metrics=['mae'], shape=(1,),
     normalization={'mean': 31, 'std': 12}, sentinel=_HRR_SENTINEL,
     tensor_from_file=build_tensor_from_file(
-        'inference.tsv', 'ecg_bike_hrr-sentinel_prediction'),
+        'inference.tsv', 'ecg_bike_hrr-sentinel_prediction',
+    ),
 )
 ecg_bike_hr_achieved = TensorMap(
     'hr_achieved', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
@@ -455,59 +490,93 @@ ecg_median_1lead = TensorMap(
 ecg_rest_1lead = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(600, 8), path_prefix='ukb_ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
     dependent_map=ecg_median_1lead, normalization={
-        'zero_mean_std1': 1.0},
+        'zero_mean_std1': 1.0,
+    },
 )
 
-ecg_rest_raw = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
-                                 channel_map=ECG_REST_LEADS)
+ecg_rest_raw = TensorMap(
+    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
+    channel_map=ECG_REST_LEADS,
+)
 
-ecg_rest_raw_roll = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
-                                       channel_map=ECG_REST_LEADS, cacheable=False)
-ecg_rest_raw_warp = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
-                                       channel_map=ECG_REST_LEADS, cacheable=False)
-ecg_rest_raw_warp_n_roll = TensorMap('ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True, warp=True),
-                                              channel_map=ECG_REST_LEADS, cacheable=False)
-ecg_rest_raw_100 = TensorMap('ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
-                                      channel_map=ECG_REST_LEADS)
+ecg_rest_raw_roll = TensorMap(
+    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True),
+    channel_map=ECG_REST_LEADS, cacheable=False,
+)
+ecg_rest_raw_warp = TensorMap(
+    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, warp=True),
+    channel_map=ECG_REST_LEADS, cacheable=False,
+)
+ecg_rest_raw_warp_n_roll = TensorMap(
+    'ecg_rest_raw', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=2000.0, random_roll=True, warp=True),
+    channel_map=ECG_REST_LEADS, cacheable=False,
+)
+ecg_rest_raw_100 = TensorMap(
+    'ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(population_normalize=100.0),
+    channel_map=ECG_REST_LEADS,
+)
 
-ecg_rest = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                              channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0})
-ecg_rest_2500_ukb = TensorMap('ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                       tensor_from_file=_make_ecg_rest(downsample_steps=2), normalization={'zero_mean_std1': 1.0})
+ecg_rest = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
+)
+ecg_rest_2500_ukb = TensorMap(
+    'ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+    tensor_from_file=_make_ecg_rest(downsample_steps=2), normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_rest_stft = TensorMap('ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                   tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32), normalization={'zero_mean_std1': 1.0})
-ecg_rest_stft_512 = TensorMap('ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-                                       tensor_from_file=_make_ecg_rest(short_time_nperseg=512, short_time_noverlap=496), normalization={'zero_mean_std1': 1.0})
+ecg_rest_stft = TensorMap(
+    'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32), normalization={'zero_mean_std1': 1.0},
+)
+ecg_rest_stft_512 = TensorMap(
+    'ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+    tensor_from_file=_make_ecg_rest(short_time_nperseg=512, short_time_noverlap=496), normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_rest = TensorMap('strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                              channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0})
+ecg_rest = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_rest_stack = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 12, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-                                    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0})
+ecg_rest_stack = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(600, 12, 8), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_rest_median_raw = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
-                                         metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS)
+ecg_rest_median_raw = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(population_normalize=2000.0),
+    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS,
+)
 
-ecg_rest_median = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-                                     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization={'zero_mean_std1': 1.0})
+ecg_rest_median = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_rest_median_stack = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12, 1), activation='linear', tensor_from_file=_make_ecg_rest(),
-                                           metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
-                                           channel_map=ECG_REST_MEDIAN_LEADS, normalization={'zero_mean_std1': 1.0})
+ecg_rest_median_stack = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12, 1), activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae', 'logcosh'], loss='logcosh', loss_weight=1.0,
+    channel_map=ECG_REST_MEDIAN_LEADS, normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_median_1lead = TensorMap('median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
-                                      activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0}, normalization={'zero_mean_std1': 1.0})
+ecg_median_1lead = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 1), loss='logcosh', loss_weight=10.0, tensor_from_file=_make_ecg_rest(),
+    activation='linear', metrics=['mse', 'mae', 'logcosh'], channel_map={'lead': 0}, normalization={'zero_mean_std1': 1.0},
+)
 
-ecg_rest_1lead = TensorMap('strip', Interpretation.CONTINUOUS, shape=(600, 8), path_prefix='ukb_ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
-                                    dependent_map=ecg_median_1lead, normalization={'zero_mean_std1': 1.0})
+ecg_rest_1lead = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(600, 8), path_prefix='ukb_ecg_rest', channel_map={'lead': 0}, tensor_from_file=_make_ecg_rest(),
+    dependent_map=ecg_median_1lead, normalization={'zero_mean_std1': 1.0},
+)
 
 
 ecg_median_1lead_categorical = TensorMap(
     'median',  Interpretation.CATEGORICAL, shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
     channel_map=_get_lead_cm(32)[0], normalization={'zero_mean_std1': 1.0},
     loss=weighted_crossentropy(
-        np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical'),
+        np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical',
+    ),
 )
 
 ecg_rest_1lead_categorical = TensorMap(
@@ -523,15 +592,20 @@ ecg_rest_1lead_categorical = TensorMap(
 ecg_rhythm = TensorMap(
     'ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(),
     loss=weighted_crossentropy([1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm'),
-    channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2,
-        'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
+    channel_map={
+        'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2,
+        'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5,
+    },
 )
 ecg_rhythm_poor = TensorMap(
     'ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
     loss=weighted_crossentropy(
-        [1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor'),
-    channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2,
-        'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
+        [1.0, 2.0, 3.0, 3.0, 20.0, 20.0], 'ecg_rhythm_poor',
+    ),
+    channel_map={
+        'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2,
+        'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5,
+    },
 )
 
 ecg_rest_age = TensorMap(
@@ -546,8 +620,10 @@ acute_mi = TensorMap(
 
 anterior_blocks = TensorMap(
     'anterior_blocks', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_anterior_blocks': 0, 'Left anterior fascicular block': 1,
-        'Left posterior fascicular block': 2},
+    channel_map={
+        'no_anterior_blocks': 0, 'Left anterior fascicular block': 1,
+        'Left posterior fascicular block': 2,
+    },
     loss=weighted_crossentropy([0.1, 10.0, 10.0], 'anterior_blocks'),
 )
 
@@ -558,30 +634,39 @@ av_block = TensorMap(
 
 incomplete_right_bundle_branch_block = TensorMap(
     'incomplete_right_bundle_branch_block', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_incomplete_right_bundle_branch_block': 0,
-        'Incomplete right bundle branch block': 1},
+    channel_map={
+        'no_incomplete_right_bundle_branch_block': 0,
+        'Incomplete right bundle branch block': 1,
+    },
     loss=weighted_crossentropy(
-        [0.1, 10.0], 'incomplete_right_bundle_branch_block'),
+        [0.1, 10.0], 'incomplete_right_bundle_branch_block',
+    ),
 )
 
 infarcts = TensorMap(
     'infarcts', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2,
-        'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5},
+    channel_map={
+        'no_infarcts': 0, 'Anterior infarct': 1, 'Anteroseptal infarct': 2,
+        'Inferior infarct': 3, 'Lateral infarct': 4, 'Septal infarct': 5,
+    },
     loss=weighted_crossentropy([0.1, 4.0, 6.0, 7.0, 6.0, 4.0], 'infarcts'),
 )
 
 left_atrial_enlargement = TensorMap(
     'left_atrial_enlargement', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_left_atrial_enlargement': 0,
-        'Left atrial enlargement': 1},
+    channel_map={
+        'no_left_atrial_enlargement': 0,
+        'Left atrial enlargement': 1,
+    },
     loss=weighted_crossentropy([0.1, 10.0], 'left_atrial_enlargement'),
 )
 
 left_ventricular_hypertrophy = TensorMap(
     'left_ventricular_hypertrophy', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_left_ventricular_hypertrophy': 0,
-        'Left ventricular hypertrophy': 1},
+    channel_map={
+        'no_left_ventricular_hypertrophy': 0,
+        'Left ventricular hypertrophy': 1,
+    },
     loss=weighted_crossentropy([0.1, 10.0], 'left_ventricular_hypertrophy'),
 )
 
@@ -598,23 +683,30 @@ lvh_fine = TensorMap(
 
 premature_atrial_complexes = TensorMap(
     'premature_atrial_complexes', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_premature_atrial_complexes': 0,
-        'premature atrial complexes': 1},
+    channel_map={
+        'no_premature_atrial_complexes': 0,
+        'premature atrial complexes': 1,
+    },
     loss=weighted_crossentropy([0.1, 10.0], 'premature_atrial_complexes'),
 )
 
 premature_supraventricular_complexes = TensorMap(
     'premature_supraventricular_complexes', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_premature_supraventricular_complexes': 0,
-        'premature supraventricular complexes': 1},
+    channel_map={
+        'no_premature_supraventricular_complexes': 0,
+        'premature supraventricular complexes': 1,
+    },
     loss=weighted_crossentropy(
-        [0.1, 10.0], 'premature_supraventricular_complexes'),
+        [0.1, 10.0], 'premature_supraventricular_complexes',
+    ),
 )
 
 premature_ventricular_complexes = TensorMap(
     'premature_ventricular_complexes', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'no_premature_ventricular_complexes': 0,
-        'premature ventricular complexes': 1},
+    channel_map={
+        'no_premature_ventricular_complexes': 0,
+        'premature ventricular complexes': 1,
+    },
     loss=weighted_crossentropy([0.1, 10.0], 'premature_ventricular_complexes'),
 )
 

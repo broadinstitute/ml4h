@@ -42,10 +42,12 @@ def nan_to_mean(tensor, max_allowed_nan_fraction=.2):
     return tensor
 
 
-def get_tensor_at_first_date(hd5: h5py.File,
-                             path_prefix: str,
-                             name: str,
-                             handle_nan=fail_nan):
+def get_tensor_at_first_date(
+    hd5: h5py.File,
+    path_prefix: str,
+    name: str,
+    handle_nan=fail_nan,
+):
     """
     Gets the numpy array at the first date of path_prefix, dtype, name.
     """
@@ -54,7 +56,8 @@ def get_tensor_at_first_date(hd5: h5py.File,
         raise ValueError(f'No {name} values values available.')
     tensor = np.array(
         hd5[f'{tensor_path(path_prefix=path_prefix, name=name)}{min(dates)}/'],
-        dtype=np.float32)
+        dtype=np.float32,
+    )
     tensor = handle_nan(tensor)
     return tensor
 
@@ -65,7 +68,8 @@ def pad_or_crop_array_to_shape(new_shape: Tuple, original: np.ndarray):
     result = np.zeros(new_shape)
     slices = tuple(
         slice(min(original.shape[i], new_shape[i]))
-        for i in range(len(original.shape)))
+        for i in range(len(original.shape))
+    )
 
     # Allow expanding one dimension eg (256, 256) can become (256, 256, 1)
     if len(new_shape) - len(original.shape) == 1:
@@ -83,12 +87,14 @@ def normalized_first_date(tm: TensorMap, hd5: h5py.File, dependents=None):
         return pad_or_crop_array_to_shape(tm.shape, tensor)
     else:
         return tensor
-    
 
-def build_tensor_from_file(file_name: str,
-                           target_column: str,
-                           normalization: bool = False,
-                           delimiter: str = '\t'):
+
+def build_tensor_from_file(
+    file_name: str,
+    target_column: str,
+    normalization: bool = False,
+    delimiter: str = '\t',
+):
     """
     Build a tensor_from_file function from a column in a file.
     Only works for continuous values.
@@ -103,7 +109,8 @@ def build_tensor_from_file(file_name: str,
             table = {row[0]: np.array([float(row[index])]) for row in reader}
             if normalization:
                 value_array = np.array(
-                    [sub_array[0] for sub_array in table.values()])
+                    [sub_array[0] for sub_array in table.values()],
+                )
                 mean = value_array.mean()
                 std = value_array.std()
                 logging.info(
@@ -118,8 +125,12 @@ def build_tensor_from_file(file_name: str,
         if normalization:
             tm.normalization = {'mean': mean, 'std': std}
         try:
-            return table[os.path.basename(hd5.filename).replace('.hd5',
-                                                                '')].copy()
+            return table[
+                os.path.basename(hd5.filename).replace(
+                    '.hd5',
+                    '',
+                )
+            ].copy()
         except KeyError:
             raise KeyError(f'User id not in file {file_name}.')
 
