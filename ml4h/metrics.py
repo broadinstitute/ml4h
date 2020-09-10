@@ -411,12 +411,12 @@ def get_metric_dict(output_tensor_maps):
             metrics[tm.loss.__name__] = tm.loss
             losses.append(tm.loss)
 
-    def loss_fxn(y_true, y_pred):
+    def loss(y_true, y_pred):
         my_loss = 0
         for my_loss_fxn, loss_weight in zip(losses, loss_weights):
             my_loss += loss_weight * my_loss_fxn(y_true, y_pred)
         return my_loss
-    metrics['loss'] = loss_fxn
+    metrics['loss'] = loss
 
     return metrics
 
