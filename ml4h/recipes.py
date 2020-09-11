@@ -285,14 +285,14 @@ def infer_multimodal_multitask(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
-def hidden_inference_file_name(output_folder: str, id_: str) -> str:
-    return os.path.join(output_folder, id_, 'hidden_inference_' + id_ + '.tsv')
+def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: str) -> str:
+    return os.path.join(output_folder, id_, prefix_ + id_ + extension_)
 
 
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
-    inference_tsv = hidden_inference_file_name(args.output_folder, args.id)
+    inference_tsv = _hidden_file_name(args.output_folder, 'hidden_inference', args.id, '.tsv')
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
@@ -303,6 +303,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     generate_test.set_worker_paths(tensor_paths)
     full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
+    embed_model.save(_hidden_file_name(args.output_folder, f'{args.hidden_layer}_encoder', args.id, '.tsv'))
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
     latent_dimensions = int(np.prod(dummy_out.shape[1:]))
