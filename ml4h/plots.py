@@ -460,7 +460,7 @@ def subplot_pearson_per_class(
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches='tight')
     plt.clf()
-    logging.info(f"Saved Pearson correlations at: {figure_path} with {len(protected)} protected TensorMaps.")
+    logging.info(f"{label_text} saved at: {figure_path}{f' with {len(protected)} protected TensorMaps.' if len(protected) else '.'}")
     return labels_to_areas
 
 
