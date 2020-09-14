@@ -87,7 +87,26 @@ Any messages returned by `pylint` are intended to be self-explanatory, but that 
 
 ## Testing of `recipes`
 
-TODO(everyone) add more here
+Unit tests can be run in Docker with
+```
+${HOME}/ml/scripts/tf.sh -T ${HOME}/ml/tests
+```
+Unit tests can be run locally in a conda environment with
+```
+python -m pytest ${HOME}/ml/tests
+```
+Some of the unit tests are slow due to creating, saving and loading `tensorflow` models.
+To skip those tests to move quickly, run
+```
+python -m pytest ${HOME}/ml/tests -m "not slow"
+```
+pytest can also run specific tests using `::`. For example
+
+```
+python -m pytest ${HOME}/ml/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
+```
+
+For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
 
 ## Testing of `visualization_tools`
 
