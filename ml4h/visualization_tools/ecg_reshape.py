@@ -9,7 +9,8 @@ from ml4h.defines import ECG_BIKE_LEADS
 from ml4h.defines import ECG_REST_LEADS
 from ml4h.runtime_data_defines import get_exercise_ecg_hd5_folder
 from ml4h.runtime_data_defines import get_resting_ecg_hd5_folder
-from ml4h.tensor_maps_by_hand import TMAPS
+from ml4h.TensorMap import TensorMap
+import ml4h.tensormap.ukb.ecg as ecg_tmaps
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -17,21 +18,21 @@ import tensorflow as tf
 
 RAW_SCALE = 0.005  # Convert to mV.
 SAMPLING_RATE = 500.0
-DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME = 'ecg_rest'
+DEFAULT_RESTING_ECG_SIGNAL_TMAP = ecg_tmaps.ecg_rest
 
 # TODO(deflaux): parameterize exercise ECG by TMAP name if there is similar ECG data from other studies.
-EXERCISE_ECG_SIGNAL_TMAP = TMAPS['ecg-bike-raw-full']
+EXERCISE_ECG_SIGNAL_TMAP = ecg_tmaps.ecg_bike_raw_full
 EXERCISE_ECG_TREND_TMAPS = [
-    TMAPS['ecg-bike-raw-trend-hr'],
-    TMAPS['ecg-bike-raw-trend-load'],
-    TMAPS['ecg-bike-raw-trend-grade'],
-    TMAPS['ecg-bike-raw-trend-artifact'],
-    TMAPS['ecg-bike-raw-trend-mets'],
-    TMAPS['ecg-bike-raw-trend-pacecount'],
-    TMAPS['ecg-bike-raw-trend-phasename'],
-    TMAPS['ecg-bike-raw-trend-phasetime'],
-    TMAPS['ecg-bike-raw-trend-time'],
-    TMAPS['ecg-bike-raw-trend-vecount'],
+    ecg_tmaps.ecg_bike_raw_trend_hr,
+    ecg_tmaps.ecg_bike_raw_trend_load,
+    ecg_tmaps.ecg_bike_raw_trend_grade,
+    ecg_tmaps.ecg_bike_raw_trend_artifact,
+    ecg_tmaps.ecg_bike_raw_trend_mets,
+    ecg_tmaps.ecg_bike_raw_trend_pacecount,
+    ecg_tmaps.ecg_bike_raw_trend_phasename,
+    ecg_tmaps.ecg_bike_raw_trend_phasetime,
+    ecg_tmaps.ecg_bike_raw_trend_time,
+    ecg_tmaps.ecg_bike_raw_trend_vecount,
 ]
 EXERCISE_PHASES = {0.0: 'Pretest', 1.0: 'Exercise', 2.0: 'Recovery'}
 
@@ -43,14 +44,14 @@ def _examine_available_keys(hd5: Dict[str, Any]) -> None:
 
 
 def reshape_resting_ecg_to_tidy(
-    sample_id: Union[int, str], folder: Optional[str] = None, tmap_name: str = DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME,
+    sample_id: Union[int, str], folder: Optional[str] = None, tmap: TensorMap = DEFAULT_RESTING_ECG_SIGNAL_TMAP,
 ) -> pd.DataFrame:
   """Wrangle resting ECG data to tidy.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
-    tmap_name: The name of the TMAP to use for ecg input.
+    tmap: The TensorMap to use for ECG input.
 
   Returns:
     A pandas dataframe in tidy format or print a notebook-friendly error and return an empty dataframe.
@@ -72,10 +73,10 @@ def reshape_resting_ecg_to_tidy(
 
     with h5py.File(local_path, mode='r') as hd5:
       try:
-        signals = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], hd5)
+        signals = tmap.tensor_from_file(tmap, hd5)
       except (KeyError, ValueError) as e:
-        print(f'''Warning: Resting ECG TMAP {tmap_name} not available for sample {sample_id}.
-        Use the tmap_name parameter to choose a different TMAP.\n\n{e}''')
+        print(f'''Warning: Resting ECG TMAP {tmap.name} not available for sample {sample_id}.
+        Use the tmap parameter to choose a different TMAP.\n\n{e}''')
         _examine_available_keys(hd5)
         return pd.DataFrame(data)
       for (lead, channel) in ECG_REST_LEADS.items():

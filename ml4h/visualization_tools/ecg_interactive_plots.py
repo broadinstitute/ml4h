@@ -6,7 +6,8 @@ from typing import Optional, Union
 
 from IPython.display import HTML
 import altair as alt  # Interactive data visualization for plots.
-from ml4h.visualization_tools.ecg_reshape import DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME
+from ml4h.TensorMap import TensorMap
+from ml4h.visualization_tools.ecg_reshape import DEFAULT_RESTING_ECG_SIGNAL_TMAP
 from ml4h.visualization_tools.ecg_reshape import reshape_exercise_ecg_to_tidy
 from ml4h.visualization_tools.ecg_reshape import reshape_resting_ecg_to_tidy
 
@@ -34,19 +35,19 @@ EXERCISE_ECG_SIGNAL_DATA_FILE = tempfile.NamedTemporaryFile(
 
 def resting_ecg_interactive_plot(
     sample_id: Union[int, str], folder: Optional[str] = None,
-    tmap_name: str = DEFAULT_RESTING_ECG_SIGNAL_TMAP_NAME,
+    tmap: TensorMap = DEFAULT_RESTING_ECG_SIGNAL_TMAP,
 ) -> Union[HTML, alt.Chart]:
   """Wrangle resting ECG data to tidy and present it as an interactive plot.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
-    tmap_name: The name of the TMAP to use for ecg input.
+    tmap: The TensorMap to use for ECG input.
 
   Returns:
     An Altair plot or a notebook-friendly error.
   """
-  tidy_resting_ecg_signal = reshape_resting_ecg_to_tidy(sample_id, folder, tmap_name)
+  tidy_resting_ecg_signal = reshape_resting_ecg_to_tidy(sample_id, folder, tmap)
   if tidy_resting_ecg_signal.shape[0] == 0:
     return HTML(f'''
       <div class="alert alert-block alert-danger">
