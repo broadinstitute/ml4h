@@ -1261,20 +1261,20 @@ sax_all_diastole_192_segmented_weighted = TensorMap(
 
 sax_all_diastole = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented,
+    dependent_map=sax_all_diastole_segmented, path_prefix='ukb_cardiac_mri',
 )
 sax_all_diastole_weighted = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted,
+    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
 )
 
 sax_all_diastole_192 = TensorMap(
     'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented,
+    dependent_map=sax_all_diastole_segmented, path_prefix='ukb_cardiac_mri',
 )
 sax_all_diastole_192_weighted = TensorMap(
     'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted,
+    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
 )
 
 sax_all_systole_segmented = TensorMap(
