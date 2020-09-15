@@ -136,7 +136,7 @@ def train_multimodal_multitask(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
