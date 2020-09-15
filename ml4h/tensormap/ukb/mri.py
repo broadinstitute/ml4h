@@ -1251,6 +1251,13 @@ sax_all_diastole_segmented_weighted = TensorMap(
         [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
     ),
 )
+sax_all_diastole_192_segmented_weighted = TensorMap(
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, 3),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy(
+        [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
+    ),
+)
 
 sax_all_diastole = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
@@ -1258,6 +1265,15 @@ sax_all_diastole = TensorMap(
 )
 sax_all_diastole_weighted = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
+    dependent_map=sax_all_diastole_segmented_weighted,
+)
+
+sax_all_diastole_192 = TensorMap(
+    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
+    dependent_map=sax_all_diastole_segmented,
+)
+sax_all_diastole_192_weighted = TensorMap(
+    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
     dependent_map=sax_all_diastole_segmented_weighted,
 )
 
@@ -1270,6 +1286,7 @@ sax_all_systole_segmented_weighted = TensorMap(
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'),
 )
+
 
 sax_all_systole = TensorMap(
     'sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
