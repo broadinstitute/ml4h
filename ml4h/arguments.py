@@ -219,6 +219,9 @@ def parse_args():
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
     parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
+    parser.add_argument(
+        '--save_last_model', default=False, action='store_true',
+        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
