@@ -12,7 +12,7 @@ from typing import Callable, Dict, List, Tuple, Union
 
 from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, EPS
-from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder
+from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder, no_nans
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1, Normalizer
 from ml4cvd.metrics import sum_squared_error
 
@@ -169,6 +169,26 @@ def voltage_from_file_no_resample_random_lead(tm, hd5, dependents=None):
     return tensor
 
 
+def voltage_from_file_random_offset(tm, hd5, dependents=None):
+    ecg_dates = _get_ecg_dates(tm, hd5)
+    dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
+    tensor = np.zeros(shape, dtype=np.float32)
+    for i, ecg_date in enumerate(ecg_dates):
+        start = np.random.randint(5000 - tm.shape[0])
+        stop = start + tm.shape[0]
+        for cm in tm.channel_map:
+            try:
+                path = _make_hd5_path(tm, ecg_date, cm)
+                voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+                if len(voltage) < 5000:
+                    raise ValueError(f'Voltage is not the right length for TensorMap {tm.name}.')
+                slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
+                tensor[slices] = voltage[start: stop]
+            except KeyError:
+                logging.warning(f'KeyError for channel {cm} in {tm.name}')
+    return tensor
+
+
 def _find_max_zero_run(x: np.ndarray):
     assert x.ndim == 1
     run_ends = np.flatnonzero(np.diff(x, append=np.nan))
@@ -208,6 +228,14 @@ for scale in [1000, 100, 10, 1, 1e-1, 1e-2]:
     )
 
 
+# for updated VAE
+TMAPS[f'partners_ecg_4096'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False,
+)
+
+
 TMAPS['partners_ecg_5000_only_random_lead'] = TensorMap(
     'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX,
     tensor_from_file=voltage_from_file_no_resample_random_lead, loss='mse',
@@ -215,6 +243,34 @@ TMAPS['partners_ecg_5000_only_random_lead'] = TensorMap(
     validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False,
 )
+
+
+def _hrv_tensor_from_file(df: pd.DataFrame, col: str):
+    df = df[col]
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        idx = int(os.path.basename(hd5.filename).replace('.hd5', ''))
+        try:
+            return np.array([df.loc[idx].copy()])
+        except KeyError:
+            raise KeyError(f'Id not in hrv csv.')
+    return tensor_from_file
+
+
+def _build_hrv_tmaps():
+    df = pd.read_csv('df_hrv.csv')
+    df.index = [int(os.path.basename(f).replace('.hd5', '')) for f in df['fname']]
+    for col in df.columns:
+        if col == 'fname':
+            continue
+        norm = Standardize(df[col].mean(), df[col].std())
+        TMAPS[f'partners_{col}'] = TensorMap(
+            f'partners_{col}', normalization=norm, shape=(1,),
+            tensor_from_file=_hrv_tensor_from_file(df, col),
+            validator=no_nans,
+        )
+
+
+_build_hrv_tmaps()
 
 
 def _warp_ecg(ecg):
@@ -249,19 +305,32 @@ def _apply_aug_rate(augmentation: Callable[[np.ndarray], np.ndarray]) -> Callabl
     return lambda a: augmentation(a) if np.random.rand() < .5 else a
 
 
+def _rand_drop_leads(ecg):
+    leads = ecg.shape[1]
+    num_drop = np.random.randint(leads - 1)
+    ecg = ecg.copy()  # TODO: could be unneccesary
+    for lead in np.random.choice(leads, num_drop, replace=False):
+        ecg[:, lead] = 0
+    return ecg
+
+
 TMAPS[f'partners_ecg_5000_only_augment_lead_I'] = TensorMap(
     'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
     normalization=ZeroMeanStd1(), channel_map={'I': 0}, validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_warp_ecg, _random_crop_ecg, _rand_add_noise,)],
 )
-
-
 TMAPS['partners_ecg_5000_only_random_lead_augment'] = TensorMap(
     'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX,
     tensor_from_file=voltage_from_file_no_resample_random_lead, loss='mse',
     normalization=ZeroMeanStd1Scale(scale), channel_map=ECG_REST_AMP_LEADS,
     validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_warp_ecg, _random_crop_ecg, _rand_add_noise,)]
+)
+# for updated SIMCLR
+TMAPS[f'partners_ecg_4096_random'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_random_offset,
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator,
+    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_warp_ecg, _random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
 )
 
 
