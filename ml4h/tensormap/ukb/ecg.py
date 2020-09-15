@@ -899,6 +899,62 @@ t_axis = TensorMap(
     normalization={'mean': 40.8, 'std': 32.6},
 )
 
+p_axis_raw = TensorMap(
+    'PAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PAxis': 0}, loss='logcosh',
+)
+p_duration_raw = TensorMap(
+    'PDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PDuration': 0}, loss='logcosh',
+)
+p_offset_raw = TensorMap(
+    'POffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'POffset': 0}, loss='logcosh',
+)
+p_onset_raw = TensorMap(
+    'POnset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'POnset': 0}, loss='logcosh',
+)
+pp_interval_raw = TensorMap(
+    'PPInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PPInterval': 0}, loss='logcosh',
+)
+pq_interval_raw = TensorMap(
+    'PQInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'PQInterval': 0}, loss='logcosh',
+)
+q_offset_raw = TensorMap(
+    'QOffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QOffset': 0}, loss='logcosh',
+)
+q_onset_raw = TensorMap(
+    'QOnset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QOnset': 0}, loss='logcosh',
+)
+qrs_complexes_raw = TensorMap(
+    'QRSComplexes', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSComplexes': 0}, loss='logcosh',
+)
+qrs_duration_raw = TensorMap(
+    'QRSDuration', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSDuration': 0}, loss='logcosh',
+)
+qrs_num_raw = TensorMap(
+    'QRSNum', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QRSNum': 0}, loss='logcosh',
+)
+qt_interval_raw = TensorMap(
+    'QTInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTInterval': 0}, loss='logcosh',
+)
+qtc_interval_raw = TensorMap(
+    'QTCInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'QTCInterval': 0}, loss='logcosh',
+)
+r_axis_raw = TensorMap(
+    'RAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'RAxis': 0}, loss='logcosh',
+)
+rr_interval_raw = TensorMap(
+    'RRInterval', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'RRInterval': 0}, loss='logcosh',
+)
+ventricular_rate_raw = TensorMap(
+    'VentricularRate', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'VentricularRate': 0},
+    loss='logcosh',
+)
+t_offset_raw = TensorMap(
+    'TOffset', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'TOffset': 0}, loss='logcosh',
+)
+t_axis_raw = TensorMap(
+    'TAxis', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'TAxis': 0}, loss='logcosh',
+)
+
 af_prs = TensorMap('AF_PRS_LDscore', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'AF_PRS_LDscore': 0}, normalization={'mean': -1.0, 'std': 0.4})
 charge = TensorMap(
     'charge', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'charge': 0}, normalization={'mean': 12.0, 'std': 2.0},
