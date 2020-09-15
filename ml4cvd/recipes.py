@@ -397,7 +397,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     id_df = pd.read_csv(args.test_csv)
     if 'sample_id' in id_df:
         ids = set(id_df['sample_id'])
-    if 'partners_ecg_patientid_clean' in id_df:
+    elif 'partners_ecg_patientid_clean' in id_df:
         ids = set(id_df['partners_ecg_patientid_clean'])
     else:
         raise ValueError(f'Cannot get ids from {args.test_csv} with columns {list(id_df.columns)}')
