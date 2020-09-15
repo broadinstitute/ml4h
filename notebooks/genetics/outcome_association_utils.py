@@ -108,6 +108,7 @@ def hazard_ratios(phenotypes, diseases_unpack, labels, disease_labels,
             regression_covariates = [covariate for covariate in covariates]
             if diabetes_is_covariate and disease != 'Diabetes_Type_2':
                 regression_covariates += ['Diabetes_Type_2_prevalent']
+            tmp_data.to_csv('/home/pdiachil/ml/notebooks/mri/examine.csv')
             res = sm.PHReg(tmp_data['futime'], tmp_data[[pheno]+regression_covariates], 
                            tmp_data[f'{disease}_incident'], tmp_data['entry']).fit()
             res_predict = res.predict()
@@ -150,12 +151,12 @@ def plot_or_hr(or_dic, label_dic, disease_list, suffix, occ='prevalent', horizon
         ax.set_yticks(np.arange(len(ors)))
         ax.set_yticklabels(labels)
         ax.set_xscale('log', basex=np.exp(1))
-        ax.set_xticks([0.25, 0.5, 0.8, 1.0, 1.50, 2.0, 3.0, 4.0, 8.0])
-        ax.set_xticklabels(map(str, [0.25, 0.5, 0.8, 1.0, 1.50, 2.0, 3.0, 4.0, 8.0]))
+        ax.set_xticks([0.25, 0.5, 1.0, 2.0, 4.0, 8.0])
+        ax.set_xticklabels(map(str, [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]))
         ax.set_xlabel(f'{ratio_label} ratio (per 1-SD increase of continuous variables)')
         ax.set_title(f'{occ} {dis_label}\n n$_+$ = {int(or_dic[pheno][dis+"_"+occ]["n"])} / {int(or_dic[pheno][dis+"_"+occ]["ntot"])}')
         ax.set_ylim([-1.0, len(ors)])
-        ax.set_xlim([min(1.0, min(ors)*0.8), max(1.5, max(ors)*1.5)])
+        ax.set_xlim([min(1.0, min(ors)*0.8), max(8.0, max(ors)*1.5)])
         plt.tight_layout()
         f.savefig(f'{dis}_{occ}_{suffix}.png', dpi=500)
 
