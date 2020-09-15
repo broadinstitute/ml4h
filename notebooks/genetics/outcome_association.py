@@ -46,7 +46,24 @@ diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 
 # %%
 la_volumes_petersen = pd.read_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_cleaned.csv')
-la_volume_sets = [la_volumes_petersen]
+
+from scipy.ndimage import median_filter
+def get_min(data, window=5):
+    filtered_data = median_filter(data, size=5, mode='wrap')
+    arg_min = np.argmin(filtered_data)
+    return filtered_data[arg_min]
+
+def filter_pca(data, ncomp=10):
+    pca = PCA(data, ncomp=ncomp)
+    return pca.projection
+
+la_volumes_all = pd.read_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_v20200905.csv')
+keys = [f'LA_poisson_{d}' for d in range(50)]
+la_volumes_all[keys] = la_volumes_all[keys].apply(filter_pca)
+la_volumes_all['LA_poisson_cleaned_max'] = la_volumes_all[keys].apply(np.max, axis=1)
+la_volumes_all['LA_poisson_cleaned_min'] = la_volumes_all[keys].apply(get_min, axis=1)
+
+la_volume_sets = [la_volumes_all]
 # %%
 pheno_dic = {
              21003: ['age', float],
@@ -116,7 +133,7 @@ for i, la_volume_set in enumerate(la_volume_sets):
 la_volumes_petersen, = la_volume_sets
 
 # %%
-la_volumes_petersen.to_csv('/home/pdiachil/ml/notebooks/genetics/la_volumes_petersen_covariates.csv', index=False)
+la_volumes_petersen.to_csv('/home/pdiachil/ml/notebooks/genetics/la_volumes_all_covariates.csv', index=False)
 
 # %%
 import matplotlib.pyplot as plt

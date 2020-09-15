@@ -7,20 +7,22 @@ from outcome_association_utils import odds_ratios, hazard_ratios, plot_or_hr, un
 ########### Pretest exercise ECGs ###########################
 # Read phenotype and covariates
 phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/la_volumes_petersen_covariates.csv')
+phenotypes = phenotypes[phenotypes['LA_poisson_cleaned_min']<150]
 
 phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min', 'LA_Biplan_vol_max', 'LA_Biplan_vol_min']
+# phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min']
 for pheno in phenos_to_binarize:
     phenotypes[f'{pheno}_binary'] = (phenotypes[pheno] > phenotypes[pheno].quantile(0.80)).apply(float)
 
 label_dic = {
-    'LA_Biplan_vol_max': ['LA volume at max (biplane)', 'ml'],
-    'LA_Biplan_vol_min': ['LA volume at min (biplane)', 'ml'],
-    'LA_poisson_cleaned_max': ['LA volume at max (poisson)', 'ml'],
-    'LA_poisson_cleaned_min': ['LA volume at min (poisson)', 'ml'],
-    'LA_Biplan_vol_max_binary': ['enlarged LA at max (biplane)', ''],
-    'LA_Biplan_vol_min_binary': ['enlarged LA at min (biplane)', ''],      
-    'LA_poisson_cleaned_max_binary': ['enlarged LA at max (poisson)', ''],     
-    'LA_poisson_cleaned_min_binary': ['enlarged LA at min (poisson)', ''],    
+    'LA_Biplan_vol_max': ['LA$_{max}$ (biplane)', 'ml'],
+    'LA_Biplan_vol_min': ['LA$_{min}$ (biplane)', 'ml'],
+    'LA_poisson_cleaned_max': ['LA$_{max}$ (3-D surf)', 'ml'],
+    'LA_poisson_cleaned_min': ['LA$_{min}$ (3-D surf)', 'ml'],
+    'LA_Biplan_vol_max_binary': ['enlarged LA$_{max}$ (biplane)', ''],
+    'LA_Biplan_vol_min_binary': ['enlarged LA$_{min}$ (biplane)', ''],      
+    'LA_poisson_cleaned_max_binary': ['enlarged LA$_{max}$ (3-D surf)', ''],     
+    'LA_poisson_cleaned_min_binary': ['enlarged LA$_{min}$ (3-D surf)', ''],    
     'resting_hr': ['Rest HR', 'beats'],
     'age': ['Age', 'yrs'],
     'male': ['Male', ''],
@@ -37,9 +39,15 @@ label_dic = {
     'c_antihypertensive': ['Antihypertensive drugs', '']
 }
 
-dont_scale = ['male', 'nonwhite', 'current_smoker', 'c_lipidlowering', 'c_antihypertensive', 'LA_poisson_cleaned_max_binary', 'LA_poisson_cleaned_min_binary', 'LA_Biplan_vol_max_binary']
-phenotypes = phenotypes.dropna(subset=['bmi'])
+dont_scale = ['male', 'nonwhite', 'current_smoker', 'c_lipidlowering', 'c_antihypertensive', 'LA_poisson_cleaned_max_binary', 'LA_poisson_cleaned_min_binary', 'LA_Biplan_vol_min_binary', 'LA_Biplan_vol_max_binary']
+phenotypes = phenotypes.dropna(subset=['age', 'male'])
 
+# %%
+import matplotlib.pyplot as plt
+import seaborn as sns
+f, ax = plt.subplots()
+sns.distplot(phenotypes['LA_poisson_cleaned_min'])
+phenotypes['LA_poisson_cleaned_min'].min()
 # %%
 # Read diseases and unpack
 diseases = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/bq_diseases.tsv', sep='\t')
@@ -89,15 +97,37 @@ phenotype_subset = ['LA_poisson_cleaned_max_binary',
                     'LA_poisson_cleaned_min',
                     'LA_Biplan_vol_min',
                     ]
+
+# phenotype_subset = ['LA_poisson_cleaned_max_binary',
+#                     'LA_poisson_cleaned_min_binary',
+#                     'LA_poisson_cleaned_max', 
+#                     'LA_poisson_cleaned_min',
+#                     ]
 labels = {key: label_dic[key] for key in phenotype_subset}
 
 odds_ratio_multivariable = odds_ratios(phenotypes, diseases_unpack, labels,
                                        disease_list, covariates=covariates, instance=2, dont_scale=dont_scale)
-plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_all', occ='prevalent', horizontal_line_y=1.5)
+plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_petersen', occ='prevalent', horizontal_line_y=3.5)
 
 hazard_ratio_multivariable = hazard_ratios(phenotypes, diseases_unpack, labels,
                                            disease_list, covariates=covariates, instance=2, dont_scale=dont_scale)
-plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_all', occ='incident', horizontal_line_y=1.5)
+plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_petersen', occ='incident', horizontal_line_y=3.5)
+
+
+# %%
+fail_set = set(failed[0])
+for tmp_set in failed[1:]:
+    fail_set &= set(tmp_set)
+# %%  
+# Fail
+def is_in_fail(data):
+    if data in failed - success:
+        return 1.0
+    else:
+        return 0.0
+tmp_data = pd.read_csv('/home/pdiachil/ml/notebooks/mri/examine.csv')
+tmp_data['failed'] = tmp_data['sample_id'].apply(is_in_fail)
+
 
 # %%
 # Clinical model

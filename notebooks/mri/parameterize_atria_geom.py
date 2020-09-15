@@ -35,12 +35,12 @@ start_time = time.time()
 results = {f'LA_poisson_{t}': [] for t in range(MRI_FRAMES)}
 results['sample_id'] = []
 for i, hd5 in enumerate(sorted(hd5s)):
-    # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{start}.hd5'    
+    hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{start}.hd5'    
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
-    if i < start:
-        continue
-    if i == end:
-        break
+    # if i < start:
+    #     continue
+    # if i == end:
+    #     break
     
     annot_datasets = []
     orig_datasets = []
@@ -51,12 +51,12 @@ for i, hd5 in enumerate(sorted(hd5s)):
                                                                 view_name=view_format_string.format(view=view), 
                                                                 concatenate=True, annotation=True,
                                                                 save_path=None, order='F')[0])
-                # orig_datasets.append(_mri_hd5_to_structured_grids(ff_trad, view_format_string.format(view=view),
-                #                                                   view_name=view_format_string.format(view=view), 
-                #                                                   concatenate=False, annotation=False,
-                #                                                   save_path=None, order='F')[0])
-                # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
-                # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
+                orig_datasets.append(_mri_hd5_to_structured_grids(ff_trad, view_format_string.format(view=view),
+                                                                  view_name=view_format_string.format(view=view), 
+                                                                  concatenate=False, annotation=False,
+                                                                  save_path=None, order='F')[0])
+                to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
+                to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
         poisson_atria, poisson_volumes = annotation_to_poisson(annot_datasets, channels, views, annot_time_format_string, range(MRI_FRAMES))
 
         results['sample_id'].append(sample_id)
@@ -70,6 +70,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
             writer.Update()
     except:
         continue
+    break
 
 results_df = pd.DataFrame(results)
 results_df.to_csv(f'atria_processed_{start}_{end}.csv')

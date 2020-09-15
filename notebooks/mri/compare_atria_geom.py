@@ -5,33 +5,37 @@ import os
 import matplotlib.pyplot as plt
 from scipy.ndimage import median_filter
 
-df_poi = pd.concat([pd.read_csv(f'/home/pdiachil/atria_boundary_v20200901/atria_processed_{d}_{d+50}.csv') for d in range(0, 45000, 50)])
+df_poi = pd.concat([pd.read_csv(f'/home/pdiachil/atria_boundary_v20200905/atria_processed_{d}_{d+50}.csv') for d in range(0, 45000, 50)])
 df_poi = df_poi.reset_index()
 df_poi = df_poi.dropna()
-df_poi.to_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_v20200901.csv')
+df_poi.to_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_v20200905.csv')
 
 df_pet = pd.read_csv('/home/pdiachil/ml/notebooks/mri/returned_lv_mass.tsv', sep='\t')
 df_pet = df_pet.merge(df_poi, on='sample_id')
 
 df_pet = df_pet.dropna()
-df_pet.to_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_v20200901.csv')
+df_pet.to_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_v20200905.csv')
 
 
 # %%
 import scipy.signal
-
+from statsmodels.multivariate.pca import PCA
 
 def get_max(data, window=5):
     filtered_data = median_filter(data, size=5, mode='wrap')
     arg_max = np.argmax(filtered_data)
-    return filtered_data[arg_max]
+    return data[arg_max]
 
 
 def get_min(data, window=5):
     filtered_data = median_filter(data, size=5, mode='wrap')
     arg_min = np.argmin(filtered_data)
-    return filtered_data[arg_min]
+    return data[arg_min]
 
+
+def filter_pca(data, ncomp=20):
+    pca = PCA(data, ncomp=ncomp)
+    return pca.projection
 
 def reject_outliers(data, m = 3.):
     d = np.abs(data - np.median(data))
@@ -107,9 +111,11 @@ for df, label in zip([df_pet], ['poisson']):
     df = df.dropna()
     # cleaned_dfs.append(df[keys].apply(reject_outliers, axis=1))
     # cleaned_df = pd.DataFrame(cleaned_df.tolist(), columns=keys)
-    cleaned_dfs.append(df[keys])
-    ell_max = cleaned_dfs[-1][keys].apply(get_max, axis=1)
-    ell_min = cleaned_dfs[-1][keys].apply(get_min, axis=1)
+    # cleaned_df = filter_pca(df[keys])
+    cleaned_df = df[keys]
+    cleaned_dfs.append(cleaned_df)
+    ell_max = cleaned_dfs[-1][keys].apply(np.max, axis=1)
+    ell_min = cleaned_dfs[-1][keys].apply(np.min, axis=1)
     ell_mean = cleaned_dfs[-1].values.mean(axis=1)
     cleaned_dfs[-1]['sample_id'] = df['sample_id']
     cleaned_dfs[-1][f'LA_{label}_cleaned_max'] = ell_max
@@ -124,36 +130,36 @@ for df, label in zip([df_pet], ['poisson']):
     idxs = err.argsort()
     idxs_sorted.append(idxs)
 
-    cleaned_dfs[-1].iloc[idxs_sorted[-1].values[:4000]].to_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_cleaned.csv')
+    cleaned_dfs[-1].iloc[idxs_sorted[-1].values[:5000]].to_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_cleaned.csv')
 
-    for nidxs in [1000, 2000, 3000, 4000, 5000]:
+    # for nidxs in [1000, 2000, 3000, 3500, 4144]:
+    #     f, ax = plt.subplots()
+    #     f.set_size_inches(3, 3)
+    #     ax.hexbin(ell_max.values[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs], mincnt=1, cmap='gray')
+    #     ax.set_xlim([0, 250])
+    #     ax.set_ylim([0, 250])
+    #     ax.set_aspect('equal')
+    #     ax.plot([0, 300], [0, 300], color='k')
+    #     ax.set_xlabel(f'Maximum LA volume (3-D surf) (ml)')
+    #     ax.set_ylabel('Maximum LA volume (biplane) (ml)')
+    #     ax.set_xticks([0, 50, 100, 150, 200, 250])
+    #     ax.set_yticks([0, 50, 100, 150, 200, 250])
+    #     ax.set_title(f'n={len(ell_max.values[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_max.values[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs])[0]:.2f}')
+    #     plt.tight_layout()
+    #     f.savefig(f'/home/pdiachil/ml/notebooks/mri/{label}_vol_boundary_v20200901_max_{nidxs}.png', dpi=500)
+
+    for nidxs in [1000, 2000, 3000, 3500, 3771, 4000, 4144]:
         f, ax = plt.subplots()
         f.set_size_inches(3, 3)
-        ax.hexbin(ell_max.values[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
-        ax.set_xlim([0, 200])
-        ax.set_ylim([0, 200])
+        ax.hexbin(ell_min.Values[Idxs_sorted[-1]][:Nidxs], Petersen_min[Idxs_sorted[-1]][:Nidxs], Extent=(0, 125, 0, 125), Mincnt=1, Cmap='Gray')
+        ax.set_xlim([0, 250])
+        ax.set_ylim([0, 250])
         ax.set_aspect('equal')
         ax.plot([0, 300], [0, 300], color='k')
-        ax.set_xlabel(f'LA 3-D surface volume at max (ml)')
-        ax.set_ylabel('LA biplane volume at max (ml)')
-        ax.set_xticks([0, 50, 100, 150, 200])
-        ax.set_yticks([0, 50, 100, 150, 200])
-        ax.set_title(f'n={len(ell_max.values[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_max.values[idxs_sorted[-1]][:nidxs], petersen_max[idxs_sorted[-1]][:nidxs])[0]:.2f}')
-        plt.tight_layout()
-        f.savefig(f'/home/pdiachil/ml/notebooks/mri/{label}_vol_boundary_v20200901_max_{nidxs}.png', dpi=500)
-
-    for nidxs in [1000, 2000, 3000, 4000, 5000]:
-        f, ax = plt.subplots()
-        f.set_size_inches(3, 3)
-        ax.hexbin(ell_min.values[idxs_sorted[-1]][:nidxs], petersen_min[idxs_sorted[-1]][:nidxs], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
-        ax.set_xlim([0, 150])
-        ax.set_ylim([0, 150])
-        ax.set_aspect('equal')
-        ax.plot([0, 300], [0, 300], color='k')
-        ax.set_xlabel(f'LA 3-D surface volume at min (ml)')
-        ax.set_ylabel('LA biplane volume at min (ml)')
-        ax.set_xticks([0, 50, 100, 150])
-        ax.set_yticks([0, 50, 100, 150])
+        ax.set_xlabel(f'Minimum LA volume (3-D surface) (ml)')
+        ax.set_ylabel('Minimum LA volume (biplane) (ml)')
+        ax.set_xticks([0, 50, 100, 150, 200, 250])
+        ax.set_yticks([0, 50, 100, 150, 200, 250])
         ax.set_title(f'n={len(ell_min.values[idxs_sorted[-1]][:nidxs])}, r={scipy.stats.pearsonr(ell_min.values[idxs_sorted[-1]][:nidxs], petersen_min[idxs_sorted[-1]][:nidxs])[0]:.2f}')
 
         plt.tight_layout()
@@ -168,6 +174,52 @@ for idx in range(0, 3000, 500):
     ax.plot([0, 50], [petersen_min[idxs_sorted[-1].values[idx]], petersen_min[idxs_sorted[-1].values[idx]]])
     ax.set_xticks(np.arange(0, 60, 10))
     ax.set_xticklabels(np.arange(0, 60, 10))
+
+# %%
+idx = 400
+print(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]]['sample_id'])
+f, ax = plt.subplots()
+f.set_size_inches(3.5, 3)
+ax.plot(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]][keys], linewidth=3, color='black', label='3-D surf')
+ax.plot([0, 50], [petersen_max[idxs_sorted[-1].values[idx]], petersen_max[idxs_sorted[-1].values[idx]]], linewidth=3, color='gray', label='Petersen et al. (2017)')
+ax.plot([0, 50], [petersen_min[idxs_sorted[-1].values[idx]], petersen_min[idxs_sorted[-1].values[idx]]], linewidth=3, color='gray')
+ax.set_xticks(np.arange(0, 60, 10))
+ax.set_xticklabels(np.arange(0, 60, 10))
+ax.set_xlim([0, 50])
+ax.set_ylabel('LA volume (ml)')
+ax.set_xlabel('MRI frame')
+plt.tight_layout()
+f.savefig('vol_overt_400.png', dpi=500)
+# %%
+idx = 1801
+print(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]]['sample_id'])
+f, ax = plt.subplots()
+f.set_size_inches(3.5, 3)
+ax.plot(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]][keys], linewidth=3, color='black', label='3-D surf')
+ax.plot([0, 50], [petersen_max[idxs_sorted[-1].values[idx]], petersen_max[idxs_sorted[-1].values[idx]]], linewidth=3, color='gray', label='Petersen et al. (2017)')
+ax.plot([0, 50], [petersen_min[idxs_sorted[-1].values[idx]], petersen_min[idxs_sorted[-1].values[idx]]], linewidth=3, color='gray')
+ax.set_xticks(np.arange(0, 60, 10))
+ax.set_xticklabels(np.arange(0, 60, 10))
+ax.set_xlim([0, 50])
+ax.set_ylabel('LA volume (ml)')
+ax.set_xlabel('MRI frame')
+plt.tight_layout()
+f.savefig('vol_overt_1801.png', dpi=500)
+# %%
+idx = 3600
+print(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]]['sample_id'])
+f, ax = plt.subplots()
+f.set_size_inches(3.5, 3)
+ax.plot(cleaned_dfs[-1].iloc[idxs_sorted[-1].values[idx]][keys], linewidth=3, color='black', label='3-D surf')
+ax.plot([0, 50], [petersen_max[idxs_sorted[-1].values[idx]], petersen_max[idxs_sorted[-1].values[idx]]], linewidth=3, color='gray', label='Petersen et al. (2017)')
+ax.plot([0, 50], [petersen_min[idxs_sorted[-1].values[idx]], petersen_min[idxs_sorted[-1].values[idx]]], linewidth=3, color='gray')
+ax.set_xticks(np.arange(0, 60, 10))
+ax.set_xticklabels(np.arange(0, 60, 10))
+ax.set_xlim([0, 50])
+ax.set_ylabel('LA volume (ml)')
+ax.set_xlabel('MRI frame')
+plt.tight_layout()
+f.savefig('vol_overt_3601.png', dpi=500)
 
 # %%
 from ml4cvd.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
