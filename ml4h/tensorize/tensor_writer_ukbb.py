@@ -200,7 +200,9 @@ def write_tensors_from_dicom_pngs(
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
-                    tensor[:] = full_tensor
+                    min_x = min(png.shape[0], tensor.shape[0])
+                    min_y = min(png.shape[1], tensor.shape[1])
+                    tensor[:min_x, :min_y] = full_tensor[:min_x, :min_y]
                     stats['updated'] += 1
                 else:
                     create_tensor_in_hd5(hd5, path_prefix, tensor_name, full_tensor, stats)

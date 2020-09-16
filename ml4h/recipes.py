@@ -74,14 +74,10 @@ def run(args):
             ecg_dates(args.tensors, args.output_folder, args.id)
         elif 'plot_histograms' == args.mode:
             plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
-        elif 'plot_heatmap' == args.mode:
-            plot_heatmap_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'plot_resting_ecgs' == args.mode:
             plot_ecg_rest_mp(args.tensors, args.min_sample_id, args.max_sample_id, args.output_folder, args.num_workers)
         elif 'plot_partners_ecgs' == args.mode:
             plot_partners_ecgs(args)
-        elif 'tabulate_correlations' == args.mode:
-            tabulate_correlations_of_tensors(args.id, args.tensors, args.output_folder, args.min_samples, args.max_samples)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
         elif 'train_char' == args.mode:
