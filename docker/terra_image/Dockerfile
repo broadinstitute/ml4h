@@ -19,6 +19,8 @@ RUN pip3 install --user -r $HOME/ml4h_pkg/config/tensorflow-requirements.txt \
   # first few rows of the downloaded dataframe of query results.
   # Pin version due to https://github.com/googleapis/google-cloud-python/issues/9965
   && pip3 install --upgrade --user google-cloud-bigquery[pandas]==1.22.0 \
+  # Upgrade to a newer version. The one on the base Terra image was a bit too old.
+  && pip3 install --upgrade --user numpy \
   # Configure notebook extensions.
   && jupyter nbextension install --user --py vega \
   && jupyter nbextension enable --user --py vega \

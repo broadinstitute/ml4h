@@ -10,7 +10,7 @@ from IPython.display import display
 import h5py
 from ipyannotations import PolygonAnnotator
 import ipywidgets as widgets
-from ml4h.tensor_maps_by_hand import TMAPS
+from ml4h.visualization_tools.hd5_mri_plots import MRI_TMAPS
 from ml4h.visualization_tools.annotation_storage import AnnotationStorage
 from ml4h.visualization_tools.annotation_storage import TransientAnnotationStorage
 import numpy as np
@@ -150,7 +150,7 @@ class BatchImageAnnotator():
     """Convert information about the current sample to an HTML table for display within the widget."""
     headings = ' '.join([f'<th>{c}</th>' for c in self.EXPECTED_COLUMN_NAMES] + ['<th>TMAP shape</th>'])
     values = ' '.join([f'<td>{self.samples.loc[self.current_sample, c]}</td>' for c in self.EXPECTED_COLUMN_NAMES]
-                      + [f'<td>{TMAPS[self.samples.loc[self.current_sample, "tmap_name"]].shape}</td>'])
+                      + [f'<td>{MRI_TMAPS[self.samples.loc[self.current_sample, "tmap_name"]].shape}</td>'])
     return f'''
         <table style="width:100%">
         <tr>{headings}</tr>
@@ -196,7 +196,7 @@ class BatchImageAnnotator():
             '''
         return
 
-    tensor = TMAPS[tmap_name].tensor_from_file(TMAPS[tmap_name], hd5)
+    tensor = MRI_TMAPS[tmap_name].tensor_from_file(MRI_TMAPS[tmap_name], hd5)
     tensor_instance = tensor[:, :, instance_number]
     if self.zoom > 1.0:
       # TODO(deflaux) remove this after https://github.com/janfreyberg/ipyannotations/issues/11
