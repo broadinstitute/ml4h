@@ -188,15 +188,20 @@ def write_tensors_from_dicom_pngs(
             continue
         stats[sample_header + '_' + sample_id] += 1
         dicom_file = row[dicom_index]
+
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
+            if len(png.shape) == 3 and png.mean() == png[:, :, 0].mean():
+                png = png[:, :, 0]
+            elif len(png.shape) == 3:
+                raise ValueError(f'PNG has color information but no method to tensorize it {png.mean()}, 0ch :{png[:, :, 0].mean()}, 1ch :{png[:, :, 1].mean()}, 2ch :{png[:, :, 2].mean()}.')
             full_tensor = np.zeros((x, y), dtype=np.float32)
             full_tensor[:png.shape[0], :png.shape[1]] = png
             tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
-                tensor_name = series + '_annotated_' + row[instance_index]
+                tensor_name = series.lower() + '_annotated_' + row[instance_index]
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
