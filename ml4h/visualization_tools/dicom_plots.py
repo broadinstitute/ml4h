@@ -8,10 +8,10 @@ import zipfile
 
 from IPython.display import display
 from IPython.display import HTML
+import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from ml4h.runtime_data_defines import get_cardiac_mri_folder
-import numpy as np
 import pydicom
 from scipy.ndimage.morphology import binary_closing
 from scipy.ndimage.morphology import binary_erosion

@@ -3,6 +3,8 @@ import os
 import tempfile
 from typing import Any, Dict, Optional, Tuple, Union
 
+import numpy as np
+import pandas as pd
 from biosppy.signals.tools import filter_signal
 import h5py
 from ml4h.defines import ECG_BIKE_LEADS
@@ -11,8 +13,6 @@ from ml4h.runtime_data_defines import get_exercise_ecg_hd5_folder
 from ml4h.runtime_data_defines import get_resting_ecg_hd5_folder
 from ml4h.TensorMap import TensorMap
 import ml4h.tensormap.ukb.ecg as ecg_tmaps
-import numpy as np
-import pandas as pd
 import tensorflow as tf
 
 

@@ -5,10 +5,10 @@ from typing import List, Optional, Union
 
 from IPython.display import HTML
 from IPython.display import SVG
+import numpy as np
 from ml4h.plots import plot_ecg_rest
 from ml4h.runtime_data_defines import get_resting_ecg_hd5_folder
 from ml4h.runtime_data_defines import get_resting_ecg_svg_folder
-import numpy as np
 import tensorflow as tf
 
 

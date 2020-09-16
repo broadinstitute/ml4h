@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from IPython.display import display
 from IPython.display import HTML
+import numpy as np
 import h5py
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
@@ -15,7 +16,6 @@ from ml4h.runtime_data_defines import get_mri_hd5_folder
 import ml4h.tensormap.ukb.mri as ukb_mri
 import ml4h.tensormap.ukb.mri_vtk as ukb_mri_vtk
 from ml4h.TensorMap import Interpretation, TensorMap
-import numpy as np
 import tensorflow as tf
 
 # Discover applicable TensorMaps.
@@ -153,7 +153,7 @@ def choose_mri_tmap(
         continuous_update=True,
         value=default_instance_value,
         min=1,
-        max=256, # max_instance_value,
+        max=max_instance_value,
         description='Instance to display (click on slider, then use left/right arrows):',
         style={'description_width': 'initial'},
         layout=widgets.Layout(width='900px'),

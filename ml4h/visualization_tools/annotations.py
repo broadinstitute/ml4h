@@ -6,10 +6,10 @@ from typing import Any, Dict, Union
 
 from IPython.display import display
 from IPython.display import HTML
+import pandas as pd
 import ipywidgets as widgets
 from ml4h.visualization_tools.annotation_storage import AnnotationStorage
 from ml4h.visualization_tools.annotation_storage import TransientAnnotationStorage
-import pandas as pd
 
 DEFAULT_ANNOTATION_STORAGE = TransientAnnotationStorage()
 

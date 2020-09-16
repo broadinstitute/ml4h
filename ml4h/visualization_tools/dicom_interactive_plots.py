@@ -13,10 +13,10 @@ import zipfile
 
 from IPython.display import display
 from IPython.display import HTML
+import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from ml4h.runtime_data_defines import get_mri_folders
-import numpy as np
 import pydicom
 import tensorflow as tf
 

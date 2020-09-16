@@ -2,8 +2,8 @@
 import base64
 import os
 
-from facets_overview.generic_feature_statistics_generator import GenericFeatureStatisticsGenerator
 import pandas as pd
+from facets_overview.generic_feature_statistics_generator import GenericFeatureStatisticsGenerator
 
 FACETS_DEPENDENCIES = {
     'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',

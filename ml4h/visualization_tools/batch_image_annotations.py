@@ -7,14 +7,14 @@ import tempfile
 from typing import Any, Dict, List
 
 from IPython.display import display
+import numpy as np
+import pandas as pd
 import h5py
 from ipyannotations import PolygonAnnotator
 import ipywidgets as widgets
 from ml4h.visualization_tools.hd5_mri_plots import MRI_TMAPS
 from ml4h.visualization_tools.annotation_storage import AnnotationStorage
 from ml4h.visualization_tools.annotation_storage import TransientAnnotationStorage
-import numpy as np
-import pandas as pd
 from PIL import Image
 import tensorflow as tf
 
