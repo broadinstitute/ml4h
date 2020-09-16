@@ -80,6 +80,7 @@ def predictions_to_pngs(
                     logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif tm.axes() == 2:
+            fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * 3))
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 title = f'{tm.name}_{sample_id}_reconstruction'
