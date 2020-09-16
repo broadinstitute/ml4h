@@ -1370,7 +1370,7 @@ aorta_slice_nekoui = TensorMap(
 )
 lvot_slice_jamesp = TensorMap(
     'lvot_slice_jamesp', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lvot/instance_0', 'cine_segmented_jamesp_nekoui_annotated_'),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lvot/instance_0', 'cine_segmented_lvot_jamesp_annotated_'),
 )
 lvot_slice_nekoui = TensorMap(
     'lvot_slice_nekoui', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
