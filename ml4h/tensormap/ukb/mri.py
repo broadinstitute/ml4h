@@ -1368,6 +1368,14 @@ aorta_slice_nekoui = TensorMap(
     'aorta_slice_nekoui', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_ao_dist/instance_0', 'cine_segmented_ao_dist_nekoui_annotated_'),
 )
+lvot_slice_jamesp = TensorMap(
+    'lvot_slice_jamesp', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lvot/instance_0', 'cine_segmented_jamesp_nekoui_annotated_'),
+)
+lvot_slice_nekoui = TensorMap(
+    'lvot_slice_nekoui', shape=(200, 240, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lvot/instance_0', 'cine_segmented_lvot_nekoui_annotated_'),
+)
 lax_2ch_slice_jamesp = TensorMap(
     'lax_2ch_slice_jamesp', shape=(192, 160, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lax_2ch/instance_0', 'cine_segmented_lax_2ch_jamesp_annotated_'),
@@ -1403,6 +1411,14 @@ cine_segmented_ao_dist_jamesp = TensorMap(
 cine_segmented_ao_dist_nekoui = TensorMap(
     'cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(200, 240, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_ao_dist_nekoui_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lvot_jamesp = TensorMap(
+    'cine_segmented_lvot', Interpretation.CATEGORICAL, shape=(200, 240, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lvot_jamesp_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lvot_nekoui = TensorMap(
+    'cine_segmented_lvot', Interpretation.CATEGORICAL, shape=(200, 240, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lvot_nekoui_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
 )
 cine_segmented_lax_2ch_jamesp = TensorMap(
     'cine_segmented_lax_2ch_slice', Interpretation.CATEGORICAL, shape=(192, 160, len(MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP)),
