@@ -270,7 +270,7 @@ def _build_hrv_tmaps():
         )
 
 
-_build_hrv_tmaps()
+# _build_hrv_tmaps()
 
 
 def _warp_ecg(ecg):
@@ -299,6 +299,12 @@ def _random_crop_ecg(ecg):
 def _rand_add_noise(ecg):
     noise_frac = np.random.rand() * .2
     return ecg + noise_frac * ecg.std(axis=0) * np.random.randn(*ecg.shape)
+
+
+def _rand_roll(ecg):
+    amount = np.random.randint(ecg.shape[0])
+    return np.roll(ecg, amount, axis=0)
+
 
 
 def _apply_aug_rate(augmentation: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], np.ndarray]:
@@ -330,7 +336,12 @@ TMAPS['partners_ecg_5000_only_random_lead_augment'] = TensorMap(
 TMAPS[f'partners_ecg_4096_random'] = TensorMap(
     'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_random_offset,
     normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator,
-    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_warp_ecg, _random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
+    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_rand_roll, _warp_ecg, _random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
+)
+TMAPS[f'partners_ecg_4096_ae'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
 )
 
 
@@ -1323,6 +1334,14 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
         raise ValueError(f'TensorMap {tm.name} has too many zeros in V6.')
 
 
+def _get_normalization(col: str) -> Normalizer:
+    ids = pd.read_csv('ids_for_mgh/train_ids.csv')
+    covs = pd.read_csv('explorations/ecg_vae_cohort_09-15/tensors_all_union.csv')[['fpath', col]]
+    covs['sample_id'] = [int(os.path.basename(path).replace('.hd5', '')) for path in covs['fpath']]
+    covs = covs.merge(ids, on='sample_id')
+    return Standardize(covs[col].mean(), covs[col].std())
+
+
 def build_partners_time_series_tensor_maps(
         needed_tensor_maps: List[str],
         time_series_limit: int = 1,
@@ -1343,11 +1362,15 @@ def build_partners_time_series_tensor_maps(
             continue
 
         base_name = needed_name.split(base_split)[0]
+        normalization = None
+        if needed_name.startswith('standardized_'):
+            base_name = base_name.split('standardized_')[1]
+            normalization = _get_normalization(f'{base_name}_newest')
         if base_name not in TMAPS:
             continue
-
         time_tmap = copy.deepcopy(TMAPS[base_name])
         time_tmap.name = needed_name
+        time_tmap.normalization = normalization
         time_tmap.shape = time_tmap.shape[1:]
         time_tmap.time_series_limit = time_series_limit
         time_tmap.time_series_order = time_series_order
