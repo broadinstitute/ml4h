@@ -91,8 +91,9 @@ def predictions_to_pngs(
                     if j == 0:
                         plt.title(title)
                         plt.legend()
-                    plt.tight_layout()
-                    plt.savefig(os.path.join(folder, title + IMAGE_EXT))
+                plt.tight_layout()
+                plt.savefig(os.path.join(folder, title + IMAGE_EXT))
+                plt.clf()
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
