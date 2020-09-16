@@ -79,6 +79,19 @@ def predictions_to_pngs(
                     ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
                     logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
+        elif tm.axes() == 2:
+            for i in range(y.shape[0]):
+                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                title = f'{tm.name}_{sample_id}_reconstruction'
+                for j in range(tm.shape[1]):
+                    plt.subplot(tm.shape[1], 1, j + 1)
+                    plt.plot(labels[tm.output_name()][i, :, j], c='k', linestyle='--', label='original')
+                    plt.plot(y[i, :, j], c='b', label='reconstruction')
+                    if j == 0:
+                        plt.title(title)
+                        plt.legend()
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(folder, title + IMAGE_EXT))
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
