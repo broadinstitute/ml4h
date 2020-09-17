@@ -512,6 +512,7 @@ def _days_to_years_float(s: str):
     except ValueError:
         return None
 
+
 def _time_to_event_tensor_from_days(tm: TensorMap, has_disease: int, follow_up_days: int):
     tensor = np.zeros(tm.shape, dtype=np.float32)
     if follow_up_days > tm.days_window:
@@ -537,7 +538,7 @@ def _survival_curve_tensor_from_dates(tm: TensorMap, has_disease: int, assessmen
 
 def tensor_from_wide(
     file_name: str, patient_column: str = 'fpath', age_column: str = 'age', bmi_column: str = 'bmi',
-    sex_column: str = 'sex', hf_column: str = 'inpatient_hf_age', start_column: str = 'start_fu',
+    sex_column: str = 'sex', hf_column: str = 'any_hf_age', start_column: str = 'start_fu',
     end_column: str = 'last_encounter', delimiter: str = '\t', population_normalize: int = 2000,
     target: str = 'ecg', skip_prevalent: bool = True,
 ) -> Callable:
