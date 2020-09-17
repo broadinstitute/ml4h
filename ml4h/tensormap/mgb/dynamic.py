@@ -23,8 +23,8 @@ YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
-WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
-WIDE_FILE = '/home/sam/ml/mgh-wide-2020-06-25-with-mrn.tsv'
+WIDE_FILE = '/home/sam/ml/hf-wide-2020-09-15-with-lvh-and-lbbb.tsv'
+#WIDE_FILE = '/home/sam/ml/mgh-wide-2020-06-25-with-mrn.tsv'
 
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
@@ -536,8 +536,8 @@ def _survival_curve_tensor_from_dates(tm: TensorMap, has_disease: int, assessmen
 
 
 def tensor_from_wide(
-    file_name: str, patient_column: str = 'Mrn', age_column: str = 'age', bmi_column: str = 'bmi',
-    sex_column: str = 'sex', hf_column: str = 'any_hf_age', start_column: str = 'start_fu',
+    file_name: str, patient_column: str = 'fpath', age_column: str = 'age', bmi_column: str = 'bmi',
+    sex_column: str = 'sex', hf_column: str = 'inpatient_hf_age', start_column: str = 'start_fu',
     end_column: str = 'last_encounter', delimiter: str = '\t', population_normalize: int = 2000,
     target: str = 'ecg', skip_prevalent: bool = True,
 ) -> Callable:
@@ -563,11 +563,11 @@ def tensor_from_wide(
             try:
                 patient_key = int(float(row[patient_index]))
                 patient_data[patient_key] = {
-                    'age': _to_float_or_none(row[age_index]), #_days_to_years_float(row[age_index]),
+                    'age': _to_float_or_none(row[age_index]),
                     'bmi': _to_float_or_none(row[bmi_index]),
                     'sex': row[sex_index],
-                    'hf_age': _to_float_or_none(row[hf_index]), #_days_to_years_float(row[hf_index]),
-                    'end_age': _to_float_or_none(row[end_index]), #_days_to_years_float(row[end_index]),
+                    'hf_age': _days_to_years_float(row[hf_index]),
+                    'end_age': _days_to_years_float(row[end_index]),
                     'start_date': datetime.datetime.strptime(row[start_index], CARDIAC_SURGERY_DATE_FORMAT),
                 }
 
