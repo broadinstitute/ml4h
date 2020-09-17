@@ -40,6 +40,9 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy import stats
 
 import ml4h.tensormap.ukb.ecg
+import ml4h.tensormap.mgb.ecg
+from ml4h.tensormap.mgb.dynamic import make_waveform_maps
+
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import concordance_index, coefficient_of_determination
 from ml4h.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, PARTNERS_DATETIME_FORMAT, PARTNERS_DATE_FORMAT, HD5_GROUP_CHAR
@@ -1222,16 +1225,15 @@ def _plot_partners_figure(
 
 def plot_partners_ecgs(args):
     plot_tensors = [
-        'partners_ecg_patientid', 'partners_ecg_firstname', 'partners_ecg_lastname',
-        'partners_ecg_sex',       'partners_ecg_dob',       'partners_ecg_age',
-        'partners_ecg_datetime',  'partners_ecg_sitename',  'partners_ecg_location',
-        'partners_ecg_read_md',   'partners_ecg_taxis_md',  'partners_ecg_rate_md',
-        'partners_ecg_pr_md',     'partners_ecg_qrs_md',    'partners_ecg_qt_md',
-        'partners_ecg_paxis_md',  'partners_ecg_raxis_md',  'partners_ecg_qtc_md',
+        ml4h.tensormap.mgb.ecg.partners_ecg_patientid, ml4h.tensormap.mgb.ecg.partners_ecg_firstname, ml4h.tensormap.mgb.ecg.partners_ecg_lastname,
+        ml4h.tensormap.mgb.ecg.partners_ecg_sex,       ml4h.tensormap.mgb.ecg.partners_ecg_dob,       ml4h.tensormap.mgb.ecg.partners_ecg_age,
+        ml4h.tensormap.mgb.ecg.partners_ecg_datetime,  ml4h.tensormap.mgb.ecg.partners_ecg_sitename,  ml4h.tensormap.mgb.ecg.partners_ecg_location,
+        ml4h.tensormap.mgb.ecg.partners_ecg_read_md,   ml4h.tensormap.mgb.ecg.partners_ecg_taxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_rate_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_pr_md,     ml4h.tensormap.mgb.ecg.partners_ecg_qrs_md,    ml4h.tensormap.mgb.ecg.partners_ecg_qt_md,
+        ml4h.tensormap.mgb.ecg.partners_ecg_paxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_raxis_md,  ml4h.tensormap.mgb.ecg.partners_ecg_qtc_md,
     ]
-    voltage_tensor = 'partners_ecg_2500_raw'
-    from ml4h.tensor_maps_partners_ecg_labels import TMAPS
-    tensor_maps_in = [TMAPS[it] for it in plot_tensors + [voltage_tensor]]
+    voltage_tensor = make_waveform_maps('partners_ecg_2500_raw')
+    tensor_maps_in = plot_tensors + [voltage_tensor]
     tensor_paths = [os.path.join(args.tensors, tp) for tp in os.listdir(args.tensors) if os.path.splitext(tp)[-1].lower()==TENSOR_EXT]
 
     if 'clinical' == args.plot_mode:
