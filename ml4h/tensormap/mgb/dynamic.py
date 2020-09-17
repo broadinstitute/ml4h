@@ -563,7 +563,7 @@ def tensor_from_wide(
             try:
                 patient_key = int(float(row[patient_index]))
                 patient_data[patient_key] = {
-                    'age': _to_float_or_none(row[age_index]),
+                    'age': _days_to_years_float(row[age_index]),
                     'bmi': _to_float_or_none(row[bmi_index]),
                     'sex': row[sex_index],
                     'hf_age': _days_to_years_float(row[hf_index]),
@@ -578,7 +578,7 @@ def tensor_from_wide(
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
         if mrn_int not in patient_data:
-            raise KeyError(f'{tm.name} mrn not in legacy csv.')
+            raise KeyError(f'{tm.name} mrn not in csv.')
         if patient_data[mrn_int]['end_age'] is None or patient_data[mrn_int]['age'] is None:
             raise ValueError(f'{tm.name} could not find ages.')
         if patient_data[mrn_int]['end_age'] - patient_data[mrn_int]['age'] < 0:
