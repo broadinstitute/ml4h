@@ -124,7 +124,7 @@ plt.tight_layout()
 plt.savefig('confusion.png', dpi=500)
 
 # %%
-idx = np.argsort(projection_petersen['la_max_circle'] - projection_petersen['LA_poisson_max']).iloc[-1]
+idx = np.argsort((projection_petersen['la_max_circle'] - projection_petersen['LA_poisson_max'])).iloc[-10]
 projection_petersen.iloc[idx][['sample_id', 'la_max_circle', 'LA_poisson_max', 'LA_Biplan_vol_max']]
 # %%
 import matplotlib.pyplot as plt

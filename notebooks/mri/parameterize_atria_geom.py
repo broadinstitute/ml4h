@@ -3,12 +3,35 @@ import vtk
 import h5py
 import time
 import glob
+import vtk
+from vtk.util import numpy_support as ns
 import sys
 import pandas as pd
+import numpy as np
 from notebooks.mri.mri_atria import to_xdmf
 from parameterize_segmentation import annotation_to_poisson
 from ml4cvd.tensor_from_file import _mri_hd5_to_structured_grids, _mri_tensor_4d
 from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
+
+def normal_to_dataset(ds):
+    centers = vtk.vtkCellCenters()
+    centers.SetInputData(ds)
+    centers.Update()
+
+    center_coors = ns.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())
+    sample = [0, -1, 200]
+    v1 = center_coors[sample[1]] - center_coors[sample[0]]
+    v2 = center_coors[sample[2]] - center_coors[sample[0]]
+    n = np.cross(v1, v2) 
+    n = n / np.linalg.norm(n)
+    return n
+
+def angle_between_datasets(ds1, ds2):
+    n1 = normal_to_dataset(ds1)
+    n2 = normal_to_dataset(ds2)
+    angle = np.arccos(np.dot(n1, n2))
+    return np.degrees(angle)
+
 
 # %%
 hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/*.hd5')
@@ -52,24 +75,28 @@ for i, hd5 in enumerate(sorted(hd5s)):
                                                                 concatenate=True, annotation=True,
                                                                 save_path=None, order='F')[0])
                 orig_datasets.append(_mri_hd5_to_structured_grids(ff_trad, view_format_string.format(view=view),
-                                                                  view_name=view_format_string.format(view=view), 
-                                                                  concatenate=False, annotation=False,
-                                                                  save_path=None, order='F')[0])
+                                                                    view_name=view_format_string.format(view=view), 
+                                                                    concatenate=False, annotation=False,
+                                                                    save_path=None, order='F')[0])
                 to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
                 to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
-        poisson_atria, poisson_volumes = annotation_to_poisson(annot_datasets, channels, views, annot_time_format_string, range(MRI_FRAMES))
+            print(f'angle 3ch-2ch: {angle_between_datasets(orig_datasets[0], orig_datasets[1]):.1f}')
+            print(f'angle 3ch-4ch: {angle_between_datasets(orig_datasets[0], orig_datasets[2]):.1f}')
+            print(f'angle 4ch-2ch: {angle_between_datasets(orig_datasets[2], orig_datasets[1]):.1f}')
+            poisson_atria, poisson_volumes = annotation_to_poisson(annot_datasets, channels, views, annot_time_format_string, range(MRI_FRAMES))
 
-        results['sample_id'].append(sample_id)
-        for t, poisson_volume in enumerate(poisson_volumes):
-            results[f'LA_poisson_{t}'].append(poisson_volume/1000.0)
+            results['sample_id'].append(sample_id)
+            for t, poisson_volume in enumerate(poisson_volumes):
+                results[f'LA_poisson_{t}'].append(poisson_volume/1000.0)
 
-        for t, atrium in enumerate(poisson_atria):
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetInputData(atrium)                                        
-            writer.SetFileName(f'/home/pdiachil/projects/atria/poisson_atria_{sample_id}_{t}.vtp')
-            writer.Update()
+            for t, atrium in enumerate(poisson_atria):
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetInputData(atrium)                                        
+                writer.SetFileName(f'/home/pdiachil/projects/atria/poisson_atria_{sample_id}_{t}.vtp')
+                writer.Update()
     except:
-        continue
+        print('exception')
+        break
     break
 
 results_df = pd.DataFrame(results)
