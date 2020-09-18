@@ -468,7 +468,7 @@ def _write_tensors_from_dicoms(
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}_{ukb_instance}', mri_data, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, f'{series}/{ukb_instance}', mri_data, stats, mri_date)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
@@ -499,7 +499,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
             #
             # cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
             full_slice[:] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}{slicer.InstanceNumber}', full_slice, stats, mri_date, instance)
+            create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{instance}', full_slice, stats, mri_date, slicer.InstanceNumber)
 
 
 def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
