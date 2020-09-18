@@ -492,7 +492,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
 
             _save_pixel_dimensions_if_missing(slicer, series, hd5)
             _save_slice_thickness_if_missing(slicer, series, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series, hd5) #, str(slicer.InstanceNumber))
+            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
             # _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
             # _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
             # _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
@@ -533,9 +533,9 @@ def _save_slice_thickness_if_missing(slicer, series, hd5):
 def _save_series_orientation_and_position_if_missing(slicer, series, hd5, instance=None):
     orientation_ds_name = MRI_PATIENT_ORIENTATION + '_' + series
     position_ds_name = MRI_PATIENT_POSITION + '_' + series
-    if instance:
-        orientation_ds_name += HD5_GROUP_CHAR + instance
-        position_ds_name += HD5_GROUP_CHAR + instance
+    if instance is not None:
+        orientation_ds_name = f'{orientation_ds_name}{HD5_GROUP_CHAR}{instance}'
+        position_ds_name = f'{position_ds_name}{HD5_GROUP_CHAR}{instance}'
     try:
         if orientation_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             hd5.create_dataset(orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient])
