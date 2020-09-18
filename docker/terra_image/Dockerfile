@@ -1,4 +1,4 @@
-FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.3
+FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.6
 # https://github.com/DataBiosphere/terra-docker/blob/master/terra-jupyter-gatk/CHANGELOG.md
 
 USER root
