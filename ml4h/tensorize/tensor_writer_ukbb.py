@@ -451,7 +451,7 @@ def _write_tensors_from_dicoms(
             max_series = max(series_to_numbers[v])
             single_series = [dicom for dicom in views[v] if int(dicom.SeriesNumber) == max_series]
             for d in views[v]:
-                logging.warning(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)}')
+                logging.warning(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)} Time {d.AcquisitionTime}')
             logging.warning(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
             views[v] = single_series
         if v == MRI_TO_SEGMENT:
@@ -499,7 +499,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
             #
             # cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
             full_slice[:] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{instance}', full_slice, stats, mri_date, slicer.InstanceNumber)
+            create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{instance}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
 
 
 def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
@@ -690,13 +690,11 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
 def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
-    instance: str = None, storage_type: StorageType = None, attributes: Dict[str, Any] = None,
+        storage_type: StorageType = None, attributes: Dict[str, Any] = None,
 ):
     hd5_path = tensor_path(path_prefix, name)
 
-    if instance is not None:
-        hd5_path = f'{hd5_path}instance_{instance}'
-    elif hd5_path in hd5:
+    if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
