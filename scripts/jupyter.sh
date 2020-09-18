@@ -14,6 +14,7 @@ DOCKER_COMMAND="docker" #"nvidia-docker"
 GPUS_COMMAND="--gpus all"
 PORT="8888"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
+GPU_DEVICE="--gpus all"
 
 ################### HELP TEXT ############################################
 
@@ -55,7 +56,7 @@ while getopts ":ip:ch" opt ; do
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
             DOCKER_COMMAND=docker
-	    GPUS_COMMAND=""
+        GPUS_COMMAND=""
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -74,10 +75,10 @@ shift $((OPTIND - 1))
 
 ################### SCRIPT BODY ##########################################
 
-#if ! docker pull ${DOCKER_IMAGE}; then
-#    echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
-#    exit 1;
-#fi
+if ! docker pull ${DOCKER_IMAGE}; then
+   echo "ERROR: Could not pull the image ${DOCKER_IMAGE}. Aborting..."
+   exit 1;
+fi
 
 # Get your external IP directly from a DNS provider
 WANIP=$(dig +short myip.opendns.com @resolver1.opendns.com)
