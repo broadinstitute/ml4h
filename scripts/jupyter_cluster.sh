@@ -40,7 +40,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":ip:ch" opt ; do
+while getopts ":ip:b:ch" opt ; do
     case ${opt} in
         h)
             usage
