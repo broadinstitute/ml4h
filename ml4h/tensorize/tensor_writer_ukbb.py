@@ -87,10 +87,6 @@ def write_tensors(
     mri_unzip: str,
     mri_field_ids: List[int],
     xml_field_ids: List[int],
-    zoom_x: int,
-    zoom_y: int,
-    zoom_width: int,
-    zoom_height: int,
     write_pngs: bool,
     min_sample_id: int,
     max_sample_id: int,
@@ -109,13 +105,6 @@ def write_tensors(
     :param mri_unzip: Folder where zipped DICOM will be decompressed
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
-    :param x: Maximum x dimension of MRIs
-    :param y: Maximum y dimension of MRIs
-    :param z: Maximum z dimension of MRIs
-    :param zoom_x: x coordinate of the zoom
-    :param zoom_y: y coordinate of the zoom
-    :param zoom_width: width of the zoom
-    :param zoom_height: height of the zoom
     :param write_pngs: write MRIs as PNG images for debugging
     :param min_sample_id: Minimum sample id to generate, for parallelization
     :param max_sample_id: Maximum sample id to generate, for parallelization
@@ -137,7 +126,7 @@ def write_tensors(
             continue
         try:
             with h5py.File(tp, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
@@ -374,10 +363,6 @@ def _to_float_or_nan(s):
 
 
 def _write_tensors_from_zipped_dicoms(
-    zoom_x: int,
-    zoom_y: int,
-    zoom_width: int,
-    zoom_height: int,
     write_pngs: bool,
     tensors: str,
     dicoms: str,
