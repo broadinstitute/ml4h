@@ -534,8 +534,8 @@ def _save_series_orientation_and_position_if_missing(slicer, series, hd5, instan
     orientation_ds_name = MRI_PATIENT_ORIENTATION + '_' + series
     position_ds_name = MRI_PATIENT_POSITION + '_' + series
     if instance is not None:
-        orientation_ds_name = f'{orientation_ds_name}{HD5_GROUP_CHAR}{instance}'
-        position_ds_name = f'{position_ds_name}{HD5_GROUP_CHAR}{instance}'
+        orientation_ds_name = f'{orientation_ds_name}_{instance}'
+        position_ds_name = f'{position_ds_name}_{instance}'
     try:
         if orientation_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             hd5.create_dataset(orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient])
