@@ -424,7 +424,7 @@ def _write_tensors_from_dicoms(
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
         series = d.SeriesDescription.lower().replace(' ', '_')
-        series_to_numbers[series].add(d.SeriesNumber)
+        series_to_numbers[series].add(int(d.SeriesNumber))
         if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
             views[series + '_12bit'].append(d)
             stats[series + '_12bit'] += 1
@@ -447,11 +447,13 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
+        if len(series_to_numbers[v]) > 1 and v not in MRI_BRAIN_SERIES:
+            max_series = max(series_to_numbers[v])
+            single_series = [dicom for dicom in views[v] if int(dicom.SeriesNumber) == max_series]
+            logging.info(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
+            views[v] = single_series
+
         if v == MRI_TO_SEGMENT:
-            if len(series_to_numbers[v]) > 1:
-                logging.info(f'Got multiple series for {v} total {len(views[v])} Series numbers: {series_to_numbers[v]}')
-            else:
-                logging.info(f'Single series for {v} total {len(views[v])} Series numbers: {series_to_numbers[v]}')
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, ukb_instance, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
