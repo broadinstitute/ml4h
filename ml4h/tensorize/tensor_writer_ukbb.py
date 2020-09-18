@@ -454,9 +454,8 @@ def _write_tensors_from_dicoms(
                 logging.info(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)}')
             logging.info(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
             views[v] = single_series
-        series = f'{v}{HD5_GROUP_CHAR}instance_{ukb_instance}{HD5_GROUP_CHAR}'
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], series, write_pngs, tensors, hd5, mri_date, mri_group, stats)
+            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], series, ukb_instance, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
@@ -469,11 +468,11 @@ def _write_tensors_from_dicoms(
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, series, mri_data, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, series, mri_data, stats, mri_date, ukb_instance)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
-    slices: List[pydicom.Dataset], series: str, write_pngs: bool, tensors: str,
+    slices: List[pydicom.Dataset], series: str, instance: str,
     hd5: h5py.File, mri_date: datetime.datetime, mri_group: str, stats: Dict[str, int],
 ) -> None:
     for slicer in slices:
@@ -500,7 +499,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
             #
             # cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
             full_slice[:] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}{slicer.InstanceNumber}', full_slice, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, f'{series}{slicer.InstanceNumber}', full_slice, stats, mri_date, instance)
 
 
 def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
@@ -691,13 +690,17 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
 def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
-    storage_type: StorageType = None, attributes: Dict[str, Any] = None,
+    instance: str = None, storage_type: StorageType = None, attributes: Dict[str, Any] = None,
 ):
     hd5_path = tensor_path(path_prefix, name)
-    if hd5_path in hd5:
+
+    if instance is not None:
+        hd5_path = f'{hd5_path}instance_{instance}'
+    elif hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
+
     if stats is not None:
         stats[hd5_path] += 1
     if storage_type == StorageType.STRING:
