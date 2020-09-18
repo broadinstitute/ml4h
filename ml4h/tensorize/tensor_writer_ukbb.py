@@ -492,7 +492,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
 
             _save_pixel_dimensions_if_missing(slicer, series, hd5)
             _save_slice_thickness_if_missing(slicer, series, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
+            _save_series_orientation_and_position_if_missing(slicer, series, hd5) #, str(slicer.InstanceNumber))
             # _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
             # _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
             # _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
