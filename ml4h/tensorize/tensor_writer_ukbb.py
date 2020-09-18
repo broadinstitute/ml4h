@@ -541,8 +541,9 @@ def _save_series_orientation_and_position_if_missing(slicer, series, hd5, instan
             hd5.create_dataset(orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient])
         if position_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
             hd5.create_dataset(position_ds_name, data=[float(x) for x in slicer.ImagePositionPatient])
-    except RuntimeError:
-        logging.warning(f'Run time error saving orientation')
+    except RuntimeError as e:
+        logging.warning(f'Run time error saving orientation {e}')
+
 
 def _has_overlay(d) -> bool:
     try:
