@@ -451,8 +451,8 @@ def _write_tensors_from_dicoms(
             max_series = max(series_to_numbers[v])
             single_series = [dicom for dicom in views[v] if int(dicom.SeriesNumber) == max_series]
             for d in views[v]:
-                logging.info(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)}')
-            logging.info(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
+                logging.warning(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)}')
+            logging.warning(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
             views[v] = single_series
         if v == MRI_TO_SEGMENT:
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], series, ukb_instance, hd5, mri_date, mri_group, stats)
