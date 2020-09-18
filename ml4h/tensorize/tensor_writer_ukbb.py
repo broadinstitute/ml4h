@@ -468,7 +468,7 @@ def _write_tensors_from_dicoms(
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, series, mri_data, stats, mri_date, ukb_instance)
+            create_tensor_in_hd5(hd5, mri_group, f'{series}_{ukb_instance}', mri_data, stats, mri_date)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
