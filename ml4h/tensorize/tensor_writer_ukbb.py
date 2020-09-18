@@ -324,7 +324,7 @@ def _dicts_and_plots_from_tensorization(
     continuous = {}
     value_counter = Counter()
     for k in sorted(list(stats.keys())):
-        logging.info("{} has {}".format(k, stats[k]))
+        #logging.info("{} has {}".format(k, stats[k]))
 
         if 'categorical' not in k and 'continuous' not in k:
             continue
@@ -342,10 +342,10 @@ def _dicts_and_plots_from_tensorization(
         plot_value_counter(list(categories.keys()), value_counter, a_id + '_v_count', os.path.join(output_folder, a_id))
         plot_histograms(continuous_stats, a_id, os.path.join(output_folder, a_id))
 
-    logging.info("Continuous tensor map: {}".format(continuous))
-    logging.info("Continuous Columns: {}".format(len(continuous)))
-    logging.info("Category tensor map: {}".format(categories))
-    logging.info("Categories Columns: {}".format(len(categories)))
+    # logging.info("Continuous tensor map: {}".format(continuous))
+    # logging.info("Continuous Columns: {}".format(len(continuous)))
+    # logging.info("Category tensor map: {}".format(categories))
+    # logging.info("Categories Columns: {}".format(len(categories)))
 
 
 def _to_float_or_false(s):
