@@ -94,7 +94,7 @@ cp -r /home/${USER}/.mc ./
 singularity exec \
     ${GPU_DEVICE} \
     ${MOUNTS} \
-    docker://${DOCKER_IMAGE} /bi/bash -c \
+    docker://${DOCKER_IMAGE} /bin/bash -c \
         "pip install -e /home/$USER/ml4cvd; \
          export MOUNT_BUCKETS=${MOUNT_BUCKETS};
          jupyter notebook --no-browser --ip 0.0.0.0 --port=${PORT} --NotebookApp.token= --notebook-dir=${SLURM_JOB_SCRATCHDIR}"
