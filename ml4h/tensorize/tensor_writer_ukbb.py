@@ -697,11 +697,9 @@ def create_tensor_in_hd5(
 ):
     hd5_path = tensor_path(path_prefix, name)
     if instance is not None:
-        hd5_path = f'{hd5_path}instance_{instance}'
+        hd5_path = f'{hd5_path}instance_{instance}/'
 
-    if hd5_path in hd5 and 'instance' in hd5_path:
-        hd5_path = f'{hd5_path}/{len(hd5[hd5_path])}'
-    elif hd5_path in hd5:
+    if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
