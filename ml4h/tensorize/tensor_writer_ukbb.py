@@ -450,12 +450,12 @@ def _write_tensors_from_dicoms(
         if len(series_to_numbers[v]) > 1 and v not in MRI_BRAIN_SERIES:
             max_series = max(series_to_numbers[v])
             single_series = [dicom for dicom in views[v] if int(dicom.SeriesNumber) == max_series]
-            for d in views[v]:
-                logging.warning(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)} Time {d.AcquisitionTime}')
+            # for d in views[v]:
+            #     logging.warning(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)} Time {d.AcquisitionTime}')
             logging.warning(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
             views[v] = single_series
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], series, ukb_instance, hd5, mri_date, mri_group, stats)
+            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, ukb_instance, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
@@ -468,7 +468,7 @@ def _write_tensors_from_dicoms(
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}/{ukb_instance}', mri_data, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, f'{v}/{ukb_instance}', mri_data, stats, mri_date)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
