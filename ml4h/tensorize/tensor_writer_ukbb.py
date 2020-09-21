@@ -701,7 +701,7 @@ def create_tensor_in_hd5(
 
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
-    else:
+    elif instance is None:
         hd5_path = f'{hd5_path}instance_0'
 
     if stats is not None:
