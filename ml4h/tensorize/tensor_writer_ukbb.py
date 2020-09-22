@@ -459,16 +459,17 @@ def _write_tensors_from_dicoms(
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
-            mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
-            for slicer in views[v]:
-                _save_pixel_dimensions_if_missing(slicer, v, hd5)
-                _save_slice_thickness_if_missing(slicer, v, hd5)
-                _save_series_orientation_and_position_if_missing(slicer, v, hd5)
-                slice_index = slicer.InstanceNumber - 1
-                if v in MRI_LIVER_IDEAL_PROTOCOL:
-                    slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
-                mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{v}/{ukb_instance}', mri_data, stats, mri_date)
+            pass
+            # mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
+            # for slicer in views[v]:
+            #     _save_pixel_dimensions_if_missing(slicer, v, hd5)
+            #     _save_slice_thickness_if_missing(slicer, v, hd5)
+            #     _save_series_orientation_and_position_if_missing(slicer, v, hd5)
+            #     slice_index = slicer.InstanceNumber - 1
+            #     if v in MRI_LIVER_IDEAL_PROTOCOL:
+            #         slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
+            #     mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
+            # create_tensor_in_hd5(hd5, mri_group, f'{v}/{ukb_instance}', mri_data, stats, mri_date)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
