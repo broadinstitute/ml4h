@@ -476,30 +476,31 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
     hd5: h5py.File, mri_date: datetime.datetime, mri_group: str, stats: Dict[str, int],
 ) -> None:
     for slicer in slices:
-        full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
-
+        #full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
         if _has_overlay(slicer):
             if _is_mitral_valve_segmentation(slicer):
                 series = series.replace('sax', 'lax')
             else:
                 series = series.replace('lax', 'sax')
 
-            # try:
-            #     overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
-            # except KeyError:
-            #     logging.exception(f'Got key error trying to make anatomical mask, skipping.')
-            #     continue
+            series_segmented = f'{series}_segmented'
+            try:
+                overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
+            except KeyError:
+                logging.exception(f'Got key error trying to make anatomical mask, skipping.')
+                continue
 
-            _save_pixel_dimensions_if_missing(slicer, series, hd5)
-            _save_slice_thickness_if_missing(slicer, series, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
-            # _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
-            # _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
-            # _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
+            # _save_pixel_dimensions_if_missing(slicer, series, hd5)
+            # _save_slice_thickness_if_missing(slicer, series, hd5)
+            # _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
+            _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
+            _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
+            _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
             #
             # cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-            full_slice[:] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{instance}', full_slice, stats, mri_date, slicer.InstanceNumber)
+            #full_slice[:] = slicer.pixel_array.astype(np.float32)
+            #create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{instance}', full_slice, stats, mri_date, slicer.InstanceNumber)
+            create_tensor_in_hd5(hd5, mri_group, f'{series_segmented}{HD5_GROUP_CHAR}{instance}', mask, stats, mri_date, slicer.InstanceNumber)
 
 
 def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
