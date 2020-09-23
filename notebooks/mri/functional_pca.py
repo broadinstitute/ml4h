@@ -64,6 +64,7 @@ f.savefig('circle_petersen.png', dpi=500)
 
 # %%
 import scipy
+import matplotlib.pyplot as plt
 f, ax = plt.subplots()
 f.set_size_inches(3, 3)
 ax.hexbin(projection_petersen['LA_poisson_max'], projection_petersen['LA_Biplan_vol_max'], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
@@ -89,7 +90,7 @@ projection_petersen['poisson_err_max'] = np.abs(projection_petersen['LA_poisson_
 projection_petersen['la_max_circle_err'] = np.abs(projection_petersen['la_max_circle'] - projection_petersen['LA_Biplan_vol_max'])/projection_petersen['LA_Biplan_vol_max']
 
 # %%
-import matplotlib.pyplot as plt
+
 import seaborn as sns
 f, ax = plt.subplots()
 sns.distplot(projection_petersen['poisson_disc_max'], ax=ax, kde=False, label='3-D', color='black', hist_kws={'alpha': 0.9})
@@ -106,14 +107,22 @@ print(np.sum(projection_petersen['poisson_err_max']), np.sum(projection_petersen
 
 arr = np.zeros((2, 2), dtype=np.int64)
 thresh = 0.15
-arr[0, 0] = len(projection_petersen[(projection_petersen['poisson_err_max']<=thresh) & \
-                                    (projection_petersen['la_max_circle_err']<=thresh)])
-arr[1, 1] = len(projection_petersen[(projection_petersen['poisson_err_max']>thresh) & \
-                                    (projection_petersen['la_max_circle_err']>thresh)])
-arr[0, 1] = len(projection_petersen[(projection_petersen['poisson_err_max']>thresh) & \
-                                    (projection_petersen['la_max_circle_err']<=thresh)])
-arr[1, 0] = len(projection_petersen[(projection_petersen['poisson_err_max']<=thresh) & \
-                                    (projection_petersen['la_max_circle_err']>thresh)])
+arr[0, 0] = len(
+    projection_petersen[(projection_petersen['poisson_err_max']<=thresh) & \
+                                    (projection_petersen['la_max_circle_err']<=thresh)],
+)
+arr[1, 1] = len(
+    projection_petersen[(projection_petersen['poisson_err_max']>thresh) & \
+                                    (projection_petersen['la_max_circle_err']>thresh)],
+)
+arr[0, 1] = len(
+    projection_petersen[(projection_petersen['poisson_err_max']>thresh) & \
+                                    (projection_petersen['la_max_circle_err']<=thresh)],
+)
+arr[1, 0] = len(
+    projection_petersen[(projection_petersen['poisson_err_max']<=thresh) & \
+                                    (projection_petersen['la_max_circle_err']>thresh)],
+)
 
 f, ax = plt.subplots()
 f.set_size_inches(4, 3)
@@ -159,7 +168,6 @@ ax.set_yticklabels(labels)
 plt.tight_layout()
 plt.savefig('cross_corr.png', dpi=500)
 # %%
-
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -193,4 +201,10 @@ for i, component in enumerate(pca.components_):
     sns.distplot(trans[:, i], kde=False, ax = ax[i])
 plt.tight_layout()
 f.savefig('PC_dists.png', dpi=500)
+# %%
+
+for i, component in enumerate(pca.components_):
+    df_poi[f'PC_{i}'] = trans[:, i]
+
+df_poi[['sample_id'] + keys + [f'PC_{i}' for i in range(5)]].to_csv('all_atria_boundary_pcs_v20200905.csv', index=False)
 # %%
