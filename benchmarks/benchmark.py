@@ -10,7 +10,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-from benchmarks.data import build_tensor_maps, build_hd5s_ukbb
+from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths
 
 
 # batch_size, num_workers -> generator
@@ -23,7 +23,7 @@ def benchmark_generator(num_steps: int, gen: Generator) -> List[float]:
     for i in range(num_steps):
         start = time.time()
         next(gen)
-        times.append(start - time.time())
+        times.append(time.time() - start)
         print(f'{(i + 1) / num_steps:.1%} done', end='\r')
     print()
     return times
@@ -43,8 +43,10 @@ def benchmark_generator_factory(
     result_dfs = []
     for batch_size, num_workers in product(batch_sizes, workers):
         with generator_factory(batch_size, num_workers) as gen:
+            start = time.time()
             print(f'Beginning test at batch size {batch_size}, workers {num_workers}')
-            deltas = benchmark_generator(num_steps, gen)
+            deltas = benchmark_generator(num_steps // batch_size, gen)
+            print(f'Test at batch size {batch_size}, workers {num_workers} took {time.time() - start:.1f}s')
         result_df = pd.DataFrame({DELTA_COL: deltas})
         result_df[BATCH_SIZE_COL] = batch_size
         result_df[WORKER_COL] = num_workers
@@ -63,21 +65,23 @@ NUM_ECGS = 1024
 def ecg_tensor_generator_factory(batch_size: int, num_workers: int):
     from ml4h.tensor_generators import TensorGenerator
     tmaps = build_tensor_maps(ECG_DESCRIPTIONS)
-    paths = build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS)
     gen = TensorGenerator(
         batch_size=batch_size, num_workers=num_workers,
         input_maps=tmaps, output_maps=[],
-        cache_size=0, paths=paths,
+        cache_size=0, paths=get_hd5_paths(True, NUM_ECGS),
     )
     yield gen
     gen.kill_workers()
     del gen
 
 
-def bench_mark_ecg() -> pd.DataFrame:
-    factories = 'TensorGenerator', ecg_tensor_generator_factory
-    batch_sizes = [64, 128, 256, 512]
-    num_workers = [1, 2, 3, 4, 8, 16]
+def benchmark_ecg() -> pd.DataFrame:
+    factories = [
+        ('TensorGenerator', ecg_tensor_generator_factory),
+    ]
+    build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS)  # TODO: move this into "factories"
+    batch_sizes = [64, 128, 256]
+    num_workers = [1, 2, 4, 8]
     performance_dfs = []
     for name, factory in factories:
         print(f'------------ {name} ------------')
@@ -101,7 +105,7 @@ def plot_benchmark(performance_df: pd.DataFrame, ax: plt.Axes):
 def run_benchmark(benchmark_name: str, output_folder: str):
     os.makedirs(output_folder, exist_ok=True)
     benchmarks = {
-        'ecg': bench_mark_ecg,
+        'ecg': benchmark_ecg,
     }
     performance_df = benchmarks[benchmark_name]()
     performance_df.to_csv(
@@ -115,5 +119,7 @@ def run_benchmark(benchmark_name: str, output_folder: str):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('benchmark', help='Benchmark to run.')
-    parser.add_argument('output_folder', help='Where to save the benchmark results.')
+    parser.add_argument('--benchmark', help='Benchmark to run.')
+    parser.add_argument('--output_folder', help='Where to save the benchmark results.')
+    args = parser.parse_args()
+    run_benchmark(args.benchmark, args.output_folder)

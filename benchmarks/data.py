@@ -22,7 +22,7 @@ def random_concrete_shape(shape: Shape) -> Tuple[int, ...]:
 def build_example(shape: Shape, storage_type: StorageType) -> np.ndarray:
     shape = random_concrete_shape(shape)
     if storage_type == StorageType.CONTINUOUS:
-        return np.random.randn(shape)
+        return np.random.randn(*shape)
     if storage_type == StorageType.STRING:
         letters = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
         return np.random.choice(letters, shape)
@@ -63,6 +63,7 @@ def write_in_hd5_ukbb(
         hd5.create_dataset(name, data=value, dtype=h5py.special_dtype(vlen=str))
     elif storage_type == StorageType.CONTINUOUS:
         hd5.create_dataset(name, data=value, compression='gzip')
+        # TODO: try some different compression schemes
     else:
         raise NotImplementedError(f'{storage_type} cannot be automatically written yet')
 
@@ -82,7 +83,7 @@ def build_hd5s_ukbb(
         print(f'{(i + 1) / len(paths):.1%} done', end='\r')
     print()
     delta = time.time() - start_time
-    print(f'Wrote {len(paths)} hd5s in {delta:.1f} seconds at {delta / len(paths):.1f} paths/s')
+    print(f'Wrote {len(paths)} hd5s in {delta:.1f} seconds at {len(paths) / delta:.1f} paths/s')
     return paths
 
 
