@@ -1,15 +1,14 @@
 import os
 import time
 from typing import Tuple, Dict, Optional, List
-from ml4h.defines import TENSOR_EXT
+from ml4h.defines import TENSOR_EXT, StorageType
 from ml4h.TensorMap import TensorMap, Interpretation
 import h5py
 import numpy as np
 
-from ml4h.defines import StorageType
-
 
 Shape = Tuple[Optional[int], ...]
+DataDescription = Tuple[str, Shape, StorageType]
 
 
 SYNTHETIC_DATA_PATH = os.path.join(os.path.dirname(__file__), 'synthetic_data')
@@ -28,15 +27,6 @@ def build_example(shape: Shape, storage_type: StorageType) -> np.ndarray:
         return np.random.choice(letters, shape)
     else:
         raise NotImplementedError(f'Random generation not implemented for {storage_type}')
-
-
-def build_row(
-        data_descriptions: List[Tuple[str, Shape, StorageType]]
-) -> Dict[str, np.ndarray]:
-    return {
-        name: build_example(shape, storage_type)
-        for name, shape, storage_type in data_descriptions
-    }
 
 
 def _hd5_path_to_int(path: str) -> int:
@@ -69,7 +59,7 @@ def write_in_hd5_ukbb(
 
 
 def build_hd5s_ukbb(
-        data_descriptions: List[Tuple[str, Shape, StorageType]], num_hd5s: int,
+        data_descriptions: List[DataDescription], num_hd5s: int,
         overwrite: bool = True, compression: str = 'gzip',
 ):
     paths = get_hd5_paths(overwrite, num_hd5s)
@@ -93,7 +83,7 @@ STORAGE_TYPE_TO_INTERPRETATION = {
 
 
 def build_tensor_maps(
-    data_descriptions: List[Tuple[str, Shape, StorageType]],
+    data_descriptions: List[DataDescription],
 ) -> List[TensorMap]:
     tmaps = []
     for name, shape, storage_type in data_descriptions:

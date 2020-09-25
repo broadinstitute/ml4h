@@ -8,9 +8,10 @@ from ml4h.defines import StorageType
 from contextlib import contextmanager
 import seaborn as sns
 import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
 
 
-from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths
+from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription
 
 
 DELTA_COL = 'step delta'
@@ -19,8 +20,56 @@ BATCH_SIZE_COL = 'batch size'
 NAME_COL = 'name'
 
 
-# batch_size, num_workers -> generator
-GeneratorFactory = Callable[[int, int], ContextManager[Generator]]
+class GeneratorFactory(ABC):
+    is_setup = False
+
+    @abstractmethod
+    def setup(self, num_samples: int, data_descriptions: List[DataDescription]):
+        pass
+
+    @abstractmethod
+    @contextmanager
+    def __call__(self, batch_size: int, num_workers: int) -> Generator:
+        pass
+
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
+
+
+class TensorGeneratorFactory(GeneratorFactory):
+
+    def __init__(self, compression: str):
+        super().__init__()
+        self.compression = compression
+        self.tmaps = None
+        self.paths = None
+
+    def get_name(self) -> str:
+        return f'TensorGenerator_{self.compression}'
+
+    def setup(self, num_samples: int, data_descriptions: List[DataDescription]):
+        build_hd5s_ukbb(data_descriptions, num_samples, overwrite=True, compression=self.compression)
+        self.paths = get_hd5_paths(True, num_samples)
+        self.tmaps = build_tensor_maps(data_descriptions)
+
+    @contextmanager
+    def __call__(self, batch_size: int, num_workers: int) -> Generator:
+        from ml4h.tensor_generators import TensorGenerator
+        gen = TensorGenerator(
+            batch_size=batch_size, num_workers=num_workers,
+            input_maps=self.tmaps, output_maps=[],
+            cache_size=0, paths=self.paths,
+        )
+        yield gen
+        gen.kill_workers()
+        del gen
+
+
+FACTORIES = [
+    TensorGeneratorFactory('gzip'),
+    TensorGeneratorFactory('lzf'),
+]
 
 
 def benchmark_generator(num_steps: int, gen: Generator) -> List[float]:
@@ -54,44 +103,49 @@ def benchmark_generator_factory(
     return pd.concat(result_dfs)
 
 
-ECG_DESCRIPTIONS = [
-    ('ecg', (5000, 12), StorageType.CONTINUOUS),
-    ('bmi', (1,), StorageType.CONTINUOUS),
-]
-NUM_ECGS = 4096
+class Benchmark:
+
+    def __init__(
+            self, data_descriptions: List[DataDescription], num_samples: int,
+            batch_sizes: List[int], num_workers: List[int],
+    ):
+        self.data_descriptions = data_descriptions
+        self.num_samples = num_samples
+        self.batch_sizes = batch_sizes
+        self.num_workers = num_workers
+
+    def run(self, factories: List[GeneratorFactory]) -> pd.DataFrame:
+        performance_dfs = []
+        for factory in factories:
+            name = factory.get_name()
+            print(f'------------ {name} ------------')
+            factory.setup(self.num_samples, self.data_descriptions)
+            performance_df = benchmark_generator_factory(
+                factory, self.batch_sizes, self.num_workers, self.num_samples,
+            )
+            performance_df[NAME_COL] = name
+            performance_dfs.append(performance_df)
+        return pd.concat(performance_dfs)
 
 
-@contextmanager
-def ecg_tensor_generator_factory(batch_size: int, num_workers: int):
-    from ml4h.tensor_generators import TensorGenerator
-    tmaps = build_tensor_maps(ECG_DESCRIPTIONS)
-    gen = TensorGenerator(
-        batch_size=batch_size, num_workers=num_workers,
-        input_maps=tmaps, output_maps=[],
-        cache_size=0, paths=get_hd5_paths(True, NUM_ECGS),
-    )
-    yield gen
-    gen.kill_workers()
-    del gen
-
-
-def benchmark_ecg() -> pd.DataFrame:
-    factories = [
-        ('TensorGenerator_lzf_hd5', ecg_tensor_generator_factory, lambda: build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS, 'lzf')),
-        ('TensorGenerator_gzip_hd5', ecg_tensor_generator_factory, lambda: build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS, 'gzip')),
-    ]
-    batch_sizes = [64, 128, 256]
-    num_workers = [1, 2, 4, 8]
-    performance_dfs = []
-    for name, factory, setup in factories:
-        print(f'------------ {name} ------------')
-        setup()
-        performance_df = benchmark_generator_factory(
-            factory, batch_sizes, num_workers, NUM_ECGS
-        )
-        performance_df[NAME_COL] = name
-        performance_dfs.append(performance_df)
-    return pd.concat(performance_dfs)
+ECG_BENCHMARK = Benchmark(
+    [
+        ('ecg', (5000, 12), StorageType.CONTINUOUS),
+        ('bmi', (1,), StorageType.CONTINUOUS),
+    ],
+    4096, [64, 128, 256], [1, 2, 4, 8]
+)
+MRI_BENCHMARK = Benchmark(
+    [
+        ('mri', (256, 256, 16), StorageType.CONTINUOUS),
+        ('segmentation', (256, 256, 16), StorageType.CONTINUOUS),
+    ],
+    256, [4, 8, 16], [1, 2, 4, 8]
+)
+BENCHMARKS = {
+   'ecg_single_task': ECG_BENCHMARK,
+   'mri_single_task': MRI_BENCHMARK,
+}
 
 
 def plot_benchmark(performance_df: pd.DataFrame, save_path: str):
@@ -107,10 +161,7 @@ def plot_benchmark(performance_df: pd.DataFrame, save_path: str):
 def run_benchmark(benchmark_name: str, output_folder: str):
     # TODO: include got commit, datetime in output name, number of cpus
     os.makedirs(output_folder, exist_ok=True)
-    benchmarks = {
-        'ecg': benchmark_ecg,
-    }
-    performance_df = benchmarks[benchmark_name]()
+    performance_df = BENCHMARKS[benchmark_name].run(FACTORIES)
     performance_df.to_csv(
         os.path.join(output_folder, f'{benchmark_name}.tsv'),
         sep='\t', index=False,
