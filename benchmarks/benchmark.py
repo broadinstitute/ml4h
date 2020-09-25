@@ -1,15 +1,16 @@
-import time
-from argparse import ArgumentParser
 import os
-from typing import List, Generator, Callable, ContextManager
-from itertools import product
+import time
+import datetime
 import pandas as pd
+import seaborn as sns
+from itertools import product
+import matplotlib.pyplot as plt
+from argparse import ArgumentParser
+from typing import List, Generator
+from abc import ABC, abstractmethod
 from ml4h.defines import StorageType
 from contextlib import contextmanager
-import seaborn as sns
-import matplotlib.pyplot as plt
-from abc import ABC, abstractmethod
-
+from multiprocessing import cpu_count
 
 from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription
 
@@ -73,7 +74,6 @@ FACTORIES = [
 
 
 def benchmark_generator(num_steps: int, gen: Generator) -> List[float]:
-    # TODO memory profile
     times = []
     for i in range(num_steps):
         start = time.time()
@@ -142,9 +142,24 @@ MRI_BENCHMARK = Benchmark(
     ],
     256, [4, 8, 16], [1, 2, 4, 8]
 )
+ECG_MULTITASK_BENCHMARK = Benchmark(
+    (
+        [('ecg', (5000, 12), StorageType.CONTINUOUS)]
+        + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)]
+    ),
+    4096, [4, 8, 16], [1, 2, 4, 8]
+)
+TEST_BENCHMARK = Benchmark(
+    (
+        [('ecg', (5000, 12), StorageType.CONTINUOUS)]
+    ),
+    16, [1, 2], [1, 2, 4]
+)
 BENCHMARKS = {
-   'ecg_single_task': ECG_BENCHMARK,
-   'mri_single_task': MRI_BENCHMARK,
+    'test': TEST_BENCHMARK,
+    'ecg_single_task': ECG_BENCHMARK,
+    'mri_single_task': MRI_BENCHMARK,
+    'ecg_multi_task': ECG_MULTITASK_BENCHMARK,
 }
 
 
@@ -158,21 +173,31 @@ def plot_benchmark(performance_df: pd.DataFrame, save_path: str):
     plt.savefig(save_path, dpi=200)
 
 
-def run_benchmark(benchmark_name: str, output_folder: str):
-    # TODO: include got commit, datetime in output name, number of cpus
-    os.makedirs(output_folder, exist_ok=True)
+def run_benchmark(benchmark_name: str):
     performance_df = BENCHMARKS[benchmark_name].run(FACTORIES)
+    output_folder = os.path.join(os.path.dirname(__file__), 'benchmark_results', benchmark_name)
+    date = datetime.datetime.now().strftime('%d-%m-%Y_%H:%M:%S')
+    description = f'{date}_cpus-{cpu_count()}'
+    os.makedirs(output_folder, exist_ok=True)
     performance_df.to_csv(
-        os.path.join(output_folder, f'{benchmark_name}.tsv'),
+        os.path.join(output_folder, f'{description}_results.tsv'),
         sep='\t', index=False,
     )
-    plot_benchmark(performance_df, os.path.join(output_folder, f'{benchmark_name}.png'))
+    plot_benchmark(performance_df, os.path.join(output_folder, f'{description}_plot.png'))
 
 
 if __name__ == '__main__':
     # TODO: add memory and line profiling
     parser = ArgumentParser()
-    parser.add_argument('--benchmark', help='Benchmark to run.')
-    parser.add_argument('--output_folder', help='Where to save the benchmark results.')
+    parser.add_argument(
+        '--benchmarks', required=False, nargs='*',
+        help='Benchmarks to run. If no argument is provided, all will be run.',
+    )
     args = parser.parse_args()
-    run_benchmark(args.benchmark, args.output_folder)
+    benchmarks = args.benchmarks or list(BENCHMARKS)
+    print(f'Will run benchmarks: {", ".join(benchmarks)}')
+    for benchmark in benchmarks:
+        print('======================================')
+        print(f'Running benchmark {benchmark}')
+        print('======================================')
+        run_benchmark(benchmark)
