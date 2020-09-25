@@ -69,7 +69,6 @@ class TensorGeneratorFactory(GeneratorFactory):
 
 FACTORIES = [
     TensorGeneratorFactory('gzip'),
-    TensorGeneratorFactory('lzf'),
 ]
 
 
@@ -147,7 +146,7 @@ ECG_MULTITASK_BENCHMARK = Benchmark(
         [('ecg', (5000, 12), StorageType.CONTINUOUS)]
         + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)]
     ),
-    4096, [4, 8, 16], [1, 2, 4, 8]
+    4096, [64, 128, 256], [1, 2, 4, 8]
 )
 TEST_BENCHMARK = Benchmark(
     (
@@ -163,14 +162,16 @@ BENCHMARKS = {
 }
 
 
-def plot_benchmark(performance_df: pd.DataFrame, save_path: str):
+def plot_benchmark(performance_df: pd.DataFrame, save_path: str, benchmark_name: str):
     performance_df['samples / sec'] = 1 / performance_df[DELTA_COL] * performance_df[BATCH_SIZE_COL]
     plt.figure(figsize=(performance_df[BATCH_SIZE_COL].nunique() * 6, 6))
     sns.catplot(
         data=performance_df, kind='point',
         hue=NAME_COL, y='samples / sec', x=WORKER_COL, col=BATCH_SIZE_COL,
     )
-    plt.savefig(save_path, dpi=200)
+    plt.suptitle(f'Benchmark: {benchmark_name}', weight='bold', size='large', y=1.05)
+    print(f'Saving figure to {save_path}')
+    plt.savefig(save_path, dpi=200, bbox_inches='tight')
 
 
 def run_benchmark(benchmark_name: str):
@@ -183,7 +184,11 @@ def run_benchmark(benchmark_name: str):
         os.path.join(output_folder, f'{description}_results.tsv'),
         sep='\t', index=False,
     )
-    plot_benchmark(performance_df, os.path.join(output_folder, f'{description}_plot.png'))
+    plot_benchmark(
+        performance_df,
+        os.path.join(output_folder, f'{description}_plot.png'),
+        benchmark_name,
+    )
 
 
 if __name__ == '__main__':
