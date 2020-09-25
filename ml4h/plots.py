@@ -2118,5 +2118,140 @@ def _plot_reconstruction(
         plt.clf()
 
 
-if __name__ == '__main__':
-    plot_noisy()
+def pca_on_matrix(matrix, pca_components):
+    pca = PCA()
+    pca.fit(matrix)
+    print(f'PCA explains {100 * np.sum(pca.explained_variance_ratio_[:pca_components]):0.1f}% of variance with {pca_components} top PCA components.')
+    matrix_reduced = pca.transform(matrix)[:, :pca_components]
+    print(f'PCA reduces matrix shape:{matrix_reduced.shape} from matrix shape: {matrix.shape}')
+    plot_scree(pca_components, 100 * pca.explained_variance_ratio_)
+    return pca, matrix_reduced
+
+
+def plot_scree(pca_components, percent_explained):
+    _ = plt.figure(figsize=(6, 4))
+    plt.plot(range(len(percent_explained)), percent_explained, 'g.-', linewidth=1)
+    plt.axvline(x=pca_components, c='r', linewidth=3)
+    label = f'{np.sum(percent_explained[:pca_components]):0.1f}% of variance explained by top {pca_components} of {len(percent_explained)} components'
+    plt.text(pca_components + 0.02 * len(percent_explained), percent_explained[1], label)
+    plt.title('Scree Plot')
+    plt.xlabel('Principal Components')
+    plt.ylabel('% of Variance Explained by Each Component')
+    figure_path = f'./results/pca_{pca_components}_of_{len(percent_explained)}_testimonials.png'
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+            angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
+def directions_in_latent_space(stratify_column, stratify_thresh, split_column, split_thresh, latent_cols, latent_df):
+    hit = latent_df.loc[latent_df[stratify_column] >= stratify_thresh][latent_cols].to_numpy()
+    miss = latent_df.loc[latent_df[stratify_column] < stratify_thresh][latent_cols].to_numpy()
+    miss_mean_vector = np.mean(miss, axis=0)
+    hit_mean_vector = np.mean(hit, axis=0)
+    strat_vector = hit_mean_vector - miss_mean_vector
+
+    hit1 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
+                         & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
+    miss1 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
+                          & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
+    hit2 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
+                         & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
+    miss2 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
+                          & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
+    miss_mean_vector1 = np.mean(miss1, axis=0)
+    hit_mean_vector1 = np.mean(hit1, axis=0)
+    angle1 = angle_between(miss_mean_vector1, hit_mean_vector1)
+    miss_mean_vector2 = np.mean(miss2, axis=0)
+    hit_mean_vector2 = np.mean(hit2, axis=0)
+    angle2 = angle_between(miss_mean_vector2, hit_mean_vector2)
+    h1_vector = hit_mean_vector1 - miss_mean_vector1
+    h2_vector = hit_mean_vector2 - miss_mean_vector2
+    angle3 = angle_between(h1_vector, h2_vector)
+    angle4 = angle_between(strat_vector, h1_vector)
+    angle5 = angle_between(strat_vector, h2_vector)
+    print(f'\n Between {stratify_column}, and splits: {split_column}\n',
+          f'Angles: {angle1:.4f}, {angle2:.4f} \n'
+          f'stratify threshold: {stratify_thresh}, split thresh: {split_thresh}, \n'
+          f'hit_mean_vector2 shape {miss_mean_vector1.shape}, miss1:{hit_mean_vector2.shape} \n'
+          f'Hit1 shape {hit1.shape}, miss1:{miss1.shape} threshold:{stratify_thresh}\n'
+          f'Hit2 shape {hit2.shape}, miss2:{miss2.shape}\n')
+
+    return hit_mean_vector1, miss_mean_vector1, hit_mean_vector2, miss_mean_vector2
+
+
+def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_df):
+    hit = latent_df.loc[latent_df[stratify_column] >= stratify_thresh][latent_cols].to_numpy()
+    miss = latent_df.loc[latent_df[stratify_column] < stratify_thresh][latent_cols].to_numpy()
+    miss_mean_vector = np.mean(miss, axis=0)
+    hit_mean_vector = np.mean(hit, axis=0)
+    angle = angle_between(miss_mean_vector, hit_mean_vector)
+    print(f'Angle between {stratify_column} and all others: {angle}, \n'
+          f'Hit shape {hit.shape}, miss:{miss.shape} threshold:{stratify_thresh}\n'
+          f'Distance: {np.linalg.norm(hit_mean_vector - miss_mean_vector):.3f}, '
+          f'Hit std {np.std(hit, axis=1).mean():.3f}, miss std:{np.std(miss, axis=1).mean():.3f}\n')
+    return hit_mean_vector, miss_mean_vector
+
+
+def plot_pcs(matrix_reduce, latent_df, sides, color_key):
+    f, axes = plt.subplots(sides, sides, figsize=(16, 16))
+    for i, ax in enumerate(axes.ravel()):
+        colors = latent_df[color_key].to_numpy()
+        points = ax.scatter(matrix_reduce[:, i], matrix_reduce[:, i + 1], c=colors)
+        f.colorbar(points, ax=ax)
+
+
+def plot_hit_to_miss_transforms(decoders, latent_df, feature='has_ttntv', scalar=3.0,
+                                thresh=1.0, latent_dimension=256, samples=16, cmap='plasma'):
+    latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
+    female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
+    sex_vector = female - male
+    print(f'sex vector shape: {sex_vector.shape}')
+    l = latent_df.iloc[:samples][latent_cols].to_numpy()
+    sexes = latent_df.iloc[:samples][feature].to_numpy()
+    print(f'l shape: {l.shape} sexes  shape: {sexes.shape}')
+    double_by = 1
+    sex_vectors = np.tile(sex_vector, (samples, double_by))
+    double = np.tile(l, double_by)
+
+    male_to_female = double + (scalar * sex_vectors)
+    female_to_male = double - (scalar * sex_vectors)
+    print(f'double shape: {double.shape} sex_vectors  shape: {sex_vectors.shape}')
+    for dtm in decoders:
+        predictions = decoders[dtm].predict(double)
+        m2f = decoders[dtm].predict(male_to_female)
+        f2m = decoders[dtm].predict(female_to_male)
+        print(f'prediction shape: {predictions.shape}')
+        if dtm.axes() == 3:
+            fig, axes = plt.subplots(samples, 2, figsize=(18, samples * 4))
+            for i in range(samples):
+                axes[i, 0].imshow(predictions[i, ..., 0], cmap=cmap)
+                axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
+                axes[i, 0].set_xticks(())
+                axes[i, 0].set_yticks(())
+                axes[i, 1].set_xticks(())
+                axes[i, 1].set_yticks(())
+                if sexes[i] >= thresh:
+                    axes[i, 1].imshow(f2m[i, ..., 0], cmap=cmap)
+                    axes[i, 1].set_title(f'{feature} to less than {thresh}')
+                else:
+                    axes[i, 1].imshow(m2f[i, ..., 0], cmap=cmap)
+                    axes[i, 1].set_title(f'{feature} to more than {thresh}')
