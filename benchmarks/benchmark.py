@@ -58,7 +58,7 @@ ECG_DESCRIPTIONS = [
     ('ecg', (5000, 12), StorageType.CONTINUOUS),
     ('bmi', (1,), StorageType.CONTINUOUS),
 ]
-NUM_ECGS = 1024
+NUM_ECGS = 4096
 
 
 @contextmanager
@@ -77,14 +77,15 @@ def ecg_tensor_generator_factory(batch_size: int, num_workers: int):
 
 def benchmark_ecg() -> pd.DataFrame:
     factories = [
-        ('TensorGenerator', ecg_tensor_generator_factory),
+        ('TensorGenerator_lzf_hd5', ecg_tensor_generator_factory, lambda: build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS, 'lzf')),
+        ('TensorGenerator_gzip_hd5', ecg_tensor_generator_factory, lambda: build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS, 'gzip')),
     ]
-    build_hd5s_ukbb(ECG_DESCRIPTIONS, NUM_ECGS)  # TODO: move this into "factories"
     batch_sizes = [64, 128, 256]
     num_workers = [1, 2, 4, 8]
     performance_dfs = []
-    for name, factory in factories:
+    for name, factory, setup in factories:
         print(f'------------ {name} ------------')
+        setup()
         performance_df = benchmark_generator_factory(
             factory, batch_sizes, num_workers, NUM_ECGS
         )
@@ -93,16 +94,18 @@ def benchmark_ecg() -> pd.DataFrame:
     return pd.concat(performance_dfs)
 
 
-def plot_benchmark(performance_df: pd.DataFrame, ax: plt.Axes):
-    performance_df['samples / sec'] = 1 / performance_df[DELTA_COL]
+def plot_benchmark(performance_df: pd.DataFrame, save_path: str):
+    performance_df['samples / sec'] = 1 / performance_df[DELTA_COL] * performance_df[BATCH_SIZE_COL]
+    plt.figure(figsize=(performance_df[BATCH_SIZE_COL].nunique() * 6, 6))
     sns.catplot(
         data=performance_df, kind='point',
         hue=NAME_COL, y='samples / sec', x=WORKER_COL, col=BATCH_SIZE_COL,
-        ax=ax,
     )
+    plt.savefig(save_path, dpi=200)
 
 
 def run_benchmark(benchmark_name: str, output_folder: str):
+    # TODO: include got commit, datetime in output name, number of cpus
     os.makedirs(output_folder, exist_ok=True)
     benchmarks = {
         'ecg': benchmark_ecg,
@@ -112,12 +115,11 @@ def run_benchmark(benchmark_name: str, output_folder: str):
         os.path.join(output_folder, f'{benchmark_name}.tsv'),
         sep='\t', index=False,
     )
-    fig, ax = plt.subplots(figsize=(performance_df[BATCH_SIZE_COL].nunique() * 6, 6))
-    plot_benchmark(performance_df, ax)
-    fig.savefig(os.path.join(output_folder, f'{benchmark_name}.png'), dpi=200)
+    plot_benchmark(performance_df, os.path.join(output_folder, f'{benchmark_name}.png'))
 
 
 if __name__ == '__main__':
+    # TODO: add memory and line profiling
     parser = ArgumentParser()
     parser.add_argument('--benchmark', help='Benchmark to run.')
     parser.add_argument('--output_folder', help='Where to save the benchmark results.')
