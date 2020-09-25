@@ -13,6 +13,12 @@ import matplotlib.pyplot as plt
 from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths
 
 
+DELTA_COL = 'step delta'
+WORKER_COL = 'num workers'
+BATCH_SIZE_COL = 'batch size'
+NAME_COL = 'name'
+
+
 # batch_size, num_workers -> generator
 GeneratorFactory = Callable[[int, int], ContextManager[Generator]]
 
@@ -27,12 +33,6 @@ def benchmark_generator(num_steps: int, gen: Generator) -> List[float]:
         print(f'{(i + 1) / num_steps:.1%} done', end='\r')
     print()
     return times
-
-
-DELTA_COL = 'step delta'
-WORKER_COL = 'num workers'
-BATCH_SIZE_COL = 'batch size'
-NAME_COL = 'name'
 
 
 def benchmark_generator_factory(
