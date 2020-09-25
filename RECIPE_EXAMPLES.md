@@ -20,6 +20,9 @@ Pipelines:
 
 Recipes modes:
 * [explore](#explore)
+* [train](#train)
+* [test](#test)
+* [infer](#infer)
 
 # Examples
 
