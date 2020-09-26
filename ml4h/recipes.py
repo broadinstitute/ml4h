@@ -405,7 +405,7 @@ def train_paired_model(args):
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
     for tm in decoders:
         decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
-    out_path = os.path.join(args.output_folder, args.id + '/')
+    out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     print(list(test_data.keys()))
 
@@ -417,15 +417,15 @@ def train_paired_model(args):
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
         double = np.tile(embed, 2)
-        _plot_reconstruction(etm, test_data[etm.input_name()], preds[i], out_path, test_paths)
+        _plot_reconstruction(etm, test_data[etm.input_name()], preds[i], out_path, test_paths, args.test_steps*args.batch_size)
         print(f'embed shape: {embed.shape} double shape: {double.shape}')
         for dtm in decoders:
             predictions = decoders[dtm].predict(double)
             print(f'prediction shape: {predictions.shape}')
-            out_path = os.path.join(args.output_folder, args.id, f'decoding_{dtm.name}_from_{etm.name}/')
-            if not os.path.exists(os.path.dirname(out_path)):
-                os.makedirs(os.path.dirname(out_path))
-            _plot_reconstruction(dtm, test_data[dtm.input_name()], predictions.copy(), out_path, test_paths, args.test_steps*args.batch_size)
+            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
+            if not os.path.exists(os.path.dirname(my_out_path)):
+                os.makedirs(os.path.dirname(my_out_path))
+            _plot_reconstruction(dtm, test_data[dtm.input_name()], predictions.copy(), my_out_path, test_paths, args.test_steps*args.batch_size)
 
 
 def plot_predictions(args):
