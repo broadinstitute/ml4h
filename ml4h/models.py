@@ -1218,12 +1218,12 @@ def make_paired_autoencoder_model(
     losses = []
     for left, right in pairs:
         kwargs['tensor_maps_in'] = [left]
-        left_model = make_multimodal_multitask_model(kwargs)
+        left_model = make_multimodal_multitask_model(**kwargs)
         encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
         h_left = encode_left(inputs[left])
 
         kwargs['tensor_maps_in'] = [right]
-        right_model = make_multimodal_multitask_model(kwargs)
+        right_model = make_multimodal_multitask_model(**kwargs)
         encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
         h_right = encode_right(inputs[right])
 
@@ -1240,11 +1240,9 @@ def make_paired_autoencoder_model(
             encoders[right] = encode_right
 
     multimodal_activation = Concatenate()(multimodal_activations)
-    encoder = Model(inputs=list(inputs.values()), outputs=[multimodal_activation], name='encoder')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][0] * len(inputs)), name='input_concept_space')
 
     # build decoder models
-    latent_inputs = Input(shape=(kwargs['dense_layers'][0] * len(inputs)), name='input_concept_space')
-    pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
     for tm in kwargs['tensor_maps_out']:
         shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
                                   upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
