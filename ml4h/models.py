@@ -1202,10 +1202,10 @@ def make_paired_autoencoder_model(
         custom_dict = _get_custom_objects(kwargs['tensor_maps_out'])
         encoders = {}
         for tm in kwargs['tensor_maps_in']:
-            encoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/encoder_{tm.name}.h5", custom_objects=custom_dict)
+            encoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/encoder_{tm.name}.h5", custom_objects=custom_dict, compile=False)
         decoders = {}
         for tm in kwargs['tensor_maps_out']:
-            decoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/decoder_{tm.name}.h5", custom_objects=custom_dict)
+            decoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/decoder_{tm.name}.h5", custom_objects=custom_dict, compile=False)
         logging.info(f"Attempting to load model file from: {kwargs['model_file']}")
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
         m.compile(optimizer=opt, loss=custom_dict['loss'])
