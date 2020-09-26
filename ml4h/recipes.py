@@ -20,10 +20,11 @@ from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
-from ml4h.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model
+from ml4h.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model, make_paired_autoencoder_model
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4h.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
-from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_prediction_calibrations
+from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_prediction_calibrations, \
+    _plot_reconstruction
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 
@@ -84,6 +85,8 @@ def run(args):
             train_char_model(args)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
+        elif 'train_paired' == args.mode:
+            train_paired_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'append_continuous_csv' == args.mode:
@@ -387,6 +390,42 @@ def train_siamese_model(args):
         prediction, labels['output_siamese'], {'random_siamese_verification_task': 0},
         args.protected_maps, args.id, os.path.join(args.output_folder, args.id + '/'),
     )
+
+
+def train_paired_model(args):
+    pairs = [(args.tensor_maps_in[0], args.tensor_maps_in[1])]
+    full_model, encoders, decoders = make_paired_autoencoder_model(pairs, pair_loss='cosine', **args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    train_model_from_generators(
+        full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+        plot=False, save_last_model=True
+    )
+    for tm in encoders:
+        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+    for tm in decoders:
+        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+    out_path = os.path.join(args.output_folder, args.id + '/')
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    print(list(test_data.keys()))
+
+    preds = full_model.predict(test_data)
+    predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_out, test_data, test_labels, test_paths, out_path)
+    print([p.shape for p in preds])
+    print([tm.name for tm in args.tensor_maps_out])
+    print(test_paths)
+    for i, etm in enumerate(encoders):
+        embed = encoders[etm].predict(test_data[etm.input_name()])
+        double = np.tile(embed, 2)
+        _plot_reconstruction(etm, test_data[etm.input_name()], preds[i], out_path, test_paths)
+        print(f'embed shape: {embed.shape} double shape: {double.shape}')
+        for dtm in decoders:
+            predictions = decoders[dtm].predict(double)
+            print(f'prediction shape: {predictions.shape}')
+            out_path = os.path.join(args.output_folder, args.id, f'decoding_{dtm.name}_from_{etm.name}/')
+            if not os.path.exists(os.path.dirname(out_path)):
+                os.makedirs(os.path.dirname(out_path))
+            _plot_reconstruction(dtm, test_data[dtm.input_name()], predictions.copy(), out_path, test_paths, args.test_steps*args.batch_size)
 
 
 def plot_predictions(args):

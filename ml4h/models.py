@@ -533,16 +533,9 @@ def l2_norm(x, axis=None):
 
 
 def pairwise_cosine_difference(t1, t2):
-    """
-    A [batch x n x d] tensor of n rows with d dimensions
-    B [batch x m x d] tensor of n rows with d dimensions
-
-    returns:
-    D [batch x n x m] tensor of cosine similarity scores between each point i<n, j<m
-    """
     t1_norm = t1 / l2_norm(t1, axis=-1)
     t2_norm = t2 / l2_norm(t2, axis=-1)
-    dot = K.clip(K.batch_dot(t1, t2), -1, 1)
+    dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
     return tf.acos(dot)
 
 
@@ -860,6 +853,47 @@ class ConvDecoder:
         return self.conv_label(x)
 
 
+class ConvDecoderNoSkip:
+    def __init__(
+            self,
+            *,
+            tensor_map_out: TensorMap,
+            filters_per_dense_block: List[int],
+            conv_layer_type: str,
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
+            block_size: int,
+            activation: str,
+            normalization: str,
+            regularization: str,
+            regularization_rate: float,
+            upsample_x: int,
+            upsample_y: int,
+            upsample_z: int,
+    ):
+        dimension = tensor_map_out.axes()
+        self.dense_blocks = [
+            DenseConvolutionalBlock(
+                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=[x] * block_size,
+                conv_y=[y] * block_size, conv_z=[z] * block_size, block_size=block_size, activation=activation, normalization=normalization,
+                regularization=regularization, regularization_rate=regularization_rate,
+            )
+            for filters, x, y, z in zip(filters_per_dense_block, conv_x, conv_y, conv_z)
+        ]
+        conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
+        self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map_out.activation,
+                                     name=tensor_map_out.output_name())
+        self.upsamples = [_upsampler(dimension, upsample_x, upsample_y, upsample_z) for _ in range(len(filters_per_dense_block) + 1)]
+        print(f'Decode has: {list(enumerate(zip(self.dense_blocks, self.upsamples)))}')
+
+    def __call__(self, x: Tensor) -> Tensor:
+        for i, (dense_block, upsample) in enumerate(zip(self.dense_blocks, self.upsamples)):
+            x = upsample(x)
+            x = dense_block(x)
+        return self.conv_label(x)
+
+
 def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     """
     Parents will always appear before their children after sorting. Idempotent and slow.
@@ -1153,6 +1187,108 @@ def _make_multimodal_multitask_model(
         decoder_outputs[tm] = decoder(bottle_neck_outputs[tm], encoder_intermediates, decoder_outputs)
 
     return Model(inputs=list(inputs.values()), outputs=list(decoder_outputs.values()))
+
+
+def make_paired_autoencoder_model(
+        pairs: List[Tuple[TensorMap, TensorMap]],
+        pair_loss='cosine',
+        **kwargs
+) -> Model:
+    opt = get_optimizer(
+        kwargs['optimizer'], kwargs['learning_rate'], steps_per_epoch=kwargs['training_steps'],
+        learning_rate_schedule=kwargs['learning_rate_schedule'], optimizer_kwargs=kwargs.get('optimizer_kwargs'),
+    )
+    if 'model_file' in kwargs and kwargs['model_file'] is not None:
+        logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
+        custom_dict = _get_custom_objects(kwargs['tensor_maps_out'])
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
+        m.summary()
+        logging.info("Loaded model file from: {kwargs['model_file']}")
+        return m
+
+    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
+    original_outputs = {tm: 1 for tm in kwargs['tensor_maps_out']}
+    real_serial_layers = kwargs['model_layers']
+    kwargs['model_layers'] = None
+    multimodal_activations = []
+    encoders = {}
+    decoders = {}
+    outputs = []
+    losses = []
+    for left, right in pairs:
+        kwargs['tensor_maps_in'] = [left]
+        left_model = make_multimodal_multitask_model(kwargs)
+        encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
+        h_left = encode_left(inputs[left])
+
+        kwargs['tensor_maps_in'] = [right]
+        right_model = make_multimodal_multitask_model(kwargs)
+        encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
+        h_right = encode_right(inputs[right])
+
+        if pair_loss == 'cosine':
+            loss_layer = CosineLossLayer(1.0)
+        elif pair_loss == 'euclid':
+            loss_layer = L2LossLayer(1.0)
+
+        paired_embeddings = loss_layer([h_left, h_right])
+        multimodal_activations.extend(paired_embeddings)
+        if left not in encoders:
+            encoders[left] = encode_left
+        if right not in encoders:
+            encoders[right] = encode_right
+
+    multimodal_activation = Concatenate()(multimodal_activations)
+    encoder = Model(inputs=list(inputs.values()), outputs=[multimodal_activation], name='encoder')
+
+    # build decoder models
+    latent_inputs = Input(shape=(kwargs['dense_layers'][0] * len(inputs)), name='input_concept_space')
+    pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]] = {}
+    for tm in kwargs['tensor_maps_out']:
+        shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
+                                  upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
+                                  channels=kwargs['dense_blocks'][-1])
+
+        restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
+                                      normalization=kwargs['dense_normalize'])
+
+        decode = ConvDecoderNoSkip(
+            tensor_map_out=tm,
+            filters_per_dense_block=kwargs['dense_blocks'][::-1],
+            conv_layer_type=kwargs['conv_type'],
+            conv_x=kwargs['conv_x'],
+            conv_y=kwargs['conv_y'],
+            conv_z=kwargs['conv_z'],
+            block_size=kwargs['block_size'],
+            activation=kwargs['activation'],
+            normalization=kwargs['conv_normalize'],
+            regularization=kwargs['conv_regularize'],
+            regularization_rate=kwargs['conv_regularize_rate'],
+            upsample_x=kwargs['pool_x'],
+            upsample_y=kwargs['pool_y'],
+            upsample_z=kwargs['pool_z'],
+        )
+
+        reconstruction = decode(restructure(latent_inputs))
+        decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
+        decoders[tm] = decoder
+        outputs.append(decoder(multimodal_activation))
+        losses.append(tm.loss)
+
+    kwargs['tensor_maps_out'] = list(original_outputs.keys())
+    kwargs['tensor_maps_in'] = list(inputs.keys())
+
+    m = Model(inputs=list(inputs.values()), outputs=outputs)
+    my_metrics = {tm.output_name(): tm.metrics for tm in kwargs['tensor_maps_out']}
+    m.compile(optimizer=opt, loss=losses, metrics=my_metrics)
+    m.summary()
+
+    if real_serial_layers is not None:
+        m.load_weights(kwargs['model_layers'], by_name=True)
+        print(f"Loaded model weights from:{kwargs['model_layers']}")
+
+    return m, encoders, decoders
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
