@@ -1199,18 +1199,18 @@ def make_paired_autoencoder_model(
         learning_rate_schedule=kwargs['learning_rate_schedule'], optimizer_kwargs=kwargs.get('optimizer_kwargs'),
     )
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
-        logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         custom_dict = _get_custom_objects(kwargs['tensor_maps_out'])
-        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt, loss=custom_dict['loss'])
-        m.summary()
-        logging.info(f"Loaded model file from: {kwargs['model_file']}")
         encoders = {}
         for tm in kwargs['tensor_maps_in']:
             encoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/encoder_{tm.name}.h5", custom_objects=custom_dict)
         decoders = {}
         for tm in kwargs['tensor_maps_out']:
             decoders[tm] = load_model(f"{os.path.dirname(kwargs['model_file'])}/decoder_{tm.name}.h5", custom_objects=custom_dict)
+        logging.info(f"Attempting to load model file from: {kwargs['model_file']}")
+        m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
+        m.compile(optimizer=opt, loss=custom_dict['loss'])
+        m.summary()
+        logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m, encoders, decoders
 
     inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
