@@ -29,6 +29,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
 from sklearn import manifold
+from sklearn.decomposition import PCA
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import calibration_curve
@@ -2118,17 +2119,17 @@ def _plot_reconstruction(
         plt.clf()
 
 
-def pca_on_matrix(matrix, pca_components):
+def pca_on_matrix(matrix, pca_components, prefix='./figures/'):
     pca = PCA()
     pca.fit(matrix)
     print(f'PCA explains {100 * np.sum(pca.explained_variance_ratio_[:pca_components]):0.1f}% of variance with {pca_components} top PCA components.')
     matrix_reduced = pca.transform(matrix)[:, :pca_components]
     print(f'PCA reduces matrix shape:{matrix_reduced.shape} from matrix shape: {matrix.shape}')
-    plot_scree(pca_components, 100 * pca.explained_variance_ratio_)
+    plot_scree(pca_components, 100 * pca.explained_variance_ratio_, prefix)
     return pca, matrix_reduced
 
 
-def plot_scree(pca_components, percent_explained):
+def plot_scree(pca_components, percent_explained, prefix='./figures/'):
     _ = plt.figure(figsize=(6, 4))
     plt.plot(range(len(percent_explained)), percent_explained, 'g.-', linewidth=1)
     plt.axvline(x=pca_components, c='r', linewidth=3)
@@ -2137,7 +2138,7 @@ def plot_scree(pca_components, percent_explained):
     plt.title('Scree Plot')
     plt.xlabel('Principal Components')
     plt.ylabel('% of Variance Explained by Each Component')
-    figure_path = f'./results/pca_{pca_components}_of_{len(percent_explained)}_testimonials.png'
+    figure_path = f'{prefix}pca_{pca_components}_of_{len(percent_explained)}.png'
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -2209,14 +2210,6 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
           f'Distance: {np.linalg.norm(hit_mean_vector - miss_mean_vector):.3f}, '
           f'Hit std {np.std(hit, axis=1).mean():.3f}, miss std:{np.std(miss, axis=1).mean():.3f}\n')
     return hit_mean_vector, miss_mean_vector
-
-
-def plot_pcs(matrix_reduce, latent_df, sides, color_key):
-    f, axes = plt.subplots(sides, sides, figsize=(16, 16))
-    for i, ax in enumerate(axes.ravel()):
-        colors = latent_df[color_key].to_numpy()
-        points = ax.scatter(matrix_reduce[:, i], matrix_reduce[:, i + 1], c=colors)
-        f.colorbar(points, ax=ax)
 
 
 def plot_hit_to_miss_transforms(decoders, latent_df, feature='has_ttntv', scalar=3.0,
