@@ -1204,8 +1204,14 @@ def make_paired_autoencoder_model(
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
         m.compile(optimizer=opt, loss=custom_dict['loss'])
         m.summary()
-        logging.info("Loaded model file from: {kwargs['model_file']}")
-        return m
+        logging.info(f"Loaded model file from: {kwargs['model_file']}")
+        encoders = {}
+        for tm in kwargs['tensor_maps_in']:
+            encoders[tm].load_model(f"{os.path.dirname(kwargs['model_file'])}/encoder_{tm.name}.h5", custom_objects=custom_dict)
+        decoders = {}
+        for tm in kwargs['tensor_maps_out']:
+            decoders[tm].load_model(f"{os.path.dirname(kwargs['model_file'])}/decoder_{tm.name}.h5", custom_objects=custom_dict)
+        return m, encoders, decoders
 
     inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
     original_outputs = {tm: 1 for tm in kwargs['tensor_maps_out']}
