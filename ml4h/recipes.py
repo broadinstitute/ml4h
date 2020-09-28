@@ -394,7 +394,7 @@ def train_siamese_model(args):
 
 def train_paired_model(args):
     pairs = [(args.tensor_maps_in[0], args.tensor_maps_in[1])]
-    full_model, encoders, decoders = make_paired_autoencoder_model(pairs, pair_loss='cosine', **args.__dict__)
+    full_model, encoders, decoders = make_paired_autoencoder_model(pairs, **args.__dict__)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     train_model_from_generators(
         full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
