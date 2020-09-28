@@ -215,7 +215,7 @@ def _slice_tensor(tensor_key, slice_index):
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', step=1, total_slices=50):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if path_prefix == 'ukb_liver_mri':
+        if tm.axes() == 3 or path_prefix == 'ukb_liver_mri':
             categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, f'{dicom_key_prefix}1')
             categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
             tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
@@ -953,8 +953,8 @@ cine_segmented_ao_dist_slice0 = TensorMap(
         'ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0,
     ),
 )
-cine_segmented_ao_dist_slice0_3d = TensorMap(
-    'cine_segmented_ao_dist_slice0_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1), loss='logcosh',
+aorta_diastole_slice0_3d = TensorMap(
+    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1), loss='logcosh',
     normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
 )
 cine_segmented_lvot_slice0_3d = TensorMap(
@@ -1179,6 +1179,10 @@ sax_segmented_b6_192 = TensorMap(
     channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
 
+segmented_aorta_diastole = TensorMap(
+    'segmented_aorta_diastole', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
+)
 cine_segmented_ao_dist = TensorMap(
     'cine_segmented_ao_dist', Interpretation.CATEGORICAL, shape=(160, 192, 100, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_ao_dist_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
