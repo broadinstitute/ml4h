@@ -195,6 +195,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
                 history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
             if len(np.array(history.history[k]).shape) > 1:
                 history.history[k] = np.array(history.history[k])[:, 0, 0]
+                if 'val_' + k in history.history:
+                    history.history['val_' + k] = np.array(history.history['val_' + k])[:, 0, 0]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace('output_', '').split('_')
             k_title = " ".join(OrderedDict.fromkeys(k_split))
