@@ -1277,7 +1277,7 @@ def make_paired_autoencoder_model(
         reconstruction = decode(restructure(latent_inputs))
         decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
         decoders[tm] = decoder
-        outputs[tm.output_name()] = decoder(multimodal_activation)
+        outputs[tm] = decoder(multimodal_activation)
         losses.append(tm.loss)
 
     kwargs['tensor_maps_out'] = list(original_outputs.keys())
