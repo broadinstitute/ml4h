@@ -201,6 +201,7 @@ def parse_args():
     parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
+    parser.add_argument('--pair_loss', default='cosine', help='Distance metric between paired embeddings', choices=['euclid', 'cosine'])
     parser.add_argument(
         '--label_weights', nargs='*', type=float,
         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
