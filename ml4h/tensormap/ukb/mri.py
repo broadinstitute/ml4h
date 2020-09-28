@@ -896,8 +896,8 @@ lax_4ch_diastole_slice0_3d = TensorMap(
     ),
 )
 lax_4ch_diastole_slice0_224_3d = TensorMap(
-    'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1), loss='mse',
-    #normalization=ZeroMeanStd1(),
+    'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1), loss='logcosh',
+    normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
 )
 lax_4ch_diastole_slice0_256_3d = TensorMap(
@@ -955,7 +955,7 @@ cine_segmented_ao_dist_slice0 = TensorMap(
     ),
 )
 aorta_diastole_slice0_3d = TensorMap(
-    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1),
+    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1), loss='logcosh',
     normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
 )
 cine_segmented_lvot_slice0_3d = TensorMap(
