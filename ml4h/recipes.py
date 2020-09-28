@@ -409,15 +409,15 @@ def train_paired_model(args):
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     print(list(test_data.keys()))
 
-    preds = full_model.predict(test_data)
-    predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_out, test_data, test_labels, test_paths, out_path)
-    print([p.shape for p in preds])
+    predictions = full_model.predict(test_data)
+    predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, test_data, test_labels, test_paths, out_path)
+    print(f'Predictions are: {[(p, predictions[p].shape) for p in predictions]}')
     print([tm.name for tm in args.tensor_maps_out])
     print(test_paths)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
         double = np.tile(embed, 2)
-        _plot_reconstruction(etm, test_data[etm.input_name()], preds[i], out_path, test_paths, args.test_steps*args.batch_size)
+        _plot_reconstruction(etm, test_data[etm.input_name()], predictions[etm.output_name()], out_path, test_paths, args.test_steps*args.batch_size)
         print(f'embed shape: {embed.shape} double shape: {double.shape}')
         for dtm in decoders:
             predictions = decoders[dtm].predict(double)
