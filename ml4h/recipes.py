@@ -399,7 +399,7 @@ def train_paired_model(args):
     train_model_from_generators(
         full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-        plot=False, save_last_model=True
+        plot=True, save_last_model=True
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
