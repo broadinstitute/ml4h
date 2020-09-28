@@ -411,7 +411,7 @@ def train_paired_model(args):
 
     predictions = full_model.predict(test_data)
     predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, test_data, test_labels, test_paths, out_path)
-    print(f'Predictions are: {[(p, predictions[p].shape) for p in predictions]}')
+    print(f'Predictions are: {[p for p in predictions]}')
     print([tm.name for tm in args.tensor_maps_out])
     print(test_paths)
     for i, etm in enumerate(encoders):
