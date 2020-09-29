@@ -48,7 +48,7 @@ DEFAULT_PARAMS = {
     'model_layers': None,
     'model_file': None,
     'hidden_layer': 'embed',
-    'u_connect': []
+    'u_connect': {},
 }
 
 
