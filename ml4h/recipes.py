@@ -429,7 +429,7 @@ def inspect_paired_model(args):
     full_model, encoders, decoders = make_paired_autoencoder_model(**args.__dict__)
     infer_hidden_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
     latent_df = latent_space_dataframe(infer_hidden_tsv, args.app_csv)
-    plot_hit_to_miss_transforms(latent_df, decoders)
+    plot_hit_to_miss_transforms(latent_df, decoders, latent_dimension=args.dense_layers[0])
 
 
 def plot_predictions(args):
