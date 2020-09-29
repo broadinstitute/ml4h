@@ -2182,7 +2182,7 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
     return hit_mean_vector, miss_mean_vector
 
 
-def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', categorical=False,
+def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', categorical=False, prefix='./figures/',
                                 thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma'):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
@@ -2224,3 +2224,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', c
                     else:
                         axes[i, 1].imshow(m2f[i, ..., 0], cmap=cmap)
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
+            figure_path = f'{prefix}/{feature}_latent_dims_{latent_dimension}_scalar_{scalar}.png'
+            if not os.path.exists(os.path.dirname(figure_path)):
+                os.makedirs(os.path.dirname(figure_path))
+            plt.savefig(figure_path)
