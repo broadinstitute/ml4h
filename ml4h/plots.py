@@ -2098,8 +2098,8 @@ def plot_reconstruction(
                 axes[j, 0].plot(y[:, j], c='k', linestyle='--', label='original')
                 axes[j, 1].plot(yp[:, j], c='b', label='reconstruction')
                 if j == 0:
-                    plt.title(title)
-                    plt.legend()
+                    axes[j, 1].set_title(title)
+                    axes[j, 1].legend()
             plt.tight_layout()
             plt.savefig(os.path.join(folder, title + IMAGE_EXT))
         elif tm.axes() == 3:
