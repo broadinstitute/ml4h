@@ -331,7 +331,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
-        m = make_paired_autoencoder_model(
+        m, encoders, decoders = make_paired_autoencoder_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list,
@@ -341,12 +341,13 @@ class TestMakeMultimodalMultitaskModel:
         m.save(os.path.join(tmpdir, 'paired_ae.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
-        make_multimodal_multitask_model(
-            pair_list,
-            pair_list,
-            model_file=path,
-            **DEFAULT_PARAMS,
+        make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list,
+            **params
         )
+
 
 @pytest.mark.parametrize(
     'tmaps',
