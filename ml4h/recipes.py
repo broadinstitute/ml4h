@@ -24,7 +24,7 @@ from ml4h.models import make_character_model_plus, embed_model_predict, make_sia
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4h.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_prediction_calibrations, \
-    _plot_reconstruction, plot_hit_to_miss_transforms
+    plot_reconstruction, plot_hit_to_miss_transforms
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 
@@ -414,14 +414,14 @@ def train_paired_model(args):
     logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        _plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, args.test_steps*args.batch_size)
+        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, args.test_steps * args.batch_size)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
             if not os.path.exists(os.path.dirname(my_out_path)):
                 os.makedirs(os.path.dirname(my_out_path))
-            _plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, args.test_steps*args.batch_size)
+            plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, args.test_steps * args.batch_size)
 
 
 def inspect_paired_model(args):

@@ -162,7 +162,7 @@ def evaluate_predictions(
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel]
             y_truth = y_truth[y_truth != tm.sentinel]
-        _plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
+        plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(subplot_pearson_per_class(prediction_flat, truth_flat, tm.channel_map, protected, title, prefix=folder))
     elif tm.is_continuous():
@@ -2080,7 +2080,7 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def _plot_reconstruction(
+def plot_reconstruction(
         tm: TensorMap, y_true: np.ndarray, y_pred: np.ndarray,
         folder: str, paths: List[str], num_samples: int = 4,
 ):
@@ -2093,11 +2093,10 @@ def _plot_reconstruction(
         y = y_true[i].reshape(tm.shape)
         yp = y_pred[i].reshape(tm.shape)
         if tm.axes() == 2:
-            fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * num_samples))
+            fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, SUBPLOT_SIZE))
             for j in range(tm.shape[1]):
-                plt.subplot(tm.shape[1], 1, j + 1)
-                plt.plot(y[:, j], c='k', linestyle='--', label='original')
-                plt.plot(yp[:, j], c='b', label='reconstruction')
+                axes[j, 0].plot(y[:, j], c='k', linestyle='--', label='original')
+                axes[j, 1].plot(yp[:, j], c='b', label='reconstruction')
                 if j == 0:
                     plt.title(title)
                     plt.legend()
