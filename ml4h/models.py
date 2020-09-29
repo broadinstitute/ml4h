@@ -1295,7 +1295,7 @@ def make_paired_autoencoder_model(
 
     if real_serial_layers is not None:
         m.load_weights(kwargs['model_layers'], by_name=True)
-        print(f"Loaded model weights from:{kwargs['model_layers']}")
+        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
 
     return m, encoders, decoders
 

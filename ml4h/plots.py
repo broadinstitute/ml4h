@@ -2158,51 +2158,15 @@ def unit_vector(vector):
 def angle_between(v1, v2):
     """ Returns the angle in radians between vectors 'v1' and 'v2'::
             angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
+            90
             angle_between((1, 0, 0), (1, 0, 0))
             0.0
             angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
+            180
     """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
-
-
-def directions_in_latent_space(stratify_column, stratify_thresh, split_column, split_thresh, latent_cols, latent_df):
-    hit = latent_df.loc[latent_df[stratify_column] >= stratify_thresh][latent_cols].to_numpy()
-    miss = latent_df.loc[latent_df[stratify_column] < stratify_thresh][latent_cols].to_numpy()
-    miss_mean_vector = np.mean(miss, axis=0)
-    hit_mean_vector = np.mean(hit, axis=0)
-    strat_vector = hit_mean_vector - miss_mean_vector
-
-    hit1 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
-                         & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
-    miss1 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
-                          & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
-    hit2 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
-                         & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
-    miss2 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
-                          & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
-    miss_mean_vector1 = np.mean(miss1, axis=0)
-    hit_mean_vector1 = np.mean(hit1, axis=0)
-    angle1 = angle_between(miss_mean_vector1, hit_mean_vector1)
-    miss_mean_vector2 = np.mean(miss2, axis=0)
-    hit_mean_vector2 = np.mean(hit2, axis=0)
-    angle2 = angle_between(miss_mean_vector2, hit_mean_vector2)
-    h1_vector = hit_mean_vector1 - miss_mean_vector1
-    h2_vector = hit_mean_vector2 - miss_mean_vector2
-    angle3 = angle_between(h1_vector, h2_vector)
-    angle4 = angle_between(strat_vector, h1_vector)
-    angle5 = angle_between(strat_vector, h2_vector)
-    print(f'\n Between {stratify_column}, and splits: {split_column}\n',
-          f'Angles: {angle1:.4f}, {angle2:.4f} \n'
-          f'stratify threshold: {stratify_thresh}, split thresh: {split_thresh}, \n'
-          f'hit_mean_vector2 shape {miss_mean_vector1.shape}, miss1:{hit_mean_vector2.shape} \n'
-          f'Hit1 shape {hit1.shape}, miss1:{miss1.shape} threshold:{stratify_thresh}\n'
-          f'Hit2 shape {hit2.shape}, miss2:{miss2.shape}\n')
-
-    return hit_mean_vector1, miss_mean_vector1, hit_mean_vector2, miss_mean_vector2
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * 180 / 3.141592
 
 
 def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_df):
@@ -2218,45 +2182,43 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
     return hit_mean_vector, miss_mean_vector
 
 
-def plot_hit_to_miss_transforms(embeddings, decoders, feature='has_ttntv', features=None, categorical=False,
-                                thresh=1.0, latent_dimension=256, scalar=3.0, cmap='plasma'):
+def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', categorical=False,
+                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma'):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
     sex_vector = female - male
-    print(f'sex vector shape: {sex_vector.shape}')
-    print(f'l shape: {embeddings.shape} sexes  shape: {features.shape}')
-    double_by = 1
-    sex_vectors = np.tile(sex_vector, (samples, double_by))
-    double = np.tile(embeddings, double_by)
+    embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
+    sexes = latent_df.iloc[:samples][feature].to_numpy()
+    print(f'Embedding shape: {embeddings.shape} sexes  shape: {sexes.shape}')
 
-    male_to_female = double + (scalar * sex_vectors)
-    female_to_male = double - (scalar * sex_vectors)
-    print(f'double shape: {double.shape} sex_vectors  shape: {sex_vectors.shape}')
+    sex_vectors = np.tile(sex_vector, (samples, 1))
+    male_to_female = embeddings + (scalar * sex_vectors)
+    female_to_male = embeddings - (scalar * sex_vectors)
+    print(f'embeddings shape: {embeddings.shape} features vectors  shape: {sex_vectors.shape}')
     for dtm in decoders:
-        predictions = decoders[dtm].predict(double)
+        predictions = decoders[dtm].predict(embeddings)
         m2f = decoders[dtm].predict(male_to_female)
         f2m = decoders[dtm].predict(female_to_male)
         print(f'prediction shape: {predictions.shape}')
         if dtm.axes() == 3:
             fig, axes = plt.subplots(samples, 2, figsize=(18, samples * 4))
             for i in range(samples):
-                axes[i, 0].set_title(f"{feature}: {features[i]} ?>=<? {thresh}")
+                axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
                 axes[i, 0].set_xticks(())
                 axes[i, 0].set_yticks(())
                 axes[i, 1].set_xticks(())
                 axes[i, 1].set_yticks(())
                 if categorical:
                     axes[i, 0].imshow(np.argmax(predictions[i, ...], axis=-1), cmap=cmap)
-                    if features[i] >= thresh:
+                    if sexes[i] >= thresh:
                         axes[i, 1].imshow(np.argmax(f2m[i, ...], axis=-1), cmap=cmap)
                         axes[i, 1].set_title(f'{feature} to less than {thresh}')
                     else:
                         axes[i, 1].imshow(np.argmax(m2f[i, ...], axis=-1), cmap=cmap)
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
-
                 else:
                     axes[i, 0].imshow(predictions[i, ..., 0], cmap=cmap)
-                    if features[i] >= thresh:
+                    if sexes[i] >= thresh:
                         axes[i, 1].imshow(f2m[i, ..., 0], cmap=cmap)
                         axes[i, 1].set_title(f'{feature} to less than {thresh}')
                     else:
