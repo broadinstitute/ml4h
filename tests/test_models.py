@@ -322,9 +322,9 @@ class TestMakeMultimodalMultitaskModel:
     @pytest.mark.parametrize(
         'pairs',
         [
-            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[3])],
-            [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[3])],
-            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[3]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[4])]
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1])],
+            [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[1])],
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])]
         ],
     )
     def test_paired_models(self, pairs, tmpdir):
