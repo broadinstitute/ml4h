@@ -338,7 +338,7 @@ class TestMakeMultimodalMultitaskModel:
             tensor_maps_out=pair_list,
             **params
         )
-        assert_model_trains(pair_list, pair_list, m)
+        assert_model_trains(pair_list, pair_list, m, skip_shape_check=True)
         m.save(os.path.join(tmpdir, 'paired_ae.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
