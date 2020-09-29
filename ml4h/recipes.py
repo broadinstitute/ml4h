@@ -406,20 +406,17 @@ def train_paired_model(args):
         decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
     out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    print(list(test_data.keys()))
 
     predictions_list = full_model.predict(test_data)
     predictions_dict = {name: pred for name, pred in zip(full_model.output_names, predictions_list)}
     predictions_to_pngs(predictions_list, args.tensor_maps_in, args.tensor_maps_out, test_data, test_labels, test_paths, out_path)
-    print(f'Predictions are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
+    logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        double = np.tile(embed, 2)
         _plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, args.test_steps*args.batch_size)
-        print(f'embed shape: {embed.shape} double shape: {double.shape}')
         for dtm in decoders:
-            reconstruction = decoders[dtm].predict(double)
-            print(f'{dtm.name} has prediction shape: {reconstruction.shape}')
+            reconstruction = decoders[dtm].predict(embed)
+            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
             if not os.path.exists(os.path.dirname(my_out_path)):
                 os.makedirs(os.path.dirname(my_out_path))

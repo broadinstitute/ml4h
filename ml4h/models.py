@@ -1246,38 +1246,42 @@ def make_paired_autoencoder_model(
             encoders[right] = encode_right
 
     multimodal_activation = Concatenate()(multimodal_activations)
-    latent_inputs = Input(shape=(kwargs['dense_layers'][0] * len(inputs)), name='input_concept_space')
+    multimodal_merged = Dense(activation=kwargs['activation'], units=kwargs['dense_layers'][0])(multimodal_activation)
+    latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
     # build decoder models
     for tm in kwargs['tensor_maps_out']:
-        shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
-                                  upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
-                                  channels=kwargs['dense_blocks'][-1])
+        if tm.axes() > 1:
+            shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
+                                      upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
+                                      channels=kwargs['dense_blocks'][-1])
 
-        restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
-                                      normalization=kwargs['dense_normalize'])
+            restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
+                                          normalization=kwargs['dense_normalize'])
 
-        decode = ConvDecoderNoSkip(
-            tensor_map_out=tm,
-            filters_per_dense_block=kwargs['dense_blocks'][::-1],
-            conv_layer_type=kwargs['conv_type'],
-            conv_x=kwargs['conv_x'],
-            conv_y=kwargs['conv_y'],
-            conv_z=kwargs['conv_z'],
-            block_size=kwargs['block_size'],
-            activation=kwargs['activation'],
-            normalization=kwargs['conv_normalize'],
-            regularization=kwargs['conv_regularize'],
-            regularization_rate=kwargs['conv_regularize_rate'],
-            upsample_x=kwargs['pool_x'],
-            upsample_y=kwargs['pool_y'],
-            upsample_z=kwargs['pool_z'],
-        )
+            decode = ConvDecoderNoSkip(
+                tensor_map_out=tm,
+                filters_per_dense_block=kwargs['dense_blocks'][::-1],
+                conv_layer_type=kwargs['conv_type'],
+                conv_x=kwargs['conv_x'],
+                conv_y=kwargs['conv_y'],
+                conv_z=kwargs['conv_z'],
+                block_size=kwargs['block_size'],
+                activation=kwargs['activation'],
+                normalization=kwargs['conv_normalize'],
+                regularization=kwargs['conv_regularize'],
+                regularization_rate=kwargs['conv_regularize_rate'],
+                upsample_x=kwargs['pool_x'],
+                upsample_y=kwargs['pool_y'],
+                upsample_z=kwargs['pool_z'],
+            )
+        else:
+            decode = DenseDecoder(tensor_map_out=tm, parents=tm.parents, activation=kwargs['activation'])
 
         reconstruction = decode(restructure(latent_inputs))
         decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
         decoders[tm] = decoder
-        outputs[tm.output_name()] = decoder(multimodal_activation)
+        outputs[tm.output_name()] = decoder(multimodal_merged)
         losses.append(tm.loss)
 
     kwargs['tensor_maps_out'] = list(original_outputs.keys())
