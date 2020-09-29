@@ -424,9 +424,6 @@ class _MultiModalMultiTaskWorker:
 
     def _handle_tensor_path(self, path: Path) -> None:
         hd5 = None
-        if path in self.cache.failed_paths:
-            self.epoch_stats['skipped_paths'] += 1
-            return
         try:
             self.dependents = {}
             self.hd5 = None
