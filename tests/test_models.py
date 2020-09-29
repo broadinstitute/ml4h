@@ -64,19 +64,20 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
         ), ])
 
 
-def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None):
+def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None, skip_shape_check: bool = False):
     if m is None:
         m = make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
             **DEFAULT_PARAMS,
         )
-    for tmap, tensor in zip(input_tmaps, m.inputs):
-        assert tensor.shape[1:] == tmap.shape
-        assert tensor.shape[1:] == tmap.shape
-    for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
-        assert tensor.shape[1:] == tmap.shape
-        assert tensor.shape[1:] == tmap.shape
+    if not skip_shape_check:
+        for tmap, tensor in zip(input_tmaps, m.inputs):
+            assert tensor.shape[1:] == tmap.shape
+            assert tensor.shape[1:] == tmap.shape
+        for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
+            assert tensor.shape[1:] == tmap.shape
+            assert tensor.shape[1:] == tmap.shape
     data = make_training_data(input_tmaps, output_tmaps)
     history = m.fit(data, steps_per_epoch=2, epochs=2, validation_data=data, validation_steps=2)
     for tmap in output_tmaps:
