@@ -2224,7 +2224,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                     else:
                         axes[i, 1].imshow(m2f[i, ..., 0], cmap='gray')
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
-            figure_path = f'{prefix}/{feature}_latent_dims_{latent_dimension}_scalar_{scalar}.png'
+            figure_path = f'{prefix}/{dtm.name}_{feature}_transform_scalar_{scalar}.png'
             if not os.path.exists(os.path.dirname(figure_path)):
                 os.makedirs(os.path.dirname(figure_path))
             plt.savefig(figure_path)
