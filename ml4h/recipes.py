@@ -435,6 +435,7 @@ def inspect_paired_model(args):
         thresh = 1 if tm.is_categorical() else tm.normalization.mean
         plot_hit_to_miss_transforms(latent_df, decoders,
                                     feature=index2channel[0],
+                                    thresh = thresh,
                                     latent_dimension=args.dense_layers[0],
                                     prefix=out_folder)
 
