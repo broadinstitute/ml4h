@@ -2217,12 +2217,12 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                         axes[i, 1].imshow(np.argmax(m2f[i, ...], axis=-1), cmap=cmap)
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
                 else:
-                    axes[i, 0].imshow(predictions[i, ..., 0], cmap=cmap)
+                    axes[i, 0].imshow(predictions[i, ..., 0], cmap='gray')
                     if sexes[i] >= thresh:
-                        axes[i, 1].imshow(f2m[i, ..., 0], cmap=cmap)
+                        axes[i, 1].imshow(f2m[i, ..., 0], cmap='gray')
                         axes[i, 1].set_title(f'{feature} to less than {thresh}')
                     else:
-                        axes[i, 1].imshow(m2f[i, ..., 0], cmap=cmap)
+                        axes[i, 1].imshow(m2f[i, ..., 0], cmap='gray')
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
             figure_path = f'{prefix}/{feature}_latent_dims_{latent_dimension}_scalar_{scalar}.png'
             if not os.path.exists(os.path.dirname(figure_path)):
