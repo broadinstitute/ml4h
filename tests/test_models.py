@@ -47,7 +47,7 @@ DEFAULT_PARAMS = {
     'learning_rate_schedule': None,
     'model_layers': None,
     'model_file': None,
-
+    'hidden_layer': 'embed',
 }
 
 
