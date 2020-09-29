@@ -46,6 +46,8 @@ DEFAULT_PARAMS = {
     'epochs': 6,
     'optimizer': 'adam',
     'learning_rate_schedule': None,
+    'model_layers': None,
+    'model_file': None,
 
 }
 
