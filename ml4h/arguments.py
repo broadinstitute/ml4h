@@ -20,7 +20,7 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional
+from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
 
 from ml4h.logger import load_config
@@ -168,6 +168,10 @@ def parse_args():
         '--u_connect', nargs=2, action='append',
         help='U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.',
     )
+    parser.add_argument(
+        '--pairs', nargs=2, action='append',
+        help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
+    )
     parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument(
         '--max_parameters', default=9000000, type=int,
@@ -201,6 +205,7 @@ def parse_args():
     parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
+    parser.add_argument('--pair_loss', default='cosine', help='Distance metric between paired embeddings', choices=['euclid', 'cosine'])
     parser.add_argument(
         '--label_weights', nargs='*', type=float,
         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
@@ -219,6 +224,9 @@ def parse_args():
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
     parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
+    parser.add_argument(
+        '--save_last_model', default=False, action='store_true',
+        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -384,6 +392,14 @@ def _process_u_connect_args(u_connect: Optional[List[List]], tensormap_prefix) -
     return new_u_connect
 
 
+def _process_pair_args(pairs: Optional[List[List]], tensormap_prefix) -> List[Tuple[TensorMap, TensorMap]]:
+    pairs = pairs or []
+    new_pairs = []
+    for pair in pairs:
+        new_pairs.append((tensormap_lookup(pair[0], tensormap_prefix), tensormap_lookup(pair[1], tensormap_prefix)))
+    return new_pairs
+
+
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
@@ -396,6 +412,7 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect, args.tensormap_prefix)
+    args.pairs = _process_pair_args(args.pairs, args.tensormap_prefix)
 
     args.tensor_maps_in = []
     args.tensor_maps_out = []

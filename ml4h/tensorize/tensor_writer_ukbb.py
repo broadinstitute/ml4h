@@ -87,10 +87,6 @@ def write_tensors(
     mri_unzip: str,
     mri_field_ids: List[int],
     xml_field_ids: List[int],
-    zoom_x: int,
-    zoom_y: int,
-    zoom_width: int,
-    zoom_height: int,
     write_pngs: bool,
     min_sample_id: int,
     max_sample_id: int,
@@ -109,13 +105,6 @@ def write_tensors(
     :param mri_unzip: Folder where zipped DICOM will be decompressed
     :param mri_field_ids: List of MRI field IDs from UKBB
     :param xml_field_ids: List of ECG field IDs from UKBB
-    :param x: Maximum x dimension of MRIs
-    :param y: Maximum y dimension of MRIs
-    :param z: Maximum z dimension of MRIs
-    :param zoom_x: x coordinate of the zoom
-    :param zoom_y: y coordinate of the zoom
-    :param zoom_width: width of the zoom
-    :param zoom_height: height of the zoom
     :param write_pngs: write MRIs as PNG images for debugging
     :param min_sample_id: Minimum sample id to generate, for parallelization
     :param max_sample_id: Maximum sample id to generate, for parallelization
@@ -137,7 +126,7 @@ def write_tensors(
             continue
         try:
             with h5py.File(tp, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
@@ -188,19 +177,26 @@ def write_tensors_from_dicom_pngs(
             continue
         stats[sample_header + '_' + sample_id] += 1
         dicom_file = row[dicom_index]
+
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
+            if len(png.shape) == 3 and png.mean() == png[:, :, 0].mean():
+                png = png[:, :, 0]
+            elif len(png.shape) == 3:
+                raise ValueError(f'PNG has color information but no method to tensorize it {png.mean()}, 0ch :{png[:, :, 0].mean()}, 1ch :{png[:, :, 1].mean()}, 2ch :{png[:, :, 2].mean()}.')
             full_tensor = np.zeros((x, y), dtype=np.float32)
             full_tensor[:png.shape[0], :png.shape[1]] = png
             tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
-                tensor_name = series + '_annotated_' + row[instance_index]
+                tensor_name = series.lower() + '_annotated_' + row[instance_index]
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
-                    tensor[:] = full_tensor
+                    min_x = min(png.shape[0], tensor.shape[0])
+                    min_y = min(png.shape[1], tensor.shape[1])
+                    tensor[:min_x, :min_y] = full_tensor[:min_x, :min_y]
                     stats['updated'] += 1
                 else:
                     create_tensor_in_hd5(hd5, path_prefix, tensor_name, full_tensor, stats)
@@ -328,7 +324,7 @@ def _dicts_and_plots_from_tensorization(
     continuous = {}
     value_counter = Counter()
     for k in sorted(list(stats.keys())):
-        logging.info("{} has {}".format(k, stats[k]))
+        #logging.info("{} has {}".format(k, stats[k]))
 
         if 'categorical' not in k and 'continuous' not in k:
             continue
@@ -346,10 +342,10 @@ def _dicts_and_plots_from_tensorization(
         plot_value_counter(list(categories.keys()), value_counter, a_id + '_v_count', os.path.join(output_folder, a_id))
         plot_histograms(continuous_stats, a_id, os.path.join(output_folder, a_id))
 
-    logging.info("Continuous tensor map: {}".format(continuous))
-    logging.info("Continuous Columns: {}".format(len(continuous)))
-    logging.info("Category tensor map: {}".format(categories))
-    logging.info("Categories Columns: {}".format(len(categories)))
+    # logging.info("Continuous tensor map: {}".format(continuous))
+    # logging.info("Continuous Columns: {}".format(len(continuous)))
+    # logging.info("Category tensor map: {}".format(categories))
+    # logging.info("Categories Columns: {}".format(len(categories)))
 
 
 def _to_float_or_false(s):
@@ -367,10 +363,6 @@ def _to_float_or_nan(s):
 
 
 def _write_tensors_from_zipped_dicoms(
-    zoom_x: int,
-    zoom_y: int,
-    zoom_width: int,
-    zoom_height: int,
     write_pngs: bool,
     tensors: str,
     dicoms: str,
@@ -390,10 +382,8 @@ def _write_tensors_from_zipped_dicoms(
                 os.makedirs(dicom_folder)
             with zipfile.ZipFile(zipped, "r") as zip_ref:
                 zip_ref.extractall(dicom_folder)
-                _write_tensors_from_dicoms(
-                    zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, dicom_folder,
-                    hd5, sample_str, stats,
-                )
+                ukb_instance = zipped.split('_')[2]
+                _write_tensors_from_dicoms(write_pngs, tensors, dicom_folder, hd5, sample_str, ukb_instance, stats)
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
 
@@ -410,36 +400,31 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
 
 
 def _write_tensors_from_dicoms(
-    zoom_x: int, zoom_y: int, zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
-    dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int],
+    write_pngs: bool, tensors: str, dicom_folder: str, hd5: h5py.File, sample_str: str,  ukb_instance: str, stats: Dict[str, int],
 ) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
     Segmented dicoms require special processing and are written to tensor per-slice
 
     Arguments
-        :param x: Width of the tensors (actual MRI width will be padded with 0s or cropped to this number)
-        :param y: Height of the tensors (actual MRI width will be padded with 0s or cropped to this number)
-        :param z: Minimum number of slices to include in the each tensor if more slices are found they will be kept
-        :param zoom_x: x coordinate of the zoom
-        :param zoom_y: y coordinate of the zoom
-        :param zoom_width: width of the zoom
-        :param zoom_height: height of the zoom
         :param write_pngs: write MRIs as PNG images for debugging
         :param tensors: Folder where hd5 tensor files are being written
         :param dicom_folder: Folder with all dicoms associated with one sample.
         :param hd5: Tensor file in which to create datasets for each series and each segmented slice
         :param sample_str: The current sample ID as a string
+        :param ukb_instance: The UK Biobank assessment visit instance number
         :param stats: Counter to keep track of summary statistics
 
     """
     views = defaultdict(list)
+    series_to_numbers = defaultdict(set)
     min_ideal_series = 9e9
     for dicom in os.listdir(dicom_folder):
         if os.path.splitext(dicom)[-1] != DICOM_EXT:
             continue
         d = pydicom.read_file(os.path.join(dicom_folder, dicom))
         series = d.SeriesDescription.lower().replace(' ', '_')
+        series_to_numbers[series].add(int(d.SeriesNumber))
         if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
             views[series + '_12bit'].append(d)
             stats[series + '_12bit'] += 1
@@ -462,99 +447,61 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
+        if len(series_to_numbers[v]) > 1 and v not in MRI_BRAIN_SERIES:
+            max_series = max(series_to_numbers[v])
+            single_series = [dicom for dicom in views[v] if int(dicom.SeriesNumber) == max_series]
+            # for d in views[v]:
+            #     logging.warning(f'{d.SeriesNumber} with Date: {_datetime_from_dicom(d)} Time {d.AcquisitionTime}')
+            logging.warning(f'{v} has {len(views[v])} series:{series_to_numbers[v]} Using only max series: {max_series} with {len(single_series)}')
+            views[v] = single_series
         if v == MRI_TO_SEGMENT:
-            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, zoom_x, zoom_y, zoom_width, zoom_height, write_pngs, tensors, hd5, mri_date, mri_group, stats)
+            _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, ukb_instance, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
         else:
-            mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
-            for slicer in views[v]:
-                _save_pixel_dimensions_if_missing(slicer, v, hd5)
-                _save_slice_thickness_if_missing(slicer, v, hd5)
-                _save_series_orientation_and_position_if_missing(slicer, v, hd5)
-                slice_index = slicer.InstanceNumber - 1
-                if v in MRI_LIVER_IDEAL_PROTOCOL:
-                    slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
-                mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
+            pass
+            # mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
+            # for slicer in views[v]:
+            #     _save_pixel_dimensions_if_missing(slicer, v, hd5)
+            #     _save_slice_thickness_if_missing(slicer, v, hd5)
+            #     _save_series_orientation_and_position_if_missing(slicer, v, hd5)
+            #     slice_index = slicer.InstanceNumber - 1
+            #     if v in MRI_LIVER_IDEAL_PROTOCOL:
+            #         slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
+            #     mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
+            # create_tensor_in_hd5(hd5, mri_group, f'{v}/{ukb_instance}', mri_data, stats, mri_date)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
-    slices: List[pydicom.Dataset], series: str, zoom_x: int, zoom_y: int,
-    zoom_width: int, zoom_height: int, write_pngs: bool, tensors: str,
-    hd5: h5py.File, mri_date: datetime.datetime, mri_group: str,
-    stats: Dict[str, int],
+    slices: List[pydicom.Dataset], series: str, instance: str,
+    hd5: h5py.File, mri_date: datetime.datetime, mri_group: str, stats: Dict[str, int],
 ) -> None:
-    systoles = {}
-    diastoles = {}
-    systoles_pix = {}
-    systoles_masks = {}
-    diastoles_masks = {}
-
     for slicer in slices:
-        full_mask = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
-        full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
-
+        #full_slice = np.zeros((slicer.Rows, slicer.Columns), dtype=np.float32)
         if _has_overlay(slicer):
             if _is_mitral_valve_segmentation(slicer):
                 series = series.replace('sax', 'lax')
             else:
                 series = series.replace('lax', 'sax')
-            series_segmented = f'{series}_segmented'
-            series_zoom = f'{series}_zoom'
-            series_zoom_segmented = f'{series}_zoom_segmented'
 
+            series_segmented = f'{series}_segmented'
             try:
                 overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
             except KeyError:
                 logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
 
-            _save_pixel_dimensions_if_missing(slicer, series, hd5)
-            _save_slice_thickness_if_missing(slicer, series, hd5)
-            _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
+            # _save_pixel_dimensions_if_missing(slicer, series, hd5)
+            # _save_slice_thickness_if_missing(slicer, series, hd5)
+            # _save_series_orientation_and_position_if_missing(slicer, series, hd5, str(slicer.InstanceNumber))
             _save_pixel_dimensions_if_missing(slicer, series_segmented, hd5)
             _save_slice_thickness_if_missing(slicer, series_segmented, hd5)
             _save_series_orientation_and_position_if_missing(slicer, series_segmented, hd5, str(slicer.InstanceNumber))
-
-            cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
-            full_slice[:] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', full_slice, stats, mri_date)
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', mask, stats, mri_date)
-
-            zoom_slice = full_slice[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            zoom_mask = mask[zoom_x: zoom_x + zoom_width, zoom_y: zoom_y + zoom_height]
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_slice, stats, mri_date)
-            create_tensor_in_hd5(hd5, mri_group, f'{series_zoom_segmented}{HD5_GROUP_CHAR}{slicer.InstanceNumber}', zoom_mask, stats, mri_date)
-
-            if (slicer.InstanceNumber - 1) % MRI_FRAMES == 0:  # Diastole frame is always the first
-                diastoles[cur_angle] = slicer
-                diastoles_masks[cur_angle] = mask
-            if cur_angle not in systoles:
-                systoles[cur_angle] = slicer
-                systoles_pix[cur_angle] = ventricle_pixels
-                systoles_masks[cur_angle] = mask
-            else:
-                if ventricle_pixels < systoles_pix[cur_angle]:
-                    systoles[cur_angle] = slicer
-                    systoles_pix[cur_angle] = ventricle_pixels
-                    systoles_masks[cur_angle] = mask
-
-    for angle in diastoles:
-        logging.info(f'Found systole, instance:{systoles[angle].InstanceNumber} ventricle pixels:{systoles_pix[angle]}')
-        full_slice = diastoles[angle].pixel_array.astype(np.float32)
-        create_tensor_in_hd5(hd5, mri_group, f'diastole_frame_b{angle}', full_slice, stats, mri_date)
-        create_tensor_in_hd5(hd5, mri_group, f'diastole_mask_b{angle}', diastoles_masks[angle], stats, mri_date)
-        if write_pngs:
-            plt.imsave(tensors + 'diastole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
-            plt.imsave(tensors + 'diastole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
-
-        full_slice = systoles[angle].pixel_array.astype(np.float32)
-        create_tensor_in_hd5(hd5, mri_group, f'systole_frame_b{angle}', full_slice, stats, mri_date)
-        create_tensor_in_hd5(hd5, mri_group, f'systole_mask_b{angle}', systoles_masks[angle], stats, mri_date)
-        if write_pngs:
-            plt.imsave(tensors + 'systole_frame_b' + str(angle) + IMAGE_EXT, full_slice)
-            plt.imsave(tensors + 'systole_mask_b' + str(angle) + IMAGE_EXT, full_mask)
+            #
+            # cur_angle = (slicer.InstanceNumber - 1) // MRI_FRAMES  # dicom InstanceNumber is 1-based
+            #full_slice[:] = slicer.pixel_array.astype(np.float32)
+            #create_tensor_in_hd5(hd5, mri_group, f'{series}{HD5_GROUP_CHAR}{instance}', full_slice, stats, mri_date, slicer.InstanceNumber)
+            create_tensor_in_hd5(hd5, mri_group, f'{series_segmented}{HD5_GROUP_CHAR}{instance}', mask, stats, mri_date, slicer.InstanceNumber)
 
 
 def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: datetime.datetime, mri_group: str, hd5: h5py.File) -> None:
@@ -588,13 +535,16 @@ def _save_slice_thickness_if_missing(slicer, series, hd5):
 def _save_series_orientation_and_position_if_missing(slicer, series, hd5, instance=None):
     orientation_ds_name = MRI_PATIENT_ORIENTATION + '_' + series
     position_ds_name = MRI_PATIENT_POSITION + '_' + series
-    if instance:
-        orientation_ds_name += HD5_GROUP_CHAR + instance
-        position_ds_name += HD5_GROUP_CHAR + instance
-    if orientation_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-        hd5.create_dataset(orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient])
-    if position_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
-        hd5.create_dataset(position_ds_name, data=[float(x) for x in slicer.ImagePositionPatient])
+    if instance is not None:
+        orientation_ds_name = f'{orientation_ds_name}_{instance}'
+        position_ds_name = f'{position_ds_name}_{instance}'
+    try:
+        if orientation_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            hd5.create_dataset(orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient])
+        if position_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+            hd5.create_dataset(position_ds_name, data=[float(x) for x in slicer.ImagePositionPatient])
+    except RuntimeError as e:
+        logging.warning(f' got error {e} \n orientation : {orientation_ds_name} {slicer.ImageOrientationPatient} and pos: {position_ds_name}  {slicer.ImagePositionPatient}')
 
 
 def _has_overlay(d) -> bool:
@@ -745,13 +695,16 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
 def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
-    storage_type: StorageType = None, attributes: Dict[str, Any] = None,
+    instance: str = None, storage_type: StorageType = None, attributes: Dict[str, Any] = None,
 ):
     hd5_path = tensor_path(path_prefix, name)
+    if instance is not None:
+        hd5_path = f'{hd5_path}instance_{instance}/'
     if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
-    else:
+    elif instance is None:
         hd5_path = f'{hd5_path}instance_0'
+
     if stats is not None:
         stats[hd5_path] += 1
     if storage_type == StorageType.STRING:

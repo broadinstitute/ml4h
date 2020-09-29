@@ -1,17 +1,16 @@
-"""Methods for integration of DICOM plots within notebooks."""
+"""Methods for integration of dicom plots within notebooks."""
 
 import collections
 import os
 import tempfile
-from typing import Dict, List, Optional, Tuple, Union
 import zipfile
 
 from IPython.display import display
 from IPython.display import HTML
-import numpy as np
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
 from ml4h.runtime_data_defines import get_cardiac_mri_folder
+import numpy as np
 import pydicom
 from scipy.ndimage.morphology import binary_closing
 from scipy.ndimage.morphology import binary_erosion
@@ -28,21 +27,21 @@ MRI_SMALL_RADIUS_FACTOR = 0.19
 MRI_SEGMENTED_CHANNEL_MAP = {'background': 0, 'ventricle': 1, 'myocardium': 2}
 
 
-def _is_mitral_valve_segmentation(d: pydicom.FileDataset) -> bool:
-  """Determine whether a DICOM has mitral valve segmentation.
+def _is_mitral_valve_segmentation(d):  # -> bool:
+  """Determine whether a dicom has mitral valve segmentation.
 
   This is used for visualization of CINE_segmented_SAX_InlineVF.
 
   Args:
-    d: the DICOM file
+    d: the dicom file
 
   Returns:
-    Whether or not the DICOM has mitral valve segmentation
+    Whether or not the dicom has mitral valve segmentation
   """
   return d.SliceThickness == 6
 
 
-def _get_overlay_from_dicom(d: pydicom.FileDataset) -> Tuple[int, int, int]:
+def _get_overlay_from_dicom(d):
   """Get an overlay from a DICOM file.
 
   Morphological operators are used to transform the pixel outline of the
@@ -50,7 +49,7 @@ def _get_overlay_from_dicom(d: pydicom.FileDataset) -> Tuple[int, int, int]:
   is used for visualization of CINE_segmented_SAX_InlineVF.
 
   Args:
-    d: the DICOM file
+    d: the dicom file
 
   Returns:
     Raw overlay array with myocardium outline, anatomical mask (a pixel
@@ -78,30 +77,29 @@ def _get_overlay_from_dicom(d: pydicom.FileDataset) -> Tuple[int, int, int]:
         byte >>= 1
       bit += 1
     overlay = overlay[:expected_bit_length]
-  if overlay_frames != 1:
-    raise ValueError(f'DICOM has {overlay_frames} overlay frames, but only one expected.')
-  overlay = overlay.reshape(rows, cols)
-  idx = np.where(overlay == 1)
-  min_pos = (np.min(idx[0]), np.min(idx[1]))
-  max_pos = (np.max(idx[0]), np.max(idx[1]))
-  short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
-  small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
-  big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
-  small_structure = _unit_disk(small_radius)
-  m1 = binary_closing(overlay, small_structure).astype(np.int)
-  big_structure = _unit_disk(big_radius)
-  m2 = binary_closing(overlay, big_structure).astype(np.int)
-  anatomical_mask = m1 + m2
-  ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
-  myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
-  if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:
-    erode_structure = _unit_disk(small_radius*1.5)
-    anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+  if overlay_frames == 1:
+    overlay = overlay.reshape(rows, cols)
+    idx = np.where(overlay == 1)
+    min_pos = (np.min(idx[0]), np.min(idx[1]))
+    max_pos = (np.max(idx[0]), np.max(idx[1]))
+    short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
+    small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
+    big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
+    small_structure = _unit_disk(small_radius)
+    m1 = binary_closing(overlay, small_structure).astype(np.int)
+    big_structure = _unit_disk(big_radius)
+    m2 = binary_closing(overlay, big_structure).astype(np.int)
+    anatomical_mask = m1 + m2
     ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
-  return overlay, anatomical_mask, ventricle_pixels
+    myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
+    if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:
+      erode_structure = _unit_disk(small_radius*1.5)
+      anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+      ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
+    return overlay, anatomical_mask, ventricle_pixels
 
 
-def _unit_disk(r: int) -> np.ndarray:
+def _unit_disk(r):  # -> np.ndarray:
   """Get the unit disk for a radius.
 
   This is used for visualization of CINE_segmented_SAX_InlineVF.
@@ -116,9 +114,7 @@ def _unit_disk(r: int) -> np.ndarray:
   return (x ** 2 + y ** 2 <= r ** 2).astype(np.int)
 
 
-def plot_cardiac_long_axis(
-    b_series: List[pydicom.FileDataset], sides: int = 7, fig_width: int = 18, title_prefix: str = '',
-) -> None:
+def plot_cardiac_long_axis(b_series, sides=7, fig_width=18, title_prefix=''):
   """Visualize CINE_segmented_SAX_InlineVF series.
 
   Args:
@@ -172,9 +168,9 @@ def plot_cardiac_long_axis(
 
 
 def plot_cardiac_short_axis(
-    series: List[pydicom.FileDataset], transpose: bool = False, fig_width: int = 18,
-    title_prefix: str = '',
-) -> None:
+    series, transpose=False, fig_width=18,
+    title_prefix='',
+):
   """Visualize CINE_segmented_LAX series.
 
   Args:
@@ -229,14 +225,14 @@ def plot_cardiac_short_axis(
 
 
 def plot_mri_series(
-    sample_mri: str, dicoms: Dict[str, pydicom.FileDataset], series_name: str, sax_sides: int,
-    lax_transpose: bool, fig_width: int,
-) -> None:
+    sample_mri, dicoms, series_name, sax_sides,
+    lax_transpose, fig_width,
+):
   """Visualize the applicable series within this DICOM.
 
   Args:
     sample_mri: The local or Cloud Storage path to the MRI file.
-    dicoms: A dictionary of DICOMs.
+    dicoms: A dictionary of dicoms.
     series_name: The name of the chosen series.
     sax_sides: How many sides to display for CINE_segmented_SAX_InlineVF.
     lax_transpose: Whether to transpose when plotting CINE_segmented_LAX.
@@ -262,9 +258,10 @@ def plot_mri_series(
     )
   else:
     print(f'Visualization not currently implemented for {series_name}.')
+    return None
 
 
-def choose_mri_series(sample_mri: str) -> None:
+def choose_mri_series(sample_mri):
   """Render widgets and plots for cardiac MRIs.
 
   Visualization is supported for CINE_segmented_SAX_InlineVF series and
@@ -272,6 +269,9 @@ def choose_mri_series(sample_mri: str) -> None:
 
   Args:
     sample_mri: The local or Cloud Storage path to the MRI file.
+
+  Returns:
+    ipywidget or HTML upon error.
   """
   with tempfile.TemporaryDirectory() as tmpdirname:
     local_path = os.path.join(tmpdirname, os.path.basename(sample_mri))
@@ -280,13 +280,11 @@ def choose_mri_series(sample_mri: str) -> None:
       with zipfile.ZipFile(local_path, 'r') as zip_ref:
         zip_ref.extractall(tmpdirname)
     except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-      display(
-          HTML(f'''<div class="alert alert-block alert-danger">
+      return HTML(f'''
+      <div class="alert alert-block alert-danger">
       <b>Warning:</b> Cardiac MRI not available for sample {os.path.basename(sample_mri)}:
       <hr><p><pre>{e.message}</pre></p>
-      </div>'''),
-      )
-      return
+      </div>''')
 
     filtered_dicoms = collections.defaultdict(list)
     series_descriptions = []
@@ -297,7 +295,7 @@ def choose_mri_series(sample_mri: str) -> None:
       series_descriptions.append(dcm.SeriesDescription)
       if 'cine_segmented_lax' in dcm.SeriesDescription.lower():
         filtered_dicoms[dcm.SeriesDescription.lower()].append(dcm)
-      if dcm.SeriesDescription.lower() == 'cine_segmented_sax_inlinevf':
+      if 'cine_segmented_sax_inlinevf' == dcm.SeriesDescription.lower():
         cur_angle = (dcm.InstanceNumber - 1) // MRI_FRAMES
         filtered_dicoms[f'{dcm.SeriesDescription.lower()}_angle_{str(cur_angle)}'].append(dcm)
 
@@ -352,20 +350,22 @@ def choose_mri_series(sample_mri: str) -> None:
       )
       display(viz_controls_ui, viz_controls_output)
     else:
-      display(
-          HTML(f'''<div class="alert alert-block alert-warning">
-      Neither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX available in MRI for sample {os.path.basename(sample_mri)}.
-      Try a different MRI.
-      </div>'''),
+      print(
+          f'\n\nNeither CINE_segmented_SAX_InlineVF nor CINE_segmented_LAX available in MRI for sample {os.path.basename(sample_mri)}.',
+          '\n\nTry a different MRI.',
       )
+      return None
 
 
-def choose_cardiac_mri(sample_id: Union[int, str], folder: Optional[str] = None) -> None:
+def choose_cardiac_mri(sample_id, folder=None):
   """Render widget to choose the cardiac MRI to plot.
 
   Args:
     sample_id: The id of the ECG sample to retrieve.
     folder: The local or Cloud Storage folder under which the files reside.
+
+  Returns:
+    ipywidget or HTML upon error.
   """
   if folder is None:
     folder = get_cardiac_mri_folder(sample_id)
@@ -374,23 +374,19 @@ def choose_cardiac_mri(sample_id: Union[int, str], folder: Optional[str] = None)
   try:
     sample_mris = tf.io.gfile.glob(pattern=os.path.join(folder, sample_mri_glob))
   except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
-    display(
-        HTML(f'''<div class="alert alert-block alert-danger">
+    return HTML(f'''
+    <div class="alert alert-block alert-danger">
     <b>Warning:</b> Cardiac MRI not available for sample {sample_id} in {folder}:
     <hr><p><pre>{e.message}</pre></p>
     Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
-    </div>'''),
-    )
-    return
+    </div>''')
 
   if not sample_mris:
-    display(
-        HTML(f'''<div class="alert alert-block alert-danger">
+    return HTML(f'''
+    <div class="alert alert-block alert-danger">
     <b>Warning:</b> Cardiac MRI DICOM not available for sample {sample_id} in {folder}.<br>
     Use the <kbd>folder</kbd> parameter to read DICOMs from a different local directory or Cloud Storage bucket.
-    </div>'''),
-    )
-    return
+    </div>''')
 
   mri_chooser = widgets.Dropdown(
       options=[(os.path.basename(mri), mri) for mri in sample_mris],
