@@ -411,7 +411,6 @@ def train_paired_model(args):
 
     predictions_list = full_model.predict(test_data)
     predictions_dict = {name: pred for name, pred in zip(full_model.output_names, predictions_list)}
-    predictions_to_pngs(predictions_list, args.tensor_maps_in, args.tensor_maps_out, test_data, test_labels, test_paths, out_path)
     logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
@@ -435,7 +434,7 @@ def inspect_paired_model(args):
         thresh = 1 if tm.is_categorical() else tm.normalization.mean
         plot_hit_to_miss_transforms(latent_df, decoders,
                                     feature=index2channel[0],
-                                    thresh = thresh,
+                                    thresh=thresh,
                                     latent_dimension=args.dense_layers[0],
                                     prefix=out_folder)
 
