@@ -853,47 +853,6 @@ class ConvDecoder:
         return self.conv_label(x)
 
 
-class ConvDecoderNoSkip:
-    def __init__(
-            self,
-            *,
-            tensor_map_out: TensorMap,
-            filters_per_dense_block: List[int],
-            conv_layer_type: str,
-            conv_x: List[int],
-            conv_y: List[int],
-            conv_z: List[int],
-            block_size: int,
-            activation: str,
-            normalization: str,
-            regularization: str,
-            regularization_rate: float,
-            upsample_x: int,
-            upsample_y: int,
-            upsample_z: int,
-    ):
-        dimension = tensor_map_out.axes()
-        self.dense_blocks = [
-            DenseConvolutionalBlock(
-                dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=[x] * block_size,
-                conv_y=[y] * block_size, conv_z=[z] * block_size, block_size=block_size, activation=activation, normalization=normalization,
-                regularization=regularization, regularization_rate=regularization_rate,
-            )
-            for filters, x, y, z in zip(filters_per_dense_block, conv_x, conv_y, conv_z)
-        ]
-        conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
-        self.conv_label = conv_layer(tensor_map_out.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map_out.activation,
-                                     name=tensor_map_out.output_name())
-        self.upsamples = [_upsampler(dimension, upsample_x, upsample_y, upsample_z) for _ in range(len(filters_per_dense_block) + 1)]
-        print(f'Decode has: {list(enumerate(zip(self.dense_blocks, self.upsamples)))}')
-
-    def __call__(self, x: Tensor) -> Tensor:
-        for i, (dense_block, upsample) in enumerate(zip(self.dense_blocks, self.upsamples)):
-            x = upsample(x)
-            x = dense_block(x)
-        return self.conv_label(x)
-
-
 def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     """
     Parents will always appear before their children after sorting. Idempotent and slow.
