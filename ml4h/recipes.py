@@ -423,6 +423,22 @@ def train_paired_model(args):
             _plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, args.test_steps*args.batch_size)
 
 
+def inspect_paired_model(args):
+    full_model, encoders, decoders = make_paired_autoencoder_model(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    for i, etm in enumerate(encoders):
+        embed = encoders[etm].predict(test_data[etm.input_name()])
+        _plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, args.test_steps*args.batch_size)
+        for dtm in decoders:
+            reconstruction = decoders[dtm].predict(embed)
+            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
+            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
+            if not os.path.exists(os.path.dirname(my_out_path)):
+                os.makedirs(os.path.dirname(my_out_path))
+            _plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, args.test_steps*args.batch_size)
+
+
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)

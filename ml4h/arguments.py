@@ -396,7 +396,7 @@ def _process_pair_args(pairs: Optional[List[List]], tensormap_prefix) -> List[Tu
     pairs = pairs or []
     new_pairs = []
     for pair in pairs:
-        new_pairs.append(tensormap_lookup(pair[0], tensormap_prefix), tensormap_lookup(pair[1], tensormap_prefix))
+        new_pairs.append((tensormap_lookup(pair[0], tensormap_prefix), tensormap_lookup(pair[1], tensormap_prefix)))
     return new_pairs
 
 
