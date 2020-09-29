@@ -1011,6 +1011,8 @@ def explore(args):
         for tm in args.tensor_maps_in:
             if tm.interpretation == Interpretation.CONTINUOUS:
                 name = _tmap_explore_header(tm)
+                if name not in df:
+                    continue
                 arr = list(df[name])
                 plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
                 plt.hist(arr, 50, rwidth=.9)

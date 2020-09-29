@@ -14,7 +14,7 @@ from ml4cvd.tensor_maps_by_hand import TMAPS
 from ml4cvd.defines import ECG_REST_AMP_LEADS, PARTNERS_DATE_FORMAT, STOP_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_DATETIME_FORMAT, CARDIAC_SURGERY_DATE_FORMAT, EPS
 from ml4cvd.TensorMap import TensorMap, str2date, Interpretation, make_range_validator, decompress_data, TimeSeriesOrder, no_nans
 from ml4cvd.normalizer import Standardize, ZeroMeanStd1, Normalizer
-from ml4cvd.metrics import sum_squared_error
+from ml4cvd.metrics import sum_squared_error, weighted_crossentropy
 
 
 YEAR_DAYS = 365.26
@@ -50,6 +50,8 @@ def _get_ecg_dates(tm, hd5):
     dates = dates[-start_idx:]  # If num_tensors is 0, get all tensors
     dates.sort(reverse=True)
     _get_ecg_dates.mrn_lookup[mrn] = dates
+    if len(dates) == 0:
+        raise ValueError('No ecg dates found')
     return dates
 
 
@@ -128,7 +130,6 @@ def make_voltage(exact_length = False):
                     tensor[slices] = voltage
                 except (KeyError, AssertionError, ValueError):
                     logging.debug(f'Could not get voltage for lead {cm} with {voltage_length} samples in {hd5.filename}')
-        # print(len(ecg_dates), tensor.mean())
         return tensor
     return get_voltage_from_file
 
@@ -170,22 +171,24 @@ def voltage_from_file_no_resample_random_lead(tm, hd5, dependents=None):
 
 
 def voltage_from_file_random_offset(tm, hd5, dependents=None):
+    k = 'partners_ecg_4096_shift'
+    if k in dependents:
+        return dependents['partners_ecg_4096_shift']
     ecg_dates = _get_ecg_dates(tm, hd5)
     dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
     tensor = np.zeros(shape, dtype=np.float32)
     for i, ecg_date in enumerate(ecg_dates):
-        start = np.random.randint(5000 - tm.shape[0])
-        stop = start + tm.shape[0]
-        for cm in tm.channel_map:
-            try:
-                path = _make_hd5_path(tm, ecg_date, cm)
-                voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-                if len(voltage) < 5000:
-                    raise ValueError(f'Voltage is not the right length for TensorMap {tm.name}.')
-                slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
-                tensor[slices] = voltage[start: stop]
-            except KeyError:
-                logging.warning(f'KeyError for channel {cm} in {tm.name}')
+        for i, cm in enumerate(tm.channel_map):
+            path = _make_hd5_path(tm, ecg_date, cm)
+            voltage = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
+            if len(voltage) < tm.shape[0]:
+                raise ValueError(f'Voltage is not the right length for TensorMap {tm.name}.')
+            if i == 0:
+                start = np.random.randint(voltage.shape[0] - tm.shape[0])
+                stop = start + tm.shape[0]
+            slices = (i, ..., tm.channel_map[cm]) if dynamic else (..., tm.channel_map[cm])
+            tensor[slices] = voltage[start: stop]
+    dependents[k] = tensor
     return tensor
 
 
@@ -234,13 +237,14 @@ TMAPS[f'partners_ecg_4096'] = TensorMap(
     normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False,
 )
-
-
-TMAPS['partners_ecg_5000_only_random_lead'] = TensorMap(
-    'ecg_rest_5000', shape=(4992, 1), path_prefix=PARTNERS_PREFIX,
-    tensor_from_file=voltage_from_file_no_resample_random_lead, loss='mse',
-    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS,
-    validator=voltage_full_validator, metrics=['mae', 'mse'],
+TMAPS[f'partners_ecg_4096_shift'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_random_offset, loss='mse',
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False,
+)
+TMAPS[f'partners_ecg_4096_no_norm'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False,
 )
 
@@ -339,9 +343,63 @@ TMAPS[f'partners_ecg_4096_random'] = TensorMap(
     cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_rand_roll, _warp_ecg, _random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
 )
 TMAPS[f'partners_ecg_4096_ae'] = TensorMap(
-    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_random_offset, loss='mse',
     normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
     cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
+)
+# for covid intubation
+COVID_PATH = '/storage/shared/covid/intub_extub_deid.csv'
+if os.path.exists(COVID_PATH):
+    COVID_DF = pd.read_csv(COVID_PATH)
+    COVID_DF['ids'] = COVID_DF['ids'].astype(int)
+    COVID_DF.index = COVID_DF['ids']
+    PARTNERS_DATETIME_FORMAT
+    start_format = '%Y-%m-%d'
+    end_format = '%Y-%m-%d %H:%M:%S.%f'
+    WINDOW_DAYS = 20
+    COVID_DF['admit'] = pd.to_datetime(COVID_DF['Admission Date'], format=start_format, errors='coerce')
+    COVID_DF['tube'] = pd.to_datetime(COVID_DF['intubation date'], format=end_format, errors='coerce')
+    COVID_DF = COVID_DF[((COVID_DF['tube'] - COVID_DF['admit']) > pd.to_timedelta('1d')) | COVID_DF['tube'].isnull()]  # no same day intubations
+    COVID_DF['label'] = (COVID_DF['tube'] - COVID_DF['admit']).between(pd.to_timedelta('1d'), pd.to_timedelta(f'{WINDOW_DAYS}d')) # must be intubated in 20 days
+    COVID_DF['tube'][COVID_DF['tube'].isnull()] = COVID_DF['admit'] + pd.to_timedelta(f'{WINDOW_DAYS}d')  # for others, look for ECGs up to 20 days
+    COVID_DF['tube'][(COVID_DF['tube'] - COVID_DF['admit']) > pd.to_timedelta(f'{WINDOW_DAYS}d')] = COVID_DF['admit'] + pd.to_timedelta(f'{WINDOW_DAYS}d')  # for late intubations, look in 10 days
+    COVID_DF['tube'] = COVID_DF['tube'].dt.strftime(PARTNERS_DATETIME_FORMAT)
+    COVID_DF['admit'] = COVID_DF['admit'].dt.strftime(PARTNERS_DATETIME_FORMAT)
+    COVID_LOOKUP = {i: (start, end) for i, start, end in zip(COVID_DF['ids'], COVID_DF['admit'], COVID_DF['tube'])}
+else:
+    COVID_LOOKUP = None
+
+
+TMAPS[f'partners_ecg_4096_covid'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_no_resample, loss='mse',
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator, metrics=['mae', 'mse'],
+    cacheable=False, time_series_lookup=COVID_LOOKUP,
+    time_series_order=TimeSeriesOrder.OLDEST,
+)
+TMAPS[f'partners_ecg_4096_covid_random'] = TensorMap(
+    'ecg_rest_4096', shape=(4096, 12), path_prefix=PARTNERS_PREFIX, tensor_from_file=voltage_from_file_random_offset,
+    normalization=ZeroMeanStd1(), channel_map=ECG_REST_AMP_LEADS, validator=voltage_full_validator,
+    cacheable=False, augmentations=[_apply_aug_rate(aug) for aug in (_rand_roll, _warp_ecg, _random_crop_ecg, _rand_drop_leads, _rand_add_noise,)],
+    time_series_lookup=COVID_LOOKUP,
+    time_series_order=TimeSeriesOrder.RANDOM,
+)
+
+
+def intubation_tff(tm, hd5, dependents={}):
+    i = _hd5_filename_to_mrn_int(hd5.filename)
+    if COVID_DF.loc[i]['label'].any():
+        return np.array([0, 1])
+    return np.array([1, 0])
+
+
+TMAPS[f'covid_intubed'] = TensorMap(
+    'intubed', channel_map={'no': 0, 'yes': 1}, interpretation=Interpretation.CATEGORICAL, shape=(2,),
+    cacheable=True, tensor_from_file=intubation_tff,
+)
+TMAPS[f'covid_intubed_weighted'] = TensorMap(
+    'intubed', channel_map={'no': 0, 'yes': 1}, interpretation=Interpretation.CATEGORICAL, shape=(2,),
+    cacheable=True, tensor_from_file=intubation_tff,
+    loss=weighted_crossentropy([1.0, 10.0], 'intubed'),
 )
 
 
@@ -1179,14 +1237,15 @@ def partners_ecg_age(tm, hd5, dependents={}):
             years = delta.days / YEAR_DAYS
             tensor[i] = years
         except KeyError:
-            try:
-                tensor[i] = decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
-            except KeyError:
-                logging.debug(f'Could not get patient date of birth or age from ECG on {ecg_date} in {hd5.filename}')
+            tensor[i] = decompress_data(data_compressed=hd5[path('patientage')][()], dtype='str')
     return tensor
 
 
-TMAPS['partners_ecg_age'] = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=partners_ecg_age, shape=(None, 1), time_series_limit=0)
+TMAPS['partners_ecg_age'] = TensorMap(
+    'partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', 
+    tensor_from_file=partners_ecg_age, shape=(None, 1),
+    validator=make_range_validator(20, 90),
+)
 
 
 def partners_ecg_acquisition_year(tm, hd5, dependents={}):
@@ -1336,7 +1395,7 @@ def v6_zeros_validator(tm: TensorMap, tensor: np.ndarray, hd5: h5py.File):
 
 def _get_normalization(col: str) -> Normalizer:
     ids = pd.read_csv('ids_for_mgh/train_ids.csv')
-    covs = pd.read_csv('explorations/ecg_vae_cohort_09-15/tensors_all_union.csv')[['fpath', col]]
+    covs = pd.read_csv('explorations/ecg_vae_cohort_09-29/tensors_all_union.csv')[['fpath', col]]
     covs['sample_id'] = [int(os.path.basename(path).replace('.hd5', '')) for path in covs['fpath']]
     covs = covs.merge(ids, on='sample_id')
     return Standardize(covs[col].mean(), covs[col].std())
