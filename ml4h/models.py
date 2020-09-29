@@ -1277,10 +1277,11 @@ def make_paired_autoencoder_model(
                 upsample_z=kwargs['pool_z'],
                 u_connect_parents=[tm_in for tm_in in kwargs['tensor_maps_in'] if tm in kwargs['u_connect'][tm_in]],
             )
+            reconstruction = decode(restructure(latent_inputs), {}, {})
         else:
             decode = DenseDecoder(tensor_map_out=tm, parents=tm.parents, activation=kwargs['activation'])
+            reconstruction = decode(latent_inputs, {}, {})
 
-        reconstruction = decode(restructure(latent_inputs), {}, {})
         decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
         decoders[tm] = decoder
         outputs[tm.output_name()] = decoder(multimodal_activation)
