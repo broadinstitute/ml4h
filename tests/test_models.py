@@ -41,6 +41,12 @@ DEFAULT_PARAMS = {
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
     'pair_loss': 'cosine',
+    'training_steps': 12,
+    'learning_rate': 0.00001,
+    'epochs': 6,
+    'optimizer': 'adam',
+    'learning_rate_schedule': None,
+
 }
 
 
@@ -310,7 +316,6 @@ class TestMakeMultimodalMultitaskModel:
             model_file=path,
             **DEFAULT_PARAMS,
         )
-
 
     @pytest.mark.parametrize(
         'pairs',
