@@ -15,7 +15,7 @@ from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
@@ -24,7 +24,7 @@ from ml4h.models import make_character_model_plus, embed_model_predict, make_sia
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4h.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_prediction_calibrations, \
-    _plot_reconstruction
+    _plot_reconstruction, plot_hit_to_miss_transforms
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 
@@ -87,6 +87,8 @@ def run(args):
             train_siamese_model(args)
         elif 'train_paired' == args.mode:
             train_paired_model(args)
+        elif 'inspect_paired' == args.mode:
+            inspect_paired_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'append_continuous_csv' == args.mode:
@@ -425,18 +427,9 @@ def train_paired_model(args):
 
 def inspect_paired_model(args):
     full_model, encoders, decoders = make_paired_autoencoder_model(**args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    for i, etm in enumerate(encoders):
-        embed = encoders[etm].predict(test_data[etm.input_name()])
-        _plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, args.test_steps*args.batch_size)
-        for dtm in decoders:
-            reconstruction = decoders[dtm].predict(embed)
-            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
-            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-            if not os.path.exists(os.path.dirname(my_out_path)):
-                os.makedirs(os.path.dirname(my_out_path))
-            _plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, args.test_steps*args.batch_size)
+    infer_hidden_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
+    latent_df = latent_space_dataframe(infer_hidden_tsv, args.app_csv)
+    plot_hit_to_miss_transforms(latent_df, decoders)
 
 
 def plot_predictions(args):
