@@ -1260,7 +1260,7 @@ def make_paired_autoencoder_model(
             restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
                                           normalization=kwargs['dense_normalize'])
 
-            decode = ConvDecoderNoSkip(
+            decode = ConvDecoder(
                 tensor_map_out=tm,
                 filters_per_dense_block=kwargs['dense_blocks'][::-1],
                 conv_layer_type=kwargs['conv_type'],
@@ -1275,11 +1275,12 @@ def make_paired_autoencoder_model(
                 upsample_x=kwargs['pool_x'],
                 upsample_y=kwargs['pool_y'],
                 upsample_z=kwargs['pool_z'],
+                u_connect_parents=[tm_in for tm_in in kwargs['tensor_maps_in'] if tm in kwargs['u_connect'][tm_in]],
             )
         else:
             decode = DenseDecoder(tensor_map_out=tm, parents=tm.parents, activation=kwargs['activation'])
 
-        reconstruction = decode(restructure(latent_inputs))
+        reconstruction = decode(restructure(latent_inputs), {}, {})
         decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
         decoders[tm] = decoder
         outputs[tm.output_name()] = decoder(multimodal_activation)
