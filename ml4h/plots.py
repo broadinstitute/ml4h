@@ -2218,7 +2218,7 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
     return hit_mean_vector, miss_mean_vector
 
 
-def plot_hit_to_miss_transforms(decoders, latent_df, feature='has_ttntv', scalar=3.0,
+def plot_hit_to_miss_transforms(latent_df, decoders, feature='has_ttntv', categorical=False,
                                 thresh=1.0, latent_dimension=256, samples=16, cmap='plasma'):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
@@ -2231,8 +2231,8 @@ def plot_hit_to_miss_transforms(decoders, latent_df, feature='has_ttntv', scalar
     sex_vectors = np.tile(sex_vector, (samples, double_by))
     double = np.tile(l, double_by)
 
-    male_to_female = double + (scalar * sex_vectors)
-    female_to_male = double - (scalar * sex_vectors)
+    male_to_female = double + (2 * sex_vectors)
+    female_to_male = double - (2 * sex_vectors)
     print(f'double shape: {double.shape} sex_vectors  shape: {sex_vectors.shape}')
     for dtm in decoders:
         predictions = decoders[dtm].predict(double)
@@ -2242,15 +2242,25 @@ def plot_hit_to_miss_transforms(decoders, latent_df, feature='has_ttntv', scalar
         if dtm.axes() == 3:
             fig, axes = plt.subplots(samples, 2, figsize=(18, samples * 4))
             for i in range(samples):
-                axes[i, 0].imshow(predictions[i, ..., 0], cmap=cmap)
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
                 axes[i, 0].set_xticks(())
                 axes[i, 0].set_yticks(())
                 axes[i, 1].set_xticks(())
                 axes[i, 1].set_yticks(())
-                if sexes[i] >= thresh:
-                    axes[i, 1].imshow(f2m[i, ..., 0], cmap=cmap)
-                    axes[i, 1].set_title(f'{feature} to less than {thresh}')
+                if categorical:
+                    axes[i, 0].imshow(np.argmax(predictions[i, ...], axis=-1), cmap=cmap)
+                    if sexes[i] >= thresh:
+                        axes[i, 1].imshow(np.argmax(f2m[i, ...], axis=-1), cmap=cmap)
+                        axes[i, 1].set_title(f'{feature} to less than {thresh}')
+                    else:
+                        axes[i, 1].imshow(np.argmax(m2f[i, ...], axis=-1), cmap=cmap)
+                        axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
+
                 else:
-                    axes[i, 1].imshow(m2f[i, ..., 0], cmap=cmap)
-                    axes[i, 1].set_title(f'{feature} to more than {thresh}')
+                    axes[i, 0].imshow(predictions[i, ..., 0], cmap=cmap)
+                    if sexes[i] >= thresh:
+                        axes[i, 1].imshow(f2m[i, ..., 0], cmap=cmap)
+                        axes[i, 1].set_title(f'{feature} to less than {thresh}')
+                    else:
+                        axes[i, 1].imshow(m2f[i, ..., 0], cmap=cmap)
+                        axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
