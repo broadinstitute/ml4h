@@ -330,6 +330,7 @@ class TestMakeMultimodalMultitaskModel:
     def test_paired_models(self, pairs, tmpdir):
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
+        params['u_connect'] = {tm: [] for tm in pair_list}
         m = make_paired_autoencoder_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
