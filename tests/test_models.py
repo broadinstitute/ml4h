@@ -7,7 +7,8 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4h.TensorMap import TensorMap
-from ml4h.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
+from ml4h.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, \
+    check_no_bottleneck, make_paired_autoencoder_model
 from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
 
@@ -39,6 +40,7 @@ DEFAULT_PARAMS = {
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
+    'pair_loss': 'cosine',
 }
 
 
@@ -294,8 +296,38 @@ class TestMakeMultimodalMultitaskModel:
     def test_language_models(self, input_output_tmaps, tmpdir):
         params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
+            tensor_maps_in=input_output_tmaps[0],
+            tensor_maps_out=input_output_tmaps[1],
+            **params
+        )
+        assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
+        m.save(os.path.join(tmpdir, 'lstm.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_multimodal_multitask_model(
             input_output_tmaps[0],
             input_output_tmaps[1],
+            model_file=path,
+            **DEFAULT_PARAMS,
+        )
+
+
+
+    @pytest.mark.parametrize(
+        'pairs',
+        [
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[3])],
+            [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[3])],
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[3]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[4])]
+        ],
+    )
+    def test_paired_models(self, pairs, tmpdir):
+        params = DEFAULT_PARAMS.copy()
+        pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
+        m = make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list,
             **params
         )
         assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
