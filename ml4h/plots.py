@@ -2182,7 +2182,7 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
     return hit_mean_vector, miss_mean_vector
 
 
-def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', categorical=False, prefix='./figures/',
+def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', prefix='./figures/',
                                 thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma'):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
@@ -2208,7 +2208,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', c
                 axes[i, 0].set_yticks(())
                 axes[i, 1].set_xticks(())
                 axes[i, 1].set_yticks(())
-                if categorical:
+                if dtm.is_categorical():
                     axes[i, 0].imshow(np.argmax(predictions[i, ...], axis=-1), cmap=cmap)
                     if sexes[i] >= thresh:
                         axes[i, 1].imshow(np.argmax(f2m[i, ...], axis=-1), cmap=cmap)
