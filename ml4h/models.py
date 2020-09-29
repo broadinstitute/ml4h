@@ -1246,7 +1246,8 @@ def make_paired_autoencoder_model(
             encoders[right] = encode_right
 
     multimodal_activation = Concatenate()(multimodal_activations)
-    multimodal_merged = Dense(activation=kwargs['activation'], units=kwargs['dense_layers'][0])(multimodal_activation)
+    multimodal_activation = Dense(units=kwargs['dense_layers'][0])(multimodal_activation)
+    #multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
     # build decoder models
@@ -1281,7 +1282,7 @@ def make_paired_autoencoder_model(
         reconstruction = decode(restructure(latent_inputs))
         decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
         decoders[tm] = decoder
-        outputs[tm.output_name()] = decoder(multimodal_merged)
+        outputs[tm.output_name()] = decoder(multimodal_activation)
         losses.append(tm.loss)
 
     kwargs['tensor_maps_out'] = list(original_outputs.keys())
