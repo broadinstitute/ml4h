@@ -189,11 +189,10 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
     logging.info(f'all keys {list(sorted(history.history.keys()))}')
     for k in sorted(history.history.keys()):
-        print(f'history key {k}')
         if not k.startswith('val_'):
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
-            if len(np.array(history.history[k]).shape) > 1:
+            if len(np.array(history.history[k]).shape) > 1: # Hack for models with paired loss
                 history.history[k] = np.array(history.history[k])[:, 0, 0]
                 if 'val_' + k in history.history:
                     history.history['val_' + k] = np.array(history.history['val_' + k])[:, 0, 0]
