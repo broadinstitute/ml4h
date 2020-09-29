@@ -2098,7 +2098,7 @@ def plot_reconstruction(
             for j in range(tm.shape[1]):
                 axes[j, 0].plot(y[:, j], c='k', linestyle='--', label='original')
                 axes[j, 1].plot(yp[:, j], c='b', label='reconstruction')
-                axes[j, 0].set_title(f'Lead: {index2channel[i]}')
+                axes[j, 0].set_title(f'Lead: {index2channel[j]}')
                 axes[j, 0].legend()
                 axes[j, 1].legend()
             plt.tight_layout()
