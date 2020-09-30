@@ -1181,14 +1181,20 @@ def make_paired_autoencoder_model(
     outputs = {}
     losses = []
     for left, right in pairs:
-        kwargs['tensor_maps_in'] = [left]
-        left_model = make_multimodal_multitask_model(**kwargs)
-        encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
+        if left in encoders:
+            encode_left = encoders[left]
+        else:
+            kwargs['tensor_maps_in'] = [left]
+            left_model = make_multimodal_multitask_model(**kwargs)
+            encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
         h_left = encode_left(inputs[left])
 
-        kwargs['tensor_maps_in'] = [right]
-        right_model = make_multimodal_multitask_model(**kwargs)
-        encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
+        if right in encoders:
+            encode_right = encoders[right]
+        else:
+            kwargs['tensor_maps_in'] = [right]
+            right_model = make_multimodal_multitask_model(**kwargs)
+            encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
         h_right = encode_right(inputs[right])
 
         if pair_loss == 'cosine':
@@ -1254,8 +1260,8 @@ def make_paired_autoencoder_model(
     m.summary()
 
     if real_serial_layers is not None:
-        m.load_weights(kwargs['model_layers'], by_name=True)
-        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
+        m.load_weights(real_serial_layers, by_name=True)
+        logging.info(f"Loaded model weights from:{real_serial_layers}")
 
     return m, encoders, decoders
 
