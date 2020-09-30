@@ -187,7 +187,6 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(rows, cols, figsize=(int(cols*SUBPLOT_SIZE), int(rows*SUBPLOT_SIZE)))
-    logging.info(f'all keys {list(sorted(history.history.keys()))}')
     for k in sorted(history.history.keys()):
         if not k.startswith('val_'):
             if isinstance(history.history[k][0], LearningRateSchedule):
