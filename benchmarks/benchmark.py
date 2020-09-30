@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import datetime
 import pandas as pd
@@ -12,7 +13,7 @@ from ml4h.defines import StorageType
 from contextlib import contextmanager
 from multiprocessing import cpu_count
 
-from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription, SYNTHETIC_DATA_PATH
+from data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription, SYNTHETIC_DATA_PATH
 
 
 DELTA_COL = 'step_delta_seconds'
@@ -79,6 +80,7 @@ def benchmark_generator(num_steps: int, gen: Generator) -> List[float]:
         next(gen)
         times.append(time.time() - start)
         print(f'Benchmarking {(i + 1) / num_steps:.1%} done', end='\r')
+        sys.stdout.flush()
     print()
     return times
 
