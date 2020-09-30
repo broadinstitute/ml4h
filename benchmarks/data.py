@@ -1,10 +1,12 @@
 import os
+import sys
 import time
-from typing import Tuple, Dict, Optional, List
-from ml4h.defines import TENSOR_EXT, StorageType
-from ml4h.TensorMap import TensorMap, Interpretation
 import h5py
 import numpy as np
+from typing import Tuple, Optional, List
+
+from ml4h.defines import TENSOR_EXT, StorageType
+from ml4h.TensorMap import TensorMap, Interpretation
 
 
 Shape = Tuple[Optional[int], ...]
@@ -71,6 +73,7 @@ def build_hd5s_ukbb(
                 data = build_example(shape, storage_type)
                 write_in_hd5_ukbb(name, storage_type, data, hd5, compression)
         print(f'Writing hd5s {(i + 1) / len(paths):.1%} done', end='\r')
+        sys.stdout.flush()
     print()
     delta = time.time() - start_time
     print(f'Wrote {len(paths)} hd5s in {delta:.1f} seconds at {len(paths) / delta:.1f} paths/s')
