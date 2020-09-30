@@ -1197,12 +1197,13 @@ def make_paired_autoencoder_model(
         elif pair_loss == 'euclid':
             loss_layer = L2LossLayer(1.0)
 
-        paired_embeddings = loss_layer([h_left, h_right])
-        multimodal_activations.extend(paired_embeddings)
+        loss_layer([h_left, h_right])
         if left not in encoders:
             encoders[left] = encode_left
+            multimodal_activations.append(h_left)
         if right not in encoders:
             encoders[right] = encode_right
+            multimodal_activations.append(h_right)
 
     multimodal_activation = Concatenate()(multimodal_activations)
     multimodal_activation = Dense(units=kwargs['dense_layers'][0])(multimodal_activation)
