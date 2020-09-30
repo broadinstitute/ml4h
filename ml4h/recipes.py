@@ -15,7 +15,7 @@ from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe, pca_on_tsv
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
@@ -101,6 +101,8 @@ def run(args):
             append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
         elif 'append_gene_csv' == args.mode:
             append_gene_csv(args.tensors, args.app_csv, ',')
+        elif 'pca_on_hidden_inference' == args.mode:
+            pca_on_hidden_inference(args)
         elif 'find_learning_rate' == args.mode:
             _find_learning_rate(args)
         elif 'find_learning_rate_and_train' == args.mode:
@@ -450,8 +452,8 @@ def inspect_paired_model(args):
 
 
 def pca_on_hidden_inference(args):
-    infer_hidden_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
     latent_cols = [f'latent_{i}' for i in range(args.dense_layers[0])]
+    pca_on_tsv(args.app_csv, latent_cols, 'sample_id', args.dense_layers[1])
 
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
