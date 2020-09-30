@@ -408,7 +408,7 @@ def train_paired_model(args):
         decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
     out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    samples = args.test_steps * args.batch_size
+    samples = min(args.test_steps * args.batch_size, 12)
     predictions_list = full_model.predict(test_data)
     predictions_dict = {name: pred for name, pred in zip(full_model.output_names, predictions_list)}
     logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
