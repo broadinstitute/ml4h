@@ -1172,7 +1172,7 @@ def make_paired_autoencoder_model(
         logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m, encoders, decoders
 
-    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
+    inputs = {tm.input_name(): Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
     real_serial_layers = kwargs['model_layers']
     kwargs['model_layers'] = None
     multimodal_activations = []
@@ -1187,7 +1187,7 @@ def make_paired_autoencoder_model(
             kwargs['tensor_maps_in'] = [left]
             left_model = make_multimodal_multitask_model(**kwargs)
             encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
-        h_left = encode_left(inputs[left])
+        h_left = encode_left(inputs[left.input_name()])
 
         if right in encoders:
             encode_right = encoders[right]
@@ -1195,7 +1195,7 @@ def make_paired_autoencoder_model(
             kwargs['tensor_maps_in'] = [right]
             right_model = make_multimodal_multitask_model(**kwargs)
             encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
-        h_right = encode_right(inputs[right])
+        h_right = encode_right(inputs[right.input_name()])
 
         if pair_loss == 'cosine':
             loss_layer = CosineLossLayer(1.0)
@@ -1212,7 +1212,7 @@ def make_paired_autoencoder_model(
 
     multimodal_activation = Concatenate()(multimodal_activations)
     multimodal_activation = Dense(units=kwargs['dense_layers'][0])(multimodal_activation)
-    #multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
+    multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
     # build decoder models
@@ -1254,7 +1254,7 @@ def make_paired_autoencoder_model(
 
     kwargs['tensor_maps_in'] = list(inputs.keys())
 
-    m = Model(inputs=list(inputs.values()), outputs=outputs)
+    m = Model(inputs=inputs, outputs=outputs)
     my_metrics = {tm.output_name(): tm.metrics for tm in kwargs['tensor_maps_out']}
     m.compile(optimizer=opt, loss=losses, metrics=my_metrics)
     m.summary()
