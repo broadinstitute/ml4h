@@ -310,7 +310,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
     latent_dimensions = int(np.prod(dummy_out.shape[1:]))
-    logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions}')
+    logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions} Will write inferences to: {inference_tsv}')
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
