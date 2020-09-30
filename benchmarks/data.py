@@ -70,7 +70,7 @@ def build_hd5s_ukbb(
             for name, shape, storage_type in data_descriptions:
                 data = build_example(shape, storage_type)
                 write_in_hd5_ukbb(name, storage_type, data, hd5, compression)
-        print(f'{(i + 1) / len(paths):.1%} done', end='\r')
+        print(f'Writing hd5s {(i + 1) / len(paths):.1%} done', end='\r')
     print()
     delta = time.time() - start_time
     print(f'Wrote {len(paths)} hd5s in {delta:.1f} seconds at {len(paths) / delta:.1f} paths/s')

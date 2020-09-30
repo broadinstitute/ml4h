@@ -2,7 +2,7 @@
 Benchmarks keep track of how quickly we can produce data for training models.
 To run all benchmarks:
 ```bash
-python benchmarks/benchmarks.py
+python benchmarks/benchmark.py
 ```
 
 
