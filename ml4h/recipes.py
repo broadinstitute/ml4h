@@ -449,9 +449,9 @@ def inspect_paired_model(args):
                                     prefix=out_folder)
 
 
-#def pca_on_hidden_inference(args):
-
-
+def pca_on_hidden_inference(args):
+    infer_hidden_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
+    latent_cols = [f'latent_{i}' for i in range(args.dense_layers[0])]
 
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
