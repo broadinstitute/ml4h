@@ -2087,6 +2087,8 @@ def plot_reconstruction(
     logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
     if None in tm.shape:  # can't handle dynamic shapes
         return
+    if not os.path.exists(os.path.dirname(folder)):
+        os.makedirs(os.path.dirname(folder))
     for i in range(num_samples):
         sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
         title = f'{tm.name}_{sample_id}_reconstruction'
