@@ -413,6 +413,12 @@ def train_paired_model(args):
     predictions_dict = {name: pred for name, pred in zip(full_model.output_names, predictions_list)}
     logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
     performance_metrics = {}
+    for tm in args.tensor_maps_out:
+        if tm.axes() == 1:
+            y = predictions_dict[tm.output_name()]
+            y_truth = np.array(test_labels[tm.output_name()])
+            metrics = evaluate_predictions(tm, y, y_truth, {}, tm.name, os.path.join(args.output_folder, args.id), test_paths)
+            performance_metrics.update(metrics)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
         plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
@@ -424,9 +430,7 @@ def train_paired_model(args):
                 if not os.path.exists(os.path.dirname(my_out_path)):
                     os.makedirs(os.path.dirname(my_out_path))
                 plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
-            else:
-                y_truth = np.array(test_labels[dtm.output_name()])
-                performance_metrics.update(evaluate_predictions(dtm, decoders[dtm].predict(embed), y_truth, {}, dtm.name, os.path.join(args.output_folder, args.id), test_paths))
+
     return performance_metrics
 
 
@@ -443,6 +447,10 @@ def inspect_paired_model(args):
                                     thresh=thresh,
                                     latent_dimension=args.dense_layers[0],
                                     prefix=out_folder)
+
+
+def pca_on_hidden_inference(args):
+
 
 
 def plot_predictions(args):
