@@ -12,12 +12,12 @@ from ml4h.defines import StorageType
 from contextlib import contextmanager
 from multiprocessing import cpu_count
 
-from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription
+from benchmarks.data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription, SYNTHETIC_DATA_PATH
 
 
-DELTA_COL = 'step delta'
-WORKER_COL = 'num workers'
-BATCH_SIZE_COL = 'batch size'
+DELTA_COL = 'step_delta_seconds'
+WORKER_COL = 'num_workers'
+BATCH_SIZE_COL = 'batch_size'
 NAME_COL = 'name'
 
 
@@ -78,7 +78,7 @@ def benchmark_generator(num_steps: int, gen: Generator) -> List[float]:
         start = time.time()
         next(gen)
         times.append(time.time() - start)
-        print(f'{(i + 1) / num_steps:.1%} done', end='\r')
+        print(f'Benchmarking {(i + 1) / num_steps:.1%} done', end='\r')
     print()
     return times
 
@@ -132,32 +132,40 @@ ECG_BENCHMARK = Benchmark(
         ('ecg', (5000, 12), StorageType.CONTINUOUS),
         ('bmi', (1,), StorageType.CONTINUOUS),
     ],
-    4096, [64, 128, 256], [1, 2, 4, 8]
+    num_samples=4096, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
 )
-MRI_BENCHMARK = Benchmark(
+MRI_3D_BENCHMARK = Benchmark(
     [
-        ('mri', (256, 256, 16), StorageType.CONTINUOUS),
-        ('segmentation', (256, 256, 16), StorageType.CONTINUOUS),
+        ('mri', (256, 160, 16), StorageType.CONTINUOUS),
+        ('segmentation', (256, 160, 16, 13), StorageType.CONTINUOUS),
     ],
-    256, [4, 8, 16], [1, 2, 4, 8]
+    num_samples=256, batch_sizes=[4, 8, 16], num_workers=[1, 2, 4, 8],
+)
+MRI_4D_BENCHMARK = Benchmark(
+    [
+        ('mri', (256, 160, 16, 1), StorageType.CONTINUOUS),
+        ('segmentation', (256, 160, 16, 13), StorageType.CONTINUOUS),
+    ],
+    num_samples=256, batch_sizes=[4, 8, 16], num_workers=[1, 2, 4, 8],
 )
 ECG_MULTITASK_BENCHMARK = Benchmark(
-    (
+    [
         [('ecg', (5000, 12), StorageType.CONTINUOUS)]
         + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)]
-    ),
-    4096, [64, 128, 256], [1, 2, 4, 8]
+    ],
+    num_samples=4096, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
 )
 TEST_BENCHMARK = Benchmark(
     (
         [('ecg', (5000, 12), StorageType.CONTINUOUS)]
     ),
-    16, [1, 2], [1, 2, 4]
+    num_samples=16, batch_sizes=[1, 2], num_workers=[1, 2, 4],
 )
 BENCHMARKS = {
     'test': TEST_BENCHMARK,
     'ecg_single_task': ECG_BENCHMARK,
-    'mri_single_task': MRI_BENCHMARK,
+    'mri_3d': MRI_3D_BENCHMARK,
+    'mri_4d': MRI_4D_BENCHMARK,
     'ecg_multi_task': ECG_MULTITASK_BENCHMARK,
 }
 
@@ -180,9 +188,10 @@ def run_benchmark(benchmark_name: str):
     date = datetime.datetime.now().strftime('%d-%m-%Y_%H:%M:%S')
     description = f'{date}_cpus-{cpu_count()}'
     os.makedirs(output_folder, exist_ok=True)
+    tsv_path = os.path.join(output_folder, f'{description}_results.tsv')
+    print(f'Saving benchmark tsv to {tsv_path}')
     performance_df.to_csv(
-        os.path.join(output_folder, f'{description}_results.tsv'),
-        sep='\t', index=False,
+        tsv_path, sep='\t', index=False, float_format='%.5f',
     )
     plot_benchmark(
         performance_df,
@@ -201,6 +210,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     benchmarks = args.benchmarks or list(BENCHMARKS)
     print(f'Will run benchmarks: {", ".join(benchmarks)}')
+    os.makedirs(SYNTHETIC_DATA_PATH, exist_ok=True)
     for benchmark in benchmarks:
         print('======================================')
         print(f'Running benchmark {benchmark}')
