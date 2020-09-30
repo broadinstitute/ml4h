@@ -449,7 +449,7 @@ def inspect_paired_model(args):
                                     prefix=out_folder)
 
 
-def pca_on_hidden_inference(args):
+#def pca_on_hidden_inference(args):
 
 
 
