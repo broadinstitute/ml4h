@@ -1173,7 +1173,6 @@ def make_paired_autoencoder_model(
         return m, encoders, decoders
 
     inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
-    original_outputs = {tm: 1 for tm in kwargs['tensor_maps_out']}
     real_serial_layers = kwargs['model_layers']
     kwargs['model_layers'] = None
     multimodal_activations = []
@@ -1197,13 +1196,13 @@ def make_paired_autoencoder_model(
         elif pair_loss == 'euclid':
             loss_layer = L2LossLayer(1.0)
 
-        loss_layer([h_left, h_right])
+        pair_loss_out = loss_layer([h_left, h_right])
         if left not in encoders:
             encoders[left] = encode_left
-            multimodal_activations.append(h_left)
+            multimodal_activations.append(pair_loss_out[0])
         if right not in encoders:
             encoders[right] = encode_right
-            multimodal_activations.append(h_right)
+            multimodal_activations.append(pair_loss_out[1])
 
     multimodal_activation = Concatenate()(multimodal_activations)
     multimodal_activation = Dense(units=kwargs['dense_layers'][0])(multimodal_activation)
@@ -1247,7 +1246,6 @@ def make_paired_autoencoder_model(
         outputs[tm.output_name()] = decoder(multimodal_activation)
         losses.append(tm.loss)
 
-    kwargs['tensor_maps_out'] = list(original_outputs.keys())
     kwargs['tensor_maps_in'] = list(inputs.keys())
 
     m = Model(inputs=list(inputs.values()), outputs=outputs)
