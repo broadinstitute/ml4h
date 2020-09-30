@@ -87,9 +87,11 @@ def build_tensor_maps(
 ) -> List[TensorMap]:
     tmaps = []
     for name, shape, storage_type in data_descriptions:
-        tmaps.append(TensorMap(
-            name,
-            interpretation=STORAGE_TYPE_TO_INTERPRETATION[storage_type],
-            shape=shape,
-        ))
+        tmaps.append(
+            TensorMap(
+                name,
+                interpretation=STORAGE_TYPE_TO_INTERPRETATION[storage_type],
+                shape=shape,
+            ),
+        )
     return tmaps

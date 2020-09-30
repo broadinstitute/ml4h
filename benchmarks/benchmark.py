@@ -151,7 +151,7 @@ MRI_4D_BENCHMARK = Benchmark(
 ECG_MULTITASK_BENCHMARK = Benchmark(
     [
         [('ecg', (5000, 12), StorageType.CONTINUOUS)]
-        + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)]
+        + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)],
     ],
     num_samples=4096, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
 )
