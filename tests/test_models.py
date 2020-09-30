@@ -349,6 +349,42 @@ class TestMakeMultimodalMultitaskModel:
             **params
         )
 
+    @pytest.mark.parametrize(
+        'pairs',
+        [
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1])],
+            [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[1])],
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])]
+        ],
+    )
+    @pytest.mark.parametrize(
+        'output_tmaps',
+        [
+            [CONTINUOUS_TMAPS[0]],
+            [CATEGORICAL_TMAPS[0]],
+            [CONTINUOUS_TMAPS[0], CATEGORICAL_TMAPS[0]],
+        ],
+    )
+    def test_semi_supervised_paired_models(self, pairs, output_tmaps, tmpdir):
+        params = DEFAULT_PARAMS.copy()
+        pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
+        params['u_connect'] = {tm: [] for tm in pair_list}
+        m, encoders, decoders = make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list+output_tmaps,
+            **params
+        )
+        assert_model_trains(pair_list, pair_list+output_tmaps, m, skip_shape_check=True)
+        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list+output_tmaps,
+            **params
+        )
 
 @pytest.mark.parametrize(
     'tmaps',
