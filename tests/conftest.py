@@ -9,7 +9,7 @@ from ml4h.test_utils import build_hdf5s
 
 def pytest_configure(config):
     pytest.N_TENSORS = 50
-    config.addinivalue_line("markers", "env(slow): mark tests as slow")
+    config.addinivalue_line("markers", "slow: mark tests as slow")
 
 
 #@mock.patch.dict(TMAPS, MOCK_TMAPS)
