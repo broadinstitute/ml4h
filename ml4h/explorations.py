@@ -8,7 +8,6 @@ import copy
 import logging
 import operator
 import datetime
-from operator import itemgetter
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
@@ -18,6 +17,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+from sklearn.decomposition import PCA
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -1391,5 +1391,25 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     latent_df = pd.merge(df, df2, left_on='fpath', right_on='sample_id', how='inner')
     latent_df.info()
     return latent_df
+
+
+def pca_on_matrix(matrix, pca_components):
+    pca = PCA()
+    pca.fit(matrix)
+    print(f'PCA explains {100 * np.sum(pca.explained_variance_ratio_[:pca_components]):0.1f}% of variance with {pca_components} top PCA components.')
+    matrix_reduced = pca.transform(matrix)[:, :pca_components]
+    print(f'PCA reduces matrix shape:{matrix_reduced.shape} from matrix shape: {matrix.shape}')
+    return pca, matrix_reduced
+
+
+def pca_on_tsv(tsv_file, columns, index_column, pca_components):
+    df = pd.read_csv(tsv_file, sep='\t')
+    matrix = df[columns].to_numpy()
+    pca, reduced = pca_on_matrix(matrix, pca_components)
+    reduced_df = pd.DataFrame(reduced)
+    reduced_df.index = df[index_column]
+    new_tsv = tsv_file.replace('.tsv', f'_pca_{pca_components}.tsv')
+    reduced_df.to_csv(new_tsv, sep='/t')
+    logging.info(f'Wrote PCA reduced TSV to: {new_tsv}')
 
 
