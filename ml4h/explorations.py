@@ -1409,7 +1409,7 @@ def pca_on_tsv(tsv_file, columns, index_column, pca_components):
     reduced_df = pd.DataFrame(reduced)
     reduced_df.index = df[index_column]
     new_tsv = tsv_file.replace('.tsv', f'_pca_{pca_components}.tsv')
-    reduced_df.to_csv(new_tsv, sep='/t')
+    reduced_df.to_csv(new_tsv, sep='\t')
     logging.info(f'Wrote PCA reduced TSV to: {new_tsv}')
 
 
