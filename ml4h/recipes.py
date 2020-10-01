@@ -433,7 +433,7 @@ def train_paired_model(args):
             if dtm.axes() > 1:
                 plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
             else:
-                evaluate_predictions(dtm, reconstruction, test_data[dtm.input_name()], {}, dtm.name, my_out_path, test_paths)
+                evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
 
 
