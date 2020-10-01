@@ -421,8 +421,7 @@ def train_paired_model(args):
                 reconstruction = decoders[dtm].predict(embed)
                 logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
                 my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-                if not os.path.exists(os.path.dirname(my_out_path)):
-                    os.makedirs(os.path.dirname(my_out_path))
+                os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
                 plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
             else:
                 y_truth = np.array(test_labels[dtm.output_name()])

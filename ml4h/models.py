@@ -1206,7 +1206,6 @@ def make_paired_autoencoder_model(
 
     multimodal_activation = Concatenate()(multimodal_activations)
     multimodal_activation = Dense(units=kwargs['dense_layers'][0])(multimodal_activation)
-    #multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
     # build decoder models

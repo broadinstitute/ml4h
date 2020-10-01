@@ -2205,10 +2205,8 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
             fig, axes = plt.subplots(samples, 2, figsize=(18, samples * 4))
             for i in range(samples):
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
-                axes[i, 0].set_xticks(())
-                axes[i, 0].set_yticks(())
-                axes[i, 1].set_xticks(())
-                axes[i, 1].set_yticks(())
+                axes[i, 0].axis('off')
+                axes[i, 1].axis('off')
                 if dtm.is_categorical():
                     axes[i, 0].imshow(np.argmax(predictions[i, ...], axis=-1), cmap=cmap)
                     if sexes[i] >= thresh:
