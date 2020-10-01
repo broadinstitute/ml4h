@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import datetime
+import hdf5plugin
 import pandas as pd
 import seaborn as sns
 from itertools import product
@@ -41,13 +42,16 @@ class GeneratorFactory(ABC):
 
 class TensorGeneratorFactory(GeneratorFactory):
 
-    def __init__(self, compression: str):
+    def __init__(self, compression, name: str = None):
         super().__init__()
         self.compression = compression
         self.tmaps = None
         self.paths = None
+        self.name = name
 
     def get_name(self) -> str:
+        if self.name:
+            return self.name
         return f'TensorGenerator_{self.compression}'
 
     def setup(self, num_samples: int, data_descriptions: List[DataDescription]):
@@ -70,6 +74,7 @@ class TensorGeneratorFactory(GeneratorFactory):
 
 FACTORIES = [
     TensorGeneratorFactory('gzip'),
+    TensorGeneratorFactory(hdf5plugin.Blosc(cname='lz4hc', clevel=9), name='TensorGenerator_blosc_lz4hc_c9'),
 ]
 
 
@@ -134,28 +139,28 @@ ECG_BENCHMARK = Benchmark(
         ('ecg', (5000, 12), StorageType.CONTINUOUS),
         ('bmi', (1,), StorageType.CONTINUOUS),
     ],
-    num_samples=4096, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
+    num_samples=2048, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
 )
 MRI_3D_BENCHMARK = Benchmark(
     [
         ('mri', (256, 160, 16), StorageType.CONTINUOUS),
         ('segmentation', (256, 160, 16, 13), StorageType.CONTINUOUS),
     ],
-    num_samples=256, batch_sizes=[4, 8, 16], num_workers=[1, 2, 4, 8],
+    num_samples=128, batch_sizes=[2, 4], num_workers=[1, 2, 4],
 )
 MRI_4D_BENCHMARK = Benchmark(
     [
         ('mri', (256, 160, 16, 1), StorageType.CONTINUOUS),
         ('segmentation', (256, 160, 16, 13), StorageType.CONTINUOUS),
     ],
-    num_samples=256, batch_sizes=[4, 8, 16], num_workers=[1, 2, 4, 8],
+    num_samples=128, batch_sizes=[2, 4], num_workers=[1, 2, 4],
 )
 ECG_MULTITASK_BENCHMARK = Benchmark(
     [
         [('ecg', (5000, 12), StorageType.CONTINUOUS)]
         + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)],
     ],
-    num_samples=4096, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
+    num_samples=2048, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
 )
 TEST_BENCHMARK = Benchmark(
     (
@@ -166,9 +171,9 @@ TEST_BENCHMARK = Benchmark(
 BENCHMARKS = {
     'test': TEST_BENCHMARK,
     'ecg_single_task': ECG_BENCHMARK,
+    'ecg_multi_task': ECG_MULTITASK_BENCHMARK,
     'mri_3d': MRI_3D_BENCHMARK,
     'mri_4d': MRI_4D_BENCHMARK,
-    'ecg_multi_task': ECG_MULTITASK_BENCHMARK,
 }
 
 

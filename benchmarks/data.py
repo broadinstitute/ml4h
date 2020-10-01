@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import h5py
+import hdf5plugin
 import numpy as np
 from typing import Tuple, Optional, List
 
@@ -49,20 +50,25 @@ def get_hd5_paths(overwrite: bool, num_hd5s: int) -> List[str]:
 
 def write_in_hd5_ukbb(
     name: str, storage_type: StorageType, value: np.ndarray, hd5: h5py.File,
-    compression: str,
+    compression,
 ):
     """Replicates storage behavior in tensor_writer_ukbb"""
     if storage_type == StorageType.STRING:
         hd5.create_dataset(name, data=value, dtype=h5py.special_dtype(vlen=str))
     elif storage_type == StorageType.CONTINUOUS:
-        hd5.create_dataset(name, data=value, compression=compression)
+        if value.size < 16:
+            hd5.create_dataset(name, data=value)
+        elif type(compression) == str:
+            hd5.create_dataset(name, data=value, compression=compression)
+        else:
+            hd5.create_dataset(name, data=value, **compression)  # The hdf5plugin case
     else:
         raise NotImplementedError(f'{storage_type} cannot be automatically written yet')
 
 
 def build_hd5s_ukbb(
         data_descriptions: List[DataDescription], num_hd5s: int,
-        overwrite: bool = True, compression: str = 'gzip',
+        overwrite: bool = True, compression='gzip',
 ):
     paths = get_hd5_paths(overwrite, num_hd5s)
     start_time = time.time()
