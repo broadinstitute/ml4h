@@ -3,6 +3,7 @@ import sys
 import time
 import datetime
 import hdf5plugin
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from itertools import product
@@ -15,6 +16,7 @@ from contextlib import contextmanager
 from multiprocessing import cpu_count
 
 from data import build_tensor_maps, build_hd5s_ukbb, get_hd5_paths, DataDescription, SYNTHETIC_DATA_PATH
+from benchmarks.data import build_petastorm
 
 
 DELTA_COL = 'step_delta_seconds'
@@ -25,6 +27,7 @@ NAME_COL = 'name'
 
 class GeneratorFactory(ABC):
     is_setup = False
+    max_workers = np.inf
 
     @abstractmethod
     def setup(self, num_samples: int, data_descriptions: List[DataDescription]):
@@ -72,7 +75,29 @@ class TensorGeneratorFactory(GeneratorFactory):
         del gen
 
 
+class PetaStormFactory(GeneratorFactory):
+    max_workers = 4
+
+    def __init__(self):
+        self.spark_path = f'file:///{os.path.join(os.path.dirname(__file__), SYNTHETIC_DATA_PATH)}'
+
+    def get_name(self) -> str:
+        return 'petastorm'
+
+    def setup(self, num_samples: int, data_descriptions: List[DataDescription]):
+        build_petastorm(data_descriptions, num_samples, self.spark_path)
+
+    @contextmanager
+    def __call__(self, batch_size: int, num_workers: int) -> Generator:
+        from petastorm.tf_utils import make_petastorm_dataset
+        from petastorm import make_reader
+        num_workers = min(self.max_workers, num_workers)
+        with make_reader(self.spark_path, num_epochs=None, workers_count=num_workers, results_queue_size=5) as reader:
+            yield make_petastorm_dataset(reader).batch(batch_size).as_numpy_iterator()  # repeat not allowed?
+
+
 FACTORIES = [
+    PetaStormFactory(),
     TensorGeneratorFactory('gzip'),
     TensorGeneratorFactory(hdf5plugin.Blosc(cname='lz4hc', clevel=9), name='TensorGenerator_blosc_lz4hc_c9'),
 ]
@@ -97,6 +122,9 @@ def benchmark_generator_factory(
 ) -> pd.DataFrame:
     result_dfs = []
     for batch_size, num_workers in product(batch_sizes, workers):
+        if num_workers > generator_factory.max_workers:
+            print(f'Skipping test with workers {num_workers}')
+            continue
         with generator_factory(batch_size, num_workers) as gen:
             start = time.time()
             print(f'Beginning test at batch size {batch_size}, workers {num_workers}')
@@ -156,11 +184,11 @@ MRI_4D_BENCHMARK = Benchmark(
     num_samples=128, batch_sizes=[2, 4], num_workers=[1, 2, 4],
 )
 ECG_MULTITASK_BENCHMARK = Benchmark(
-    [
+    (
         [('ecg', (5000, 12), StorageType.CONTINUOUS)]
-        + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)],
-    ],
-    num_samples=2048, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4, 8],
+        + [(f'interval_{i}', (1,), StorageType.CONTINUOUS) for i in range(20)]
+    ),
+    num_samples=2048, batch_sizes=[64, 128, 256], num_workers=[1, 2, 4],
 )
 TEST_BENCHMARK = Benchmark(
     (
