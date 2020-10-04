@@ -5,7 +5,7 @@ from typing import List
 import vtk, vtk.util.numpy_support
 from pypoisson import poisson_reconstruction
 
-from ml4cvd.defines import MRI_FRAMES
+from ml4h.defines import MRI_FRAMES
 
 def polydata_to_volume(polydata):
     mass = vtk.vtkMassProperties()
@@ -14,14 +14,16 @@ def polydata_to_volume(polydata):
     return mass.GetVolume()
 
 
-def points_normals_to_poisson(points: np.ndarray,
-                              normals: np.ndarray)->vtk.vtkPolyData:
+def points_normals_to_poisson(
+    points: np.ndarray,
+    normals: np.ndarray,
+)->vtk.vtkPolyData:
 
     faces, vertices = poisson_reconstruction(points, normals, depth=9)
     # vtk encodes triangle faces as 4 element-arrays starting with 3
     faces_for_vtk = np.zeros((len(faces), 4), dtype=np.int64)
     faces_for_vtk[:, 0] = 3
-    faces_for_vtk[:, 1:] = faces 
+    faces_for_vtk[:, 1:] = faces
 
     polydata_points = vtk.vtkPoints()
     polydata_points.SetData(vtk.util.numpy_support.numpy_to_vtk(vertices))
@@ -38,21 +40,21 @@ def points_normals_to_poisson(points: np.ndarray,
     boundary_edges.BoundaryEdgesOn()
     boundary_edges.FeatureEdgesOff()
     boundary_edges.NonManifoldEdgesOff()
-    boundary_edges.ManifoldEdgesOff()    
+    boundary_edges.ManifoldEdgesOff()
     boundary_strips = vtk.vtkStripper()
     boundary_strips.SetInputConnection(boundary_edges.GetOutputPort())
     boundary_strips.Update()
     boundary_poly = vtk.vtkPolyData()
     boundary_poly.SetPoints(boundary_strips.GetOutput().GetPoints())
     boundary_poly.SetPolys(boundary_strips.GetOutput().GetLines())
-    
+
     append = vtk.vtkAppendPolyData()
     append.UserManagedInputsOn()
     append.SetNumberOfInputs(2)
     append.SetInputDataByNumber(0, polydata)
     append.SetInputDataByNumber(1, boundary_poly)
     append.Update()
-    
+
     clean = vtk.vtkCleanPolyData()
     clean.ConvertLinesToPointsOff()
     clean.ConvertPolysToLinesOff()
@@ -62,17 +64,19 @@ def points_normals_to_poisson(points: np.ndarray,
     clean.Update()
     triangle_filter = vtk.vtkTriangleFilter()
     triangle_filter.SetInputConnection(clean.GetOutputPort())
-    triangle_filter.Update()   
+    triangle_filter.Update()
 
     return triangle_filter.GetOutput()
-                              
-                              
-def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
-                          channels: List[int],
-                          views: List[str],
-                          format_view: str,
-                          times: List[int],
-                          save_path: str = None)->List[vtk.vtkPolyData]:
+
+
+def annotation_to_poisson(
+    datasets: List[vtk.vtkStructuredGrid],
+    channels: List[int],
+    views: List[str],
+    format_view: str,
+    times: List[int],
+    save_path: str = None,
+)->List[vtk.vtkPolyData]:
     ncols = 256
     ncolors = 256
 
@@ -100,7 +104,7 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
             centers = vtk.vtkCellCenters()
             centers.SetInputData(threshold.GetOutput())
             centers.Update()
-            
+
             dataset_points = vtk.util.numpy_support.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())
             dataset_normals = np.zeros_like(dataset_points)
             dataset_normals[:] = dataset_points - np.mean(dataset_points, axis=0)
@@ -125,7 +129,3 @@ def annotation_to_poisson(datasets: List[vtk.vtkStructuredGrid],
         poisson_polydatas.append(points_normals_to_poisson(points_arr, normals_arr))
         poisson_volumes.append(polydata_to_volume(poisson_polydatas[-1]))
     return poisson_polydatas, poisson_volumes
-
-
-
-

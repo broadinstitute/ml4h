@@ -1,8 +1,8 @@
 import h5py
 import sys
 import glob
-from ml4cvd.tensor_from_file import _mri_tensor_4d, _mri_hd5_to_structured_grids
-from ml4cvd.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
+from ml4h.tensormap.ukb.mri_vtk import _mri_tensor_4d, _mri_hd5_to_structured_grids
+from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 from vtk.util import numpy_support as ns
 import vtk
 import numpy as np
@@ -20,11 +20,11 @@ MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'] = 11
 #    petersen[f'LA_poisson_{t}'] = 0.0
 
 def project_3dpts_plane(pts):
-    
+
     N = np.cross(pts[10] - pts[0], pts[-1] - pts[0])
     U = (pts[10] - pts[0])/np.linalg.norm(pts[10] - pts[0])
     uN = N / np.linalg.norm(N)
-    u = pts[0] + U  
+    u = pts[0] + U
     V = np.cross(U, uN)
     v = pts[0] + V
     n = pts[0] + uN
@@ -73,7 +73,7 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
       </Grid>""")
             arr = vtk.util.numpy_support.vtk_to_numpy(vtk_object.GetCellData().GetArray(f'{arr_name}_{t}'))
             arr = arr.reshape(extent[5], extent[1], extent[3])
-            ff_hd5.create_dataset(f'{arr_name}_{t}', data=arr, compression="gzip", compression_opts=9)        
+            ff_hd5.create_dataset(f'{arr_name}_{t}', data=arr, compression="gzip", compression_opts=9)
     elif isinstance(vtk_object, vtk.vtkPolyData):
         arr_pts = vtk.util.numpy_support.vtk_to_numpy(vtk_object.GetPoints().GetData())
         arr_cells = np.copy(vtk.util.numpy_support.vtk_to_numpy(vtk_object.GetPolys().GetData()))
@@ -89,15 +89,15 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
         </Topology>
       </Grid>""")
         ff_hd5.create_dataset(f'points_{append_time}', data=arr_pts, compression="gzip", compression_opts=9)
-        ff_hd5.create_dataset(f'cells_{append_time}', data=arr_cells, compression="gzip", compression_opts=9)  
-  
+        ff_hd5.create_dataset(f'cells_{append_time}', data=arr_cells, compression="gzip", compression_opts=9)
+
     if write_footer:
         ff_xml.write("""
     </Grid>
   </Domain>
 </Xdmf>""")
     ff_xml.close()
-    ff_hd5.close()         
+    ff_hd5.close()
 
 
 if __name__ == '__main__':
@@ -105,27 +105,35 @@ if __name__ == '__main__':
     volumes = []
     petersen_processed = []
     for i, idx in enumerate(petersen_idxs):
-        
-        if i < int(sys.argv[1]): 
+
+        if i < int(sys.argv[1]):
             continue
-        if i > int(sys.argv[1]): 
+        if i > int(sys.argv[1]):
             break
-        
+
         with h5py.File(f'/mnt/disks/sax-and-lax-zip-2019-09-30/unzip-sax-and-lax-44k-2020-06-05/{idx}.hd5', 'r') as ff:
             dss = []
             for view in ['2ch', '3ch', '4ch']:
-                dss.append(_mri_hd5_to_structured_grids(ff, f'cine_segmented_lax_{view}_annotated_',
-                                                        view_name=f'cine_segmented_lax_{view}', concatenate=True,
-                                                        save_path=None, order='F'))
-                to_xdmf(dss[-1][0], f'{idx}_{view}')            
+                dss.append(
+                    _mri_hd5_to_structured_grids(
+                        ff, f'cine_segmented_lax_{view}_annotated_',
+                        view_name=f'cine_segmented_lax_{view}', concatenate=True,
+                        save_path=None, order='F',
+                    ),
+                )
+                to_xdmf(dss[-1][0], f'{idx}_{view}')
 
             for t in range(MRI_FRAMES):
                 pts = []
                 normals = []
-                for ds, view, la_value in zip(dss, ['2ch', '3ch', '4ch'],
-                                                [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                                MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
-                                                MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity']]):
+                for ds, view, la_value in zip(
+                    dss, ['2ch', '3ch', '4ch'],
+                    [
+                        MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                        MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+                        MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity'],
+                    ],
+                ):
                     centers = vtk.vtkCellCenters()
                     centers.SetInputData(ds[0])
                     centers.Update()
@@ -145,7 +153,7 @@ if __name__ == '__main__':
                     n1_hull_view = np.zeros_like(n_hull_view)
                     n1_hull_view[1:] = n_hull_view[:-1]
                     n1_hull_view[0] = n_hull_view[-1]
-                    n_hull_view = -0.5*(n_hull_view + n1_hull_view)    
+                    n_hull_view = -0.5*(n_hull_view + n1_hull_view)
                     pts.append(pts_hull_view)
                     normals.append(n_hull_view)
                 pts = np.vstack(pts)
@@ -153,7 +161,7 @@ if __name__ == '__main__':
                 faces, vertices = poisson_reconstruction(pts, normals, depth=16)
                 faces_tmp = np.zeros((len(faces), 4), dtype=np.int64)
                 faces_tmp[:, 0] = 3
-                faces_tmp[:, 1:] = faces 
+                faces_tmp[:, 1:] = faces
                 polydata_points = vtk.vtkPoints()
                 polydata_points.SetData(ns.numpy_to_vtk(vertices))
                 polydata_cells = vtk.vtkCellArray()
@@ -167,21 +175,21 @@ if __name__ == '__main__':
                 boundary_edges.BoundaryEdgesOn()
                 boundary_edges.FeatureEdgesOff()
                 boundary_edges.NonManifoldEdgesOff()
-                boundary_edges.ManifoldEdgesOff()    
+                boundary_edges.ManifoldEdgesOff()
                 boundary_strips = vtk.vtkStripper()
                 boundary_strips.SetInputConnection(boundary_edges.GetOutputPort())
                 boundary_strips.Update()
                 boundary_poly = vtk.vtkPolyData()
                 boundary_poly.SetPoints(boundary_strips.GetOutput().GetPoints())
                 boundary_poly.SetPolys(boundary_strips.GetOutput().GetLines())
-                
+
                 append = vtk.vtkAppendPolyData()
                 append.UserManagedInputsOn()
                 append.SetNumberOfInputs(2)
                 append.SetInputDataByNumber(0, polydata)
                 append.SetInputDataByNumber(1, boundary_poly)
                 append.Update()
-                
+
                 clean = vtk.vtkCleanPolyData()
                 clean.ConvertLinesToPointsOff()
                 clean.ConvertPolysToLinesOff()
@@ -192,11 +200,13 @@ if __name__ == '__main__':
                 triangle_filter = vtk.vtkTriangleFilter()
                 triangle_filter.SetInputConnection(clean.GetOutputPort())
                 triangle_filter.Update()
-                
+
                 append = False if (t == 0) else True
                 write_footer = True if (t == MRI_FRAMES - 1) else False
-                to_xdmf(triangle_filter.GetOutput(), f'{idx}_atrium', append=append, 
-                        append_time=t, write_footer=write_footer)
+                to_xdmf(
+                    triangle_filter.GetOutput(), f'{idx}_atrium', append=append,
+                    append_time=t, write_footer=write_footer,
+                )
 
                 mass = vtk.vtkMassProperties()
                 mass.SetInputConnection(triangle_filter.GetOutputPort())
@@ -205,4 +215,3 @@ if __name__ == '__main__':
         petersen_processed.append(i)
 
     petersen.loc[petersen_processed].to_csv(f'petersen_processed_{i-1}.csv', sep='\t', index=False)
-            
