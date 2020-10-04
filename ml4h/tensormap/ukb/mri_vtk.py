@@ -9,115 +9,95 @@ from ml4h.defines import MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_FRAMES, MRI_PIXEL
 from ml4h.tensormap.ukb.mri import mri_tensor_2d
 
 
-def _mri_tensor_4d(hd5, name):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, dest_shape=None):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
-    if isinstance(hd5[name], h5py.Group):
-        nslices = len(hd5[name]) // MRI_FRAMES
-        for img in hd5[name]:
-            img_shape = hd5[name][img].shape
+    hd5_path = f'{path_prefix}/{name}/instance_{instance}'
+    if annotation:
+        hd5_path = f'{path_prefix}/{name}_1/instance_{instance}'
+    if (not annotation) and concatenate:
+        hd5_path = f'{path_prefix}/{name}/'
+    if isinstance(hd5[hd5_path], h5py.Group):
+        for img in hd5[hd5_path]:
+            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
             break
-        shape = (img_shape[0], img_shape[1], nslices, MRI_FRAMES)
+        if dest_shape is None:
+            dest_shape = (max(img_shape), max(img_shape))
+        nslices = len(hd5[hd5_path]) // MRI_FRAMES
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         t = 0
         s = 0
-        for k in sorted(hd5[name], key=int):
-            arr[:, :, s, t] = np.array(hd5[name][k]).T
+        for img in sorted(hd5[hd5_path], key=int):
+            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
+            arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[f'{hd5_path}/{img}/instance_{instance}']).T
             t += 1
             if t == MRI_FRAMES:
                 s += 1
                 t = 0
-    elif isinstance(hd5[name], h5py.Dataset):
+    elif isinstance(hd5[hd5_path], h5py.Dataset):
+        img_shape = hd5[hd5_path].shape
+        if dest_shape is None:
+            dest_shape = (max(img_shape), max(img_shape))
         nslices = 1
-        shape = (hd5[name].shape[0], hd5[name].shape[1], nslices, MRI_FRAMES)
+        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
-            arr[:, :, 0, t] = np.array(hd5[name][:, :, t]).T
+            if concatenate:
+                hd5_path = f'{path_prefix}/{name}_{t+1}/instance_{instance}'
+                arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
+            else:
+                try:
+                    arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
+                except ValueError:
+                    logging.warning(f'Series {name} has less than {MRI_FRAMES} frames')
     else:
         raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
 
 
-def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
+def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, save_path=None, order='F'):
     """
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
-    arr = _mri_tensor_4d(hd5, name)
-    width = hd5['_'.join([MRI_PIXEL_WIDTH, name])]
-    height = hd5['_'.join([MRI_PIXEL_HEIGHT, name])]
-    positions = mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, name]))
-    orientations = mri_tensor_2d(
-        hd5,
-        '_'.join([MRI_PATIENT_ORIENTATION, name]),
-    )
-    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, name])]
-    _, dataset_indices, dataset_counts = np.unique(
-        orientations,
-        axis=1,
-        return_index=True,
-        return_counts=True,
-    )
+    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate, annotation)
+    width = hd5['_'.join([MRI_PIXEL_WIDTH, view_name])]
+    height = hd5['_'.join([MRI_PIXEL_HEIGHT, view_name])]
+    positions = mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, view_name]))
+    orientations = mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, view_name]))
+    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, view_name])]
+    _, dataset_indices, dataset_counts = np.unique(orientations, axis=1, return_index=True, return_counts=True)
     grids = []
     for d_idx, d_cnt in zip(dataset_indices, dataset_counts):
         grids.append(vtk.vtkStructuredGrid())
         nslices = d_cnt
         # If multislice, override thickness as distance between voxel centers. Note: removes eventual gaps between slices
         if nslices > 1:
-            thickness = np.linalg.norm(
-                positions[:, d_idx] -
-                positions[:, d_idx + 1],
-            )
+            thickness = np.linalg.norm(positions[:, d_idx] - positions[:, d_idx+1])
         transform = vtk.vtkTransform()
-        n_orientation = np.cross(
-            orientations[3:, d_idx], orientations[
-                :3,
-                d_idx
-            ],
-        )
+        n_orientation = np.cross(orientations[3:, d_idx], orientations[:3, d_idx])
         # 4x4 transform matrix to align to the patient reference system
         transform.SetMatrix([
-            orientations[3, d_idx] * height,
-            orientations[0, d_idx] * width,
-            n_orientation[0] * thickness,
-            positions[0, d_idx],
-            orientations[4, d_idx] * height,
-            orientations[1, d_idx] * width,
-            n_orientation[1] * thickness,
-            positions[1, d_idx],
-            orientations[5, d_idx] * height,
-            orientations[2, d_idx] * width,
-            n_orientation[2] * thickness,
-            positions[2, d_idx],
-            0,
-            0,
-            0,
-            1,
+            orientations[3, d_idx]*height, orientations[0, d_idx]*width, n_orientation[0]*thickness, positions[0, d_idx],
+            orientations[4, d_idx]*height, orientations[1, d_idx]*width, n_orientation[1]*thickness, positions[1, d_idx],
+            orientations[5, d_idx]*height, orientations[2, d_idx]*width, n_orientation[2]*thickness, positions[2, d_idx],
+            0, 0, 0, 1,
         ])
-        x_coors = np.arange(0, arr.shape[0] + 1) - 0.5
-        y_coors = np.arange(0, arr.shape[1] + 1) - 0.5
-        z_coors = np.arange(0, d_cnt + 1) - 0.5
+        x_coors = np.arange(0, arr.shape[0]+1) - 0.5
+        y_coors = np.arange(0, arr.shape[1]+1) - 0.5
+        z_coors = np.arange(0, d_cnt+1) - 0.5
         xyz_meshgrid = np.meshgrid(x_coors, y_coors, z_coors)
-        xyz_pts = np.zeros(
-            ((arr.shape[0] + 1) * (arr.shape[1] + 1) * (d_cnt + 1), 3),
-        )
+        xyz_pts = np.zeros(((arr.shape[0]+1) * (arr.shape[1]+1) * (d_cnt+1), 3))
         for dim in range(3):
             xyz_pts[:, dim] = xyz_meshgrid[dim].ravel(order=order)
         vtk_pts = vtk.vtkPoints()
         vtk_pts.SetData(vtk.util.numpy_support.numpy_to_vtk(xyz_pts))
         grids[-1].SetPoints(vtk_pts)
         grids[-1].SetDimensions(len(x_coors), len(y_coors), len(z_coors))
-        grids[-1].SetExtent(
-            0,
-            len(x_coors) - 1, 0,
-            len(y_coors) - 1, 0,
-            len(z_coors) - 1,
-        )
+        grids[-1].SetExtent(0, len(x_coors)-1, 0, len(y_coors)-1, 0, len(z_coors)-1)
         for t in range(MRI_FRAMES):
-            arr_vtk = vtk.util.numpy_support.numpy_to_vtk(
-                arr[:, :, d_idx:d_idx + d_cnt, t].ravel(order=order),
-                deep=True,
-            )
+            arr_vtk = vtk.util.numpy_support.numpy_to_vtk(arr[:, :, d_idx:d_idx+d_cnt, t].ravel(order=order), deep=True)
             arr_vtk.SetName(f'{name}_{t}')
             grids[-1].GetCellData().AddArray(arr_vtk)
         transform_filter = vtk.vtkTransformFilter()
@@ -127,9 +107,7 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
         grids[-1].DeepCopy(transform_filter.GetOutput())
         if save_path:
             writer = vtk.vtkXMLStructuredGridWriter()
-            writer.SetFileName(
-                os.path.join(save_path, f'grid_{name}_{d_idx}.vts'),
-            )
+            writer.SetFileName(os.path.join(save_path, f'grid_{name}_{d_idx}.vts'))
             writer.SetInputData(grids[-1])
             writer.Update()
     return grids

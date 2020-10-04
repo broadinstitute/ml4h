@@ -28,6 +28,7 @@ projection_petersen['LA_poisson_min'] = projection_petersen[keys].min(axis=1)
 
 # %%
 import scipy
+import scipy.stats
 f, ax = plt.subplots()
 f.set_size_inches(3, 3)
 ax.hexbin(projection_petersen['LA_poisson_max'], projection_petersen['la_max_circle'], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
@@ -46,6 +47,7 @@ f.savefig('poisson_circle.png', dpi=500)
 
 # %%
 import scipy
+import matplotlib.pyplot as plt
 f, ax = plt.subplots()
 f.set_size_inches(3, 3)
 ax.hexbin(projection_petersen['la_max_circle'], projection_petersen['LA_Biplan_vol_max'], extent=(0, 125, 0, 125), mincnt=1, cmap='gray')
@@ -63,7 +65,7 @@ plt.tight_layout()
 f.savefig('circle_petersen.png', dpi=500)
 
 # %%
-import scipy
+import scipy.stats
 import matplotlib.pyplot as plt
 f, ax = plt.subplots()
 f.set_size_inches(3, 3)
@@ -90,7 +92,6 @@ projection_petersen['poisson_err_max'] = np.abs(projection_petersen['LA_poisson_
 projection_petersen['la_max_circle_err'] = np.abs(projection_petersen['la_max_circle'] - projection_petersen['LA_Biplan_vol_max'])/projection_petersen['LA_Biplan_vol_max']
 
 # %%
-
 import seaborn as sns
 f, ax = plt.subplots()
 sns.distplot(projection_petersen['poisson_disc_max'], ax=ax, kde=False, label='3-D', color='black', hist_kws={'alpha': 0.9})
@@ -201,6 +202,63 @@ for i, component in enumerate(pca.components_):
     sns.distplot(trans[:, i], kde=False, ax = ax[i])
 plt.tight_layout()
 f.savefig('PC_dists.png', dpi=500)
+
+# %%
+f, ax = plt.subplots(5, 2)
+f.set_size_inches(6, 8)
+for i, component in enumerate(pca.components_):
+    max_arr = np.zeros((1, 5))
+    min_arr =  np.zeros((1, 5))
+    max_arr[0, i] = np.percentile(trans, 99, axis=0)[i]
+    min_arr[0, i] = np.percentile(trans, 1, axis=0)[i]
+    ax[i, 0].plot(pca.inverse_transform(min_arr)[0], linewidth=3, color='black')
+    ax[i, 1].plot(pca.inverse_transform(max_arr)[0], linewidth=3, color='black')
+    ax[i, 0].set_ylabel(f'PC {i+1}')
+    ax[i, 0].set_xticklabels([])
+    ax[i, 1].set_xticklabels([])
+    ax[i, 0].set_xticks(range(10, 51, 10))
+    ax[i, 1].set_xticks(range(10, 51, 10))
+    ax[i, 0].set_xlim([0, 50])
+    ax[i, 1].set_xlim([0, 50])
+ax[i, 0].set_xticklabels(map(str, range(10, 51, 10)))
+ax[i, 0].set_xlabel('Frames')
+ax[i, 1].set_xticklabels(map(str, range(10, 51, 10)))
+ax[i, 1].set_xlabel('Frames')
+plt.tight_layout()
+f.savefig('PCs_explained_synthetic.png', dpi=500)
+
+# %%
+f, ax = plt.subplots(5, 2)
+f.set_size_inches(5, 7)
+for i, component in enumerate(pca.components_):
+    max_arr = np.zeros((5,))
+    min_arr =  np.zeros((5,))
+    max_arr[i] = np.percentile(trans, 95, axis=0)[i]
+    min_arr[i] = np.percentile(trans, 5, axis=0)[i]
+    max_idx = np.argmin(np.linalg.norm(trans-max_arr, axis=1))
+    min_idx = np.argmin(np.linalg.norm(trans-min_arr, axis=1))
+    print(df_poi['sample_id'].values[min_idx])
+    print(df_poi['sample_id'].values[max_idx])
+    ax[i, 0].plot(pca.inverse_transform(trans[min_idx].reshape(1, -1))[0], linewidth=3, color='black')
+    ax[i, 1].plot(pca.inverse_transform(trans[max_idx].reshape(1, -1))[0], linewidth=3, color='black')
+    ax[i, 0].set_ylabel(f'PC {i+1}')
+    ax[i, 0].set_xticklabels([])
+    ax[i, 1].set_xticklabels([])
+    ax[i, 0].set_xticks(range(10, 51, 10))
+    ax[i, 1].set_xticks(range(10, 51, 10))
+    ax[i, 0].set_xlim([0, 50])
+    ax[i, 1].set_xlim([0, 50])
+    if i > 0:
+        ax[i, 0].set_ylim([25, 85])
+        ax[i, 1].set_ylim([25, 85])
+        ax[i, 1].set_yticklabels([])
+ax[i, 0].set_xticklabels(map(str, range(10, 51, 10)))
+ax[i, 0].set_xlabel('Frames')
+ax[i, 1].set_xticklabels(map(str, range(10, 51, 10)))
+ax[i, 1].set_xlabel('Frames')
+plt.tight_layout()
+f.savefig('PCs_explained_real.png', dpi=500)
+
 # %%
 
 for i, component in enumerate(pca.components_):
