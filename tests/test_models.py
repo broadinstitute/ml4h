@@ -6,9 +6,10 @@ from itertools import cycle
 from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
-from ml4cvd.TensorMap import TensorMap
-from ml4cvd.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
-from ml4cvd.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
+from ml4h.TensorMap import TensorMap
+from ml4h.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
+from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
+from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
 
 
 MEAN_PRECISION_EPS = .02  # how much mean precision degradation is acceptable
@@ -31,7 +32,12 @@ DEFAULT_PARAMS = {
     'pool_x': 1,
     'pool_y': 1,
     'pool_z': 1,
-    'dropout': 0,
+    'conv_regularize': 'spatial_dropout',
+    'conv_regularize_rate': .1,
+    'conv_normalize': 'batch_norm',
+    'dense_regularize': 'dropout',
+    'dense_regularize_rate': .1,
+    'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
 }
 
@@ -279,6 +285,29 @@ class TestMakeMultimodalMultitaskModel:
     def test_parents(self, output_tmaps):
         assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps)
 
+    @pytest.mark.parametrize(
+        'input_output_tmaps',
+        [
+            (LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX),
+        ],
+    )
+    def test_language_models(self, input_output_tmaps, tmpdir):
+        params = DEFAULT_PARAMS.copy()
+        m = make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            **params
+        )
+        assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
+        m.save(os.path.join(tmpdir, 'lstm.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            model_file=path,
+            **DEFAULT_PARAMS,
+        )
 
 @pytest.mark.parametrize(
     'tmaps',
@@ -325,8 +354,8 @@ class TestModelPerformance:
         if not os.path.exists(tensor_path):
             pytest.skip('To test brain segmentation performance, attach disk brains-all-together')
 
-        from ml4cvd.tensor_from_file import TMAPS
-        from ml4cvd.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
+        from ml4h.tensor_from_file import TMAPS
+        from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
         from multiprocessing import cpu_count
         from sklearn.metrics import average_precision_score
 
@@ -358,6 +387,8 @@ class TestModelPerformance:
             num_workers=cpu_count(),
             cache_size=1e9 / cpu_count(),
             balance_csvs=[],
+            training_steps=64,
+            validation_steps=18,
             test_modulo=0,
         )
         try:

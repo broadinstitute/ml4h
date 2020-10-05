@@ -22,7 +22,11 @@ numcodecs
 beautifulsoup4
 lxml
 xmltodict
+pandas_gbq
+pyarrow
 altair
 facets-overview
 plotnine
 vega
+ipycanvas==0.4.1
+ipyannotations==0.2.0
