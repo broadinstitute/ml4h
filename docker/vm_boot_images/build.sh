@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script can be used to build and tag a 'ml4cvd' image, optionally push it to a Docker Container Registry,
+# This script can be used to build and tag a 'ml4h' image, optionally push it to Google Container Registry,
 # and again optionally, tag the image also as 'latest_<gpu|cpu>'.
 #
 # It assumes Docker has been configured with appropriate credentials, and the script is being run at the root of
@@ -35,7 +35,7 @@ usage()
 {
     cat <<USAGE_MESSAGE
 
-    This script can be used to build and tag a 'ml4cvd' image, optionally push it to a Docker Container Registry,
+    This script can be used to build and tag a 'ml4h' image, optionally push it to Google Container Registry,
     and again optionally, tag the image also as 'latest_<gpu|cpu>'.
     
     It assumes Docker has been configured with appropriate credentials, and the script is being run at the root of
@@ -43,7 +43,7 @@ usage()
 
     Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-r <registry>] [-chp]
 
-    Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4cvd/jamesp/docker/deeplearning -cp
+    Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4h/jamesp/docker/deeplearning -cp
 
         -d      <path>      Path to directory where Dockerfile is located. Default: '${CONTEXT}'
 
@@ -55,9 +55,8 @@ usage()
         -c                  Build off of the cpu-only base image and tag image also as '${LATEST_TAG_CPU}'.
                             Default: Build image to run on GPU-enabled machines and tag image also as '${LATEST_TAG_GPU}'.
 
-        -p                  Push to the Docker Container Registry
-
-	    -P 		    Push to the Docker Container Registry and tag as latest image
+        -p                  Push to Google Container Register
+        -P                  Push to latest tag
 
         -h                  Print this help text
 

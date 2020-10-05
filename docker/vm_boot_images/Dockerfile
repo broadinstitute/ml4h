@@ -23,8 +23,9 @@ WORKDIR /app
 RUN ./ubuntu.sh
 
 # Requirements for the tensorflow project
-RUN pip3 install --upgrade pip && \
-    pip3 install -r pre_requirements.txt && \
-    pip3 install -r tensorflow-requirements.txt
-
-RUN rm -rf '/root/.cache/pip/*'
+RUN pip3 install --upgrade pip
+RUN pip3 install -r pre_requirements.txt
+RUN pip3 install -r tensorflow-requirements.txt \
+  # Configure notebook extensions.
+  && jupyter nbextension install --user --py ipycanvas \
+  && jupyter nbextension enable --user --py ipycanvas
