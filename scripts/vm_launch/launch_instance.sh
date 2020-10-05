@@ -7,7 +7,7 @@ shift 1
 DISK_SIZE=${1:-100GB}
 shift 1
 
-echo "Creating instance ${NAME} from family ml4cvd-image of type ${INSTANCE_TYPE}..."
+echo "Creating instance ${NAME} from family ml4h-image of type ${INSTANCE_TYPE}..."
 
 echo "$@"
 
