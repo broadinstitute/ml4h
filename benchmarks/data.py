@@ -166,4 +166,8 @@ def build_petastorm(
         delta = time.time() - start_time
         print(f'Wrote {num_samples} samples in {delta:.1f} seconds at {num_samples / delta:.1f} samples/s')
 
-    # TODO: read the data frame here to measure length
+
+def build_xarray(
+    data_descriptions: List[DataDescription], num_samples: int,
+):
+    pass

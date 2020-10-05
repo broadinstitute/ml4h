@@ -174,14 +174,14 @@ MRI_3D_BENCHMARK = Benchmark(
         ('mri', (256, 160, 16), StorageType.CONTINUOUS),
         ('segmentation', (256, 160, 16, 13), StorageType.CONTINUOUS),
     ],
-    num_samples=128, batch_sizes=[2, 4], num_workers=[1, 2, 4],
+    num_samples=128, batch_sizes=[1, 2], num_workers=[1, 2, 4],
 )
 MRI_4D_BENCHMARK = Benchmark(
     [
         ('mri', (256, 160, 16, 1), StorageType.CONTINUOUS),
         ('segmentation', (256, 160, 16, 13), StorageType.CONTINUOUS),
     ],
-    num_samples=128, batch_sizes=[2, 4], num_workers=[1, 2, 4],
+    num_samples=128, batch_sizes=[1, 2], num_workers=[1, 2, 4],
 )
 ECG_MULTITASK_BENCHMARK = Benchmark(
     (
