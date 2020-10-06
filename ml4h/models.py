@@ -715,60 +715,6 @@ class FlatToStructure:
         return self.reshape(self.norm(self.activation(self.dense(x))))
 
 
-# class ConcatenateRestructure:
-#     """
-#     Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
-#     """
-#     def __init__(
-#             self,
-#             pairs: List[Tuple[TensorMap, TensorMap]],
-#             pair_loss: str,
-#             activation: str,
-#             normalization: str,
-#             widths: List[int],
-#             regularization: str,
-#             regularization_rate: float,
-#     ):
-#         self.fully_connected = FullyConnectedBlock(
-#             widths=widths,
-#             activation=activation,
-#             normalization=normalization,
-#             regularization=regularization,
-#             regularization_rate=regularization_rate,
-#             name='embed',
-#         ) if widths else None
-#         self.restructures = {
-#             tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
-#             for tm, shape in pre_decoder_shapes.items() if shape is not None
-#         }
-#         self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
-#         self.u_connect = u_connect
-#         self.bottleneck_type = bottleneck_type
-#
-#     def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
-#         if self.bottleneck_type == BottleneckType.FlattenRestructure:
-#             y = [Flatten()(x) for x in encoder_outputs.values()]
-#         elif self.bottleneck_type == BottleneckType.GlobalAveragePoolStructured:
-#             y = [Flatten()(x) for tm, x in encoder_outputs.items() if len(x.shape) == 2]  # Flat tensors
-#             y += [global_average_pool(x) for tm, x in encoder_outputs.items() if len(x.shape) > 2]  # Structured tensors
-#         else:
-#             raise NotImplementedError(f'bottleneck_type {self.bottleneck_type} does not exist.')
-#         if len(y) > 1:
-#             y = concatenate(y)
-#         else:
-#             y = y[0]
-#         y = self.fully_connected(y) if self.fully_connected else y
-#         outputs: Dict[TensorMap, Tensor] = {}
-#         for input_tm, output_tms in self.u_connect.items():
-#             for output_tm in output_tms:
-#                 outputs[output_tm] = adaptive_normalize_from_tensor(y, encoder_outputs[input_tm])
-#         return {
-#             **{tm: restructure(y) for tm, restructure in self.restructures.items()},
-#             **{tm: y for tm in self.no_restructures if tm not in outputs},
-#             **outputs,
-#         }
-
-
 class ConvEncoder:
 
     def __init__(
@@ -1266,8 +1212,9 @@ def make_paired_autoencoder_model(
             multimodal_activations.append(pair_loss_out[1])
 
     kwargs['tensor_maps_in'] = list(inputs.keys())
-    multimodal_activation = Concatenate()(multimodal_activations)
-    multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
+    #multimodal_activation = Concatenate()(multimodal_activations)
+    multimodal_activation = K.mean(multimodal_activations, axis=0, keepdims=False)
+    #multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
     #multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
