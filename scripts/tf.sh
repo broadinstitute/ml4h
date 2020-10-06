@@ -48,7 +48,7 @@ CALL_DOCKER_AS_USER="
         usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
     done;
     sudo -u ${USER}"
-
+CALL_DOCKER_AS_USER=""
 ################### HELP TEXT ############################################
 
 usage()
