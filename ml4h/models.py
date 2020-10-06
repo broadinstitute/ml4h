@@ -46,6 +46,7 @@ class BottleneckType(Enum):
     GlobalAveragePoolStructured = auto()  # Structured (not flat) decoder outputs are global average pooled
     Variational = auto()  # All decoder outputs are flattened then variationally sampled to put into embedding
     NoBottleNeck = auto()  # only works when everything is u_connected
+    PairLoss = auto()  # Distance between paired modalities is added to the loss
 
 
 ACTIVATION_CLASSES = {
@@ -714,6 +715,60 @@ class FlatToStructure:
         return self.reshape(self.norm(self.activation(self.dense(x))))
 
 
+class ConcatenateRestructure:
+    """
+    Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
+    """
+    def __init__(
+            self,
+            pairs: List[Tuple[TensorMap, TensorMap]],
+            pair_loss: str,
+            activation: str,
+            normalization: str,
+            widths: List[int],
+            regularization: str,
+            regularization_rate: float,
+    ):
+        self.fully_connected = FullyConnectedBlock(
+            widths=widths,
+            activation=activation,
+            normalization=normalization,
+            regularization=regularization,
+            regularization_rate=regularization_rate,
+            name='embed',
+        ) if widths else None
+        self.restructures = {
+            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
+            for tm, shape in pre_decoder_shapes.items() if shape is not None
+        }
+        self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
+        self.u_connect = u_connect
+        self.bottleneck_type = bottleneck_type
+
+    def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
+        if self.bottleneck_type == BottleneckType.FlattenRestructure:
+            y = [Flatten()(x) for x in encoder_outputs.values()]
+        elif self.bottleneck_type == BottleneckType.GlobalAveragePoolStructured:
+            y = [Flatten()(x) for tm, x in encoder_outputs.items() if len(x.shape) == 2]  # Flat tensors
+            y += [global_average_pool(x) for tm, x in encoder_outputs.items() if len(x.shape) > 2]  # Structured tensors
+        else:
+            raise NotImplementedError(f'bottleneck_type {self.bottleneck_type} does not exist.')
+        if len(y) > 1:
+            y = concatenate(y)
+        else:
+            y = y[0]
+        y = self.fully_connected(y) if self.fully_connected else y
+        outputs: Dict[TensorMap, Tensor] = {}
+        for input_tm, output_tms in self.u_connect.items():
+            for output_tm in output_tms:
+                outputs[output_tm] = adaptive_normalize_from_tensor(y, encoder_outputs[input_tm])
+        return {
+            **{tm: restructure(y) for tm, restructure in self.restructures.items()},
+            **{tm: y for tm in self.no_restructures if tm not in outputs},
+            **outputs,
+        }
+
+
 class ConvEncoder:
 
     def __init__(
@@ -943,7 +998,7 @@ def make_multimodal_multitask_model(
     :param dense_layers: List of number of filters in each dense layer.
     :param dense_normalize: How to normalize dense layers (e.g. batchnorm)
     :param dense_regularize: How to regularize dense leayers (e.g. dropout)
-    :param: dense_regularize_rate: Rate of dense_regularize
+    :param dense_regularize_rate: Rate of dense_regularize
     :param conv_layers: List of number of filters in each convolutional layer
     :param dense_blocks: List of number of filters in densenet modules for densenet convolutional models
     :param block_size: Number of layers within each Densenet module for densenet convolutional models
