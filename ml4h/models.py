@@ -25,7 +25,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
-from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
 import tensorflow_probability as tfp
@@ -1213,7 +1213,7 @@ def make_paired_autoencoder_model(
 
     kwargs['tensor_maps_in'] = list(inputs.keys())
     #multimodal_activation = Concatenate()(multimodal_activations)
-    multimodal_activation = K.mean(multimodal_activations, axis=0, keepdims=False)
+    multimodal_activation = Average()(multimodal_activations)
     #multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
     #multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
