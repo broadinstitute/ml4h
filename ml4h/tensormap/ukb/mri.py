@@ -885,24 +885,14 @@ mri_patient_position_cine_segmented_sax_inlinevf = TensorMap(
     tensor_from_file=_make_mri_series_orientation_and_position_from_file(),
 )
 
-lax_4ch_diastole_slice0_3d = TensorMap(
-    'lax_4ch_diastole_slice0_3d',
-    Interpretation.CONTINUOUS,
-    shape=(200, 160, 1),
-    loss='logcosh',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0,
-    ),
-)
 lax_4ch_diastole_slice0_224_3d = TensorMap(
     'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
+    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
 lax_4ch_diastole_slice0_256_3d = TensorMap(
     'lax_4ch_diastole_slice0_256_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1),
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
 lax_2ch_diastole_slice0_3d = TensorMap(
     'lax_2ch_diastole_slice0_3d',
@@ -911,7 +901,7 @@ lax_2ch_diastole_slice0_3d = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_2ch/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
     ),
 )
 lax_3ch_diastole_slice0_3d = TensorMap(
@@ -921,7 +911,7 @@ lax_3ch_diastole_slice0_3d = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_lax_3ch/2/instance_0', 0,
     ),
 )
 cine_segmented_ao_dist_slice0_3d = TensorMap(
@@ -931,7 +921,7 @@ cine_segmented_ao_dist_slice0_3d = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0,
     ),
 )
 lax_4ch_diastole_slice0 = TensorMap(
@@ -941,7 +931,7 @@ lax_4ch_diastole_slice0 = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0,
     ),
 )
 cine_segmented_ao_dist_slice0 = TensorMap(
@@ -951,16 +941,16 @@ cine_segmented_ao_dist_slice0 = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0,
     ),
 )
 aorta_diastole_slice0_3d = TensorMap(
     'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1), loss='logcosh',
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0),
 )
 cine_segmented_lvot_slice0_3d = TensorMap(
     'cine_segmented_lvot_slice0_3d', Interpretation.CONTINUOUS, shape=(208, 160, 1), loss='logcosh',
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lvot/instance_0', 0),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lvot/2/instance_0', 0),
 )
 
 
