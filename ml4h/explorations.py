@@ -688,11 +688,11 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
 
 
 def _continuous_explore_header(tm: TensorMap) -> str:
-    return tm.name
+    return tm.channel_map.items()[0][0]
 
 
 def _categorical_explore_header(tm: TensorMap, channel: str) -> str:
-    return f'{tm.name} {channel}'
+    return f'{channel}'
 
 
 class ExploreParallelWrapper():
@@ -735,11 +735,11 @@ class ExploreParallelWrapper():
 
                             error_type = ''
                             try:
-                                tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                                tensor = tm.rescale(tm.postprocess_tensor(tensor, augment=False, hd5=hd5))
                                 # Append tensor to dict
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
+                                        dict_of_tensor_dicts[i][f'{cm}'] = tensor[tm.channel_map[cm]]
                                 else:
                                     # If tensor is a scalar, isolate the value in the array;
                                     # otherwise, retain the value as array
@@ -750,7 +750,7 @@ class ExploreParallelWrapper():
                             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
+                                        dict_of_tensor_dicts[i][f'{cm}'] = np.nan
                                 else:
                                     dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
                                 error_type = type(e).__name__
@@ -760,13 +760,13 @@ class ExploreParallelWrapper():
                         # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                         if tm.channel_map:
                             for cm in tm.channel_map:
-                                dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
+                                dict_of_tensor_dicts[0][f'{cm}'] = np.nan
                         else:
                             dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
                         dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
 
                 for i in dict_of_tensor_dicts:
-                    dict_of_tensor_dicts[i]['fpath'] = path
+                    dict_of_tensor_dicts[i]['fpath'] = os.path.basename(path).split('.')[0]
                     dict_of_tensor_dicts[i]['generator'] = gen_name
 
                 # write tdicts to disk
@@ -808,7 +808,7 @@ def _tensors_to_df(args):
     str_cols = ['fpath', 'generator']
     for tm in tmaps:
         if tm.interpretation == Interpretation.LANGUAGE:
-            str_cols.extend([f'{tm.name} {cm}' for cm in tm.channel_map] if tm.channel_map else [tm.name])
+            str_cols.extend([f'{cm}' for cm in tm.channel_map] if tm.channel_map else [tm.name])
         str_cols.append(f'error_type_{tm.name}')
     str_cols = {key: 'string' for key in str_cols}
 
@@ -892,15 +892,15 @@ def explore(args):
 
     # Check if any tmaps are categorical
     if Interpretation.CATEGORICAL in [tm.interpretation for tm in tmaps]:
-        categorical_tmaps = [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]
+
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
-            for tm in categorical_tmaps:
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]:
                 counts = []
                 counts_missing = []
                 if tm.channel_map:
                     for cm in tm.channel_map:
-                        key = f'{tm.name} {cm}'
+                        key = f'{cm}'
                         counts.append(df_cur[key].sum())
                         counts_missing.append(df_cur[key].isna().sum())
                 else:
@@ -915,13 +915,13 @@ def explore(args):
                 counts.append(sum(counts))
 
                 # Create list of row names
-                cm_names = [cm for cm in tm.channel_map] + ["missing", "total"]
+                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
 
                 # Transform list into dataframe indexed by channel maps
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
 
                 # Add new column: percent of all counts
-                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc["total"]["counts"] * 100
+                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"] * 100
 
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(
@@ -931,35 +931,6 @@ def explore(args):
                 df_stats = df_stats.round(2)
                 df_stats.to_csv(fpath)
                 logging.info(f"Saved summary stats of {Interpretation.CATEGORICAL} {tm.name} tmaps to {fpath}")
-
-        # Plot counts of categorical TMAPs over time
-        if args.time_tensor and (args.time_tensor in args.input_tensors):
-            min_plotted_counts = 2
-            for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
-                freq = args.time_frequency  # Monthly frequency
-                time_tensors = pd.to_datetime(df_cur[args.time_tensor])
-                min_date = time_tensors.min()
-                max_date = time_tensors.max()
-                date_range = pd.date_range(min_date, max_date, freq=freq)
-                for tm in categorical_tmaps:
-                    date_range_filtered = [date_range[0]]
-                    prev_date = min_date
-                    tm_counts = defaultdict(list)
-                    for i, date in enumerate(date_range[1:]):
-                        sub_df = df_cur[(time_tensors >= prev_date) & (time_tensors < date)]
-                        channel_sum = 0
-                        for cm in tm.channel_map:
-                            partial_sum = np.sum(sub_df[f'{tm.name} {cm}'])
-                            channel_sum += partial_sum
-                            tm_counts[cm].append(partial_sum)
-                        if channel_sum > min_plotted_counts:
-                            date_range_filtered.append(date)
-                        else:
-                            for cm in tm.channel_map:
-                                tm_counts[cm].pop()
-                        prev_date = date
-                    fpath = os.path.join(args.output_folder, args.id, f'{tm.name}_over_time_{df_str}.png')
-                    plot_categorical_tmap_over_time(tm_counts, tm.name, date_range_filtered, fpath)
 
     # Check if any tmaps are continuous
     if Interpretation.CONTINUOUS in [tm.interpretation for tm in tmaps]:
@@ -977,7 +948,7 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f'{tm.name} {cm}'
+                            key = f'{cm}'
                             stats["min"] = df_cur[key].min()
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
@@ -989,7 +960,7 @@ def explore(args):
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -1029,13 +1000,13 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f'{tm.name} {cm}'
+                            key = f'{cm}'
                             stats["count"] = df_cur[key].count()
                             stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -1068,6 +1039,7 @@ def explore(args):
                 figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
+
 
 
 def cross_reference(args):
