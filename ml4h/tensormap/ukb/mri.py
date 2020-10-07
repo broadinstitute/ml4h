@@ -1242,14 +1242,13 @@ sax_all_diastole_segmented_weighted = TensorMap(
 )
 sax_all_diastole_192_segmented = TensorMap(
     'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
     channel_map=MRI_SEGMENTED_CHANNEL_MAP, path_prefix='ukb_cardiac_mri',
 )
 sax_all_diastole_192_segmented_weighted = TensorMap(
     'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy(
-        [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
-    ),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_diastole_192_segmented'),
 )
 
 sax_all_diastole = TensorMap(
