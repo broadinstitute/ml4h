@@ -178,9 +178,10 @@ Attempting to run Docker with
 LAUNCH_MESSAGE
 
 DEV_INSTRUCTIONS="
-    pip install opencv-python
-    cd /home/pdiachil/pypoisson 
-    python setup.py install 
+    pip install -e ${WORKDIR};
+    pip install opencv-python;
+    cd /home/pdiachil/pypoisson;
+    python setup.py install;
     cd ${WORKDIR}/notebooks/mri"
 
 docker run ${INTERACTIVE} \

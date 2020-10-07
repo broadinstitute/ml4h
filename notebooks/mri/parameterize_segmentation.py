@@ -88,6 +88,10 @@ def annotation_to_poisson(
         for dataset, channel, view in zip(datasets, channels, views):
             arr_annot = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(format_view.format(view=view, t=t)))
             arr_annot_copy = np.copy(arr_annot)
+            if isinstance(channel, list):
+                for channel_elem in channel[1:]:
+                    arr_annot[arr_annot==channel_elem] = channel[0]
+                channel = channel[0]
             # Extract contours of the segmentation
             im = (arr_annot==channel).reshape(-1, ncols).astype(np.uint8)
             contours, hierarchy  = cv2.findContours(im, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
