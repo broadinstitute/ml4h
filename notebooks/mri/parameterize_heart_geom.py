@@ -40,8 +40,14 @@ channels = [
         MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_cavity'],
         MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LV_cavity'],
     ],
+    [
+        [MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_anteroseptum'], MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_inferior_wall'], MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity']],
+        [MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_posterior_wall'], MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_anterior_wall'], MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_cavity']],
+        [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LV_anterolateral_wall'], MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['interventricular_septum'], MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LV_cavity']],
+    ],
 ]
 
+chambers = ['LA', 'LV', 'LVW']
 
 petersen = pd.read_csv('/home/pdiachil/returned_lv_mass.tsv', sep='\t')
 petersen = petersen.dropna()
@@ -49,16 +55,16 @@ petersen = petersen.dropna()
 # %%
 start_time = time.time()
 results = {'sample_id': []}
-for chamber in ['LA', 'LV']:
+for chamber in chambers:
     for t in range(MRI_FRAMES):
         results[f'{chamber}_poisson_{t}'] = []
 for i, hd5 in enumerate(sorted(hd5s)):
-    hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{start}.hd5'
+    # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{start}.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
-    # if i < start:
-    #     continue
-    # if i == end:
-    #     break
+    if i < start:
+        continue
+    if i == end:
+        break
 
     annot_datasets = []
     orig_datasets = []
@@ -72,20 +78,20 @@ for i, hd5 in enumerate(sorted(hd5s)):
                     save_path=None, order='F',
                 )[0],
             )
-            orig_datasets.append(
-                _mri_hd5_to_structured_grids(
-                    ff_trad, view_format_string.format(view=view),
-                    view_name=view_format_string.format(view=view),
-                    concatenate=False, annotation=False,
-                    save_path=None, order='F',
-                )[0],
-            )
-            to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
-            to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
+            # orig_datasets.append(
+            #     _mri_hd5_to_structured_grids(
+            #         ff_trad, view_format_string.format(view=view),
+            #         view_name=view_format_string.format(view=view),
+            #         concatenate=False, annotation=False,
+            #         save_path=None, order='F',
+            #     )[0],
+            # )
+            # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
+            # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
     poisson_chambers = []
     poisson_volumes = []
     results['sample_id'].append(sample_id)
-    for channel, chamber in zip(channels, ['LA', 'LV']):
+    for channel, chamber in zip(channels, chambers):
         atria, volumes = annotation_to_poisson(annot_datasets, channel, views, annot_time_format_string, range(MRI_FRAMES))
         poisson_chambers.append(atria)
         poisson_volumes.append(volumes)
@@ -97,9 +103,9 @@ for i, hd5 in enumerate(sorted(hd5s)):
             writer.SetInputData(atrium)
             writer.SetFileName(f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}_{t}.vtp')
             writer.Update()
-    break
+    # break
 results_df = pd.DataFrame(results)
-results_df.to_csv(f'ventricles_processed_{start}_{end}.csv')
+results_df.to_csv(f'leftheart_processed_{start}_{end}.csv')
 end_time = time.time()
 print(end_time-start_time)
 
@@ -206,24 +212,24 @@ def reorient_chambers(atrium, dataset, normal, origin, channel_septum=5):
 
     return atrium
 
-for t, (atrium, ventricle) in enumerate(zip(poisson_chambers[0], poisson_chambers[1])):
-    plane, clipped_ventricle, clipped_atrium, normal, origin = separation_plane(atrium, ventricle)
+# for t, (atrium, ventricle) in enumerate(zip(poisson_chambers[0], poisson_chambers[1])):
+#     plane, clipped_ventricle, clipped_atrium, normal, origin = separation_plane(atrium, ventricle)
 
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetInputConnection(plane.GetOutputPort())
-    writer.SetFileName(f'/home/pdiachil/projects/chambers/plane_{sample_id}_{t}.vtp')
-    writer.Update()
+#     writer = vtk.vtkXMLPolyDataWriter()
+#     writer.SetInputConnection(plane.GetOutputPort())
+#     writer.SetFileName(f'/home/pdiachil/projects/chambers/plane_{sample_id}_{t}.vtp')
+#     writer.Update()
 
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetInputData(clipped_ventricle)
-    writer.SetFileName(f'/home/pdiachil/projects/chambers/clipped_lv_{sample_id}_{t}.vtp')
-    writer.Update()
+#     writer = vtk.vtkXMLPolyDataWriter()
+#     writer.SetInputData(clipped_ventricle)
+#     writer.SetFileName(f'/home/pdiachil/projects/chambers/clipped_lv_{sample_id}_{t}.vtp')
+#     writer.Update()
 
-    writer = vtk.vtkXMLPolyDataWriter()
-    clipped_atrium = reorient_chambers(clipped_atrium, annot_datasets[-1], normal, origin)
-    writer.SetInputData(clipped_atrium)
-    writer.SetFileName(f'/home/pdiachil/projects/chambers/clipped_la_reorient_{sample_id}_{t}.vtp')
-    writer.Update()
+#     writer = vtk.vtkXMLPolyDataWriter()
+#     clipped_atrium = reorient_chambers(clipped_atrium, annot_datasets[-1], normal, origin)
+#     writer.SetInputData(clipped_atrium)
+#     writer.SetFileName(f'/home/pdiachil/projects/chambers/clipped_la_reorient_{sample_id}_{t}.vtp')
+#     writer.Update()
 
 # %%
 # import igl
