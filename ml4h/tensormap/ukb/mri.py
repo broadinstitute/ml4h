@@ -1206,8 +1206,6 @@ def sax_tensor(b_series_prefix):
     def sax_tensor_from_file(tm, hd5, dependents={}):
         missing = 0
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.dependent_map is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         if tm.axes() == 3:
             for b in range(tm.shape[-1]):
                 try:
@@ -1221,14 +1219,10 @@ def sax_tensor(b_series_prefix):
                 try:
                     tm_shape = (tm.shape[0], tm.shape[1])
                     tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/{(50*b)+1}/instance_0'], dtype=np.float32))
-                    if tm.dependent_map is not None:
-                        index_tensor = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_mask_b{b}/instance_0'], dtype=np.float32))
-                        dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
                 except KeyError:
                     missing += 1
-                    tensor[:, :, b, 0] = 0
-                    if tm.dependent_map is not None:
-                        dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+                    if tm.is_categorical():
+                        tensor[:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
             if missing == tm.shape[-2]:
                 raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]} looked at: {tm.path_prefix}/{b_series_prefix}')
         return tensor
@@ -1236,18 +1230,22 @@ def sax_tensor(b_series_prefix):
 
 
 sax_all_diastole_segmented = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    path_prefix='ukb_cardiac_mri', channel_map=MRI_SEGMENTED_CHANNEL_MAP,
 )
 sax_all_diastole_segmented_weighted = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy(
-        [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
-    ),
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP, path_prefix='ukb_cardiac_mri',
+    loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_diastole_segmented'),
+)
+sax_all_diastole_192_segmented = TensorMap(
+    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP, path_prefix='ukb_cardiac_mri',
 )
 sax_all_diastole_192_segmented_weighted = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, 3),
+    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
     channel_map=MRI_SEGMENTED_CHANNEL_MAP,
     loss=weighted_crossentropy(
         [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
@@ -1255,89 +1253,13 @@ sax_all_diastole_192_segmented_weighted = TensorMap(
 )
 
 sax_all_diastole = TensorMap(
-    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
+    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
     path_prefix='ukb_cardiac_mri',
-)
-sax_all_diastole_weighted = TensorMap(
-    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
 )
 
 sax_all_diastole_192 = TensorMap(
-    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
+    'sax_all_diastole_192', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
     dependent_map=sax_all_diastole_segmented, path_prefix='ukb_cardiac_mri',
-)
-sax_all_diastole_192_weighted = TensorMap(
-    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
-)
-
-sax_all_systole_segmented = TensorMap(
-    'sax_all_systole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-)
-sax_all_systole_segmented_weighted = TensorMap(
-    'sax_all_systole_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'),
-)
-
-
-sax_all_systole = TensorMap(
-    'sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
-    dependent_map=sax_all_systole_segmented,
-)
-sax_all_systole_weighted = TensorMap(
-    'sax_all_systole_weighted', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
-    dependent_map=sax_all_systole_segmented_weighted,
-)
-
-
-def all_sax_tensor(total_b_slices=13):
-    def sax_tensor_from_file(tm, hd5, dependents={}):
-        missing = 0
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for b in range(total_b_slices):
-            try:
-                tm_shape = (tm.shape[0], tm.shape[1])
-                tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_frame_b{b}/instance_0'], dtype=np.float32))
-                index_tensor = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_mask_b{b}/instance_0'], dtype=np.float32))
-                dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-                tensor[:, :, b + total_b_slices, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_frame_b{b}/instance_0'], dtype=np.float32))
-                index_tensor = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_mask_b{b}/instance_0'], dtype=np.float32))
-                dependents[tm.dependent_map][:, :, b + total_b_slices, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-            except KeyError as e:
-                missing += 1
-                tensor[:, :, b, 0] = 0
-                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
-        if missing == tm.shape[-2]:
-            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
-        return tensor
-    return sax_tensor_from_file
-
-
-sax_all_segmented = TensorMap(
-    'sax_all_segmented', Interpretation.CATEGORICAL, shape=(
-    256, 256, 26, 3,
-    ), channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-)
-sax_all_segmented_weighted = TensorMap(
-    'sax_all_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 26, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy(
-        [1.0, 40.0, 40.0], 'sax_all_segmented',
-    ),
-)
-
-sax_all = TensorMap(
-    'sax_all', shape=(
-    256, 256, 26, 1,
-    ), tensor_from_file=all_sax_tensor(), dependent_map=sax_all_segmented,
-)
-sax_all_weighted = TensorMap(
-    'sax_all_weighted', shape=(
-    256, 256, 26, 1,
-    ), tensor_from_file=all_sax_tensor(), dependent_map=sax_all_segmented_weighted,
 )
 
 
