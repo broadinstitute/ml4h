@@ -1218,7 +1218,12 @@ def sax_tensor(b_series_prefix):
             for b in range(tm.shape[-2]):
                 try:
                     tm_shape = (tm.shape[0], tm.shape[1])
-                    tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/instance_{(50*b)+1}'], dtype=np.float32))
+                    hd5_array = np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/instance_{(50*b)+1}'], dtype=np.float32)
+                    if tm.is_categorical():
+                        categorical_index_slice = pad_or_crop_array_to_shape(tm_shape, hd5_array)
+                        tensor[:, :, b] = to_categorical(categorical_index_slice, len(tm.channel_map))
+                    else:
+                        tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, hd5_array)
                 except KeyError:
                     missing += 1
                     if tm.is_categorical():
