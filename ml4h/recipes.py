@@ -456,6 +456,7 @@ def pca_on_hidden_inference(args):
     latent_cols = [f'latent_{i}' for i in range(args.dense_layers[0])]
     pca_on_tsv(args.app_csv, latent_cols, 'sample_id', args.dense_layers[1])
 
+
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)

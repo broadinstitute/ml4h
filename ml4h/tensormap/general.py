@@ -21,7 +21,10 @@ def all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:
     # TODO: This ideally would be implemented to not depend on the order of name,
     # date, dtype, path_prefix in the hd5s. Unfortunately, that's hard to do
     # efficiently
-    return hd5[path_prefix][name]
+    dates = hd5[path_prefix][name]
+    if isinstance(dates[min(dates)], h5py.Dataset):
+        return dates
+    return all_dates(hd5, f'{path_prefix}/{name}', min(dates))
 
 
 def pass_nan(tensor):
