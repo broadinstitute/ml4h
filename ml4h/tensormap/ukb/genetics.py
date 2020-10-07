@@ -32,7 +32,7 @@ def _ttn_tensor_from_file(tm, hd5, dependents={}):
 
 has_ttntv = TensorMap(
     'has_ttntv',  Interpretation.CATEGORICAL, channel_map={
-    'no_TTN_tv': 0, 'has_ttntv': 1,
+    'no_has_ttntv': 0, 'has_ttntv': 1,
     }, tensor_from_file=_ttn_tensor_from_file,
 )
 ttntv_10x = TensorMap(
