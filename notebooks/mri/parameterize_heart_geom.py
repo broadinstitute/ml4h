@@ -51,15 +51,17 @@ chambers = ['LA', 'LV', 'LVW']
 
 petersen = pd.read_csv('/home/pdiachil/returned_lv_mass.tsv', sep='\t')
 petersen = petersen.dropna()
+hd5s = petersen.sample_id
 
 # %%
 start_time = time.time()
-results = {'sample_id': []}
+results = []
 for chamber in chambers:
+    results.append({'sample_id': []})
     for t in range(MRI_FRAMES):
-        results[f'{chamber}_poisson_{t}'] = []
+        results[-1][f'{chamber}_poisson_{t}'] = []
 for i, hd5 in enumerate(sorted(hd5s)):
-    # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{start}.hd5'
+    hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{hd5}.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
         continue
@@ -68,44 +70,51 @@ for i, hd5 in enumerate(sorted(hd5s)):
 
     annot_datasets = []
     orig_datasets = []
-    with h5py.File(hd5) as ff_trad:
-        for view in views:
-            annot_datasets.append(
-                _mri_hd5_to_structured_grids(
-                    ff_trad, annot_format_string.format(view=view),
-                    view_name=view_format_string.format(view=view),
-                    concatenate=True, annotation=True,
-                    save_path=None, order='F',
-                )[0],
-            )
-            # orig_datasets.append(
-            #     _mri_hd5_to_structured_grids(
-            #         ff_trad, view_format_string.format(view=view),
-            #         view_name=view_format_string.format(view=view),
-            #         concatenate=False, annotation=False,
-            #         save_path=None, order='F',
-            #     )[0],
-            # )
-            # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
-            # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
-    poisson_chambers = []
-    poisson_volumes = []
-    results['sample_id'].append(sample_id)
-    for channel, chamber in zip(channels, chambers):
-        atria, volumes = annotation_to_poisson(annot_datasets, channel, views, annot_time_format_string, range(MRI_FRAMES))
-        poisson_chambers.append(atria)
-        poisson_volumes.append(volumes)
-        for t, poisson_volume in enumerate(poisson_volumes[-1]):
-            results[f'{chamber}_poisson_{t}'].append(poisson_volume/1000.0)
+    try:
+        with h5py.File(hd5) as ff_trad:
+            for view in views:
+                annot_datasets.append(
+                    _mri_hd5_to_structured_grids(
+                        ff_trad, annot_format_string.format(view=view),
+                        view_name=view_format_string.format(view=view),
+                        concatenate=True, annotation=True,
+                        save_path=None, order='F',
+                    )[0],
+                )
+                # orig_datasets.append(
+                #     _mri_hd5_to_structured_grids(
+                #         ff_trad, view_format_string.format(view=view),
+                #         view_name=view_format_string.format(view=view),
+                #         concatenate=False, annotation=False,
+                #         save_path=None, order='F',
+                #     )[0],
+                # )
+                # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
+                # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
+        poisson_chambers = []
+        poisson_volumes = []
+        for channel, chamber, result in zip(channels, chambers, results):
+            result['sample_id'].append(sample_id)
+            atria, volumes = annotation_to_poisson(annot_datasets, channel, views, annot_time_format_string, range(MRI_FRAMES))
+            poisson_chambers.append(atria)
+            poisson_volumes.append(volumes)
+            for t, poisson_volume in enumerate(poisson_volumes[-1]):
+                result[f'{chamber}_poisson_{t}'].append(poisson_volume/1000.0)
 
-        for t, atrium in enumerate(poisson_chambers[-1]):
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetInputData(atrium)
-            writer.SetFileName(f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}_{t}.vtp')
-            writer.Update()
+            for t, atrium in enumerate(poisson_chambers[-1]):
+                # writer = vtk.vtkXMLPolyDataWriter()
+                # writer.SetInputData(atrium)
+                # writer.SetFileName(f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}_{t}.vtp')
+                # writer.Update()
+                write_footer = True if t == MRI_FRAMES-1 else False
+                append = False if t == 0 else True
+                to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
+    except FloatingPointError:
+        continue
     # break
-results_df = pd.DataFrame(results)
-results_df.to_csv(f'leftheart_processed_{start}_{end}.csv')
+for chamber, result in zip(chambers, results):
+    results_df = pd.DataFrame(result)
+    results_df.to_csv(f'{chamber}_processed_{start}_{end}.csv')
 end_time = time.time()
 print(end_time-start_time)
 
