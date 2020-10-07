@@ -64,11 +64,11 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
       <Grid Name="Grid">
         <Time Value="{t}"/>)
         <Geometry Origin="" Type="XYZ">
-          <DataItem DataType="Float" Dimensions="{vtk_object.GetNumberOfPoints()} 3" Format="HDF" Precision="8">{filename}.hd5:points</DataItem>
+          <DataItem DataType="Float" Dimensions="{vtk_object.GetNumberOfPoints()} 3" Format="HDF" Precision="8">{os.path.basename(filename)}.hd5:points</DataItem>
         </Geometry>
         <Topology Dimensions="{extent[5]+1} {extent[1]+1} {extent[3]+1}" Type="3DSMesh"/>
         <Attribute Center="Cell" ElementCell="" ElementDegree="0" ElementFamily="" ItemType="" Name="{arr_name}" Type="None">
-          <DataItem DataType="Float" Dimensions="{extent[5]} {extent[1]} {extent[3]}" Format="HDF" Precision="8">{filename}.hd5:{arr_name}_{t}</DataItem>
+          <DataItem DataType="Float" Dimensions="{extent[5]} {extent[1]} {extent[3]}" Format="HDF" Precision="8">{os.path.basename(filename)}.hd5:{arr_name}_{t}</DataItem>
         </Attribute>
       </Grid>""")
             arr = vtk.util.numpy_support.vtk_to_numpy(vtk_object.GetCellData().GetArray(f'{arr_name}_{t}'))
@@ -82,10 +82,10 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
       <Grid Name="Grid">
         <Time Value="{append_time}"/>)
         <Geometry Origin="" Type="XYZ">
-          <DataItem DataType="Float" Dimensions="{vtk_object.GetNumberOfPoints()} 3" Format="HDF" Precision="8">{filename}.hd5:points_{append_time}</DataItem>
+          <DataItem DataType="Float" Dimensions="{vtk_object.GetNumberOfPoints()} 3" Format="HDF" Precision="8">{os.path.basename(filename)}.hd5:points_{append_time}</DataItem>
         </Geometry>
         <Topology Dimensions="{vtk_object.GetNumberOfCells()}" Type="Mixed">
-          <DataItem DataType="Int" Dimensions="{len(arr_cells)}" Format="HDF" Precision="8">{filename}.hd5:cells_{append_time}</DataItem>
+          <DataItem DataType="Int" Dimensions="{len(arr_cells)}" Format="HDF" Precision="8">{os.path.basename(filename)}.hd5:cells_{append_time}</DataItem>
         </Topology>
       </Grid>""")
         ff_hd5.create_dataset(f'points_{append_time}', data=arr_pts, compression="gzip", compression_opts=9)
