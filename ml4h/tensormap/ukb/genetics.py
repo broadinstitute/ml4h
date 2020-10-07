@@ -1,3 +1,4 @@
+import numpy as np
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.defines import StorageType
 from ml4h.metrics import weighted_crossentropy
