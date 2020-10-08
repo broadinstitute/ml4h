@@ -536,7 +536,7 @@ def l2_norm(x, axis=None):
 def pairwise_cosine_difference(t1, t2):
     t1_norm = t1 / l2_norm(t1, axis=-1)
     t2_norm = t2 / l2_norm(t2, axis=-1)
-    dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
+    dot = K.clip(K.dot(t1_norm, t2_norm), -1, 1)
     return tf.acos(dot)
 
 
