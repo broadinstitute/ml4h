@@ -23,8 +23,6 @@ ttn_lof = TensorMap('TTN', Interpretation.CATEGORICAL, channel_map={'no_ttn_lof'
 def _ttn_tensor_from_file(tm, hd5, dependents={}):
     index = 1
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    # if 'has_exome' not in hd5['categorical']:
-    #     raise ValueError('Skipping people without exome sequencing.')
     if tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
         index = 0
     categorical_data[index] = 1.0
@@ -32,9 +30,8 @@ def _ttn_tensor_from_file(tm, hd5, dependents={}):
 
 
 has_ttntv = TensorMap(
-    'has_ttntv',  Interpretation.CATEGORICAL, channel_map={
-    'has_ttntv': 0, 'no_has_ttntv': 1,
-    }, tensor_from_file=_ttn_tensor_from_file,
+    'has_ttntv',  Interpretation.CATEGORICAL,
+    channel_map={'has_ttntv': 0, 'no_ttntv': 1}, tensor_from_file=_ttn_tensor_from_file,
 )
 ttntv_10x = TensorMap(
     'has_ttntv',  Interpretation.CATEGORICAL, channel_map={
