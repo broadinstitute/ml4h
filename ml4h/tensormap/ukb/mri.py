@@ -1357,6 +1357,10 @@ cine_segmented_lax_4ch_diastole = TensorMap(
     'cine_segmented_lax_4ch_diastole', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
 )
+cine_segmented_lvot_diastole_slice = TensorMap(
+    'cine_segmented_lvot_diastole_slice', Interpretation.CATEGORICAL, shape=(208, 160, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lvot_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
+)
 
 
 def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str ='ukb_cardiac_mri') -> Callable:
