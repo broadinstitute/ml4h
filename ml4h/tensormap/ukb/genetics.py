@@ -19,26 +19,10 @@ dsc2_lof = TensorMap('DSC2', Interpretation.CATEGORICAL, channel_map={'no_dsc2_l
 ryr2_lof = TensorMap('RYR2', Interpretation.CATEGORICAL, channel_map={'no_ryr2_lof': 0, 'ryr2_lof': 1})
 ttn_lof = TensorMap('TTN', Interpretation.CATEGORICAL, channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
 
-
-def _ttn_tensor_from_file(tm, hd5, dependents={}):
-    index = 0
-    categorical_data = np.zeros(tm.shape, dtype=np.float32)
-    if tm.name in hd5['categorical'] and int(hd5['categorical'][tm.name][0]) != 0:
-        index = 1
-    categorical_data[index] = 1.0
-    return categorical_data
-
-
-has_ttntv = TensorMap(
+ttntv = TensorMap(
     'has_ttntv',  Interpretation.CATEGORICAL, path_prefix='categorical',
-    channel_map={'no_ttntv': 0, 'has_ttntv': 1}, tensor_from_file=_ttn_tensor_from_file,
+    channel_map={'no_ttntv': 0, 'has_ttntv': 1}
 )
-ttntv_10x = TensorMap(
-    'has_ttntv',  Interpretation.CATEGORICAL, channel_map={
-    'no_TTN_tv': 0, 'TTN_tv': 1,
-    }, loss_weight=10.0, tensor_from_file=_ttn_tensor_from_file,
-)
-
 
 bsa_mosteller = TensorMap('bsa_mosteller',  Interpretation.CONTINUOUS, normalization={'mean': 1.8894831981880114, 'std': 0.22169301057810176}, loss='logcosh', channel_map={'bsa_mosteller': 0})
 bsa_dubois = TensorMap('bsa_dubois',  Interpretation.CONTINUOUS, normalization={'mean': 1.8671809970639703, 'std': 0.20913930961120797}, loss='logcosh', channel_map={'bsa_dubois': 0})
