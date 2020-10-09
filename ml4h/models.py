@@ -1153,7 +1153,7 @@ def _make_multimodal_multitask_model(
 def make_paired_autoencoder_model(
         pairs: List[Tuple[TensorMap, TensorMap]],
         pair_loss='cosine',
-        merge_method='average',
+        multimodal_merge='average',
         **kwargs
 ) -> Model:
     opt = get_optimizer(
@@ -1214,9 +1214,9 @@ def make_paired_autoencoder_model(
             multimodal_activations.append(pair_loss_out[1])
 
     kwargs['tensor_maps_in'] = list(inputs.keys())
-    if merge_method == 'average':
+    if multimodal_merge == 'average':
         multimodal_activation = Average()(multimodal_activations)
-    elif merge_method == 'concatenate':
+    elif multimodal_merge == 'concatenate':
         multimodal_activation = Concatenate()(multimodal_activations)
         multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
         multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
