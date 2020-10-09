@@ -2192,7 +2192,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
         sample_ids = [int(s) for s in _sample_csv_to_set(test_csv) if len(s) > 4 and int(s) in latent_df.index]
         latent_df = latent_df.loc[sample_ids]
         latent_df.info()
-        logging.info(f'Subset to test set {len(sample_ids)}')
+        logging.info(f'Subset to test set with {len(sample_ids)} samples')
 
     samples = min(len(latent_df.index), samples)
     embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
@@ -2209,7 +2209,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
         f2m = decoders[dtm].predict(female_to_male)
         print(f'prediction shape: {predictions.shape}')
         if dtm.axes() == 3:
-            fig, axes = plt.subplots(samples, 2, figsize=(18, samples * 4))
+            fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
             for i in range(samples):
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
                 axes[i, 0].set_xticks(())
