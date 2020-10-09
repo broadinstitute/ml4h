@@ -1362,6 +1362,7 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
     latent_df = pd.merge(df, df2, left_on='fpath', right_on='sample_id', how='inner')
     latent_df.info()
+    latent_df.index = latent_df['sample_id']
     return latent_df
 
 
