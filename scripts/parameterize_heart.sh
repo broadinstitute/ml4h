@@ -15,6 +15,7 @@ cd /home/pdiachil/ml/notebooks/mri
 /snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/leftheart_boundary_v20201006/
 
 cd /home/pdiachil/projects/chambers
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/leftheart_boundary_xdmf_v20201006
+/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/leftheart_boundary_xdmf_v20201006/
+/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/leftheart_boundary_logs/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
