@@ -41,6 +41,7 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy import stats
 
 from ml4h.TensorMap import TensorMap
+from ml4h.tensor_generators import _sample_csv_to_set
 from ml4h.metrics import concordance_index, coefficient_of_determination
 from ml4h.defines import IMAGE_EXT, JOIN_CHAR, PDF_EXT, TENSOR_EXT, ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, PARTNERS_DATETIME_FORMAT, PARTNERS_DATE_FORMAT, HD5_GROUP_CHAR
 
@@ -2183,10 +2184,13 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
 
 
 def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', prefix='./figures/',
-                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma'):
+                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma', test_csv=None):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
     sex_vector = female - male
+    if test_csv is not None:
+        sample_ids = _sample_csv_to_set(test_csv)
+        latent_df.loc[sample_ids]
     embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
     sexes = latent_df.iloc[:samples][feature].to_numpy()
     print(f'Embedding shape: {embeddings.shape} sexes  shape: {sexes.shape}')
