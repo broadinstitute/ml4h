@@ -20,7 +20,7 @@ ryr2_lof = TensorMap('RYR2', Interpretation.CATEGORICAL, channel_map={'no_ryr2_l
 ttn_lof = TensorMap('TTN', Interpretation.CATEGORICAL, channel_map={'no_ttn_lof': 0, 'ttn_lof': 1})
 
 ttntv = TensorMap(
-    'has_ttntv',  Interpretation.CATEGORICAL, path_prefix='categorical',
+    'has_ttntv',  Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_INDEX,
     channel_map={'no_ttntv': 0, 'has_ttntv': 1}
 )
 
