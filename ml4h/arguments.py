@@ -174,6 +174,7 @@ def parse_args():
         help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
     )
     parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
+    parser.add_argument('--multimodal_merge', default='average', choices=['average', 'concatenate'], help='How to merge modality specific encodings.')
     parser.add_argument(
         '--max_parameters', default=9000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
