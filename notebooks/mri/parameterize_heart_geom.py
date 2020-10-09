@@ -51,7 +51,7 @@ chambers = ['LA', 'LV', 'LVW']
 
 petersen = pd.read_csv('/home/pdiachil/returned_lv_mass.tsv', sep='\t')
 petersen = petersen.dropna()
-hd5s = petersen.sample_id
+# hd5s = petersen.sample_id
 
 # %%
 start_time = time.time()
@@ -61,7 +61,7 @@ for chamber in chambers:
     for t in range(MRI_FRAMES):
         results[-1][f'{chamber}_poisson_{t}'] = []
 for i, hd5 in enumerate(sorted(hd5s)):
-    hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{hd5}.hd5'
+    # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{hd5}.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
         continue
@@ -109,7 +109,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
-    except FloatingPointError:
+    except:
         continue
     # break
 for chamber, result in zip(chambers, results):
@@ -118,127 +118,9 @@ for chamber, result in zip(chambers, results):
 end_time = time.time()
 print(end_time-start_time)
 
-# %%
-def clip_polydata(polydata, cog_projected, normal, start_z=10.0, step_z=5.0):
-    nedges = 0
-    dz = start_z
-    while nedges != 1:
-        plane = vtk.vtkPlane()
-        plane.SetOrigin(cog_projected + dz * normal)
-        plane.SetNormal(normal)
-
-        cutter = vtk.vtkClipPolyData()
-        cutter.SetInputData(polydata)
-        cutter.SetClipFunction(plane)
-        cutter.Update()
-
-        connectivity = vtk.vtkConnectivityFilter()
-        connectivity.SetInputConnection(cutter.GetOutputPort())
-        connectivity.SetExtractionModeToLargestRegion()
-        connectivity.Update()
-
-        features = vtk.vtkFeatureEdges()
-        features.SetInputConnection(connectivity.GetOutputPort())
-        features.ManifoldEdgesOff()
-        features.NonManifoldEdgesOff()
-        features.FeatureEdgesOff()
-        features.BoundaryEdgesOn()
-        features.Update()
-
-        feature_connectivity = vtk.vtkConnectivityFilter()
-        feature_connectivity.SetInputConnection(features.GetOutputPort())
-        feature_connectivity.SetExtractionModeToAllRegions()
-        feature_connectivity.Update()
-        nedges = feature_connectivity.GetNumberOfExtractedRegions()
-        dz += step_z
-    return connectivity.GetOutput()
 
 
-def separation_plane(polydata1, polydata2):
-    points1 = ns.vtk_to_numpy(polydata1.GetPoints().GetData())
-    points2 = ns.vtk_to_numpy(polydata2.GetPoints().GetData())
 
-    y1 = np.zeros((len(points1), 1))
-    y2 = np.ones((len(points2), 1))
-
-    # clf = svm.SVC(kernel='linear', C=1000)
-    clf = svm.LinearSVC(max_iter=10000, dual=False, class_weight='balanced')
-    clf.fit(np.vstack([points1, points2]), np.vstack([y1, y2]))
-
-    normal = np.array(clf.coef_[0])
-    normal /= np.linalg.norm(normal)
-    intercept = clf.intercept_[0]
-
-    cog = 0.5*np.mean(points1, axis=0) +\
-          0.5*np.mean(points2, axis=0)
-
-    cog_projected = cog - normal*np.dot(normal, cog)
-
-    p0 = np.array([0.0, 0.0, intercept/normal[2]])
-    p1 = np.array([0.0, intercept/normal[1], 0.0])
-    p1 = p0 + (p1-p0) / np.linalg.norm(p1-p0)
-    p2 = p0 + np.cross(normal, p1-p0)
-
-    plane_source = vtk.vtkPlaneSource()
-    plane_source.SetOrigin(p0)
-    plane_source.SetPoint1(p0 + 100.0*(p1-p0))
-    plane_source.SetPoint2(p0 + 100.0*(p2-p0))
-    plane_source.SetXResolution(100)
-    plane_source.SetYResolution(100)
-    plane_source.SetCenter(cog)
-
-    clipped_ventricle = clip_polydata(polydata2, cog, normal, start_z=0.0, step_z=5.0)
-    clipped_atrium = clip_polydata(polydata1, cog, -normal, start_z=0.0, step_z=5.0)
-
-    return plane_source, clipped_ventricle, clipped_atrium, normal, cog
-
-
-# %%
-def reorient_chambers(atrium, dataset, normal, origin, channel_septum=5):
-    z_axis = -normal
-
-    threshold = vtk.vtkThreshold()
-    threshold.SetInputData(dataset)
-    threshold.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS, 'cine_segmented_lax_4ch_annotated_0')
-    threshold.ThresholdByUpper(0.5)
-    threshold.Update()
-
-    centers = vtk.vtkCellCenters()
-    centers.SetInputData(threshold.GetOutput())
-    centers.Update()
-
-    cog = np.mean(ns.numpy_to_vtk(centers.GetOutput().GetPoints().GetData()), axis=0)
-
-    x_axis = cog - origin
-    x_axis = x_axis - np.dot(x_axis, z_axis)*z_axis
-    x_axis = x_axis / np.linalg.norm(x_axis)
-    y_axis = np.cross(z_axis, x_axis)
-
-    R = np.hstack([x_axis.reshape(-1, 1), y_axis.reshape(-1, 1), z_axis.reshape(-1, 1)])
-    atrium_pts = ns.vtk_to_numpy(atrium.GetPoints().GetData())
-    atrium_pts[:] = atrium_pts - origin
-    atrium_pts[:] = np.dot(R.T, atrium_pts.T).T
-
-    return atrium
-
-# for t, (atrium, ventricle) in enumerate(zip(poisson_chambers[0], poisson_chambers[1])):
-#     plane, clipped_ventricle, clipped_atrium, normal, origin = separation_plane(atrium, ventricle)
-
-#     writer = vtk.vtkXMLPolyDataWriter()
-#     writer.SetInputConnection(plane.GetOutputPort())
-#     writer.SetFileName(f'/home/pdiachil/projects/chambers/plane_{sample_id}_{t}.vtp')
-#     writer.Update()
-
-#     writer = vtk.vtkXMLPolyDataWriter()
-#     writer.SetInputData(clipped_ventricle)
-#     writer.SetFileName(f'/home/pdiachil/projects/chambers/clipped_lv_{sample_id}_{t}.vtp')
-#     writer.Update()
-
-#     writer = vtk.vtkXMLPolyDataWriter()
-#     clipped_atrium = reorient_chambers(clipped_atrium, annot_datasets[-1], normal, origin)
-#     writer.SetInputData(clipped_atrium)
-#     writer.SetFileName(f'/home/pdiachil/projects/chambers/clipped_la_reorient_{sample_id}_{t}.vtp')
-#     writer.Update()
 
 # %%
 # import igl
