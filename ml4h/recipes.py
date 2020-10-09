@@ -449,7 +449,8 @@ def inspect_paired_model(args):
                                     feature=index2channel[0],
                                     thresh=thresh,
                                     latent_dimension=args.dense_layers[0],
-                                    prefix=out_folder)
+                                    prefix=out_folder,
+                                    test_csv=args.test_csv)
 
 
 def pca_on_hidden_inference(args):
