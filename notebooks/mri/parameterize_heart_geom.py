@@ -57,9 +57,9 @@ petersen = petersen.dropna()
 start_time = time.time()
 results = []
 for chamber in chambers:
-    results.append({'sample_id': []})
+    results.append({'sample_id': [-1]*(end-start)})
     for t in range(MRI_FRAMES):
-        results[-1][f'{chamber}_poisson_{t}'] = []
+        results[-1][f'{chamber}_poisson_{t}'] = [-1]*(end-start)
 for i, hd5 in enumerate(sorted(hd5s)):
     # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{hd5}.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
@@ -94,12 +94,12 @@ for i, hd5 in enumerate(sorted(hd5s)):
         poisson_chambers = []
         poisson_volumes = []
         for channel, chamber, result in zip(channels, chambers, results):
-            result['sample_id'].append(sample_id)
+            result['sample_id'][i] = sample_id
             atria, volumes = annotation_to_poisson(annot_datasets, channel, views, annot_time_format_string, range(MRI_FRAMES))
             poisson_chambers.append(atria)
             poisson_volumes.append(volumes)
             for t, poisson_volume in enumerate(poisson_volumes[-1]):
-                result[f'{chamber}_poisson_{t}'].append(poisson_volume/1000.0)
+                result[f'{chamber}_poisson_{t}'][i] = poisson_volume/1000.0
 
             for t, atrium in enumerate(poisson_chambers[-1]):
                 # writer = vtk.vtkXMLPolyDataWriter()
