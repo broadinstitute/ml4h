@@ -94,12 +94,12 @@ for i, hd5 in enumerate(sorted(hd5s)):
         poisson_chambers = []
         poisson_volumes = []
         for channel, chamber, result in zip(channels, chambers, results):
-            result['sample_id'][i] = sample_id
+            result['sample_id'][i-start] = sample_id
             atria, volumes = annotation_to_poisson(annot_datasets, channel, views, annot_time_format_string, range(MRI_FRAMES))
             poisson_chambers.append(atria)
             poisson_volumes.append(volumes)
             for t, poisson_volume in enumerate(poisson_volumes[-1]):
-                result[f'{chamber}_poisson_{t}'][i] = poisson_volume/1000.0
+                result[f'{chamber}_poisson_{t}'][i-start] = poisson_volume/1000.0
 
             for t, atrium in enumerate(poisson_chambers[-1]):
                 # writer = vtk.vtkXMLPolyDataWriter()
