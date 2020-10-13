@@ -2092,6 +2092,8 @@ def plot_reconstruction(
     for i in range(num_samples):
         sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
         title = f'{tm.name}_{sample_id}_reconstruction'
+        y = y_true[i]
+        yp = y_pred[i]
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE)) #, sharey=True)
