@@ -423,7 +423,7 @@ def train_paired_model(args):
             performance_metrics.update(metrics)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+        plot_reconstruction(etm, test_data[etm.input_name()], etm.rescale(predictions_dict[etm.output_name()]), out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
@@ -431,7 +431,7 @@ def train_paired_model(args):
             if not os.path.exists(os.path.dirname(my_out_path)):
                 os.makedirs(os.path.dirname(my_out_path))
             if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
+                plot_reconstruction(dtm, test_data[dtm.input_name()], dtm.rescale(reconstruction), my_out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
