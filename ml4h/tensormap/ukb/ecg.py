@@ -4,6 +4,7 @@ import scipy
 from typing import List, Tuple
 from tensorflow.keras.utils import to_categorical
 # from ml4h.tensor_writer_ukbb import tensor_path
+from ml4h.normalizer import ZeroMeanStd1
 from ml4h.tensormap.general import tensor_path
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
 from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
@@ -448,7 +449,7 @@ ecg_rest_raw_10 = TensorMap(
 )
 ecg_rest = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_LEADS, normalization={'zero_mean_std1': 1.0},
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_2500_ukb = TensorMap(
     'ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
