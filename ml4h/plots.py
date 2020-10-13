@@ -2116,7 +2116,7 @@ def plot_reconstruction(
             for j in range(y.shape[3]):
                 image_path_base = f'{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}'
                 if tm.is_categorical():
-                    truth = np.argmax(yp[tm.output_name()][:, :, j, :], axis=-1)
+                    truth = np.argmax(yp[:, :, j, :], axis=-1)
                     prediction = np.argmax(y[:, :, j, :], axis=-1)
                     plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='plasma')
                     plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='plasma')
