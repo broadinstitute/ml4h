@@ -158,12 +158,12 @@ def evaluate_predictions(
         performance_metrics.update(plot_precision_recall_per_class(y_predictions, y_truth, tm.channel_map, title, folder))
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
-        prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
-        truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
+        plot_reconstruction(tm, tm.rescale(y_truth), tm.rescale(y_predictions), folder, test_paths)
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel]
             y_truth = y_truth[y_truth != tm.sentinel]
-        plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
+        prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
+        truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(subplot_pearson_per_class(prediction_flat, truth_flat, tm.channel_map, protected, title, prefix=folder))
     elif tm.is_continuous():
@@ -2092,8 +2092,6 @@ def plot_reconstruction(
     for i in range(num_samples):
         sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
         title = f'{tm.name}_{sample_id}_reconstruction'
-        y = y_true[i].reshape(tm.shape)
-        yp = y_pred[i].reshape(tm.shape)
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE)) #, sharey=True)
