@@ -2122,7 +2122,7 @@ def plot_reconstruction(
                     plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='plasma')
                 else:
                     plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', y[:, :, j, 0], cmap='gray')
-                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', yp[:, :, j, :], cmap='gray')
+                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', yp[:, :, j, 0], cmap='gray')
         plt.clf()
 
 
