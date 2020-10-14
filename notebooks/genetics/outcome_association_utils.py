@@ -156,7 +156,7 @@ def plot_or_hr(or_dic, label_dic, disease_list, suffix, occ='prevalent', horizon
         ax.set_xlabel(f'{ratio_label} ratio (per 1-SD increase of continuous variables)')
         ax.set_title(f'{occ} {dis_label}\n n$_+$ = {int(or_dic[pheno][dis+"_"+occ]["n"])} / {int(or_dic[pheno][dis+"_"+occ]["ntot"])}')
         ax.set_ylim([-1.0, len(ors)])
-        ax.set_xlim([min(1.0, min(ors)*0.8), max(8.0, max(ors)*1.5)])
+        ax.set_xlim([min(1.0, min(ors)*0.8), max(4.0, max(ors)*1.5)])
         plt.tight_layout()
         f.savefig(f'{dis}_{occ}_{suffix}.png', dpi=500)
 
