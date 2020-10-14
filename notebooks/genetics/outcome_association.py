@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 %load_ext google.cloud.bigquery
 
-# %% 
+# %%
 ## %%bigquery covariates
-# select sample_id, FieldID, instance, value from `ukbb7089_202006.phenotype` 
+# select sample_id, FieldID, instance, value from `ukbb7089_202006.phenotype`
 # where FieldID = 21001 -- bmi
 # or FieldID = 21003 -- age at assessment
 # or FieldID = 22001 -- genetic sex
@@ -22,14 +22,14 @@ import pandas as pd
 # covariates.('bq_covariates.tsv', sep='\t')
 
 # %%bigquery race
-# select sample_id, FieldID, instance, value from `ukbb7089_202006.phenotype` 
+# select sample_id, FieldID, instance, value from `ukbb7089_202006.phenotype`
 # where FieldID = 21000 -- race
 # # %%
 # race.to_csv('bq_race.tsv', sep='\t')
 
 # %%
 # %%bigquery diseases
-# select disease, sample_id, incident_disease, prevalent_disease, censor_date from `ukbb7089_202006.disease` 
+# select disease, sample_id, incident_disease, prevalent_disease, censor_date from `ukbb7089_202006.disease`
 # where has_disease > 0.5
 
 # # %%
@@ -45,7 +45,7 @@ diseases = pd.read_csv('bq_diseases.tsv', sep='\t')
 diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 
 # %%
-la_volumes_petersen = pd.read_csv('/home/pdiachil/ml/notebooks/mri/petersen_atria_boundary_cleaned.csv')
+la_volumes_petersen = pd.read_csv('/home/pdiachil/ml/notebooks/mri/all_shaan_poisson_lvm.csv')
 
 from scipy.ndimage import median_filter
 def get_min(data, window=5):
@@ -57,13 +57,13 @@ def filter_pca(data, ncomp=10):
     pca = PCA(data, ncomp=ncomp)
     return pca.projection
 
-la_volumes_all = pd.read_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_v20200905.csv')
-keys = [f'LA_poisson_{d}' for d in range(50)]
-la_volumes_all[keys] = la_volumes_all[keys].apply(filter_pca)
-la_volumes_all['LA_poisson_cleaned_max'] = la_volumes_all[keys].apply(np.max, axis=1)
-la_volumes_all['LA_poisson_cleaned_min'] = la_volumes_all[keys].apply(get_min, axis=1)
+# la_volumes_all = pd.read_csv('/home/pdiachil/ml/notebooks/mri/all_atria_boundary_v20200905.csv')
+# keys = [f'LA_poisson_{d}' for d in range(50)]
+# la_volumes_all[keys] = la_volumes_all[keys].apply(filter_pca)
+# la_volumes_all['LA_poisson_cleaned_max'] = la_volumes_all[keys].apply(np.max, axis=1)
+# la_volumes_all['LA_poisson_cleaned_min'] = la_volumes_all[keys].apply(get_min, axis=1)
 
-la_volume_sets = [la_volumes_all]
+la_volume_sets = [la_volumes_petersen]
 # %%
 pheno_dic = {
              21003: ['age', float],
@@ -96,7 +96,7 @@ for i, la_volume_set in enumerate(la_volume_sets):
             tmp_covariates['value'] = tmp_covariates['value'].apply(pheno_dic[pheno][1])
         if (pheno == 4079) or (pheno == 4080):
             tmp_covariates = tmp_covariates[['sample_id', 'value']].groupby('sample_id').mean().reset_index(level=0)
-        
+
         la_volume_sets[i] = la_volume_sets[i].merge(tmp_covariates[['sample_id', 'value']], left_on=['sample_id'], right_on=['sample_id'], how='left')
         la_volume_sets[i][pheno_dic[pheno][0]] = la_volume_sets[i]['value']
         la_volume_sets[i] = la_volume_sets[i].drop(columns=['value'])
@@ -118,12 +118,12 @@ def gfr(x):
     f1[f1>1.0] = 1.0
     f2 = x['creatinine']/88.4/k
     f2[f2<1.0] = 1.0
-    
+
     gfr = 141.0 * f1**alpha \
           *f2**(-1.209) \
           *0.993**x['male'] \
           *(1.0+0.018*(1.0-x['male']))
-        
+
     return gfr
 
 for i, la_volume_set in enumerate(la_volume_sets):
@@ -133,7 +133,7 @@ for i, la_volume_set in enumerate(la_volume_sets):
 la_volumes_petersen, = la_volume_sets
 
 # %%
-la_volumes_petersen.to_csv('/home/pdiachil/ml/notebooks/genetics/la_volumes_all_covariates.csv', index=False)
+la_volumes_petersen.to_csv('/home/pdiachil/ml/notebooks/genetics/lvm_all_shaan_poisson_all_covariates.csv', index=False)
 
 # %%
 import matplotlib.pyplot as plt
@@ -151,7 +151,7 @@ f.set_size_inches(16, 9)
 all_ecgs.hist(ax=ax)
 plt.tight_layout()
 
-# %% 
+# %%
 # Phenotype plots
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -160,11 +160,11 @@ f, axs = plt.subplots(ncols=1, sharey=True, figsize=(4, 3))
 f.subplots_adjust(hspace=0.5, left=0.07, right=0.93)
 ax = axs
 hb = ax.hexbin(all_ecgs['50_hrr_actual'], all_ecgs['50_hrr_downsample_augment_prediction'],  mincnt=1, cmap='gray')
-ax.plot([all_ecgs['50_hrr_actual'].dropna().quantile(0.33), 
+ax.plot([all_ecgs['50_hrr_actual'].dropna().quantile(0.33),
          all_ecgs['50_hrr_actual'].dropna().quantile(0.33)],
          [-5.0, 60.], color='gray', linestyle='--')
-ax.plot([-5.0, 60.0], 
-        [all_ecgs['50_hrr_downsample_augment_prediction'].dropna().quantile(0.33), 
+ax.plot([-5.0, 60.0],
+        [all_ecgs['50_hrr_downsample_augment_prediction'].dropna().quantile(0.33),
          all_ecgs['50_hrr_downsample_augment_prediction'].dropna().quantile(0.33)], color='gray', linestyle='--')
 
 ax.set_xlabel('HRR (bpm)')
@@ -189,12 +189,12 @@ f, ax = plt.subplots()
 f.set_size_inches(3.5, 3)
 bins = np.linspace(all_ecgs['50_hrr_actual'].dropna().min(), all_ecgs['50_hrr_actual'].dropna().max(), 100)
 sns.distplot(all_ecgs['50_hrr_actual'].dropna(), bins=bins, ax=ax, norm_hist=False, kde=False, color='gray', label='HRR')
-sns.distplot(all_ecgs['50_hrr_downsample_augment_prediction'].dropna(), bins=bins, norm_hist=False, ax=ax, kde=False, color='black', 
+sns.distplot(all_ecgs['50_hrr_downsample_augment_prediction'].dropna(), bins=bins, norm_hist=False, ax=ax, kde=False, color='black',
              label='HRR$_{pred}$')
-# ax.plot([all_ecgs['50_hrr_actual'].dropna().quantile(0.33), 
+# ax.plot([all_ecgs['50_hrr_actual'].dropna().quantile(0.33),
 #          all_ecgs['50_hrr_actual'].dropna().quantile(0.33)],
 #          [0.0, 3000.], color='black', linestyle='--')
-# ax.plot([all_ecgs['50_hrr_downsample_augment_prediction'].dropna().quantile(0.33), 
+# ax.plot([all_ecgs['50_hrr_downsample_augment_prediction'].dropna().quantile(0.33),
 #          all_ecgs['50_hrr_downsample_augment_prediction'].dropna().quantile(0.33)],
 #          [0.0, 3000.], color='black')
 ax.set_ylim([0.0, 2900.0])
@@ -213,14 +213,14 @@ f.savefig('distribution.png', dpi=500)
 # all_ecgs['HR-pretest'] = all_ecgs['resting_hr']
 # f, ax = plt.subplots()
 # f.set_size_inches(6.5, 5)
-# sns.heatmap(np.abs(all_ecgs.dropna()[['HRR50', 'HR-pretest',  
-#                                       'HRR50-pretest', 'HRR50-restHR_age_sex_bmi', 'HRR50-pretest_age_sex_bmi', 
-#                                       'HRR50-pretest-maxHR_age_sex_bmi', 
+# sns.heatmap(np.abs(all_ecgs.dropna()[['HRR50', 'HR-pretest',
+#                                       'HRR50-pretest', 'HRR50-restHR_age_sex_bmi', 'HRR50-pretest_age_sex_bmi',
+#                                       'HRR50-pretest-maxHR_age_sex_bmi',
 #                                       'HRR50-pretest-075maxHR_age_sex_bmi']].corr().round(2)),
 #             annot=True, cmap='gray', ax=ax)
-# ax.set_xticklabels(['HRR50', 'HR-pretest',  
-#                     'HRR50-pretest', 'HRR50-restHR_age_sex_bmi', 'HRR50-pretest_age_sex_bmi', 
-#                     'HRR50-pretest-maxHR_age_sex_bmi', 
+# ax.set_xticklabels(['HRR50', 'HR-pretest',
+#                     'HRR50-pretest', 'HRR50-restHR_age_sex_bmi', 'HRR50-pretest_age_sex_bmi',
+#                     'HRR50-pretest-maxHR_age_sex_bmi',
 #                     'HRR50-pretest-075maxHR_age_sex_bmi'], rotation=45, ha='right')
 # plt.tight_layout()
 # f.savefig('intercorrlations.png', dpi=500)
@@ -255,7 +255,7 @@ for quantile in [0.33]:
     optimal_idx = np.argmin(abs(y_score_pred - thresholds_pred[optimal_thresholds_idx]))
     pred_threshold = all_ecgs['50_hrr_downsample_augment_prediction'].values[optimal_idx]
     f.savefig(f'roc_auc_{quantile}.png', dpi=500)
-    
+
 
 
 # %%
@@ -292,7 +292,7 @@ ax.set_yticks([10.0, 20.0, 30.0, 40.0])
 from sklearn.calibration import calibration_curve
 
 fraction_of_positives, mean_predicted_value = \
-            calibration_curve(all_ecgs['50_hrr_actual'] < all_ecgs['50_hrr_actual'].quantile(quantile), prob_pred[:, 1], 
+            calibration_curve(all_ecgs['50_hrr_actual'] < all_ecgs['50_hrr_actual'].quantile(quantile), prob_pred[:, 1],
             normalize=True, strategy='quantile', n_bins=10)
 
 f, ax = plt.subplots()
@@ -345,16 +345,16 @@ disease_list = [
 'composite_mi_cad_stroke_hf',
 'composite_mi_death']
 
-disease_list = [['Heart_Failure_V2', 'heart failure'], 
+disease_list = [['Heart_Failure_V2', 'heart failure'],
                 ['Myocardial_Infarction', 'myocardial infarction'],
-                ['Atrial_fibrillation_or_flutter_v2', 'atrial fibrillation'], 
+                ['Atrial_fibrillation_or_flutter_v2', 'atrial fibrillation'],
                 ['Diabetes_Type_2', 'type 2 diabetes'],
-                ['Hypertension', 'hypertension'],                
+                ['Hypertension', 'hypertension'],
                 ['composite_af_chf_dcm_death', 'AF+CHF+DCM+death'],
                 ['composite_cad_dcm_hcm_hf_mi', 'CAD+DCM+HCM+HF+MI'],
                 ['composite_chf_dcm_death', 'CHF+DCM+death']]
 
-disease_list = [['Heart_Failure_V2', 'heart failure'], 
+disease_list = [['Heart_Failure_V2', 'heart failure'],
                 ['Diabetes_Type_2', 'type 2 diabetes'],
                 ['composite_cad_dcm_hcm_hf_mi', 'CAD+DCM+HCM+HF+MI'],
                 ]
@@ -385,7 +385,7 @@ all_ecgs = all_ecgs.dropna()
 
 # %%
 label_dic = {
-    
+
     '50_hrr_actual_binary': ['low HRR50', ''],
     '50_hrr_downsample_augment_prediction_binary': ['low HRR50-pretest', ''],
     '50_hrr_actual': ['HRR50', 'beats'],
@@ -399,7 +399,7 @@ label_dic = {
     'HDL': ['HDL', 'mmol/L'],
     'current_smoker': ['Current smoker', ''],
     'diastolic_bp': ['Diastolic blood pressure', 'mmHg'],
-    'systolic_bp': ['Systolic blood pressure', 'mmHg'],   
+    'systolic_bp': ['Systolic blood pressure', 'mmHg'],
     'gfr': ['eGFR', 'mL/min/1.73 m2'],
     'creatinine': ['Creatinine', 'umol/L'],
     'c_lipidlowering': ['Lipid lowering drugs', ''],
@@ -412,7 +412,7 @@ import statsmodels.api as sm
 from sklearn.metrics import roc_auc_score
 or_dic = {}
 for pheno in label_dic:
-    if pheno in ['instance0_date', 'sample_id', 'FID', 'IID']: 
+    if pheno in ['instance0_date', 'sample_id', 'FID', 'IID']:
         continue
     or_dic[pheno] = {}
     tmp_pheno = all_ecgs[['sample_id', pheno]]
@@ -443,13 +443,13 @@ import matplotlib
 dis_plot_list = disease_list
 phenos = or_dic['50_hrr_actual'].keys()
 for dis, dis_label in disease_list:
-    for occ in ['prevalent']: 
+    for occ in ['prevalent']:
         ors = []
         cis_minus = []
         cis_plus = []
         labels = []
         for pheno in or_dic:
-            if 'genetic' in pheno: 
+            if 'genetic' in pheno:
                 continue
             if 'hrr' in pheno:
                 scale = 1.0
@@ -459,19 +459,19 @@ for dis, dis_label in disease_list:
                 scale = 1.0
             ors.append(np.exp(np.log(or_dic[pheno][f'{dis}_{occ}']['OR'])*scale))
             cis_minus.append(np.exp(np.log(or_dic[pheno][f'{dis}_{occ}']['OR']-or_dic[pheno][f'{dis}_{occ}']['CI'][0])*scale))
-            cis_plus.append(np.exp(np.log(or_dic[pheno][f'{dis}_{occ}']['CI'][1]-or_dic[pheno][f'{dis}_{occ}']['OR'])*scale))      
+            cis_plus.append(np.exp(np.log(or_dic[pheno][f'{dis}_{occ}']['CI'][1]-or_dic[pheno][f'{dis}_{occ}']['OR'])*scale))
             labels.append(f'{label_dic[pheno][0]}{or_dic[pheno][dis+"_"+occ]["std"]} {label_dic[pheno][1]}, AUC={or_dic[pheno][dis+"_"+occ]["auc"]:.2f}')
 
             if or_dic[pheno][f'{dis}_{occ}']['p'] < (0.05/len(or_dic)):
                 labels[-1] += '*'
-            
+
         f, ax = plt.subplots()
         f.set_size_inches(6, 4)
-        ax.errorbar(ors, np.arange(len(ors)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')  
+        ax.errorbar(ors, np.arange(len(ors)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')
         ax.plot([1.0, 1.0], [-1.0, len(ors)], 'k--')
         ax.set_yticks(np.arange(len(ors)))
         ax.set_yticklabels(labels)
-        ax.set_xscale('log', basex=np.exp(1))   
+        ax.set_xscale('log', basex=np.exp(1))
         ax.set_xticks([0.25, 0.5, 1.0, 2.0, 4.0, 8.0])
         ax.set_xticklabels(map(str, [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]))
 #         locmin = matplotlib.ticker.LogLocator(base=np.exp(1),subs=(0.3,0.35,0.4,0.45,
@@ -494,7 +494,7 @@ for dis, dis_label in disease_list:
 import statsmodels.api as sm
 hr_dic = {}
 for pheno in label_dic:
-    if pheno in ['instance0_date', 'sample_id', 'FID', 'IID', '50_hrr']: 
+    if pheno in ['instance0_date', 'sample_id', 'FID', 'IID', '50_hrr']:
         continue
     hr_dic[pheno] = {}
     tmp_pheno = all_ecgs[['sample_id', pheno, 'instance0_date']]
@@ -512,7 +512,7 @@ for pheno in label_dic:
             tmp_data['entry'] = 0.0
             tmp_data['intercept'] = 1.0
             tmp_data = tmp_data[tmp_data['futime']>0]
-            res = sm.PHReg(tmp_data['futime'], tmp_data[pheno], 
+            res = sm.PHReg(tmp_data['futime'], tmp_data[pheno],
                            tmp_data[f'{disease}_{occ}'], tmp_data['entry']).fit()
             hr_dic[pheno][f'{disease}_{occ}']['HR'] = np.exp(res.params[0])
             hr_dic[pheno][f'{disease}_{occ}']['CI'] = np.exp(res.conf_int()[0])
@@ -530,7 +530,7 @@ for dis, dis_label in disease_list:
         cis_plus = []
         labels = []
         for pheno in hr_dic:
-            if 'genetic' in pheno: 
+            if 'genetic' in pheno:
                 continue
             if 'hrr' in pheno:
                 scale = 1.0
@@ -540,17 +540,17 @@ for dis, dis_label in disease_list:
                 scale = 1.0
             hrs.append(np.exp(np.log(hr_dic[pheno][f'{dis}_{occ}']['HR'])*scale))
             cis_minus.append(np.exp(np.log(hr_dic[pheno][f'{dis}_{occ}']['HR']-hr_dic[pheno][f'{dis}_{occ}']['CI'][0])*scale))
-            cis_plus.append(np.exp(np.log(hr_dic[pheno][f'{dis}_{occ}']['CI'][1]-hr_dic[pheno][f'{dis}_{occ}']['HR'])*scale))      
+            cis_plus.append(np.exp(np.log(hr_dic[pheno][f'{dis}_{occ}']['CI'][1]-hr_dic[pheno][f'{dis}_{occ}']['HR'])*scale))
             labels.append(f'{label_dic[pheno][0]}{hr_dic[pheno][dis+"_"+occ]["std"]} {label_dic[pheno][1]}')
             if hr_dic[pheno][f'{dis}_{occ}']['p'] < (0.05/len(hr_dic)):
                 labels[-1] += '*'
         f, ax = plt.subplots()
         f.set_size_inches(3.3, 4)
-        ax.errorbar(hrs, np.arange(len(hrs)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')    
+        ax.errorbar(hrs, np.arange(len(hrs)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')
         ax.set_yticks(np.arange(len(hrs)))
         ax.set_yticklabels(labels)
         ax.set_yticklabels([])
-        ax.set_xscale('log', basex=np.exp(1))  
+        ax.set_xscale('log', basex=np.exp(1))
         ax.plot([1.0, 1.0], [-1.0, len(hrs)], 'k--')
         ax.set_xticks([0.25, 0.5, 1.0, 2.0, 4.0, 8.0])
         ax.set_xticklabels(map(str, [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]))
@@ -570,7 +570,7 @@ covariates = ['bmi', 'age', 'male', 'cholesterol', 'HDL', 'current_smoker',
 covariates_scale = ['bmi', 'age', 'cholesterol', 'HDL',
                     'diastolic_bp', 'systolic_bp']
 for pheno in ['50_hrr_actual_binary', '50_hrr_downsample_augment_prediction_binary', '50_hrr_actual', '50_hrr_downsample_augment_prediction', 'resting_hr']:
-    if pheno in ['FID', 'IID', 'instance0_date']: 
+    if pheno in ['FID', 'IID', 'instance0_date']:
         continue
     or_multi_dic[pheno] = {}
     tmp_pheno = all_ecgs[['sample_id', pheno] + covariates]
@@ -581,7 +581,7 @@ for pheno in ['50_hrr_actual_binary', '50_hrr_downsample_augment_prediction_bina
             std = np.std(tmp_data[pheno].values)
             tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
             std = "" if 'binary' in pheno else ", %.1f" % std
-            
+
             tmp_data[covariates_scale] = (tmp_data[covariates_scale].values \
                                           - np.mean(tmp_data[covariates_scale].values, axis=0))/\
                                           np.std(tmp_data[covariates_scale].values, axis=0)
@@ -602,13 +602,13 @@ import matplotlib
 dis_plot_list = disease_list
 phenos = or_multi_dic['50_hrr_actual'].keys()
 for dis, dis_label in disease_list:
-    for occ in ['prevalent']: 
+    for occ in ['prevalent']:
         ors = []
         cis_minus = []
         cis_plus = []
         labels = []
         for pheno in or_multi_dic:
-            if 'genetic' in pheno: 
+            if 'genetic' in pheno:
                 continue
             if 'hrr' in pheno:
                 scale = 1.0
@@ -618,17 +618,17 @@ for dis, dis_label in disease_list:
                 scale = 1.0
             ors.append(np.exp(np.log(or_multi_dic[pheno][f'{dis}_{occ}']['OR'])*scale))
             cis_minus.append(np.exp(np.log(or_multi_dic[pheno][f'{dis}_{occ}']['OR']-or_multi_dic[pheno][f'{dis}_{occ}']['CI'][0])*scale))
-            cis_plus.append(np.exp(np.log(or_multi_dic[pheno][f'{dis}_{occ}']['CI'][1]-or_multi_dic[pheno][f'{dis}_{occ}']['OR'])*scale))      
+            cis_plus.append(np.exp(np.log(or_multi_dic[pheno][f'{dis}_{occ}']['CI'][1]-or_multi_dic[pheno][f'{dis}_{occ}']['OR'])*scale))
             labels.append(f'{label_dic[pheno][0]}{or_multi_dic[pheno][dis+"_"+occ]["std"]} {label_dic[pheno][1]}, AUC={or_multi_dic[pheno][dis+"_"+occ]["auc"]:.2f}')
             if or_dic[pheno][f'{dis}_{occ}']['p'] < (0.05/len(or_dic)):
                 labels[-1] += '*'
         f, ax = plt.subplots()
         f.set_size_inches(6, 3)
-        ax.errorbar(ors, np.arange(len(ors)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')  
+        ax.errorbar(ors, np.arange(len(ors)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')
         ax.plot([1.0, 1.0], [-1.0, len(ors)], 'k--')
         ax.set_yticks(np.arange(len(ors)))
         ax.set_yticklabels(labels)
-        ax.set_xscale('log', basex=np.exp(1))   
+        ax.set_xscale('log', basex=np.exp(1))
         ax.set_xticks([0.4, 0.8, 1.6])
         ax.set_xticklabels(map(str, [0.4, 0.8, 1.6]))
 #         locmin = matplotlib.ticker.LogLocator(base=np.exp(1),subs=(0.3,0.35,0.4,0.45,
@@ -655,7 +655,7 @@ covariates = ['bmi', 'age', 'male', 'cholesterol', 'HDL', 'current_smoker',
 covariates_scale = ['bmi', 'age', 'cholesterol', 'HDL',
                     'diastolic_bp', 'systolic_bp']
 for pheno in ['50_hrr_actual_binary', '50_hrr_downsample_augment_prediction_binary', '50_hrr_actual', '50_hrr_downsample_augment_prediction', 'resting_hr']:
-    if pheno in ['FID', 'IID', 'instance0_date']: 
+    if pheno in ['FID', 'IID', 'instance0_date']:
         continue
     hr_multi_dic[pheno] = {}
     tmp_pheno = all_ecgs[['sample_id', pheno, 'instance0_date'] + covariates]
@@ -673,7 +673,7 @@ for pheno in ['50_hrr_actual_binary', '50_hrr_downsample_augment_prediction_bina
             tmp_data['entry'] = 0.0
             tmp_data['intercept'] = 1.0
             tmp_data = tmp_data[tmp_data['futime']>0]
-            res = sm.PHReg(tmp_data['futime'], tmp_data[[pheno]+covariates], 
+            res = sm.PHReg(tmp_data['futime'], tmp_data[[pheno]+covariates],
                            tmp_data[f'{disease}_{occ}'], tmp_data['entry']).fit()
             hr_multi_dic[pheno][f'{disease}_{occ}']['HR'] = np.exp(res.params[0])
             hr_multi_dic[pheno][f'{disease}_{occ}']['CI'] = np.exp(res.conf_int()[0])
@@ -688,13 +688,13 @@ import matplotlib
 dis_plot_list = disease_list
 phenos = or_multi_dic['50_hrr_actual'].keys()
 for dis, dis_label in disease_list:
-    for occ in ['incident']: 
+    for occ in ['incident']:
         hrs = []
         cis_minus = []
         cis_plus = []
         labels = []
         for pheno in hr_multi_dic:
-            if 'genetic' in pheno: 
+            if 'genetic' in pheno:
                 continue
             if 'hrr' in pheno:
                 scale = 1.0
@@ -704,18 +704,18 @@ for dis, dis_label in disease_list:
                 scale = 1.0
             hrs.append(np.exp(np.log(hr_multi_dic[pheno][f'{dis}_{occ}']['HR'])*scale))
             cis_minus.append(np.exp(np.log(hr_multi_dic[pheno][f'{dis}_{occ}']['HR']-hr_multi_dic[pheno][f'{dis}_{occ}']['CI'][0])*scale))
-            cis_plus.append(np.exp(np.log(hr_multi_dic[pheno][f'{dis}_{occ}']['CI'][1]-hr_multi_dic[pheno][f'{dis}_{occ}']['HR'])*scale))      
+            cis_plus.append(np.exp(np.log(hr_multi_dic[pheno][f'{dis}_{occ}']['CI'][1]-hr_multi_dic[pheno][f'{dis}_{occ}']['HR'])*scale))
             labels.append(f'{label_dic[pheno][0]}{hr_multi_dic[pheno][dis+"_"+occ]["std"]} {label_dic[pheno][1]}')
             if hr_dic[pheno][f'{dis}_{occ}']['p'] < (0.05/len(hr_dic)):
                 labels[-1] += '*'
         f, ax = plt.subplots()
         f.set_size_inches(3.3, 3)
-        ax.errorbar(hrs, np.arange(len(hrs)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')  
+        ax.errorbar(hrs, np.arange(len(hrs)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')
         ax.plot([1.0, 1.0], [-1.0, len(hrs)], 'k--')
         ax.set_yticks(np.arange(len(hrs)))
         ax.set_yticklabels(labels)
         ax.set_yticklabels([])
-        ax.set_xscale('log', basex=np.exp(1))   
+        ax.set_xscale('log', basex=np.exp(1))
         ax.set_xticks([0.4, 0.8, 1.6])
         ax.set_xticklabels(map(str, [0.4, 0.8, 1.6]))
 #         locmin = matplotlib.ticker.LogLocator(base=np.exp(1),subs=(0.3,0.35,0.4,0.45,
