@@ -1153,8 +1153,9 @@ def _make_multimodal_multitask_model(
 
 def make_paired_autoencoder_model(
         pairs: List[Tuple[TensorMap, TensorMap]],
-        pair_loss='cosine',
-        multimodal_merge='average',
+        pair_loss: str = 'cosine',
+        pair_loss_weight: float = 1.0,
+        multimodal_merge: str = 'average',
         **kwargs
 ) -> Model:
     opt = get_optimizer(
@@ -1202,9 +1203,9 @@ def make_paired_autoencoder_model(
         h_right = encode_right(inputs[right.input_name()])
 
         if pair_loss == 'cosine':
-            loss_layer = CosineLossLayer(1.0)
+            loss_layer = CosineLossLayer(pair_loss_weight)
         elif pair_loss == 'euclid':
-            loss_layer = L2LossLayer(1.0)
+            loss_layer = L2LossLayer(pair_loss_weight)
 
         multimodal_activations.extend(loss_layer([h_left, h_right]))
         encoders[left] = encode_left
