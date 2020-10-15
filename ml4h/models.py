@@ -1170,7 +1170,7 @@ def make_paired_autoencoder_model(
         logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m, encoders, decoders
 
-    inputs = {tm.input_name(): Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
+    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
     real_serial_layers = kwargs['model_layers']
     kwargs['model_layers'] = None
     multimodal_activations = []
