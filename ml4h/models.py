@@ -1185,7 +1185,7 @@ def make_paired_autoencoder_model(
             kwargs['tensor_maps_in'] = [left]
             left_model = make_multimodal_multitask_model(**kwargs)
             encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
-        h_left = encode_left(inputs[left.input_name()])
+        h_left = encode_left(inputs[left])
 
         if right in encoders:
             encode_right = encoders[right]
@@ -1193,7 +1193,7 @@ def make_paired_autoencoder_model(
             kwargs['tensor_maps_in'] = [right]
             right_model = make_multimodal_multitask_model(**kwargs)
             encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
-        h_right = encode_right(inputs[right.input_name()])
+        h_right = encode_right(inputs[right])
 
         if pair_loss == 'cosine':
             loss_layer = CosineLossLayer(pair_loss_weight)
