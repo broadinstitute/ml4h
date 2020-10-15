@@ -23,6 +23,7 @@ DEFAULT_PARAMS = {
     'optimizer': 'adam',
     'conv_type': 'conv',
     'conv_layers': [6, 5, 3],
+    'conv_width': [71]*5,
     'conv_x': [3]*5,
     'conv_y': [3]*5,
     'conv_z': [2]*5,
@@ -48,7 +49,7 @@ DEFAULT_PARAMS = {
     'model_layers': None,
     'model_file': None,
     'hidden_layer': 'embed',
-    'u_connect': {},
+    'u_connect': defaultdict(dict),
 }
 
 
