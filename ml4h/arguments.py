@@ -173,7 +173,8 @@ def parse_args():
         '--pairs', nargs=2, action='append',
         help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
     )
-    parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
+    parser.add_argument('--pair_loss', default='cosine', help='Distance metric between paired embeddings', choices=['euclid', 'cosine'])
+    parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
     parser.add_argument('--multimodal_merge', default='average', choices=['average', 'concatenate'], help='How to merge modality specific encodings.')
     parser.add_argument(
         '--max_parameters', default=9000000, type=int,
@@ -207,7 +208,6 @@ def parse_args():
     parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
-    parser.add_argument('--pair_loss', default='cosine', help='Distance metric between paired embeddings', choices=['euclid', 'cosine'])
     parser.add_argument(
         '--label_weights', nargs='*', type=float,
         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
