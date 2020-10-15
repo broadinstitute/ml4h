@@ -1213,7 +1213,7 @@ def make_paired_autoencoder_model(
         multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     else:
         raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
-    latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][-1]), name='input_concept_space')
 
     # build decoder models
     for tm in kwargs['tensor_maps_out']:
