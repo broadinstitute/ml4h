@@ -1177,7 +1177,7 @@ def make_paired_autoencoder_model(
         logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m, encoders, decoders
 
-    inputs = {tm.input_name(): Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
+    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
     real_serial_layers = kwargs['model_layers']
     kwargs['model_layers'] = None
     multimodal_activations = []
@@ -1192,7 +1192,7 @@ def make_paired_autoencoder_model(
             kwargs['tensor_maps_in'] = [left]
             left_model = make_multimodal_multitask_model(**kwargs)
             encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
-        h_left = encode_left(inputs[left.input_name()])
+        h_left = encode_left(inputs[left])
 
         if right in encoders:
             encode_right = encoders[right]
@@ -1200,7 +1200,7 @@ def make_paired_autoencoder_model(
             kwargs['tensor_maps_in'] = [right]
             right_model = make_multimodal_multitask_model(**kwargs)
             encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
-        h_right = encode_right(inputs[right.input_name()])
+        h_right = encode_right(inputs[right])
 
         if pair_loss == 'cosine':
             loss_layer = CosineLossLayer(pair_loss_weight)
@@ -1220,7 +1220,7 @@ def make_paired_autoencoder_model(
         multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     else:
         raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
-    latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][-1]), name='input_concept_space')
 
     # build decoder models
     for tm in kwargs['tensor_maps_out']:
