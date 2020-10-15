@@ -2085,16 +2085,17 @@ def plot_reconstruction(
     logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
     if None in tm.shape:  # can't handle dynamic shapes
         return
+    os.makedirs(os.path.dirname(folder), exist_ok=True)
     for i in range(num_samples):
         sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
         title = f'{tm.name}_{sample_id}_reconstruction'
-        y = y_true[i].reshape(tm.shape)
-        yp = y_pred[i].reshape(tm.shape)
+        y = y_true[i]
+        yp = y_pred[i]
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
-            fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE))
+            fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE)) #, sharey=True)
             for j in range(tm.shape[1]):
-                axes[j, 0].plot(y[:, j], c='k', linestyle='--', label='original')
+                axes[j, 0].plot(y[:, j], c='k', label='original')
                 axes[j, 1].plot(yp[:, j], c='b', label='reconstruction')
                 axes[j, 0].set_title(f'Lead: {index2channel[j]}')
                 axes[j, 0].legend()
@@ -2112,13 +2113,13 @@ def plot_reconstruction(
             for j in range(y.shape[3]):
                 image_path_base = f'{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}'
                 if tm.is_categorical():
-                    truth = np.argmax(yp[tm.output_name()][:, :, j, :], axis=-1)
+                    truth = np.argmax(yp[:, :, j, :], axis=-1)
                     prediction = np.argmax(y[:, :, j, :], axis=-1)
                     plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='plasma')
                     plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='plasma')
                 else:
                     plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', y[:, :, j, 0], cmap='gray')
-                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', yp[:, :, j, :], cmap='gray')
+                    plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', yp[:, :, j, 0], cmap='gray')
         plt.clf()
 
 
