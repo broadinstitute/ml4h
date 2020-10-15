@@ -27,7 +27,9 @@ WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
 
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    tensor_map_maker_fxns = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps]
+    tensor_map_maker_fxns = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps, 
+                             make_mgb_ecg_measurement_matrix_global_tensor_maps, make_mgb_ecg_measurement_matrix_lead_tensor_maps,
+                             make_mgb_ecg_lvh_tensormaps]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
