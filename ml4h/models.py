@@ -953,6 +953,7 @@ def make_multimodal_multitask_model(
     :param conv_normalize: Type of normalization layer for convolutions, e.g. batch norm
     :param conv_regularize: Type of regularization for convolutions (e.g. dropout)
     :param conv_regularize_rate: Rate of conv_regularize
+    :param conv_width: Size of X dimension for 1D convolutional kernels
     :param conv_x: Size of X dimension for 2D and 3D convolutional kernels
     :param conv_y: Size of Y dimension for 2D and 3D convolutional kernels
     :param conv_z: Size of Z dimension for 3D convolutional kernels
@@ -1205,13 +1206,9 @@ def make_paired_autoencoder_model(
         elif pair_loss == 'euclid':
             loss_layer = L2LossLayer(1.0)
 
-        pair_loss_out = loss_layer([h_left, h_right])
-        if left not in encoders:
-            encoders[left] = encode_left
-            multimodal_activations.append(pair_loss_out[0])
-        if right not in encoders:
-            encoders[right] = encode_right
-            multimodal_activations.append(pair_loss_out[1])
+        multimodal_activations.extend(loss_layer([h_left, h_right]))
+        encoders[left] = encode_left
+        encoders[right] = encode_right
 
     kwargs['tensor_maps_in'] = list(inputs.keys())
     if multimodal_merge == 'average':
@@ -1221,7 +1218,7 @@ def make_paired_autoencoder_model(
         multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
         multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     else:
-        raise NotImplementedError(f'No merge architecture for method: {merge_method}')
+        raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
     # build decoder models
