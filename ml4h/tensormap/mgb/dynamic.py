@@ -776,7 +776,7 @@ def make_mgb_ecg_measurement_matrix_global_tensor_maps(needed_name: str):
         'vrate': 12,    # Ventricular Rate
         'avgrr': 13,    # Average R-R Interval
     }
-    for measure in measurement_matrix_global_measures:
+    for measure, measure_idx in measurement_matrix_global_measures.items():
         if f'partners_ecg_measurement_matrix_{measure}' == needed_name:
             return TensorMap(
                 f'partners_ecg_measurement_matrix_{measure}',
@@ -785,9 +785,9 @@ def make_mgb_ecg_measurement_matrix_global_tensor_maps(needed_name: str):
                 path_prefix=PARTNERS_PREFIX,
                 loss='logcosh',
                 time_series_limit=0,
-                tensor_from_file=make_measurement_matrix_from_file(measurement_matrix_global_measures[measure])
+                tensor_from_file=make_measurement_matrix_from_file(measure_idx)
             )
-            
+
 
 def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
     measurement_matrix_leads = {
@@ -848,8 +848,8 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
         'qrsint': 52    # QRS intriniscoid (see following)
     }
 
-    for lead in measurement_matrix_leads:
-        for measure in measurement_matrix_lead_measures:
+    for lead, lead_idx in measurement_matrix_leads.items():
+        for measure, measure_idx in measurement_matrix_lead_measures.items():
             if f'partners_ecg_measurement_matrix_{lead}_{measure}' == needed_name:
                 return TensorMap(
                     f'partners_ecg_measurement_matrix_{lead}_{measure}',
@@ -858,7 +858,7 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                     path_prefix=PARTNERS_PREFIX,
                     loss='logcosh',
                     time_series_limit=0,
-                    tensor_from_file=make_measurement_matrix_from_file(measurement_matrix_lead_measures[measure], lead=measurement_matrix_leads[lead])
+                    tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx)
                 )
 
 
