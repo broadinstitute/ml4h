@@ -22,6 +22,9 @@ import pandas as pd
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 import matplotlib
+
+from ml4h.tensor_generators import _sample_csv_to_set
+
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 from matplotlib.ticker import NullFormatter
@@ -2181,25 +2184,30 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
 
 
 def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', prefix='./figures/',
-                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma'):
+                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma', test_csv=None):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
     sex_vector = female - male
+    if test_csv is not None:
+        sample_ids = [int(s) for s in _sample_csv_to_set(test_csv) if len(s) > 4 and int(s) in latent_df.index]
+        latent_df = latent_df.loc[sample_ids]
+        latent_df.info()
+        logging.info(f'Subset to test set with {len(sample_ids)} samples')
+
+    samples = min(len(latent_df.index), samples)
     embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
     sexes = latent_df.iloc[:samples][feature].to_numpy()
-    print(f'Embedding shape: {embeddings.shape} sexes  shape: {sexes.shape}')
+    logging.info(f'Embedding shape: {embeddings.shape} sexes  shape: {sexes.shape}')
 
     sex_vectors = np.tile(sex_vector, (samples, 1))
     male_to_female = embeddings + (scalar * sex_vectors)
     female_to_male = embeddings - (scalar * sex_vectors)
-    print(f'embeddings shape: {embeddings.shape} features vectors  shape: {sex_vectors.shape}')
     for dtm in decoders:
         predictions = decoders[dtm].predict(embeddings)
         m2f = decoders[dtm].predict(male_to_female)
         f2m = decoders[dtm].predict(female_to_male)
-        print(f'prediction shape: {predictions.shape}')
         if dtm.axes() == 3:
-            fig, axes = plt.subplots(samples, 2, figsize=(18, samples * 4))
+            fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
             for i in range(samples):
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
                 axes[i, 0].axis('off')
