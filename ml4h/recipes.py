@@ -402,7 +402,7 @@ def train_paired_model(args):
     train_model_from_generators(
         full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-        save_last_model=True
+        save_last_model=args.save_last_model,
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -423,15 +423,14 @@ def train_paired_model(args):
             performance_metrics.update(metrics)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        plot_reconstruction(etm, test_data[etm.input_name()], etm.rescale(predictions_dict[etm.output_name()]), out_path, test_paths, samples)
+        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-            if not os.path.exists(os.path.dirname(my_out_path)):
-                os.makedirs(os.path.dirname(my_out_path))
+            os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
             if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_data[dtm.input_name()], dtm.rescale(reconstruction), my_out_path, test_paths, samples)
+                plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics

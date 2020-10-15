@@ -192,10 +192,6 @@ def plot_metric_history(history, training_steps: int, title: str, prefix='./figu
         if not k.startswith('val_'):
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [history.history[k][0](i * training_steps) for i in range(len(history.history[k]))]
-            if len(np.array(history.history[k]).shape) > 1: # Hack for models with paired loss
-                history.history[k] = np.array(history.history[k])[:, 0, 0]
-                if 'val_' + k in history.history:
-                    history.history['val_' + k] = np.array(history.history['val_' + k])[:, 0, 0]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace('output_', '').split('_')
             k_title = " ".join(OrderedDict.fromkeys(k_split))
@@ -2087,8 +2083,7 @@ def plot_reconstruction(
     logging.info(f'Plotting {num_samples} reconstructions of {tm}.')
     if None in tm.shape:  # can't handle dynamic shapes
         return
-    if not os.path.exists(os.path.dirname(folder)):
-        os.makedirs(os.path.dirname(folder))
+    os.makedirs(os.path.dirname(folder), exist_ok=True)
     for i in range(num_samples):
         sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
         title = f'{tm.name}_{sample_id}_reconstruction'
@@ -2202,20 +2197,16 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
     sex_vectors = np.tile(sex_vector, (samples, 1))
     male_to_female = embeddings + (scalar * sex_vectors)
     female_to_male = embeddings - (scalar * sex_vectors)
-    print(f'embeddings shape: {embeddings.shape} features vectors  shape: {sex_vectors.shape}')
     for dtm in decoders:
         predictions = decoders[dtm].predict(embeddings)
         m2f = decoders[dtm].predict(male_to_female)
         f2m = decoders[dtm].predict(female_to_male)
-        print(f'prediction shape: {predictions.shape}')
         if dtm.axes() == 3:
             fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
             for i in range(samples):
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
-                axes[i, 0].set_xticks(())
-                axes[i, 0].set_yticks(())
-                axes[i, 1].set_xticks(())
-                axes[i, 1].set_yticks(())
+                axes[i, 0].axis('off')
+                axes[i, 1].axis('off')
                 if dtm.is_categorical():
                     axes[i, 0].imshow(np.argmax(predictions[i, ...], axis=-1), cmap=cmap)
                     if sexes[i] >= thresh:
