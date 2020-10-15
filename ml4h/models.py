@@ -525,10 +525,8 @@ def l2_norm(x, axis=None):
     """
     takes an input tensor and returns the l2 norm along specified axis
     """
-
     square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
     norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
-
     return norm
 
 
@@ -536,12 +534,11 @@ def pairwise_cosine_difference(t1, t2):
     t1_norm = t1 / l2_norm(t1, axis=-1)
     t2_norm = t2 / l2_norm(t2, axis=-1)
     dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
-    return tf.acos(dot)
+    return K.mean(tf.acos(dot))
 
 
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
-
     def __init__(self, weight, **kwargs):
         super(CosineLossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -552,15 +549,13 @@ class CosineLossLayer(Layer):
         return config
 
     def call(self, inputs):
-        # We use `add_loss` to create a regularization loss
-        # that depends on the inputs.
+        # We use `add_loss` to create a regularization loss that depends on the inputs.
         self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
         return inputs
 
 
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
-
     def __init__(self, weight, **kwargs):
         super(L2LossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -572,6 +567,7 @@ class L2LossLayer(Layer):
 
     def call(self, inputs):
         self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
+        return inputs
         return inputs
 
 
@@ -1150,7 +1146,9 @@ def _make_multimodal_multitask_model(
 
 def make_paired_autoencoder_model(
         pairs: List[Tuple[TensorMap, TensorMap]],
-        pair_loss='cosine',
+        pair_loss: str = 'cosine',
+        pair_loss_weight: float = 1.0,
+        multimodal_merge: str = 'average',
         **kwargs
 ) -> Model:
     opt = get_optimizer(
@@ -1172,8 +1170,7 @@ def make_paired_autoencoder_model(
         logging.info(f"Loaded model file from: {kwargs['model_file']}")
         return m, encoders, decoders
 
-    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
-    original_outputs = {tm: 1 for tm in kwargs['tensor_maps_out']}
+    inputs = {tm.input_name(): Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
     real_serial_layers = kwargs['model_layers']
     kwargs['model_layers'] = None
     multimodal_activations = []
@@ -1182,30 +1179,40 @@ def make_paired_autoencoder_model(
     outputs = {}
     losses = []
     for left, right in pairs:
-        kwargs['tensor_maps_in'] = [left]
-        left_model = make_multimodal_multitask_model(**kwargs)
-        encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
-        h_left = encode_left(inputs[left])
+        if left in encoders:
+            encode_left = encoders[left]
+        else:
+            kwargs['tensor_maps_in'] = [left]
+            left_model = make_multimodal_multitask_model(**kwargs)
+            encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
+        h_left = encode_left(inputs[left.input_name()])
 
-        kwargs['tensor_maps_in'] = [right]
-        right_model = make_multimodal_multitask_model(**kwargs)
-        encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
-        h_right = encode_right(inputs[right])
+        if right in encoders:
+            encode_right = encoders[right]
+        else:
+            kwargs['tensor_maps_in'] = [right]
+            right_model = make_multimodal_multitask_model(**kwargs)
+            encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
+        h_right = encode_right(inputs[right.input_name()])
 
         if pair_loss == 'cosine':
-            loss_layer = CosineLossLayer(1.0)
+            loss_layer = CosineLossLayer(pair_loss_weight)
         elif pair_loss == 'euclid':
-            loss_layer = L2LossLayer(1.0)
+            loss_layer = L2LossLayer(pair_loss_weight)
 
-        paired_embeddings = loss_layer([h_left, h_right])
-        multimodal_activations.extend(paired_embeddings)
-        if left not in encoders:
-            encoders[left] = encode_left
-        if right not in encoders:
-            encoders[right] = encode_right
+        multimodal_activations.extend(loss_layer([h_left, h_right]))
+        encoders[left] = encode_left
+        encoders[right] = encode_right
 
-    multimodal_activation = Concatenate()(multimodal_activations)
-    multimodal_activation = Dense(units=kwargs['dense_layers'][0])(multimodal_activation)
+    kwargs['tensor_maps_in'] = list(inputs.keys())
+    if multimodal_merge == 'average':
+        multimodal_activation = Average()(multimodal_activations)
+    elif multimodal_merge == 'concatenate':
+        multimodal_activation = Concatenate()(multimodal_activations)
+        multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
+        multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
+    else:
+        raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
     latent_inputs = Input(shape=(kwargs['dense_layers'][0]), name='input_concept_space')
 
     # build decoder models
@@ -1222,7 +1229,7 @@ def make_paired_autoencoder_model(
                 tensor_map_out=tm,
                 filters_per_dense_block=kwargs['dense_blocks'][::-1],
                 conv_layer_type=kwargs['conv_type'],
-                conv_x=kwargs['conv_x'],
+                conv_x=kwargs['conv_x'] if tm.axes() > 2 else kwargs['conv_width'],
                 conv_y=kwargs['conv_y'],
                 conv_z=kwargs['conv_z'],
                 block_size=kwargs['block_size'],
@@ -1237,25 +1244,30 @@ def make_paired_autoencoder_model(
             )
             reconstruction = decode(restructure(latent_inputs), {}, {})
         else:
+            dense_block = FullyConnectedBlock(
+                widths=kwargs['dense_layers'],
+                activation=kwargs['activation'],
+                normalization=kwargs['dense_normalize'],
+                regularization=kwargs['dense_regularize'],
+                regularization_rate=kwargs['dense_regularize_rate'],
+                is_encoder=False,
+            )
             decode = DenseDecoder(tensor_map_out=tm, parents=tm.parents, activation=kwargs['activation'])
-            reconstruction = decode(latent_inputs, {}, {})
+            reconstruction = decode(dense_block(latent_inputs), {}, {})
 
         decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
         decoders[tm] = decoder
         outputs[tm.output_name()] = decoder(multimodal_activation)
         losses.append(tm.loss)
 
-    kwargs['tensor_maps_out'] = list(original_outputs.keys())
-    kwargs['tensor_maps_in'] = list(inputs.keys())
-
-    m = Model(inputs=list(inputs.values()), outputs=outputs)
+    m = Model(inputs=list(inputs.values()), outputs=list(outputs.values()))
     my_metrics = {tm.output_name(): tm.metrics for tm in kwargs['tensor_maps_out']}
     m.compile(optimizer=opt, loss=losses, metrics=my_metrics)
     m.summary()
 
     if real_serial_layers is not None:
-        m.load_weights(kwargs['model_layers'], by_name=True)
-        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
+        m.load_weights(real_serial_layers, by_name=True)
+        logging.info(f"Loaded model weights from:{real_serial_layers}")
 
     return m, encoders, decoders
 

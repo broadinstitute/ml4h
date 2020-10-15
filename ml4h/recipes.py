@@ -408,24 +408,30 @@ def train_paired_model(args):
         decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
     out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    samples = args.test_steps * args.batch_size
+    samples = min(args.test_steps * args.batch_size, 12)
     predictions_list = full_model.predict(test_data)
     predictions_dict = {name: pred for name, pred in zip(full_model.output_names, predictions_list)}
     logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
     performance_metrics = {}
+    for tm in args.tensor_maps_out:
+        if tm.axes() == 1:
+            y = predictions_dict[tm.output_name()]
+            y_truth = np.array(test_labels[tm.output_name()])
+            metrics = evaluate_predictions(tm, y, y_truth, {}, tm.name, os.path.join(args.output_folder, args.id), test_paths)
+            performance_metrics.update(metrics)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
         plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
+            reconstruction = decoders[dtm].predict(embed)
+            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
+            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
+            if not os.path.exists(os.path.dirname(my_out_path)):
+                os.makedirs(os.path.dirname(my_out_path))
             if dtm.axes() > 1:
-                reconstruction = decoders[dtm].predict(embed)
-                logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
-                my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-                os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
                 plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
             else:
-                y_truth = np.array(test_labels[dtm.output_name()])
-                performance_metrics.update(evaluate_predictions(dtm, decoders[dtm].predict(embed), y_truth, {}, dtm.name, os.path.join(args.output_folder, args.id), test_paths))
+                evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
 
 
