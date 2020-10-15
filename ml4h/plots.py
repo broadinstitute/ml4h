@@ -2098,7 +2098,7 @@ def plot_reconstruction(
                 axes[j, 0].set_title(f'Lead: {index2channel[j]}')
                 axes[j, 2].plot(y[:, j], c='k', linestyle='--', label='original')
                 axes[j, 2].plot(yp[:, j], c='b', alpha=0.8, label='reconstruction')
-                axes[j, 2].legend()
+                [axes[j, k].legend() for k in range(3)]
 
             plt.tight_layout()
             plt.savefig(os.path.join(folder, title + IMAGE_EXT))
