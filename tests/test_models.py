@@ -16,7 +16,7 @@ from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMA
 MEAN_PRECISION_EPS = .02  # how much mean precision degradation is acceptable
 DEFAULT_PARAMS = {
     'activation': 'relu',
-    'dense_layers': [4, 2],
+    'dense_layers': [4],
     'dense_blocks': [5, 3],
     'block_size': 3,
     'learning_rate': 1e-3,
