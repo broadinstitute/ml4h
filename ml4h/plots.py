@@ -2091,13 +2091,15 @@ def plot_reconstruction(
         yp = y_pred[i]
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
-            fig, axes = plt.subplots(tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE)) #, sharey=True)
+            fig, axes = plt.subplots(tm.shape[1], 3, figsize=(2 * SUBPLOT_SIZE, 6*SUBPLOT_SIZE)) #, sharey=True)
             for j in range(tm.shape[1]):
-                axes[j, 0].plot(y[:, j], c='k', linestyle='--', label='original')
+                axes[j, 0].plot(y[:, j], c='k', label='original')
                 axes[j, 1].plot(yp[:, j], c='b', label='reconstruction')
                 axes[j, 0].set_title(f'Lead: {index2channel[j]}')
-                axes[j, 0].legend()
-                axes[j, 1].legend()
+                axes[j, 2].plot(y[:, j], c='k', linestyle='--', label='original')
+                axes[j, 2].plot(yp[:, j], c='b', alpha=0.8, label='reconstruction')
+                axes[j, 2].legend()
+
             plt.tight_layout()
             plt.savefig(os.path.join(folder, title + IMAGE_EXT))
         elif tm.axes() == 3:

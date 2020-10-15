@@ -945,12 +945,16 @@ cine_segmented_ao_dist_slice0 = TensorMap(
     ),
 )
 aorta_diastole_slice0_3d = TensorMap(
-    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1), loss='logcosh',
+    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1),
     normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0),
 )
 cine_lvot_slice0_3d = TensorMap(
-    'cine_lvot_slice0_3d', Interpretation.CONTINUOUS, shape=(208, 160, 1), loss='logcosh',
+    'cine_lvot_slice0_3d', Interpretation.CONTINUOUS, shape=(208, 160, 1),
     normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lvot/2/instance_0', 0),
+)
+cine_flow_slice0_3d = TensorMap(
+    'cine_flow_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 192, 1),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/flow_250_tp_aov_bh_epat@c/2/instance_0', 0),
 )
 
 
