@@ -1620,7 +1620,7 @@ lax_3ch_left_atrium_bbox_slice0 = TensorMap(
 )
 
 aorta_descending_tff = _bounding_box_from_categorical(
-    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'],
+    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ao_descending_aorta'],
 )
 cine_segmented_ao_descending_aorta_bbox_slice0 = TensorMap(
     'cine_segmented_ao_descending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
@@ -1629,7 +1629,7 @@ cine_segmented_ao_descending_aorta_bbox_slice0 = TensorMap(
     ),
 )
 aorta_ascending_tff = _bounding_box_from_categorical(
-    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'],
+    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ao_ascending_aorta'],
 )
 cine_segmented_ao_ascending_aorta_bbox_slice0 = TensorMap(
     'cine_segmented_ao_ascending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
@@ -1648,7 +1648,7 @@ lax_3ch_lv_cavity_bbox = TensorMap(
 )
 
 bbfc = _bounding_box_from_callable(
-    MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'], _segmented_index_slices(
+    MRI_AO_SEGMENTED_CHANNEL_MAP['ao_descending_aorta'], _segmented_index_slices(
     'cine_segmented_ao_dist_annotated_', (192, 224, 100),
     ),
 )
@@ -1658,7 +1658,7 @@ cine_segmented_ao_descending_aorta_bbox = TensorMap(
 )
 
 abbfc = _bounding_box_from_callable(
-    MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'], _segmented_index_slices(
+    MRI_AO_SEGMENTED_CHANNEL_MAP['ao_ascending_aorta'], _segmented_index_slices(
     'cine_segmented_ao_dist_annotated_', (192, 224, 100),
     ),
 )
