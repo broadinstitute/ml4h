@@ -54,7 +54,7 @@ while getopts ":ip:ch" opt ; do
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
-            GPU_DEVICE=""
+        GPU_DEVICE=""
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -99,10 +99,8 @@ ${DOCKER_COMMAND} run -it \
 ${GPU_DEVICE} \
 --rm \
 --ipc=host \
---hostname=$(hostname) \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
--v /data/:/data/ \
 -p 0.0.0.0:${PORT}:${PORT} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
 
