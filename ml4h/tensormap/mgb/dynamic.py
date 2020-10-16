@@ -741,7 +741,7 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: in
     # First 18 words of measurement matrix are for global measurements, then each lead has 53*2 words
     lead_start = 18
     lead_words = 53 * 2
-    if lead is None:
+    if lead_idx is None:
         idx = key_idx
     else:
         idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
@@ -756,7 +756,7 @@ def make_measurement_matrix_from_file(key_idx: int, lead_idx: int = None):
         for i, ecg_date in enumerate(ecg_dates):
             path = _make_hd5_path(tm, ecg_date, 'measurementmatrix')
             matrix = decompress_data(data_compressed=hd5[path][()], dtype=hd5[path].attrs['dtype'])
-            tensor[i] = _get_measurement_matrix_entry(matrix, key, lead)
+            tensor[i] = _get_measurement_matrix_entry(matrix, key_idx, lead_idx)
         return tensor
     return measurement_matrix_from_file
 
@@ -864,17 +864,6 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                 )
 
 def make_mgb_ecg_lvh_tensormaps(needed_name: str):
-    for criterion in ['avl_lvh', 'sokolow_lyon_lvh', 'cornell_lvh']:
-        if f'partners_ecg_{criterion}' == needed_name:
-            return TensorMap(
-                f'partners_ecg_{criterion}',
-                interpretation=Interpretation.CATEGORICAL,
-                path_prefix=PARTNERS_PREFIX,
-                tensor_from_file=ecg_lvh_from_file,
-                channel_map={f'no_{criterion}': 0, criterion: 1},
-                shape=(None, 2),
-                time_series_limit=0,
-            )
     def ecg_lvh_from_file(tm: TensorMap, hd5: h5py.File, dependents={}):
         # Lead order seems constant and standard throughout, but we could eventually tensorize it from XML
         avl_min = 1100.0
@@ -911,4 +900,16 @@ def make_mgb_ecg_lvh_tensormaps(needed_name: str):
             slices = (i, index) if dynamic else (index,)
             tensor[slices] = 1.0
         return tensor
+
+    for criterion in ['avl_lvh', 'sokolow_lyon_lvh', 'cornell_lvh']:
+        if f'partners_ecg_{criterion}' == needed_name:
+            return TensorMap(
+                f'partners_ecg_{criterion}',
+                interpretation=Interpretation.CATEGORICAL,
+                path_prefix=PARTNERS_PREFIX,
+                tensor_from_file=ecg_lvh_from_file,
+                channel_map={f'no_{criterion}': 0, criterion: 1},
+                shape=(None, 2),
+                time_series_limit=0,
+            )
 

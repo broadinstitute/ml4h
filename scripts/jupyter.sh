@@ -102,6 +102,7 @@ ${GPU_DEVICE} \
 --hostname=$(hostname) \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
+-v /data/:/data/ \
 -p 0.0.0.0:${PORT}:${PORT} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install -e /home/${USER}/ml; jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
 
