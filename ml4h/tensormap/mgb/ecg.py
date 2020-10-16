@@ -316,8 +316,8 @@ partners_ecg_read_md = TensorMap(
 )
 
 
-partners_ecg_read_md = TensorMap(
-    "partners_ecg_read_md",
+partners_ecg_read_pc = TensorMap(
+    "partners_ecg_read_pc",
     #annotation_units=128,
     #channel_map=PARTNERS_CHAR_2_IDX,
     interpretation=Interpretation.LANGUAGE,
