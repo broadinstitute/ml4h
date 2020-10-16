@@ -30,8 +30,10 @@ def unpack_disease(diseases, disease_list, phenotypes):
     diseases_unpack = diseases_unpack.fillna(0)
     return diseases_unpack
 
-def odds_ratios(phenotypes, diseases_unpack, labels, disease_labels,
-                covariates, instance, dont_scale):
+def odds_ratios(
+    phenotypes, diseases_unpack, labels, disease_labels,
+    covariates, instance, dont_scale,
+):
     or_multi_dic = {}
     for pheno in labels:
         if pheno in covariates:
@@ -49,9 +51,11 @@ def odds_ratios(phenotypes, diseases_unpack, labels, disease_labels,
                 std = np.std(tmp_data[pheno].values)
                 tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
                 std = f', {std:.1f}'
-            covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]    
-            tmp_data[covariates_scale] = (tmp_data[covariates_scale].values \
-                                          - np.mean(tmp_data[covariates_scale].values, axis=0))/\
+            covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]
+            tmp_data[covariates_scale] = (
+                tmp_data[covariates_scale].values \
+                                          - np.mean(tmp_data[covariates_scale].values, axis=0)
+            )/\
                                           np.std(tmp_data[covariates_scale].values, axis=0)
             tmp_data['intercept'] = 1.0
             res = sm.Logit(tmp_data[f'{disease}_prevalent'], tmp_data[[pheno, 'intercept']+covariates]).fit(disp=False)
@@ -63,12 +67,14 @@ def odds_ratios(phenotypes, diseases_unpack, labels, disease_labels,
             or_multi_dic[pheno][f'{disease}_prevalent']['ntot'] = len(tmp_data)
             or_multi_dic[pheno][f'{disease}_prevalent']['std'] = std
             or_multi_dic[pheno][f'{disease}_prevalent']['auc'] = roc_auc_score(tmp_data[f'{disease}_prevalent'], res_predict)
-            
+
     return or_multi_dic
 
 
-def hazard_ratios(phenotypes, diseases_unpack, labels, disease_labels,
-                  covariates, instance, dont_scale):
+def hazard_ratios(
+    phenotypes, diseases_unpack, labels, disease_labels,
+    covariates, instance, dont_scale,
+):
     diabetes_is_covariate = 'Diabetes_Type_2_prevalent' in covariates
     if diabetes_is_covariate:
         covariates.remove('Diabetes_Type_2_prevalent')
@@ -78,17 +84,21 @@ def hazard_ratios(phenotypes, diseases_unpack, labels, disease_labels,
             continue
         hr_multi_dic[pheno] = {}
         tmp_pheno = phenotypes[['sample_id', pheno, f'instance{instance}_date'] + covariates]
-        tmp_pheno[f'instance{instance}_date'] = pd.to_datetime(tmp_pheno[f'instance{instance}_date'])        
-        for disease, disease_label in disease_labels:            
+        tmp_pheno[f'instance{instance}_date'] = pd.to_datetime(tmp_pheno[f'instance{instance}_date'])
+        for disease, disease_label in disease_labels:
             hr_multi_dic[pheno][f'{disease}_incident'] = {}
             tmp_data = tmp_pheno.merge(diseases_unpack[['sample_id', f'{disease}_censor_date', f'{disease}_prevalent', f'{disease}_incident']], on='sample_id')
             if diabetes_is_covariate and disease != 'Diabetes_Type_2':
                 tmp_data = tmp_data.merge(diseases_unpack[['sample_id', f'Diabetes_Type_2_censor_date', f'Diabetes_Type_2_prevalent']], on='sample_id')
                 tmp_data[f'Diabetes_Type_2_prevalent'] = (tmp_data[f'instance{instance}_date'] >= tmp_data[f'Diabetes_Type_2_censor_date']).apply(float)
-                
+
             tmp_data[f'{disease}_prevalent'] = (tmp_data[f'instance{instance}_date'] >= tmp_data[f'{disease}_censor_date']).apply(float)
-            tmp_data[f'{disease}_incident'] = (np.logical_and((tmp_data[f'instance{instance}_date'] < tmp_data[f'{disease}_censor_date']), 
-                                                            (tmp_data[f'{disease}_censor_date'] < pd.to_datetime('2020-03-31')))).apply(float)
+            tmp_data[f'{disease}_incident'] = (
+                np.logical_and(
+                    (tmp_data[f'instance{instance}_date'] < tmp_data[f'{disease}_censor_date']),
+                    (tmp_data[f'{disease}_censor_date'] < pd.to_datetime('2020-03-31')),
+                )
+            ).apply(float)
             tmp_data = tmp_data[tmp_data[f'{disease}_prevalent']<0.5]
 
             if pheno in dont_scale:
@@ -97,20 +107,24 @@ def hazard_ratios(phenotypes, diseases_unpack, labels, disease_labels,
                 std = np.std(tmp_data[pheno].values)
                 tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
                 std = f', {std:.1f}'
-            covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]    
-            tmp_data[covariates_scale] = (tmp_data[covariates_scale].values \
-                                         - np.mean(tmp_data[covariates_scale].values, axis=0))/\
+            covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]
+            tmp_data[covariates_scale] = (
+                tmp_data[covariates_scale].values \
+                                         - np.mean(tmp_data[covariates_scale].values, axis=0)
+            )/\
                                          np.std(tmp_data[covariates_scale].values, axis=0)
             tmp_data['intercept'] = 1.0
             tmp_data['futime'] = (tmp_data[f'{disease}_censor_date']-tmp_data[f'instance{instance}_date']).dt.days
             tmp_data['entry'] = 0.0
-            tmp_data = tmp_data[tmp_data['futime']>0]  
+            tmp_data = tmp_data[tmp_data['futime']>0]
             regression_covariates = [covariate for covariate in covariates]
             if diabetes_is_covariate and disease != 'Diabetes_Type_2':
                 regression_covariates += ['Diabetes_Type_2_prevalent']
             tmp_data.to_csv('/home/pdiachil/ml/notebooks/mri/examine.csv')
-            res = sm.PHReg(tmp_data['futime'], tmp_data[[pheno]+regression_covariates], 
-                           tmp_data[f'{disease}_incident'], tmp_data['entry']).fit()
+            res = sm.PHReg(
+                tmp_data['futime'], tmp_data[[pheno]+regression_covariates],
+                tmp_data[f'{disease}_incident'], tmp_data['entry'],
+            ).fit()
             res_predict = res.predict()
             hr_multi_dic[pheno][f'{disease}_incident']['HR'] = np.exp(res.params[0])
             hr_multi_dic[pheno][f'{disease}_incident']['CI'] = np.exp(res.conf_int()[0])
@@ -136,7 +150,7 @@ def plot_or_hr(or_dic, label_dic, disease_list, suffix, occ='prevalent', horizon
             cis_minus.append(np.exp(np.log(or_dic[pheno][f'{dis}_{occ}'][ratio_type]-or_dic[pheno][f'{dis}_{occ}']['CI'][0])))
             cis_plus.append(np.exp(np.log(or_dic[pheno][f'{dis}_{occ}']['CI'][1]-or_dic[pheno][f'{dis}_{occ}'][ratio_type])))
             label = f'{label_dic[pheno][0]}{or_dic[pheno][dis+"_"+occ]["std"]} {label_dic[pheno][1]}'
-            label += f'  {or_dic[pheno][dis+"_"+occ]["auc"]:.2f}'            
+            label += f'  {or_dic[pheno][dis+"_"+occ]["auc"]:.2f}'
             labels.append(label)
 
             if or_dic[pheno][f'{dis}_{occ}']['p'] < 0.05:
@@ -144,7 +158,7 @@ def plot_or_hr(or_dic, label_dic, disease_list, suffix, occ='prevalent', horizon
 
         f, ax = plt.subplots()
         f.set_size_inches(6.5, 4)
-        ax.errorbar(ors, np.arange(len(ors)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')  
+        ax.errorbar(ors, np.arange(len(ors)), xerr=(cis_minus, cis_plus), marker='o', linestyle='', color='black')
         ax.plot([1.0, 1.0], [-1.0, len(ors)], 'k-')
         if horizontal_line_y:
             ax.plot([-20.0, 20.0], [horizontal_line_y, horizontal_line_y], 'k:')
@@ -161,8 +175,10 @@ def plot_or_hr(or_dic, label_dic, disease_list, suffix, occ='prevalent', horizon
         f.savefig(f'{dis}_{occ}_{suffix}.png', dpi=500)
 
 
-def regression_model(phenotypes, pheno_list, labels,
-                     covariates, dont_scale):
+def regression_model(
+    phenotypes, pheno_list, labels,
+    covariates, dont_scale,
+):
 
     r_multi_dic = {}
     for pheno in pheno_list:
@@ -176,18 +192,22 @@ def regression_model(phenotypes, pheno_list, labels,
             std = np.std(tmp_data[pheno].values)
             tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
             std = f', {std:.1f}'
-        covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]    
-        tmp_data[covariates_scale] = (tmp_data[covariates_scale].values \
-                                      - np.mean(tmp_data[covariates_scale].values, axis=0))/\
+        covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]
+        tmp_data[covariates_scale] = (
+            tmp_data[covariates_scale].values \
+                                      - np.mean(tmp_data[covariates_scale].values, axis=0)
+        )/\
                                       np.std(tmp_data[covariates_scale].values, axis=0)
         tmp_data['intercept'] = 1.0
         res = sm.OLS(tmp_data[pheno], tmp_data[['intercept']+covariates]).fit(disp=False)
-        
+
     return res
 
 
-def logistic_regression_model(phenotypes, pheno_list, labels,
-                              covariates, dont_scale):
+def logistic_regression_model(
+    phenotypes, pheno_list, labels,
+    covariates, dont_scale,
+):
     r_multi_dic = {}
     for pheno in pheno_list:
         if pheno in covariates:
@@ -200,9 +220,11 @@ def logistic_regression_model(phenotypes, pheno_list, labels,
             std = np.std(tmp_data[pheno].values)
             tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
             std = f', {std:.1f}'
-        covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]    
-        tmp_data[covariates_scale] = (tmp_data[covariates_scale].values \
-                                      - np.mean(tmp_data[covariates_scale].values, axis=0))/\
+        covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]
+        tmp_data[covariates_scale] = (
+            tmp_data[covariates_scale].values \
+                                      - np.mean(tmp_data[covariates_scale].values, axis=0)
+        )/\
                                       np.std(tmp_data[covariates_scale].values, axis=0)
         kf = KFold(n_splits=5)
         r2s = {}
@@ -211,7 +233,7 @@ def logistic_regression_model(phenotypes, pheno_list, labels,
         r2s['prauc'] = []
         r2s['fpr'] = []
         r2s['tpr'] = []
-        
+
         mean_fpr = np.linspace(0, 1, 1000)
         for train_index, test_index in kf.split(tmp_data):
             rf = LogisticRegression(random_state=0)
@@ -221,14 +243,16 @@ def logistic_regression_model(phenotypes, pheno_list, labels,
             r2s['R2'].append(r2_score(tmp_data[pheno].values[test_index], predict))
             r2s['auc'].append(roc_auc_score(tmp_data[pheno].values[test_index], predict_score))
             r2s['prauc'].append(average_precision_score(tmp_data[pheno].values[test_index], predict_score))
-            fpr, tpr, thresh = roc_curve(tmp_data[pheno].values[test_index], predict_score) 
+            fpr, tpr, thresh = roc_curve(tmp_data[pheno].values[test_index], predict_score)
             interp_tpr = np.interp(mean_fpr, fpr, tpr)
             r2s['tpr'].append(interp_tpr)
             r2s['fpr'].append(mean_fpr)
     return r2s
 
-def random_forest_model(phenotypes, pheno_list, labels,
-                        covariates, dont_scale):
+def random_forest_model(
+    phenotypes, pheno_list, labels,
+    covariates, dont_scale,
+):
 
     r_multi_dic = {}
     for pheno in pheno_list:
@@ -242,9 +266,11 @@ def random_forest_model(phenotypes, pheno_list, labels,
             std = np.std(tmp_data[pheno].values)
             tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
             std = f', {std:.1f}'
-        covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]    
-        tmp_data[covariates_scale] = (tmp_data[covariates_scale].values \
-                                      - np.mean(tmp_data[covariates_scale].values, axis=0))/\
+        covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]
+        tmp_data[covariates_scale] = (
+            tmp_data[covariates_scale].values \
+                                      - np.mean(tmp_data[covariates_scale].values, axis=0)
+        )/\
                                       np.std(tmp_data[covariates_scale].values, axis=0)
         kf = KFold(n_splits=5)
         r2s = []
@@ -253,7 +279,7 @@ def random_forest_model(phenotypes, pheno_list, labels,
             rf.fit(tmp_data[covariates].values[train_index], tmp_data[pheno].values[train_index])
             predict = rf.predict(tmp_data[covariates].values[test_index])
             r2s.append(r2_score(tmp_data[pheno].values[test_index], predict))
-        
+
     return r2s
 
 def plot_rsquared_covariates(rsquared, label_dic, fname, xlabel=True, height=3, horizontal_line_y=None, start_plus=0):
@@ -265,7 +291,7 @@ def plot_rsquared_covariates(rsquared, label_dic, fname, xlabel=True, height=3, 
         if ycoor > horizontal_line_y:
             ycoor += 0.5
         yticks.append(ycoor)
-        if i == 0:            
+        if i == 0:
             ax.barh([ycoor], rsquared[rr]['mean'], xerr=rsquared[rr]['std'], color='black')
         elif i == 1:
             ax.barh([ycoor], rsquared[rr]['mean'], xerr=rsquared[rr]['std']*4, color='white', edgecolor='black')
