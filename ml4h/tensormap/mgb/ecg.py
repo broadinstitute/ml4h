@@ -644,9 +644,7 @@ partners_ecg_rate_pc = TensorMap(
     loss='logcosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(None, 1),
-    normalization=Standardize(mean=59.3, std=10.6),
     time_series_limit=0,
-    validator=make_range_validator(10, 200),
 )
 
 
@@ -658,7 +656,6 @@ partners_ecg_rate_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(10, 200),
 )
 
 
@@ -670,7 +667,6 @@ partners_ecg_qrs_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(20, 400),
 )
 
 
@@ -682,7 +678,6 @@ partners_ecg_qrs_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(20, 400),
 )
 
 
@@ -694,7 +689,6 @@ partners_ecg_pr_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(50, 500),
 )
 
 
@@ -706,7 +700,6 @@ partners_ecg_pr_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(50, 500),
 )
 
 
@@ -718,8 +711,6 @@ partners_ecg_qt_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(100, 800),
-)
 
 
 partners_ecg_qt_md = TensorMap(
@@ -730,7 +721,6 @@ partners_ecg_qt_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_md"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(100, 800),
 )
 
 
@@ -742,7 +732,6 @@ partners_ecg_qtc_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_pc"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(100, 800),
 )
 
 
@@ -754,7 +743,6 @@ partners_ecg_qtc_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_md"),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(100, 800),
 )
 
 
@@ -766,7 +754,6 @@ partners_ecg_paxis_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="paxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(-180, 180),
 )
 
 
@@ -778,7 +765,6 @@ partners_ecg_paxis_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="paxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(-180, 180),
 )
 
 
@@ -790,7 +776,6 @@ partners_ecg_raxis_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="raxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(-180, 180),
 )
 
 
@@ -802,8 +787,6 @@ partners_ecg_raxis_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(-180, 180),
-)
 
 
 partners_ecg_taxis_pc = TensorMap(
@@ -814,8 +797,6 @@ partners_ecg_taxis_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(-180, 180),
-)
 
 
 partners_ecg_taxis_md = TensorMap(
@@ -826,7 +807,6 @@ partners_ecg_taxis_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="taxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-    validator=make_range_validator(-180, 180),
 )
 
 
