@@ -711,7 +711,7 @@ partners_ecg_qt_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_pc"),
     shape=(None, 1),
     time_series_limit=0,
-
+)
 
 partners_ecg_qt_md = TensorMap(
     "partners_ecg_qt_md",
@@ -787,7 +787,7 @@ partners_ecg_raxis_md = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
-
+)
 
 partners_ecg_taxis_pc = TensorMap(
     "partners_ecg_taxis_pc",
@@ -797,6 +797,7 @@ partners_ecg_taxis_pc = TensorMap(
     tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
+)
 
 
 partners_ecg_taxis_md = TensorMap(
