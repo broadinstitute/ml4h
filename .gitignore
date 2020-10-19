@@ -4,6 +4,7 @@
 *.linux
 *.log
 *.png
+*.csv
 **/__pycache__/*
 trained_models/*
 recipes_output/*
