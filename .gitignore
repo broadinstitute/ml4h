@@ -3,6 +3,7 @@
 .idea/*
 *.linux
 *.log
+*.png
 **/__pycache__/*
 trained_models/*
 recipes_output/*
