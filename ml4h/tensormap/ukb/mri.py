@@ -1357,6 +1357,15 @@ cine_segmented_lax_4ch_jamesp = TensorMap(
     'cine_segmented_lax_4ch_slice', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_jamesp_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
 )
+cine_segmented_lax_2ch_diastole = TensorMap(
+    'cine_segmented_lax_2ch_diastole', Interpretation.CATEGORICAL, shape=(200, 160, len(MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_2ch_annotated_'), channel_map=MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lax_3ch_diastole = TensorMap(
+    'cine_segmented_lax_3ch_diastole', Interpretation.CATEGORICAL, shape=(200, 160, len(MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_3ch_annotated_'), channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
+)
+
 cine_segmented_lax_4ch_diastole = TensorMap(
     'cine_segmented_lax_4ch_diastole', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
