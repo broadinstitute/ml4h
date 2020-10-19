@@ -1,17 +1,21 @@
-# ml4cvd
-`ml4cvd` is a project aimed at using machine learning to model multi-modal cardiovascular
-time series and imaging data. `ml4cvd` began as a set of tools to make it easy to work
-with the UK Biobank on the Google Cloud and has since expanded to include other data sources
-and functionality.   
+# ml4h
+`ml4h` is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more. The diverse data modalities of biomedicine offer different perspectives on the underlying challenge of understanding human health. For this reason, `ml4h` is built on a foundation of multimodal multitask modeling, hoping to leverage all available data to help power research and inform clinical care. Our tools help apply clinical research standards to ML models by carefully considering bias and longitudinal outcomes. Our project grew out of efforts at the Broad Institute to make it easy to work with the UK Biobank on the Google Cloud Platform and has since expanded to include proprietary data from academic medical centers. To put cutting-edge AI and ML to use making the world healthier, we're fostering interdisciplinary collaborations across industry and academia.  We'd love to work with you too!    
 
+`ml4h` is best described with Five Verbs: Ingest, Tensorize, TensorMap, Model, Evaluate
+* Ingest: collect files onto one system
+* Tensorize: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
+* TensorMap: tag data (typically from an HD5) with an interpretation and a method for generation
+* ModelFactory: connect TensorMaps with a trainable architectures
+* Evaluate: generate plots that enable domain-driven inspection of models and results 
 
-Getting Started
+# Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
 * [Setting up a remote VM](#setting-up-a-remote-vm)
-* Modeling/Data Sources/Tests [(`ml4cvd/DATA_MODELING_TESTS.md`)](ml4cvd/DATA_MODELING_TESTS.md)
+* Modeling/Data Sources/Tests [(`ml4h/DATA_MODELING_TESTS.md`)](ml4h/DATA_MODELING_TESTS.md)
+* [Contributing Code](#contributing-code)
 
 Advanced Topics:
-* Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4cvd/tensorize/README.md, TENSORIZE.md` )
+* Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4h/tensorize/README.md, TENSORIZE.md` )
 
 ## Setting up your local environment
 
@@ -19,23 +23,22 @@ Clone the repo
 ```
 git clone git@github.com:broadinstitute/ml.git
 ```
-Make sure you have installed the [google cloud tools (gcloud)](https://cloud.google.com/storage/docs/gsutil_install). With [Homebrew](https://brew.sh/), you can use
+
+## Setting up your cloud environment (optional; currently only GCP is supported) 
+Make sure you have installed the [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/downloads-interactive). With [Homebrew](https://brew.sh/), you can use
 ```
 brew cask install google-cloud-sdk
 ```
 
-If you don't have your gcloud already configured -- set the project to broad-ml4cvd (This step is optional, scripts will also set projects directly when you run them.)
-
-```gcloud config set project broad-ml4cvd```
-
+```gcloud config set project your-gcp-project```
 
 ### Conda (Python package manager)
 * Download onto your laptop the Miniconda `bash` or `.pkg` installer for `Python 3.7` and `Mac OS X`
 from [here](https://conda.io/en/latest/miniconda.html), and run it. If you installed Python via a package manager
 such as `Homebrew`, you may want to uninstall that first, to avoid potential conflicts.
-* On your laptop, at the root directory of your `ml4cvd` GitHub clone, load the `ml4cvd` environment via
+* On your laptop, at the root directory of your `ml4h` GitHub clone, load the `ml4h` environment via
     ```
-    conda env create -f env/ml4cvd_osx64.yml
+    conda env create -f env/ml4h_osx64.yml
     ```
     If you get an error, try updating your `Conda` via
     ```
@@ -47,10 +50,10 @@ such as `Homebrew`, you may want to uninstall that first, to avoid potential con
     ```
     The version used at the time of this writing was `4.6.1`.
 
-    If you plan to run jupyter locally, you should also (after you have `conda activate ml4cvd`, run `pip install ~/ml` (or wherever you have stored the repo)
+    If you plan to run jupyter locally, you should also (after you have `conda activate ml4h`, run `pip install ~/ml` (or wherever you have stored the repo)
 * Activate the environment:
     ```
-    source activate ml4cvd
+    source activate ml4h
     ```
 You may now run code on your `Terminal`, like so
 ```
@@ -70,10 +73,10 @@ described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-
 * Open the project on PyCharm from the `File` menu by pointing to where you have your GitHub repo.
 * Next, configure your Python interpreter to use the Conda environment you set up previously:
     * Open `Preferences` from `PyCharm -> Preferences...`.
-    * On the upcoming `Preferences` window's left-hand side, expand `Project: ml4cvd` if it isn't already.
+    * On the upcoming `Preferences` window's left-hand side, expand `Project: ml4h` if it isn't already.
     * Highlight `Project Interpreter`.
     * On the right-hand side of the window, where it says `Project Interpreter`, find and select your `python`
-    binary installed by `Conda`. It should be a path like `~/conda/miniconda3/envs/ml4cvd/bin/python` where `conda`
+    binary installed by `Conda`. It should be a path like `~/conda/miniconda3/envs/ml4h/bin/python` where `conda`
     is the directory you may have selected when installing `Conda`.
     * For a test run:
         * Open `recipes.py` (shortcut `Shift+Cmd+N` if you imported the custom settings).
@@ -90,11 +93,11 @@ With GPU (not recommended unless you need something beefy and expensive)
 ```
 ./scripts/vm_launch/launch_dl_instance.sh ${USER}-gpu
 ```
-This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or [console](https://console.cloud.google.com/compute/instances?project=broad-ml4cvd) when you are not using it!  
+This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or console when you are not using it!  
 
 Now ssh onto your instance (replace with proper machine name, note that you can also use regular old ssh if you have the external IP provided by the script or if you login from the GCP console)
 ```
-gcloud --project broad-ml4cvd compute ssh ${USER}-gpu --zone us-central1-a
+gcloud --project your-gcp-project compute ssh ${USER}-gpu --zone us-central1-a
 ```
 
 Next, clone this repo on your instance (you should copy your github key over to the VM, and/or if you have Two-Factor authentication setup you need to generate an SSH key on your VM and add it to your github settings as described [here](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/#platform-linux)):
@@ -145,29 +148,6 @@ If you get a public key error run: `gcloud compute config-ssh`
 
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
+## Contributing code
 
-### Installing git-secrets
-
-```git-secrets``` helps us avoid committing secrets (e.g. private keys) and other critical data (e.g. PHI) to our 
-repositories. ```git-secrets``` can be obtained via [github](https://github.com/awslabs/git-secrets) or on MacOS can be 
-installed with Homebrew by running ```brew install git-secrets```. 
-
-To add hooks to all repositories that you initialize or clone in the future:
-
-```git secrets --install --global```
-
-To add hooks to all local repositories:
-
-```
-git secrets --install ~/.git-templates/git-secrets
-git config --global init.templateDir ~/.git-templates/git-secrets
-```
-
-We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid 
-committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to 
-```git_secrets_provider_ml4cvd.txt``` to match types of critical data that are not currently covered by the patterns in that 
-file. To register the patterns in this file with ```git-secrets```:
-
-```
-git secrets --add-provider -- cat ${HOME}/ml/git_secrets_provider_ml4cvd.txt
-```
+Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
