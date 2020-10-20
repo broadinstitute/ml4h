@@ -2187,10 +2187,10 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
     sex_vector = female - male
     if test_csv is not None:
         all_sample_ids = [int(s) for s in _sample_csv_to_set(test_csv) if len(s) > 4]
+        latent_df['sample_id'].head()
         latent_df = latent_df.loc[latent_df['sample_id'].isin(all_sample_ids)]
         latent_df.info()
         logging.info(f'Subset to test set with samples from {all_sample_ids}')
-        latent_df['sample_id'].head()
 
     samples = min(len(latent_df.index), samples)
     embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
