@@ -2077,6 +2077,7 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
 
 
 def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, frames=6, steps=10, folder='./figures/'):
+    logging.info(f'Look for fixed point image of: {tm.name}, steps: {steps}, frames: {frames}, samples: {rows}.')
     sample_every = steps // frames
     fig, axes = plt.subplots(rows, frames, figsize=(frames * 16, rows * 16))
     col = 0
@@ -2099,7 +2100,9 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, frames=6, s
     test_data[tm.input_name()] = original
     plt.tight_layout()
     os.makedirs(os.path.dirname(folder), exist_ok=True)
-    plt.savefig(os.path.join(folder, f'{tm.name}_{steps}_fixed_points{IMAGE_EXT}'))
+    title = f'{tm.name}_{steps}_fixed_points{IMAGE_EXT}'
+    plt.savefig(os.path.join(folder, title))
+    logging.info(f'Saved fixed point image at: {folder}{title}')
     return predictions_dict
 
 
