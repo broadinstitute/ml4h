@@ -763,9 +763,8 @@ class ConvEncoder:
         x = self.pools[0](x)
         for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools[1:])):
             x = dense_block(x)
-            if i < len(self.dense_blocks) - 1:  # don't pool after final dense block
-                x = pool(x)
-                intermediates.append(x)
+            intermediates.append(x)
+            x = pool(x) if i < len(self.dense_blocks) - 1 else x  # don't pool after final dense block
         return x, intermediates
 
 
@@ -847,8 +846,8 @@ class ConvDecoder:
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]], _) -> Tensor:
         for i, (dense_block, upsample) in enumerate(zip(self.dense_blocks, self.upsamples)):
             intermediate = [intermediates[tm][-(i + 1)] for tm in self.u_connect_parents]
-            x = concatenate(intermediate + [x]) if intermediate else x
             x = upsample(x)
+            x = concatenate(intermediate + [x]) if intermediate else x
             x = dense_block(x)
         intermediate = [intermediates[tm][0] for tm in self.u_connect_parents]
         x = concatenate(intermediate + [x]) if intermediate else x
