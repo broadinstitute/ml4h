@@ -2093,8 +2093,8 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, 
                         axes[j, col].set_yticks(())
             col += 1
         predictions_list = model.predict(test_data)
-        predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
-        test_data[tm.input_name()] = predictions_list[tm.output_name()]
+        predictions_dict = {name: p for name, p in zip(model.output_names, predictions_list)}
+        test_data[tm.input_name()] = predictions_dict[tm.output_name()]
 
     test_data[tm.input_name()] = original
     plt.show()
