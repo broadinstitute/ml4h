@@ -424,7 +424,7 @@ def train_paired_model(args):
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
         fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path,
-                                                                     frames=max(3, args.attractor_iterations // 3), steps=args.attractor_iterations)
+                                                                     frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
         plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
