@@ -1358,11 +1358,14 @@ def directions_in_latent_space(stratify_column, stratify_thresh, split_column, s
 def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     df = pd.read_csv(explore_csv)
     df['fpath'] = pd.to_numeric(df['fpath'], errors='coerce')
+    df.info()
     df2 = pd.read_csv(infer_hidden_tsv, sep='\t')
     df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
+    df2.info()
     latent_df = pd.merge(df, df2, left_on='fpath', right_on='sample_id', how='inner')
+    latent_df.set_index('sample_id')
+    logging.info(f'Latent df index {len(latent_df.index)} top 5:{latent_df.index[:5]}')
     latent_df.info()
-    latent_df.index = latent_df['sample_id']
     return latent_df
 
 
