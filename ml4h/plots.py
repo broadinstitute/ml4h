@@ -2083,7 +2083,7 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, reconstruction=None
     col = 0
     original = test_data[tm.input_name()].copy()
     if reconstruction is not None:
-        test_data[tm.input_name] = reconstruction
+        test_data[tm.input_name()] = reconstruction
     for i in range(steps):
         if i % sample_every == 0 and col < frames:
             for j in range(rows):
