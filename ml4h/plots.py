@@ -2076,13 +2076,13 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, steps=10, folder='./figures/'):
-    sample_every = steps//samples
-    fig, axes = plt.subplots(rows, samples, figsize=(samples*16, rows*16))
+def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, frames=6, steps=10, folder='./figures/'):
+    sample_every = steps // frames
+    fig, axes = plt.subplots(rows, frames, figsize=(frames * 16, rows * 16))
     col = 0
     original = test_data[tm.input_name()].copy()
     for i in range(steps):
-        if i % sample_every == 0 and col < samples:
+        if i % sample_every == 0 and col < frames:
             for j in range(rows):
                 if len(test_data[tm.input_name()].shape) == 4:
                     axes[j, col].imshow(test_data[tm.input_name()][j, :, :, 0], cmap = 'gray')
