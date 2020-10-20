@@ -762,8 +762,8 @@ class ConvEncoder:
         intermediates.append(x)
         x = self.pools[0](x)
         for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools[1:])):
-            x = dense_block(x)
             intermediates.append(x)
+            x = dense_block(x)
             x = pool(x) if i < len(self.dense_blocks) - 1 else x  # don't pool after final dense block
         return x, intermediates
 
