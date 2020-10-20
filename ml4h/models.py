@@ -846,8 +846,8 @@ class ConvDecoder:
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]], _) -> Tensor:
         for i, (dense_block, upsample) in enumerate(zip(self.dense_blocks, self.upsamples)):
             intermediate = [intermediates[tm][-(i + 1)] for tm in self.u_connect_parents]
-            x = upsample(x)
             x = concatenate(intermediate + [x]) if intermediate else x
+            x = upsample(x)
             x = dense_block(x)
         intermediate = [intermediates[tm][0] for tm in self.u_connect_parents]
         x = concatenate(intermediate + [x]) if intermediate else x
