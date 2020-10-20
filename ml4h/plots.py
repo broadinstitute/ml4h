@@ -2186,10 +2186,12 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
     sex_vector = female - male
     if test_csv is not None:
+        all_sample_ids = [int(s) for s in _sample_csv_to_set(test_csv) if len(s) > 4]
         sample_ids = [int(s) for s in _sample_csv_to_set(test_csv) if len(s) > 4 and int(s) in latent_df.index]
         latent_df = latent_df.loc[sample_ids]
         latent_df.info()
-        logging.info(f'Subset to test set with {len(sample_ids)} samples')
+        logging.info(f'Subset to test set with {len(sample_ids)} samples from {all_sample_ids}')
+        logging.info(f'Latent df index {len(latent_df.index)} top 5:{latent_df.index[:5]}')
 
     samples = min(len(latent_df.index), samples)
     embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
