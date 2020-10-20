@@ -27,9 +27,11 @@ WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
 
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    tensor_map_maker_fxns = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps, 
-                             make_mgb_ecg_measurement_matrix_global_tensor_maps, make_mgb_ecg_measurement_matrix_lead_tensor_maps,
-                             make_mgb_ecg_lvh_tensormaps]
+    tensor_map_maker_fxns = [
+        make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps,
+        make_mgb_ecg_measurement_matrix_global_tensor_maps, make_mgb_ecg_measurement_matrix_lead_tensor_maps,
+        make_mgb_ecg_lvh_tensormaps,
+    ]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
@@ -749,7 +751,7 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: in
 
 
 def make_measurement_matrix_from_file(key_idx: int, lead_idx: int = None):
-    def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):        
+    def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=float)
@@ -787,12 +789,12 @@ def make_mgb_ecg_measurement_matrix_global_tensor_maps(needed_name: str):
                 path_prefix=PARTNERS_PREFIX,
                 loss='logcosh',
                 time_series_limit=0,
-                tensor_from_file=make_measurement_matrix_from_file(measure_idx)
+                tensor_from_file=make_measurement_matrix_from_file(measure_idx),
             )
 
 
 measurement_matrix_leads = {
-    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
+    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11,
 }
 measurement_matrix_lead_measures = {
     'pona': 1,      # P Wave amplitude at P-onset
@@ -846,8 +848,9 @@ measurement_matrix_lead_measures = {
     'parea': 49,    # P wave area, includes P and P Prime
     'qrsar': 50,    # QRS area
     'tarea': 51,    # T wave area, include T and T Prime
-    'qrsint': 52    # QRS intriniscoid (see following)
+    'qrsint': 52,    # QRS intriniscoid (see following)
 }
+
 
 def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
     for lead, lead_idx in measurement_matrix_leads.items():
@@ -860,8 +863,9 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                     path_prefix=PARTNERS_PREFIX,
                     loss='logcosh',
                     time_series_limit=0,
-                    tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx)
+                    tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx),
                 )
+
 
 def make_mgb_ecg_lvh_tensormaps(needed_name: str):
     def ecg_lvh_from_file(tm: TensorMap, hd5: h5py.File, dependents={}):
@@ -912,4 +916,3 @@ def make_mgb_ecg_lvh_tensormaps(needed_name: str):
                 shape=(None, 2),
                 time_series_limit=0,
             )
-
