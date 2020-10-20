@@ -2090,7 +2090,7 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, frames=5, s
                     axes[j, col].set_yticks(())
                 elif len(test_data[tm.input_name()].shape) == 3:
                     for l in range(12):
-                        axes[j, col].plot(range(1200), test_data[tm.input_name()][j, :2400, l])
+                        axes[j, col].plot(range(2400), test_data[tm.input_name()][j, :2400, l])
                         axes[j, col].set_yticks(())
             col += 1
         predictions_list = model.predict(test_data)
