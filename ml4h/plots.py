@@ -2076,7 +2076,7 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, steps = 10):
+def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, steps=10, folder='./figures/'):
     sample_every = steps//samples
     fig, axes = plt.subplots(rows, samples, figsize=(samples*16, rows*16))
     col = 0
@@ -2085,7 +2085,7 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, 
         if i % sample_every == 0 and col < samples:
             for j in range(rows):
                 if len(test_data[tm.input_name()].shape) == 4:
-                    axes[j, col].imshow(test_data[test_key][j, :, :, 0], cmap = 'gray')
+                    axes[j, col].imshow(test_data[tm.input_name()][j, :, :, 0], cmap = 'gray')
                     axes[j, col].set_yticks(())
                 elif len(test_data[tm.input_name()].shape) == 3:
                     for l in range(12):
@@ -2097,7 +2097,9 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, 
         test_data[tm.input_name()] = predictions_dict[tm.output_name()]
 
     test_data[tm.input_name()] = original
-    plt.show()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(folder), exist_ok=True)
+    plt.savefig(os.path.join(folder, f'{tm.name}_{steps}_fixed_points{IMAGE_EXT}'))
     return predictions_dict
 
 
