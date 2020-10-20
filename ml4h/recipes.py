@@ -24,7 +24,7 @@ from ml4h.models import make_character_model_plus, embed_model_predict, make_sia
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4h.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_prediction_calibrations, \
-    plot_reconstruction, plot_hit_to_miss_transforms, plot_ae_towards_attractor
+    plot_reconstruction, plot_hit_to_miss_transforms, plot_autoencoder_towards_attractor
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 
@@ -423,9 +423,8 @@ def train_paired_model(args):
             performance_metrics.update(metrics)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        fixed_point_predictions = plot_ae_towards_attractor(full_model, test_data, test_labels, etm.input_name(),
-                                                test_index=1, rows=8, samples=samples, steps=args.attractor_iterations)
-        plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions, out_path, test_paths, samples)
+        fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=8, samples=samples, steps=args.attractor_iterations)
+        plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')

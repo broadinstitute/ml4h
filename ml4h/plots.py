@@ -2076,27 +2076,29 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def plot_ae_towards_attractor(model, test_data, test_labels, test_key, test_index, rows=4, samples=6, steps = 10):
+def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, samples=6, steps = 10):
     sample_every = steps//samples
-    fig, axes = plt.subplots(rows, samples, figsize=(samples*16,rows*16))
+    fig, axes = plt.subplots(rows, samples, figsize=(samples*16, rows*16))
     col = 0
-    original = test_data[test_key].copy()
+    original = test_data[tm.input_name()].copy()
     for i in range(steps):
         if i % sample_every == 0 and col < samples:
             for j in range(rows):
-                if len(test_data[test_key].shape) == 4:
+                if len(test_data[tm.input_name()].shape) == 4:
                     axes[j, col].imshow(test_data[test_key][j, :, :, 0], cmap = 'gray')
                     axes[j, col].set_yticks(())
-                elif len(test_data[test_key].shape) == 3:
+                elif len(test_data[tm.input_name()].shape) == 3:
                     for l in range(12):
-                        axes[j, col].plot(range(1200), test_data[test_key][j, :1200, l])
+                        axes[j, col].plot(range(1200), test_data[tm.input_name()][j, :1200, l])
                         axes[j, col].set_yticks(())
             col += 1
-        preds = model.predict(test_data)
-        test_data[test_key] = preds[test_index]
-    test_data[test_key] = original
+        predictions_list = model.predict(test_data)
+        predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
+        test_data[tm.input_name()] = predictions_list[tm.output_name()]
+
+    test_data[tm.input_name()] = original
     plt.show()
-    return preds
+    return predictions_dict
 
 
 def plot_reconstruction(
