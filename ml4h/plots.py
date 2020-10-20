@@ -2076,12 +2076,14 @@ def _text_on_plot(axes, x, y, text, alpha=0.8, background='white'):
     t.set_bbox({'facecolor': background, 'alpha': alpha, 'edgecolor': background})
 
 
-def plot_autoencoder_towards_attractor(model, test_data, tm, rows=4, frames=5, steps=10, folder='./figures/'):
+def plot_autoencoder_towards_attractor(model, test_data, tm, reconstruction=None, rows=4, frames=5, steps=10, folder='./figures/'):
     logging.info(f'Look for fixed point image of: {tm.name}, steps: {steps}, frames: {frames}, samples: {rows}.')
     sample_every = steps // frames
     fig, axes = plt.subplots(rows, frames, figsize=(frames * SUBPLOT_SIZE, rows * SUBPLOT_SIZE))
     col = 0
     original = test_data[tm.input_name()].copy()
+    if reconstruction is not None:
+        test_data[tm.input_name] = reconstruction
     for i in range(steps):
         if i % sample_every == 0 and col < frames:
             for j in range(rows):
