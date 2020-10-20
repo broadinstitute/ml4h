@@ -2190,6 +2190,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
         latent_df = latent_df.loc[latent_df['sample_id'].isin(all_sample_ids)]
         latent_df.info()
         logging.info(f'Subset to test set with samples from {all_sample_ids}')
+        latent_df['sample_id'].head()
 
     samples = min(len(latent_df.index), samples)
     embeddings = latent_df.iloc[:samples][latent_cols].to_numpy()
