@@ -159,8 +159,8 @@ def write_tensors(
 
 
 def write_tensors_from_dicom_pngs(
-    tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
-    sample_header='sample_id', dicom_header='dicom_file',
+    tensors, png_path, manifest_tsv, series_postfix, min_sample_id, max_sample_id, x=256, y=256,
+    sample_header='sample_id', dicom_header='dicom_file', series_header='series',
     instance_header='instance_number', png_postfix='.png.mask.png',
     path_prefix='ukb_cardiac_mri',
 ):
@@ -170,6 +170,7 @@ def write_tensors_from_dicom_pngs(
     logging.info(f"DICOM Manifest Header is:{header}")
     instance_index = header.index(instance_header)
     sample_index = header.index(sample_header)
+    series_index = header.index(series_header)
     dicom_index = header.index(dicom_header)
     for row in reader:
         sample_id = row[sample_index]
@@ -190,7 +191,7 @@ def write_tensors_from_dicom_pngs(
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
-                tensor_name = series.lower() + '_annotated_' + row[instance_index]
+                tensor_name = f'{row[series_index].lower()}_{series_postfix.lower()}_annotated_{row[instance_index]}'
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
