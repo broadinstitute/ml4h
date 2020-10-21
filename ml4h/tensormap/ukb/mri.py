@@ -1288,7 +1288,7 @@ def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='u
                 break
         if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {segmentation_key}')
-
+        logging.info(f'GOT EAR found {found_key}, {tensor_key}, i: {i},s eg key {segmentation_key} ')
         if tm.shape[-1] == 1:
             t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i], dtype=np.float32))
             tensor = np.expand_dims(t, axis=-1)
