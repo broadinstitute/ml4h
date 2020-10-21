@@ -1273,21 +1273,27 @@ sax_all_diastole_192 = TensorMap(
 
 def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
+        found_key = ''
         for i in range(max_slices):
-            if f'/{path_prefix}/{segmentation_key}{i + 1}' in hd5:
-                break
             if sax_series:
                 for b in range(1, 13):
                     sax_key = segmentation_key.replace('*', str(b))
                     if f'{path_prefix}/{sax_key}{i + 1}' in hd5:
-                        tensor_key = tensor_key.replace('*', str(b))
+                        found_key = tensor_key.replace('*', str(b))
                         break
+                if len(found_key) > 1:
+                    break
+            elif f'/{path_prefix}/{segmentation_key}{i + 1}' in hd5:
+                found_key = tensor_key
+                break
+        if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {segmentation_key}')
+
         if tm.shape[-1] == 1:
-            t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
+            t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i], dtype=np.float32))
             tensor = np.expand_dims(t, axis=-1)
         else:
-            tensor = pad_or_crop_array_to_shape(tm.shape, np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
+            tensor = pad_or_crop_array_to_shape(tm.shape, np.array(hd5[f'{path_prefix}/{found_key}'][..., i], dtype=np.float32))
         return tensor
     return _slice_tensor_from_file
 
@@ -1330,15 +1336,16 @@ def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(max_slices):
-            slice_key = f'{dicom_key_prefix}{i + 1}'
-            if f'{path_prefix}/{slice_key}' in hd5:
-                break
             if sax_series:
                 for b in range(1, 13):
                     sax_key = slice_key.replace('*', str(b))
                     if f'{path_prefix}/{sax_key}{i + 1}' in hd5:
                         slice_key = sax_key
                         break
+            elif f'{path_prefix}/{dicom_key_prefix}{i + 1}' in hd5:
+                slice_key = f'{dicom_key_prefix}{i + 1}'
+                break
+        if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
         categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
         categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
