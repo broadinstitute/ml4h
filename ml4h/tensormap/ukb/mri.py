@@ -1287,7 +1287,7 @@ def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='u
                 found_key = tensor_key
                 break
         if i == max_slices:
-            raise ValueError(f'No segmented slice found for {tm.name} prefix {segmentation_key}')
+            raise ValueError(f'No slice with segmentation found for {tm.name} prefix {segmentation_key}')
         if tm.shape[-1] == 1:
             t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
             tensor = np.expand_dims(t, axis=-1)
@@ -1339,12 +1339,12 @@ def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_
             if sax_series:
                 for b in range(1, 13):
                     sax_key = slice_key.replace('*', str(b))
-                    if f'{path_prefix}/{sax_key}{i}' in hd5:
+                    if f'{path_prefix}/{sax_key}' in hd5:
                         slice_key = sax_key
                         break
                 if '*' not in slice_key:
                     break
-            elif f'{path_prefix}/{dicom_key_prefix}{i}' in hd5:
+            elif f'{path_prefix}/{slice_key}' in hd5:
                 break
         if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
