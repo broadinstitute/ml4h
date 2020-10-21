@@ -131,6 +131,26 @@ def _gaussian_noise(img, mean=0, sigma=0.03):
     return img
 
 
+def _cutout(image_origin, mask_size=40, mask_value='mean'):
+    image = np.copy(image_origin)
+    if mask_value == 'mean':
+        mask_value = image.mean()
+    elif mask_value == 'random':
+        mask_value = np.random.randint(0, 256)
+
+    h, w, _ = image.shape
+    top = np.random.randint(0 - mask_size // 2, h - mask_size)
+    left = np.random.randint(0 - mask_size // 2, w - mask_size)
+    bottom = top + mask_size
+    right = left + mask_size
+    if top < 0:
+        top = 0
+    if left < 0:
+        left = 0
+    image[top:bottom, left:right, :].fill(mask_value)
+    return image
+
+
 def _combined_subset_tensor(
     tensor_keys,
     start,
@@ -1344,6 +1364,15 @@ sax_slice_jamesp_gauss = TensorMap(
     'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
+sax_slice_jamesp_cutout = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_cutout],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_cutout = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise, _cutout],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+
 
 
 def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
