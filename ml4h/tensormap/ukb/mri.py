@@ -1336,14 +1336,16 @@ def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(1, 1+max_slices):
+            slice_key = f'{dicom_key_prefix}{i}'
             if sax_series:
                 for b in range(1, 13):
                     sax_key = slice_key.replace('*', str(b))
                     if f'{path_prefix}/{sax_key}{i}' in hd5:
                         slice_key = sax_key
                         break
+                if '*' not in slice_key:
+                    break
             elif f'{path_prefix}/{dicom_key_prefix}{i}' in hd5:
-                slice_key = f'{dicom_key_prefix}{i}'
                 break
         if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
