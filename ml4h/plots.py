@@ -2101,8 +2101,8 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, reconstruction=None
 
     test_data[tm.input_name()] = original
     plt.tight_layout()
-    os.makedirs(os.path.dirname(folder), exist_ok=True)
     title = f'{tm.name}_{steps}_fixed_points{IMAGE_EXT}'
+    os.makedirs(os.path.dirname(folder), exist_ok=True)
     plt.savefig(os.path.join(folder, title))
     logging.info(f'Saved fixed point image at: {folder}{title}')
     return predictions_dict
