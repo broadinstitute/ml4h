@@ -176,7 +176,6 @@ def write_tensors_from_dicom_pngs(
         sample_id = row[sample_index]
         if not min_sample_id <= int(sample_id) < max_sample_id:
             continue
-        stats[sample_header + '_' + sample_id] += 1
         dicom_file = row[dicom_index]
 
         try:
