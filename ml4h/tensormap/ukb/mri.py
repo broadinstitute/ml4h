@@ -1271,17 +1271,24 @@ sax_all_diastole_192 = TensorMap(
 )
 
 
-def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=100):
+def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
         for i in range(max_slices):
             if f'/{path_prefix}/{segmentation_key}{i + 1}' in hd5:
-                if tm.shape[-1] == 1:
-                    t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
-                    tensor = np.expand_dims(t, axis=-1)
-                else:
-                    tensor = pad_or_crop_array_to_shape(tm.shape, np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
-                return tensor
-        raise ValueError(f'No segmented slice found for {tm.name} prefix {segmentation_key}')
+                break
+            if sax_series:
+                for b in range(1, 13):
+                    sax_key = segmentation_key.replace('*', str(b))
+                    if f'{path_prefix}/{sax_key}{i + 1}' in hd5:
+                        tensor_key = tensor_key.replace('*', str(b))
+                        break
+            raise ValueError(f'No segmented slice found for {tm.name} prefix {segmentation_key}')
+        if tm.shape[-1] == 1:
+            t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
+            tensor = np.expand_dims(t, axis=-1)
+        else:
+            tensor = pad_or_crop_array_to_shape(tm.shape, np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
+        return tensor
     return _slice_tensor_from_file
 
 
@@ -1313,19 +1320,30 @@ lax_4ch_slice_jamesp = TensorMap(
     'lax_4ch_slice_jamesp', shape=(160, 224, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lax_4ch/instance_0', 'cine_segmented_lax_4ch_jamesp_annotated_'),
 )
+sax_slice_jamesp = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
 
 
-def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=100):
+def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(max_slices):
             slice_key = f'{dicom_key_prefix}{i + 1}'
             if f'{path_prefix}/{slice_key}' in hd5:
-                categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
-                categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-                tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
-                return tensor
-        raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
+                break
+            if sax_series:
+                for b in range(1, 13):
+                    sax_key = slice_key.replace('*', str(b))
+                    if f'{path_prefix}/{sax_key}{i + 1}' in hd5:
+                        slice_key = sax_key
+                        break
+            raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
+        categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
+        categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+        tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+        return tensor
     return _segmented_dicom_tensor_from_file
 
 
@@ -1373,6 +1391,10 @@ cine_segmented_lax_4ch_diastole = TensorMap(
 cine_segmented_lvot_diastole_slice = TensorMap(
     'cine_segmented_lvot_diastole_slice', Interpretation.CATEGORICAL, shape=(208, 160, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lvot_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_slice_jamesp = TensorMap(
+    'cine_segmented_sax_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
 
 
