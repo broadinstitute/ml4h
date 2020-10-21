@@ -426,11 +426,9 @@ def train_paired_model(args):
         fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path,
                                                                      frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
         plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
-        original = test_data[etm.input_name()].copy()
         test_data[etm.input_name()] = np.random.random(test_data[etm.input_name()].shape)
         plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path+'random/',
                                            frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
-        test_data[etm.input_name()] = original
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
