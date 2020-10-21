@@ -64,7 +64,7 @@ MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {
 }
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
-    'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10,
+    'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
 }
 MRI_AO_SEGMENTED_CHANNEL_MAP = {
     'ao_background': 0, 'ao_superior_vena_cava': 1, 'ao_pulmonary_artery': 2, 'ao_ascending_aortic_wall': 3, 'ao_ascending_aorta': 4,
