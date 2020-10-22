@@ -131,7 +131,7 @@ sharp_kernel = np.c_[
 
 def _sharpen(img):
     if np.random.rand() > 0.5:
-        return convolve2d(img, sharp_kernel, mode="same", boundary="symm")
+        return np.expand_dims(convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm"), axis=-1)
     return img
 
 
