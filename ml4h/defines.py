@@ -62,8 +62,12 @@ MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {
     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
     'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13, 'ascending_aorta': 14, 'breast_prosthesis': 15,
 }
-MRI_SAX_SEGMENTED_CHANNEL_MAP = {
+MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
+    'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
+}
+MRI_SAX_SEGMENTED_CHANNEL_MAP = {
+    'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 5,
     'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
 }
 MRI_AO_SEGMENTED_CHANNEL_MAP = {

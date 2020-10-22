@@ -13,9 +13,9 @@ from ml4h.normalizer import ZeroMeanStd1, Standardize
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
 from ml4h.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES, MRI_LVOT_SEGMENTED_CHANNEL_MAP, \
-    MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
+    MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pad_or_crop_array_to_shape
-from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
+from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
 
 
 def _slice_subset_tensor(
@@ -1189,7 +1189,7 @@ sax_segmented_b6 = TensorMap(
     tensor_from_file=_segmented_dicom_slices(
         'cine_segmented_sax_b6_annotated_',
     ),
-    channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
 )
 sax_segmented_b6_192 = TensorMap(
     'sax_segmented_b6',
@@ -1198,7 +1198,7 @@ sax_segmented_b6_192 = TensorMap(
     tensor_from_file=_segmented_dicom_slices(
         'cine_segmented_sax_b6_annotated_',
     ),
-    channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
 )
 
 segmented_aorta_diastole = TensorMap(
@@ -1378,7 +1378,7 @@ sax_slice_jamesp_sharpen_median = TensorMap(
 )
 
 
-def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
+def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, merge_lv_pap=True):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(1, 1+max_slices):
@@ -1396,6 +1396,8 @@ def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_
         if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
         categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
+        if merge_lv_pap:
+            categorical_index_slice[categorical_index_slice == MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP['lv_pap']] = MRI_SAX_SEGMENTED_CHANNEL_MAP['lv_cavity']
         categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
         tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         return tensor
@@ -1450,6 +1452,10 @@ cine_segmented_lvot_diastole_slice = TensorMap(
 cine_segmented_sax_slice_jamesp = TensorMap(
     'cine_segmented_sax_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_pap_slice_jamesp = TensorMap(
+    'cine_segmented_sax_pap_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
 )
 
 
