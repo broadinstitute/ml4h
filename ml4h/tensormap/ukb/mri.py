@@ -140,7 +140,7 @@ def _median_filter(img):
     return np.expand_dims(median_filter(img[..., 0], size=(window_size, window_size)), axis=-1)
 
 
-def _gaussian_noise(img, mean=0, sigma=0.1):
+def _gaussian_noise(img, mean=0, sigma=0.03):
     img = img.copy()
     noise = np.random.normal(mean, sigma, img.shape)
     img += noise
