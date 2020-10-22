@@ -137,7 +137,7 @@ def _sharpen(img):
 
 def _median_filter(img):
     window_size = np.random.randint(1, 15)
-    return median_filter(img, size=(window_size, window_size))
+    return np.expand_dims(median_filter(img[..., 0], size=(window_size, window_size)), axis=-1)
 
 
 def _gaussian_noise(img, mean=0, sigma=5.0):
