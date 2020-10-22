@@ -120,7 +120,7 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
-def _gaussian_noise(img, mean=0, sigma=100.0):
+def _gaussian_noise(img, mean=0, sigma=20.0):
     img = img.copy()
     noise = np.random.normal(mean, sigma, img.shape)
     # mask_overflow_upper = img+noise >= 1.0
