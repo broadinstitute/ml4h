@@ -4,6 +4,8 @@ from typing import Dict, Tuple, Callable
 
 import h5py
 import numpy as np
+from scipy.signal import convolve2d
+from scipy.ndimage import median_filter
 from tensorflow.keras.utils import to_categorical
 
 from ml4h.metrics import weighted_crossentropy
@@ -120,31 +122,29 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
     return mask_subset_from_file
 
 
+sharp_kernel = np.c_[
+    [0, -1, 0],
+    [-1, 5, -1],
+    [0, -1, 0]
+]
+
+
+def _sharpen(img):
+    if np.random.rand() > 0.5:
+        return convolve2d(img, sharp_kernel, mode="same", boundary="symm")
+    return img
+
+
+def _median_filter(img):
+    window_size = np.random.randint(1, 15)
+    return median_filter(img, size=(window_size, window_size))
+
+
 def _gaussian_noise(img, mean=0, sigma=5.0):
     img = img.copy()
     noise = np.random.normal(mean, sigma, img.shape)
     img += noise
     return img
-
-
-def _cutout(image_origin, mask_size=40, mask_value='mean'):
-    image = np.copy(image_origin)
-    if mask_value == 'mean':
-        mask_value = image.mean()
-    elif mask_value == 'random':
-        mask_value = np.random.randint(0, 256)
-
-    h, w, _ = image.shape
-    top = np.random.randint(0 - mask_size // 2, h - mask_size)
-    left = np.random.randint(0 - mask_size // 2, w - mask_size)
-    bottom = top + mask_size
-    right = left + mask_size
-    if top < 0:
-        top = 0
-    if left < 0:
-        left = 0
-    image[top:bottom, left:right, :].fill(mask_value)
-    return image
 
 
 def _combined_subset_tensor(
@@ -1360,8 +1360,16 @@ sax_slice_jamesp_gauss = TensorMap(
     'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
-sax_slice_jamesp_cutout = TensorMap(
-    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_cutout],
+sax_slice_jamesp_sharpen = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_median = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_all = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
 
