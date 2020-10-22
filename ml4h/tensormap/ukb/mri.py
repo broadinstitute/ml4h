@@ -1395,10 +1395,11 @@ def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_
                 break
         if i == max_slices:
             raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
-        categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
+        label_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
         if merge_lv_pap:
-            categorical_index_slice[categorical_index_slice == MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP['lv_pap']] = MRI_SAX_SEGMENTED_CHANNEL_MAP['lv_cavity']
-        categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+            label_slice[label_slice == MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP['lv_pap']] = MRI_SAX_SEGMENTED_CHANNEL_MAP['lv_cavity']
+            label_slice[label_slice > MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP['lv_pap']] -= 1
+        categorical_one_hot = to_categorical(label_slice, len(tm.channel_map))
         tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
         return tensor
     return _segmented_dicom_tensor_from_file
