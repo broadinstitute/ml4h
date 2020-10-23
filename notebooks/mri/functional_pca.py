@@ -22,6 +22,8 @@ pca_projections['la_max_circle'] = df_poi['la_max_circle']
 pca_projections['la_min_circle'] = df_poi['la_min_circle']
 
 # %%
+
+# %%
 projection_petersen = pca_projections.merge(df_petersen, on='sample_id')
 projection_petersen['LA_poisson_max'] = projection_petersen[keys].max(axis=1)
 projection_petersen['LA_poisson_min'] = projection_petersen[keys].min(axis=1)

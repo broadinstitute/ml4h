@@ -18,10 +18,12 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/*.hd5')
 
 # %%
-start = int(sys.argv[1])
-end = int(sys.argv[2])
-# start = 4031939
-# end = 4031940
+#start = int(sys.argv[1])
+#end = int(sys.argv[2])
+
+start = 3405769
+end = 3405770
+hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/3405769.hd5']
 
 # %%
 views = ['3ch', '2ch', '4ch']
@@ -61,12 +63,13 @@ for chamber in chambers:
     for t in range(MRI_FRAMES):
         results[-1][f'{chamber}_poisson_{t}'] = [-1]*(end-start)
 for i, hd5 in enumerate(sorted(hd5s)):
+    i = start
     # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{hd5}.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
-    if i < start:
-        continue
-    if i == end:
-        break
+    # if i < start:
+    #     continue
+    # if i == end:
+    #     break
 
     annot_datasets = []
     orig_datasets = []
@@ -81,16 +84,16 @@ for i, hd5 in enumerate(sorted(hd5s)):
                         save_path=None, order='F',
                     )[0],
                 )
-                # orig_datasets.append(
-                #     _mri_hd5_to_structured_grids(
-                #         ff_trad, view_format_string.format(view=view),
-                #         view_name=view_format_string.format(view=view),
-                #         concatenate=False, annotation=False,
-                #         save_path=None, order='F',
-                #     )[0],
-                # )
-                # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
-                # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
+                orig_datasets.append(
+                    _mri_hd5_to_structured_grids(
+                        ff_trad, view_format_string.format(view=view),
+                        view_name=view_format_string.format(view=view),
+                        concatenate=False, annotation=False,
+                        save_path=None, order='F',
+                    )[0],
+                )
+                to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
+                to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
         poisson_chambers = []
         poisson_volumes = []
         for channel, chamber, result in zip(channels, chambers, results):
@@ -109,7 +112,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
-    except:
+    except FutureWarning:
         continue
     # break
 for chamber, result in zip(chambers, results):

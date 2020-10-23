@@ -324,3 +324,5 @@ writer.SetInputData(poly)
 writer.SetFileName('clipped_ventricle.vtp')
 writer.Update()
 # %%
+
+# %%
