@@ -65,6 +65,48 @@ mnist_survival_curve = TensorMap(
 )
 
 
+def _mnist_survival_curve_convex(tm, hd5, dependents={}):
+    label = float(hd5['mnist_label'][0])
+    has_disease = 1.0 if np.random.rand() > (label / 10) else 0.0
+    days_follow_up = np.random.randint(1, label * 365)
+
+    intervals = int(tm.shape[0] / 2)
+    days_per_interval = tm.days_window / intervals
+    survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
+    for i, day_delta in enumerate(np.arange(0, tm.days_window, days_per_interval)):
+        survival_then_censor[i] = float(day_delta < days_follow_up)
+        if day_delta <= days_follow_up < day_delta + days_per_interval:
+            survival_then_censor[intervals + i] = has_disease
+    return survival_then_censor
+
+
+mnist_survival_curve_convex = TensorMap(
+    'mnist_survival_curve_convex', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=_mnist_survival_curve_convex,
+)
+
+
+def _mnist_survival_curve_elbow(tm, hd5, dependents={}):
+    label = float(hd5['mnist_label'][0])
+    has_disease = 1.0 if np.random.rand() > (label / 20) else 0.0
+    days_follow_up = np.random.randint(1, 4650) if np.random.rand() > ((10 - label) / 10) else np.random.randint(901, 2000)
+
+    intervals = int(tm.shape[0] / 2)
+    days_per_interval = tm.days_window / intervals
+    survival_then_censor = np.zeros(tm.shape, dtype=np.float32)
+    for i, day_delta in enumerate(np.arange(0, tm.days_window, days_per_interval)):
+        survival_then_censor[i] = float(day_delta < days_follow_up)
+        if day_delta <= days_follow_up < day_delta + days_per_interval:
+            survival_then_censor[intervals + i] = has_disease
+    return survival_then_censor
+
+
+mnist_survival_curve_elbow = TensorMap(
+    'mnist_survival_curve_elbow', Interpretation.SURVIVAL_CURVE, shape=(50,),
+    tensor_from_file=_mnist_survival_curve_elbow,
+)
+
+
 def mnist_as_hd5(hd5_folder):
     train, _, _ = load_data('mnist.pkl.gz')
     mnist_images = train[0].reshape((-1, 28, 28, 1))
