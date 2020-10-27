@@ -19,11 +19,13 @@ for i, component in enumerate(pcs.components_):
 # %%
 # PCA via autoencoder
 from tensorflow import keras
-encoder = keras.models.Sequential([keras.layers.Dense(5, input_shape=[100]),
-                                   # keras.layers.Dense(5, activation='selu'),
-                                  ])
-decoder = keras.models.Sequential([keras.layers.Dense(100, input_shape=[5]),
-                                  ])
+encoder = keras.models.Sequential([
+    keras.layers.Dense(5, input_shape=[100]),
+     # keras.layers.Dense(5, activation='selu'),
+])
+decoder = keras.models.Sequential([
+    keras.layers.Dense(100, input_shape=[5]),
+])
 autoencoder = keras.models.Sequential([encoder, decoder])
 autoencoder.compile(loss='mse', optimizer=keras.optimizers.SGD(lr=0.1))
 
@@ -157,7 +159,7 @@ ppg_pcs = pd.read_csv('/home/pdiachil/ml/notebooks/ppg/ppgs_pcs.csv')
 cols_pca = [f'pc_pca_{i}' for i in range(5)]
 cols_ae = [f'pc_ae_{i}' for i in range(5)]
 
-for mm, (cols_model, cur_decoder) in enumerate(zip([cols_pca], [decoder,])):
+for mm, (cols_model, cur_decoder) in enumerate(zip([cols_pca], [decoder])):
     f, ax = plt.subplots(5, 3)
     f.set_size_inches(8, 4.5)
     avg = ppg_pcs[cols_model].values.mean(axis=0)
