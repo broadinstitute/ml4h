@@ -1314,7 +1314,7 @@ def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='u
                 found_key = tensor_key
                 break
         if i == max_slices:
-            raise ValueError(f'No slice with segmentation found for {tm.name} prefix {segmentation_key}')
+            raise ValueError(f'No slice with segmentation found for {tm.name} segmentation key {segmentation_key}')
         if tm.shape[-1] == 1:
             t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
             tensor = np.expand_dims(t, axis=-1)
@@ -1384,6 +1384,44 @@ sax_slice_both = TensorMap(
     'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
+
+
+def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
+    def _slice_tensor_from_file(tm, hd5, dependents={}):
+        found_key = ''
+        for i in range(1, 1+max_slices):
+            if sax_series:
+                for b in range(1, 13):
+                    sax_key = segmentation_key.replace('*', str(b))
+                    if f'{path_prefix}/{sax_key}{i}' in hd5:
+                        found_key = tensor_key.replace('*', str(b))
+                        break
+                if len(found_key) > 1:
+                    break
+            elif f'/{path_prefix}/{segmentation_key}{i}' in hd5:
+                found_key = tensor_key
+                break
+        if i == max_slices:
+            raise ValueError(f'No slice with segmentation found for {tm.name} segmentation key {segmentation_key}')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for j in range(tm.shape[-1]):
+            slice_index = ((i-1) + (j - (tm.shape[-1]//2))) % max_slices
+            tensor[..., j] = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., slice_index], dtype=np.float32))
+
+        return tensor
+    return _slice_tensor_from_file
+
+
+sax_slices_both = TensorMap(
+    'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_slices_both_gauss = TensorMap(
+    'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+
 
 def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, merge_lv_pap=True):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
