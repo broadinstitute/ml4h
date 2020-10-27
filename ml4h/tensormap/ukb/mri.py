@@ -1421,6 +1421,14 @@ sax_slices_both_gauss = TensorMap(
     'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
+sax_11_slices_both = TensorMap(
+    'sax_11_slices_both', shape=(224, 224, 11), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_11_slices_both_gauss = TensorMap(
+    'sax_11_slices_both', shape=(224, 224, 11), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
 
 
 def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, merge_lv_pap=True):
