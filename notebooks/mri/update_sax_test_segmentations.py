@@ -12,6 +12,13 @@ df_pngs = pd.DataFrame({'png_file': pngs})
 df_pngs['png_file'] = df_pngs['png_file'].str.split('/').str[-1]
 # %%
 import pandas as pd
+view='sax'
+version='v20201026b'
+storage_client = storage.Client('broad-ml4cvd')
+bucket = storage_client.get_bucket('ml4cvd')
+blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')
+blob.download_to_filename('/home/pdiachil/manifest.tsv')
+
 df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t')
 df_sax['png_file'] = df_sax['dicom_file'].str.replace('.dcm', '.dcm.png.mask.png')
 
@@ -29,16 +36,14 @@ start = int(sys.argv[1])
 end = int(sys.argv[2])
 # start = 1
 # end = 2
-storage_client = storage.Client('broad-ml4cvd')
-bucket = storage_client.get_bucket('ml4cvd')
+
 start_time = time.time()
 for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
     if i < start:
         continue
     if i == end:
         break
-    view='sax'
-    version='v20201026b'
+    
     shutil.copyfile(f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{sample_id}.hd5', f'{sample_id}.hd5')
     try:
         with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:        
