@@ -67,11 +67,11 @@ for i, hd5 in enumerate(hd5s):
     sample_id = int(hd5.split('/')[-1].replace('.hd5', ''))
     shutil.copyfile(hd5, f'{sample_id}.hd5')
     try:
-        with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:        
+        with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:
             for df, view, version in zip([annotated_df],
                                         ['sax', '3ch', '4ch'],
                                         ['v20200809', 'v20200603', 'v20200816']):
-                                                    
+
                 df_patient = df[df.sample_id==sample_id]
                 for nrow, dcm in df_patient.iterrows():
                     segmented_path = f'/home/pdiachil/projects/annotation/jamesp/sax/labels/{dcm.dicom_file}.png.mask.png'
@@ -82,7 +82,7 @@ for i, hd5 in enumerate(hd5s):
                     series = dcm.series.lower()
                     path_prefix='ukb_cardiac_mri'
                     full_tensor = np.zeros((x, y), dtype=np.float32)
-                    full_tensor[:png.shape[0], :png.shape[1]] = png            
+                    full_tensor[:png.shape[0], :png.shape[1]] = png
                     tensor_name = series + '_annotated_' + str(dcm.instance_number)
                     tp = tensor_path(path_prefix, tensor_name)
                     if tp in hd5_ff:
@@ -102,7 +102,7 @@ for i, hd5 in enumerate(hd5s):
     except RecursionError:
         continue
 end_time = time.time()
-print(end_time-start_time) 
+print(end_time-start_time)
 # %%
 from ml4h.tensormap.ukb.mri_vtk import _mri_hd5_to_structured_grids, _mri_tensor_4d
 from notebooks.mri.mri_atria import to_xdmf
@@ -168,18 +168,18 @@ for hd5_file in hd5s:
         to_xdmf(ds_sax, f'{sample_id}_sax_b6_annotated')
         to_xdmf(ds_sax_raw, f'{sample_id}_sax_b6')
 
-    right_ventricles, volumes = annotation_to_poisson(datasets=[ds_4ch, ds_sax], 
+    right_ventricles, volumes = annotation_to_poisson(datasets=[ds_4ch, ds_sax],
                                                     channels=[MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['RV_cavity'], 6],
-                                                    views=['lax_4ch', 'sax_b6'], 
+                                                    views=['lax_4ch', 'sax_b6'],
                                                     format_view='cine_segmented_{view}_annotated_{t}',
                                                     times=range(1))
 
-    left_ventricles, volumes = annotation_to_poisson(datasets=[ds_4ch, ds_3ch, ds_2ch, ds_sax], 
+    left_ventricles, volumes = annotation_to_poisson(datasets=[ds_4ch, ds_3ch, ds_2ch, ds_sax],
                                                     channels=[MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LV_cavity'],
-                                                            MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity'], 
+                                                            MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['LV_Cavity'],
                                                             MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LV_cavity'],
                                                             5],
-                                                    views=['lax_4ch', 'lax_3ch', 'lax_2ch', 'sax_b6'], 
+                                                    views=['lax_4ch', 'lax_3ch', 'lax_2ch', 'sax_b6'],
                                                     format_view='cine_segmented_{view}_annotated_{t}',
                                                     times=range(1))
 
