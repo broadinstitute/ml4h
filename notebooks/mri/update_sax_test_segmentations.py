@@ -69,7 +69,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
         upload_path = f'pdiachil/segmented_sax_lax_{version}/{sample_id}.hd5'
         upload_blob = bucket.blob(upload_path)
         upload_blob.upload_from_filename(f'{sample_id}.hd5')
-    except:
+    except NotImplementedError:
         continue
 end_time = time.time()
 print(end_time-start_time)
