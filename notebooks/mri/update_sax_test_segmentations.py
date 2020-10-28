@@ -4,6 +4,7 @@ import glob
 import time
 import sys
 import pandas as pd
+from google.cloud import storage
 
 hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/*.hd5')
 hd5s = sorted(hd5s)
@@ -26,7 +27,7 @@ df_sax_pngs = df_sax.merge(df_pngs, on ='png_file')
 df_sax_pngs = df_sax_pngs[df_sax_pngs['instance']==2]
 df_sax_pngs = df_sax_pngs.sort_values(by='sample_id')
 # %%
-from google.cloud import storage
+
 import imageio
 import shutil
 from ml4h.tensorize.tensor_writer_ukbb import tensor_path, first_dataset_at_path, create_tensor_in_hd5
