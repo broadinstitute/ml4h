@@ -45,9 +45,9 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
     if i == end:
         break
     
-    shutil.copyfile(f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{sample_id}.hd5', f'{sample_id}.hd5')
+    shutil.copyfile(f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{sample_id}.hd5', f'/home/pdiachil/{sample_id}.hd5')
     try:
-        with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:        
+        with h5py.File(f'/home/pdiachil/{sample_id}.hd5', 'a') as hd5_ff:        
             for nrow, dcm in df_hd5.iterrows():
                 segmented_path = f'jamesp/annotation/{view}/{version}/apply/output/output_pngs/{dcm.dicom_file}.png.mask.png'
                 blob = bucket.blob(segmented_path)
@@ -66,9 +66,6 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
                     tensor[:] = full_tensor
                 else:
                     create_tensor_in_hd5(hd5_ff, path_prefix, tensor_name, full_tensor)
-        upload_path = f'pdiachil/segmented_sax_lax_{version}/{sample_id}.hd5'
-        upload_blob = bucket.blob(upload_path)
-        upload_blob.upload_from_filename(f'{sample_id}.hd5')
     except NotImplementedError:
         continue
 end_time = time.time()
