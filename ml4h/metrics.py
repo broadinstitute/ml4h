@@ -454,15 +454,20 @@ def log_aucs(**aucs):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     def dashes(n): return '-' * n
 
-    header = "{:<35} {:<20} {:<15}"
-    row = "{:<35} {:<20} {:<15.10f}"
-    width = 85
+    header = "{:<35} {:<25} {:<15}"
+    row = "{:<35} {:<25} {:<15.4f}"
+    width = 90
     logging.info(dashes(width))
+
     for auc_name, auc_value in aucs.items():
         logging.info(header.format('Model', 'Label', auc_name+' AUC'))
+        triplets = []
         for model, model_value in auc_value.items():
             for label, auc in model_value.items():
+                triplets.append((model, label, auc))
                 logging.info(row.format(model, label, auc))
+        for model, label, auc in sorted(triplets, key=lambda x: x[1]):
+            logging.info(row.format(model, label, auc))
         logging.info(dashes(width))
 
 
