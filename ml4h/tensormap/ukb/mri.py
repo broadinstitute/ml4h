@@ -1417,6 +1417,10 @@ sax_slices_both = TensorMap(
     'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
+sax_slices_both_192 = TensorMap(
+    'sax_slices_both_192', shape=(192, 192, 5), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True, steps=4),
+)
 sax_slices_both_gauss = TensorMap(
     'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
