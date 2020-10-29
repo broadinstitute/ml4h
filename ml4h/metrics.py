@@ -454,8 +454,8 @@ def log_aucs(**aucs):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     def dashes(n): return '-' * n
 
-    header = "{:<35} {:<25} {:<15}"
-    row = "{:<35} {:<25} {:<15.4f}"
+    header = "{:<40} {:<28} {:<15}"
+    row = "{:<40} {:<28} {:<15.4f}"
     width = 90
     logging.info(dashes(width))
 
