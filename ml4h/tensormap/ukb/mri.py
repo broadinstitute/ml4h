@@ -1386,7 +1386,7 @@ sax_slice_both = TensorMap(
 )
 
 
-def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
+def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, steps=1):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
         found_key = ''
         for i in range(1, 1+max_slices):
@@ -1406,7 +1406,7 @@ def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for j in range(tm.shape[-1]):
-            slice_index = ((i-1) + (j - (tm.shape[-1]//2))) % max_slices
+            slice_index = ((i-1) + (j*steps)) % max_slices
             tensor[..., j] = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., slice_index], dtype=np.float32))
 
         return tensor
@@ -1420,6 +1420,10 @@ sax_slices_both = TensorMap(
 sax_slices_both_gauss = TensorMap(
     'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_10_slices_5_steps_both = TensorMap(
+    'sax_10_slices_5_steps_both', shape=(224, 224, 10), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True, steps=5),
 )
 sax_11_slices_both = TensorMap(
     'sax_11_slices_both', shape=(224, 224, 11), normalization=ZeroMeanStd1(),
