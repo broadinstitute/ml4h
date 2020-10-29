@@ -465,7 +465,6 @@ def log_aucs(**aucs):
         for model, model_value in auc_value.items():
             for label, auc in model_value.items():
                 triplets.append((model, label, auc))
-                logging.info(row.format(model, label, auc))
         for model, label, auc in sorted(triplets, key=lambda x: x[1]):
             logging.info(row.format(model, label, auc))
         logging.info(dashes(width))
