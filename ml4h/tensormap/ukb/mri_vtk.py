@@ -145,6 +145,77 @@ def _map_points_to_cells(pts, dataset, tol=1e-3):
             map_to_cells[pt_id] = cell_id.get()
     return map_to_cells
 
+def _project_structured_grids(source_grids, destination_grids, source_array_name, output_array, save_path=False):
+    # Loop through segmentations and datasets
+    for ds_i, ds_source in enumerate(source_grids):
+        for ds_j, ds_destination in enumerate(destination_grids):
+            dims = ds_destination.GetDimensions()
+            pts = vtk.util.numpy_support.vtk_to_numpy(
+                ds_destination.GetPoints().GetData(),
+            )
+            npts_per_slice = dims[0] * dims[1]
+            ncells_per_slice = (dims[0] - 1) * (dims[1] - 1)
+            n_orientation = (pts[npts_per_slice] - pts[0])
+            n_orientation /= np.linalg.norm(n_orientation)
+            cell_centers = vtk.vtkCellCenters()
+            cell_centers.SetInputData(ds_destination)
+            cell_centers.Update()
+            cell_pts = vtk.util.numpy_support.vtk_to_numpy(
+                cell_centers.GetOutput().GetPoints().GetData(),
+            )
+            # Loop through dataset slices
+            for s in range(dims[2] - 1):
+                slice_center = np.mean(
+                    pts[
+                        s * npts_per_slice:(s + 2) *
+                        npts_per_slice
+                    ],
+                    axis=0,
+                )
+                slice_cell_pts = cell_pts[
+                    s * ncells_per_slice:(s + 1) *
+                    ncells_per_slice
+                ]
+                slice_source = _cut_through_plane(
+                    ds_source, slice_center, n_orientation,
+                )
+                map_to_source = _map_points_to_cells(
+                    slice_cell_pts, slice_source,
+                )
+                # Loop through time
+                for t in range(MRI_FRAMES):
+                    arr_name = f'{source_array_name}_{t}'
+                    source_arr = vtk.util.numpy_support.vtk_to_numpy(
+                        slice_source.GetCellData().GetArray(arr_name),
+                    )
+                    projected_arr = source_arr[map_to_source]
+                    if len(output_array.shape) == 3:
+                        output_array[:, :, t] = np.maximum(
+                            output_array[:, :, t],
+                            projected_arr.reshape(
+                                output_array.shape[0],
+                                output_array.shape[1],
+                            ),
+                        )
+                    elif len(output_array.shape) == 4:
+                        output_array[:, :, s, t] = np.maximum(
+                            output_array[:, :, s, t],
+                            projected_arr.reshape(
+                                output_array.shape[0],
+                                output_array.shape[1],
+                            ),
+                        )
+                if save_path:
+                    writer_segmented = vtk.vtkXMLPolyDataWriter()
+                    writer_segmented.SetInputData(slice_segmented)
+                    writer_segmented.SetFileName(
+                        os.path.join(
+                            save_path,
+                            f'{source_array_name}_projected_{ds_i}_{ds_j}_{s}.vtp',
+                        ),
+                    )
+                    writer_segmented.Update()
+
 
 def _make_mri_projected_segmentation_from_file(
     to_segment_name,
@@ -163,75 +234,8 @@ def _make_mri_projected_segmentation_from_file(
             hd5, to_segment_name,
         )
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        # Loop through segmentations and datasets
-        for ds_i, ds_segmented in enumerate(cine_segmented_grids):
-            for ds_j, ds_to_segment in enumerate(cine_to_segment_grids):
-                dims = ds_to_segment.GetDimensions()
-                pts = vtk.util.numpy_support.vtk_to_numpy(
-                    ds_to_segment.GetPoints().GetData(),
-                )
-                npts_per_slice = dims[0] * dims[1]
-                ncells_per_slice = (dims[0] - 1) * (dims[1] - 1)
-                n_orientation = (pts[npts_per_slice] - pts[0])
-                n_orientation /= np.linalg.norm(n_orientation)
-                cell_centers = vtk.vtkCellCenters()
-                cell_centers.SetInputData(ds_to_segment)
-                cell_centers.Update()
-                cell_pts = vtk.util.numpy_support.vtk_to_numpy(
-                    cell_centers.GetOutput().GetPoints().GetData(),
-                )
-                # Loop through dataset slices
-                for s in range(dims[2] - 1):
-                    slice_center = np.mean(
-                        pts[
-                            s * npts_per_slice:(s + 2) *
-                            npts_per_slice
-                        ],
-                        axis=0,
-                    )
-                    slice_cell_pts = cell_pts[
-                        s * ncells_per_slice:(s + 1) *
-                        ncells_per_slice
-                    ]
-                    slice_segmented = _cut_through_plane(
-                        ds_segmented, slice_center, n_orientation,
-                    )
-                    map_to_segmented = _map_points_to_cells(
-                        slice_cell_pts, slice_segmented,
-                    )
-                    # Loop through time
-                    for t in range(MRI_FRAMES):
-                        arr_name = f'{segmented_name}_{t}'
-                        segmented_arr = vtk.util.numpy_support.vtk_to_numpy(
-                            slice_segmented.GetCellData().GetArray(arr_name),
-                        )
-                        projected_arr = segmented_arr[map_to_segmented]
-                        if len(tm.shape) == 3:
-                            tensor[:, :, t] = np.maximum(
-                                tensor[:, :, t],
-                                projected_arr.reshape(
-                                    tm.shape[0],
-                                    tm.shape[1],
-                                ),
-                            )
-                        elif len(tm.shape) == 4:
-                            tensor[:, :, s, t] = np.maximum(
-                                tensor[:, :, s, t],
-                                projected_arr.reshape(
-                                    tm.shape[0],
-                                    tm.shape[1],
-                                ),
-                            )
-                    if save_path:
-                        writer_segmented = vtk.vtkXMLPolyDataWriter()
-                        writer_segmented.SetInputData(slice_segmented)
-                        writer_segmented.SetFileName(
-                            os.path.join(
-                                save_path,
-                                f'{tm.name}_segmented_{ds_i}_{ds_j}_{s}.vtp',
-                            ),
-                        )
-                        writer_segmented.Update()
+        _project_structured_grids(cine_segmented_grids, cine_to_segment_grids, tm.name, tensor)
+        
         return tensor
 
     return mri_projected_segmentation

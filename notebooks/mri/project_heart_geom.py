@@ -145,30 +145,6 @@ def vtk_to_igl(vtk_mesh):
     return v, f
 
 
-def vtk_to_msh(vtk_mesh, fname):
-    pts = ns.vtk_to_numpy(vtk_mesh.GetPoints().GetData())
-    arr = np.zeros((len(pts), 4), dtype=np.double)
-    arr[:, :3] = pts
-
-    cells = np.zeros((vtk_mesh.GetNumberOfCells(), 4), dtype=np.int16)
-    cells[:, :3] = ns.vtk_to_numpy(vtk_mesh.GetPolys().GetData()).reshape(-1, 4)[:, 1:]
-    cells += 1
-
-    with open(fname, 'w') as output_file:
-        output_file.write('MeshVersionFormatted 2\n\n')
-        output_file.write('Dimension 3\n\n')
-        output_file.write(f'Vertices\n{len(pts)}\n')
-        np.savetxt(output_file, arr, fmt='%f %f %f %d')
-
-        output_file.write(f'\nTriangles\n{len(cells)}\n')
-        np.savetxt(output_file, cells, fmt='%d %d %d %d')
-
-        output_file.write('\nEnd')
-
-
-
-
-
 def hd5_to_mesh(hd5_file, t):
     with h5py.File(hd5_file, 'r') as hd5:
         points = np.copy(hd5[f'points_{t}'][()])
@@ -230,41 +206,8 @@ def project_to_image(v, triangles, uv, res=256):
 
 # %%
 import subprocess
+from parameterize_segmentation import msh_to_vtk, improve_mesh
 
-def msh_to_vtk(fname):
-    with open(fname, 'r') as input_file:
-        for line in input_file:
-            if line=='Vertices\n':
-                npts = int(input_file.readline())
-                pts = np.zeros((npts, 3))
-                for jj in range(npts):
-                    try:
-                        pts[jj, :] = [float(x) for x in input_file.readline().split()[:-1]]
-                    except ValueError:
-                        print(input_file.readline())
-            if 'Triangles' in line:
-                ncells = int(input_file.readline())
-                cells = np.zeros((ncells, 4), dtype=np.int64)
-                for i in range(ncells):
-                    cells[i, 1:] = [int(x) for x in input_file.readline().split()[:-1]]
-                cells -= 1
-                cells[:, 0] = 3
-    polydata = vtk.vtkPolyData()
-    pts_vtk = vtk.vtkPoints()
-    pts_vtk.SetData(ns.numpy_to_vtk(pts))
-    cells_vtk = vtk.vtkCellArray()
-    cells_vtk.SetCells(ncells, ns.numpy_to_vtkIdTypeArray(cells.ravel()))
-    polydata.SetPoints(pts_vtk)
-    polydata.SetPolys(cells_vtk)
-    return polydata
-
-def improve_mesh(vtk_mesh):
-    vtk_to_msh(vtk_mesh, 'tmp.mesh')
-    proc = subprocess.Popen(['mmgs_O3', '-hausd', '0.5', '-nr', 'tmp.mesh'])
-    proc.wait()
-
-    improved_mesh = msh_to_vtk('tmp.o.mesh')
-    return improved_mesh
 
 # %%
 la_hd5_file = '/home/pdiachil/projects/chambers/poisson_LA_1000107.hd5'
