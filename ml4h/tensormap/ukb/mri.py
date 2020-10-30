@@ -1389,60 +1389,49 @@ sax_slice_both_all = TensorMap(
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
 
-def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, steps=1):
+
+def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
         found_key = ''
-        for i in range(1, 1+max_slices):
-            if sax_series:
-                for b in range(1, 13):
-                    sax_key = segmentation_key.replace('*', str(b))
-                    if f'{path_prefix}/{sax_key}{i}' in hd5:
-                        found_key = tensor_key.replace('*', str(b))
-                        break
-                if len(found_key) > 1:
+        for i in range(1, 1 + max_slices):
+            for b in range(1, 13):
+                sax_key = segmentation_key.replace('*', str(b))
+                if f'{path_prefix}/{sax_key}{i}' in hd5:
+                    found_key = tensor_key.replace('*', str(b))
                     break
-            elif f'/{path_prefix}/{segmentation_key}{i}' in hd5:
-                found_key = tensor_key
+            if len(found_key) > 1:
                 break
         if i == max_slices:
             raise ValueError(f'No slice with segmentation found for {tm.name} segmentation key {segmentation_key}')
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for j in range(tm.shape[-1]):
-            slice_index = ((i-1) + (j*steps)) % max_slices
-            tensor[..., j] = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., slice_index], dtype=np.float32))
+            #slice_index = ((i-1) + (j*steps)) % max_slices
+            found_key = tensor_key.replace('*', str(b + (j - tm.shape[-1]//2)))
+            if found_key not in hd5[path_prefix]:
+                logging.debug(f'Slice with segmentation found for {tm.name} segmentation key {segmentation_key} but {found_key} not present.')
+                continue
+            tensor[..., j] = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
 
         return tensor
     return _slice_tensor_from_file
 
 
-sax_slices_both = TensorMap(
-    'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(),
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+sax_slices_both_3b = TensorMap(
+    'sax_slices_both', shape=(224, 224, 3), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
 )
-sax_slices_both_5_frame = TensorMap(
+sax_slices_both_5b = TensorMap(
     'sax_slices_both_192', shape=(224, 224, 5), normalization=ZeroMeanStd1(),
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True, steps=10),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
 )
-sax_slices_both_16_frame = TensorMap(
-    'sax_slices_both_16_frame', shape=(224, 224, 16), normalization=ZeroMeanStd1(),
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True, steps=3),
+sax_slices_both_3b_gauss = TensorMap(
+    'sax_slices_both', shape=(224, 224, 3), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
 )
-sax_slices_both_gauss = TensorMap(
+sax_slices_both_5b_gauss = TensorMap(
     'sax_slices_both', shape=(224, 224, 5), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
-)
-sax_10_slices_5_steps_both = TensorMap(
-    'sax_10_slices_5_steps_both', shape=(224, 224, 10), normalization=ZeroMeanStd1(),
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True, steps=5),
-)
-sax_11_slices_both = TensorMap(
-    'sax_11_slices_both', shape=(224, 224, 11), normalization=ZeroMeanStd1(),
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
-)
-sax_11_slices_both_gauss = TensorMap(
-    'sax_11_slices_both', shape=(224, 224, 11), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
-    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
 )
 
 
