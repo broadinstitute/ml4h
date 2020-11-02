@@ -180,7 +180,7 @@ LAUNCH_MESSAGE
 DEV_INSTRUCTIONS="
     pip install --upgrade pip;
     pip install -e ${WORKDIR};
-    pip install opencv-python;
+    pip install opencv-python-headless==4.4.0.44;
     cd /home/pdiachil/pypoisson;
     python setup.py install;
     cd ${WORKDIR}/notebooks/mri"
