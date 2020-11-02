@@ -8,13 +8,13 @@ from google.cloud import storage
 
 hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/*.hd5')
 hd5s = sorted(hd5s)
-pngs = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-10-26b/pngs/*.png')
+pngs = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/pngs/*.png')
 df_pngs = pd.DataFrame({'png_file': pngs})
 df_pngs['png_file'] = df_pngs['png_file'].str.split('/').str[-1]
 # %%
 import pandas as pd
 view='sax'
-version='v20201026b'
+version='v20201102'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')

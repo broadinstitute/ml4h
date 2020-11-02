@@ -6,6 +6,8 @@ import vtk, vtk.util.numpy_support
 from pypoisson import poisson_reconstruction
 import logging
 import os
+import scipy
+from scipy.optimize import minimize
 
 import subprocess
 
@@ -161,6 +163,74 @@ def points_normals_to_poisson(
     return triangle_filter.GetOutput()
 
 
+def _error_projection(dx, datasets, reference_dataset, 
+                      array_names, reference_array,
+                      dimensions, reference_dimensions,
+                      t, channels, reference_channels):
+    scaled_dx = np.array(dx)*100000.
+    iou_datasets = []
+    for dataset, array_name in zip(datasets, array_names):
+        dataset_array = np.copy(vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(f'{array_name}_{t}'))).reshape(dimensions[:2])
+        shifted_array = scipy.ndimage.shift(dataset_array, scaled_dx, np.int64)
+        aligned_array = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(f'{array_name}_{t}'))
+        aligned_array[:] = shifted_array.ravel()
+        projected_array = np.zeros(reference_dimensions)
+        _project_structured_grids([dataset], [reference_dataset], array_name, projected_array)
+        ious = np.zeros(len(channels))
+        for i, (channel, reference_channel) in enumerate(zip(channels, reference_channels)):
+            ious[i] = intersection_over_union(projected_array[:, :, t], reference_array,
+                                              channel, reference_channel)
+        iou_datasets.append(np.mean(ious))
+        aligned_array[:] = dataset_array.ravel()
+    return 1.0-np.mean(iou_datasets)
+
+
+def align_datasets(datasets, reference_dataset, array_names, reference_array_name, 
+                   channels, reference_channels, t):
+    reference_dimensions = list(reference_dataset.GetDimensions())
+    reference_dimensions = [x-1 for x in reference_dimensions if x > 2]
+    reference_dimensions += [MRI_FRAMES]
+
+    dataset_dimensions = list(datasets[0].GetDimensions())
+    dataset_dimensions = [x-1 for x in dataset_dimensions if x > 2]
+    dataset_dimensions += [MRI_FRAMES]
+
+    
+    # for i in range(MRI_FRAMES):
+    #     dataset_array_zeros = np.zeros_like(dataset_array.ravel())
+    #     dataset_array_vtk = vtk.util.numpy_support.numpy_to_vtk(dataset_array_zeros)
+    #     dataset_array_vtk.SetName(f'aligned_{array_name}_{i}')
+    #     dataset.GetCellData().AddArray(dataset_array_vtk)
+
+    reference_array = vtk.util.numpy_support.vtk_to_numpy(reference_dataset.GetCellData().GetArray(f'{reference_array_name}_{t}')).reshape(reference_dimensions[:2])
+    initial_error = _error_projection
+
+    dx = [0., 0.]
+    initial_error = _error_projection(dx, datasets, reference_dataset,
+                                      array_names, reference_array,
+                                      dataset_dimensions, reference_dimensions,
+                                      0, channels, reference_channels)
+    if initial_error > 0.7:                                
+        res = minimize(_error_projection, dx, method='Nelder-Mead', 
+                       args=(datasets, reference_dataset,
+                             array_names, reference_array,
+                             dataset_dimensions, reference_dimensions,
+                             0, channels, reference_channels))
+
+        dx = res.x * 100000.        
+
+    return dx
+
+
+def shift_datasets(datasets, array_names, dataset_dimensions, dx):
+    for dataset, array_name in zip(datasets, array_names):
+            for i in range(MRI_FRAMES):
+                dataset_array = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(f'{array_name}_{i}'))
+                shifted_array = scipy.ndimage.shift(dataset_array.reshape(dataset_dimensions[:2]), dx, np.int64)
+                # aligned_array = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(f'aligned_{array_name}_{i}'))
+                dataset_array[:] = shifted_array.ravel()
+
+
 def annotation_to_poisson(
     datasets: List[vtk.vtkStructuredGrid],
     channels: List[int],
@@ -188,13 +258,6 @@ def annotation_to_poisson(
         normals = []
         for i, (dataset, channel, view) in enumerate(zip(datasets, channels, views)):
 
-            arr_annot = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(format_view.format(view=view, t=t)))
-            arr_annot_copy = np.copy(arr_annot)
-            if isinstance(channel, list):
-                for channel_elem in channel[1:]:
-                    arr_annot[arr_annot==channel_elem] = channel[0]
-                channel = channel[0]
-
             if (projection_ds_idx is not None) and (projection_ds_idx != i):
                 projected_array = np.zeros(projection_dimensions)
                 _project_structured_grids([datasets[i]], [datasets[projection_ds_idx]], f'cine_segmented_{view}_annotated', projected_array)
@@ -203,6 +266,13 @@ def annotation_to_poisson(
                 if iou < 0.3 : 
                     continue
             
+            arr_annot = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(format_view.format(view=view, t=t)))
+            arr_annot_copy = np.copy(arr_annot)
+            if isinstance(channel, list):
+                for channel_elem in channel[1:]:
+                    arr_annot[arr_annot==channel_elem] = channel[0]
+                channel = channel[0]
+
             # Extract contours of the segmentation
             im = (arr_annot==channel).reshape(-1, ncols).astype(np.uint8)
             contours, hierarchy  = cv2.findContours(im, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
