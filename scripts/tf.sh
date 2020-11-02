@@ -178,6 +178,7 @@ Attempting to run Docker with
 LAUNCH_MESSAGE
 
 DEV_INSTRUCTIONS="
+    pip install --upgrade pip;
     pip install -e ${WORKDIR};
     pip install opencv-python;
     cd /home/pdiachil/pypoisson;
