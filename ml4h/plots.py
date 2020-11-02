@@ -2142,6 +2142,9 @@ def plot_reconstruction(
             if tm.is_categorical():
                 plt.imsave(f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}", np.argmax(y, axis=-1), cmap='plasma')
                 plt.imsave(f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(yp, axis=-1), cmap='plasma')
+            elif tm.shape[-1] in [3, 4]:
+                plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', y[:, :, :])
+                plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', yp[:, :, :])
             else:
                 plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', y[:, :, 0], cmap='gray')
                 plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', yp[:, :, 0], cmap='gray')
