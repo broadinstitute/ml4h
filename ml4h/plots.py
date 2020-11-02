@@ -2088,7 +2088,10 @@ def plot_autoencoder_towards_attractor(model, test_data, tm, reconstruction=None
         if i % sample_every == 0 and col < frames:
             for j in range(rows):
                 if len(test_data[tm.input_name()].shape) == 4:
-                    axes[j, col].imshow(test_data[tm.input_name()][j, :, :, 0], cmap = 'gray')
+                    if test_data[tm.input_name()].shape[-1] == 1:
+                        axes[j, col].imshow(test_data[tm.input_name()][j, :, :, 0], cmap = 'gray')
+                    elif test_data[tm.input_name()].shape[-1] in [3, 4]:
+                        axes[j, col].imshow(test_data[tm.input_name()][j, :, :, :])
                     axes[j, col].set_yticks(())
                 elif len(test_data[tm.input_name()].shape) == 3:
                     for l in range(12):
