@@ -13,7 +13,7 @@
 Small typos in code or documentation may be edited directly using the GitHub web interface. Otherwise:
 
 1. If you are new to GitHub, don't start here. Instead, work through a GitHub tutorial such as https://guides.github.com/activities/hello-world/.
-1. Create a fork of https://github.com/broadinstitute/ml
+1. Create a fork of https://github.com/broadinstitute/ml4h
 1. Clone your fork.
 1. Work from a feature branch. See the [Appendix](#appendix) for detailed `git` commands.
 
@@ -29,7 +29,7 @@ cd ${HOME}/ml4h
 pre-commit install
 ```
 
-See [.pre-commit-config.yaml](https://github.com/broadinstitute/ml4h/blob/master/.pre-commit-config.yaml) for the currently configured pre-commit hooks for ml4cvd.
+See [.pre-commit-config.yaml](https://github.com/broadinstitute/ml4h/blob/master/.pre-commit-config.yaml) for the currently configured pre-commit hooks for ml4h.
 
 ### Install git-secrets
 
@@ -50,11 +50,11 @@ git config --global init.templateDir ~/.git-templates/git-secrets
 
 We maintain our own custom "provider" to cover any private keys or other critical data that we would like to avoid
 committing to our repositories. Feel free to add ```egrep```-compatible regular expressions to
-```git_secrets_provider_ml4cvd.txt``` to match types of critical data that are not currently covered by the patterns in that
+```git_secrets_provider_ml4h.txt``` to match types of critical data that are not currently covered by the patterns in that
 file. To register the patterns in this file with ```git-secrets```:
 
 ```
-git secrets --add-provider -- cat ${HOME}/ml4h/git_secrets_provider_ml4cvd.txt
+git secrets --add-provider -- cat ${HOME}/ml4h/git_secrets_provider_ml4h.txt
 ```
 
 ### Install pylint
@@ -66,11 +66,11 @@ git secrets --add-provider -- cat ${HOME}/ml4h/git_secrets_provider_ml4cvd.txt
 pip3 install pylint
 ```
 
-See [pylintrc](https://github.com/broadinstitute/ml4h/blob/master/pylintrc) for the current lint configuration for ml4cvd.
+See [pylintrc](https://github.com/broadinstitute/ml4h/blob/master/pylintrc) for the current lint configuration for ml4h.
 
 # Python coding style
 
-Changes to ml4cvd should conform to [PEP 8 -- Style Guide for Python Code](https://www.python.org/dev/peps/pep-0008/). See also [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md) as another decription of this coding style.
+Changes to ml4h should conform to [PEP 8 -- Style Guide for Python Code](https://www.python.org/dev/peps/pep-0008/). See also [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md) as another decription of this coding style.
 
 Use `pylint` to check your Python changes:
 
@@ -110,11 +110,11 @@ For more pytest usage information, checkout the [usage guide](https://docs.pytes
 
 ## Testing of `visualization_tools`
 
-The code in [ml4cvd/visualization_tools](https://github.com/broadinstitute/ml4h/tree/master/ml4cvd/visualization_tools) is primarily interactive so we add test cases to notebook [test_error_handling_for_notebook_visualizations.ipynb](https://github.com/broadinstitute/ml4h/blob/master/notebooks/review_results/test_error_handling_for_notebook_visualizations.ipynb) and visually inspect the output of `Cells -> Run all`.
+The code in [ml4h/visualization_tools](https://github.com/broadinstitute/ml4h/tree/master/ml4h/visualization_tools) is primarily interactive so we add test cases to notebook [test_error_handling_for_notebook_visualizations.ipynb](https://github.com/broadinstitute/ml4h/blob/master/notebooks/review_results/test_error_handling_for_notebook_visualizations.ipynb) and visually inspect the output of `Cells -> Run all`.
 
 # Appendix
 
-For the ml4cvd GitHub repository, we are doing ‘merge and squash’ of pull requests. So that means your fork does not match upstream after your pull request has been merged. The easiest way to manage this is to always work in a feature branch, instead of checking changes into your fork’s master branch.
+For the ml4h GitHub repository, we are doing ‘merge and squash’ of pull requests. So that means your fork does not match upstream after your pull request has been merged. The easiest way to manage this is to always work in a feature branch, instead of checking changes into your fork’s master branch.
 
 
 ## How to work on a new feature
