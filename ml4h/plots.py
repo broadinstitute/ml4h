@@ -2143,8 +2143,8 @@ def plot_reconstruction(
                 plt.imsave(f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}", np.argmax(y, axis=-1), cmap='plasma')
                 plt.imsave(f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(yp, axis=-1), cmap='plasma')
             elif tm.shape[-1] in [3, 4]:
-                plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', y[:, :, :])
-                plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', yp[:, :, :])
+                plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', (y[:, :, :]-y.min()) / (y.max() - y.min()))
+                plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', (yp[:, :, :]-yp.min()) / (yp.max() - yp.min()))
             else:
                 plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', y[:, :, 0], cmap='gray')
                 plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', yp[:, :, 0], cmap='gray')
