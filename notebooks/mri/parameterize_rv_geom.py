@@ -17,7 +17,7 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 # %%
 import logging
 logging.getLogger().setLevel('INFO')
-hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-10-26b/*.hd5')
+hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/*.hd5')
 
 # %%
 #start = int(sys.argv[1])
@@ -25,7 +25,7 @@ hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-10-26b/*.hd5')
 
 start = 2818010
 end = 2818011
-hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-10-26b/2818010.hd5']
+hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2818010.hd5']
 
 # %%
 views = ['lax_4ch']
@@ -123,7 +123,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
         array_names = [f'cine_segmented_sax_b{i}_annotated' for i in range(1, len(annot_datasets[1:])+1)]
         shift_datasets(annot_datasets[1:], array_names, dataset_dimensions, dx)
         for ids in range(1, len(annot_datasets[1:])+1):
-            to_xdmf(annot_datasets[ids], f'aligned_sax_b{i}_annotated')
+            to_xdmf(annot_datasets[ids], f'aligned_sax_20201102_b{i}_annotated')
 
         poisson_chambers = []
         poisson_volumes = []
@@ -131,8 +131,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
             result['sample_id'][i-start] = sample_id
             atria, volumes = annotation_to_poisson(annot_datasets, channel, views,
                                                    annot_time_format_string,
-                                                   range(MRI_FRAMES), 0, 
-                                                   save_path='/home/pdiachil/projects/chambers/rv_explore')
+                                                   range(MRI_FRAMES), 0)
             poisson_chambers.append(atria)
             poisson_volumes.append(volumes)
             for t, poisson_volume in enumerate(poisson_volumes[-1]):
@@ -145,7 +144,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 # writer.Update()
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
-                to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
+                to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_20201102_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
     except FutureWarning:
         continue
     # break
