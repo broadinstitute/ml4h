@@ -5,9 +5,9 @@ name: Test ml4h Python package
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, pytest-action ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, pytest-action ]
   workflow_dispatch:
     # Allows manually triggering workflow in GitHub UI on selected branch.
     # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
@@ -35,4 +35,4 @@ jobs:
     - name: Test with pytest
       run: |
         pytest tests
-  
+
