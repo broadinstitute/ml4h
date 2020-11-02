@@ -1,10 +1,10 @@
 # Contributing
 
-1. Before making a substantial pull request, consider first [filing an issue](https://github.com/broadinstitute/ml/issues) describing the feature addition or change you wish to make.
+1. Before making a substantial pull request, consider first [filing an issue](https://github.com/broadinstitute/ml4h/issues) describing the feature addition or change you wish to make.
 1. [Get setup](#setup-for-code-contributions)
 1. [Follow the coding style](#python-coding-style)
 1. [Test your code](#testing)
-1. Send a [pull request](https://github.com/broadinstitute/ml/pulls)
+1. Send a [pull request](https://github.com/broadinstitute/ml4h/pulls)
 
 ## Setup for code contributions
 
@@ -25,11 +25,11 @@ Small typos in code or documentation may be edited directly using the GitHub web
 # Install pre-commit
 pip3 install pre-commit
 # Install the git hook scripts by running this within the git clone directory
-cd ${HOME}/ml
+cd ${HOME}/ml4h
 pre-commit install
 ```
 
-See [.pre-commit-config.yaml](https://github.com/broadinstitute/ml/blob/master/.pre-commit-config.yaml) for the currently configured pre-commit hooks for ml4cvd.
+See [.pre-commit-config.yaml](https://github.com/broadinstitute/ml4h/blob/master/.pre-commit-config.yaml) for the currently configured pre-commit hooks for ml4cvd.
 
 ### Install git-secrets
 
@@ -54,7 +54,7 @@ committing to our repositories. Feel free to add ```egrep```-compatible regular 
 file. To register the patterns in this file with ```git-secrets```:
 
 ```
-git secrets --add-provider -- cat ${HOME}/ml/git_secrets_provider_ml4cvd.txt
+git secrets --add-provider -- cat ${HOME}/ml4h/git_secrets_provider_ml4cvd.txt
 ```
 
 ### Install pylint
@@ -66,7 +66,7 @@ git secrets --add-provider -- cat ${HOME}/ml/git_secrets_provider_ml4cvd.txt
 pip3 install pylint
 ```
 
-See [pylintrc](https://github.com/broadinstitute/ml/blob/master/pylintrc) for the current lint configuration for ml4cvd.
+See [pylintrc](https://github.com/broadinstitute/ml4h/blob/master/pylintrc) for the current lint configuration for ml4cvd.
 
 # Python coding style
 
@@ -75,7 +75,7 @@ Changes to ml4cvd should conform to [PEP 8 -- Style Guide for Python Code](https
 Use `pylint` to check your Python changes:
 
 ```bash
-pylint --rcfile=${HOME}/ml/pylintrc myfile.py
+pylint --rcfile=${HOME}/ml4h/pylintrc myfile.py
 ```
 
 Any messages returned by `pylint` are intended to be self-explanatory, but that isn't always the case.
@@ -89,28 +89,28 @@ Any messages returned by `pylint` are intended to be self-explanatory, but that 
 
 Unit tests can be run in Docker with
 ```
-${HOME}/ml/scripts/tf.sh -T ${HOME}/ml/tests
+${HOME}/ml4h/scripts/tf.sh -T ${HOME}/ml4h/tests
 ```
 Unit tests can be run locally in a conda environment with
 ```
-python -m pytest ${HOME}/ml/tests
+python -m pytest ${HOME}/ml4h/tests
 ```
 Some of the unit tests are slow due to creating, saving and loading `tensorflow` models.
 To skip those tests to move quickly, run
 ```
-python -m pytest ${HOME}/ml/tests -m "not slow"
+python -m pytest ${HOME}/ml4h/tests -m "not slow"
 ```
 pytest can also run specific tests using `::`. For example
 
 ```
-python -m pytest ${HOME}/ml/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
+python -m pytest ${HOME}/ml4h/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_u_connect_segment
 ```
 
 For more pytest usage information, checkout the [usage guide](https://docs.pytest.org/en/latest/usage.html).
 
 ## Testing of `visualization_tools`
 
-The code in [ml4cvd/visualization_tools](https://github.com/broadinstitute/ml/tree/master/ml4cvd/visualization_tools) is primarily interactive so we add test cases to notebook [test_error_handling_for_notebook_visualizations.ipynb](https://github.com/broadinstitute/ml/blob/master/notebooks/review_results/test_error_handling_for_notebook_visualizations.ipynb) and visually inspect the output of `Cells -> Run all`.
+The code in [ml4cvd/visualization_tools](https://github.com/broadinstitute/ml4h/tree/master/ml4cvd/visualization_tools) is primarily interactive so we add test cases to notebook [test_error_handling_for_notebook_visualizations.ipynb](https://github.com/broadinstitute/ml4h/blob/master/notebooks/review_results/test_error_handling_for_notebook_visualizations.ipynb) and visually inspect the output of `Cells -> Run all`.
 
 # Appendix
 
