@@ -31,7 +31,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
-        pip install -r docker/vm_boot_images/config/tensorflow-requirements.txt
+        # Install the ml4h Python package.
+        pip install .
     - name: Test with pytest
       run: |
         pytest tests
