@@ -109,8 +109,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
                 # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
 
-    # except:
-    #     pass
+      # except:
+      #     pass
 
 
 
@@ -161,6 +161,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
     except:
+        logging.info(f'Caught exception at {sample_id}')
         continue
     # break
 for chamber, result in zip(chambers, results):
