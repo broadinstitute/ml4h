@@ -1,13 +1,13 @@
-# This workflow will install Python dependencies and run tests.
+# This workflow will install the ml4h Python package and run its tests.
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Test ml4h Python package
 
 on:
   push:
-    branches: [ master, pytest-action ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, pytest-action ]
+    branches: [ master ]
   workflow_dispatch:
     # Allows manually triggering workflow in GitHub UI on selected branch.
     # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
