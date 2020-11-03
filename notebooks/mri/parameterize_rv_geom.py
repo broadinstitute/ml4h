@@ -20,12 +20,13 @@ logging.getLogger().setLevel('INFO')
 hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/*.hd5')
 
 # %%
-#start = int(sys.argv[1])
-#end = int(sys.argv[2])
+start = int(sys.argv[1])
+end = int(sys.argv[2])
 
-start = 2818010
-end = 2818011
-hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2818010.hd5']
+# start = 2032446
+# end = start+1
+version='v20201102'
+# hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2032446.hd5']
 
 # %%
 views = ['lax_4ch']
@@ -65,18 +66,20 @@ import scipy
 results = []
 for chamber in chambers:
     results.append({'sample_id': [-1]*(end-start)})
+    results[-1]['dx_0'] = [-1]*(end-start)
+    results[-1]['dx_1'] = [-1]*(end-start)
     for t in range(MRI_FRAMES):
         results[-1][f'{chamber}_poisson_{t}'] = [-1]*(end-start)
 
 start_time = time.time()
 for i, hd5 in enumerate(sorted(hd5s)):
-    i = start
+    # i = start
     # hd5 = f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{hd5}.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
-    # if i < start:
-    #     continue
-    # if i == end:
-    #     break
+    if i < start:
+        continue
+    if i == end:
+        break
 
     annot_datasets = []
     orig_datasets = []
@@ -106,14 +109,19 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
                 # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
 
-        # Shift datasets        
-        dx = align_datasets(annot_datasets[3:7], annot_datasets[0], 
-                            [f'cine_segmented_sax_b{i}_annotated' for i in [3, 4, 5, 6]],
+    # except:
+    #     pass
+
+
+
+        # Shift datasets
+        nsax = len(annot_datasets)-1
+        dx = align_datasets(annot_datasets[nsax//2-1:nsax//2+2], annot_datasets[0], 
+                            [f'cine_segmented_sax_b{i}_annotated' for i in range(nsax//2-1, nsax//2+2)],
                             'cine_segmented_lax_4ch_annotated', 
                             [MRI_SAX_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
                             [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
-                            t=0)  
-        print(dx)
+                            t=0)        
 
         dataset_dimensions = list(annot_datasets[1].GetDimensions())
         dataset_dimensions = [x-1 for x in dataset_dimensions if x > 2]
@@ -122,13 +130,15 @@ for i, hd5 in enumerate(sorted(hd5s)):
         from parameterize_segmentation import shift_datasets
         array_names = [f'cine_segmented_sax_b{i}_annotated' for i in range(1, len(annot_datasets[1:])+1)]
         shift_datasets(annot_datasets[1:], array_names, dataset_dimensions, dx)
-        for ids in range(1, len(annot_datasets[1:])+1):
-            to_xdmf(annot_datasets[ids], f'aligned_sax_20201102_b{i}_annotated')
+        # for ids in range(1, len(annot_datasets[1:])+1):
+        #     to_xdmf(annot_datasets[ids], f'aligned_sax_20201026b_b{ids}_annotated')
 
         poisson_chambers = []
         poisson_volumes = []
         for channel, chamber, result in zip(channels, chambers, results):
             result['sample_id'][i-start] = sample_id
+            result['dx_0'][i-start] = dx[0]
+            result['dx_1'][i-start] = dx[1]
             atria, volumes = annotation_to_poisson(annot_datasets, channel, views,
                                                    annot_time_format_string,
                                                    range(MRI_FRAMES), 0)
@@ -144,28 +154,33 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 # writer.Update()
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
-                to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_20201102_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
+                to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
     except FutureWarning:
         continue
     # break
 for chamber, result in zip(chambers, results):
     results_df = pd.DataFrame(result)
-    results_df.to_csv(f'{chamber}_processed_{start}_{end}.csv')
+    results_df.to_csv(f'{chamber}_processed_{version}_{start}_{end}.csv')
 end_time = time.time()
 print(end_time-start_time)
 
 
-# %%
-import matplotlib.pyplot as plt
-cols = [f'RV_poisson_{t}' for t in range(50)]
-f, ax = plt.subplots()
-ax.plot(results_df[cols].values[0], linewidth=3, color='k')
-ax.set_xlim([0, 49])
-ax.set_ylabel('RV volume (ml)')
-ax.set_xlabel('Frames')
-f.set_size_inches(4, 3)
-plt.tight_layout()
-f.savefig(f'RV_volume_{start}.png', dpi=500)
+# # %%
+# results1 = pd.read_csv(f'RV_processed_v20201026b_{start}_{end}.csv')
+# results2 = pd.read_csv(f'RV_processed_v20201102_{start}_{end}.csv')
+# results3 = pd.read_csv(f'RV_processed_v20201102_noalign_{start}_{end}.csv')
+# import matplotlib.pyplot as plt
+# cols = [f'RV_poisson_{t}' for t in range(50)]
+# f, ax = plt.subplots()
+# ax.plot(results3[cols].values[0], linewidth=3, color='r', label='v20201102_noalign')
+# ax.plot(results2[cols].values[0], linewidth=3, color='b', label='v20201102')
+# ax.set_xlim([0, 49])
+# ax.set_ylabel('RV volume (ml)')
+# ax.set_xlabel('Frames')
+# f.set_size_inches(4, 3)
+# ax.legend()
+# plt.tight_layout()
+# f.savefig(f'RV_volume_{version}_{start}.png', dpi=500)
 
 
 # # %%
