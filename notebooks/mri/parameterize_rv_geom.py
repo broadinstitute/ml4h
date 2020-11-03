@@ -121,7 +121,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
                             'cine_segmented_lax_4ch_annotated', 
                             [MRI_SAX_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
                             [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
-                            t=0)        
+                            t=0)     
+        logging.info(f'SAX-LAX alignment completed. dx=[{dx[0]}, {dx[1]}]')   
 
         dataset_dimensions = list(annot_datasets[1].GetDimensions())
         dataset_dimensions = [x-1 for x in dataset_dimensions if x > 2]
@@ -160,9 +161,9 @@ for i, hd5 in enumerate(sorted(hd5s)):
     # break
 for chamber, result in zip(chambers, results):
     results_df = pd.DataFrame(result)
-    results_df.to_csv(f'{chamber}_processed_{version}_{start}_{end}.csv')
+    results_df.to_csv(f'{chamber}_processed_{version}_{start}_{end}.csv', index=False)
 end_time = time.time()
-print(end_time-start_time)
+logging.info(f'Job completed. Time elapsed: {end_time-start_time:.0f} s')
 
 
 # # %%
