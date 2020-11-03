@@ -66,10 +66,8 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
                     tensor[:] = full_tensor
                 else:
                     create_tensor_in_hd5(hd5_ff, path_prefix, tensor_name, full_tensor)
-    except:
+    except Exception as e:
+        logging.info(f'Caught exception at {sample_id}: {e}')
         continue
 end_time = time.time()
 print(end_time-start_time)
-# %%
-hd5_ff= h5py.File(f'{sample_id}.hd5')
-# %%

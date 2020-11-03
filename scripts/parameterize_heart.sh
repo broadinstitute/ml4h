@@ -10,9 +10,13 @@ git pull
 sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-v20200901/
 
 cnt1=$((VMTAG*STEP))
-cnt2=$((VMTAG*STEP+STEP))
+cnt2=$((VMTAG*STEP+STEP-1))
 
-/home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_geom.py $cnt1 $cnt2
+for i in $(seq $cnt1 $cnt2)
+do
+    end=$((i+1))
+    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_geom.py $i $end
+done
 
 cd /home/pdiachil/ml/notebooks/mri
 /snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/rightheart_boundary_v20201102/
