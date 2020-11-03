@@ -106,8 +106,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 #         save_path=None, order='F',
                 #     )[0],
                 # )
-                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
-                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
+                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=True)
+                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True)
 
       # except:
       #     pass
@@ -160,15 +160,15 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
-    except:
-        logging.info(f'Caught exception at {sample_id}')
+    except Exception as e:
+        logging.info(f'Caught exception at {sample_id}: {e}')
         continue
     # break
 for chamber, result in zip(chambers, results):
     results_df = pd.DataFrame(result)
     results_df.to_csv(f'{chamber}_processed_{version}_{start}_{end}.csv', index=False)
 end_time = time.time()
-logging.info(f'Job completed. Time elapsed: {end_time-start_time:.0f} s')
+logging.info(f'Job for {sample_id} completed. Time elapsed: {end_time-start_time:.0f} s')
 
 
 # # %%
