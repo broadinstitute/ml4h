@@ -45,7 +45,7 @@ def project_3dpts_plane(pts):
     pts_tmp[-1] = 1
     return np.dot(M, pts_tmp)[:-1].T
 
-def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True):
+def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True, squash=False):
     write_mode = 'a' if append else 'w'
     ff_xml = open(f'{filename}.xmf', write_mode)
     ff_hd5 = h5py.File(f'{filename}.hd5', write_mode)
@@ -58,6 +58,11 @@ def to_xdmf(vtk_object, filename, append=False, append_time=0, write_footer=True
     if isinstance(vtk_object, vtk.vtkStructuredGrid):
         extent = vtk_object.GetExtent()
         arr_name = '_'.join(vtk_object.GetCellData().GetArray(0).GetName().split('_')[:-1])
+        if squash:
+            npts = vtk_object.GetNumberOfPoints()
+            squashed_points = 0.5*(arr_pts[:npts//2, :] + arr_pts[npts//2:, :])
+            arr_pts[:npts//2, :] = squashed_points
+            arr_pts[npts//2:, :] = squashed_points
         ff_hd5.create_dataset('points', data=arr_pts, compression="gzip", compression_opts=9)
         for t in range(MRI_FRAMES):
             ff_xml.write(f"""

@@ -106,8 +106,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 #         save_path=None, order='F',
                 #     )[0],
                 # )
-                # to_xdmf(annot_datasets[-1], f'{start}_{view}_annotated')
-                # to_xdmf(orig_datasets[-1], f'{start}_{view}_original')
+                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
+                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
 
     # except:
     #     pass
@@ -160,7 +160,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
-    except FutureWarning:
+    except:
         continue
     # break
 for chamber, result in zip(chambers, results):
