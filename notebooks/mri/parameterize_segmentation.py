@@ -159,8 +159,13 @@ def points_normals_to_poisson(
     triangle_filter = vtk.vtkTriangleFilter()
     triangle_filter.SetInputConnection(clean.GetOutputPort())
     triangle_filter.Update()
+
+    connectivity = vtk.vtkPolyDataConnectivityFilter()
+    connectivity.SetInputConnection(triangle_filter.GetOutputPort())
+    connectivity.SetExtractionModeToLargestRegion()
+    connectivity.Update()
     
-    return triangle_filter.GetOutput()
+    return connectivity.GetOutput()
 
 
 def _error_projection(dx, datasets, reference_dataset, 
@@ -202,8 +207,7 @@ def align_datasets(datasets, reference_dataset, array_names, reference_array_nam
     #     dataset_array_vtk.SetName(f'aligned_{array_name}_{i}')
     #     dataset.GetCellData().AddArray(dataset_array_vtk)
 
-    reference_array = vtk.util.numpy_support.vtk_to_numpy(reference_dataset.GetCellData().GetArray(f'{reference_array_name}_{t}')).reshape(reference_dimensions[:2])
-    initial_error = _error_projection
+    reference_array = vtk.util.numpy_support.vtk_to_numpy(reference_dataset.GetCellData().GetArray(f'{reference_array_name}_{t}')).reshape(reference_dimensions[:2])    
 
     dx = [0., 0.]
     initial_error = _error_projection(dx, datasets, reference_dataset,
