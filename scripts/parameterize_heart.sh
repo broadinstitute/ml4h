@@ -19,10 +19,12 @@ do
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/rightheart_boundary_v20201102/
+# /snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/rightheart_boundary_v20201102/
+/snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
+/snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
-cd /home/pdiachil/projects/chambers
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/rightheart_boundary_xdmf_v20201102/
-/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/rightheart_boundary_logs/
+# cd /home/pdiachil/projects/chambers
+# /snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/rightheart_boundary_xdmf_v20201102/
+# /snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/rightheart_boundary_logs/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
