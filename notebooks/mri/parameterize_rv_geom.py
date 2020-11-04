@@ -98,16 +98,16 @@ for i, hd5 in enumerate(sorted(hd5s)):
                         save_path=None, order='F',
                     )[0],
                 )
-                # orig_datasets.append(
-                #     _mri_hd5_to_structured_grids(
-                #         ff_trad, view_format_string.format(view=view),
-                #         view_name=view_format_string.format(view=view),
-                #         concatenate=False, annotation=False,
-                #         save_path=None, order='F',
-                #     )[0],
-                # )
-                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=True)
-                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True)
+                orig_datasets.append(
+                    _mri_hd5_to_structured_grids(
+                        ff_trad, view_format_string.format(view=view),
+                        view_name=view_format_string.format(view=view),
+                        concatenate=False, annotation=False,
+                        save_path=None, order='F',
+                    )[0],
+                )
+                to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=True)
+                to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True)
 
       # except:
       #     pass
