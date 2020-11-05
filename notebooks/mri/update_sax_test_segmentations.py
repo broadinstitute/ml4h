@@ -11,15 +11,15 @@ view='sax'
 version='v20201102'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
-blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')
-blob.download_to_filename('/home/pdiachil/manifest.tsv')
+# blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')
+# blob.download_to_filename('/home/pdiachil/manifest.tsv')
 
-df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t')
-df_sax['png_file'] = df_sax['dicom_file'].str.replace('.dcm', '.dcm.png.mask.png')
+df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t', usecols=['sample_id', 'instance', 'dicom_file', 'series'])
+#df_sax['png_file'] = df_sax['dicom_file'].str.replace('.dcm', '.dcm.png.mask.png')
 
-df_sax_pngs = df_sax.merge(df_pngs, on ='png_file')
-df_sax_pngs = df_sax_pngs[df_sax_pngs['instance']==2]
-df_sax_pngs = df_sax_pngs.sort_values(by='sample_id')
+# df_sax_pngs = df_sax.merge(df_pngs, on ='png_file')
+# df_sax_pngs = df_sax_pngs[df_sax_pngs['instance']==2]
+# df_sax_pngs = df_sax_pngs.sort_values(by='sample_id')
 # %%
 
 import imageio
@@ -27,13 +27,14 @@ import shutil
 from ml4h.tensorize.tensor_writer_ukbb import tensor_path, first_dataset_at_path, create_tensor_in_hd5
 import numpy as np
 
-start = int(sys.argv[1])
-end = int(sys.argv[2])
-# start = 1
-# end = 2
+# start = int(sys.argv[1])
+# end = int(sys.argv[2])
+start = 1
+end = 2
+df_sax = df_sax[df_sax['instance']==2]
 
 start_time = time.time()
-for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
+for i, (sample_id, df_hd5) in enumerate(df_sax.groupby('sample_id')):
     if i < start:
         continue
     if i == end:
@@ -65,3 +66,5 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
         continue
 end_time = time.time()
 print(end_time-start_time)
+
+# %%
