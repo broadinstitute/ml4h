@@ -7,17 +7,14 @@ import pandas as pd
 from google.cloud import storage
 
 hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/*.hd5')
-hd5s = sorted(hd5s)
-pngs = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/pngs/*.png')
-df_pngs = pd.DataFrame({'png_file': pngs})
-df_pngs['png_file'] = df_pngs['png_file'].str.split('/').str[-1]
+hd5s = sorted(hd5s)]
 # %%
 import pandas as pd
 view='sax'
 version='v20201102'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
-blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest-test.tsv')
+blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')
 blob.download_to_filename('/home/pdiachil/manifest.tsv')
 
 df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t')
@@ -49,7 +46,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_pngs.groupby('sample_id')):
     try:
         with h5py.File(f'/home/pdiachil/{sample_id}.hd5', 'a') as hd5_ff:
             for nrow, dcm in df_hd5.iterrows():
-                segmented_path = f'jamesp/annotation/{view}/{version}/apply-test/output/output_pngs/{dcm.dicom_file}.png.mask.png'
+                segmented_path = f'jamesp/annotation/{view}/{version}/apply/output/output_pngs/{dcm.dicom_file}.png.mask.png'
                 blob = bucket.blob(segmented_path)
                 blob.download_to_filename('tmp.png')
                 png = imageio.imread('tmp.png')
