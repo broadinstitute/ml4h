@@ -5,6 +5,7 @@ import time
 import sys
 import pandas as pd
 from google.cloud import storage
+import logging
 
 import pandas as pd
 view='sax'
