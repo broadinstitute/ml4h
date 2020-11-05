@@ -6,9 +6,6 @@ import sys
 import pandas as pd
 from google.cloud import storage
 
-hd5s = glob.glob('/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/*.hd5')
-hd5s = sorted(hd5s)]
-# %%
 import pandas as pd
 view='sax'
 version='v20201102'
