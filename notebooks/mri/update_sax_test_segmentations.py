@@ -27,10 +27,10 @@ import shutil
 from ml4h.tensorize.tensor_writer_ukbb import tensor_path, first_dataset_at_path, create_tensor_in_hd5
 import numpy as np
 
-# start = int(sys.argv[1])
-# end = int(sys.argv[2])
-start = 1
-end = 2
+start = int(sys.argv[1])
+end = int(sys.argv[2])
+# start = 1
+# end = 2
 df_sax = df_sax[df_sax['instance']==2]
 
 start_time = time.time()
