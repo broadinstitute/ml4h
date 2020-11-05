@@ -14,7 +14,7 @@ bucket = storage_client.get_bucket('ml4cvd')
 # blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')
 # blob.download_to_filename('/home/pdiachil/manifest.tsv')
 
-df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t', usecols=['sample_id', 'instance', 'dicom_file', 'series'])
+df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t', usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 #df_sax['png_file'] = df_sax['dicom_file'].str.replace('.dcm', '.dcm.png.mask.png')
 
 # df_sax_pngs = df_sax.merge(df_pngs, on ='png_file')
