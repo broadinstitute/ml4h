@@ -30,8 +30,8 @@ import numpy as np
 
 start = int(sys.argv[1])
 end = int(sys.argv[2])
-# start = 1
-# end = 2
+# start = 0
+# end = 1
 df_sax = df_sax[df_sax['instance']==2]
 
 start_time = time.time()
@@ -55,7 +55,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax.groupby('sample_id')):
                 series = dcm.series.lower()
                 path_prefix='ukb_cardiac_mri'
                 full_tensor = np.zeros((x, y), dtype=np.float32)
-                full_tensor[:png.shape[0], :png.shape[1]] = png
+                full_tensor[:png.shape[0], :png.shape[1]] = png[:, :, 0]
                 tensor_name = series + '_annotated_' + str(dcm.instance_number)
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5_ff:
