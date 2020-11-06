@@ -1428,7 +1428,7 @@ def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='
                 for k in range(time_frames):
                     slice_index = ((i - 1) + (k * time_step)) % max_slices
                     my_slice = np.array(hd5[f'{path_prefix}/{found_key}'][..., slice_index], dtype=np.float32)
-                    tensor[..., (j*time_frames)+k] = pad_or_crop_array_to_shape(tm.shape[:-2], my_slice)
+                    tensor[..., (j*time_frames)+k] = pad_or_crop_array_to_shape(tm.shape[:-1], my_slice)
 
         return tensor
     return _slice_tensor_from_file
