@@ -46,7 +46,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax.groupby('sample_id')):
         with h5py.File(f'/home/pdiachil/{sample_id}.hd5', 'a') as hd5_ff:
             for nrow, dcm in df_hd5.iterrows():
                 # segmented_path = f'jamesp/annotation/{view}/{version}/apply/output/output_pngs/{dcm.dicom_file}.png.mask.png'
-                segmented_path = f'mdrk/sax-segmentations/sax_slice_both_dropout_folders/2020-11-06/{sample_id}/{dcm.dicom_file}.png.mask.png'
+                segmented_path = f'mdrk/sax_segmentations/sax_slice_both_dropout_folders/2020-11-06/{sample_id}/{dcm.dicom_file}.png.mask.png'
                 blob = bucket.blob(segmented_path)
                 blob.download_to_filename('tmp.png')
                 png = imageio.imread('tmp.png')
