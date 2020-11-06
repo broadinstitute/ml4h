@@ -39,8 +39,10 @@ label_dic = {
     'c_antihypertensive': ['Antihypertensive drugs', ''],
 }
 
-dont_scale = ['male', 'nonwhite', 'current_smoker', 'c_lipidlowering', 'c_antihypertensive', 
-              'RV_poisson_max_binary', 'RV_poisson_min_binary', 'RVEDV_binary', 'RVESV_binary']
+dont_scale = [
+    'male', 'nonwhite', 'current_smoker', 'c_lipidlowering', 'c_antihypertensive',
+    'RV_poisson_max_binary', 'RV_poisson_min_binary', 'RVEDV_binary', 'RVESV_binary',
+]
 phenotypes = phenotypes.dropna(subset=['age', 'male'])
 
 # %%
@@ -60,7 +62,7 @@ disease_list = [
     ['Hypertension', 'hypertension'],
     ['Myocardial_Infarction', 'myocardial infarction'],
     ['Pulmonary_Hypertension', 'pulmonary hypertension'],
-    ['Tricuspid_valve_disease', 'tricuspid valve disease']
+    ['Tricuspid_valve_disease', 'tricuspid valve disease'],
 ]
 diseases_unpack = unpack_disease(diseases, disease_list, phenotypes)
 
