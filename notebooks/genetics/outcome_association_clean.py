@@ -6,23 +6,23 @@ from outcome_association_utils import odds_ratios, hazard_ratios, plot_or_hr, un
 # %%
 ########### Pretest exercise ECGs ###########################
 # Read phenotype and covariates
-phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/lvm_petersen_shaan_poisson_all_covariates.csv')
+phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/all_rv_boundaries_covariates_v20201102.csv')
 #phenotypes = phenotypes[phenotypes['LA_poisson_cleaned_min']<150]
 
-phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min', 'LA_Biplan_vol_max', 'LA_Biplan_vol_min']
+phenos_to_binarize = ['RV_poisson_max', 'RV_poisson_min']
 # phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min']
 for pheno in phenos_to_binarize:
     phenotypes[f'{pheno}_binary'] = (phenotypes[pheno] > phenotypes[pheno].quantile(0.80)).apply(float)
 
 label_dic = {
-    'LA_Biplan_vol_max': ['LA$_{max}$ (biplane)', 'ml'],
-    'LA_Biplan_vol_min': ['LA$_{min}$ (biplane)', 'ml'],
-    'LA_poisson_cleaned_max': ['LA$_{max}$ (3-D surf)', 'ml'],
-    'LA_poisson_cleaned_min': ['LA$_{min}$ (3-D surf)', 'ml'],
-    'LA_Biplan_vol_max_binary': ['enlarged LA$_{max}$ (biplane)', ''],
-    'LA_Biplan_vol_min_binary': ['enlarged LA$_{min}$ (biplane)', ''],
-    'LA_poisson_cleaned_max_binary': ['enlarged LA$_{max}$ (3-D surf)', ''],
-    'LA_poisson_cleaned_min_binary': ['enlarged LA$_{min}$ (3-D surf)', ''],
+    'RV_poisson_max': ['RV$_{max}$ (3-D surf)', 'ml'],
+    'RV_poisson_min': ['RV$_{min}$ (3-D surf)', 'ml'],
+    # 'RVEDV': ['RVEDV (Petersen)', 'ml'],
+    # 'RVESV': ['RVESV (Petersen)', 'ml'],
+    'RV_poisson_max_binary': ['enlarged RV$_{max}$ (3-D surf)', ''],
+    'RV_poisson_min_binary': ['enlarged RV$_{min}$ (3-D surf)', ''],
+    # 'RVEDV_binary': ['enlarged RVEDV (Petersen)', ''],
+    # 'RVESV_binary': ['enlarged RVESV (Petersen)', ''],
     'resting_hr': ['Rest HR', 'beats'],
     'age': ['Age', 'yrs'],
     'male': ['Male', ''],
@@ -39,15 +39,16 @@ label_dic = {
     'c_antihypertensive': ['Antihypertensive drugs', ''],
 }
 
-dont_scale = ['male', 'nonwhite', 'current_smoker', 'c_lipidlowering', 'c_antihypertensive', 'LA_poisson_cleaned_max_binary', 'LA_poisson_cleaned_min_binary', 'LA_Biplan_vol_min_binary', 'LA_Biplan_vol_max_binary']
+dont_scale = ['male', 'nonwhite', 'current_smoker', 'c_lipidlowering', 'c_antihypertensive', 
+              'RV_poisson_max_binary', 'RV_poisson_min_binary', 'RVEDV_binary', 'RVESV_binary']
 phenotypes = phenotypes.dropna(subset=['age', 'male'])
 
 # %%
 import matplotlib.pyplot as plt
 import seaborn as sns
 f, ax = plt.subplots()
-sns.distplot(phenotypes['LA_poisson_cleaned_min'])
-phenotypes['LA_poisson_cleaned_min'].min()
+sns.distplot(phenotypes['RV_poisson_min'])
+phenotypes['RV_poisson_min'].min()
 # %%
 # Read diseases and unpack
 diseases = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/bq_diseases.tsv', sep='\t')
@@ -55,6 +56,11 @@ diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 
 disease_list = [
     ['Atrial_fibrillation_or_flutter_v2', 'atrial fibrillation'],
+    ['Heart_Failure_V2', 'heart failure'],
+    ['Hypertension', 'hypertension'],
+    ['Myocardial_Infarction', 'myocardial infarction'],
+    ['Pulmonary_Hypertension', 'pulmonary hypertension'],
+    ['Tricuspid_valve_disease', 'tricuspid valve disease']
 ]
 diseases_unpack = unpack_disease(diseases, disease_list, phenotypes)
 
@@ -100,14 +106,10 @@ plot_or_hr(hazard_ratio_univariable, label_dic, disease_list, f'hr_univariate_li
 covariates = ['age', 'male']
 
 phenotype_subset = [
-    'LA_poisson_cleaned_max_binary',
-    'LA_Biplan_vol_max_binary',
-    'LA_poisson_cleaned_min_binary',
-    'LA_Biplan_vol_min_binary',
-    'LA_poisson_cleaned_max',
-    'LA_Biplan_vol_max',
-    'LA_poisson_cleaned_min',
-    'LA_Biplan_vol_min',
+    'RV_poisson_max_binary',
+    'RV_poisson_min_binary',
+    'RV_poisson_max',
+    'RV_poisson_min',
 ]
 
 # phenotype_subset = ['LA_poisson_cleaned_max_binary',
@@ -121,13 +123,13 @@ odds_ratio_multivariable = odds_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_petersen', occ='prevalent', horizontal_line_y=3.5)
+plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_all_rv', occ='prevalent', horizontal_line_y=1.5)
 
 hazard_ratio_multivariable = hazard_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_petersen', occ='incident', horizontal_line_y=3.5)
+plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_all_rv', occ='incident', horizontal_line_y=1.5)
 
 
 # %%
