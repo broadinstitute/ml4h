@@ -8,7 +8,7 @@ git checkout pd_atria
 git pull
 
 sudo mkdir -p /mnt/disks/segmented-sax-lax-v20201102
-sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-v20200901/
+sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-v20201102/
 
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
