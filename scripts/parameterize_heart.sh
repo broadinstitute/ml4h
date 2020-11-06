@@ -28,4 +28,4 @@ cd /home/pdiachil/projects/chambers
 /snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/rightheart_boundary_xdmf_40k_v20201102/
 /snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/rightheart_boundary_logs_40k/
 
-yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+# yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
