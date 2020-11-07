@@ -7,8 +7,8 @@ cd /home/pdiachil/ml
 git checkout pd_atria
 git pull
 
-sudo mkdir -p /mnt/disks/segmented-sax-lax-v20201102
-sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-v20201102/
+sudo mkdir -p /mnt/disks/segmented-sax-lax-ml4h-v20201102
+sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-ml4h-v20201102/
 
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
@@ -20,12 +20,12 @@ do
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/rightheart_boundary_40k_v20201102/
+/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/rightheart_boundary_40k_ml4h_v20201102/
 # /snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
 cd /home/pdiachil/projects/chambers
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/rightheart_boundary_xdmf_40k_v20201102/
-/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/rightheart_boundary_logs_40k/
+/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/rightheart_boundary_xdmf_40k_ml4h_v20201102/
+/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/rightheart_boundary_logs_ml4h_40k/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
