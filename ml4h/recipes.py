@@ -440,7 +440,7 @@ def train_paired_model(args):
             # fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, dtm,  reconstruction=reconstruction, rows=samples, folder=my_out_path,
             #                                                              frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
             if dtm.axes() > 1:
-                plot_reconstruction(etm, test_data[etm.input_name()], reconstruction, out_path, test_paths, samples)
+                plot_reconstruction(etm, test_data[dtm.input_name()], reconstruction, out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
