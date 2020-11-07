@@ -31,7 +31,7 @@ import numpy as np
 start = int(sys.argv[1])
 end = int(sys.argv[2])
 # start = 0
-# end = 1
+# end = 10
 df_sax = df_sax[df_sax['instance']==2]
 
 start_time = time.time()
@@ -64,7 +64,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax.groupby('sample_id')):
                 else:
                     create_tensor_in_hd5(hd5_ff, path_prefix, tensor_name, full_tensor)
     except Exception as e:
-        logging.info(f'Caught exception at {sample_id}: {e}')
+        logging.warning(f'Caught exception at {sample_id}: {e}')
         continue
 end_time = time.time()
 print(end_time-start_time)
