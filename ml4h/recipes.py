@@ -423,22 +423,24 @@ def train_paired_model(args):
             performance_metrics.update(metrics)
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path,
-                                                                     frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
-        plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
-        test_data[etm.input_name()] = np.random.random(test_data[etm.input_name()].shape)
-        plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path+'random/',
-                                           frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
+        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+        # fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path,
+        #                                                              frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
+
+        #plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
+        # test_data[etm.input_name()] = np.random.random(test_data[etm.input_name()].shape)
+        # plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path+'random/',
+        #                                    frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
             os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
 
-            fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, dtm,  reconstruction=reconstruction, rows=samples, folder=my_out_path,
-                                                                         frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
+            # fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, dtm,  reconstruction=reconstruction, rows=samples, folder=my_out_path,
+            #                                                              frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
             if dtm.axes() > 1:
-                plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
+                plot_reconstruction(etm, test_data[etm.input_name()], reconstruction, out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
