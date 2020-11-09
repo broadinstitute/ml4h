@@ -1,5 +1,4 @@
 import sys
-import mock
 import pytest
 from ml4h.arguments import parse_args
 from ml4h.test_utils import TMAPS as MOCK_TMAPS
