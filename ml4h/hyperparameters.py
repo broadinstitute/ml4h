@@ -224,18 +224,15 @@ def optimize_ecg_rest_unet_architecture(args):
 
 
 def optimize_mri_sax_architecture(args):
-    dense_blocks_sets = [[], [16], [32], [48], [32, 16], [32, 32], [32, 24, 16], [48, 32, 24], [48, 48, 48]]
-    conv_layers_sets = [[], [16], [32], [48], [32, 32], [48, 32], [48, 32, 24]]
-    dense_layers_sets = [[16], [24], [32], [48], [16, 64], [8, 128], [16, 64, 128]]
-    activation = ['leaky', 'prelu', 'relu', 'elu']
+    dense_blocks_sets = [[48, 48, 48], [96, 96, 96], [48, 48, 48, 48], [96, 96, 96, 96], [48, 48, 48, 48, 48], [96, 96, 96, 96, 96]]
+    conv_layers_sets = [[], [48], [96], [48, 48], [96, 96]]
+    dense_layers_sets = [[48], [96], [192], [48, 48], [96, 96]]
+    activation = ['leaky', 'swish', 'gelu', 'lisht', 'elu', 'mish', 'relu', 'selu']
     conv_dilate = [True, False]
     conv_normalize = ['', 'batch_norm']
     conv_type = ['conv', 'separable', 'depth']
     pool_type = ['max', 'average']
     space = {
-        'pool_x': hp.quniform('pool_x', 2, 8, 2),
-        'pool_y': hp.quniform('pool_y', 2, 8, 2),
-        'pool_z': hp.quniform('pool_z', 1, 2, 1),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
@@ -244,7 +241,7 @@ def optimize_mri_sax_architecture(args):
         'conv_type': hp.choice('conv_type', conv_type),
         'activation': hp.choice('activation', activation),
         'pool_type': hp.choice('pool_type', pool_type),
-        'block_size': hp.quniform('block_size', 1, 6, 1),
+        'block_size': hp.quniform('block_size', 1, 9, 1),
     }
     param_lists = {
         'conv_layers': conv_layers_sets,
