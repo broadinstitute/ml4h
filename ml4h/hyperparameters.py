@@ -96,6 +96,8 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             plot_metric_history(history, args.training_steps, title, fig_path)
             model.load_weights(os.path.join(args.output_folder, args.id, args.id + MODEL_EXT))
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
+            if isinstance(loss_and_metrics, np.float64):  # Models without metrics return scalar loss, otherwise they return loss followed by metric values
+                loss_and_metrics = [loss_and_metrics]
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
             logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
             generate_train.kill_workers()
