@@ -4,14 +4,16 @@
 name: Test ml4h Python package
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
   workflow_dispatch:
     # Allows manually triggering workflow in GitHub UI on selected branch.
     # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
     # GitHub blog demo: https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/.
+
+  push:
+    branches: [ master ]
+
+  pull_request:
+    branches: [ master ]
 
 jobs:
   build:
