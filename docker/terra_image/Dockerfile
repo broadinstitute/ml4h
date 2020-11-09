@@ -6,7 +6,6 @@ USER root
 RUN pip3 uninstall -y enum34
 
 USER $USER
-# TODO(deflaux) switch to upstream after pull requests are merged.
 RUN pip3 install git+https://github.com/broadinstitute/ml4h.git \
   # Configure notebook extensions.
   && jupyter nbextension install --user --py vega \
