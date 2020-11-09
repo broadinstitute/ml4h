@@ -128,7 +128,7 @@ git fetch upstream
 Note: If you get an error saying that upstream is unknown, run the following remote add command and then re-run the fetch command. You only need to do this once per git clone.
 
 ```
-git remote add upstream https://github.com/broadinstitute/ml.git
+git remote add upstream https://github.com/broadinstitute/ml4h.git
 ```
 
 (2) Make sure your master branch is “even” with upstream.
