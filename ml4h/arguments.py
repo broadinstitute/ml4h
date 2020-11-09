@@ -177,7 +177,7 @@ def parse_args():
     parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
     parser.add_argument('--multimodal_merge', default='average', choices=['average', 'concatenate'], help='How to merge modality specific encodings.')
     parser.add_argument(
-        '--max_parameters', default=9000000, type=int,
+        '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
     parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
