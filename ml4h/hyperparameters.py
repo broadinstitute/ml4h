@@ -20,7 +20,6 @@ from skimage.filters import threshold_otsu
 
 from ml4h.arguments import parse_args
 from ml4h.plots import plot_metric_history
-from ml4h.tensor_maps_by_script import TMAPS
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models import train_model_from_generators, make_multimodal_multitask_model
 from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -321,8 +320,8 @@ def set_args_from_x(args, x):
             else:
                 args.__dict__[k] = x[k]
     logging.info(f"Set arguments to: {args}")
-    args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
-    args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
+    #args.tensor_maps_in = [TMAPS[it] for it in args.input_tensors]
+    #args.tensor_maps_out = [TMAPS[ot] for ot in args.output_tensors]
 
 
 def string_from_arch_dict(x):
