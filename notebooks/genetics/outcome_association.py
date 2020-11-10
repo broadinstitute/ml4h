@@ -45,7 +45,7 @@ diseases = pd.read_csv('bq_diseases.tsv', sep='\t')
 diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 
 # %%
-la_volumes_petersen = pd.read_csv('/home/pdiachil/ml/notebooks/mri/all_rv_boundary_v20201102.csv')
+la_volumes_petersen = pd.read_csv('/home/pdiachil/ml/notebooks/mri/all_boundary_rv_fastai_ml4h.csv')
 
 from scipy.ndimage import median_filter
 def get_min(data, window=5):
@@ -133,7 +133,7 @@ for i, la_volume_set in enumerate(la_volume_sets):
 la_volumes_petersen, = la_volume_sets
 
 # %%
-la_volumes_petersen.to_csv('/home/pdiachil/ml/notebooks/genetics/all_rv_boundaries_covariates_v20201102.csv', index=False)
+la_volumes_petersen.to_csv('/home/pdiachil/ml/notebooks/genetics/all_boundary_rv_fastai_ml4h_covariates.csv', index=False)
 
 # %%
 import matplotlib.pyplot as plt
