@@ -6,21 +6,30 @@ from outcome_association_utils import odds_ratios, hazard_ratios, plot_or_hr, un
 # %%
 ########### Pretest exercise ECGs ###########################
 # Read phenotype and covariates
-phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/all_rv_boundaries_covariates_v20201102.csv')
+phenotypes = pd.read_csv('/home/pdiachil/ml/notebooks/genetics/all_boundary_rv_fastai_ml4h_covariates.csv')
 #phenotypes = phenotypes[phenotypes['LA_poisson_cleaned_min']<150]
 
 phenos_to_binarize = ['RV_poisson_max', 'RV_poisson_min']
+phenos_to_binarize = []
 # phenos_to_binarize = ['LA_poisson_cleaned_max', 'LA_poisson_cleaned_min']
 for pheno in phenos_to_binarize:
     phenotypes[f'{pheno}_binary'] = (phenotypes[pheno] > phenotypes[pheno].quantile(0.80)).apply(float)
 
 label_dic = {
-    'RV_poisson_max': ['RV$_{max}$ (3-D surf)', 'ml'],
-    'RV_poisson_min': ['RV$_{min}$ (3-D surf)', 'ml'],
+    'RV_poisson_max_fastai': ['RV$_{max}$ (3-D surf FASTAI)', 'ml'],
+    'RV_poisson_min_fastai': ['RV$_{min}$ (3-D surf FASTAI)', 'ml'],
+    'RV_poisson_max_ml4h': ['RV$_{max}$ (3-D surf ML4H)', 'ml'],
+    'RV_poisson_min_ml4h': ['RV$_{min}$ (3-D surf ML4H)', 'ml'],
+    'RV_poisson_max_consensus': ['RV$_{max}$ (3-D surf FASTAI+ML4H)', 'ml'],
+    'RV_poisson_min_consensus': ['RV$_{min}$ (3-D surf FASTAI+ML4H)', 'ml'],
+    'RVEF_poisson_fastai': ['RVEF (3-D surf FASTAI)', 'ml'],
+    'RVEF_poisson_ml4h': ['RVEF (3-D surf ML4H)', 'ml'],
+    'RVEF_poisson_consensus': ['RVEF (3-D surf FASTAI+ML4H)', 'ml'],
     # 'RVEDV': ['RVEDV (Petersen)', 'ml'],
     # 'RVESV': ['RVESV (Petersen)', 'ml'],
-    'RV_poisson_max_binary': ['enlarged RV$_{max}$ (3-D surf)', ''],
-    'RV_poisson_min_binary': ['enlarged RV$_{min}$ (3-D surf)', ''],
+    # 'RVEF': ['RVEF (Petersen)', ''],
+    # 'RV_poisson_max_binary': ['enlarged RV$_{max}$ (3-D surf)', ''],
+    # 'RV_poisson_min_binary': ['enlarged RV$_{min}$ (3-D surf)', ''],
     # 'RVEDV_binary': ['enlarged RVEDV (Petersen)', ''],
     # 'RVESV_binary': ['enlarged RVESV (Petersen)', ''],
     'resting_hr': ['Rest HR', 'beats'],
@@ -59,8 +68,10 @@ diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 disease_list = [
     ['Atrial_fibrillation_or_flutter_v2', 'atrial fibrillation'],
     ['Heart_Failure_V2', 'heart failure'],
-    ['Hypertension', 'hypertension'],
-    ['Myocardial_Infarction', 'myocardial infarction'],
+    ['Bradyarrhythmia_AV_block_or_distal_conduction_disease', 'bradyarrhythmia'],
+    ['Supraventricular_arrhythmia_General_inclusive_definition', 'supraventricular arrhythmia'],
+    # ['Hypertension', 'hypertension'],
+    # ['Myocardial_Infarction', 'myocardial infarction'],
     ['Pulmonary_Hypertension', 'pulmonary hypertension'],
     ['Tricuspid_valve_disease', 'tricuspid valve disease'],
 ]
@@ -108,11 +119,15 @@ plot_or_hr(hazard_ratio_univariable, label_dic, disease_list, f'hr_univariate_li
 covariates = ['age', 'male']
 
 phenotype_subset = [
-    'RV_poisson_max_binary',
-    'RV_poisson_min_binary',
-    'RV_poisson_max',
-    'RV_poisson_min',
+    'RV_poisson_max_fastai',
+    'RV_poisson_max_ml4h',
+    'RV_poisson_min_fastai',
+    'RV_poisson_min_ml4h',
+    'RVEF_poisson_fastai',
+    'RVEF_poisson_ml4h',
 ]
+
+phenotypes=phenotypes.dropna(subset=covariates+phenotype_subset)
 
 # phenotype_subset = ['LA_poisson_cleaned_max_binary',
 #                     'LA_poisson_cleaned_min_binary',
@@ -125,13 +140,13 @@ odds_ratio_multivariable = odds_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_all_rv', occ='prevalent', horizontal_line_y=1.5)
+plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_all_rv_fastai_ml4h', occ='prevalent', horizontal_line_y=0)
 
 hazard_ratio_multivariable = hazard_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_all_rv', occ='incident', horizontal_line_y=1.5)
+plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_all_rv_fastai_ml4h', occ='incident', horizontal_line_y=0)
 
 
 # %%
