@@ -2242,10 +2242,12 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
         predictions = decoders[dtm].predict(embeddings)
         m2f = decoders[dtm].predict(male_to_female)
         f2m = decoders[dtm].predict(female_to_male)
-
+        if dtm.axes() == 3:
+            fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
+        elif dtm.axes() == 2:
+            fig, axes = plt.subplots(dtm.shape[1], samples, figsize=(samples * 4, 18), sharey=True)
         for i in range(samples):
             if dtm.axes() == 3:
-                fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
                 axes[i, 0].axis('off')
                 axes[i, 1].axis('off')
@@ -2266,7 +2268,6 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                         axes[i, 1].imshow(m2f[i, ..., 0], cmap='gray')
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
             elif dtm.axes() == 2:
-                fig, axes = plt.subplots(dtm.shape[1], samples, figsize=(samples * 4, 18), sharey=True)
                 index2channel = {v: k for k, v in dtm.channel_map.items()}
                 for j in range(dtm.shape[1]):
                     axes[j, i].plot(predictions[i, ..., j], c='g', label='reconstruction')
@@ -2276,7 +2277,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                         axes[j, i].plot(m2f[i, ..., j], c='r', label=f'{feature} to more than or equal to {thresh}')
                     axes[j, i].set_title(f'Lead: {index2channel[j]}')
                     axes[j, i].legend()
-            figure_path = f'{prefix}/{dtm.name}_{feature}_transform_scalar_{scalar}.png'
-            if not os.path.exists(os.path.dirname(figure_path)):
-                os.makedirs(os.path.dirname(figure_path))
-            plt.savefig(figure_path)
+        figure_path = f'{prefix}/{dtm.name}_{feature}_transform_scalar_{scalar}.png'
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path)
