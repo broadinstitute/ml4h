@@ -2266,17 +2266,16 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                         axes[i, 1].imshow(m2f[i, ..., 0], cmap='gray')
                         axes[i, 1].set_title(f'{feature} to more than or equal to {thresh}')
             elif dtm.axes() == 2:
-                fig, axes = plt.subplots(dtm.shape[1]*samples, 2, figsize=(18, samples * 4), sharey=True)
+                fig, axes = plt.subplots(dtm.shape[1], samples, figsize=(samples * 4, 18), sharey=True)
                 index2channel = {v: k for k, v in dtm.channel_map.items()}
                 for j in range(dtm.shape[1]):
-                    index = i*dtm.shape[1]+j
-                    axes[index, 0].plot(predictions[i, ..., j], c='g', label='reconstruction')
+                    axes[j, i].plot(predictions[i, ..., j], c='g', label='reconstruction')
                     if sexes[i] >= thresh:
-                        axes[index, 1].plot(f2m[i, ..., j], c='b', label=f'{feature} to less than {thresh}')
+                        axes[j, i].plot(f2m[i, ..., j], c='b', label=f'{feature} to less than {thresh}')
                     else:
-                        axes[index, 1].plot(m2f[i, ..., j], c='r', label=f'{feature} to more than or equal to {thresh}')
-                    axes[index, 0].set_title(f'Lead: {index2channel[j]}')
-                    [axes[index, k].legend() for k in range(2)]
+                        axes[j, i].plot(m2f[i, ..., j], c='r', label=f'{feature} to more than or equal to {thresh}')
+                    axes[j, i].set_title(f'Lead: {index2channel[j]}')
+                    axes[j, i].legend()
             figure_path = f'{prefix}/{dtm.name}_{feature}_transform_scalar_{scalar}.png'
             if not os.path.exists(os.path.dirname(figure_path)):
                 os.makedirs(os.path.dirname(figure_path))
