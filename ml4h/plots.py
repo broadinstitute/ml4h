@@ -2245,7 +2245,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
         if dtm.axes() == 3:
             fig, axes = plt.subplots(max(2, samples), 2, figsize=(18, samples * 4))
         elif dtm.axes() == 2:
-            fig, axes = plt.subplots(dtm.shape[1], samples, figsize=(samples * 6, 48), sharey=True)
+            fig, axes = plt.subplots(dtm.shape[1], samples, figsize=(samples * 6, 28))
         for i in range(samples):
             if dtm.axes() == 3:
                 axes[i, 0].set_title(f"{feature}: {sexes[i]} ?>=<? {thresh}")
