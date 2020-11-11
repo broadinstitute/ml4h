@@ -2274,7 +2274,7 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                     if sexes[i] >= thresh:
                         axes[index, 1].plot(f2m[i, ..., j], c='b', label=f'{feature} to less than {thresh}')
                     else:
-                        axes[index, 1].plot(m2f[i, ..., j], c='o', label=f'{feature} to more than or equal to {thresh}')
+                        axes[index, 1].plot(m2f[i, ..., j], c='r', label=f'{feature} to more than or equal to {thresh}')
                     axes[index, 0].set_title(f'Lead: {index2channel[j]}')
                     [axes[index, k].legend() for k in range(2)]
             figure_path = f'{prefix}/{dtm.name}_{feature}_transform_scalar_{scalar}.png'
