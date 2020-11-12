@@ -296,11 +296,19 @@ def hrr_simple_phase(df, deltat=50.0):
 validated_tests_7d = df_7d_summary.merge(last_mets_1_7d[np.logical_and(last_mets_1_7d, exercise_for_1m_7d)].reset_index()['TestID'], on='TestID')
 validated_tests_30d = df_30d_summary.merge(last_mets_1_30d[np.logical_and(last_mets_1_30d, exercise_for_1m_30d)].reset_index()['TestID'], on='TestID')
 
-hrr_simple_7d = validated_tests_7d.groupby('TestID').apply(hrr_simple)
-hrr_simple_30d = validated_tests_30d.groupby('TestID').apply(hrr_simple)
+# hrr_simple_7d = validated_tests_7d.groupby('TestID').apply(hrr_simple)
+# hrr_simple_30d = validated_tests_30d.groupby('TestID').apply(hrr_simple)
 
-hrr_phase_7d = validated_tests_7d.groupby('TestID').apply(hrr_simple_phase)
-hrr_phase_30d = validated_tests_30d.groupby('TestID').apply(hrr_simple_phase)
+# hrr_phase_7d = validated_tests_7d.groupby('TestID').apply(hrr_simple_phase)
+# hrr_phase_30d = validated_tests_30d.groupby('TestID').apply(hrr_simple_phase)
+# %%
+validated_tests_7d.to_csv('/home/paolo/exercise_ecgs/validated_tests_7d.csv', index=False)
+validated_tests_30d.to_csv('/home/paolo/exercise_ecgs/validated_tests_30d.csv', index=False)
+
+
+# %%
+validated_tests_7d = pd.read_csv('/home/paolo/exercise_ecgs/validated_tests_7d.csv')
+validated_tests_30d = pd.read_csv('/home/paolo/exercise_ecgs/validated_tests_30d.csv')
 
 # %%
 def hrr_phase_within_1min(df, deltat=50.0):
@@ -312,83 +320,85 @@ def hrr_phase_within_1min(df, deltat=50.0):
     return max_hr - df.iloc[arg_hrr]['HeartRate']
 
 hrr_phase_1min_7d = validated_tests_7d.groupby('TestID').apply(hrr_phase_within_1min)
-hrr_phase_1min_30d = validated_tests_30d.groupby('TestID').apply(hrr_phase_within_1min)
+# hrr_phase_1min_30d = validated_tests_30d.groupby('TestID').apply(hrr_phase_within_1min)
 
 # %%
-def hrr_phase_median_within_1min(df, deltat=50.0):
-    arg_n = np.argmax(df['NthOccur'])
-    guess_rec_phase = df.iloc[arg_n]['PhaseID']
-    t_rec = np.min(df[df['PhaseID']==guess_rec_phase]['TimeFromTestStart'])
-    try:
-        argmax_hr = np.argmax(df[((t_rec-df['TimeFromTestStart'])<60000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)]['HeartRate'])
-    except:
-        return -1
-    t_hrmax = df[((t_rec-df['TimeFromTestStart'])<60000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)].iloc[argmax_hr]['TimeFromTestStart']
-    max_hr = np.median(df[np.abs((t_hrmax-df['TimeFromTestStart']))<3000.0]['HeartRate'])
-    arg_hrr = np.argmin(np.abs(df['TimeFromTestStart']-(t_rec+deltat*1000.0)))
-    return max_hr - df.iloc[arg_hrr]['HeartRate']
+# def hrr_phase_median_within_1min(df, deltat=50.0):
+#     arg_n = np.argmax(df['NthOccur'])
+#     guess_rec_phase = df.iloc[arg_n]['PhaseID']
+#     t_rec = np.min(df[df['PhaseID']==guess_rec_phase]['TimeFromTestStart'])
+#     try:
+#         argmax_hr = np.argmax(df[((t_rec-df['TimeFromTestStart'])<60000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)]['HeartRate'])
+#     except:
+#         return -1
+#     t_hrmax = df[((t_rec-df['TimeFromTestStart'])<60000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)].iloc[argmax_hr]['TimeFromTestStart']
+#     max_hr = np.median(df[np.abs((t_hrmax-df['TimeFromTestStart']))<3000.0]['HeartRate'])
+#     arg_hrr = np.argmin(np.abs(df['TimeFromTestStart']-(t_rec+deltat*1000.0)))
+#     return max_hr - df.iloc[arg_hrr]['HeartRate']
 
-hrr_phase_median_1min_7d = validated_tests_7d.groupby('TestID').apply(hrr_phase_median_within_1min)
-hrr_phase_median_1min_30d = validated_tests_30d.groupby('TestID').apply(hrr_phase_median_within_1min)
+# hrr_phase_median_1min_7d = validated_tests_7d.groupby('TestID').apply(hrr_phase_median_within_1min)
+# hrr_phase_median_1min_30d = validated_tests_30d.groupby('TestID').apply(hrr_phase_median_within_1min)
 
 # %%
 def hrr_phase_within_30s(df, deltat=50.0):
     arg_n = np.argmax(df['NthOccur'])
     guess_rec_phase = df.iloc[arg_n]['PhaseID']
     t_rec = np.min(df[df['PhaseID']==guess_rec_phase]['TimeFromTestStart'])
-    max_hr = np.max(df[((t_rec-df['TimeFromTestStart'])<30000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)]['HeartRate'])
+    max_hr = np.max(df[((t_rec-df['TimeFromTestStart'])<30000.0) & ((t_rec-df['TimeFromTestStart'])>-30000.0)]['HeartRate'])
     arg_hrr = np.argmin(np.abs(df['TimeFromTestStart']-(t_rec+deltat*1000.0)))
     return max_hr - df.iloc[arg_hrr]['HeartRate']
 
 hrr_phase_30s_7d = validated_tests_7d.groupby('TestID').apply(hrr_phase_within_30s)
-hrr_phase_30s_30d = validated_tests_30d.groupby('TestID').apply(hrr_phase_within_30s)
-
-
-# %%
-f, ax = plt.subplots()
-#sns.distplot(hrr_simple_7d, ax=ax, kde=False, bins=np.arange(0, 100, 1), color=[0.8, 0.8, 0.8], label='1st definition')
-#sns.distplot(hrr_phase_7d, ax=ax, kde=False, bins=np.arange(0, 100, 1), color=[0.6, 0.6, 0.6], label='2nd definition')
-sns.distplot(hrr_phase_1min_7d, ax=ax, kde=False, bins=np.arange(0, 101, 1), color=[0.4, 0.4, 0.4], label='3rd definition')
-#sns.distplot(hrr_phase_median_1min_7d, ax=ax, kde=False, bins=np.arange(0, 100, 1), color=[0.2, 0.2, 0.2], label='4th definition')
-sns.distplot(hrr_phase_30s_7d, ax=ax, kde=False, bins=np.arange(0, 101, 1), color=[0.2, 0.2, 0.2], label='4th definition')
-ax.legend()
-ax.set_xlabel('HRR (bpm)')
-ax.set_ylabel('Counts')
-plt.tight_layout()
-f.savefig('hrr_defs_7d.png', dpi=500)
+# hrr_phase_30s_30d = validated_tests_30d.groupby('TestID').apply(hrr_phase_within_30s)
 
 # %%
-f, ax = plt.subplots()
-sns.distplot(hrr_simple_30d, ax=ax, kde=False, bins=np.arange(0, 100, 1), color=[0.8, 0.8, 0.8], label='1st definition')
-sns.distplot(hrr_phase_30d, ax=ax, kde=False, bins=np.arange(0, 100, 1), color=[0.5, 0.5, 0.5], label='2nd definition')
-sns.distplot(hrr_phase_1min_30d, ax=ax, kde=False, bins=np.arange(0, 100, 1), color=[0.2, 0.2, 0.2], label='3rd definition')
-ax.legend()
-ax.set_xlabel('HRR (bpm)')
-ax.set_ylabel('Counts')
-plt.tight_layout()
-f.savefig('hrr_defs_30d.png', dpi=500)
-
-# %%
-def max_hr_to_rec(df):
+def hrr_phase_within_30s_recovery(df):
     arg_n = np.argmax(df['NthOccur'])
     guess_rec_phase = df.iloc[arg_n]['PhaseID']
     t_rec = np.min(df[df['PhaseID']==guess_rec_phase]['TimeFromTestStart'])
-    pre_rec = ((t_rec-df['TimeFromTestStart'])<60000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)
-    try:
-        n_max_hr = np.argmax(df[pre_rec]['HeartRate'])
-    except ValueError:
-        print(df.iloc[0]['TestID'])
-        return -1
-    t_max_hr = df[pre_rec].iloc[n_max_hr]['TimeFromTestStart']
-    return t_rec - t_max_hr
+    arg_max = np.argmax(df[((t_rec-df['TimeFromTestStart'])<30000.0) & ((t_rec-df['TimeFromTestStart'])>-30000.0)]['HeartRate'])
+    max_hr = df[((t_rec-df['TimeFromTestStart'])<30000.0) & \
+                ((t_rec-df['TimeFromTestStart'])>-30000.0)].iloc[arg_max]['HeartRate']
+    t_max = df[((t_rec-df['TimeFromTestStart'])<30000.0) & \
+               ((t_rec-df['TimeFromTestStart'])>-30000.0)].iloc[arg_max]['TimeFromTestStart']
+    arg_hrr = np.argmin(np.abs(df['TimeFromTestStart']-(t_max+50.0*1000.0)))
+    return max_hr - df.iloc[arg_hrr]['HeartRate']
 
-t_max_hr_7d = validated_tests_7d.groupby('TestID').apply(max_hr_to_rec)
+hrr_phase_30s_recovery_7d = validated_tests_7d.groupby('TestID').apply(hrr_phase_within_30s)
+
+# %%
+def hrr_phase_within_30s_recovery_median(df):
+    arg_n = np.argmax(df['NthOccur'])
+    guess_rec_phase = df.iloc[arg_n]['PhaseID']
+    t_rec = np.min(df[df['PhaseID']==guess_rec_phase]['TimeFromTestStart'])
+    arg_max = np.argmax(df[((t_rec-df['TimeFromTestStart'])<30000.0) & ((t_rec-df['TimeFromTestStart'])>-30000.0)]['HeartRate'])
+    max_hr = np.median(df[((t_rec-df['TimeFromTestStart'])<30000.0) & ((t_rec-df['TimeFromTestStart'])>-30000.0)].iloc[arg_max-2:arg_max+3]['HeartRate'])
+    t_max = df[((t_rec-df['TimeFromTestStart'])<30000.0) & ((t_rec-df['TimeFromTestStart'])>-30000.0)].iloc[arg_max]['TimeFromTestStart']
+    arg_hrr = np.argmin(np.abs(df['TimeFromTestStart']-(t_max+50.0*1000.0)))
+    return max_hr - df.iloc[arg_hrr]['HeartRate']
+
+hrr_phase_30s_recovery_median_7d = validated_tests_7d.groupby('TestID').apply(hrr_phase_within_30s)
 
 # %%
 
 
+
 # %%
-import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+f, ax = plt.subplots()
+sns.distplot(hrr_phase_1min_7d, ax=ax, kde=False, bins=np.arange(-100, 100, 1), color=[0.8, 0.8, 0.8], label='-60s, +50s from rec')
+sns.distplot(hrr_phase_30s_7d, ax=ax, kde=False, bins=np.arange(-100, 100, 1), color=[0.6, 0.6, 0.6], label='+/- 30 s, +50 s from rec')
+sns.distplot(hrr_phase_30s_recovery_7d, ax=ax, kde=False, bins=np.arange(-100, 101, 1), color=[0.4, 0.4, 0.4], label='+/- 30, +50 s from max')
+sns.distplot(hrr_phase_30s_recovery_median_7d, ax=ax, kde=False, bins=np.arange(-100, 100, 1), color=[0.2, 0.2, 0.2], label='+/-30 s, +50 s from max, median')
+#sns.distplot(hrr_phase_30s_7d, ax=ax, kde=False, bins=np.arange(0, 101, 1), color=[0.2, 0.2, 0.2], label='4th definition')
+ax.legend(loc='upper left')
+ax.set_xlabel('HRR (bpm)')
+ax.set_ylabel('Counts')
+plt.tight_layout()
+f.savefig('hrr_defs_1.png', dpi=500)
+
+# %%
 def plot_exercise_ecg(df, xlim=None):
     f, ax = plt.subplots()
     f.set_size_inches(4, 3)
@@ -414,46 +424,194 @@ def plot_exercise_ecg(df, xlim=None):
     plt.tight_layout()
     f.savefig(f'hrr0_hr_phase_{df["TestID"].values[0]}.png', dpi=500)
 
-test_ids = ['3000397', ]
-
-for i, row in hrr_phase_median_1min_7d[hrr_phase_median_1min_7d<1e-3].reset_index:
-    plot_exercise_ecg(df_7d_summary[df_7d_summary['TestID']==row['TestID']])
-# %%
-tabular_30d = df_30d.merge(tabular_summary, on='TestID')
-mins = tabular_30d.groupby(['TestID']).min()
-maxs = tabular_30d.groupby(['TestID']).max()
-diffs = pd.DataFrame()
-diffs['TestDuration'] = maxs['TimeFromTestStart'] - mins['TimeFromTestStart']
-# %%
-f, ax = plt.subplots()
-sns.distplot(diffs[diffs['TestDuration']< 1000000.0]]['TestDuration']/1000.0, kde=False, ax=ax, bins=1)
-ax.set_xlim([0, 1000])
 
 # %%
-patients = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/ex_ecg_patientids_testids.csv')
-patients['patientid'] = pd.to_numeric(patients['PatientID'], errors='coerce')
-patients = patients.dropna()
-patients['patientid'] = patients['patientid'].apply(int)
-c3po_patients_fu = pd.read_csv('/home/paolo/mgh_mrns_to_extract/mgh_patients.csv', sep='\t')
-c3po_patients = pd.read_csv('/home/paolo/mgh_mrns_to_extract/lc_outcomes.csv', sep=',')
+
+diff = np.abs(hrr_phase_1min_7d - hrr_phase_30s_7d)
+diff_sort = np.argsort(diff.values)
+nnans = np.sum(np.isnan(diff))
+
+
+testid = hrr_phase_1min_7d.index[diff_sort[-nnans-1]]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
+
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
 
 # %%
-patients.merge(c3po_patients_fu, on='patientid').iloc[-20:]
+diff = np.abs(hrr_phase_1min_7d - hrr_phase_30s_7d)
+diff_sort = np.argsort(diff.values)
+nnans = np.sum(np.isnan(diff))
+
+
+testid = hrr_phase_1min_7d.index[diff_sort[-nnans-2]]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
+
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
+
+
 # %%
-patients.merge(c3po_patients, left_on='patientid', right_on='Mrn')
+diff = np.abs(hrr_phase_1min_7d - hrr_phase_30s_7d)
+diff_sort = np.argsort(diff.values)
+nnans = np.sum(np.isnan(diff))
+
+
+testid = hrr_phase_1min_7d.index[diff_sort[-nnans-3]]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
+
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
+
 # %%
-import matplotlib.pyplot as plt
+diff = np.abs(hrr_phase_1min_7d - hrr_phase_30s_7d)
+diff_sort = np.argsort(diff.values)
+nnans = np.sum(np.isnan(diff))
 
 
-test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/4213242.csv')
-plot_exercise_ecg(test)
+testid = hrr_phase_1min_7d.index[diff_sort[-nnans-4]]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
 
-test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/5976918.csv')
-plot_exercise_ecg(test)
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
 
-test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/5176540.csv')
-plot_exercise_ecg(test)
 
-test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/5848498.csv')
-plot_exercise_ecg(test)
+# %%
+diff = np.abs(hrr_phase_1min_7d - hrr_phase_30s_7d)
+diff_sort = np.argsort(diff.values)
+nnans = np.sum(np.isnan(diff))
+
+
+testid = hrr_phase_1min_7d.index[diff_sort[-nnans-5]]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
+
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
+
+# %%
+indices = hrr_phase_30s_7d[hrr_phase_30s_7d==0.0].index
+
+
+testid = indices[25]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
+
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
+
+# %%
+indices = hrr_phase_30s_7d[hrr_phase_30s_7d==0.0].index
+
+
+testid = indices[55]
+df = validated_tests_7d[validated_tests_7d['TestID']==testid]
+plot_exercise_ecg(df)
+
+print(hrr_phase_1min_7d.loc[testid], hrr_phase_30s_7d.loc[testid], hrr_phase_30s_recovery_7d.loc[testid], hrr_phase_30s_recovery_median_7d.loc[testid])
+print(patient_demographics[patient_demographics['TestID']==testid]['PatientID'].values)
+print(test_demographics[test_demographics['TestID']==testid]['AcquisitionDateTime_DT'])
+
+
+
+# # %%
+# def max_hr_to_rec(df):
+#     arg_n = np.argmax(df['NthOccur'])
+#     guess_rec_phase = df.iloc[arg_n]['PhaseID']
+#     t_rec = np.min(df[df['PhaseID']==guess_rec_phase]['TimeFromTestStart'])
+#     pre_rec = ((t_rec-df['TimeFromTestStart'])<60000.0) & ((t_rec-df['TimeFromTestStart'])>0.0)
+#     try:
+#         n_max_hr = np.argmax(df[pre_rec]['HeartRate'])
+#     except ValueError:
+#         print(df.iloc[0]['TestID'])
+#         return -1
+#     t_max_hr = df[pre_rec].iloc[n_max_hr]['TimeFromTestStart']
+#     return t_rec - t_max_hr
+
+# t_max_hr_7d = validated_tests_7d.groupby('TestID').apply(max_hr_to_rec)
+
+# # %%
+
+
+# # %%
+# import numpy as np
+# def plot_exercise_ecg(df, xlim=None):
+#     f, ax = plt.subplots()
+#     f.set_size_inches(4, 3)
+#     ax2 = ax.twinx()
+#     ax.plot(df['TimeFromTestStart']/1000.0, df['METS'], 'd', markersize=10, color='gray')
+#     ax2.plot(df['TimeFromTestStart']/1000.0, df['HeartRate'], 'x', markersize=10, color='black')
+#     ax.set_xlabel('Time from start (s)')
+#     ax2.set_ylabel('Heart rate (bpm)')
+#     ax.set_ylabel('METS')
+#     if xlim:
+#         ax2.set_xlim(xlim)        
+#     plt.tight_layout()
+#     f.savefig(f'ex_hr_mets_{df["TestID"].values[0]}.png', dpi=500)
+
+#     f, ax = plt.subplots()
+#     f.set_size_inches(4, 3)
+#     ax2 = ax.twinx()
+#     ax.plot(df['TimeFromTestStart']/1000.0, df['PhaseID'], 'd', markersize=10, color='gray')
+#     ax2.plot(df['TimeFromTestStart']/1000.0, df['HeartRate'], 'x', markersize=10, color='black')
+#     ax.set_xlabel('Time from start (s)')
+#     ax2.set_ylabel('Heart rate (bpm)')
+#     ax.set_ylabel('PhaseID')
+#     plt.tight_layout()
+#     f.savefig(f'hrr0_hr_phase_{df["TestID"].values[0]}.png', dpi=500)
+
+# test_ids = ['3000397', ]
+
+# for i, row in hrr_phase_median_1min_7d[hrr_phase_median_1min_7d<1e-3].reset_index:
+#     plot_exercise_ecg(df_7d_summary[df_7d_summary['TestID']==row['TestID']])
+# # %%
+# tabular_30d = df_30d.merge(tabular_summary, on='TestID')
+# mins = tabular_30d.groupby(['TestID']).min()
+# maxs = tabular_30d.groupby(['TestID']).max()
+# diffs = pd.DataFrame()
+# diffs['TestDuration'] = maxs['TimeFromTestStart'] - mins['TimeFromTestStart']
+# # %%
+# f, ax = plt.subplots()
+# sns.distplot(diffs[diffs['TestDuration']< 1000000.0]]['TestDuration']/1000.0, kde=False, ax=ax, bins=1)
+# ax.set_xlim([0, 1000])
+
+# # %%
+# patients = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/ex_ecg_patientids_testids.csv')
+# patients['patientid'] = pd.to_numeric(patients['PatientID'], errors='coerce')
+# patients = patients.dropna()
+# patients['patientid'] = patients['patientid'].apply(int)
+# c3po_patients_fu = pd.read_csv('/home/paolo/mgh_mrns_to_extract/mgh_patients.csv', sep='\t')
+# c3po_patients = pd.read_csv('/home/paolo/mgh_mrns_to_extract/lc_outcomes.csv', sep=',')
+
+# # %%
+# patients.merge(c3po_patients_fu, on='patientid').iloc[-20:]
+# # %%
+# patients.merge(c3po_patients, left_on='patientid', right_on='Mrn')
+# # %%
+# import matplotlib.pyplot as plt
+
+
+# test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/4213242.csv')
+# plot_exercise_ecg(test)
+
+# test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/5976918.csv')
+# plot_exercise_ecg(test)
+
+# test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/5176540.csv')
+# plot_exercise_ecg(test)
+
+# test = pd.read_csv('/home/paolo/exercise_ecgs/mgh-vm1/5848498.csv')
+# plot_exercise_ecg(test)
+# # %%
+
 # %%
