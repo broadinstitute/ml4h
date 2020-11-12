@@ -458,7 +458,7 @@ def infer_with_pixels(args):
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
 
-            prediction = output_data#HACKKKKK model.predict(input_data)
+            prediction = model.predict(input_data)
             if len(args.tensor_maps_out) == 1:
                 prediction = [prediction]
 
