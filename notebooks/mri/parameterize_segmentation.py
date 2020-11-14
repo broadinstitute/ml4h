@@ -168,10 +168,12 @@ def points_normals_to_poisson(
     return connectivity.GetOutput()
 
 
-def _error_projection(dx, datasets, reference_dataset,
-                      array_names, reference_array,
-                      dimensions, reference_dimensions,
-                      t, channels, reference_channels):
+def _error_projection(
+    dx, datasets, reference_dataset,
+    array_names, reference_array,
+    dimensions, reference_dimensions,
+    t, channels, reference_channels,
+):
     scaled_dx = np.array(dx)*100000.
     iou_datasets = []
     for dataset, array_name in zip(datasets, array_names):
@@ -183,15 +185,19 @@ def _error_projection(dx, datasets, reference_dataset,
         _project_structured_grids([dataset], [reference_dataset], array_name, projected_array)
         ious = np.zeros(len(channels))
         for i, (channel, reference_channel) in enumerate(zip(channels, reference_channels)):
-            ious[i] = intersection_over_union(projected_array[:, :, t], reference_array,
-                                              channel, reference_channel)
+            ious[i] = intersection_over_union(
+                projected_array[:, :, t], reference_array,
+                channel, reference_channel,
+            )
         iou_datasets.append(np.mean(ious))
         aligned_array[:] = dataset_array.ravel()
     return 1.0-np.mean(iou_datasets)
 
 
-def align_datasets(datasets, reference_dataset, array_names, reference_array_name,
-                   channels, reference_channels, t):
+def align_datasets(
+    datasets, reference_dataset, array_names, reference_array_name,
+    channels, reference_channels, t,
+):
     reference_dimensions = list(reference_dataset.GetDimensions())
     reference_dimensions = [x-1 for x in reference_dimensions if x > 2]
     reference_dimensions += [MRI_FRAMES]
@@ -210,16 +216,22 @@ def align_datasets(datasets, reference_dataset, array_names, reference_array_nam
     reference_array = vtk.util.numpy_support.vtk_to_numpy(reference_dataset.GetCellData().GetArray(f'{reference_array_name}_{t}')).reshape(reference_dimensions[:2])
 
     dx = [0., 0.]
-    initial_error = _error_projection(dx, datasets, reference_dataset,
-                                      array_names, reference_array,
-                                      dataset_dimensions, reference_dimensions,
-                                      0, channels, reference_channels)
+    initial_error = _error_projection(
+        dx, datasets, reference_dataset,
+        array_names, reference_array,
+        dataset_dimensions, reference_dimensions,
+        0, channels, reference_channels,
+    )
     if initial_error > 0.7:
-        res = minimize(_error_projection, dx, method='Nelder-Mead',
-                       args=(datasets, reference_dataset,
-                             array_names, reference_array,
-                             dataset_dimensions, reference_dimensions,
-                             0, channels, reference_channels))
+        res = minimize(
+            _error_projection, dx, method='Nelder-Mead',
+            args=(
+                datasets, reference_dataset,
+                array_names, reference_array,
+                dataset_dimensions, reference_dimensions,
+                0, channels, reference_channels,
+            ),
+        )
 
         dx = res.x * 100000.
 
