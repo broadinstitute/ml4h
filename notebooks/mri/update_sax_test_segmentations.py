@@ -21,6 +21,10 @@ df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t', usecols=['sample_i
 # df_sax_pngs = df_sax.merge(df_pngs, on ='png_file')
 # df_sax_pngs = df_sax_pngs[df_sax_pngs['instance']==2]
 # df_sax_pngs = df_sax_pngs.sort_values(by='sample_id')
+
+# %%
+df_petersen = pd.read_csv('/home/pdiachil/returned_lv_mass.tsv', sep='\t')
+df_sax_petersen = df_petersen[['sample_id']].merge(df_sax, on='sample_id')
 # %%
 
 import imageio
