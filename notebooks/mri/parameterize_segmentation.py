@@ -296,7 +296,13 @@ def annotation_to_poisson(
                 projected_array = np.zeros(projection_dimensions)
                 _project_structured_grids([datasets[i]], [datasets[projection_ds_idx]], f'cine_segmented_{view}_annotated', projected_array)
                 projection_array = vtk.util.numpy_support.vtk_to_numpy(datasets[projection_ds_idx].GetCellData().GetArray(f'cine_segmented_{views[projection_ds_idx]}_annotated_{t}')).reshape(projection_dimensions[:2])
-                iou = intersection_over_union(projection_array, projected_array[:, :, t], channels[projection_ds_idx], channel)
+                iou_projection_channel = channels[projection_ds_idx]
+                iou_projected_channel = channel
+                if isinstance(channels[projection_ds_idx], list):
+                    iou_projection_channel = channels[projection_ds_idx][0]
+                if isinstance(channel, list):
+                    iou_projected_channel = channel[0]
+                iou = intersection_over_union(projection_array, projected_array[:, :, t], iou_projection_channel, iou_projected_channel)
                 if iou < 0.3 : 
                     continue
             
