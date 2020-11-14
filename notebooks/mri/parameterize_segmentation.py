@@ -164,11 +164,11 @@ def points_normals_to_poisson(
     connectivity.SetInputConnection(triangle_filter.GetOutputPort())
     connectivity.SetExtractionModeToLargestRegion()
     connectivity.Update()
-    
+
     return connectivity.GetOutput()
 
 
-def _error_projection(dx, datasets, reference_dataset, 
+def _error_projection(dx, datasets, reference_dataset,
                       array_names, reference_array,
                       dimensions, reference_dimensions,
                       t, channels, reference_channels):
@@ -190,7 +190,7 @@ def _error_projection(dx, datasets, reference_dataset,
     return 1.0-np.mean(iou_datasets)
 
 
-def align_datasets(datasets, reference_dataset, array_names, reference_array_name, 
+def align_datasets(datasets, reference_dataset, array_names, reference_array_name,
                    channels, reference_channels, t):
     reference_dimensions = list(reference_dataset.GetDimensions())
     reference_dimensions = [x-1 for x in reference_dimensions if x > 2]
@@ -200,28 +200,28 @@ def align_datasets(datasets, reference_dataset, array_names, reference_array_nam
     dataset_dimensions = [x-1 for x in dataset_dimensions if x > 2]
     dataset_dimensions += [MRI_FRAMES]
 
-    
+
     # for i in range(MRI_FRAMES):
     #     dataset_array_zeros = np.zeros_like(dataset_array.ravel())
     #     dataset_array_vtk = vtk.util.numpy_support.numpy_to_vtk(dataset_array_zeros)
     #     dataset_array_vtk.SetName(f'aligned_{array_name}_{i}')
     #     dataset.GetCellData().AddArray(dataset_array_vtk)
 
-    reference_array = vtk.util.numpy_support.vtk_to_numpy(reference_dataset.GetCellData().GetArray(f'{reference_array_name}_{t}')).reshape(reference_dimensions[:2])    
+    reference_array = vtk.util.numpy_support.vtk_to_numpy(reference_dataset.GetCellData().GetArray(f'{reference_array_name}_{t}')).reshape(reference_dimensions[:2])
 
     dx = [0., 0.]
     initial_error = _error_projection(dx, datasets, reference_dataset,
                                       array_names, reference_array,
                                       dataset_dimensions, reference_dimensions,
                                       0, channels, reference_channels)
-    if initial_error > 0.7:                                
-        res = minimize(_error_projection, dx, method='Nelder-Mead', 
+    if initial_error > 0.7:
+        res = minimize(_error_projection, dx, method='Nelder-Mead',
                        args=(datasets, reference_dataset,
                              array_names, reference_array,
                              dataset_dimensions, reference_dimensions,
                              0, channels, reference_channels))
 
-        dx = res.x * 100000.        
+        dx = res.x * 100000.
 
     return dx
 
@@ -253,7 +253,7 @@ def annotation_to_ious(
     ious = []
 
     for t in times:
-        ious.append([])        
+        ious.append([])
         for i, (dataset, channel, view) in enumerate(zip(datasets, channels, views)):
             if (projection_ds_idx != i):
                 projected_array = np.zeros(projection_dimensions)
@@ -282,7 +282,7 @@ def annotation_to_poisson(
         projection_dimensions = list(datasets[projection_ds_idx].GetDimensions())
         projection_dimensions = [x-1 for x in projection_dimensions if x > 2]
         projection_dimensions += [MRI_FRAMES]
-        
+
 
     poisson_polydatas = []
     poisson_volumes = []
@@ -303,9 +303,9 @@ def annotation_to_poisson(
                 if isinstance(channel, list):
                     iou_projected_channel = channel[0]
                 iou = intersection_over_union(projection_array, projected_array[:, :, t], iou_projection_channel, iou_projected_channel)
-                if iou < 0.3 : 
+                if iou < 0.3 :
                     continue
-            
+
             arr_annot = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(format_view.format(view=view, t=t)))
             arr_annot_copy = np.copy(arr_annot)
             if isinstance(channel, list):
@@ -367,10 +367,10 @@ def annotation_to_poisson(
                 writer.SetInputData(polydata)
                 writer.SetFileName(f'{save_path}_{j}_{t}.vtp')
                 writer.Update()
-        
+
         points_arr = np.vstack(points)
         normals_arr = np.vstack(normals)
-        
+
         poisson_polydatas.append(points_normals_to_poisson(points_arr, normals_arr))
         poisson_volumes.append(polydata_to_volume(poisson_polydatas[-1]))
     return poisson_polydatas, poisson_volumes
