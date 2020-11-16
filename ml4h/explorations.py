@@ -425,7 +425,15 @@ def infer_with_pixels(args):
     tensor_paths_inferred = {}
     args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'pixel_inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    sample_set = None
+    if args.sample_csv is not None:
+        with open(args.sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    tensor_paths = [
+        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
+        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
+    ]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     model = make_multimodal_multitask_model(**args.__dict__)
     generate_test = TensorGenerator(
