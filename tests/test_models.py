@@ -206,10 +206,10 @@ class TestMakeMultimodalMultitaskModel:
         params['pool_x'] = params['pool_y'] = 2
         params['conv_layers'] = [8, 8]
         params['dense_blocks'] = [4, 4, 2]
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}}),
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_IN],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}}),
             **params,
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_IN], m)
@@ -217,10 +217,10 @@ class TestMakeMultimodalMultitaskModel:
     def test_u_connect_segment(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
             **params,
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
@@ -271,7 +271,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
         params['bottleneck_type'] = BottleneckType.NoBottleNeck
-        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
             [SEGMENT_OUT],
