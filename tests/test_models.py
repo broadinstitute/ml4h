@@ -140,17 +140,18 @@ class TestMakeMultimodalMultitaskModel:
         TMAPS_UP_TO_4D,
     )
     def test_load_unimodal(self, tmpdir, input_tmap, output_tmap):
+        params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
-            **DEFAULT_PARAMS,
+            **params,
         )
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params['model_file'] = path
         make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
-            model_file=path,
             **DEFAULT_PARAMS,
         )
 
@@ -170,10 +171,10 @@ class TestMakeMultimodalMultitaskModel:
         )
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params['model_file'] = path
         make_multimodal_multitask_model(
             inp,
             out,
-            model_file=path,
             **params,
         )
 
@@ -194,11 +195,12 @@ class TestMakeMultimodalMultitaskModel:
         )
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params = DEFAULT_PARAMS.copy()
+        params['model_file'] = path
         make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
-            model_file=path,
-            **DEFAULT_PARAMS,
+            **params,
         )
 
     def test_u_connect_auto_encode(self):
@@ -206,7 +208,7 @@ class TestMakeMultimodalMultitaskModel:
         params['pool_x'] = params['pool_y'] = 2
         params['conv_layers'] = [8, 8]
         params['dense_blocks'] = [4, 4, 2]
-        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}}),
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_IN],
@@ -217,7 +219,7 @@ class TestMakeMultimodalMultitaskModel:
     def test_u_connect_segment(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
-        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_OUT],
