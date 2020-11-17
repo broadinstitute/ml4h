@@ -422,10 +422,19 @@ def test_labels_to_label_map(test_labels: Dict[TensorMap, np.ndarray], examples:
 
 def infer_with_pixels(args):
     stats = Counter()
+    sum_probabilities = True
     tensor_paths_inferred = {}
     args.num_workers = 0
     inference_tsv = os.path.join(args.output_folder, args.id, 'pixel_inference_' + args.id + '.tsv')
-    tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    sample_set = None
+    if args.sample_csv is not None:
+        with open(args.sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    tensor_paths = [
+        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
+        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
+    ]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     model = make_multimodal_multitask_model(**args.__dict__)
     generate_test = TensorGenerator(
@@ -446,7 +455,8 @@ def infer_with_pixels(args):
                 header.extend(channel_columns)
             elif otm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
                 pix_tm = args.tensor_maps_in[1]
-                header.extend(['pixel_size', 'background_pixel_prediction', 'background_pixel_actual', 'ventricle_pixel_prediction', 'ventricle_pixel_actual', 'myocardium_pixel_prediction', 'myocardium_pixel_actual'])
+                header.extend(['pixel_size', 'background_pixel_prediction', 'ventricle_pixel_prediction', 'myocardium_pixel_prediction',
+                               'background_pixel_actual', 'ventricle_pixel_actual', 'myocardium_pixel_actual'])
                 if otm.name == 'sax_all_diastole_segmented':
                     header.append('total_b_slices')
         inference_writer.writerow(header)
@@ -476,12 +486,17 @@ def infer_with_pixels(args):
                         csv_row.append(str(output_data[tm.output_name()][0][tm.channel_map[k]]))
                 elif tm.name in ['mri_systole_diastole_8_segmented', 'sax_all_diastole_segmented']:
                     csv_row.append(f"{pix_tm.rescale(input_data['input_mri_pixel_width_cine_segmented_sax_inlinevf_continuous'][0][0]):0.3f}")
-                    csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.2f}')
-                    csv_row.append(f'{np.sum(np.argmax(output_data[tm.output_name()], axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.1f}')
-                    csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.2f}')
-                    csv_row.append(f'{np.sum(np.argmax(output_data[tm.output_name()], axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.1f}')
-                    csv_row.append(f'{np.sum(np.argmax(y, axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.2f}')
-                    csv_row.append(f'{np.sum(np.argmax(output_data[tm.output_name()], axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.1f}')
+                    if sum_probabilities:
+                        csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.2f}')
+                        csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.2f}')
+                        csv_row.append(f'{np.sum(y[..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.2f}')
+                    else:
+                        csv_row.append(f'{np.sum(np.argmax(output_data[tm.output_name()], axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["background"]):0.1f}')
+                        csv_row.append(f'{np.sum(np.argmax(output_data[tm.output_name()], axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["ventricle"]):0.1f}')
+                        csv_row.append(f'{np.sum(np.argmax(output_data[tm.output_name()], axis=-1) == MRI_SEGMENTED_CHANNEL_MAP["myocardium"]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["ventricle"]]):0.1f}')
+                    csv_row.append(f'{np.sum(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["myocardium"]]):0.1f}')
                     if tm.name == 'sax_all_diastole_segmented':
                         background_counts = np.count_nonzero(output_data[tm.output_name()][..., MRI_SEGMENTED_CHANNEL_MAP["background"]] == 0, axis=(0, 1, 2))
                         csv_row.append(f'{np.count_nonzero(background_counts):0.0f}')
