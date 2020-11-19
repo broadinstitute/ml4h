@@ -1438,6 +1438,14 @@ sax_slices_jamesp_4b = TensorMap(
     'sax_slices_jamesp_4b', shape=(224, 224, 4), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
 )
+sax_slices_jamesp_7b = TensorMap(
+    'sax_slices_jamesp_7b', shape=(224, 224, 7), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
+sax_slices_jamesp_11b = TensorMap(
+    'sax_slices_jamesp_11b', shape=(224, 224, 11), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
 sax_slices_both_3b_3t = TensorMap(
     'sax_slices_both_3b_3t', shape=(224, 224, 9), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', time_frames=3),
