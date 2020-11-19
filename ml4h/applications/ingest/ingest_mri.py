@@ -5,6 +5,8 @@ import pydicom as dicom
 import numpy as np
 import pandas as pd
 import glob
+from typing import List, Tuple, Optional
+import time
 import fastparquet as fp
 import blosc
 import xxhash # Checksums
@@ -16,13 +18,56 @@ import fnmatch # Simple pattern matching
 import zstandard # Silently required by Parquet and Blosc
 from io import BytesIO # Read DICOMs from byte streams
 
+# multiprocessing
+from multiprocessing import Pool, cpu_count
+from functools import partial
 
-def ingest_mri_dicoms_zipped(sample_id: str, 
-    file: str, 
+
+SERIES_TO_SAVE = [5, 6, 7]
+
+
+def _sample_id_from_path(path: str) -> int:
+    """assumes naming format is /path/to/file/{sample_id}_other_stuff"""
+    return int(os.path.basename(path).split('_')[0])
+
+
+def _process_file(path: str, destination: str) -> Tuple[str, Optional[str]]:
+    sample_id = _sample_id_from_path(path)
+    try:
+        ingest_mri_dicoms_zipped(sample_id, path, destination)
+        return path, None
+    except Exception as e:
+        return path, str(e)
+
+
+
+def multiprocess_ingest(
+    files: List[str],
+    destination: str,
+):
+    print(f'Beginning ingestion of {len(files)} MRIs.')
+    start = time.time()
+    process_file = partial(_process_file, destination=destination)
+    errors = {}
+    with Pool(cpu_count()) as pool:
+        for i, (path, error) in enumerate(pool.imap_unordered(process_file, files)):
+            print(f'{i / len(files):.2%}', end='\r')
+            if error is not None:
+                errors[path] = error
+    print()
+    delta = time.time() - start
+    print(f'Ingestion took {delta:.1f} seconds at {delta / len(files):.1f} s/file')
+    return errors
+
+
+def ingest_mri_dicoms_zipped(
+    sample_id: str,
+    file: str,
     destination: str,
     output_name: str = None,
     in_memory: bool = True,
-    save_dicoms: bool = False):
+    save_dicoms: bool = False,
+):
     """Ingest UK Biobank MRI DICOMs from the provided Zip archives comprising of images
     for each individual.
 
@@ -53,11 +98,8 @@ def ingest_mri_dicoms_zipped(sample_id: str,
     # Make sure the destination folder exists: otherwise create it.
     if not os.path.exists(destination):
         os.makedirs(destination, exist_ok=True)
-    
-    try:
-        zfile = zipfile.ZipFile(file, 'r')
-    except Exception as e:
-        raise Exception('Failed')
+
+    zfile = zipfile.ZipFile(file, 'r')
 
     # Loop over names in the archive
     dicom_files = []
@@ -65,35 +107,20 @@ def ingest_mri_dicoms_zipped(sample_id: str,
         # Only open DICOM files in the zip archive
         if fnmatch.fnmatch(name, '*.dcm'):
             dicom_files.append(name)
-            
-    if in_memory:      
+
+    if in_memory:
         data = {name: zfile.read(name) for name in dicom_files}
         ingest_mri_dicoms(sample_id, data_dictionary=data, output_name=output_name, destination=destination)
     else:
-        try:
-            zfile.extractall(destination)
-        except Exception as e:
-            raise Exception("Faield")
+        zfile.extractall(destination)
 
         dicoms = glob.glob(os.path.join(destination,"*.dcm"))
-        try:
-            ingest_mri_dicoms(sample_id, files=dicoms, output_name=output_name, destination=destination)
-        except Exception as e:
-            raise Exception("failed")
-                    
+        ingest_mri_dicoms(sample_id, files=dicoms, output_name=output_name, destination=destination)
+
         if save_dicoms == False:
             for file in zfile.namelist():
                 print(f"deleting {os.path.join(destination,file)}")
-                try:
-                    os.remove(os.path.join(destination,file))
-                except OSError as e:
-                    raise OSError('failed to remove')
-
-
-# TODO: MDRK
-def ingest_mri_dicoms_paths(sample_id: str, path: str):
-    files = glob.glob("*.dcm") # DICOMs for this individual
-    pass
+                os.remove(os.path.join(destination,file))
 
 
 def _ingest_mri_dicoms_wrapper(file, partial=None):
@@ -136,11 +163,13 @@ def _ingest_mri_dicoms_wrapper(file, partial=None):
     return True, df2
 
 
-def ingest_mri_dicoms(sample_id: str, 
-        files: str = None, 
-        data_dictionary: dict = None,
-        output_name: str = None,
-        destination: str = None):
+def ingest_mri_dicoms(
+    sample_id: str,
+    files: str = None,
+    data_dictionary: dict = None,
+    output_name: str = None,
+    destination: str = None,
+):
     file_extension = '.h5'
     if output_name is None:
         output_name = str(sample_id)
@@ -186,7 +215,7 @@ def ingest_mri_dicoms(sample_id: str,
     # Concatenate all row-centric meta data together into a Pandas DataFrame.
     sample_manifest = pd.concat(dfs)
     # Example series-pixel shape relationship for the UK Biobank whole-body MRI DICOMs:
-    # 
+    #
     # >>> pd.crosstab(sample_manifest['pixel_array_shape'], sample_manifest['Series Number'])
     # Series Number      1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24
     # pixel_array_shape
@@ -194,7 +223,7 @@ def ingest_mri_dicoms(sample_id: str,
     # (162, 224)          0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0  72  72  72  72   0   0   0   0
     # (168, 224)         64  64  64  64   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
     # (174, 224)          0   0   0   0  44  44  44  44  44  43  44  44  44  44  44  44   0   0   0   0   0   0   0   0
-    
+
     # Cast series and instance number as integers and then sort on those keys --- first by
     # series number and then by instance number.
     sample_manifest['Series Number']   = sample_manifest['Series Number'].astype(np.int32)
@@ -212,25 +241,37 @@ def ingest_mri_dicoms(sample_id: str,
     sample_manifest["Patient's Name"] = sample_manifest["Patient's Name"].astype(str)
     sample_manifest['Sequence Variant'] = [','.join(list(s)) for s in sample_manifest['Sequence Variant'].values]
     patient_position = \
-    pd.DataFrame([np.array(list(s),dtype=np.float32) for s in sample_manifest['Image Position (Patient)'].values],
-        columns=['image_position_x','image_position_y','image_position_z'])
+    pd.DataFrame(
+        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Image Position (Patient)'].values],
+        columns=['image_position_x','image_position_y','image_position_z'],
+    )
     sample_manifest = sample_manifest.drop(['Image Position (Patient)'], axis=1)
 
     patient_orientation = \
-    pd.DataFrame([np.array(list(s),dtype=np.float32) for s in sample_manifest['Image Orientation (Patient)'].values],
-        columns=['image_orientation_row_x','image_orientation_row_y','image_orientation_row_z',
-        'image_orientation_col_x','image_orientation_col_y','image_orientation_col_z'])
+    pd.DataFrame(
+        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Image Orientation (Patient)'].values],
+        columns=[
+            'image_orientation_row_x','image_orientation_row_y','image_orientation_row_z',
+            'image_orientation_col_x','image_orientation_col_y','image_orientation_col_z',
+        ],
+    )
     sample_manifest = sample_manifest.drop(['Image Orientation (Patient)'], axis=1)
 
     pixel_spacing = \
-    pd.DataFrame([np.array(list(s),dtype=np.float32) for s in sample_manifest['Pixel Spacing'].values],
-        columns=['row_pixel_spacing_mm','col_pixel_spacing_mm'])
+    pd.DataFrame(
+        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Pixel Spacing'].values],
+        columns=['row_pixel_spacing_mm','col_pixel_spacing_mm'],
+    )
     sample_manifest = sample_manifest.drop(['Pixel Spacing'], axis=1)
 
     acquisition_matrix = \
-    pd.DataFrame([np.array(list(s),dtype=np.float32) for s in sample_manifest['Acquisition Matrix'].values],
-        columns=['acquisition_matrix_freq_rows','acquisition_matrix_freq_cols',
-                'acquisition_matrix_phase_rows','acquisition_matrix_phase_cols'])
+    pd.DataFrame(
+        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Acquisition Matrix'].values],
+        columns=[
+            'acquisition_matrix_freq_rows','acquisition_matrix_freq_cols',
+            'acquisition_matrix_phase_rows','acquisition_matrix_phase_cols',
+        ],
+    )
     sample_manifest = sample_manifest.drop(['Acquisition Matrix'], axis=1)
 
     # Add UKBID as a categorical to the manifest
@@ -238,11 +279,10 @@ def ingest_mri_dicoms(sample_id: str,
     sample_manifest['ukbid'] = pd.Categorical(sample_manifest['ukbid'])
 
     # Concat new values
-    sample_manifest = pd.concat([sample_manifest,patient_position,patient_orientation,pixel_spacing,acquisition_matrix,],axis=1)
+    sample_manifest = pd.concat([sample_manifest,patient_position,patient_orientation,pixel_spacing,acquisition_matrix],axis=1)
 
     # Recast --- this is *unsafe* in the general case. There are no guarantees that these fields
     # always exist.
-    sample_manifest['Acquisition Date']
     sample_manifest['Acquisition Date'] = pd.to_datetime(sample_manifest['Acquisition Date'])
     sample_manifest['Acquisition Number'] = sample_manifest['Acquisition Number'].astype(np.int32)
     sample_manifest['Bits Allocated'] = sample_manifest['Bits Allocated'].astype(np.int8)
@@ -289,10 +329,9 @@ def ingest_mri_dicoms(sample_id: str,
     sample_manifest.columns = [s.lower().replace(' ','_') for s in sample_manifest.columns.values]
 
     # Store meta data
-    try:
-        sample_manifest.to_parquet(os.path.join(destination, f"{output_name}.pq"), compression='zstd')
-    except Exception as e:
-        raise Exception('failed')
+    del sample_manifest["referring_physician's_name"]  # these fields cause errors in to_parquet since they are empty
+    del sample_manifest["performing_physician's_name"]
+    sample_manifest.to_parquet(os.path.join(destination, f"{output_name}.pq"), compression='zstd')
 
     # Open HDF5 for storing the tensors
     try:
@@ -301,7 +340,7 @@ def ingest_mri_dicoms(sample_id: str,
         raise Exception(f"Failed to create file: {output_name + file_extension}")
 
     # Generate stacks of 2D images into 3D tensors
-    for s in np.unique(sample_manifest['series_number']):
+    for s in SERIES_TO_SAVE:
         t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
         compressed_data   = blosc.compress(t.tobytes(), typesize=2, cname='zstd', clevel=9)
         hash_uncompressed = xxhash.xxh128_digest(t)
@@ -316,4 +355,8 @@ def ingest_mri_dicoms(sample_id: str,
         dset.attrs['shape'] = t.shape
         dset.attrs['hash_compressed']   = np.void(hash_compressed)
         dset.attrs['hash_uncompressed'] = np.void(hash_uncompressed)
-        
+
+
+def read_compressed(data_set: h5py.Dataset):
+    shape = data_set.attrs['shape']
+    return np.frombuffer(blosc.decompress(data_set), dtype=np.uint16).reshape(shape)
