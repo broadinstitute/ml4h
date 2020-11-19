@@ -65,10 +65,12 @@ MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {
 MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
     'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
+    'left_atrium': 13, 'right_atrium': 14, 'aorta': 15, 'pulmonary_artery': 16,
 }
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
     'RV_cavity': 5, 'thoracic_cavity': 6, 'liver': 7, 'stomach': 8, 'spleen': 9, 'kidney': 11, 'body': 10,
+    'left_atrium': 12, 'right_atrium': 13, 'aorta': 14, 'pulmonary_artery': 15,
 }
 MRI_AO_SEGMENTED_CHANNEL_MAP = {
     'ao_background': 0, 'ao_superior_vena_cava': 1, 'ao_pulmonary_artery': 2, 'ao_ascending_aortic_wall': 3, 'ao_ascending_aorta': 4,
@@ -80,10 +82,6 @@ MRI_LVOT_SEGMENTED_CHANNEL_MAP = {
 }
 MRI_LIVER_SEGMENTED_CHANNEL_MAP = {'background': 0, 'liver': 1, 'inferior_vena_cava': 2, 'abdominal_aorta': 3, 'body': 4}
 
-CAD_ICDS = [
-    'K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
-    'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759',
-]
 
 # TODO: These values should ultimately come from the coding table
 CODING_VALUES_LESS_THAN_ONE = [-10, -1001]

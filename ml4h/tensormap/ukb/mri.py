@@ -1434,8 +1434,8 @@ def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='
     return _slice_tensor_from_file
 
 
-sax_slices_both_3b = TensorMap(
-    'sax_slices_both_3b', shape=(224, 224, 3), normalization=ZeroMeanStd1(),
+sax_slices_jamesp_4b = TensorMap(
+    'sax_slices_jamesp_4b', shape=(224, 224, 4), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
 )
 sax_slices_both_3b_3t = TensorMap(
