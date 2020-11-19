@@ -19,11 +19,9 @@ on:
 
 env:
   # TO REUSE THIS TEMPLATE, change these values to reflect those of your destination Terra workspace.
-
-  # TODO(deflaux): update to the correct workspace.
   NAMESPACE: 'uk-biobank-sek'
-  WORKSPACE: 'ml4cvd-featured-workspace'
-  WORKSPACE_BUCKET: 'fc-secure-893ec7ec-34be-4680-ab52-51d11d0e049d'
+  WORKSPACE: 'ml4h-toolkit-for-machine-learning-on-clinical-data'
+  WORKSPACE_BUCKET: 'fc-500bd872-4a53-45c9-87d3-39656bd83f85'
 
 jobs:
 
@@ -69,9 +67,6 @@ jobs:
         gsutil cp image_annotations_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_model_results_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_one_sample_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
-
-        # TODO(deflaux) remove this after testing is complete.
-        gsutil cp generate_synthetic_tabular_data.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
 
         # Publish the dashboard markdown.
         python << EOF
