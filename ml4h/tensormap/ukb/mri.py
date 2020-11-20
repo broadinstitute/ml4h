@@ -1291,7 +1291,10 @@ sax_all_diastole = TensorMap(
     'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
     path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
 )
-
+sax_all_diastole_3d = TensorMap(
+    'sax_all_diastole', shape=(224, 224, 13), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+)
 sax_all_diastole_192 = TensorMap(
     'sax_all_diastole_192', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
     dependent_map=sax_all_diastole_segmented, path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),

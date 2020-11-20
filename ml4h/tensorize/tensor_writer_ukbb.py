@@ -486,7 +486,7 @@ def _tensorize_short_and_long_axis_segmented_cardiac_mri(
 
             series_segmented = f'{series}_segmented'
             try:
-                overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer)
+                overlay, mask, ventricle_pixels, _ = _get_overlay_from_dicom(slicer, hd5.filename)
             except KeyError:
                 logging.exception(f'Got key error trying to make anatomical mask, skipping.')
                 continue
@@ -563,7 +563,7 @@ def _slice_index_from_ideal_protocol(d, min_ideal_series):
     return 6*(d.InstanceNumber-1) + ((d.SeriesNumber-min_ideal_series)//2)
 
 
-def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
+def _get_overlay_from_dicom(d, hd5_filename) -> Tuple[np.ndarray, np.ndarray]:
     """Get an overlay from a DICOM file
 
     Morphological operators are used to transform the pixel outline of the myocardium
@@ -612,11 +612,15 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         big_structure = _unit_disk(big_radius)
         m2 = binary_closing(overlay, big_structure).astype(np.int)
         anatomical_mask = m1 + m2
+        plt.imsave(hd5_filename.replace(".hd5", f"_m1_intance_{d.InstanceNumber}{IMAGE_EXT}"), m1, cmap='gray')
+        plt.imsave(hd5_filename.replace(".hd5", f"_m2_intance_{d.InstanceNumber}{IMAGE_EXT}"), m2, cmap='gray')
+        plt.imsave(hd5_filename.replace(".hd5", f"_mask_intance_{d.InstanceNumber}{IMAGE_EXT}"), anatomical_mask, cmap='plasma')
         ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:  # try to rescue small ventricles
             erode_structure = _unit_disk(small_radius*1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+            plt.imsave(hd5_filename.replace(".hd5", f"_rescue_mask_intance_{d.InstanceNumber}{IMAGE_EXT}"), anatomical_mask, cmap='plasma')
             ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
             myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         return overlay, anatomical_mask, ventricle_pixels, myocardium_pixels
