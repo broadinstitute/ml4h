@@ -8,23 +8,13 @@ from google.cloud import storage
 import logging
 
 import pandas as pd
-view='sax'
-version='v20201102'
+
+sax_version='v20201116'
+lax_version='v20201119'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
-# blob = bucket.blob(f'jamesp/annotation/{view}/{version}/manifest.tsv')
-# blob.download_to_filename('/home/pdiachil/manifest.tsv')
 
-df_sax = pd.read_csv('/home/pdiachil/manifest.tsv', sep='\t', usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
-#df_sax['png_file'] = df_sax['dicom_file'].str.replace('.dcm', '.dcm.png.mask.png')
-
-# df_sax_pngs = df_sax.merge(df_pngs, on ='png_file')
-# df_sax_pngs = df_sax_pngs[df_sax_pngs['instance']==2]
-# df_sax_pngs = df_sax_pngs.sort_values(by='sample_id')
-
-# %%
-df_petersen = pd.read_csv('/home/pdiachil/returned_lv_mass.tsv', sep='\t')
-df_sax_petersen = df_petersen[['sample_id']].merge(df_sax, on='sample_id')
+df_sax_4ch_petersen = pd.read_csv('/home/pdiachil/projects/manifests/manifest_sax_4ch_petersen.csv', usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 # %%
 
 import imageio
@@ -36,10 +26,10 @@ start = int(sys.argv[1])
 end = int(sys.argv[2])
 # start = 0
 # end = 10
-df_sax = df_sax[df_sax['instance']==2]
+df_sax_4ch_petersen = df_sax_4ch_petersen[df_sax_4ch_petersen['instance']==2]
 
 start_time = time.time()
-for i, (sample_id, df_hd5) in enumerate(df_sax.groupby('sample_id')):
+for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')):
     if i < start:
         continue
     if i == end:
@@ -49,8 +39,10 @@ for i, (sample_id, df_hd5) in enumerate(df_sax.groupby('sample_id')):
     try:
         with h5py.File(f'/home/pdiachil/{sample_id}.hd5', 'a') as hd5_ff:
             for nrow, dcm in df_hd5.iterrows():
-                # segmented_path = f'jamesp/annotation/{view}/{version}/apply/output/output_pngs/{dcm.dicom_file}.png.mask.png'
-                segmented_path = f'mdrk/sax_segmentations/sax_slice_both_dropout_folders/2020-11-06/{sample_id}/{dcm.dicom_file}.png.mask.png'
+                view = '4ch' if ('LAX_4Ch' in dcm['series']) else 'sax'
+                version = lax_version if ('LAX_4Ch' in dcm['series']) else sax_version
+                segmented_path = f'jamesp/annotation/{view}/{version}/apply/output/output_pngs/{dcm.dicom_file}.png.mask.png'
+                # segmented_path = f'mdrk/sax_segmentations/sax_slice_both_dropout_folders/2020-11-06/{sample_id}/{dcm.dicom_file}.png.mask.png'
                 blob = bucket.blob(segmented_path)
                 blob.download_to_filename('tmp.png')
                 png = imageio.imread('tmp.png')
