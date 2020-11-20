@@ -737,12 +737,18 @@ def build_cardiac_surgery_tensor_maps(
     return sts_tmap
 
 
-def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: int = None):
+def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: Union[int, List[int]] = None):
     # First 18 words of measurement matrix are for global measurements, then each lead has 53*2 words
     lead_start = 18
     lead_words = 53 * 2
     if lead_idx is None:
         idx = key_idx
+    elif isinstance(lead_idx, list):
+        matrix_values = []
+        for lead_index in lead_idx:
+            idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
+            matrix_values.append(matrix[idx])
+        return max(matrix_values)        
     else:
         idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
     return matrix[idx]
@@ -862,6 +868,18 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                     time_series_limit=0,
                     tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx)
                 )
+    # Max values across leads
+    for measure, measure_idx in measurement_matrix_lead_measures.items():
+        if f'partners_ecg_measurement_matrix_max_{measure}' == needed_name:
+            return TensorMap(
+                f'partners_ecg_measurement_matrix_max_{measure}',
+                interpretation=Interpretation.CONTINUOUS,
+                shape=(None, 1),
+                path_prefix=PARTNERS_PREFIX,
+                loss='logcosh',
+                time_series_limit=0,
+                tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=measurement_matrix_leads.values())
+            )
 
 def make_mgb_ecg_lvh_tensormaps(needed_name: str):
     def ecg_lvh_from_file(tm: TensorMap, hd5: h5py.File, dependents={}):
