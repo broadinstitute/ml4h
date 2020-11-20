@@ -51,7 +51,10 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
                 series = dcm.series.lower()
                 path_prefix='ukb_cardiac_mri'
                 full_tensor = np.zeros((x, y), dtype=np.float32)
-                full_tensor[:png.shape[0], :png.shape[1]] = png[:, :, 0]
+                if len(png.shape) == 3:
+                    full_tensor[:png.shape[0], :png.shape[1]] = png[:, :, 0]
+                else:
+                    full_tensor[:png.shape[0], :png.shape[1]] = png[:, :]
                 tensor_name = series + '_annotated_' + str(dcm.instance_number)
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5_ff:
