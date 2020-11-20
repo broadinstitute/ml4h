@@ -1,6 +1,9 @@
-python /home/${USER}/ml4cvd/ml4cvd/recipes.py \
+python /home/${USER}/ml4cvd/ml4h/recipes.py \
         --mode explore \
         --tensors ${SLURM_JOB_SCRATCHDIR} \
+        --time_tensor partners_ecg_datetime \
+        --tensormap_prefix ml4h.tensormap.mgb.ecg \
+        --sample_csv /home/${USER}/mgh_mgb_ids.csv \
         --input_tensors partners_ecg_patientid \
                         partners_ecg_datetime \
                         partners_ecg_dob \

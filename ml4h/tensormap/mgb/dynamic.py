@@ -746,7 +746,7 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: Un
     elif isinstance(lead_idx, list):
         matrix_values = []
         for lead_index in lead_idx:
-            idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
+            idx = lead_start + lead_index * lead_words + (key_idx-1)*2+1
             matrix_values.append(matrix[idx])
         return max(matrix_values)        
     else:
