@@ -7,8 +7,8 @@ cd /home/pdiachil/ml
 git checkout pd_atria
 git pull
 
-sudo mkdir -p /mnt/disks/segmented-sax-lax-v20201102
-sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-v20201102/
+sudo mkdir -p /mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen
+sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/
 
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
@@ -16,16 +16,16 @@ cnt2=$((VMTAG*STEP+STEP-1))
 for i in $(seq $cnt1 $cnt2)
 do
     end=$((i+1))
-    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_lv_lvm_geom.py $i $end
+    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_geom.py $i $end
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/leftheart_boundary_40k_v20201102/
+/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201116_lax_v20201119/csv/
 # /snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
 cd /home/pdiachil/projects/chambers
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/leftheart_boundary_xdmf_40k_v20201102/
-/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/rightheart_boundary_logs_40k/
+/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201116_lax_v20201119/xdmf/
+/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201116_lax_v20201119/logs/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
