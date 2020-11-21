@@ -126,7 +126,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
         #     [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
         #     t=0,
         # )
-        dx = 0.0
+        dx = np.array([0.0, 0.0])
         logging.info(f'SAX-LAX alignment completed. dx=[{dx[0]}, {dx[1]}]')
 
         dataset_dimensions = list(annot_datasets[1].GetDimensions())
