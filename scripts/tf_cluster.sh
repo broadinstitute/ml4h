@@ -115,7 +115,7 @@ LAUNCH_MESSAGE
 ## Download bucket
 cd $SLURM_JOB_SCRATCHDIR
 cp -r /home/${USER}/.mc ./
-/home/${USER}/mc cp --recursive ccds/${MOUNT_BUCKETS}/ ./
+/home/${USER}/mc cp --recursive ccds/${MOUNT_BUCKETS} ./
 
 for i in $(ls *.tar) 
 do

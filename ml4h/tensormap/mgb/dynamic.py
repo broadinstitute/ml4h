@@ -747,14 +747,17 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: Un
         matrix_values = []
         for lead_index in lead_idx:
             idx = lead_start + lead_index * lead_words + (key_idx-1)*2+1
+            if matrix[idx] > 32765:
+                matrix_values.append(np.nan)
             matrix_values.append(matrix[idx])
         return max(matrix_values)        
     else:
         idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
+    value = np.nan if matrix[idx] > 32765 else matrix[idx]
     return matrix[idx]
 
 
-def make_measurement_matrix_from_file(key_idx: int, lead_idx: int = None):
+def make_measurement_matrix_from_file(key_idx: int, lead_idx: Union[int, List[int]] = None):
     def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):        
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
@@ -878,7 +881,7 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                 path_prefix=PARTNERS_PREFIX,
                 loss='logcosh',
                 time_series_limit=0,
-                tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=measurement_matrix_leads.values())
+                tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=list(measurement_matrix_leads.values()))
             )
 
 def make_mgb_ecg_lvh_tensormaps(needed_name: str):
