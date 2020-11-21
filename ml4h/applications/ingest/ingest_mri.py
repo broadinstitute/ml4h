@@ -226,8 +226,8 @@ def ingest_mri_dicoms(
 
     # Cast series and instance number as integers and then sort on those keys --- first by
     # series number and then by instance number.
-    sample_manifest['Series Number']   = sample_manifest['Series Number'].astype(np.int32)
-    sample_manifest['Instance Number'] = sample_manifest['Instance Number'].astype(np.int32)
+    sample_manifest['Series Number']   = sample_manifest['Series Number'].astype(np.int32, errors='ignore')
+    sample_manifest['Instance Number'] = sample_manifest['Instance Number'].astype(np.int32, errors='ignore')
     sample_manifest = sample_manifest.sort_values(['Series Number', 'Instance Number'])
     sample_manifest = sample_manifest.reset_index()
 
@@ -238,7 +238,6 @@ def ingest_mri_dicoms(
 
     # Recode edge cases
     sample_manifest = sample_manifest.drop(['Image Type'],axis=1)
-    sample_manifest["Patient's Name"] = sample_manifest["Patient's Name"].astype(str)
     sample_manifest['Sequence Variant'] = [','.join(list(s)) for s in sample_manifest['Sequence Variant'].values]
     patient_position = \
     pd.DataFrame(
@@ -284,77 +283,77 @@ def ingest_mri_dicoms(
     # Recast --- this is *unsafe* in the general case. There are no guarantees that these fields
     # always exist.
     sample_manifest['Acquisition Date'] = pd.to_datetime(sample_manifest['Acquisition Date'])
-    sample_manifest['Acquisition Number'] = sample_manifest['Acquisition Number'].astype(np.int32)
-    sample_manifest['Bits Allocated'] = sample_manifest['Bits Allocated'].astype(np.int8)
-    sample_manifest['Bits Stored'] = sample_manifest['Bits Stored'].astype(np.int8)
-    sample_manifest['Columns'] = sample_manifest['Columns'].astype(np.int16)
+    sample_manifest['Acquisition Number'] = sample_manifest['Acquisition Number'].astype(np.int32, errors='ignore')
+    sample_manifest['Bits Allocated'] = sample_manifest['Bits Allocated'].astype(np.int8, errors='ignore')
+    sample_manifest['Bits Stored'] = sample_manifest['Bits Stored'].astype(np.int8, errors='ignore')
+    sample_manifest['Columns'] = sample_manifest['Columns'].astype(np.int16, errors='ignore')
     sample_manifest['Content Date'] = pd.to_datetime(sample_manifest['Content Date'])
-    sample_manifest['Device Serial Number'] = sample_manifest['Device Serial Number'].astype(np.int32)
-    sample_manifest['Echo Number(s)'] = sample_manifest['Echo Number(s)'].astype(np.int16)
-    sample_manifest['Echo Time'] = sample_manifest['Echo Time'].astype(np.float32)
-    sample_manifest['Echo Train Length'] = sample_manifest['Echo Train Length'].astype(np.int8)
-    sample_manifest['Flip Angle'] = sample_manifest['Flip Angle'].astype(np.float32)
-    sample_manifest['High Bit'] = sample_manifest['High Bit'].astype(np.int16)
-    sample_manifest['Imaging Frequency'] = sample_manifest['Imaging Frequency'].astype(np.float32)
+    sample_manifest['Device Serial Number'] = sample_manifest['Device Serial Number'].astype(np.int32, errors='ignore')
+    sample_manifest['Echo Number(s)'] = sample_manifest['Echo Number(s)'].astype(np.int16, errors='ignore')
+    sample_manifest['Echo Time'] = sample_manifest['Echo Time'].astype(np.float32, errors='ignore')
+    sample_manifest['Echo Train Length'] = sample_manifest['Echo Train Length'].astype(np.int8, errors='ignore')
+    sample_manifest['Flip Angle'] = sample_manifest['Flip Angle'].astype(np.float32, errors='ignore')
+    sample_manifest['High Bit'] = sample_manifest['High Bit'].astype(np.int16, errors='ignore')
+    sample_manifest['Imaging Frequency'] = sample_manifest['Imaging Frequency'].astype(np.float32, errors='ignore')
     sample_manifest['Instance Creation Date'] = pd.to_datetime(sample_manifest['Instance Creation Date'])
-    sample_manifest['Instance Number'] = sample_manifest['Instance Number'].astype(np.int8)
-    sample_manifest['Largest Image Pixel Value'] = sample_manifest['Largest Image Pixel Value'].astype(np.int16)
-    sample_manifest['Magnetic Field Strength'] = sample_manifest['Magnetic Field Strength'].astype(np.float32)
-    sample_manifest['Number of Averages'] = sample_manifest['Number of Averages'].astype(np.float32)
-    sample_manifest['Number of Phase Encoding Steps'] = sample_manifest['Number of Phase Encoding Steps'].astype(np.int16)
+    sample_manifest['Instance Number'] = sample_manifest['Instance Number'].astype(np.int8, errors='ignore')
+    sample_manifest['Largest Image Pixel Value'] = sample_manifest['Largest Image Pixel Value'].astype(np.int16, errors='ignore')
+    sample_manifest['Magnetic Field Strength'] = sample_manifest['Magnetic Field Strength'].astype(np.float32, errors='ignore')
+    sample_manifest['Number of Averages'] = sample_manifest['Number of Averages'].astype(np.float32, errors='ignore')
+    sample_manifest['Number of Phase Encoding Steps'] = sample_manifest['Number of Phase Encoding Steps'].astype(np.int16, errors='ignore')
     sample_manifest["Patient's Birth Date"] = pd.to_datetime(sample_manifest["Patient's Birth Date"])
-    sample_manifest["Patient's Size"] = sample_manifest["Patient's Size"].astype(np.float32)
-    sample_manifest["Patient's Weight"] = sample_manifest["Patient's Weight"].astype(np.float32)
-    sample_manifest['Percent Phase Field of View'] = sample_manifest['Percent Phase Field of View'].astype(np.float32)
-    sample_manifest['Percent Sampling'] = sample_manifest['Percent Sampling'].astype(np.float32)
+    sample_manifest["Patient's Size"] = sample_manifest["Patient's Size"].astype(np.float32, errors='ignore')
+    sample_manifest["Patient's Weight"] = sample_manifest["Patient's Weight"].astype(np.float32, errors='ignore')
+    sample_manifest['Percent Phase Field of View'] = sample_manifest['Percent Phase Field of View'].astype(np.float32, errors='ignore')
+    sample_manifest['Percent Sampling'] = sample_manifest['Percent Sampling'].astype(np.float32, errors='ignore')
     sample_manifest['Performed Procedure Step Start Date'] = pd.to_datetime(sample_manifest['Performed Procedure Step Start Date'])
-    sample_manifest['Pixel Bandwidth'] = sample_manifest['Pixel Bandwidth'].astype(np.float32)
-    sample_manifest['Pixel Representation'] = sample_manifest['Pixel Representation'].astype(np.float32)
-    sample_manifest['Repetition Time'] = sample_manifest['Repetition Time'].astype(np.float32)
-    sample_manifest['Rows'] = sample_manifest['Rows'].astype(np.int16)
-    sample_manifest['SAR'] = sample_manifest['SAR'].astype(np.float32)
-    sample_manifest['Samples per Pixel'] = sample_manifest['Samples per Pixel'].astype(np.float32)
+    sample_manifest['Pixel Bandwidth'] = sample_manifest['Pixel Bandwidth'].astype(np.float32, errors='ignore')
+    sample_manifest['Pixel Representation'] = sample_manifest['Pixel Representation'].astype(np.float32, errors='ignore')
+    sample_manifest['Repetition Time'] = sample_manifest['Repetition Time'].astype(np.float32, errors='ignore')
+    sample_manifest['Rows'] = sample_manifest['Rows'].astype(np.int16, errors='ignore')
+    sample_manifest['SAR'] = sample_manifest['SAR'].astype(np.float32, errors='ignore')
+    sample_manifest['Samples per Pixel'] = sample_manifest['Samples per Pixel'].astype(np.float32, errors='ignore')
     sample_manifest['Series Date'] = pd.to_datetime(sample_manifest['Series Date'])
-    sample_manifest['Series Number'] = sample_manifest['Series Number'].astype(np.int16)
-    sample_manifest['Slice Location'] = sample_manifest['Slice Location'].astype(np.float32)
-    sample_manifest['Slice Thickness'] = sample_manifest['Slice Thickness'].astype(np.float32)
-    sample_manifest['Smallest Image Pixel Value'] = sample_manifest['Smallest Image Pixel Value'].astype(np.int16)
+    sample_manifest['Series Number'] = sample_manifest['Series Number'].astype(np.int16, errors='ignore')
+    sample_manifest['Slice Location'] = sample_manifest['Slice Location'].astype(np.float32, errors='ignore')
+    sample_manifest['Slice Thickness'] = sample_manifest['Slice Thickness'].astype(np.float32, errors='ignore')
+    sample_manifest['Smallest Image Pixel Value'] = sample_manifest['Smallest Image Pixel Value'].astype(np.int16, errors='ignore')
     sample_manifest['Study Date'] = pd.to_datetime(sample_manifest['Study Date'])
-    sample_manifest['Study ID'] = sample_manifest['Study ID'].astype(np.int32)
-    sample_manifest['Slice Thickness'] = sample_manifest['Slice Thickness'].astype(np.float32)
-    sample_manifest['Window Width'] = sample_manifest['Window Width'].astype(np.float32)
-    sample_manifest['dB/dt'] = sample_manifest['dB/dt'].astype(np.float32)
+    sample_manifest['Study ID'] = sample_manifest['Study ID'].astype(np.int32, errors='ignore')
+    sample_manifest['Slice Thickness'] = sample_manifest['Slice Thickness'].astype(np.float32, errors='ignore')
+    sample_manifest['Window Width'] = sample_manifest['Window Width'].astype(np.float32, errors='ignore')
+    sample_manifest['dB/dt'] = sample_manifest['dB/dt'].astype(np.float32, errors='ignore')
 
     # Reformat column names to be all lower case and replace spaces with underscores
-    sample_manifest.columns = [s.lower().replace(' ','_') for s in sample_manifest.columns.values]
+    sample_manifest.columns = [s.lower().replace(' ','_').replace("'", "") for s in sample_manifest.columns.values]
 
     # Store meta data
-    del sample_manifest["referring_physician's_name"]  # these fields cause errors in to_parquet since they are empty
-    del sample_manifest["performing_physician's_name"]
+    object_columns = sample_manifest.select_dtypes('object')  # all columns where we haven't handled the datatype must be converted to strings
+    for col in object_columns:
+        sample_manifest[col] = sample_manifest[col].astype('str')
     sample_manifest.to_parquet(os.path.join(destination, f"{output_name}.pq"), compression='zstd')
 
     # Open HDF5 for storing the tensors
-    try:
-        f = h5py.File(os.path.join(destination,f"{output_name + file_extension}"),"w-")
-    except Exception as e:
-        raise Exception(f"Failed to create file: {output_name + file_extension}")
-
-    # Generate stacks of 2D images into 3D tensors
-    for s in SERIES_TO_SAVE:
-        t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
-        compressed_data   = blosc.compress(t.tobytes(), typesize=2, cname='zstd', clevel=9)
-        hash_uncompressed = xxhash.xxh128_digest(t)
-        hash_compressed   = xxhash.xxh128_digest(compressed_data)
-        decompressed = np.frombuffer(blosc.decompress(compressed_data),dtype=np.uint16).reshape(t.shape)
-        assert(xxhash.xxh128_digest(decompressed) == hash_uncompressed)
-        dset = f.create_dataset(f"/series/{s}", data=np.void(compressed_data))
-        # Store meta data:
-        # 1) Shape of the original tensor
-        # 2) Hash of the compressed data
-        # 3) Hash of the uncompressed data
-        dset.attrs['shape'] = t.shape
-        dset.attrs['hash_compressed']   = np.void(hash_compressed)
-        dset.attrs['hash_uncompressed'] = np.void(hash_uncompressed)
+    series = set(SERIES_TO_SAVE).intersection(sample_manifest['series_number'])
+    if not series:
+        raise ValueError('No series to save.')
+    with h5py.File(os.path.join(destination,f"{output_name + file_extension}"),"w-") as f:
+        # Generate stacks of 2D images into 3D tensors
+        for s in series:
+            t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
+            compressed_data   = blosc.compress(t.tobytes(), typesize=2, cname='zstd', clevel=9)
+            hash_uncompressed = xxhash.xxh128_digest(t)
+            hash_compressed   = xxhash.xxh128_digest(compressed_data)
+            decompressed = np.frombuffer(blosc.decompress(compressed_data),dtype=np.uint16).reshape(t.shape)
+            assert(xxhash.xxh128_digest(decompressed) == hash_uncompressed)
+            dset = f.create_dataset(f"/series/{s}", data=np.void(compressed_data))
+            # Store meta data:
+            # 1) Shape of the original tensor
+            # 2) Hash of the compressed data
+            # 3) Hash of the uncompressed data
+            dset.attrs['shape'] = t.shape
+            dset.attrs['hash_compressed']   = np.void(hash_compressed)
+            dset.attrs['hash_uncompressed'] = np.void(hash_uncompressed)
 
 
 def read_compressed(data_set: h5py.Dataset):
