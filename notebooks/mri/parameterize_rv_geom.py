@@ -17,7 +17,7 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 # %%
 import logging
 logging.getLogger().setLevel('INFO')
-hd5s = glob.glob('/mnt/disks/segmented-sax-lax-ml4h-v20201102/2020-11-02/*.hd5')
+hd5s = glob.glob('/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/*.hd5')
 
 # %%
 start = int(sys.argv[1])
@@ -25,7 +25,7 @@ end = int(sys.argv[2])
 
 # start = 4
 # end = start+1
-version='v20201102'
+version='sax_v20201116_lax_v20201119'
 # hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2032446.hd5']
 
 # %%
@@ -37,7 +37,7 @@ annot_format_string = 'cine_segmented_{view}_annotated'
 annot_time_format_string = 'cine_segmented_{view}_annotated_{t}'
 
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 6, 'LV_cavity': 5, 'LV_free_wall': 3, 'interventricular_septum': 2}
-MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 5, 'LV_cavity': 4, 'LV_free_wall': 3, 'interventricular_septum': 2}
+# MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 5, 'LV_cavity': 4, 'LV_free_wall': 3, 'interventricular_septum': 2}
 
 
 channels = [
@@ -162,7 +162,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
-    except Exception as e:
+    except FutureWarning as e:
         logging.info(f'Caught exception at {sample_id}: {e}')
         continue
     # break
