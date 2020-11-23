@@ -20,7 +20,7 @@ do
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *discs* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201116_lax_v20201122/csv/
+/snap/bin/gsutil cp *discs* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201116_lax_v20201122/csv_dice/
 # /snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 

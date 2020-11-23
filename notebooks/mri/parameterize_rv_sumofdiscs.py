@@ -77,7 +77,7 @@ for chamber in chambers:
 start_time = time.time()
 for i, hd5 in enumerate(sorted(hd5s)):
     # i = start
-    # hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201122-petersen/2020-11-22/5160599.hd5'
+    # hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201122-petersen/2020-11-22/2923883.hd5'
     # hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/2508171.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
