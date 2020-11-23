@@ -247,6 +247,41 @@ def shift_datasets(datasets, array_names, dataset_dimensions, dx):
                 dataset_array[:] = shifted_array.ravel()
 
 
+def annotation_to_discs(
+    datasets: List[vtk.vtkStructuredGrid],
+    channels: List[int],
+    views: List[str],
+    format_view: str,
+    times: List[int],
+    projection_ds_idx: int = None,
+    include_projection: bool = True,
+    save_path: str = None,
+)->List[List[float]]:
+
+    projection_dimensions = list(datasets[projection_ds_idx].GetDimensions())
+    projection_dimensions = [x-1 for x in projection_dimensions if x > 2]
+    projection_dimensions += [MRI_FRAMES]
+
+    ious = []
+    pixels = np.zeros(len(times))
+    for t in times:
+        ious.append([])
+        slices = 0
+        for i, (dataset, channel, view) in enumerate(zip(datasets, channels, views)):
+            if (projection_ds_idx != i):
+                projected_array = np.zeros(projection_dimensions)
+                _project_structured_grids([datasets[i]], [datasets[projection_ds_idx]], f'cine_segmented_{view}_annotated', projected_array)
+                projection_array = vtk.util.numpy_support.vtk_to_numpy(datasets[projection_ds_idx].GetCellData().GetArray(f'cine_segmented_{views[projection_ds_idx]}_annotated_{t}')).reshape(projection_dimensions[:2])
+                iou = intersection_over_union(projection_array, projected_array[:, :, t], channels[projection_ds_idx], channel)
+                ious[-1].append(iou)
+                if iou > 0.0:
+                    slices += 1
+                    dataset_arr = vtk.util.numpy_support.vtk_to_numpy(datasets[i].GetCellData().GetArray(f'cine_segmented_{view}_annotated_{t}'))
+                    pixels[t] += np.sum(dataset_arr==channel)
+        logging.info(f'Intersection over union: {slices} timestep {t} out of {len(times)}')
+    return pixels
+
+
 def annotation_to_ious(
     datasets: List[vtk.vtkStructuredGrid],
     channels: List[int],
