@@ -9,7 +9,7 @@ import logging
 
 import pandas as pd
 
-sax_version='v20201116'
+sax_version='v20201102'
 lax_version='v20201122'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')

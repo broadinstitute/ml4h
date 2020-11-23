@@ -14,6 +14,6 @@ cnt2=$((VMTAG*STEP+STEP))
 
 /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/update_sax_test_segmentations.py $cnt1 $cnt2
 
-/snap/bin/gsutil cp /home/pdiachil/*.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201116-lax-v20201122/
+/snap/bin/gsutil cp /home/pdiachil/*.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201102-lax-v20201122/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
