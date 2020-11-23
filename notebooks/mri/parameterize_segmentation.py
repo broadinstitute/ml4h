@@ -274,7 +274,7 @@ def annotation_to_discs(
                 projection_array = vtk.util.numpy_support.vtk_to_numpy(datasets[projection_ds_idx].GetCellData().GetArray(f'cine_segmented_{views[projection_ds_idx]}_annotated_{t}')).reshape(projection_dimensions[:2])
                 iou = intersection_over_union(projection_array, projected_array[:, :, t], channels[projection_ds_idx], channel)
                 ious[-1].append(iou)
-                if iou > 0.0:
+                if iou >= 0.3:
                     slices += 1
                     dataset_arr = vtk.util.numpy_support.vtk_to_numpy(datasets[i].GetCellData().GetArray(f'cine_segmented_{view}_annotated_{t}'))
                     pixels[t] += np.sum(dataset_arr==channel)
