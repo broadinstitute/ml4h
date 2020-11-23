@@ -16,7 +16,7 @@ cnt2=$((VMTAG*STEP+STEP-1))
 for i in $(seq $cnt1 $cnt2)
 do
     end=$((i+1))
-    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_geom.py $i $end
+    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_sumofdiscs.py $i $end
 done
 
 cd /home/pdiachil/ml/notebooks/mri
