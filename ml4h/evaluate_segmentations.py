@@ -44,9 +44,7 @@ class DataGenerator(tf.keras.utils.Sequence):
     def __getitem__(self, index):
         self.offset += 1
         x, y, _, b = next(self.generator)
-        # hack because the data has changed on disk for this model
-        y = y['output_cine_segmented_sax_slice_jamesp_categorical'][:,:,:,0:12]
-        return x,y,[None]
+        return x, y, [None]
     #
     def on_epoch_end(self):
         self.offset = 0
