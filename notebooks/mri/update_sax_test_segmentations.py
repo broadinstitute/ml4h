@@ -41,7 +41,8 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
             for nrow, dcm in df_hd5.iterrows():
                 view = '4ch' if ('LAX_4Ch' in dcm['series']) else 'sax'
                 version = lax_version if ('LAX_4Ch' in dcm['series']) else sax_version
-                segmented_path = f'jamesp/annotation/{view}/{version}/apply-petersen-5000/output/output_pngs/{dcm.dicom_file}.png.mask.png'
+                apply_string = 'apply-petersen-5000' if ('LAX_4Ch' in dcm['series']) else 'apply'
+                segmented_path = f'jamesp/annotation/{view}/{version}/{apply_string}/output/output_pngs/{dcm.dicom_file}.png.mask.png'
                 # segmented_path = f'mdrk/sax_segmentations/sax_slice_both_dropout_folders/2020-11-06/{sample_id}/{dcm.dicom_file}.png.mask.png'
                 blob = bucket.blob(segmented_path)
                 blob.download_to_filename('tmp.png')
