@@ -2220,7 +2220,7 @@ def stratify_latent_space(stratify_column, stratify_thresh, latent_cols, latent_
 
 
 def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', prefix='./figures/',
-                                thresh=1.0, latent_dimension=256, samples=16, scalar=3.0, cmap='plasma', test_csv=None):
+                                thresh=1.0, latent_dimension=256, samples=16, scalar=1.0, cmap='plasma', test_csv=None):
     latent_cols = [f'latent_{i}' for i in range(latent_dimension)]
     female, male = stratify_latent_space(feature, thresh, latent_cols, latent_df)
     sex_vector = female - male
@@ -2272,9 +2272,9 @@ def plot_hit_to_miss_transforms(latent_df, decoders, feature='Sex_Female_0_0', p
                 for j in range(dtm.shape[1]):
                     axes[j, i].plot(predictions[i, ..., j], c='g', label='reconstruction')
                     if sexes[i] >= thresh:
-                        axes[j, i].plot(f2m[i, ..., j], c='b', label=f'{feature} to < {thresh}')
+                        axes[j, i].plot(f2m[i, ..., j], c='b', label=f'{feature[:16]} to < {thresh}')
                     else:
-                        axes[j, i].plot(m2f[i, ..., j], c='r', label=f'{feature} to {thresh}++')
+                        axes[j, i].plot(m2f[i, ..., j], c='r', label=f'{feature[:16]} to {thresh}++')
                     axes[j, i].set_title(f'Lead: {index2channel[j]}')
                     axes[j, i].legend()
         plt.tight_layout()
