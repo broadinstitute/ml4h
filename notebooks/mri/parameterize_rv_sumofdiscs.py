@@ -17,7 +17,7 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 # %%
 import logging
 logging.getLogger().setLevel('INFO')
-hd5s = glob.glob('/mnt/disks/segmented-sax-v20201116-lax-v20201122-petersen/2020-11-22/*.hd5')
+hd5s = glob.glob('/mnt/disks/segmented-sax-v20201102-lax-v20201122-petersen/2020-11-22/*.hd5')
 
 # %%
 start = int(sys.argv[1])
@@ -25,7 +25,7 @@ end = int(sys.argv[2])
 
 # start = 4
 # end = start+1
-version='sax_v20201116_lax_v20201122'
+version='sax_v20201102_lax_v20201122'
 # hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2032446.hd5']
 
 # %%
