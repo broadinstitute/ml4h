@@ -76,8 +76,8 @@ for chamber in chambers:
 start_time = time.time()
 for i, hd5 in enumerate(sorted(hd5s)):
     # i = start
-    hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/2508171.hd5'
-    hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/2508171.hd5'
+    # hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/5362506.hd5'
+    hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/5362506.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
         continue
@@ -109,8 +109,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
                         save_path=None, order='F',
                     )[0],
                 )
-                to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=True)
-                to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True)
+                to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
+                to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
 
       # except:
       #     pass
