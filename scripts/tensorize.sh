@@ -135,7 +135,7 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
                 --max_sample_id $MAX_SAMPLE_ID &
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml/scripts/tf.sh -r -c $HOME/ml/ml4h/recipes.py \
+    $HOME/ml/scripts/tf.sh -c $HOME/ml/ml4h/recipes.py \
 		--mode $TENSORIZE_MODE \
 		--tensors $TENSOR_PATH \
 		--output_folder $TENSOR_PATH \
