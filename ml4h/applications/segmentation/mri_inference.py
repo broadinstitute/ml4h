@@ -4,17 +4,108 @@ import tensorflow as tf
 import pandas as pd
 from tensorflow.keras.models import load_model
 from tensorflow_addons.optimizers import RectifiedAdam
-from ml4h.metrics import get_metric_dict
-import ml4h.tensormap.ukb.mri
-from ml4h.tensormap.general import pad_or_crop_array_to_shape
-from ml4h.normalizer import ZeroMeanStd1
+# from ml4h.metrics import get_metric_dict
+# import ml4h.tensormap.ukb.mri
+# from ml4h.tensormap.general import pad_or_crop_array_to_shape
+# from ml4h.normalizer import ZeroMeanStd1
+from tensorflow.python.data.ops import dataset_ops
+from ml4h.tensor_generators import TensorGenerator
 import numpy as np
 import h5py
 import os
 import cv2
 # import glob # Use glob if a manifest is not available
-import fastparquet as fp
+# import fastparquet as fp
 import sys
+import glob
+# debug
+from ml4h.metrics import get_metric_dict
+import ml4h.tensormap.ukb.mri
+
+
+# temp utils
+class DataGenerator(tf.keras.utils.Sequence):
+    """Workaround for using infinite ML4H generators with Keras/Tensorflow 
+    generators. The ML4H TensorGenerator is very brittle: use at your own
+    risk!
+    Args:
+        files: Files operated on by TensorGenerator.
+        tensor_generator: ML4h TensorGenerator instance.
+    """
+    def __init__(self, files, tensor_generator: TensorGenerator):
+        self.files = files
+        self.generator = tensor_generator
+        self.offset = 0
+        self.limit = len(files)
+    #
+    def __len__(self):
+        return self.limit
+    #
+    def __getitem__(self, index):
+        self.offset += 1
+        x, y, _, b = next(self.generator)
+        return x, y, [None]
+    #
+    def on_epoch_end(self):
+        self.offset = 0
+
+
+def predict_segmentation(model: tf.keras.models.Model,
+        generator):
+    """Make inference using a generator by iteratively retrieving data. This
+    approach is only efficient in a batch-wise setting. All preprocessing must
+    be performed inside the generator.
+
+    Args:
+        model (tf.keras.models.Model): Input Tensorflow model
+        generator: Generator to draw data from.
+    """
+    if isinstance(generator, dataset_ops.DatasetV2):
+        pass
+    elif isinstance(generator, TensorGenerator):
+        files = np.array([p.paths for p in generator.path_iters]).flatten()
+        print(files)
+        generator = DataGenerator(files, generator)
+    else: # yolo
+        pass
+
+    # Make inference
+    x, y = next(generator)
+    start_predict = timeit.default_timer() # Debug timer
+    predictions   = model.predict(x) # Predict all (d, 224, 224) tensors at once
+    stop_predict  = timeit.default_timer() # Debug timer
+    # Ev
+
+
+# Test
+# Path to a pre-trained file
+model_file = "/tf/models_sax_slices_jamesp_4b_converge_sax_slices_jamesp_4b_converge.h5"
+# Get the config using the TensorMap used to train the model in the first place.
+# This allows us to reconstruct models that are not saved using configs.
+objects = get_metric_dict([ml4h.tensormap.ukb.mri.cine_segmented_sax_slice_jamesp])
+# Silly work-around to reset function pointer to our local instance.
+objects['RectifiedAdam'] = RectifiedAdam
+# Load the model
+model = load_model(model_file, custom_objects=objects)
+model.summary()
+
+
+files = glob.glob('/mnt/disks/annotated-cardiac-tensors-44k/2020-09-21/*.hd5')[0:10]
+
+
+generate_test = TensorGenerator(
+    1, 
+    [ml4h.tensormap.ukb.mri.sax_slices_jamesp_4b], 
+    [ml4h.tensormap.ukb.mri.cine_segmented_sax_slice_jamesp], 
+    paths=files,
+    num_workers=1,
+    cache_size=0, 
+    keep_paths=True, 
+    mixup=0,
+)
+
+
+
 
 # Command line helper for divide-and-conquer approach to inferring
 # millions of segmentations. See grouping information below
@@ -143,6 +234,7 @@ for target_file in files.file.values: # Iterate over our files
     start = timeit.default_timer() # Debug timer
     
     # make_assertions = True # Assert copies
+    # DataGenerator
     for instance in cardiac_slices.iloc[:,0]:
         instances = list(f['/ukb_cardiac_mri/'][instance]) # List the instances availabe
         for i in instances: # Iterate over instances
@@ -183,6 +275,7 @@ for target_file in files.file.values: # Iterate over our files
             stop_predict = timeit.default_timer() # Debug timer
             print('Predict time: ', stop_predict - start_predict) # Debug message
             
+            # Aux PNG
             # Convert predictions into valid image segmentations
             for p,n in zip(predictions,dicom_names):
                 # Argmax over channels: this is equivalent of selecting the one-hot-encoded channel
