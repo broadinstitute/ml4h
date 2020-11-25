@@ -3,98 +3,104 @@ from statsmodels.multivariate.pca import PCA
 import pandas as pd
 
 # %%
-df_saxlv = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_LV_processed_v20201102.csv')
-df_saxlvw = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_LVW_processed_v20201102.csv')
-df_saxrv_20201102 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_RV_processed_v20201102.csv')
-df_saxrv_ml4h_20201102 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_RV_processed_ml4h_v20201102.csv')
-df_lax = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_LAX_processed_v20201006.csv')
-df_saxrv_20201119 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201116-lax-v20201119-petersen/all_RV_processed_sax_v20201116_lax_v20201119.csv')
-df_saxrv_20201119_noshift = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201116-lax-v20201119-petersen-noshift/all_RV_processed_sax_v20201116_lax_v20201119.csv')
-df_saxrv_20201122_dice = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201116-lax-v20201122-petersen-dice/all_RV_discs_sax_v20201116_lax_v20201122.csv')
-df_saxrv_20201122 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201116-lax-v20201122-petersen/all_RV_discs_sax_v20201116_lax_v20201122.csv')
+df_rv_sax_v20201102_lax_v20201006 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_RV_processed_v20201102.csv')
+df_rv_sax_v20201124_lax_v20201122 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201124-lax-v20201122/all_RV_processed_sax_v20201124_lax_v20201122.csv')
 
-df_saxrv_20201102 = df_saxrv_20201102[df_saxrv_20201102['sample_id']!=-1]
-df_saxrv_20201119 = df_saxrv_20201119[df_saxrv_20201119['sample_id']!=-1]
-df_saxrv_20201122 = df_saxrv_20201122[df_saxrv_20201122['sample_id']!=-1]
-df_saxrv_20201119_noshift = df_saxrv_20201119_noshift[df_saxrv_20201119_noshift['sample_id']!=-1]
-df_saxrv_ml4h_20201102 = df_saxrv_ml4h_20201102[df_saxrv_ml4h_20201102['sample_id']!=-1]
-df_saxlv = df_saxlv[df_saxlv['sample_id']!=-1]
-df_saxlvw = df_saxlvw[df_saxlvw['sample_id']!=-1]
-df_lax = df_lax[df_lax['sample_id']!=-1]
+labels = ['v20201102_v20201006', 'v20201124_v20201122']
+surfaces = ['poisson', 'poisson']
 
-df_all = df_saxlv.merge(df_saxlvw, on='sample_id')
-df_all = df_all.merge(df_saxrv_20201102, on='sample_id')
-df_all = df_all.merge(df_saxrv_20201119, on='sample_id', suffixes=('_20201102', '_20201119'))
-df_all = df_all.merge(df_saxrv_20201119_noshift, on='sample_id')
-df_all = df_all.merge(df_saxrv_ml4h_20201102, on='sample_id', suffixes=('_20201119_noshift', '_20201102_ml4h'))
-df_all = df_all.merge(df_saxrv_20201122, on='sample_id')
-df_all = df_all.merge(df_saxrv_20201122_dice, on='sample_id', suffixes=('_20201122', '_20201122_dice'))
-df_all = df_all.merge(df_lax, on='sample_id')
+dfs_rv = [df_rv_sax_v20201102_lax_v20201006, df_rv_sax_v20201124_lax_v20201122]
+
+for i, df_rv in enumerate(dfs_rv):
+    dfs_rv[i] = df_rv[df_rv['sample_id']!=-1]
+
+df_all = dfs_rv[0]
+label_left = labels[0]
+for df_rv, label_right in zip(dfs_rv[1:], labels[1:]):
+    df_all = df_all.merge(df_rv, on='sample_id', suffixes=(f'_{label_left}', f'_{label_right}'))
+    label_left = label_right
+
 
 # %%
-keys_saxlv = [f'SAXLV_poisson_{d}' for d in range(50)]
-keys_saxlvw = [f'SAXLVW_poisson_{d}' for d in range(50)]
-keys_saxlvm = [f'SAXLVM_poisson_{d}' for d in range(50)]
-keys_lv = [f'LV_poisson_{d}' for d in range(50)]
-keys_la = [f'LA_poisson_{d}' for d in range(50)]
-keys_lvw = [f'LVW_poisson_{d}' for d in range(50)]
-keys_lvm = [f'LVM_poisson_{d}' for d in range(50)]
-keys_rv_20201102 = [f'RV_poisson_{d}_20201102' for d in range(50)]
-keys_rv_20201119 = [f'RV_poisson_{d}_20201119' for d in range(50)]
-keys_rv_20201119_noshift = [f'RV_poisson_{d}_20201119_noshift' for d in range(50)]
-keys_rv_20201102_ml4h = [f'RV_poisson_{d}_20201102_ml4h' for d in range(50)]
-keys_rv_20201122 = [f'RV_discs_{d}_20201122' for d in range(50)]
-keys_rv_20201122_dice = [f'RV_discs_{d}_20201122_dice' for d in range(50)]
-for key_saxlv, key_saxlvw, key_saxlvm in zip(keys_saxlv, keys_saxlvw, keys_saxlvm):
-    df_all[key_saxlvm] = (df_all[key_saxlvw] - df_all[key_saxlv])*1.05
+keys = []
+for label, surface in zip(labels, surfaces):
+    keys.append([f'RV_{surface}_{d}_{label}' for d in range(50)])
 
-df_all['SAXLV_poisson_max'] = df_all[keys_saxlv].max(axis=1)
-df_all['SAXLV_poisson_min'] = df_all[keys_saxlv].min(axis=1)
-df_all['SAXLVW_poisson_max'] = df_all[keys_saxlvw].max(axis=1)
-df_all['SAXLVW_poisson_min'] = df_all[keys_saxlvw].min(axis=1)
-df_all['SAXLVM_poisson_max'] = df_all[keys_saxlvm].max(axis=1)
-df_all['SAXLVM_poisson_min'] = df_all[keys_saxlvm].min(axis=1)
-
-df_all['LV_poisson_max'] = df_all[keys_lv].max(axis=1)
-df_all['LV_poisson_min'] = df_all[keys_lv].min(axis=1)
-df_all['LA_poisson_max'] = df_all[keys_la].max(axis=1)
-df_all['LA_poisson_min'] = df_all[keys_la].min(axis=1)
-df_all['RV_poisson_max_20201102'] = df_all[keys_rv_20201102].max(axis=1)
-df_all['RV_poisson_min_20201102'] = df_all[keys_rv_20201102].min(axis=1)
-df_all['RV_poisson_max_20201119'] = df_all[keys_rv_20201119].max(axis=1)
-df_all['RV_poisson_min_20201119'] = df_all[keys_rv_20201119].min(axis=1)
-df_all['RV_poisson_max_20201119_noshift'] = df_all[keys_rv_20201119_noshift].max(axis=1)
-df_all['RV_poisson_min_20201119_noshift'] = df_all[keys_rv_20201119_noshift].min(axis=1)
-df_all['RV_poisson_max_20201102_ml4h'] = df_all[keys_rv_20201102_ml4h].max(axis=1)
-df_all['RV_poisson_min_20201102_ml4h'] = df_all[keys_rv_20201102_ml4h].min(axis=1)
-df_all['RV_discs_max_20201122'] = df_all[keys_rv_20201122].max(axis=1)
-df_all['RV_discs_min_20201122'] = df_all[keys_rv_20201122].min(axis=1)
-df_all['RV_discs_max_20201122_dice'] = df_all[keys_rv_20201122_dice].max(axis=1)
-df_all['RV_discs_min_20201122_dice'] = df_all[keys_rv_20201122_dice].min(axis=1)
-df_all['RVEF_poisson_20201102'] = (df_all['RV_poisson_max_20201102'] - df_all['RV_poisson_min_20201102']) / df_all['RV_poisson_max_20201102'] * 100.
-df_all['RVEF_poisson_20201119'] = (df_all['RV_poisson_max_20201119'] - df_all['RV_poisson_min_20201119']) / df_all['RV_poisson_max_20201119'] * 100.
-df_all['RVEF_poisson_20201119_noshift'] = (df_all['RV_poisson_max_20201119_noshift'] - df_all['RV_poisson_min_20201119_noshift']) / df_all['RV_poisson_max_20201119_noshift'] * 100.
-df_all['RVEF_poisson_20201102_ml4h'] = (df_all['RV_poisson_max_20201102_ml4h'] - df_all['RV_poisson_min_20201102_ml4h']) / df_all['RV_poisson_max_20201102_ml4h'] * 100.
-df_all['RVEF_discs_20201122'] = (df_all['RV_discs_max_20201122'] - df_all['RV_discs_min_20201122']) / df_all['RV_discs_max_20201122'] * 100.
-df_all['RVEF_discs_20201122_dice'] = (df_all['RV_discs_max_20201122_dice'] - df_all['RV_discs_min_20201122_dice']) / df_all['RV_discs_max_20201122_dice'] * 100.
-df_all['LVW_poisson_max'] = df_all[keys_lvw].max(axis=1)
-df_all['LVW_poisson_min'] = df_all[keys_lvw].min(axis=1)
-df_all['LVM_poisson_max'] = df_all[keys_lvm].max(axis=1)
-df_all['LVM_poisson_min'] = df_all[keys_lvm].min(axis=1)
-
-df_all['mean_LV_poisson_max'] = 0.5*(df_all['LV_poisson_max'] + df_all['SAXLV_poisson_max'])
-df_all['mean_LVM_poisson_max'] = 0.5*(df_all['LVM_poisson_max'] + df_all['SAXLVM_poisson_max'])
+for label, surface, key in zip(labels, surfaces, keys):
+    df_all[f'RVEDV_{surface}_{label}'] = df_all[key].max(axis=1)
+    df_all[f'RVESV_{surface}_{label}'] = df_all[key].min(axis=1)
+    df_all[f'RVEF_{surface}_{label}'] = (df_all[f'RVEDV_{surface}_{label}'] - df_all[f'RVESV_{surface}_{label}']) / df_all[f'RVEDV_{surface}_{label}'] * 100.
 
 df_petersen = pd.read_csv('returned_lv_mass.tsv', sep='\t')
 df_all_petersen = df_petersen.merge(df_all, on='sample_id')
+
+# %%
+import scipy.stats
+import matplotlib.pyplot as plt
+subset = [f'RVEDV_poisson_{label}' for label in labels]
+subset += [f'RVESV_poisson_{label}' for label in labels]
+subset += [f'RVEF_poisson_{label}' for label in labels]
+subset += ['RVEDV', 'RVESV', 'RVEF']
+
+df_inuse = df_all_petersen.dropna(subset=subset)
+for feat in subset:
+    df_inuse = df_inuse[df_inuse[feat] < 500]
+    df_inuse = df_inuse[df_inuse[feat] > 20]
+f, ax = plt.subplots(3, (len(subset)-3)//3)
+f.set_size_inches(6, (len(subset)-3)//3*3)
+
+for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 100])):
+    for j, (surface, label) in enumerate(zip(surfaces, labels)):
+        ax[i, j].hexbin(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas], 
+                        extent=(0, extent, 0, extent), mincnt=1, cmap='gray')
+        ax[i, j].set_aspect('equal')
+        ax[i, j].plot([0, 400], [0, 400], color='k')
+        ax[i, j].set_xlabel(f'{meas}_{surface}_{label}')
+        ax[i, j].set_ylabel(f'{meas}')
+        ax[i, j].set_xlim([0, extent])
+        ax[i, j].set_ylim([0, extent])
+        pearson = scipy.stats.pearsonr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
+        spearman = scipy.stats.spearmanr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
+        ax[i, j].set_title(f'n={len(df_inuse)}, r={pearson:.2f}, s={spearman:.2f}')
+        
+plt.tight_layout()
+f.savefig('RV_petersen_all_20201125.png', dpi=500)
+
+df_inuse.to_csv('/home/pdiachil/df_inuse_petersen.csv', index=False)
+# %%
+import scipy.stats
+import matplotlib.pyplot as plt
+subset = [f'RVEDV_poisson_{label}' for label in labels]
+subset += [f'RVESV_poisson_{label}' for label in labels]
+subset += [f'RVEF_poisson_{label}' for label in labels]
+
+df_inuse = df_all.dropna(subset=subset)
+for feat in subset:
+    df_inuse = df_inuse[df_inuse[feat] < 500]
+    df_inuse = df_inuse[df_inuse[feat] > 20]
+
+df_inuse.to_csv('/home/pdiachil/df_inuse.csv', index=False)
+# %%
+import scipy.stats
+import matplotlib.pyplot as plt
+subset = [f'RVEDV_poisson_{label}' for label in labels]
+subset += [f'RVESV_poisson_{label}' for label in labels]
+subset += [f'RVEF_poisson_{label}' for label in labels]
+subset += ['RVEDV', 'RVESV', 'RVEF']
+
+df_inuse = df_all_petersen.dropna(subset=subset)
+for feat in subset:
+    df_inuse = df_inuse[df_inuse[feat] < 400]
+    df_inuse = df_inuse[df_inuse[feat] > 10]
+
 # %%
 import scipy.stats
 import matplotlib.pyplot as plt
 subset = ['SAXLV_poisson_max', 'SAXLVM_poisson_max', 'LV_poisson_max', 'LVM_poisson_max', 'RV_poisson_max']
 df_inuse = df_all.dropna(subset=subset)
 for feat in subset:
-    df_inuse = df_inuse[df_inuse[feat] < 500]
-    df_inuse = df_inuse[df_inuse[feat] > 5]
+    df_inuse = df_inuse[df_inuse[feat] < 400]
+    df_inuse = df_inuse[df_inuse[feat] > 10]
 f, ax = plt.subplots()
 f.set_size_inches(3, 3)
 ax.hexbin(df_inuse['SAXLV_poisson_max'], df_inuse['LV_poisson_max'], extent=(0, 400, 0, 400), mincnt=1, cmap='gray')
