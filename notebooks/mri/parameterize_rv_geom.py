@@ -17,7 +17,7 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 # %%
 import logging
 logging.getLogger().setLevel('INFO')
-hd5s = glob.glob('/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/*.hd5')
+hd5s = glob.glob('/mnt/disks/segmented-sax-v20201124-lax-v20201122-petersen/2020-11-24/*.hd5')
 
 # %%
 start = int(sys.argv[1])
@@ -25,7 +25,7 @@ end = int(sys.argv[2])
 
 # start = 4
 # end = start+1
-version='sax_v20201116_lax_v20201119'
+version='sax_v20201124_lax_v20201122'
 # hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2032446.hd5']
 
 # %%
@@ -77,7 +77,7 @@ start_time = time.time()
 for i, hd5 in enumerate(sorted(hd5s)):
     # i = start
     # hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/5362506.hd5'
-    hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/5362506.hd5'
+    # hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/5362506.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
         continue
@@ -101,16 +101,16 @@ for i, hd5 in enumerate(sorted(hd5s)):
                         save_path=None, order='F',
                     )[0],
                 )
-                orig_datasets.append(
-                    _mri_hd5_to_structured_grids(
-                        ff_trad, view_format_string.format(view=view),
-                        view_name=view_format_string.format(view=view),
-                        concatenate=False, annotation=False,
-                        save_path=None, order='F',
-                    )[0],
-                )
-                to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
-                to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
+                # orig_datasets.append(
+                #     _mri_hd5_to_structured_grids(
+                #         ff_trad, view_format_string.format(view=view),
+                #         view_name=view_format_string.format(view=view),
+                #         concatenate=False, annotation=False,
+                #         save_path=None, order='F',
+                #     )[0],
+                # )
+                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
+                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
 
       # except:
       #     pass
@@ -119,15 +119,14 @@ for i, hd5 in enumerate(sorted(hd5s)):
 
         # Shift datasets
         nsax = len(annot_datasets)-1
-        # dx = align_datasets(
-        #     annot_datasets[nsax//2-1:nsax//2+2], annot_datasets[0],
-        #     [f'cine_segmented_sax_b{i}_annotated' for i in range(nsax//2-1, nsax//2+2)],
-        #     'cine_segmented_lax_4ch_annotated',
-        #     [MRI_SAX_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
-        #     [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
-        #     t=0,
-        # )
-        dx = np.array([0.0, 0.0])
+        dx = align_datasets(
+            annot_datasets[nsax//2-1:nsax//2+2], annot_datasets[0],
+            [f'cine_segmented_sax_b{i}_annotated' for i in range(nsax//2-1, nsax//2+2)],
+            'cine_segmented_lax_4ch_annotated',
+            [MRI_SAX_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
+            [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
+            t=0,
+        )        
         logging.info(f'SAX-LAX alignment completed. dx=[{dx[0]}, {dx[1]}]')
 
         dataset_dimensions = list(annot_datasets[1].GetDimensions())
@@ -164,7 +163,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 write_footer = True if t == MRI_FRAMES-1 else False
                 append = False if t == 0 else True
                 to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}', append=append, append_time=t, write_footer=write_footer)
-    except FutureWarning as e:
+    except Exception as e:
         logging.info(f'Caught exception at {sample_id}: {e}')
         continue
     # break
