@@ -312,7 +312,7 @@ def set_args_from_x(args, x):
             if k in ['conv_x', 'conv_y', 'conv_z']:
                 args.__dict__[k] = [int(x[k])]
             elif k == 'bottleneck_type':
-                args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
+                args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[x[k]]
             elif isinstance(args.__dict__[k], int):
                 args.__dict__[k] = int(x[k])
             elif isinstance(args.__dict__[k], float):
