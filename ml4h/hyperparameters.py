@@ -228,9 +228,9 @@ def optimize_mri_sax_architecture(args):
     activation = ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu']
     bottleneck_type = ['no_bottleneck', 'flatten_restructure', 'global_average_pool']
     conv_layers_sets = [[], [32], [64], [32, 32], [64, 64], [32, 32, 32], [64, 64, 64]]
-    conv_type = ['conv', 'separable', 'depth']
-    dense_blocks_sets = [[32, 32], [64, 64], [32, 32, 32], [64, 64, 64], [32, 32, 32, 32], [64, 64, 64, 64]]
-    dense_layers_sets = [[32], [64], [96], [32, 32], [64, 64]]
+    conv_type = ['conv', 'separable']
+    dense_blocks_sets = [[32, 32], [64, 64], [128, 128], [32, 32, 32], [64, 64, 64], [32, 32, 32, 32], [64, 64, 64, 64], [32, 32, 32, 32, 32], [64, 64, 64, 64, 64]]
+    dense_layers_sets = [[32], [64], [128], [32, 32], [64, 64], [128, 128]]
     pool_type = ['max', 'average']
     space = {
         'activation': hp.choice('activation', activation),
