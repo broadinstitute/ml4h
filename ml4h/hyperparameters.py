@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt # First import matplotlib, then use Agg, then im
 from skimage.filters import threshold_otsu
 
 
-from ml4h.arguments import parse_args
+from ml4h.arguments import parse_args, BOTTLENECK_STR_TO_ENUM
 from ml4h.plots import plot_metric_history
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models import train_model_from_generators, make_multimodal_multitask_model
@@ -311,6 +311,8 @@ def set_args_from_x(args, x):
             logging.info(f"k is {k} and x[k] is {x[k]} args dict is:{args.__dict__[k]}")
             if k in ['conv_x', 'conv_y', 'conv_z']:
                 args.__dict__[k] = [int(x[k])]
+            elif k == 'bottleneck_type':
+                args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
             elif isinstance(args.__dict__[k], int):
                 args.__dict__[k] = int(x[k])
             elif isinstance(args.__dict__[k], float):
