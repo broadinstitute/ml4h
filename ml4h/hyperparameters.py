@@ -226,7 +226,7 @@ def optimize_ecg_rest_unet_architecture(args):
 
 def optimize_mri_sax_architecture(args):
     activation = ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu']
-    bottleneck_type = ['no_bottleneck', 'flatten_restructure', 'global_average_pool']
+    #bottleneck_type = ['no_bottleneck', 'flatten_restructure', 'global_average_pool']
     conv_layers_sets = [[], [32], [64], [32, 32], [64, 64], [32, 32, 32], [64, 64, 64]]
     conv_type = ['conv', 'separable', 'depth']
     dense_blocks_sets = [[32, 32], [64, 64], [32, 32, 32], [64, 64, 64], [32, 32, 32, 32], [64, 64, 64, 64]]
@@ -235,7 +235,7 @@ def optimize_mri_sax_architecture(args):
     space = {
         'activation': hp.choice('activation', activation),
         'block_size': hp.quniform('block_size', 1, 9, 1),
-        'bottleneck_type': hp.choice('bottleneck_type', bottleneck_type),
+        #'bottleneck_type': hp.choice('bottleneck_type', bottleneck_type),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
         'conv_type': hp.choice('conv_type', conv_type),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
@@ -244,7 +244,7 @@ def optimize_mri_sax_architecture(args):
     }
     param_lists = {
         'activation': activation,
-        'bottleneck_type': bottleneck_type,
+        #'bottleneck_type': bottleneck_type,
         'conv_layers': conv_layers_sets,
         'conv_type': conv_type,
         'dense_blocks': dense_blocks_sets,
