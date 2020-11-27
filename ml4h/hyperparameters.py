@@ -225,33 +225,30 @@ def optimize_ecg_rest_unet_architecture(args):
 
 
 def optimize_mri_sax_architecture(args):
-    dense_blocks_sets = [[48, 48, 48], [96, 96, 96], [48, 48, 48, 48], [96, 96, 96, 96], [48, 48, 48, 48, 48], [96, 96, 96, 96, 96]]
-    conv_layers_sets = [[], [48], [96], [48, 48], [96, 96]]
-    dense_layers_sets = [[48], [96], [192], [48, 48], [96, 96]]
-    activation = ['leaky', 'swish', 'gelu', 'lisht', 'elu', 'mish', 'relu', 'selu']
-    conv_dilate = [True, False]
-    conv_normalize = ['', 'batch_norm']
+    activation = ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu']
+    bottleneck_type = ['no_bottleneck', 'flatten_restructure', 'global_average_pool']
+    conv_layers_sets = [[], [32], [64], [32, 32], [64, 64], [32, 32, 32], [64, 64, 64]]
     conv_type = ['conv', 'separable', 'depth']
+    dense_blocks_sets = [[32, 32], [64, 64], [32, 32, 32], [64, 64, 64], [32, 32, 32, 32], [64, 64, 64, 64]]
+    dense_layers_sets = [[32], [64], [96], [32, 32], [64, 64]]
     pool_type = ['max', 'average']
     space = {
+        'activation': hp.choice('activation', activation),
+        'block_size': hp.quniform('block_size', 1, 9, 1),
+        'bottleneck_type': hp.choice('bottleneck_type', bottleneck_type),
         'conv_layers': hp.choice('conv_layers', conv_layers_sets),
+        'conv_type': hp.choice('conv_type', conv_type),
         'dense_blocks': hp.choice('dense_blocks', dense_blocks_sets),
         'dense_layers': hp.choice('dense_layers', dense_layers_sets),
-        'conv_dilate': hp.choice('conv_dilate', conv_dilate),
-        'conv_normalize': hp.choice('conv_normalize', conv_normalize),
-        'conv_type': hp.choice('conv_type', conv_type),
-        'activation': hp.choice('activation', activation),
         'pool_type': hp.choice('pool_type', pool_type),
-        'block_size': hp.quniform('block_size', 1, 9, 1),
     }
     param_lists = {
+        'activation': activation,
+        'bottleneck_type': bottleneck_type,
         'conv_layers': conv_layers_sets,
+        'conv_type': conv_type,
         'dense_blocks': dense_blocks_sets,
         'dense_layers': dense_layers_sets,
-        'conv_dilate': conv_dilate,
-        'conv_normalize': conv_normalize,
-        'conv_type': conv_type,
-        'activation': activation,
         'pool_type': pool_type,
     }
     hyperparameter_optimizer(args, space, param_lists)
