@@ -1802,8 +1802,14 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         average_precision = average_precision_score(truth[:, labels[k]], prediction[:, labels[k]])
         label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
-        logging.info(f'prAUC Label {label_text}')
+        segmented = np.argmax(prediction, axis=-1)
+        dice = (np.sum(segmented[truth[:, labels[k]]] == k) * 2.0) / ((np.sum(segmented[:, segmented == k]) + np.sum(truth[:, truth == k]))*truth.shape[0])
+        logging.info(f'prAUC Label {label_text} and dice score of: {dice}')
         labels_to_areas[k] = average_precision
+
+
+        print
+        'Dice similarity score is {}'.format(dice)
 
     plt.xlim([0.0, 1.00])
     plt.ylim([-0.02, 1.03])
