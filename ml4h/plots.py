@@ -1803,8 +1803,8 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
         segmented = np.argmax(prediction, axis=-1)
-        logging.info(f'Pouter sum {np.sum(segmented[truth[:, labels[k]] == 1])}')
-        top = np.sum(segmented[truth[:, labels[k]] == 1])
+        logging.info(f'Pouter sum {np.sum(segmented[truth[:, labels[k]] == labels[k]])}')
+        top = np.sum(segmented[truth[:, labels[k]] == labels[k]])
         seg_total = np.sum(segmented[segmented == labels[k]])
         #both_total = np.sum(segmented[segmented == labels[k] and truth[:, labels[k]] == 1])
         true_total = np.sum(truth[:, labels[k]])
