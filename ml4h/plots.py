@@ -79,7 +79,7 @@ ECG_REST_PLOT_AMP_LEADS = [
 
 def evaluate_predictions(
     tm: TensorMap, y_predictions: np.ndarray, y_truth: np.ndarray, protected: Dict[TensorMap, np.ndarray], title: str, folder: str, test_paths: List[str] = None,
-    max_melt: int = 1500000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
+    max_melt: int = 3500000, rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
     """ Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
