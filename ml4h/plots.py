@@ -1807,10 +1807,6 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         logging.info(f'prAUC Label {label_text} and dice score of: {dice}')
         labels_to_areas[k] = average_precision
 
-
-        print
-        'Dice similarity score is {}'.format(dice)
-
     plt.xlim([0.0, 1.00])
     plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
