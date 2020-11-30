@@ -46,7 +46,7 @@ jobs:
       # Step 2: Register the service account with Terra per these instructions
       # https://github.com/broadinstitute/terra-tools/tree/master/scripts/register_service_account
       # Step 3: Share the destination Terra workspace with the service account, granting it
-      # "WRITER" access.
+      # "WRITER" access. Also add it to the Authorization Domain for the workspace, if applicable.
       with:
         version: '290.0.1'
         service_account_key: ${{ secrets.TERRA_SECRET }}
