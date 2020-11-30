@@ -1803,8 +1803,11 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
         segmented = np.argmax(prediction, axis=-1).astype(int)
-        logging.info(f'Segment {segmented.shape} and dice score of: {truth[:, labels[k]].shape}')
-        dice = (np.sum(segmented[truth[:, labels[k]].astype(int) == k] == k) * 2.0) / ((np.sum(segmented[segmented == k]) + np.sum(truth[:, labels[k]]))*truth.shape[0])
+        top = np.sum(segmented[truth[:, labels[k]].astype(int) == k] == k)
+        seg_total = np.sum(segmented[segmented == k])
+        true_total = np.sum(truth[:, labels[k]])
+        logging.info(f'Segment {segmented.shape} and truth shape: {truth[:, labels[k]].shape} top {top} seg tot {seg_total} tru tot: {true_total}')
+        dice = (top * 2.0) / ((seg_total + true_total) * truth.shape[0])
         logging.info(f'prAUC Label {label_text} and dice score of: {dice}')
         labels_to_areas[k] = average_precision
 
