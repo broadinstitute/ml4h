@@ -1809,7 +1809,7 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         #both_total = np.sum(segmented[segmented == labels[k] and truth[:, labels[k]] == 1])
         true_total = np.sum(truth[:, labels[k]])
         logging.info(f'Prediction {prediction.shape} Segment {segmented.shape} and truth shape: {truth[:, labels[k]].shape} top {top} seg tot {seg_total} tru tot: {true_total}  k:{k} labels[k]:{labels[k]}')
-        dice = (top * 2.0) / ((seg_total + true_total) * truth.shape[0])
+        dice = (top * 2.0) / (seg_total + true_total)
         logging.info(f'prAUC Label {label_text} and dice score of: {dice}')
         labels_to_areas[k] = average_precision
 
