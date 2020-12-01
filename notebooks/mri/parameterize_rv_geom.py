@@ -18,14 +18,14 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 import logging
 logging.getLogger().setLevel('INFO')
 hd5s = glob.glob('/mnt/disks/segmented-sax-v20201124-lax-v20201122/2020-11-24/*.hd5')
-
+hd5s = glob.glob('/home/pdiachil/projects/chambers/sam_debugging/*.hd5')
 # %%
 start = int(sys.argv[1])
 end = int(sys.argv[2])
 
 # start = 4
 # end = start+1
-version='sax_v20201124_lax_v20201122'
+version='ml4h_4slice_v20201102_v20201006'
 # hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2032446.hd5']
 
 # %%
@@ -37,7 +37,7 @@ annot_format_string = 'cine_segmented_{view}_annotated'
 annot_time_format_string = 'cine_segmented_{view}_annotated_{t}'
 
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 6, 'LV_cavity': 5, 'LV_free_wall': 3, 'interventricular_septum': 2}
-# MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 5, 'LV_cavity': 4, 'LV_free_wall': 3, 'interventricular_septum': 2}
+MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 5, 'LV_cavity': 4, 'LV_free_wall': 3, 'interventricular_septum': 2}
 
 
 channels = [
@@ -83,7 +83,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
         continue
     if i == end:
         break
-
+    print(hd5)
     annot_datasets = []
     orig_datasets = []
     try:
@@ -109,8 +109,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
                 #         save_path=None, order='F',
                 #     )[0],
                 # )
-                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
-                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
+                # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=True)
+                # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True)
 
       # except:
       #     pass

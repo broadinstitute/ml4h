@@ -35,6 +35,17 @@ df_petersen = pd.read_csv('returned_lv_mass.tsv', sep='\t')
 df_all_petersen = df_petersen.merge(df_all, on='sample_id')
 
 # %%
+import numpy as np
+for label, surface in zip(labels, surfaces):
+    df_all_petersen[f'err_{label}'] = np.abs(df_all_petersen[f'RVEF_{surface}_{label}'] - df_all_petersen[f'RVEF']) / df_all_petersen[f'RVEF']
+
+df_all_petersen_sorted = df_all_petersen.sort_values(by=['err_v20201102_v20201006', 'err_v20201124_v20201122'], ascending='False').dropna()
+df_all_petersen_sorted = df_all_petersen_sorted[df_all_petersen_sorted['RVEF_poisson_v20201102_v20201006']<85]
+df_all_petersen_sorted = df_all_petersen_sorted[df_all_petersen_sorted['RVEF_poisson_v20201102_v20201006']>1]
+df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[-5:].to_csv('worse_v20201102_v20201006.csv', index=False)
+df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[:5].to_csv('best_v20201102_v20201006.csv', index=False)
+# df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].corr()
+# %%
 import scipy.stats
 import matplotlib.pyplot as plt
 subset = [f'RVEDV_poisson_{label}' for label in labels]
@@ -55,8 +66,15 @@ for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 10
                         extent=(0, extent, 0, extent), mincnt=1, cmap='gray')
         ax[i, j].set_aspect('equal')
         ax[i, j].plot([0, 400], [0, 400], color='k')
-        ax[i, j].set_xlabel(f'{meas}_{surface}_{label}')
-        ax[i, j].set_ylabel(f'{meas}')
+        if i == 2:
+            ax[i, j].set_xlabel(f'{surface}_{label}')
+        else:
+            ax[i, j].set_xlabel('')
+        if j == 0:
+            ax[i, j].set_ylabel(meas)
+        else:
+            ax[i, j].set_ylabel('')
+        
         ax[i, j].set_xlim([0, extent])
         ax[i, j].set_ylim([0, extent])
         pearson = scipy.stats.pearsonr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
