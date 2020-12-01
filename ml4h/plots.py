@@ -1803,14 +1803,12 @@ def plot_precision_recall_per_class(prediction, truth, labels, title, prefix='./
         label_text = f'{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
         segmented = np.argmax(prediction, axis=-1)
-        logging.info(f'Pouter sum {np.sum(segmented[truth[:, labels[k]] == 1] == labels[k])}')
         top = np.sum(segmented[truth[:, labels[k]] == 1] == labels[k])
-        seg_total = np.sum(segmented == labels[k])  # np.sum(segmented[segmented == labels[k]])
-        #both_total = np.sum(segmented[segmented == labels[k] and truth[:, labels[k]] == 1])
+        seg_total = np.sum(segmented == labels[k])
         true_total = np.sum(truth[:, labels[k]])
-        logging.info(f'Prediction {prediction.shape} Segment {segmented.shape} and truth shape: {truth[:, labels[k]].shape} top {top} seg tot {seg_total} tru tot: {true_total}  k:{k} labels[k]:{labels[k]}')
+        logging.info(f'Top {top} seg tot {seg_total} tru tot: {true_total}  k:{k} labels[k]:{labels[k]}')
         dice = (top * 2.0) / (seg_total + true_total)
-        logging.info(f'prAUC Label {label_text} and dice score of: {dice}')
+        logging.info(f'prAUC Label {label_text} and dice score of: {dice:0.4f}')
         labels_to_areas[k] = average_precision
 
     plt.xlim([0.0, 1.00])
