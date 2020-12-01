@@ -1840,8 +1840,13 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix='./figures/
             average_precision = average_precision_score(truth[:, labels[k]], predictions[p][:, labels[k]])
             label_text = f'{p}_{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}'
             plt.plot(recall, precision, lw=lw, color=c, label=label_text)
-            logging.info(f"prAUC Label {label_text}")
-
+            segmented = np.argmax(predictions[p], axis=-1)
+            top = np.sum(segmented[truth[:, labels[k]] == 1] == labels[k])
+            seg_total = np.sum(segmented == labels[k])
+            true_total = np.sum(truth[:, labels[k]])
+            logging.info(f'Top {top} seg tot {seg_total} tru tot: {true_total}  k:{k} labels[k]:{labels[k]}')
+            dice = (top * 2.0) / (seg_total + true_total)
+            logging.info(f'prAUC Label {label_text} and dice score of: {dice:0.4f}')
     plt.xlim([0.0, 1.00])
     plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
