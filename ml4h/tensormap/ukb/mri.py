@@ -1425,13 +1425,13 @@ def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='
             l = 0
             while found_key not in hd5[path_prefix]:
                 l += 1
-                if j - (tm.shape[-1]//2) > 0:
+                if b > 4:
                     found_key = tensor_key.replace('*', str(b + (j - tm.shape[-1] // 2) - l))
                 else:
                     found_key = tensor_key.replace('*', str(b + (j - tm.shape[-1] // 2) + l))
                 if l > 12:
                     logging.warning(f'Could not get segmentation for {tm.name} segmentation key {segmentation_key} but {found_key} not present. l is {l}')
-                    continue
+                    break
             if time_frames == 1:
                 tensor[..., j] = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
             else:
