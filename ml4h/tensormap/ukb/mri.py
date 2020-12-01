@@ -1475,7 +1475,7 @@ sax_slices_both_5b_sharpen_median = TensorMap(
 )
 
 
-def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, merge_lv_pap=True):
+def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, merge_lv_pap=False):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for i in range(1, 1+max_slices):
@@ -1547,25 +1547,25 @@ cine_segmented_lvot_diastole_slice = TensorMap(
     'cine_segmented_lvot_diastole_slice', Interpretation.CATEGORICAL, shape=(208, 160, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slices('cine_segmented_lvot_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
 )
-cine_segmented_sax_slice_jamesp = TensorMap(
+cine_segmented_sax_no_pap_slice_jamesp = TensorMap(
     'cine_segmented_sax_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
-    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
 cine_segmented_sax_slice_jamespb = TensorMap(
     'cine_segmented_sax_slice_both', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
-    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
 cine_segmented_sax_slice_vnauffal = TensorMap(
     'cine_segmented_sax_slice_vnauffal', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
-    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_vnauffal_annotated_', sax_series=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_vnauffal_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
 cine_segmented_sax_slice_both = TensorMap(
     'cine_segmented_sax_slice_both', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
-    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_both_annotated_', sax_series=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_both_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
 )
-cine_segmented_sax_pap_slice_jamesp = TensorMap(
-    'cine_segmented_sax_pap_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
-    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True, merge_lv_pap=False), channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
+cine_segmented_sax_slice_jamesp = TensorMap(
+    'cine_segmented_sax_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
 )
 
 
