@@ -7,11 +7,95 @@ from pypoisson import poisson_reconstruction
 import logging
 import os
 import scipy
+import h5py
 from scipy.optimize import minimize
+from sklearn import svm
 
 import subprocess
 
 from ml4h.defines import MRI_FRAMES
+
+def hd5_to_polydatas(fname):
+    with h5py.File(fname, 'r') as hd5:
+        polydatas = []
+        for t in range(MRI_FRAMES):
+            polydata = vtk.vtkPolyData()
+            points = vtk.vtkPoints()
+            points.SetData(vtk.util.numpy_support.numpy_to_vtk(hd5[f'points_{t}'][()]))
+            cells_hd5 = hd5[f'cells_{t}'][()]
+            cells_numpy = np.zeros((len(cells_hd5)//4, 4), dtype=np.int64)
+            cells_numpy[:, 0] = 3
+            cells_numpy[:, 1:] = cells_hd5.reshape(-1, 4)[:, 1:]
+            cells = vtk.vtkCellArray()
+            cells.SetCells(len(cells_hd5)//4, vtk.util.numpy_support.numpy_to_vtkIdTypeArray(cells_numpy.ravel()))
+            polydata.SetPoints(points)
+            polydata.SetPolys(cells)
+            polydatas.append(polydata)
+    return polydatas
+
+
+def err_separation(z, points_channel):
+    zbig = z*1e4
+    weight_0 = len(points_channel)/len(points_channel[points_channel[:, 1]==0])
+    weight_1 = len(points_channel)/len(points_channel[points_channel[:, 1]==1])
+
+    wrong_0 = np.sum(points_channel[points_channel[:, 1]==0][:, 0] < zbig)
+    wrong_1 = np.sum(points_channel[points_channel[:, 1]==1][:, 0] > zbig)
+
+    return weight_0*wrong_0 + weight_1*wrong_1
+
+def find_separation_coor(points_channel):
+    res = minimize(err_separation, 0.0, args=(points_channel), method='Nelder-Mead')
+    return res.x*1e4
+
+
+def clip_by_separation_plane(lax_dataset, sax_datasets, channels, polydatas):
+    sax_centers = []
+    clipped_polydatas = []
+    clipped_volumes = []
+    for sax_dataset in sax_datasets:
+        sax_points = vtk.util.numpy_support.vtk_to_numpy(sax_dataset.GetPoints().GetData())
+        sax_centers.append(np.mean(sax_points, axis=0))
+
+    base_to_apex = (sax_centers[1] - sax_centers[0])/np.linalg.norm(sax_centers[1] - sax_centers[0])
+    
+    lax_cells = vtk.vtkCellCenters()
+    lax_cells.SetInputData(lax_dataset)
+    lax_cells.Update()
+    lax_points = vtk.util.numpy_support.vtk_to_numpy(lax_cells.GetOutput().GetPoints().GetData())
+    for t, polydata in enumerate(polydatas):
+        projs_channel = []
+        lax_array = vtk.util.numpy_support.vtk_to_numpy(lax_dataset.GetCellData().GetArray(f'cine_segmented_lax_4ch_annotated_{t}'))  
+        for i, channel in enumerate(channels):
+            points_channel = lax_points[lax_array==channel]
+            points_channel = points_channel - sax_centers[0]
+            proj_channel = np.zeros((len(points_channel), 2))
+            proj_channel[:, 0] = np.dot(points_channel, base_to_apex)
+            proj_channel[:, 1] = i
+            projs_channel.append(proj_channel)
+        points_channel = np.vstack(projs_channel)
+        # clf = svm.LinearSVC(max_iter=10000, dual=False, class_weight='balanced')
+        # clf.fit(points_channel[:,0].reshape(-1, 1), points_channel[:,1])
+        # intercept = clf.intercept_[0]
+        intercept = find_separation_coor(points_channel)
+        plane = vtk.vtkPlane()
+        plane.SetOrigin(sax_centers[0] + base_to_apex * intercept)
+        plane.SetNormal(base_to_apex)
+
+        plane_collection = vtk.vtkPlaneCollection()
+        plane_collection.AddItem(plane)
+
+        cutter = vtk.vtkClipClosedSurface()
+        cutter.SetInputData(polydata)
+        cutter.SetClippingPlanes(plane_collection)
+        cutter.Update()
+        
+        # smooth = improve_mesh_ACVD(cutter.GetOutput())
+
+        clipped_polydatas.append(cutter.GetOutput())
+        clipped_volumes.append(polydata_to_volume(clipped_polydatas[-1]))
+
+    return clipped_polydatas, clipped_volumes
 
 
 def vtk_to_msh(vtk_mesh, fname):
@@ -88,6 +172,7 @@ def improve_mesh_ACVD(vtk_mesh, nvertices=3000):
     improved_mesh.SetFileName('tmp_smoothed.ply')
     improved_mesh.Update()
     return improved_mesh.GetOutput()
+
 
 def polydata_to_volume(polydata):
     mass = vtk.vtkMassProperties()
@@ -350,7 +435,8 @@ def annotation_to_poisson(
                 if isinstance(channel, list):
                     iou_projected_channel = channel[0]
                 iou = intersection_over_union(projection_array, projected_array[:, :, t], iou_projection_channel, iou_projected_channel)
-                if iou < 0.3 :
+                if iou < 0.0 :
+                    logging.info(f'Skipping {view}')
                     continue
 
             arr_annot = vtk.util.numpy_support.vtk_to_numpy(dataset.GetCellData().GetArray(format_view.format(view=view, t=t)))
