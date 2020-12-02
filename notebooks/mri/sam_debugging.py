@@ -15,11 +15,11 @@ df_sax_4ch_petersen = df_sax_4ch_petersen[df_sax_4ch_petersen['instance']==2]
 import numpy as np
 from ml4h.tensorize.tensor_writer_ukbb import tensor_path, first_dataset_at_path, create_tensor_in_hd5
 sample_ids = [2865182]
-predictions = ['results3']
+predictions = ['2865182']
 
 for sample_id, prediction in zip(sample_ids, predictions):
     with h5py.File(f'/home/pdiachil/projects/chambers/{sample_id}.hd5', 'a') as hd5_ff:
-        with h5py.File(f'/home/pdiachil/projects/chambers/{prediction}.h5', 'r') as hd5_prediction:
+        with h5py.File(f'/home/pdiachil/projects/chambers/sam_big_model/{prediction}.h5', 'r') as hd5_prediction:
             df_hd5 = df_sax_4ch_petersen[df_sax_4ch_petersen['sample_id']==sample_id]
             for nrow, dcm in df_hd5.iterrows():
                 print(dcm.series, dcm.instance_number)
@@ -42,11 +42,12 @@ for sample_id, prediction in zip(sample_ids, predictions):
 
 
 # %%
-hd5 = h5py.File('/home/pdiachil/projects/chambers/2865182.hd5', 'r')
+%matplotlib inline
+hd5 = h5py.File('/home/pdiachil/projects/chambers/sam_big_model/2865182.hd5', 'r')
 
 f, ax = plt.subplots()
-ax.imshow(hd5['ukb_cardiac_mri/cine_segmented_sax_b5/instance_0'][()][:, :, 0])
-ax.imshow(hd5['ukb_cardiac_mri/cine_segmented_sax_b5_annotated_1/instance_0'][()]==5, alpha=0.5)
+ax.imshow(hd5['ukb_cardiac_mri/cine_segmented_sax_b4/instance_0'][()][:, :, 1])
+ax.imshow(hd5['ukb_cardiac_mri/cine_segmented_sax_b4_annotated_2/instance_0'][()]==5, alpha=0.5)
 # png = hd5['ukb_cardiac_mri/cine_segmented_sax_b1/2'][()]
 
 hd5.close()

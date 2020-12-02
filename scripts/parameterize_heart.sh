@@ -16,16 +16,16 @@ cnt2=$((VMTAG*STEP+STEP-1))
 for i in $(seq $cnt1 $cnt2)
 do
     end=$((i+1))
-    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_sumofdiscs.py $i $end
+    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_geom.py $i $end
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *discs* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201124_lax_v20201122/csv-dice/
+/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201124_lax_v20201122/csv-separation/
 # /snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
 cd /home/pdiachil/projects/chambers
-# /snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201124_lax_v20201122/xdmf/
-# /snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201124_lax_v20201122/logs/
+/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201124_lax_v20201122/xdmf-separation/
+/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_sax_v20201124_lax_v20201122/logs-separation/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
