@@ -211,14 +211,27 @@ def inference_file_name(output_folder: str, id_: str) -> str:
 
 
 def evaluate_segmentation(args):
+    """Evaluates segmentation performance of one or more input models. The
+    provided models *must* share the same TensorGenerator when using this
+    command-line wrapper. For deep tensors, rank 4 and higher, this approach
+    will quickly deteriorate in performance as each 1-batch will submit a get
+    query to the HDF5 file.
+
+    Evaluations returned are:
+        * Per-model metrics
+        * Per-input metrics (batch-size is 1)
+        * The soft model predictions
+        * The hard model predictions
+    """
+    # Local includes only required in this case.
     import ml4h.evaluate_segmentations as evaluate
-    from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
-    from tensorflow.keras.models import Model, load_model
+    from ml4h.tensor_generators import TensorGenerator
+    from tensorflow.keras.models import load_model
     from ml4h.metrics import get_metric_dict
 
-    # files = glob.glob('data/*.hd5') * 10 # Repeat the same test file 10 times
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
 
+    # Possibly load sample information from a provided CSV file
     sample_set = None
     if args.sample_csv is not None:
         logging.info(f"Reading sampels from CSV: {args.sample_csv}.")
@@ -232,6 +245,7 @@ def evaluate_segmentation(args):
     ]
     logging.info(f"Found {len(tensor_paths)} tensor paths.")
 
+    # Temporary Keras-based convenience wrapper
     generate_test = TensorGenerator(
         1, 
         args.tensor_maps_in,
@@ -244,28 +258,27 @@ def evaluate_segmentation(args):
     )
 
     models = []
+    # Command-line argument for a single model file path
     if args.model_file is not None:
         models.append(load_model(args.model_file, custom_objects=get_metric_dict(no_fail_tmaps_out)))
         logging.info("Loaded single model from: {}".format(args.model_file))
 
     
+    # Command-line argument for multiple model file paths
     if args.model_files is not None:
         for m in args.model_files:
             model = load_model(m, custom_objects=get_metric_dict(no_fail_tmaps_out))
             model.summary()
             logging.info("Loaded model file from: {}".format(m))
             models.append(model)
-
-
-    dg = evaluate.DataGenerator(tensor_paths, generate_test)
     
-    # eval, eval_batch, prediction_prob, predictions = evaluate.evaluate_collect_metrics(model, dg)
+
     evaluations = evaluate.evaluate_segmentation_models(models, [generate_test])
     logging.info(f"Evaluations completed for: {len(models)} models.")
     df = pd.DataFrame.from_dict(evaluations, orient="index")
     logging.info(f"Writing results to {os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv')}")
     df.to_csv(os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv'),sep="\t")
-    
+    # End
 
 
 
