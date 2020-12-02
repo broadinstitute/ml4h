@@ -178,6 +178,12 @@ def compare_multimodal_multitask_models(args):
     input_data, output_data, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
+    if args.is_segmentation:
+        evaluations = _get_segmentation_evaluations(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
+        output_folder = os.path.join(args.output_folder, args.id)
+        df = pd.DataFrame.from_dict(evaluations, orient="index")
+        logging.info(f"Writing results to {os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv')}")
+        df.to_csv(os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv'),sep="\t")
     _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
 
 
@@ -703,6 +709,53 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
                     predictions[tm][model_name] = y_pred[i]
 
     return predictions
+
+
+def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outputs, input_prefix, output_prefix):
+    """Makes multi-modal predictions for a given number of models.
+
+    Returns:
+        dict: The nested dictionary of predicted values.
+
+            {
+                'tensor_map_1':
+                    {
+                        'model_1': [[value1, value2], [...]],
+                        'model_2': [[value3, value4], [...]]
+                    },
+                'tensor_map_2':
+                    {
+                        'model_2': [[value5, value6], [...]],
+                        'model_3': [[value7, value8], [...]]
+                    }
+            }
+    """
+    # Local includes only required in this case.
+    import ml4h.evaluate_segmentations as evaluate
+    from ml4h.tensor_generators import TensorGenerator
+
+    evaluations = []
+    for model_file in models_inputs_outputs.keys():
+        args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
+        args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
+        args.model_file = model_file
+        model = make_multimodal_multitask_model(**args.__dict__)
+
+        generate_test = TensorGenerator(
+            1, 
+            args.tensor_maps_in,
+            args.tensor_maps_out,
+            paths=input_data,
+            num_workers=1,
+            cache_size=0, 
+            keep_paths=True, 
+            mixup=args.mixup_alpha,
+        )
+
+        eval = evaluate.evaluate_segmentation_models([model], [generate_test])
+        logging.info(f"Evaluations completed.")
+        evaluations.append(eval)
+    return evaluations
 
 
 def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, steps, outputs, input_prefix, output_prefix):
