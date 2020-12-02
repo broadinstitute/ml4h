@@ -9,6 +9,7 @@ import numpy as np
 from functools import reduce
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
+import pandas as pd
 
 from ml4h.arguments import parse_args
 from ml4h.optimizers import find_learning_rate
@@ -55,6 +56,8 @@ def run(args):
             compare_multimodal_multitask_models(args)
         elif 'infer' == args.mode:
             infer_multimodal_multitask(args)
+        elif 'evaluate_segmentation' == args.mode:
+            evaluate_segmentation(args)
         elif 'infer_hidden' == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
         elif 'infer_pixels' == args.mode:
@@ -205,6 +208,66 @@ def _make_tmap_nan_on_fail(tmap):
 
 def inference_file_name(output_folder: str, id_: str) -> str:
     return os.path.join(output_folder, id_, 'inference_' + id_ + '.tsv')
+
+
+def evaluate_segmentation(args):
+    import ml4h.evaluate_segmentations as evaluate
+    from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
+    from tensorflow.keras.models import Model, load_model
+    from ml4h.metrics import get_metric_dict
+
+    # files = glob.glob('data/*.hd5') * 10 # Repeat the same test file 10 times
+    no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
+
+    sample_set = None
+    if args.sample_csv is not None:
+        logging.info(f"Reading sampels from CSV: {args.sample_csv}.")
+        with open(args.sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+
+    tensor_paths = [
+        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
+        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
+    ]
+    logging.info(f"Found {len(tensor_paths)} tensor paths.")
+
+    generate_test = TensorGenerator(
+        1, 
+        args.tensor_maps_in,
+        no_fail_tmaps_out,
+        paths=tensor_paths,
+        num_workers=1,
+        cache_size=0, 
+        keep_paths=True, 
+        mixup=args.mixup_alpha,
+    )
+
+    models = []
+    if args.model_file is not None:
+        models.append(load_model(args.model_file, custom_objects=get_metric_dict(no_fail_tmaps_out)))
+        logging.info("Loaded single model from: {}".format(args.model_file))
+
+    
+    if args.model_files is not None:
+        for m in args.model_files:
+            model = load_model(m, custom_objects=get_metric_dict(no_fail_tmaps_out))
+            model.summary()
+            logging.info("Loaded model file from: {}".format(m))
+            models.append(model)
+
+
+    dg = evaluate.DataGenerator(tensor_paths, generate_test)
+    
+    # eval, eval_batch, prediction_prob, predictions = evaluate.evaluate_collect_metrics(model, dg)
+    evaluations = evaluate.evaluate_segmentation_models(models, [generate_test])
+    logging.info(f"Evaluations completed for: {len(models)} models.")
+    df = pd.DataFrame.from_dict(evaluations, orient="index")
+    logging.info(f"Writing results to {os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv')}")
+    df.to_csv(os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv'),sep="\t")
+    
+
+
 
 
 def infer_multimodal_multitask(args):

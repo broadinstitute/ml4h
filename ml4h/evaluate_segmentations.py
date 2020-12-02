@@ -94,7 +94,7 @@ def evaluate_collect_metrics(model: tf.keras.models.Model,
 def evaluate_segmentation_models(models: List[tf.keras.models.Model], 
         data_generators: list, 
         metrics: List[Callable] = None,
-        channel_order: str = 'channels_last'):
+        channel_order: str = 'channels_last'): # Todo: Currently unused
     # `metrics` must be either a list of callable metrics functions
     if len(models) != len(data_generators):
         if len(data_generators) != 1:
