@@ -42,7 +42,7 @@ for label, surface in zip(labels, surfaces):
 df_all_petersen_sorted = df_all_petersen.sort_values(by=['err_v20201102_v20201006', 'err_v20201124_v20201122'], ascending='False').dropna()
 df_all_petersen_sorted = df_all_petersen_sorted[df_all_petersen_sorted['RVEF_poisson_v20201102_v20201006']<85]
 df_all_petersen_sorted = df_all_petersen_sorted[df_all_petersen_sorted['RVEF_poisson_v20201102_v20201006']>1]
-df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[-5:].to_csv('worse_v20201102_v20201006.csv', index=False)
+df_all_petersen_sorted[['sample_id', 'err_v20201124_v20201122', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[-5:].to_csv('worse_v20201102_v20201006.csv', index=False)
 df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[:5].to_csv('best_v20201102_v20201006.csv', index=False)
 # df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].corr()
 # %%
@@ -342,10 +342,10 @@ f.savefig('petersen_sam_allLVM_sax_lax.png', dpi=500)
 # %%
 import scipy.stats
 import matplotlib.pyplot as plt
-subset = ['RV_poisson_max_20201102', 'RV_poisson_max_20201119', 
-          'RV_poisson_min_20201102', 'RV_poisson_min_20201119',
-          'RV_poisson_max_20201102_ml4h', 'RV_poisson_min_20201102_ml4h',
-          'RV_poisson_max_20201119_noshift', 'RV_poisson_min_20201119_noshift',
+subset = ['RVEDV_poisson_20201102', 'RVEDV_poisson_20201119', 
+          'RVESV_poisson_20201102', 'RVESV_poisson_20201119',
+          'RVEDV_poisson_20201102_ml4h', 'RVESV_poisson_20201102_ml4h',
+          'RVEDV_poisson_20201119_noshift', 'RVESV_min_20201119_noshift',
           'RV_discs_max_20201122', 'RV_discs_min_20201122',
           'RV_discs_max_20201122', 'RV_discs_min_20201122'
           'RVEDV', 'RVESV', 'RVEF']
@@ -393,13 +393,11 @@ for feat in subset:
     df_inuse = df_inuse[df_inuse[feat] > 5]
 f, ax = plt.subplots(3, 3)
 f.set_size_inches(9, 9)
-for j, (version, label) in enumerate(zip(['20201102', '20201122', '20201122_dice'],
-                        
-):
+for j, (version, label) in enumerate(['20201102', '20201122', '20201122_dice']):
     poi_or_discs = 'discs' if '20201122' in version else 'poisson'
     for i, (feat, feat_petersen, extent) in enumerate(zip([f'RV_{poi_or_discs}_max_{version}', f'RV_{poi_or_discs}_min_{version}', f'RVEF_{poi_or_discs}_{version}'],
                                                            ['RVEDV', 'RVESV', 'RVEF'],
-                                                           [400, 200, 100],
+                                                           [400, 200, 100]
                                                            )):
         ax[j, i].hexbin(df_inuse[feat], df_inuse[feat_petersen], extent=(0, extent, 0, extent), mincnt=1, cmap='gray')
         ax[j, i].set_aspect('equal')
