@@ -28,7 +28,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-from tensorflow.keras.layers import RandomRotation, RandomZoom, RandomContrast
+from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
