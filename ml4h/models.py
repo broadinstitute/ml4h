@@ -780,7 +780,7 @@ class ConvEncoder:
 
     def __call__(self, x: Tensor) -> Tuple[Tensor, List[Tensor]]:
         intermediates = []
-        x = self.preprocess_block(x)
+        #x = self.preprocess_block(x)
         x = self.res_block(x)
         intermediates.append(x)
         x = self.pools[0](x)
