@@ -12,8 +12,8 @@ sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/segmented-sax-lax-
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP))
 
-/home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/update_sax_test_segmentations.py $cnt1 $cnt2
+/home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/update_sax_test_segmentations_ml4h.py $cnt1 $cnt2
 
-/snap/bin/gsutil cp /home/pdiachil/*.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201124-lax-v20201122/
+/snap/bin/gsutil cp /home/pdiachil/*.hd5 gs://ml4cvd/pdiachil/segmented-sax-ml4h-v20201202-lax-v20201122/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}

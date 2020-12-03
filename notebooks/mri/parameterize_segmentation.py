@@ -435,7 +435,7 @@ def annotation_to_poisson(
                 if isinstance(channel, list):
                     iou_projected_channel = channel[0]
                 iou = intersection_over_union(projection_array, projected_array[:, :, t], iou_projection_channel, iou_projected_channel)
-                if iou < 0.0 :
+                if iou < 0.3 :
                     logging.info(f'Skipping {view}')
                     continue
 
