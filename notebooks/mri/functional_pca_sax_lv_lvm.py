@@ -5,11 +5,16 @@ import pandas as pd
 # %%
 df_rv_sax_v20201102_lax_v20201006 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_RV_processed_v20201102.csv')
 df_rv_sax_v20201124_lax_v20201122 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201124-lax-v20201122/all_RV_processed_sax_v20201124_lax_v20201122.csv')
+df_rv_sax_v20201124_lax_v20201122_separation = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201124-lax-20201122-petersen-separation/all_RV_processed_separation_v20201124_v20201122.csv')
+for t in range(50):
+    df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}_v20201124_v20201122_sep'] = df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}']
+    df_rv_sax_v20201124_lax_v20201122_separation = df_rv_sax_v20201124_lax_v20201122_separation.drop(columns=f'RV_poisson_{t}')
 
-labels = ['v20201102_v20201006', 'v20201124_v20201122']
-surfaces = ['poisson', 'poisson']
+labels = ['v20201102_v20201006', 'v20201124_v20201122', 'v20201124_v20201122_sep']
 
-dfs_rv = [df_rv_sax_v20201102_lax_v20201006, df_rv_sax_v20201124_lax_v20201122]
+surfaces = ['poisson', 'poisson', 'poisson']
+
+dfs_rv = [df_rv_sax_v20201102_lax_v20201006, df_rv_sax_v20201124_lax_v20201122, df_rv_sax_v20201124_lax_v20201122_separation]
 
 for i, df_rv in enumerate(dfs_rv):
     dfs_rv[i] = df_rv[df_rv['sample_id']!=-1]
@@ -25,6 +30,7 @@ for df_rv, label_right in zip(dfs_rv[1:], labels[1:]):
 keys = []
 for label, surface in zip(labels, surfaces):
     keys.append([f'RV_{surface}_{d}_{label}' for d in range(50)])
+
 
 for label, surface, key in zip(labels, surfaces, keys):
     df_all[f'RVEDV_{surface}_{label}'] = df_all[key].max(axis=1)
@@ -48,6 +54,8 @@ df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']
 # %%
 import scipy.stats
 import matplotlib.pyplot as plt
+labels.pop(0)
+surfaces.pop(0)
 subset = [f'RVEDV_poisson_{label}' for label in labels]
 subset += [f'RVESV_poisson_{label}' for label in labels]
 subset += [f'RVEF_poisson_{label}' for label in labels]
@@ -58,7 +66,9 @@ for feat in subset:
     df_inuse = df_inuse[df_inuse[feat] < 500]
     df_inuse = df_inuse[df_inuse[feat] > 20]
 f, ax = plt.subplots(3, (len(subset)-3)//3)
-f.set_size_inches(6, (len(subset)-3)//3*3)
+f.set_size_inches((len(subset)-3)//3*2.5, 6)
+
+
 
 for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 100])):
     for j, (surface, label) in enumerate(zip(surfaces, labels)):
@@ -67,7 +77,7 @@ for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 10
         ax[i, j].set_aspect('equal')
         ax[i, j].plot([0, 400], [0, 400], color='k')
         if i == 2:
-            ax[i, j].set_xlabel(f'{surface}_{label}')
+            ax[i, j].set_xlabel(f'{label}')
         else:
             ax[i, j].set_xlabel('')
         if j == 0:
@@ -79,10 +89,10 @@ for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 10
         ax[i, j].set_ylim([0, extent])
         pearson = scipy.stats.pearsonr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
         spearman = scipy.stats.spearmanr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
-        ax[i, j].set_title(f'n={len(df_inuse)}, r={pearson:.2f}, s={spearman:.2f}')
+        ax[i, j].set_title(f'n={len(df_inuse)}, r={pearson:.2f}')
         
 plt.tight_layout()
-f.savefig('RV_petersen_all_20201125.png', dpi=500)
+f.savefig('RV_petersen_all_20201203.png', dpi=500)
 
 df_inuse.to_csv('/home/pdiachil/df_inuse_petersen.csv', index=False)
 # %%
