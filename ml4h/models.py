@@ -967,6 +967,12 @@ def make_multimodal_multitask_model(
     tensor_maps_out = parent_sort(tensor_maps_out)
     u_connect: DefaultDict[TensorMap, Set[TensorMap]] = u_connect or defaultdict(set)
     custom_dict = _get_custom_objects(tensor_maps_out)
+
+    if 'RectifiedAdam' in custom_dict.keys():
+        # Silly work-around to reset function pointer to our local instance.
+        from tensorflow_addons.optimizers import RectifiedAdam
+        custom_dict['RectifiedAdam'] = RectifiedAdam
+
     opt = get_optimizer(
         optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule,
         optimizer_kwargs=kwargs.get('optimizer_kwargs'),
