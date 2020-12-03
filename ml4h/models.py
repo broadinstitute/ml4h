@@ -28,7 +28,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
+#from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
@@ -68,11 +68,11 @@ NORMALIZATION_CLASSES = {
     'instance_norm': tfa.layers.InstanceNormalization,
     'poincare_norm': tfa.layers.PoincareNormalize,
 }
-PREPROCESS_CLASSES = {
-    'zoom': RandomZoom,
-    'rotate': RandomRotation,
-    'contrast': RandomContrast,
-}
+# PREPROCESS_CLASSES = {
+#     'zoom': RandomZoom,
+#     'rotate': RandomRotation,
+#     'contrast': RandomContrast,
+# }
 CONV_REGULARIZATION_CLASSES = {
     # class name -> (dimension -> class)
     'spatial_dropout': {2: SpatialDropout1D, 3: SpatialDropout2D, 4: SpatialDropout3D},
@@ -761,7 +761,7 @@ class ConvEncoder:
     ):
         num_res = len(res_filters)
         res_x, res_y, res_z = conv_x[:num_res], conv_y[:num_res], conv_z[:num_res]
-        self.preprocess_block = PreprocessBlock(['rotate'], [0.3])
+        #self.preprocess_block = PreprocessBlock(['rotate'], [0.3])
         self.res_block = ResidualBlock(
             dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=res_x,
             conv_y=res_y, conv_z=res_z, activation=activation, normalization=normalization,
