@@ -1,16 +1,10 @@
 import tensorflow as tf
 from tensorflow.keras.callbacks import Callback
 from tensorflow.python.data.ops import dataset_ops
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import confusion_matrix
-from tensorflow.python.ops import init_ops
-from tensorflow.python.keras import backend as K
 from typing import List, Set, Dict, Tuple, Optional, Callable
 import numpy as np
 import pandas as pd
 from ml4h.tensor_generators import TensorGenerator
-from tensorflow.python.training import evaluation
 
 
 class BatchMetricsLogger(Callback):
@@ -58,7 +52,7 @@ class DataGenerator(tf.keras.utils.Sequence):
 # to use the exact metrics in the `metrics` list.
 def evaluate_collect_metrics(model: tf.keras.models.Model, 
         data_generator: list, 
-        metrics: List[Callable] = None):
+        metrics = None):
     # Reformat metrics list to a metrics dictionary of the form
     # {name: function pointer}.
     if metrics is not None:
@@ -94,7 +88,7 @@ def evaluate_collect_metrics(model: tf.keras.models.Model,
 def evaluate_segmentation_models(models: List[tf.keras.models.Model], 
         data_generators: list, 
         metrics: List[Callable] = None,
-        channel_order: str = 'channels_last'): # Todo: Currently unused
+        channel_order: str = 'channels_last'):
     # `metrics` must be either a list of callable metrics functions
     if len(models) != len(data_generators):
         if len(data_generators) != 1:
@@ -122,7 +116,6 @@ def evaluate_segmentation_models(models: List[tf.keras.models.Model],
                     raise ValueError("Batch size must be set to 1")
         elif isinstance(g, TensorGenerator):
             files = np.array([p.paths for p in g.path_iters]).flatten()
-            print(files)
             g = DataGenerator(files, g)
         else: # yolo
             pass
@@ -138,4 +131,4 @@ def evaluate_segmentation_models(models: List[tf.keras.models.Model],
         model_count += 1
         evaluations.append(ret)
     return evaluations
-        
+
