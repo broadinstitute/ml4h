@@ -28,6 +28,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
+from tensorflow.keras.layers import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
@@ -66,6 +67,11 @@ NORMALIZATION_CLASSES = {
     'layer_norm': LayerNormalization,
     'instance_norm': tfa.layers.InstanceNormalization,
     'poincare_norm': tfa.layers.PoincareNormalize,
+}
+PREPROCESS_CLASSES = {
+    'zoom': RandomZoom,
+    'rotate': RandomRotation,
+    'contrast': RandomContrast,
 }
 CONV_REGULARIZATION_CLASSES = {
     # class name -> (dimension -> class)
@@ -348,6 +354,21 @@ Tensor = tf.Tensor
 Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
 Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
 BottleNeck = Callable[[Dict[TensorMap, Tensor]], Dict[TensorMap, Tensor]]
+
+
+class PreprocessBlock:
+    def __init__(
+            self,
+            *,
+            augmentations: List[str],
+            factors: List[float],
+    ):
+        self.preprocess = [PREPROCESS_CLASSES[augmenter](factor) for augmenter, factor in zip(augmentations, factors)]
+
+    def __call__(self, x: Tensor) -> Tensor:
+        for augmentation in self.preprocess:
+            x = augmentation(x)
+        return x
 
 
 class ResidualBlock:
@@ -740,6 +761,7 @@ class ConvEncoder:
     ):
         num_res = len(res_filters)
         res_x, res_y, res_z = conv_x[:num_res], conv_y[:num_res], conv_z[:num_res]
+        self.preprocess_block = PreprocessBlock(['rotate'], [0.3])
         self.res_block = ResidualBlock(
             dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=res_x,
             conv_y=res_y, conv_z=res_z, activation=activation, normalization=normalization,
@@ -758,6 +780,7 @@ class ConvEncoder:
 
     def __call__(self, x: Tensor) -> Tuple[Tensor, List[Tensor]]:
         intermediates = []
+        x = self.preprocess_block(x)
         x = self.res_block(x)
         intermediates.append(x)
         x = self.pools[0](x)
