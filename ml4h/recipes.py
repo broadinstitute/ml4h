@@ -178,7 +178,7 @@ def compare_multimodal_multitask_models(args):
     input_data, output_data, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
     predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
-    if args.is_segmentation:
+    if any([tm.is_categorical and tm.axes() > 1 for tm in args.tensor_maps_out]):
         evaluations = _get_segmentation_evaluations(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
         output_folder = os.path.join(args.output_folder, args.id)
         df = pd.DataFrame.from_dict(evaluations, orient="index")
@@ -230,8 +230,6 @@ def evaluate_segmentation(args):
         * The hard model predictions
     """
     # Local includes only required in this case.
-    import ml4h.evaluate_segmentations as evaluate
-    from ml4h.tensor_generators import TensorGenerator
     from tensorflow.keras.models import load_model
     from ml4h.metrics import get_metric_dict
 
@@ -731,8 +729,7 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
             }
     """
     # Local includes only required in this case.
-    import ml4h.evaluate_segmentations as evaluate
-    from ml4h.tensor_generators import TensorGenerator
+    from ml4h.evaluate_segmentations import evaluate_segmentation_models
 
     evaluations = []
     for model_file in models_inputs_outputs.keys():
@@ -752,8 +749,8 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
             mixup=args.mixup_alpha,
         )
 
-        eval = evaluate.evaluate_segmentation_models([model], [generate_test])
-        logging.info(f"Evaluations completed.")
+        eval = evaluate_segmentation_models([model], [generate_test])
+        logging.info(f"Evaluations completed for model: {model_file}.")
         evaluations.append(eval)
     return evaluations
 
