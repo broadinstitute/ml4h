@@ -10,7 +10,7 @@ import numpy as np
 import blosc
 import pandas as pd
 
-sax_version='v20201124'
+sax_version='v202012'
 lax_version='v20201122'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
@@ -39,7 +39,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
 
     shutil.copyfile(f'/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/{sample_id}.hd5', f'/home/pdiachil/{sample_id}.hd5')
     try:
-        with h5py.File(f'/home/pdiachil/{sample_id}.hd5', 'a') as hd5_ff:
+        with h5py.File(f'/home/pdiachil/{sample_id}.hd5', 'r+') as hd5_ff:
             segmented_path = f'mdrk/sax_segmentations/sax_slices_jamesp_4b_hyperopted_dropout_v620_converge/{sample_id}_inference__argmax.h5'
             blob = bucket.blob(segmented_path)
             blob.download_to_filename('tmp.h5')
@@ -77,7 +77,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
                     tensor[:] = full_tensor
                 else:
                     create_tensor_in_hd5(hd5_ff, path_prefix, tensor_name, full_tensor)
-    except Exception as e:
+    except FutureWarning as e:
         logging.warning(f'Caught exception at {sample_id}: {e}')
         continue
 end_time = time.time()
