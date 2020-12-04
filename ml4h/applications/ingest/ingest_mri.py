@@ -5,7 +5,8 @@ import pydicom as dicom
 import numpy as np
 import pandas as pd
 import glob
-from typing import List, Tuple, Optional
+import json
+from typing import List, Tuple, Optional, Dict
 import time
 import fastparquet as fp
 import blosc
@@ -17,13 +18,14 @@ import zipfile # Read Zip archives
 import fnmatch # Simple pattern matching
 import zstandard # Silently required by Parquet and Blosc
 from io import BytesIO # Read DICOMs from byte streams
+from collections import defaultdict
 
 # multiprocessing
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
 
-SERIES_TO_SAVE = [5, 6, 7]
+SERIES_TO_SAVE = list(range(1, 25))
 
 
 def _sample_id_from_path(path: str) -> int:
@@ -31,14 +33,49 @@ def _sample_id_from_path(path: str) -> int:
     return int(os.path.basename(path).split('_')[0])
 
 
+def _instance_from_path(path: str) -> int:
+    """assumes naming format is /path/to/file/{sample_id}_xxx_{instance}_0.zip"""
+    return int(os.path.basename(path).split('_')[2])
+
+
 def _process_file(path: str, destination: str) -> Tuple[str, Optional[str]]:
     sample_id = _sample_id_from_path(path)
+    instance = _instance_from_path(path)
     try:
-        ingest_mri_dicoms_zipped(sample_id, path, destination)
+        ingest_mri_dicoms_zipped(sample_id, instance, path, destination)
         return path, None
     except Exception as e:
         return path, str(e)
 
+
+def _process_files(files: List[str], destination: str) -> Dict[str, str]:
+    errors = {}
+    name = _sample_id_from_path(files[0])
+    process_file = partial(_process_file, destination=destination)
+
+    print(f'Starting process {name} with {len(files)} files')
+    for i, (path, error) in enumerate(map(process_file, files)):
+        if error is not None:
+            errors[path] = error
+        if len(files) % max(i // 10, 1) == 0:
+            print(f'{name}: {(i + 1) / len(files):.2%} done')
+
+    return errors
+
+
+def _partition_files(files: List[str], num_partitions: int) -> List[List[str]]:
+    """Split files into num_partitions partitions of close to equal size"""
+    id_to_file = defaultdict(list)
+    for f in files:
+        id_to_file[_sample_id_from_path(f)].append(f)
+    sample_ids = np.array(list(id_to_file))
+    np.random.shuffle(sample_ids)
+    split_ids = np.array_split(sample_ids, num_partitions)
+    splits = [
+        sum((id_to_file[sample_id] for sample_id in split), [])
+        for split in split_ids
+    ]
+    return [split for split in splits if split]  # lose empty splits
 
 
 def multiprocess_ingest(
@@ -47,21 +84,23 @@ def multiprocess_ingest(
 ):
     print(f'Beginning ingestion of {len(files)} MRIs.')
     start = time.time()
-    process_file = partial(_process_file, destination=destination)
+    # partition files by sample id so no race conditions across workers due to multiple instances
+    split_files = _partition_files(files, cpu_count())
     errors = {}
     with Pool(cpu_count()) as pool:
-        for i, (path, error) in enumerate(pool.imap_unordered(process_file, files)):
-            print(f'{i / len(files):.2%}', end='\r')
-            if error is not None:
-                errors[path] = error
-    print()
+        results = [pool.apply_async(_process_files, (split, destination)) for split in split_files]
+        for result in results:
+            errors.update(result.get())
     delta = time.time() - start
     print(f'Ingestion took {delta:.1f} seconds at {delta / len(files):.1f} s/file')
+    with open(os.path.join(destination, 'errors.json'), 'w') as f:
+        json.dump(errors, f)
     return errors
 
 
 def ingest_mri_dicoms_zipped(
     sample_id: str,
+    instance: int,
     file: str,
     destination: str,
     output_name: str = None,
@@ -73,6 +112,7 @@ def ingest_mri_dicoms_zipped(
 
     Args:
         sample_id (str): Sample identifier: this is stored together with the meta data
+        instance (int): UKBB instance (2 or 3)
         file (str): Input path to target Zip archive
         destination (str): Output path
         output_name (str, optional): Output name prefix for HDF5 and Parquet files. Defaults to None.
@@ -110,12 +150,12 @@ def ingest_mri_dicoms_zipped(
 
     if in_memory:
         data = {name: zfile.read(name) for name in dicom_files}
-        ingest_mri_dicoms(sample_id, data_dictionary=data, output_name=output_name, destination=destination)
+        ingest_mri_dicoms(sample_id, instance, data_dictionary=data, output_name=output_name, destination=destination)
     else:
         zfile.extractall(destination)
 
         dicoms = glob.glob(os.path.join(destination,"*.dcm"))
-        ingest_mri_dicoms(sample_id, files=dicoms, output_name=output_name, destination=destination)
+        ingest_mri_dicoms(sample_id, instance, files=dicoms, output_name=output_name, destination=destination)
 
         if save_dicoms == False:
             for file in zfile.namelist():
@@ -165,6 +205,7 @@ def _ingest_mri_dicoms_wrapper(file, partial=None):
 
 def ingest_mri_dicoms(
     sample_id: str,
+    instance: int,
     files: str = None,
     data_dictionary: dict = None,
     output_name: str = None,
@@ -337,7 +378,7 @@ def ingest_mri_dicoms(
     series = set(SERIES_TO_SAVE).intersection(sample_manifest['series_number'])
     if not series:
         raise ValueError('No series to save.')
-    with h5py.File(os.path.join(destination,f"{output_name + file_extension}"),"w-") as f:
+    with h5py.File(os.path.join(destination,f"{output_name + file_extension}"), "a") as f:
         # Generate stacks of 2D images into 3D tensors
         for s in series:
             t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
@@ -346,7 +387,7 @@ def ingest_mri_dicoms(
             hash_compressed   = xxhash.xxh128_digest(compressed_data)
             decompressed = np.frombuffer(blosc.decompress(compressed_data),dtype=np.uint16).reshape(t.shape)
             assert(xxhash.xxh128_digest(decompressed) == hash_uncompressed)
-            dset = f.create_dataset(f"/series/{s}", data=np.void(compressed_data))
+            dset = f.create_dataset(f"/instance/{instance}/series/{s}", data=np.void(compressed_data))
             # Store meta data:
             # 1) Shape of the original tensor
             # 2) Hash of the compressed data
