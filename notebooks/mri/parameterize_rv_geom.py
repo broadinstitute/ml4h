@@ -79,8 +79,8 @@ for i, hd5 in enumerate(sorted(hd5s)):
     # i = start
     # hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/5362506.hd5'
     # hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/5362506.hd5'
-    hd5 = f'/mnt/disks/segmented-sax-v20201124-lax-v20201122/2020-11-24/4566955.hd5'
-    hd5 = f'/home/pdiachil/1000800.hd5'
+    # hd5 = f'/mnt/disks/segmented-sax-v20201124-lax-v20201122/2020-11-24/4566955.hd5'
+    # hd5 = f'/home/pdiachil/1000800.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
         continue
