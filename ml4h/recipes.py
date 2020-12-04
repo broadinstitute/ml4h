@@ -263,7 +263,6 @@ def evaluate_segmentation(args):
         keep_paths=True, 
         num_workers=0,
         mixup=args.mixup_alpha,
-        shuffle=False,
     )
     # generate_test.set_worker_paths(tensor_paths)
 
