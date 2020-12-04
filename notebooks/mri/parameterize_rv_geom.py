@@ -17,15 +17,14 @@ from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTE
 # %%
 import logging
 logging.getLogger().setLevel('INFO')
-hd5s = glob.glob('/mnt/disks/segmented-sax-v20201124-lax-v20201122-petersen/2020-11-24/*.hd5')
+hd5s = glob.glob('/mnt/disks/segmented-ml4h-v20201203-v20201122-petersen/2020-12-03/*.hd5')
 # %%
 start = int(sys.argv[1])
 end = int(sys.argv[2])
 
 # start = 4
 # end = start+1
-version='separation_v20201124_v20201122'
-# hd5s = ['/mnt/disks/segmented-sax-lax-v20200901/2020-11-02/2032446.hd5']
+version='ml4h_v20201203_v20201122'
 
 # %%
 views = ['lax_4ch']
@@ -45,8 +44,8 @@ channels = [
     ],
 ]
 
-# channels[0] += [[MRI_SAX_SEGMENTED_CHANNEL_MAP['RV_cavity'], MRI_SAX_SEGMENTED_CHANNEL_MAP['RA_cavity']] for d in range(1, 13)]
-channels[0] += [MRI_SAX_SEGMENTED_CHANNEL_MAP['RV_cavity'] for d in range(1, 13)]
+channels[0] += [[MRI_SAX_SEGMENTED_CHANNEL_MAP['RV_cavity'], MRI_SAX_SEGMENTED_CHANNEL_MAP['RA_cavity']] for d in range(1, 13)]
+# channels[0] += [MRI_SAX_SEGMENTED_CHANNEL_MAP['RV_cavity'] for d in range(1, 13)]
 #channels[0].pop(0)
 #views.pop(0)
 # channels = [[MRI_SAX_SEGMENTED_CHANNEL_MAP['RV_cavity'] for d in range(1, 10)]]
@@ -81,6 +80,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
     # hd5 = f'/mnt/disks/segmented-sax-v20201116-lax-v20201119-petersen/2020-11-20/5362506.hd5'
     # hd5 = f'/mnt/disks/segmented-sax-lax-v20201102/2020-11-02/5362506.hd5'
     hd5 = f'/mnt/disks/segmented-sax-v20201124-lax-v20201122/2020-11-24/4566955.hd5'
+    hd5 = f'/home/pdiachil/1000800.hd5'
     sample_id = hd5.split('/')[-1].replace('.hd5', '')
     if i < start:
         continue
@@ -122,15 +122,14 @@ for i, hd5 in enumerate(sorted(hd5s)):
 
         # Shift datasets
         nsax = len(annot_datasets)-1
-        # dx = align_datasets(
-        #     annot_datasets[nsax//2-1:nsax//2+2], annot_datasets[0],
-        #     [f'cine_segmented_sax_b{i}_annotated' for i in range(nsax//2-1, nsax//2+2)],
-        #     'cine_segmented_lax_4ch_annotated',
-        #     [MRI_SAX_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
-        #     [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
-        #     t=0,
-        # )        
-        dx = np.array([0.0, 0.0])
+        dx = align_datasets(
+            annot_datasets[nsax//2-1:nsax//2+2], annot_datasets[0],
+            [f'cine_segmented_sax_b{i}_annotated' for i in range(nsax//2-1, nsax//2+2)],
+            'cine_segmented_lax_4ch_annotated',
+            [MRI_SAX_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
+            [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP[key] for key in ['RV_cavity', 'LV_cavity']],
+            t=0,
+        )                
         logging.info(f'SAX-LAX alignment completed. dx=[{dx[0]}, {dx[1]}]')
 
         dataset_dimensions = list(annot_datasets[1].GetDimensions())
