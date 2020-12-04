@@ -3,6 +3,10 @@ import h5py
 import pandas as pd
 
 # %%
+ff = h5py.File('/home/pdiachil/1003150.hd5', 'r')
+gg = h5py.File('/home/pdiachil/tmp/1003150.hd5', 'r')
+
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 
