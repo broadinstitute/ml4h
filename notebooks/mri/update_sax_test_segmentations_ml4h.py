@@ -77,7 +77,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
                     tensor[:] = full_tensor
                 else:
                     create_tensor_in_hd5(hd5_ff, path_prefix, tensor_name, full_tensor)
-    except FutureWarning as e:
+    except Exception as e:
         logging.warning(f'Caught exception at {sample_id}: {e}')
         continue
 end_time = time.time()
