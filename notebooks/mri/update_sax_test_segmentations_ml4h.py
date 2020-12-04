@@ -43,8 +43,8 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
             segmented_path = f'mdrk/sax_segmentations/sax_slices_jamesp_4b_hyperopted_dropout_v620_converge/{sample_id}_inference__argmax.h5'
             blob = bucket.blob(segmented_path)
             blob.download_to_filename('tmp.h5')
-            segmentation_hd5 = h5py.File('tmp.h5', 'r')
-            segmentations = segmentation_hd5['argmax'][()]
+            with h5py.File('tmp.h5', 'r') as segmentation_hd5:
+                segmentations = segmentation_hd5['argmax'][()]
             segmentations = np.frombuffer(blosc.decompress(segmentations), dtype=np.uint8).reshape(segmentation_hd5.attrs['shape'][:-1])
             for nrow, dcm in df_hd5.iterrows():
                 view = '4ch' if ('LAX_4Ch' in dcm['series']) else 'sax'
