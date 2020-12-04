@@ -232,6 +232,10 @@ def evaluate_segmentation(args):
     # Local includes only required in this case.
     from tensorflow.keras.models import load_model
     from ml4h.metrics import get_metric_dict
+    # Local includes only required in this case.
+    from ml4h.evaluate_segmentations import evaluate_segmentation_models
+
+    args.epochs = 1
 
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
 
@@ -255,33 +259,52 @@ def evaluate_segmentation(args):
         args.tensor_maps_in,
         no_fail_tmaps_out,
         paths=tensor_paths,
-        num_workers=1,
         cache_size=0, 
         keep_paths=True, 
+        num_workers=0,
         mixup=args.mixup_alpha,
+        shuffle=False,
     )
+    # generate_test.set_worker_paths(tensor_paths)
+
+    custom_dict = get_metric_dict(no_fail_tmaps_out)
+    from tensorflow_addons.optimizers import RectifiedAdam
+    custom_dict['RectifiedAdam'] = RectifiedAdam
 
     models = []
     # Command-line argument for a single model file path
-    if args.model_file is not None:
-        models.append(load_model(args.model_file, custom_objects=get_metric_dict(no_fail_tmaps_out)))
+    if args.model_file is not None:            
+        model = load_model(args.model_file, custom_objects=custom_dict)
+        model.summary()
+        models.append(model)
         logging.info("Loaded single model from: {}".format(args.model_file))
 
     
     # Command-line argument for multiple model file paths
     if args.model_files is not None:
         for m in args.model_files:
-            model = load_model(m, custom_objects=get_metric_dict(no_fail_tmaps_out))
+            model = load_model(m, custom_objects=custom_dict)
             model.summary()
             logging.info("Loaded model file from: {}".format(m))
             models.append(model)
     
 
-    evaluations = evaluate.evaluate_segmentation_models(models, [generate_test])
+    evaluations = evaluate_segmentation_models(models, [generate_test])
     logging.info(f"Evaluations completed for: {len(models)} models.")
-    df = pd.DataFrame.from_dict(evaluations, orient="index")
-    logging.info(f"Writing results to {os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv')}")
-    df.to_csv(os.path.join(args.output_folder, args.id, '__inference_evaluate.tsv'),sep="\t")
+    #
+    # Returns a list of dicts
+    # ret = {
+    #     'model': model_count,
+    #     'eval': eval,
+    #     'eval_batch': eval_batch,
+    # }
+    for eval in evaluations:
+        df = pd.DataFrame(eval['eval'], index=[eval['model']])
+        df.to_csv(os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate.tsv'),sep="\t")
+        logging.info(f"Writing results to {os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate.tsv')}")
+        df = pd.DataFrame(eval['eval_batch'])
+        df.to_csv(os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate_batch.tsv'),sep="\t")
+        logging.info(f"Writing results to {os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate_batch.tsv')}")
     # End
 
 
@@ -731,6 +754,9 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
     # Local includes only required in this case.
     from ml4h.evaluate_segmentations import evaluate_segmentation_models
 
+    old_epoch = args.epochs
+    args.epochs = 1
+
     evaluations = []
     for model_file in models_inputs_outputs.keys():
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
@@ -752,6 +778,8 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
         eval = evaluate_segmentation_models([model], [generate_test])
         logging.info(f"Evaluations completed for model: {model_file}.")
         evaluations.append(eval)
+
+    args.epochs = old_epoch
     return evaluations
 
 

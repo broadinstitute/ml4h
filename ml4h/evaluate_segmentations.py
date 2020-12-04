@@ -31,15 +31,15 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.generator = tensor_generator
         self.offset = 0
         self.limit = len(files)
-    #
+    
     def __len__(self):
         return self.limit
-    #
+    
     def __getitem__(self, index):
-        self.offset += 1
         x, y, _, b = next(self.generator)
+        self.offset += 1
         return x, y, [None]
-    #
+    
     def on_epoch_end(self):
         self.offset = 0
 
@@ -69,20 +69,16 @@ def evaluate_collect_metrics(model: tf.keras.models.Model,
     #
     # Logger for outputs
     logger = BatchMetricsLogger(metrics = metrics_dict)
+    data_generator.on_epoch_end()
     try:
-        eval = model.evaluate(data_generator, callbacks=[logger])
+        eval = model.evaluate(data_generator, callbacks=[logger], verbose=2)
     except Exception as e:
         raise Exception(f'Failed to evaluate model:\n{e}')
     eval_batch = pd.DataFrame(logger.storage, index = np.arange(len(logger.storage)))
     # Workaround for old Keras
     eval = {out: eval[i] for i, out in enumerate(model.metrics_names)}
     eval = pd.DataFrame(eval,index=[0])
-    # Make predictions
-    prediction_prob = model.predict(data_generator)
-    # Assumes channel_order
-    predictions = tf.argmax(prediction_prob, -1)
-    # Return eval, eval_batch pair
-    return eval, eval_batch, prediction_prob, predictions
+    return eval, eval_batch#, prediction_prob, predictions
 
 
 def evaluate_segmentation_models(models: List[tf.keras.models.Model], 
@@ -110,6 +106,8 @@ def evaluate_segmentation_models(models: List[tf.keras.models.Model],
         # tf.data.Dataset family of generators in TensorFlow 2+
         # Todo: could eventually be extended to include checks for 
         # `dataset._dataset._batch_size` that is used in TensorFlow 1.*
+        is_ml4h = False
+        files = []
         if isinstance(g, dataset_ops.DatasetV2):
             if hasattr(g, '_batch_size'):
                 if g._batch_size.numpy() != 1:
@@ -117,16 +115,19 @@ def evaluate_segmentation_models(models: List[tf.keras.models.Model],
         elif isinstance(g, TensorGenerator):
             files = np.array([p.paths for p in g.path_iters]).flatten()
             g = DataGenerator(files, g)
+            is_ml4h = True
         else: # yolo
             pass
         # 
-        eval, eval_batch, prediction_prob, predictions = evaluate_collect_metrics(m, g, metrics_dict)
+        eval, eval_batch = evaluate_collect_metrics(m, g, metrics_dict)
+
+        if is_ml4h:
+            eval_batch.index = files
+
         ret = {
             'model': model_count,
             'eval': eval,
             'eval_batch': eval_batch,
-            'prediction_prob': prediction_prob,
-            'predictions': predictions
         }
         model_count += 1
         evaluations.append(ret)
