@@ -90,7 +90,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
     annot_datasets = []
     orig_datasets = []
     try:
-        with h5py.File(hd5) as ff_trad:
+        with h5py.File(hd5, 'r') as ff_trad:
             for iv, view in enumerate(views):
                 if view_format_string.format(view=view) not in ff_trad['ukb_cardiac_mri']:
                     views = views[:iv]
@@ -170,7 +170,7 @@ for i, hd5 in enumerate(sorted(hd5s)):
             end_time = time.time()
             logging.info(f'Job for {sample_id} completed. Time elapsed: {end_time-start_time:.0f} s')
             start_time = time.time()
-    except Exception as e:
+    except FutureWarning as e:
         logging.info(f'Caught exception at {sample_id}: {e}')
         continue
     
