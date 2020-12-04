@@ -61,7 +61,9 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
                     png = imageio.imread('tmp.png')
                 elif view == 'sax':
                     b_idx = int(series.split('cine_segmented_sax_b')[-1]) - 1
-                    t_idx = dcm.instance_number - 1 
+                    t_idx = dcm.instance_number - 1
+                    if b_idx > segmentations.shape[0]:
+                        continue
                     png = segmentations[b_idx, t_idx, :, :]
                 
                 path_prefix='ukb_cardiac_mri'
