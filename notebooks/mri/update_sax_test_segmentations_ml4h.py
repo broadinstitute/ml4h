@@ -45,7 +45,7 @@ for i, (sample_id, df_hd5) in enumerate(df_sax_4ch_petersen.groupby('sample_id')
             blob.download_to_filename('tmp.h5')
             with h5py.File('tmp.h5', 'r') as segmentation_hd5:
                 segmentations = segmentation_hd5['argmax'][()]
-            segmentations = np.frombuffer(blosc.decompress(segmentations), dtype=np.uint8).reshape(segmentation_hd5.attrs['shape'][:-1])
+                segmentations = np.frombuffer(blosc.decompress(segmentations), dtype=np.uint8).reshape(segmentation_hd5.attrs['shape'][:-1])
             for nrow, dcm in df_hd5.iterrows():
                 view = '4ch' if ('LAX_4Ch' in dcm['series']) else 'sax'
                 version = lax_version if ('LAX_4Ch' in dcm['series']) else sax_version
