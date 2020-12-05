@@ -11,3 +11,6 @@ ml4h.egg-info/*
 .Rproj.user
 docker/terra_image/*/**
 build/
+*.tsv
+*.csv
+*.png
