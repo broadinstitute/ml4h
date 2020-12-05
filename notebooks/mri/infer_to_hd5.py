@@ -140,7 +140,7 @@ for s in files:
         #
         #
         filename = os.path.splitext(os.path.split(s)[-1])[0]
-        with h5py.File(f'/tf/{filename}_inference__argmax.h5', 'a') as ff:
+        with h5py.File(f'/home/pdiachil/{filename}_inference__argmax.h5', 'a') as ff:
             ff_in = ff.create_group(f'instance_{str(instance)}')
             ff_in.create_dataset("argmax", data=np.void(blosc.compress(tf.argmax(test,axis=-1).numpy().astype(np.uint8).tobytes(), typesize=2, cname='zstd', clevel=9)))
             ff_in.attrs['shape'] = test.shape
