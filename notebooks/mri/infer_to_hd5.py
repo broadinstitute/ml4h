@@ -32,12 +32,10 @@ import pyarrow
 from io import BytesIO
 import sys
 import timeit
-​
-​
+
 if len(sys.argv) != 3:
     raise Exception('Need to provide 2 parameters: #machines, current machine#')
-​
-​
+
 # Test
 # Path to a pre-trained file
 # model_file = "/tf/models_sax_slices_jamesp_4b_converge_sax_slices_jamesp_4b_converge.h5"
@@ -50,8 +48,7 @@ objects['RectifiedAdam'] = RectifiedAdam
 # Load the model
 model = load_model(model_file, custom_objects=objects)
 model.summary()
-​
-​
+
 # ---------- From the command line
 # number of machines, current machine
 files = glob.glob('/mnt/disks/annotated-cardiac-tensors-44k/2020-09-21/*.hd5')
@@ -63,8 +60,7 @@ if batch != step:
 else:
     files = files[(step*(batch)):]
 print(len(files))
-​
-​
+
 def prepare_local_tensor(tensor, names):
     tensor_local = np.zeros((50, 224, 224, 4))
     # 
@@ -86,9 +82,9 @@ def prepare_local_tensor(tensor, names):
     else:
         tensor_local[:,:,:,3] = tensor[i,...]
     return tensor_local
-​
+
 # s = ['/mnt/disks/annotated-cardiac-tensors-44k/2020-09-21/1986469.hd5']
-​
+
 tot = 0
 for s in files:
     print(f"{s}. Progress: {tot}/{len(files)}")
