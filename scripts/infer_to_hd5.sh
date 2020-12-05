@@ -3,6 +3,9 @@ gcp_zone=$(curl -H Metadata-Flavor:Google http://metadata.google.internal/comput
 VMTAG=$1
 STEP=$2
 
+cd /home/pdiachil
+/snap/bin/gsutil cp gs://ml4cvd/models/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe.h5 ./
+
 cd /home/pdiachil/ml
 
 sudo mkdir -p /mnt/disks/annotated-cardiac-tensors-44k
