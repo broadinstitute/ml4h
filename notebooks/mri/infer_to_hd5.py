@@ -41,7 +41,7 @@ if len(sys.argv) != 3:
 # Test
 # Path to a pre-trained file
 # model_file = "/tf/models_sax_slices_jamesp_4b_converge_sax_slices_jamesp_4b_converge.h5"
-model_file = "/tf/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe.h5"
+model_file = "/home/pdiachil/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe.h5"
 # Get the config using the TensorMap used to train the model in the first place.
 # This allows us to reconstruct models that are not saved using configs.
 objects = get_metric_dict([ml4h.tensormap.ukb.mri.cine_segmented_sax_slice_jamesp])
