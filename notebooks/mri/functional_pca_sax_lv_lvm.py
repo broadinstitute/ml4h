@@ -77,7 +77,7 @@ f.set_size_inches((len(subset)-3)//3*2.5, 6)
 
 for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 100])):
     for j, (surface, label) in enumerate(zip(surfaces, labels)):
-        ax[i, j].hexbin(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas], 
+        ax[i, j].hexbin(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas],
                         extent=(0, extent, 0, extent), mincnt=1, cmap='gray')
         ax[i, j].set_aspect('equal')
         ax[i, j].plot([0, 400], [0, 400], color='k')
@@ -89,13 +89,13 @@ for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 10
             ax[i, j].set_ylabel(meas)
         else:
             ax[i, j].set_ylabel('')
-        
+
         ax[i, j].set_xlim([0, extent])
         ax[i, j].set_ylim([0, extent])
         pearson = scipy.stats.pearsonr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
         spearman = scipy.stats.spearmanr(df_inuse[f'{meas}_{surface}_{label}'], df_inuse[meas])[0]
         ax[i, j].set_title(f'n={len(df_inuse)}, r={pearson:.2f}')
-        
+
 plt.tight_layout()
 f.savefig('RV_petersen_all_20201204.png', dpi=500)
 
@@ -182,7 +182,7 @@ for feat in subset:
     df_inuse = df_inuse[df_inuse[feat] > 5]
 f, ax = plt.subplots(1, 3)
 f.set_size_inches(9, 3)
-for i, feat in enumerate(['LV_poisson_max', 'SAXLV_poisson_max', 'mean_LV_poisson_max']):        
+for i, feat in enumerate(['LV_poisson_max', 'SAXLV_poisson_max', 'mean_LV_poisson_max']):
     ax[i].hexbin(df_inuse[feat], df_inuse['LVEDV'], extent=(0, 400, 0, 400), mincnt=1, cmap='gray')
     ax[i].set_aspect('equal')
     ax[i].plot([0, 400], [0, 400], color='k')
@@ -357,7 +357,7 @@ f.savefig('petersen_sam_allLVM_sax_lax.png', dpi=500)
 # %%
 import scipy.stats
 import matplotlib.pyplot as plt
-subset = ['RVEDV_poisson_20201102', 'RVEDV_poisson_20201119', 
+subset = ['RVEDV_poisson_20201102', 'RVEDV_poisson_20201119',
           'RVESV_poisson_20201102', 'RVESV_poisson_20201119',
           'RVEDV_poisson_20201102_ml4h', 'RVESV_poisson_20201102_ml4h',
           'RVEDV_poisson_20201119_noshift', 'RVESV_min_20201119_noshift',
@@ -366,7 +366,7 @@ subset = ['RVEDV_poisson_20201102', 'RVEDV_poisson_20201119',
           'RVEDV', 'RVESV', 'RVEF']
 df_inuse = df_all_petersen.dropna(subset=subset)
 for feat in subset:
-    if 'RVEF' in feat: 
+    if 'RVEF' in feat:
         continue
     df_inuse = df_inuse[df_inuse[feat] < 500]
     df_inuse = df_inuse[df_inuse[feat] > 5]
@@ -402,7 +402,7 @@ subset = ['RV_poisson_max_20201102', 'RV_poisson_min_20201102',
           'RVEDV', 'RVESV', 'RVEF']
 df_inuse = df_all_petersen.dropna(subset=subset)
 for feat in subset:
-    if 'RVEF' in feat: 
+    if 'RVEF' in feat:
         continue
     df_inuse = df_inuse[df_inuse[feat] < 500]
     df_inuse = df_inuse[df_inuse[feat] > 5]
@@ -528,7 +528,7 @@ def plot_all_annotations(row, out_name):
 
             image = imageio.imread(f'tmp_{t}.png')
             writer.append_data(image)
-    
+
 for i in range(5):
     plot_all_annotations(df_inuse_sort.iloc[i], out_name='rv_discs_worse')
 for i in range(5):
