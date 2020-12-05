@@ -14,7 +14,7 @@ sudo mount -o norecovery,discard,defaults /dev/sdb /mnt/disks/annotated-cardiac-
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
 
-/home/pdiachil/ml/scripts/tf.sh /home/pdiachil/ml/notebooks/mri/infer_to_hd5.py 50 $VMTAG 
+/home/pdiachil/ml/scripts/tf.sh /home/pdiachil/ml/notebooks/mri/infer_to_hd5.py 49 $VMTAG 
 
 
 cd /home/pdiachil/
