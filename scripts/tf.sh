@@ -48,7 +48,7 @@ CALL_DOCKER_AS_USER="
         usermod -aG \${GROUP_NAMES_ARR[i]} ${USER}
     done;
     sudo -u ${USER}"
-CALL_DOCKER_AS_USER=""
+
 ################### HELP TEXT ############################################
 
 usage()
@@ -177,6 +177,18 @@ Attempting to run Docker with
         eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
+DEV_INSTRUCTIONS="
+    pip install --upgrade pip;
+    pip install -e ${WORKDIR};
+    pip install opencv-python-headless==4.4.0.44;
+    pip install pyarrow;
+    pip install fastparquet;
+    pip install zstandard;
+    pip install blosc;
+    cd /home/pdiachil/pypoisson;
+    python setup.py install;
+    cd ${WORKDIR}/notebooks/mri"
+
 docker run ${INTERACTIVE} \
 ${GPU_DEVICE} \
 --env GROUP_NAMES \
@@ -186,4 +198,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "eval ${DEV_INSTRUCTIONS}; eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
