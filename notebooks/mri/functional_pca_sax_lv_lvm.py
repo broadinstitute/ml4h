@@ -3,18 +3,19 @@ from statsmodels.multivariate.pca import PCA
 import pandas as pd
 
 # %%
-df_rv_sax_v20201102_lax_v20201006 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_RV_processed_v20201102.csv')
-df_rv_sax_v20201124_lax_v20201122 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201124-lax-v20201122/all_RV_processed_sax_v20201124_lax_v20201122.csv')
+# df_rv_sax_v20201102_lax_v20201006 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/all_SAX_RV_processed_v20201102.csv')
+# df_rv_sax_v20201124_lax_v20201122 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201124-lax-v20201122/all_RV_processed_sax_v20201124_lax_v20201122.csv')
 df_rv_sax_v20201124_lax_v20201122_separation = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201124-lax-20201122-petersen-separation/all_RV_processed_separation_v20201124_v20201122.csv')
-for t in range(50):
-    df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}_v20201124_v20201122_sep'] = df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}']
-    df_rv_sax_v20201124_lax_v20201122_separation = df_rv_sax_v20201124_lax_v20201122_separation.drop(columns=f'RV_poisson_{t}')
+df_rv_sax_v20201203_lax_v20201122 = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-ml4h-v20201203-v20201122-petersen/all_RV_processed_ml4h_v20201203_v20201122.csv')
+# for t in range(50):
+#     df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}_v20201124_v20201122_sep'] = df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}']
+#     df_rv_sax_v20201124_lax_v20201122_separation = df_rv_sax_v20201124_lax_v20201122_separation.drop(columns=f'RV_poisson_{t}')
 
-labels = ['v20201102_v20201006', 'v20201124_v20201122', 'v20201124_v20201122_sep']
+labels = ['v20201124_v20201122', 'v20201203_v20201122']
 
-surfaces = ['poisson', 'poisson', 'poisson']
+surfaces = ['poisson', 'poisson']
 
-dfs_rv = [df_rv_sax_v20201102_lax_v20201006, df_rv_sax_v20201124_lax_v20201122, df_rv_sax_v20201124_lax_v20201122_separation]
+dfs_rv = [df_rv_sax_v20201124_lax_v20201122_separation, df_rv_sax_v20201203_lax_v20201122]
 
 for i, df_rv in enumerate(dfs_rv):
     dfs_rv[i] = df_rv[df_rv['sample_id']!=-1]
@@ -24,6 +25,7 @@ label_left = labels[0]
 for df_rv, label_right in zip(dfs_rv[1:], labels[1:]):
     df_all = df_all.merge(df_rv, on='sample_id', suffixes=(f'_{label_left}', f'_{label_right}'))
     label_left = label_right
+
 
 
 # %%
@@ -36,32 +38,35 @@ for label, surface, key in zip(labels, surfaces, keys):
     df_all[f'RVEDV_{surface}_{label}'] = df_all[key].max(axis=1)
     df_all[f'RVESV_{surface}_{label}'] = df_all[key].min(axis=1)
     df_all[f'RVEF_{surface}_{label}'] = (df_all[f'RVEDV_{surface}_{label}'] - df_all[f'RVESV_{surface}_{label}']) / df_all[f'RVEDV_{surface}_{label}'] * 100.
+# %%
+# df_all['RVEDV_poisson_mean'] = 0.5*(df_all[f'RVEDV_poisson_{labels[0]}'] + df_all[f'RVEDV_poisson_{labels[1]}'])
+# df_all['RVESV_poisson_mean'] = 0.5*(df_all[f'RVESV_poisson_{labels[0]}'] + df_all[f'RVESV_poisson_{labels[1]}'])
+# df_all['RVEF_poisson_mean'] = (df_all[f'RVEDV_poisson_mean'] - df_all['RVESV_poisson_mean']) / df_all[f'RVEDV_poisson_mean'] * 100.
 
 df_petersen = pd.read_csv('returned_lv_mass.tsv', sep='\t')
 df_all_petersen = df_petersen.merge(df_all, on='sample_id')
+
 
 # %%
 import numpy as np
 for label, surface in zip(labels, surfaces):
     df_all_petersen[f'err_{label}'] = np.abs(df_all_petersen[f'RVEF_{surface}_{label}'] - df_all_petersen[f'RVEF']) / df_all_petersen[f'RVEF']
 
-df_all_petersen_sorted = df_all_petersen.sort_values(by=['err_v20201102_v20201006', 'err_v20201124_v20201122'], ascending='False').dropna()
-df_all_petersen_sorted = df_all_petersen_sorted[df_all_petersen_sorted['RVEF_poisson_v20201102_v20201006']<85]
-df_all_petersen_sorted = df_all_petersen_sorted[df_all_petersen_sorted['RVEF_poisson_v20201102_v20201006']>1]
-df_all_petersen_sorted[['sample_id', 'err_v20201124_v20201122', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[-5:].to_csv('worse_v20201102_v20201006.csv', index=False)
-df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].iloc[:5].to_csv('best_v20201102_v20201006.csv', index=False)
+df_all_petersen_sorted = df_all_petersen.sort_values(by=[f'err_{label}' for label in labels], ascending='False').dropna()
+
 # df_all_petersen_sorted[['sample_id', 'RVEF', 'RVEF_poisson_v20201102_v20201006']].corr()
 # %%
 import scipy.stats
 import matplotlib.pyplot as plt
-labels.pop(0)
-surfaces.pop(0)
+# labels += ['mean']
+# surfaces += ['poisson']
 subset = [f'RVEDV_poisson_{label}' for label in labels]
 subset += [f'RVESV_poisson_{label}' for label in labels]
 subset += [f'RVEF_poisson_{label}' for label in labels]
 subset += ['RVEDV', 'RVESV', 'RVEF']
 
 df_inuse = df_all_petersen.dropna(subset=subset)
+df_inuse.to_csv('/home/pdiachil/projects/surface_reconstruction/sax-ml4h-v20201203-v20201122-petersen/all_RV_processed_ml4h_v20201203_v20201122_petersen.csv', index=False)
 for feat in subset:
     df_inuse = df_inuse[df_inuse[feat] < 500]
     df_inuse = df_inuse[df_inuse[feat] > 20]
@@ -92,7 +97,7 @@ for i, (meas, extent) in enumerate(zip(['RVEDV', 'RVESV', 'RVEF'], [400, 200, 10
         ax[i, j].set_title(f'n={len(df_inuse)}, r={pearson:.2f}')
         
 plt.tight_layout()
-f.savefig('RV_petersen_all_20201203.png', dpi=500)
+f.savefig('RV_petersen_all_20201204.png', dpi=500)
 
 df_inuse.to_csv('/home/pdiachil/df_inuse_petersen.csv', index=False)
 # %%
