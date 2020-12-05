@@ -51,7 +51,7 @@ model.summary()
 
 # ---------- From the command line
 # number of machines, current machine
-files = glob.glob('/mnt/disks/annotated-cardiac-tensors-44k/2020-09-21/*.hd5')
+files = sorted(glob.glob('/mnt/disks/annotated-cardiac-tensors-44k/2020-09-21/*.hd5'))
 print(len(files))
 step = len(files)//int(sys.argv[1])
 batch = int(sys.argv[2])
