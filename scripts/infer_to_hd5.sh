@@ -4,6 +4,7 @@ VMTAG=$1
 STEP=$2
 
 cd /home/pdiachil/ml
+gsutil cp gs://ml4cvd/models/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe.h5 ./
 git checkout pd_sf_blox
 git pull
 
