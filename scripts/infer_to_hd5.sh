@@ -20,4 +20,4 @@ cd /home/pdiachil/
 /snap/bin/gsutil cp *.hd5 gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/ml4h_v20201203_v20201122/hd5/
 /snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/ml4h_v20201203_v20201122/log-inference/
 
-yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+# yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
