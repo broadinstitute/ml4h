@@ -36,7 +36,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
 from sklearn.metrics import brier_score_loss, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import calibration_curve
-from sksurv.metrics import concordance_index_censored
+#from sksurv.metrics import concordance_index_censored
 
 import seaborn as sns
 from biosppy.signals import ecg
