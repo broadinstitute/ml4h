@@ -19,7 +19,7 @@ bucket = storage_client.get_bucket('ml4cvd')
 logging.getLogger().setLevel('INFO')
 
 df_sax_4ch_petersen = pd.read_csv('/home/pdiachil/projects/manifests/manifest_sax_4ch.tsv', sep='\t',
-                             1     usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
+                                  usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 # %%
 
 def _save_pixel_dimensions_if_missing(slicer, series, instance, hd5):
