@@ -12,8 +12,6 @@ scikit-survival
 biosppy
 vtk==8.1.2
 imageio==2.6.1
-#apache-beam[gcp]==2.12.0
-#google-cloud-storage==1.13.0
 ipywidgets==7.5.1
 bokeh
 Pillow==7.1.0
@@ -33,5 +31,5 @@ altair
 facets-overview
 plotnine
 vega
-ipycanvas==0.4.1
-ipyannotations==0.2.0
+ipycanvas==0.7.0
+ipyannotations==0.2.1
