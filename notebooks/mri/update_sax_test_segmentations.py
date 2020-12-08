@@ -18,7 +18,7 @@ storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 logging.getLogger().setLevel('INFO')
 
-df_sax_4ch_petersen = pd.read_csv('/home/pdiachil/projects/manifests/manifest_sax_4ch.tsv', sep='\t',
+df_sax_4ch_petersen = pd.read_csv('/home/pdiachil/projects/manifests/manifest_sax_4ch_tar.csv',
                                   usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 # %%
 
