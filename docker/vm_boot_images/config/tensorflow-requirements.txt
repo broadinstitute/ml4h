@@ -25,6 +25,8 @@ numcodecs
 beautifulsoup4
 lxml
 xmltodict
+google-cloud-bigquery
+google-cloud-bigquery-storage
 pandas_gbq
 pyarrow
 altair
