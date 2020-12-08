@@ -12,7 +12,7 @@ class BatchMetricsLogger(Callback):
         super(BatchMetricsLogger, self).__init__()
         self.metrics = metrics
         self.storage = []
-    #
+    
     def on_test_batch_end(self, batch, logs=None):
         self.storage.append(logs)
 
@@ -20,7 +20,7 @@ class BatchMetricsLogger(Callback):
 class DataGenerator(tf.keras.utils.Sequence):
     """Workaround for using infinite ML4H generators with Keras/Tensorflow 
     generators. The ML4H TensorGenerator is very brittle: use at your own
-    risk!
+    risk! ANY ML4H iterator that returns null/nan will break this approach.
 
     Args:
         files: Files operated on by TensorGenerator.
@@ -74,6 +74,7 @@ def evaluate_collect_metrics(model: tf.keras.models.Model,
         eval = model.evaluate(data_generator, callbacks=[logger], verbose=2)
     except Exception as e:
         raise Exception(f'Failed to evaluate model:\n{e}')
+
     eval_batch = pd.DataFrame(logger.storage, index = np.arange(len(logger.storage)))
     # Workaround for old Keras
     eval = {out: eval[i] for i, out in enumerate(model.metrics_names)}
@@ -81,7 +82,7 @@ def evaluate_collect_metrics(model: tf.keras.models.Model,
     return eval, eval_batch#, prediction_prob, predictions
 
 
-def evaluate_segmentation_models(models: List[tf.keras.models.Model], 
+def evaluate_models(models: List[tf.keras.models.Model], 
         data_generators: list, 
         metrics: List[Callable] = None,
         channel_order: str = 'channels_last'):

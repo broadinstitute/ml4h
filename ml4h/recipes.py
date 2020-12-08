@@ -56,8 +56,8 @@ def run(args):
             compare_multimodal_multitask_models(args)
         elif 'infer' == args.mode:
             infer_multimodal_multitask(args)
-        elif 'evaluate_segmentation' == args.mode:
-            evaluate_segmentation(args)
+        elif 'evaluate_batch' == args.mode:
+            evaluate_batch(args)
         elif 'infer_hidden' == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
         elif 'infer_pixels' == args.mode:
@@ -206,6 +206,7 @@ def _make_tmap_nan_on_fail(tmap):
         try:
             return tmap.tensor_from_file(tm, hd5, dependents)
         except (IndexError, KeyError, ValueError, OSError, RuntimeError):
+            print(f'failure tmap {tm.name}')
             return np.full(shape=tm.shape, fill_value=np.nan)
 
     new_tmap.tensor_from_file = _tff
@@ -216,28 +217,21 @@ def inference_file_name(output_folder: str, id_: str) -> str:
     return os.path.join(output_folder, id_, 'inference_' + id_ + '.tsv')
 
 
-def evaluate_segmentation(args):
-    """Evaluates segmentation performance of one or more input models. The
-    provided models *must* share the same TensorGenerator when using this
-    command-line wrapper. For deep tensors, rank 4 and higher, this approach
-    will quickly deteriorate in performance as each 1-batch will submit a get
-    query to the HDF5 file.
-
-    Evaluations returned are:
-        * Per-model metrics
-        * Per-input metrics (batch-size is 1)
-        * The soft model predictions
-        * The hard model predictions
+def evaluate_batch(args):
+    """Evaluates batch-wise information for a model given the metrics
+    it was compiled with. This temporary function works only with ML4H
+    TensorGenerators.
     """
     # Local includes only required in this case.
     from tensorflow.keras.models import load_model
     from ml4h.metrics import get_metric_dict
     # Local includes only required in this case.
-    from ml4h.evaluate_segmentations import evaluate_segmentation_models
+    from ml4h.evaluate_segmentations import BatchMetricsLogger
 
     args.epochs = 1
 
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
+    # no_fail_tmaps_out = [tmap for tmap in args.tensor_maps_out]
 
     # Possibly load sample information from a provided CSV file
     sample_set = None
@@ -277,36 +271,31 @@ def evaluate_segmentation(args):
         model.summary()
         models.append(model)
         logging.info("Loaded single model from: {}".format(args.model_file))
+        tensor_paths_inferred = set()
+        metrics_dict = {m.name: m for m in model.metrics}
+        logger = BatchMetricsLogger(metrics = metrics_dict)
+        while True:
+            batch = next(generate_test)
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in tensor_paths_inferred:
+                next(generate_test)  # this prints end of epoch info
+                break
+            try:
+                eval = model.evaluate(input_data, output_data, callbacks=[logger], verbose=2)
+            except Exception as e:
+                raise Exception(f'Failed to evaluate model:\n{e}')
+            tensor_paths_inferred.add(tensor_paths[0])
+            logging.info(f"Evaluated {tensor_paths}")
+        logging.info(f"Evaluations completed for: {args.model_file} models.")
+        eval_batch = pd.DataFrame(logger.storage, index = np.arange(len(logger.storage)))
+        prefix = str(args.id) + '__model0'
+        df = pd.DataFrame(eval_batch)
+        df.to_csv(os.path.join(args.output_folder, prefix + '__inference_evaluate_batch.tsv'),sep="\t")
+        logging.info(f"Writing results to {os.path.join(args.output_folder, prefix + '__inference_evaluate_batch.tsv')}")
 
-    
-    # Command-line argument for multiple model file paths
+
     if args.model_files is not None:
-        for m in args.model_files:
-            model = load_model(m, custom_objects=custom_dict)
-            model.summary()
-            logging.info("Loaded model file from: {}".format(m))
-            models.append(model)
-    
-
-    evaluations = evaluate_segmentation_models(models, [generate_test])
-    logging.info(f"Evaluations completed for: {len(models)} models.")
-    #
-    # Returns a list of dicts
-    # ret = {
-    #     'model': model_count,
-    #     'eval': eval,
-    #     'eval_batch': eval_batch,
-    # }
-    for eval in evaluations:
-        df = pd.DataFrame(eval['eval'], index=[eval['model']])
-        df.to_csv(os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate.tsv'),sep="\t")
-        logging.info(f"Writing results to {os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate.tsv')}")
-        df = pd.DataFrame(eval['eval_batch'])
-        df.to_csv(os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate_batch.tsv'),sep="\t")
-        logging.info(f"Writing results to {os.path.join(args.output_folder, args.id + '__' + eval['model'] + '__inference_evaluate_batch.tsv')}")
-    # End
-
-
+        raise NotImplementedError('Multi-model batch evaluations not implemented using the CLI')
 
 
 def infer_multimodal_multitask(args):
@@ -773,6 +762,7 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
             keep_paths=True, 
             mixup=args.mixup_alpha,
         )
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
 
         eval = evaluate_segmentation_models([model], [generate_test])
         logging.info(f"Evaluations completed for model: {model_file}.")
@@ -945,3 +935,4 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
 if __name__ == '__main__':
     arguments = parse_args()
     run(arguments)  # back to the top
+
