@@ -295,40 +295,6 @@ def evaluate_batch(args):
         df.to_csv(os.path.join(args.output_folder, prefix + '__inference_evaluate_batch.tsv'),sep="\t")
         logging.info(f"Writing results to {os.path.join(args.output_folder, prefix + '__inference_evaluate_batch.tsv')}")
 
-        # Static image generation
-        sns.set(font_scale=1.5)
-        for k in eval_batch.columns.values[3:]:
-            with sns.axes_style("whitegrid"):
-                fig, axs = plt.subplots(ncols=3,figsize=(14, 8))
-                data = eval_batch.sort_values(['loss'])
-                sns.scatterplot(np.arange(len(data)),data[k],ax=axs[0],
-                    linewidth=0,size=data.loss,
-                    hue=data['loss'],
-                    palette=sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True),
-                    sizes=(50,250))
-                axs[0].set(xlabel='Rank loss')
-
-                data = eval_batch.sort_values([k])
-                sns.scatterplot(np.arange(len(data)),data[k],ax=axs[1],
-                    linewidth=0,size=data.loss,
-                    hue=data['loss'],
-                    palette=sns.cubehelix_palette(start=.5, rot=-.5, as_cmap=True),
-                    sizes=(50,250))
-                    
-                axs[1].set(xlabel=f'Rank {k}')
-
-                try:
-                    # ignore zero in density plots
-                    pl = eval_batch[k].copy()
-                    pl = pl[pl!=0]
-                    sns.distplot(pl,ax=axs[2],kde_kws=dict(linewidth=3),bins=20)
-                except Exception:
-                    pass
-                axs[2].set(ylabel='Density')
-                plt.savefig(os.path.join(args.output_folder, prefix + f'__inference_evaluate_batch_summary_stats_{k}.png'))
-                logging.info(f"Writing static image to {os.path.join(args.output_folder, prefix + f'__inference_evaluate_batch_summary_stats_{k}.png')}")
-                plt.close()
-
     if args.model_files is not None:
         if len(args.model_files) != 0:
             raise NotImplementedError('Multi-model batch evaluations not implemented using the CLI')

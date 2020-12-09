@@ -44,15 +44,21 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.offset = 0
 
 
-# Given a TensorFlow model, a dictionary of metrics, and a data generator
-# or (x,y) pair, we evaluate the model and return a pair of dictionary for
-# per-batch (n=1) metrics and overall mean metrics.
-# 
-# As a preprocessing step the input `model` must already be re/compiled
-# to use the exact metrics in the `metrics` list.
 def evaluate_collect_metrics(model: tf.keras.models.Model, 
         data_generator: list, 
         metrics = None):
+    """Given a TensorFlow model, a dictionary of metrics, and a data generator
+    or (x,y) pair, we evaluate the model and return a pair of dictionary for
+    per-batch (n=1) metrics and overall mean metrics.
+
+    As a preprocessing step the input `model` must already be re/compiled
+    to use the exact metrics in the `metrics` list.
+
+    Args:
+        model (tf.keras.models.Model): Provided TensorFlow model
+        data_generator (list): One or more data generators
+        metrics (optional): Metrics dictionary or list. Defaults to None.
+    """
     # Reformat metrics list to a metrics dictionary of the form
     # {name: function pointer}.
     if metrics is not None:
@@ -87,6 +93,7 @@ def evaluate_models(models: List[tf.keras.models.Model],
         metrics: List[Callable] = None,
         channel_order: str = 'channels_last'):
     # `metrics` must be either a list of callable metrics functions
+    # or a prepared dictionary of metrics
     if len(models) != len(data_generators):
         if len(data_generators) != 1:
             raise ValueError("Unequal number of models and data generators. Must be equal in numbers or use only a single data generator for all models.")
