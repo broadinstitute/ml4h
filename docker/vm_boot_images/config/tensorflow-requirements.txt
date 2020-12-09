@@ -1,4 +1,4 @@
-scs>=1.1.6,<2.1.2
+scs>=1.1.6,<2.1.0
 numpy==1.18.5
 protobuf==3.13.0
 tensorflow==2.1.2
