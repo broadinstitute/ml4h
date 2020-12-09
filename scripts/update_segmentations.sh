@@ -17,4 +17,4 @@ cnt2=$((VMTAG*STEP+STEP))
 
 /snap/bin/gsutil cp /home/pdiachil/*.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201202-lax-v20201122/
 
-# yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
