@@ -20,12 +20,12 @@ do
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122/csv/
+/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122_nochecks/csv/
 # /snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
 cd /home/pdiachil/projects/chambers
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122/xdmf/
-/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122/log/
+/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122_nochecks/xdmf/
+/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122_nochecks/log/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
