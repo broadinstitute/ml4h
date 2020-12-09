@@ -109,7 +109,7 @@ for i, (sample_id, df_sample_id) in enumerate(df_sax_4ch_petersen.groupby('sampl
                         full_tensor[:png.shape[0], :png.shape[1]] = png[:, :, 0]
                     else:
                         full_tensor[:png.shape[0], :png.shape[1]] = png[:, :]
-                    tensor_name = series + '_annotated_' + str(dcm.instance_number)
+                    tensor_name = f'{series}_annotated_{dcm.instance_number}/{instance}'
                     tp = tensor_path(path_prefix, tensor_name)
                     if tp in hd5_ff:
                         tensor = first_dataset_at_path(hd5_ff, tp)
