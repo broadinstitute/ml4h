@@ -433,8 +433,8 @@ def annotation_to_poisson(
                 if isinstance(channels[projection_ds_idx], list):
                     iou_projection_channel = channels[projection_ds_idx][0]
                 if isinstance(channel, list):
-                    # for channel_elem in channel[1:]:
-                    #     projected_array[projected_array==channel_elem] = channel[0]
+                    for channel_elem in channel[1:]:
+                        projected_array[projected_array==channel_elem] = channel[0]
                     iou_projected_channel = channel[0]
                 iou = intersection_over_union(projection_array, projected_array[:, :, t], iou_projection_channel, iou_projected_channel)
                 if iou < 0.0 :
