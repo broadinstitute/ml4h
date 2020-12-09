@@ -1,9 +1,0 @@
-# These are packages required to install the packages in tensorflow_requirements.txt.
-# pip currently fails to recognize them as necessary for installation.
-cvxopt
-cvxpy>=1.0
-cython>=0.29
-numexpr
-osqp!=0.6.0,!=0.6.1
-pandas>=0.21
-setuptools_scm
