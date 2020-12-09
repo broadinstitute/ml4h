@@ -9,18 +9,18 @@ from ml4h.defines import MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_FRAMES, MRI_PIXEL
 from ml4h.tensormap.ukb.mri import mri_tensor_2d
 
 
-def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, dest_shape=None):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concatenate=False, annotation=False, dest_shape=None):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
-    hd5_path = f'{path_prefix}/{name}/instance_{instance}'
+    hd5_path = f'{path_prefix}/{name}/{instance}/instance_0'
     if annotation:
-        hd5_path = f'{path_prefix}/{name}_1/instance_{instance}'
+        hd5_path = f'{path_prefix}/{name}_1/{instance}/instance_0'
     if (not annotation) and concatenate:
-        hd5_path = f'{path_prefix}/{name}/'
+        hd5_path = f'{path_prefix}/{name}/{instance}'
     if isinstance(hd5[hd5_path], h5py.Group):
         for img in hd5[hd5_path]:
-            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
+            img_shape = hd5[f'{hd5_path}/{img}/instance_0'].shape
             break
         if dest_shape is None:
             dest_shape = (max(img_shape), max(img_shape))
@@ -30,8 +30,8 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
         t = 0
         s = 0
         for img in sorted(hd5[hd5_path], key=int):
-            img_shape = hd5[f'{hd5_path}/{img}/instance_{instance}'].shape
-            arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[f'{hd5_path}/{img}/instance_{instance}']).T
+            img_shape = hd5[f'{hd5_path}/{img}/instance_0'].shape
+            arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[f'{hd5_path}/{img}/instance_0']).T
             t += 1
             if t == MRI_FRAMES:
                 s += 1
@@ -45,7 +45,7 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=0, concate
         arr = np.zeros(shape)
         for t in range(MRI_FRAMES):
             if concatenate:
-                hd5_path = f'{path_prefix}/{name}_{t+1}/instance_{instance}'
+                hd5_path = f'{path_prefix}/{name}_{t+1}/{instance}/instance_0'
                 arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
             else:
                 try:
@@ -62,11 +62,11 @@ def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
     arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate, annotation)
-    width = hd5['_'.join([MRI_PIXEL_WIDTH, view_name])]
-    height = hd5['_'.join([MRI_PIXEL_HEIGHT, view_name])]
-    positions = mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_POSITION, view_name]))
-    orientations = mri_tensor_2d(hd5, '_'.join([MRI_PATIENT_ORIENTATION, view_name]))
-    thickness = hd5['_'.join([MRI_SLICE_THICKNESS, view_name])]
+    width = hd5[f'{MRI_PIXEL_WIDTH}_{view_name}/{instance}']
+    height = hd5[f'{MRI_PIXEL_HEIGHT}_{view_name}/{instance}']
+    positions = mri_tensor_2d(hd5, f'{MRI_PATIENT_POSITION}_{view_name}/{instance}')
+    orientations = mri_tensor_2d(hd5, f'{MRI_PATIENT_ORIENTATION}_{view_name}/{instance}')
+    thickness = hd5[f'{MRI_SLICE_THICKNESS}_{view_name}/{instance}']
     _, dataset_indices, dataset_counts = np.unique(orientations, axis=1, return_index=True, return_counts=True)
     grids = []
     for d_idx, d_cnt in zip(dataset_indices, dataset_counts):
