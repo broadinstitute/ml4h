@@ -41,7 +41,7 @@ class BatchImageAnnotator():
   def __init__(
       self, samples: pd.DataFrame, annotation_categories: List[str] = None,
       zoom: float = 1.5, annotation_storage: AnnotationStorage = TransientAnnotationStorage(),
-      annotator: Type[Annotator] = PolygonAnnotator
+      annotator: Type[Annotator] = PolygonAnnotator,
   ):
     """Initializes an instance of BatchImageAnnotator.
 
@@ -78,9 +78,11 @@ class BatchImageAnnotator():
     self.annotation_widget.submit_button.layout = widgets.Layout(width='300px')
 
     # Restructure the use instructions from the pydoc into a form that displays well as HTML.
-    self.use_instructions = ('<ul><li>' +
-      annotator.__doc__[0:annotator.__doc__.find('Parameters')].strip().replace('\n\n', '</li><li>') +
-      '</li></ul>')
+    self.use_instructions = (
+        '<ul><li>' +
+        annotator.__doc__[0:annotator.__doc__.find('Parameters')].strip().replace('\n\n', '</li><li>') +
+        '</li></ul>'
+    )
 
     self.title_widget = widgets.HTML('')
     self.results_widget = widgets.HTML('')
@@ -96,26 +98,26 @@ class BatchImageAnnotator():
     x_offset, y_offset, _, _ = image_canvas_position
     annotations = []
     for item in data:
-      annotation: Dict[str, Union[List, Tuple]] = {}
+      annotation: Dict[str, Union[List[Tuple[int, int]], Tuple[int, int], Tuple[int, int, int, int], str]] = {}
       annotations.append(annotation)
       for key in item.keys():
         if key == 'points':  # Polygons from PolygonAnnotator
           annotation[key] = [(
-            int((p[0] - x_offset) / self.zoom),
-            int((p[1] - y_offset) / self.zoom),
-            ) for p in item[key]]
+              int((p[0] - x_offset) / self.zoom),
+              int((p[1] - y_offset) / self.zoom),
+          ) for p in item[key]]
         elif key == 'coordinates':  # Points from PointAnnotator
           annotation[key] = (
-                int((item[key][0] - x_offset) / self.zoom),
-                int((item[key][1] - y_offset) / self.zoom),
-            )
+              int((item[key][0] - x_offset) / self.zoom),
+              int((item[key][1] - y_offset) / self.zoom),
+          )
         elif key == 'xyxy':  # Rectangles from BoxAnnotator
           annotation[key] = (
-                int((item[key][0] - x_offset) / self.zoom),
-                int((item[key][1] - y_offset) / self.zoom),
-                int((item[key][2] - x_offset) / self.zoom),
-                int((item[key][3] - y_offset) / self.zoom),
-            )
+              int((item[key][0] - x_offset) / self.zoom),
+              int((item[key][1] - y_offset) / self.zoom),
+              int((item[key][2] - x_offset) / self.zoom),
+              int((item[key][3] - y_offset) / self.zoom),
+          )
         else:
           # Pass all other values through unchanged.
           annotation[key] = item[key]

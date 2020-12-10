@@ -126,7 +126,7 @@ class BigQueryAnnotationStorage(AnnotationStorage):
       or the table does not exist.
     """
     self.table_id = table
-    # Set up biquery client.
+    # Set up BigQuery client.
     self.bqclient = bigquery.Client(credentials=bqmagics.context.credentials)
     # Get the table properties to validate that all is working.
     self.table = self.bqclient.get_table(self.table_id)
