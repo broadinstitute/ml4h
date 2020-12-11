@@ -4,16 +4,21 @@ import pandas as pd
 
 # %%
 df_rv_sax_fastai = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201202-lax-v20201122/all_RV_processed_fastai_sax_v20201202_lax_v20201122.csv')
-# df_rv_sax_ml4h = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-ml4h-v20201203-v20201122-petersen/all_RV_processed_ml4h_v20201203_v20201122.csv')
+df_rv_sax_fastai_nochecks = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201202-lax-v20201122-nochecks/all_RV_processed_fastai_sax_v20201202_lax_v20201122.csv')
+
+# %%
 # for t in range(50):
 #     df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}_v20201124_v20201122_sep'] = df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}']
 #     df_rv_sax_v20201124_lax_v20201122_separation = df_rv_sax_v20201124_lax_v20201122_separation.drop(columns=f'RV_poisson_{t}')
 
-labels = ['v20201202_v20201122', 'v20201203_v20201122']
-surfaces = ['poisson', 'poisson']
-dfs_rv = [df_rv_sax_fastai, df_rv_sax_fastai.copy()]
+labels = ['fastai_v20201202_v20201122']
+surfaces = ['poisson']
+
+dfs_rv = [df_rv_sax_fastai]
 for i, df_rv in enumerate(dfs_rv):
     dfs_rv[i] = df_rv[df_rv['sample_id']!=-1]
+    if 'instance' not in dfs_rv[i]:
+        dfs_rv[i]['instance'] = 2
 
 for label, surface, df_rv in zip(labels, surfaces, dfs_rv):
     keys = [f'RV_{surface}_{d}' for d in range(50)]
@@ -28,8 +33,6 @@ for df_rv, label_right in zip(dfs_rv[1:], labels[1:]):
     df_all = df_all.merge(df_rv, on='sample_id', suffixes=(f'_{label_left}', f'_{label_right}'))
     label_left = label_right
 
-
-
 # %%
 keys = []
 for label, surface in zip(labels, surfaces):
@@ -40,6 +43,27 @@ for label, surface, key in zip(labels, surfaces, keys):
     df_all[f'RVEDV_{surface}_{label}'] = df_all[key].max(axis=1)
     df_all[f'RVESV_{surface}_{label}'] = df_all[key].min(axis=1)
     df_all[f'RVEF_{surface}_{label}'] = (df_all[f'RVEDV_{surface}_{label}'] - df_all[f'RVESV_{surface}_{label}']) / df_all[f'RVEDV_{surface}_{label}'] * 100.
+
+# %%
+import scipy.stats
+import seaborn as sns
+import matplotlib.pyplot as plt
+# labels += ['mean']
+# surfaces += ['poisson']
+subset = [f'RVESV_poisson_{label}' for label in labels]
+subset += [f'RVEDV_poisson_{label}' for label in labels]
+subset += [f'RVEF_poisson_{label}' for label in labels]
+
+df_inuse = df_all.dropna(subset=subset)
+for feat in subset[:-1]:
+    df_inuse = df_inuse[df_inuse[feat] < 500]
+    df_inuse = df_inuse[df_inuse[feat] > 10]
+df_inuse.to_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201202-lax-v20201122/all_cleaned_RV_processed_fastai_sax_v20201202_lax_v20201122.csv', index=False)
+
+f, ax = plt.subplots(3, 1)
+sns.distplot(df_inuse[f'RVESV_poisson_{labels[0]}'], kde=False, ax=ax[0])
+sns.distplot(df_inuse[f'RVEDV_poisson_{labels[0]}'], kde=False, ax=ax[1])
+sns.distplot(df_inuse[f'RVEF_poisson_{labels[0]}'], kde=False, ax=ax[2])
 # %%
 # df_all['RVEDV_poisson_mean'] = 0.5*(df_all[f'RVEDV_poisson_{labels[0]}'] + df_all[f'RVEDV_poisson_{labels[1]}'])
 # df_all['RVESV_poisson_mean'] = 0.5*(df_all[f'RVESV_poisson_{labels[0]}'] + df_all[f'RVESV_poisson_{labels[1]}'])
@@ -47,6 +71,7 @@ for label, surface, key in zip(labels, surfaces, keys):
 
 df_petersen = pd.read_csv('returned_lv_mass.tsv', sep='\t')
 df_all_petersen = df_petersen.merge(df_all[df_all[f'instance_{labels[0]}']==2], on='sample_id')
+
 
 
 # %%
