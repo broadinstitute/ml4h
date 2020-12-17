@@ -382,19 +382,25 @@ def ingest_mri_dicoms(
         # Generate stacks of 2D images into 3D tensors
         for s in series:
             t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
-            compressed_data   = blosc.compress(t.tobytes(), typesize=2, cname='zstd', clevel=9)
-            hash_uncompressed = xxhash.xxh128_digest(t)
-            hash_compressed   = xxhash.xxh128_digest(compressed_data)
-            decompressed = np.frombuffer(blosc.decompress(compressed_data),dtype=np.uint16).reshape(t.shape)
-            assert(xxhash.xxh128_digest(decompressed) == hash_uncompressed)
-            dset = f.create_dataset(f"/instance/{instance}/series/{s}", data=np.void(compressed_data))
-            # Store meta data:
-            # 1) Shape of the original tensor
-            # 2) Hash of the compressed data
-            # 3) Hash of the uncompressed data
-            dset.attrs['shape'] = t.shape
-            dset.attrs['hash_compressed']   = np.void(hash_compressed)
-            dset.attrs['hash_uncompressed'] = np.void(hash_uncompressed)
+            hd5_path = f"/instance/{instance}/series/{s}"
+            compress_and_store(f, t, hd5_path)
+
+
+def compress_and_store(hd5: h5py.File, data: np.ndarray, hd5_path: str):
+    data = data.copy(order='C')  # required for xxhash
+    compressed_data   = blosc.compress(data.tobytes(), typesize=2, cname='zstd', clevel=9)
+    hash_uncompressed = xxhash.xxh128_digest(data)
+    hash_compressed   = xxhash.xxh128_digest(compressed_data)
+    decompressed = np.frombuffer(blosc.decompress(compressed_data),dtype=np.uint16).reshape(data.shape)
+    assert(xxhash.xxh128_digest(decompressed) == hash_uncompressed)
+    dset = hd5.create_dataset(hd5_path, data=np.void(compressed_data))
+    # Store meta data:
+    # 1) Shape of the original tensor
+    # 2) Hash of the compressed data
+    # 3) Hash of the uncompressed data
+    dset.attrs['shape'] = data.shape
+    dset.attrs['hash_compressed']   = np.void(hash_compressed)
+    dset.attrs['hash_uncompressed'] = np.void(hash_uncompressed)
 
 
 def read_compressed(data_set: h5py.Dataset):
