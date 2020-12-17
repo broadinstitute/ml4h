@@ -405,4 +405,4 @@ def compress_and_store(hd5: h5py.File, data: np.ndarray, hd5_path: str):
 
 def read_compressed(data_set: h5py.Dataset):
     shape = data_set.attrs['shape']
-    return np.frombuffer(blosc.decompress(data_set), dtype=np.uint16).reshape(shape)
+    return np.frombuffer(blosc.decompress(data_set[()]), dtype=np.uint16).reshape(shape)
