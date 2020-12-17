@@ -10,7 +10,7 @@ import pandas as pd
 from fastparquet import ParquetFile
 import matplotlib.pyplot as plt
 
-from .ingest_mri import compress_and_store, read_compressed
+from ingest_mri import compress_and_store, read_compressed
 
 
 def project(x):
