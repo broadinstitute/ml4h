@@ -749,12 +749,13 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: Un
             idx = lead_start + lead_index * lead_words + (key_idx-1)*2+1
             if matrix[idx] > 32765:
                 matrix_values.append(np.nan)
-            matrix_values.append(matrix[idx])
+            else:
+                matrix_values.append(matrix[idx])
         return max(matrix_values)        
     else:
         idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
     value = np.nan if matrix[idx] > 32765 else matrix[idx]
-    return matrix[idx]
+    return value
 
 
 def make_measurement_matrix_from_file(key_idx: int, lead_idx: Union[int, List[int]] = None):
@@ -903,23 +904,30 @@ def make_mgb_ecg_lvh_tensormaps(needed_name: str):
             criteria_sleads = {lead: _get_measurement_matrix_entry(matrix, measurement_matrix_lead_measures['samp'], measurement_matrix_leads[lead]) for lead in sleads}
             criteria_rleads = {lead: _get_measurement_matrix_entry(matrix, measurement_matrix_lead_measures['ramp'], measurement_matrix_leads[lead]) for lead in rleads}
             if 'avl_lvh' in tm.name:
-                is_lvh = criteria_rleads['aVL'] > avl_min
+                is_lvh = np.nan if np.isnan(criteria_rleads['aVL']) else criteria_rleads['aVL'] > avl_min
             elif 'sokolow_lyon_lvh' in tm.name:
-                is_lvh = criteria_sleads['V1'] + np.maximum(criteria_rleads['V5'], criteria_rleads['V6']) > sl_min
+                criteria_sum = criteria_sleads['V1'] + np.maximum(criteria_rleads['V5'], criteria_rleads['V6'])
+                is_lvh = np.nan if np.isnan(criteria_sum) else criteria_sum > sl_min
             elif 'cornell_lvh' in tm.name:
                 is_lvh = criteria_rleads['aVL'] + criteria_sleads['V3']
                 sex_path = _make_hd5_path(tm, ecg_date, 'gender')
                 is_female = 'female' in decompress_data(data_compressed=hd5[sex_path][()], dtype=hd5[sex_path].attrs['dtype'])
                 if is_female:
-                    is_lvh = is_lvh > cornell_female_min
+                    is_lvh = np.nan if np.isnan(is_lvh) else is_lvh > cornell_female_min
                 else:
-                    is_lvh = is_lvh > cornell_male_min
+                    is_lvh = np.nan if np.isnan(is_lvh) else is_lvh > cornell_male_min
             else:
                 raise ValueError(f'{tm.name} criterion for LVH is not accounted for')
             # Following convention from categorical TMAPS, positive has cmap index 1
-            index = 1 if is_lvh else 0
-            slices = (i, index) if dynamic else (index,)
-            tensor[slices] = 1.0
+            if np.isnan(is_lvh):
+                if dynamic:
+                    tensor[i, :] = np.nan
+                else:
+                    tensor[:] = np.nan
+            else:
+                index = 1 if is_lvh else 0
+                slices = (i, index) if dynamic else (index,)
+                tensor[slices] = 1.0
         return tensor
 
     for criterion in ['avl_lvh', 'sokolow_lyon_lvh', 'cornell_lvh']:
