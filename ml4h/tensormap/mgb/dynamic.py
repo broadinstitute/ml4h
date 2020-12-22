@@ -911,7 +911,7 @@ def make_mgb_ecg_lvh_tensormaps(needed_name: str):
             elif 'cornell_lvh' in tm.name:
                 is_lvh = criteria_rleads['aVL'] + criteria_sleads['V3']
                 sex_path = _make_hd5_path(tm, ecg_date, 'gender')
-                is_female = 'female' in decompress_data(data_compressed=hd5[sex_path][()], dtype=hd5[sex_path].attrs['dtype'])
+                is_female = 'female' in decompress_data(data_compressed=hd5[sex_path][()], dtype='str').lower()
                 if is_female:
                     is_lvh = np.nan if np.isnan(is_lvh) else is_lvh > cornell_female_min
                 else:
