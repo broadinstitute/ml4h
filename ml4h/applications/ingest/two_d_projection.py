@@ -92,15 +92,22 @@ def build_projections(data: Dict[int, np.ndarray], meta_data: pd.DataFrame) -> D
     :param meta_data: meta data loaded from parquet file
     :return: {series type: coronal projection}
     """
+    # stations are differently scaled on the z-axis
     station_z_scales = 3.0, 4.5, 4.5, 4.5, 3.5, 4.0
     station_z_scales = [scale / 3 for scale in station_z_scales]
 
     z_pos = meta_data.groupby('series_number')['image_position_z'].agg(['min', 'max'])
-    projections = {}
     slices = build_z_slices(
         [data[i].shape[-1] for i in range(1, 25, 4)],
         [z_pos.loc[i] for i in range(1, 25, 4)],
     )
+
+    # keep track of where stations are connected
+    horizontal_lines = [(idx.stop - idx.start) * scale for idx, scale in zip(slices, station_z_scales)]
+    horizontal_lines = np.cumsum(horizontal_lines).astype(np.uint16)[:-1]
+    projections = {'horizontal_line_idx': horizontal_lines}
+
+    # build coronal and sagittal projections
     for type_idx, series_type_name in zip(range(4), ('in', 'opp', 'f', 'w')):
         coronal_to_stack = []
         sagittal_to_stack = []
@@ -109,10 +116,10 @@ def build_projections(data: Dict[int, np.ndarray], meta_data: pd.DataFrame) -> D
             station_slice = slices[station_idx // 4]
             scale = station_z_scales[station_idx // 4]
             coronal = project_coronal(data[series_num][..., station_slice])
-            coronal = zoom(coronal, (scale, 1.), order=1)
+            coronal = zoom(coronal, (scale, 1.), order=1)  # account for z axis scaling
             coronal_to_stack.append(coronal)
             sagittal = project_sagittal(data[series_num][..., station_slice])
-            sagittal = zoom(sagittal, (scale, 1.), order=1)
+            sagittal = zoom(sagittal, (scale, 1.), order=1)  # account for z axis scaling
             sagittal_to_stack.append(sagittal)
 
         projections[f'{series_type_name}_coronal'] = normalize(stack(coronal_to_stack))
@@ -130,14 +137,19 @@ def visualize_projections(
     fig, (axes1, axes2) = plt.subplots(2, 4, figsize=(w // 40, h // 40))
     cor = sorted(name for name in projections if 'cor' in name)
     sag = sorted(name for name in projections if 'sag' in name)
+    horiz = projections['horizontal_line_idx']
     for ax, name in zip(axes1, cor):
         ax.set_title(name)
         ax.set_axis_off()
         ax.imshow(projections[name], cmap='gray')
+        for height in horiz:
+            ax.axhline(height, c='r', linestyle='--')
     for ax, name in zip(axes2, sag):
         ax.set_title(name)
         ax.set_axis_off()
         ax.imshow(projections[name], cmap='gray')
+        for height in horiz:
+            ax.axhline(height, c='r', linestyle='--')
     fig.savefig(output_path, bbox_inches='tight', pad_inches=0)
 
 
