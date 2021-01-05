@@ -122,6 +122,7 @@ for i, hd5 in enumerate(hd5s):
                     #     _mri_hd5_to_structured_grids(
                     #         ff_trad, view_format_string.format(view=view),
                     #         view_name=view_format_string.format(view=view),
+                    #         instance=instance,
                     #         concatenate=False, annotation=False,
                     #         save_path=None, order='F',
                     #     )[0],
@@ -161,6 +162,7 @@ for i, hd5 in enumerate(hd5s):
                     annot_datasets, channel, views,
                     annot_time_format_string,
                     range(MRI_FRAMES), 0,
+                    save_path='/home/pdiachil/ml/1000107_normals'
                 )
                 atria, volumes = clip_by_separation_plane(annot_datasets[0], 
                                                         annot_datasets[1:3],
@@ -179,7 +181,7 @@ for i, hd5 in enumerate(hd5s):
                 end_time = time.time()
                 logging.info(f'Job for {sample_id} instance {instance} completed. Time elapsed: {end_time-start_time:.0f} s')
                 start_time = time.time()
-    except Exception as e:
+    except FutureWarning as e:
         logging.info(f'Caught exception at {sample_id}: {e}')
         continue
     
