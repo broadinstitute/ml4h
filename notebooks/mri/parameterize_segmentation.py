@@ -90,9 +90,9 @@ def clip_by_separation_plane(lax_dataset, sax_datasets, channels, polydatas):
         cutter.SetClippingPlanes(plane_collection)
         cutter.Update()
         
-        smooth = improve_mesh_ACVD(cutter.GetOutput())
+        # smooth = improve_mesh_ACVD(cutter.GetOutput())
 
-        clipped_polydatas.append(smooth)
+        clipped_polydatas.append(cutter.GetOutput())
         clipped_volumes.append(polydata_to_volume(clipped_polydatas[-1]))
 
     return clipped_polydatas, clipped_volumes
@@ -250,7 +250,7 @@ def points_normals_to_poisson(
     connectivity.SetExtractionModeToLargestRegion()
     connectivity.Update()
 
-    return improve_mesh_ACVD(connectivity.GetOutput())
+    return connectivity.GetOutput()
 
 
 def _error_projection(
