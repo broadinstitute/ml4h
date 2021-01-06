@@ -164,6 +164,10 @@ for i, hd5 in enumerate(hd5s):
                     range(MRI_FRAMES), 0,
                     save_path='/home/pdiachil/ml/1000107_normals'
                 )
+                for t, atrium in enumerate(atria):
+                    write_footer = True if t == MRI_FRAMES-1 else False
+                    append = False if t == 0 else True
+                    to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_preclip_{version}_{chamber}_{sample_id}_{instance}', append=append, append_time=t, write_footer=write_footer)
                 atria, volumes = clip_by_separation_plane(annot_datasets[0], 
                                                         annot_datasets[1:3],
                                                         [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['RV_cavity'], 
