@@ -4,17 +4,17 @@ import pandas as pd
 
 # %%
 df_rv_sax_fastai = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201202-lax-v20201122/all_RV_processed_fastai_sax_v20201202_lax_v20201122.csv')
-df_rv_sax_fastai_nochecks = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201202-lax-v20201122-nochecks/all_RV_processed_fastai_sax_v20201202_lax_v20201122.csv')
+df_rv_sax_fastai_nochecks = pd.read_csv('/home/pdiachil/projects/surface_reconstruction/sax-v20201202-lax-v20201122-nochecks-flatnormals/all_RV_processed_fastai_sax_v20201202_lax_v20201122.csv')
 
 # %%
 # for t in range(50):
 #     df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}_v20201124_v20201122_sep'] = df_rv_sax_v20201124_lax_v20201122_separation[f'RV_poisson_{t}']
 #     df_rv_sax_v20201124_lax_v20201122_separation = df_rv_sax_v20201124_lax_v20201122_separation.drop(columns=f'RV_poisson_{t}')
 
-labels = ['fastai_v20201202_v20201122']
-surfaces = ['poisson']
+labels = ['fastai_v20201202_v20201122', 'fastai_v20201202_v20201122_nochecks_flatnormals']
+surfaces = ['poisson', 'poisson']
 
-dfs_rv = [df_rv_sax_fastai]
+dfs_rv = [df_rv_sax_fastai, df_rv_sax_fastai_nochecks]
 for i, df_rv in enumerate(dfs_rv):
     dfs_rv[i] = df_rv[df_rv['sample_id']!=-1]
     if 'instance' not in dfs_rv[i]:
