@@ -15,11 +15,11 @@ import sys
 import os
 import pandas as pd
 
-# start_id = int(sys.argv[1])
-# stop_id = int(sys.argv[2])
+start_id = int(sys.argv[1])
+stop_id = int(sys.argv[2])
 
-start_id = 73
-stop_id = 80
+# start_id = 73
+# stop_id = 80
 
 manifest = open('/home/pdiachil/projects/manifests/lvot_diameters.csv')
 results_dic = {'sample_id': [], 'instance': [], 'nset': [], 'frame': [], 'fname': []}
