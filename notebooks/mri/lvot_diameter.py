@@ -37,6 +37,7 @@ for pat_i, sample_id_line in enumerate(manifest):
     lvot_file = sample_file.replace('.overlay.tar.gz\n', '')
 
     sample_id, _, instance, nset = map(int, lvot_file.split('_'))
+    print(pat_i, sample_id)
     start_time = time.time()
     storage_client = storage.Client('broad-ml4cvd')
     bucket = storage_client.get_bucket('ml4cvd')
@@ -97,7 +98,11 @@ for pat_i, sample_id_line in enumerate(manifest):
                 normal_img = skimage.morphology.binary_dilation(normal_img, selem=np.ones((2,2),dtype=np.int))
                 normal_imgs.append(normal_img)
                 boundary_normal = np.argwhere((boundaries.astype(int)+normal_img) > 1.5)
-                boundary_normals.append(boundary_normal[[0, -1]])
+                try:
+                    boundary_normals.append(boundary_normal[[0, -1]])
+                except IndexError:
+                    boundary_normal = -1.0*np.ones((2, 2))
+                    boundary_normals.append(boundary_normal[[0, -1]])
                 for ib, point in enumerate(boundary_normal[[0, -1]]):
                     results_dic[f'{col_name}_{ib}_r'].append(point[0]/2.0)
                     results_dic[f'{col_name}_{ib}_c'].append(point[1]/2.0)
