@@ -11,27 +11,50 @@ import tarfile
 import imageio
 from google.cloud import storage
 import time
+import sys
+import os
+import pandas as pd
 
-# %%
-sample_ids=[1000107, 1000169, 1000336, 1000387]
-for sample_id in sample_ids:
+start_id = int(sys.argv[1])
+stop_id = start_id + int(sys.argv[2])
+
+manifest = open('/home/pdiachil/projects/manifests/lvot_diameters.csv')
+results_dic = {'sample_id': [], 'instance': [], 'nset': [], 'frame': [], 'fname': []}
+
+for col in ['lvot', 'aortic_root', 'ascending_aorta']:
+    for end in ['0', '1']:
+        for coor in ['r', 'c']:
+            results_dic[f'{col}_{end}_{coor}'] = []
+
+for pat_i, sample_id_line in enumerate(manifest):
+    if pat_i < start_id:
+        continue
+    if pat_i == stop_id:
+        break
+    
+    sample_dir, sample_file = os.path.split(sample_id_line)
+    lvot_path = sample_dir.replace('gs://ml4cvd/', '')
+    lvot_file = sample_file.replace('.overlay.tar.gz\n', '')
+
+    sample_id, _, instance, nset = map(int, lvot_file.split('_'))
     start_time = time.time()
     storage_client = storage.Client('broad-ml4cvd')
     bucket = storage_client.get_bucket('ml4cvd')
-    segmented_lvot = f'jamesp/annotation/lvot/v20201210/apply/v1/output/overlay/{sample_id}_20212_2_0.overlay.tar.gz'
+    segmented_lvot = f'{lvot_path}/{sample_id}_20212_{instance}_{nset}.overlay.tar.gz'
     blob = bucket.blob(segmented_lvot)
     blob.download_to_filename('lvot.tar.gz')
     with tarfile.open('lvot.tar.gz', 'r:gz') as tar:   
-
         imgs = tar.getmembers()
-        for img_n, img_filename in enumerate(imgs):
-            img_file = tar.extractfile(img_filename)
-            img = imageio.imread(img_file)
-                
+        names = tar.getnames()
+        for img_n, (img_info, img_name) in enumerate(zip(imgs, names)):
+            results_dic['sample_id'].append(sample_id)
+            results_dic['instance'].append(instance)
+            results_dic['nset'].append(nset)
+            results_dic['frame'].append(img_n)
+            results_dic['fname'].append(img_name)
+            img_file = tar.extractfile(img_info)
+            img = imageio.imread(img_file)                
             img = np.asarray(img, dtype=int)
-            # img = skimage.transform.rescale(img, 2, order=0, preserve_range=True)
-            # img = np.asarray(img, dtype=int)
-
             img_bin = np.logical_or(img==11, img==7)
             img_bin = np.logical_or(img_bin, img==8)
             img_bin = np.logical_or(img_bin, img==6)
@@ -40,12 +63,10 @@ for sample_id in sample_ids:
             img = skimage.transform.rescale(img, 2, order=0, preserve_range=True)
             img_bin = skimage.transform.rescale(img_bin, 2, order=0, preserve_range=True)
             arg_skeleton = np.argwhere(skeleton)
-            # arg_skeleton[:, 0] = np.convolve(arg_skeleton[:, 0], np.ones(10), 'same')/10
-            # arg_skeleton[:, 1] = np.convolve(arg_skeleton[:, 1], np.ones(10), 'same')/10
             boundary_normals = []
             normal_imgs = []
             centroids = []
-            for col in [11, 7, 8]:
+            for col_name, col in zip(['lvot', 'aortic_root', 'ascending_aorta'], [11, 7, 8]):
                 boundaries = find_boundaries(img==col, mode='inner')
                 img_lvot = np.asarray(img==col, dtype=int)
                 props = regionprops(img_lvot)
@@ -54,9 +75,7 @@ for sample_id in sample_ids:
                 idx = np.argmin(np.linalg.norm(arg_skeleton-centroid, axis=1))
                 centroid = arg_skeleton[idx]
                 centroids.append(centroid)
-                # f, ax = plt.subplots()
-                # ax.imshow(skeleton)
-                # ax.plot(centroid[1], centroid[0], 'rx')
+
                 dist_centroid = np.linalg.norm(arg_skeleton-centroid, axis=1)                
                 arg_dist_centroid = np.where(np.logical_and(dist_centroid<20.0, dist_centroid>0.001))[0]
 
@@ -79,6 +98,9 @@ for sample_id in sample_ids:
                 normal_imgs.append(normal_img)
                 boundary_normal = np.argwhere((boundaries.astype(int)+normal_img) > 1.5)
                 boundary_normals.append(boundary_normal[[0, -1]])
+                for ib, point in enumerate(boundary_normal[[0, -1]]):
+                    results_dic[f'{col_name}_{ib}_r'].append(point[0]/2.0)
+                    results_dic[f'{col_name}_{ib}_c'].append(point[1]/2.0)
             f, ax = plt.subplots()
             f.set_size_inches(9, 9)
             ax.imshow(normal_imgs[0]*5
@@ -93,13 +115,15 @@ for sample_id in sample_ids:
             ax.plot(centroids[1][1], centroids[1][0], 'rx')
             ax.plot(centroids[2][1], centroids[2][0], 'rx')
             f.savefig(f'{img_n}.png')
+            plt.close(f)
         
-        with imageio.get_writer(f'/home/pdiachil/projects/chambers/{sample_id}.gif', mode='I') as writer:
+        with imageio.get_writer(f'/home/pdiachil/projects/chambers/{sample_id}_{instance}_{nset}.gif', mode='I') as writer:
             for i in range(img_n):
                 image = imageio.imread(f'{i}.png')
                 writer.append_data(image)
     end_time = time.time()
     print(end_time - start_time)
 # %%
-
+results = pd.DataFrame(results_dic)
+results.to_csv(f'/home/pdiachil/projects/chambers/lvot_diameter_{start_id}_{stop_id}.csv', index=False)
 # %%
