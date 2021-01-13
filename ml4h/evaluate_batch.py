@@ -18,14 +18,6 @@ class BatchMetricsLogger(Callback):
 
 
 class DataGenerator(tf.keras.utils.Sequence):
-    """Workaround for using infinite ML4H generators with Keras/Tensorflow 
-    generators. The ML4H TensorGenerator is very brittle: use at your own
-    risk! ANY ML4H iterator that returns null/nan will break this approach.
-
-    Args:
-        files: Files operated on by TensorGenerator.
-        tensor_generator: ML4h TensorGenerator instance.
-    """
     def __init__(self, files, tensor_generator: TensorGenerator):
         self.files = files
         self.generator = tensor_generator
@@ -47,18 +39,6 @@ class DataGenerator(tf.keras.utils.Sequence):
 def evaluate_collect_metrics(model: tf.keras.models.Model, 
         data_generator: list, 
         metrics = None):
-    """Given a TensorFlow model, a dictionary of metrics, and a data generator
-    or (x,y) pair, we evaluate the model and return a pair of dictionary for
-    per-batch (n=1) metrics and overall mean metrics.
-
-    As a preprocessing step the input `model` must already be re/compiled
-    to use the exact metrics in the `metrics` list.
-
-    Args:
-        model (tf.keras.models.Model): Provided TensorFlow model
-        data_generator (list): One or more data generators
-        metrics (optional): Metrics dictionary or list. Defaults to None.
-    """
     # Reformat metrics list to a metrics dictionary of the form
     # {name: function pointer}.
     if metrics is not None:
@@ -85,7 +65,7 @@ def evaluate_collect_metrics(model: tf.keras.models.Model,
     # Workaround for old Keras
     eval = {out: eval[i] for i, out in enumerate(model.metrics_names)}
     eval = pd.DataFrame(eval,index=[0])
-    return eval, eval_batch#, prediction_prob, predictions
+    return eval, eval_batch
 
 
 def evaluate_models(models: List[tf.keras.models.Model], 
@@ -124,9 +104,7 @@ def evaluate_models(models: List[tf.keras.models.Model],
             files = np.array([p.paths for p in g.path_iters]).flatten()
             g = DataGenerator(files, g)
             is_ml4h = True
-        else: # yolo
-            pass
-        # 
+        
         eval, eval_batch = evaluate_collect_metrics(m, g, metrics_dict)
 
         if is_ml4h:

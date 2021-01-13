@@ -260,7 +260,6 @@ def evaluate_batch(args):
         num_workers=0,
         mixup=args.mixup_alpha,
     )
-    # generate_test.set_worker_paths(tensor_paths)
 
     custom_dict = get_metric_dict(no_fail_tmaps_out)
     from tensorflow_addons.optimizers import RectifiedAdam
@@ -742,7 +741,7 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
             }
     """
     # Local includes only required in this case.
-    from ml4h.evaluate_segmentations import evaluate_segmentation_models
+    from ml4h.evaluate_batch import evaluate_models
 
     old_epoch = args.epochs
     args.epochs = 1
@@ -764,9 +763,8 @@ def _get_segmentation_evaluations(args, models_inputs_outputs, input_data, outpu
             keep_paths=True, 
             mixup=args.mixup_alpha,
         )
-        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
 
-        eval = evaluate_segmentation_models([model], [generate_test])
+        eval = evaluate_models([model], [generate_test])
         logging.info(f"Evaluations completed for model: {model_file}.")
         evaluations.append(eval)
 
