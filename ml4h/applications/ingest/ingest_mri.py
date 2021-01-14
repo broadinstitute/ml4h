@@ -83,6 +83,7 @@ def multiprocess_ingest(
     destination: str,
 ):
     print(f'Beginning ingestion of {len(files)} MRIs.')
+    os.makedirs(destination, exist_ok=True)
     start = time.time()
     # partition files by sample id so no race conditions across workers due to multiple instances
     split_files = _partition_files(files, cpu_count())
@@ -372,18 +373,18 @@ def ingest_mri_dicoms(
     object_columns = sample_manifest.select_dtypes('object')  # all columns where we haven't handled the datatype must be converted to strings
     for col in object_columns:
         sample_manifest[col] = sample_manifest[col].astype('str')
-    sample_manifest.to_parquet(os.path.join(destination, f"{output_name}.pq"), compression='zstd')
+    sample_manifest.to_parquet(os.path.join(destination, f"{output_name}_{instance}.pq"), compression='zstd')
 
     # Open HDF5 for storing the tensors
-    series = set(SERIES_TO_SAVE).intersection(sample_manifest['series_number'])
-    if not series:
-        raise ValueError('No series to save.')
-    with h5py.File(os.path.join(destination,f"{output_name + file_extension}"), "a") as f:
-        # Generate stacks of 2D images into 3D tensors
-        for s in series:
-            t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
-            hd5_path = f"/instance/{instance}/series/{s}"
-            compress_and_store(f, t, hd5_path)
+    # series = set(SERIES_TO_SAVE).intersection(sample_manifest['series_number'])
+    # if not series:
+    #     raise ValueError('No series to save.')
+    # with h5py.File(os.path.join(destination,f"{output_name + file_extension}"), "a") as f:
+    #     # Generate stacks of 2D images into 3D tensors
+    #     for s in series:
+    #         t = np.stack(pixel_data[sample_manifest.loc[sample_manifest['series_number']==s].index],axis=2)
+    #         hd5_path = f"/instance/{instance}/series/{s}"
+    #         compress_and_store(f, t, hd5_path)
 
 
 def compress_and_store(hd5: h5py.File, data: np.ndarray, hd5_path: str):
