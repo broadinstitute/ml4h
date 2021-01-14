@@ -155,22 +155,21 @@ def visualize_projections(
 
 def build_projection_hd5(
         old_hd5_path: str,
-        old_parquet_path: str,
         output_folder: str,
 ):
     new_path = os.path.join(output_folder, os.path.basename(old_hd5_path))
-    meta = ParquetFile(old_parquet_path).to_pandas()
-    with h5py.File(old_hd5_path, 'r') as old_hd5, h5py.File(new_path, 'w') as new_hd5:
-        if len(old_hd5['instance']) != 1:
-            raise ValueError('Meta data was not stored correctly for multi-instance data.')
+    with h5py.File(old_hd5_path, 'r') as old_hd5:
         for instance in old_hd5['instance']:
             data = {
                 int(name): read_compressed(old_hd5[f'instance/{instance}/series/{name}'])
                 for name in old_hd5[f'instance/{instance}/series']
             }
+            meta_path = old_hd5_path.replace('.h5', f'_{instance}.pq')
+            meta = ParquetFile(meta_path).to_pandas()
             projection = build_projections(data, meta)
-            for name, im in projection.items():
-                compress_and_store(new_hd5, im, f'instance/{instance}/{name}')
+            with h5py.File(new_path, 'a') as new_hd5:
+                for name, im in projection.items():
+                    compress_and_store(new_hd5, im, f'instance/{instance}/{name}')
 
 
 def _build_projection_hd5s(hd5_files: List[str], destination: str):
@@ -178,9 +177,8 @@ def _build_projection_hd5s(hd5_files: List[str], destination: str):
     name = os.getpid()
     print(f'Starting process {name} with {len(hd5_files)} files')
     for i, path in enumerate(hd5_files):
-        pq_path = path.replace('.h5', '.pq')
         try:
-            build_projection_hd5(path, pq_path, destination)
+            build_projection_hd5(path, destination)
         except Exception as e:
             errors[path] = str(e)
         if len(hd5_files) % max(i // 10, 1) == 0:
