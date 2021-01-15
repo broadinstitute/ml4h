@@ -155,16 +155,18 @@ def visualize_projections(
 
 def build_projection_hd5(
         old_hd5_path: str,
+        pq_base_path: str,
         output_folder: str,
 ):
     new_path = os.path.join(output_folder, os.path.basename(old_hd5_path))
+    sample_id = os.path.splitext(os.path.basename(old_hd5_path))[0]
     with h5py.File(old_hd5_path, 'r') as old_hd5:
         for instance in old_hd5['instance']:
             data = {
                 int(name): read_compressed(old_hd5[f'instance/{instance}/series/{name}'])
                 for name in old_hd5[f'instance/{instance}/series']
             }
-            meta_path = old_hd5_path.replace('.h5', f'_{instance}.pq')
+            meta_path = os.path.join(pq_base_path, f'{sample_id}_{instance}.pq')
             meta = ParquetFile(meta_path).to_pandas()
             projection = build_projections(data, meta)
             with h5py.File(new_path, 'a') as new_hd5:
@@ -172,13 +174,13 @@ def build_projection_hd5(
                     compress_and_store(new_hd5, im, f'instance/{instance}/{name}')
 
 
-def _build_projection_hd5s(hd5_files: List[str], destination: str):
+def _build_projection_hd5s(hd5_files: List[str], pq_base_path: str, destination: str):
     errors = {}
     name = os.getpid()
     print(f'Starting process {name} with {len(hd5_files)} files')
     for i, path in enumerate(hd5_files):
         try:
-            build_projection_hd5(path, destination)
+            build_projection_hd5(path, pq_base_path, destination)
         except Exception as e:
             errors[path] = str(e)
         if len(hd5_files) % max(i // 10, 1) == 0:
@@ -188,6 +190,7 @@ def _build_projection_hd5s(hd5_files: List[str], destination: str):
 
 def multiprocess_project(
     hd5_files: List[str],
+    pq_base_path: str,
     destination: str,
 ):
     os.makedirs(destination, exist_ok=True)
@@ -196,7 +199,7 @@ def multiprocess_project(
     start = time.time()
     errors = {}
     with Pool(cpu_count()) as pool:
-        results = [pool.apply_async(_build_projection_hd5s, (split, destination)) for split in split_files]
+        results = [pool.apply_async(_build_projection_hd5s, (split, pq_base_path, destination)) for split in split_files]
         for result in results:
             errors.update(result.get())
     delta = time.time() - start
