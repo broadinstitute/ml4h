@@ -80,6 +80,15 @@ class ResidualUnit(keras.layers.Layer):
             self.skip_layers = [
                 keras.layers.Conv1D(filters, 1, strides=strides, padding='same', use_bias=False),
                 keras.layers.BatchNormalization()]
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'activation': self.activation,
+            'main_layers': self.main_layers,
+            'skip_layers': self.skip_layers
+        })
+        return config
             
     def call(self, inputs):
         Z = inputs
