@@ -28,6 +28,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
+# TODO: tf 2.3++
 #from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
@@ -356,20 +357,20 @@ Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tenso
 BottleNeck = Callable[[Dict[TensorMap, Tensor]], Dict[TensorMap, Tensor]]
 Block = Callable[[Tensor, Dict[TensorMap, List[Tensor]]], Tensor]
 
-
-class PreprocessBlock:
-    def __init__(
-            self,
-            *,
-            augmentations: List[str],
-            factors: List[float],
-    ):
-        self.preprocess = [PREPROCESS_CLASSES[augmenter](factor) for augmenter, factor in zip(augmentations, factors)]
-
-    def __call__(self, x: Tensor) -> Tensor:
-        for augmentation in self.preprocess:
-            x = augmentation(x)
-        return x
+# TODO: tf 2.3++
+# class PreprocessBlock:
+#     def __init__(
+#             self,
+#             *,
+#             augmentations: List[str],
+#             factors: List[float],
+#     ):
+#         self.preprocess = [PREPROCESS_CLASSES[augmenter](factor) for augmenter, factor in zip(augmentations, factors)]
+#
+#     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+#         for augmentation in self.preprocess:
+#             x = augmentation(x)
+#         return x
 
 
 class ResidualBlock:
@@ -548,10 +549,8 @@ def l2_norm(x, axis=None):
     """
     takes an input tensor and returns the l2 norm along specified axis
     """
-
     square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
     norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
-
     return norm
 
 
@@ -564,7 +563,6 @@ def pairwise_cosine_difference(t1, t2):
 
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
-
     def __init__(self, weight, **kwargs):
         super(CosineLossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -583,7 +581,6 @@ class CosineLossLayer(Layer):
 
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
-
     def __init__(self, weight, **kwargs):
         super(L2LossLayer, self).__init__(**kwargs)
         self.weight = weight
