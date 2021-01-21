@@ -238,7 +238,7 @@ def infer_multimodal_multitask(args):
             header = ['FID', 'IID']
         for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
             logging.info(f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}.")
-            if len(otm.shape) == 1 and otm.is_continuous():
+            if len(otm.shape) == 1 and otm.is_continuous() or otm.is_survival_curve():
                 header.extend([ot+'_prediction', ot+'_actual'])
             elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
@@ -278,6 +278,12 @@ def infer_multimodal_multitask(args):
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
                             logging.debug(f'index error at {tm.name} item {i} key {k} with cm: {tm.channel_map} y is {y.shape} y is {y}')
+                elif otm.is_survival_curve():
+                    intervals = otm.shape[-1] // 2
+                    predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                    csv_row.append(str(predicted_survivals[0, -1]))
+                    sick = np.sum(output_data[tm.output_name()][:, intervals:], axis=-1)
+                    csv_row.append(str(sick[0]))
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
