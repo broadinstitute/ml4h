@@ -24,80 +24,6 @@ from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
-
-SERIES_TO_SAVE = list(range(1, 25))
-
-
-def _sample_id_from_path(path: str) -> int:
-    """assumes naming format is /path/to/file/{sample_id}_other_stuff"""
-    return int(os.path.basename(path).split('_')[0])
-
-
-def _instance_from_path(path: str) -> int:
-    """assumes naming format is /path/to/file/{sample_id}_xxx_{instance}_0.zip"""
-    return int(os.path.basename(path).split('_')[2])
-
-
-def _process_file(path: str, destination: str) -> Tuple[str, Optional[str]]:
-    sample_id = _sample_id_from_path(path)
-    instance = _instance_from_path(path)
-    try:
-        ingest_mri_dicoms_zipped(sample_id, instance, path, destination)
-        return path, None
-    except Exception as e:
-        return path, str(e)
-
-
-def _process_files(files: List[str], destination: str) -> Dict[str, str]:
-    errors = {}
-    name = _sample_id_from_path(files[0])
-    process_file = partial(_process_file, destination=destination)
-
-    print(f'Starting process {name} with {len(files)} files')
-    for i, (path, error) in enumerate(map(process_file, files)):
-        if error is not None:
-            errors[path] = error
-        if len(files) % max(i // 10, 1) == 0:
-            print(f'{name}: {(i + 1) / len(files):.2%} done')
-
-    return errors
-
-
-def _partition_files(files: List[str], num_partitions: int) -> List[List[str]]:
-    """Split files into num_partitions partitions of close to equal size"""
-    id_to_file = defaultdict(list)
-    for f in files:
-        id_to_file[_sample_id_from_path(f)].append(f)
-    sample_ids = np.array(list(id_to_file))
-    np.random.shuffle(sample_ids)
-    split_ids = np.array_split(sample_ids, num_partitions)
-    splits = [
-        sum((id_to_file[sample_id] for sample_id in split), [])
-        for split in split_ids
-    ]
-    return [split for split in splits if split]  # lose empty splits
-
-
-def multiprocess_ingest(
-    files: List[str],
-    destination: str,
-):
-    print(f'Beginning ingestion of {len(files)} MRIs.')
-    start = time.time()
-    # partition files by sample id so no race conditions across workers due to multiple instances
-    split_files = _partition_files(files, cpu_count())
-    errors = {}
-    with Pool(cpu_count()) as pool:
-        results = [pool.apply_async(_process_files, (split, destination)) for split in split_files]
-        for result in results:
-            errors.update(result.get())
-    delta = time.time() - start
-    print(f'Ingestion took {delta:.1f} seconds at {delta / len(files):.1f} s/file')
-    with open(os.path.join(destination, 'errors.json'), 'w') as f:
-        json.dump(errors, f)
-    return errors
-
-
 def ingest_mri_dicoms_zipped(
     sample_id: str,
     instance: int,
@@ -107,7 +33,7 @@ def ingest_mri_dicoms_zipped(
     in_memory: bool = True,
     save_dicoms: bool = False,
 ):
-    """Ingest UK Biobank MRI DICOMs from the provided Zip archives comprising of images
+    """Ingest UK Biobank MRI DICOMs from the provided Zip archives comprising of images (DICOMs)
     for each individual.
 
     Args:
@@ -116,8 +42,10 @@ def ingest_mri_dicoms_zipped(
         file (str): Input path to target Zip archive
         destination (str): Output path
         output_name (str, optional): Output name prefix for HDF5 and Parquet files. Defaults to None.
-        in_memory (bool, optional): Unzip and process data entirely in memory resulting in considerably faster processing speeds and less disk usage. Defaults to True.
-        save_dicoms (bool, optional): Keep DICOM files in the destination directory after ingestion is complete. Only applicable when `in_memory` is `False`. Defaults to False.
+        in_memory (bool, optional): Unzip and process data entirely in memory resulting in 
+            considerably faster processing speeds and less disk usage. Defaults to True.
+        save_dicoms (bool, optional): Keep DICOM files in the destination directory after ingestion 
+            is complete. Only applicable when `in_memory` is `False`. Defaults to False.
 
     Example usage:
 
@@ -148,22 +76,44 @@ def ingest_mri_dicoms_zipped(
         if fnmatch.fnmatch(name, '*.dcm'):
             dicom_files.append(name)
 
+    # We provide the option of unzipping DICOMs into memory and thereby
+    # circumventing any disk-based operations that are considerably faster.
+    # The only limitation to this particular approach is if data cannot be
+    # stored in memory. This is defenitely not the case for the UK Biobank
+    # compressed archives.
     if in_memory:
         data = {name: zfile.read(name) for name in dicom_files}
+        # Ingest DICOMs.
         ingest_mri_dicoms(sample_id, instance, data_dictionary=data, output_name=output_name, destination=destination)
     else:
+        # Unzip and extract all payload files to disk given a directory path.
         zfile.extractall(destination)
 
+        # Grab all DICOMs file paths we just exported.
         dicoms = glob.glob(os.path.join(destination,"*.dcm"))
+        # Ingest DICOMs.
         ingest_mri_dicoms(sample_id, instance, files=dicoms, output_name=output_name, destination=destination)
 
+        # If we would like to keep the extracted DICOMs on disk
+        # after finishing the extraction procedure.
         if save_dicoms == False:
             for file in zfile.namelist():
-                print(f"deleting {os.path.join(destination,file)}")
+                print(f"Deleting {os.path.join(destination,file)}")
                 os.remove(os.path.join(destination,file))
 
 
-def _ingest_mri_dicoms_wrapper(file, partial=None):
+def ingest_mri_dicoms_preloading(file, partial=None):
+    """Pre-ingestion support function that either consumes partial in-memory bytestream 
+    representation of a DICOM when operating in-memory, or a file path to a on-disk location
+    where the DICOM is located.
+
+    Args:
+        file: [description]
+        partial: Partial in-memory bytestream representation of a DICOM. Defaults to None.
+
+    Returns:
+        bool, pd.dataFrame: Returns True, and a Pandas DataFrame with tag values and pixel data.
+    """
     if partial is None:
         try:
             ds = dicom.read_file(file) # Read the DICOM
@@ -178,17 +128,18 @@ def _ingest_mri_dicoms_wrapper(file, partial=None):
             print(f'Failed reading from blob with exception: {e}')
             return False, None
 
+    # Covert DICOM values into a Pandas DataFrame.
     df = pd.DataFrame(ds.values())
-    # Extract out pydicom elements
+    # Extract out pydicom elements.
     df[0] = df[0].apply(lambda x: dicom.dataelem.DataElement_from_raw(x) if isinstance(x, dicom.dataelem.RawDataElement) else x)
-    # If we're storing the associated DICOM tags
+    # If we are storing the associated DICOM tags
     # df['tag'] = df[0].apply(lambda x: [hex(x.tag.group), hex(x.tag.elem)])
     df['name']  = df[0].apply(lambda x: x.name)
     df['value'] = df[0].apply(lambda x: x.value)
     # df = df[['tag','name', 'value']]
     df = df[['name', 'value']]
     df = df.append({'name': 'pixel_array_shape', 'value': ds.pixel_array.shape}, ignore_index=True)
-    # I don't believe there is anything in the CSA header we would like to have
+    # MDRK: I don't believe there is anything in the CSA header we would like to have
     # immediately available.
     # csa_header = CsaHeader(image.header.get('CSASeriesHeaderInfo')).parsed
     df2 = df.copy()
@@ -200,6 +151,7 @@ def _ingest_mri_dicoms_wrapper(file, partial=None):
     df2['dicom_name'] = file # Store the DICOM name including file extension
     df2 = df2.drop(labels='Pixel Data',axis=1) # Drop pixel data - handled separately
     df2['pixel_data'] = [ds.pixel_array] # Store pixel array data
+    
     return True, df2
 
 
@@ -210,7 +162,24 @@ def ingest_mri_dicoms(
     data_dictionary: dict = None,
     output_name: str = None,
     destination: str = None,
+    series_to_save = list(range(1, 25)),
 ):
+    """This subroutine prepares all the DICOMs for a UK Biobank participant and produce
+    the appropriate HDF5 and Parquet files.
+
+    Args:
+        sample_id (str): UK Biobank identifier name. This information is only used 
+            as the output file name and stored in the meta information.
+        instance (int): UK Biobank instance number. This information is used to 
+            deposit the resulting data in the correct HDF5 path.
+        files (str, optional): List of input files to process. Defaults to None.
+        data_dictionary (dict, optional): Dictionary of files to process where the 
+            keys are file name and values are partial bytestreams of an in-memory 
+            representation of a DICOM. Defaults to None.
+        output_name (str, optional): Output name. Defaults to None.
+        destination (str, optional): Output path string to a location on disk. 
+            Defaults to None.
+    """
     file_extension = '.h5'
     if output_name is None:
         output_name = str(sample_id)
@@ -242,13 +211,12 @@ def ingest_mri_dicoms(
     dfs = []
     if files is not None:
         for f in files: # Iterate over files
-            # print(f'Parsing: {f}')
-            status, df = _ingest_mri_dicoms_wrapper(f)
+            status, df = ingest_mri_dicoms_preloading(f)
             if status == True:
                 dfs.append(df)
     elif data_dictionary is not None:
         for k,v in data_dictionary.items():
-            status, df = _ingest_mri_dicoms_wrapper(k, partial=v)
+            status, df = ingest_mri_dicoms_preloading(k, partial=v)
             if status == True:
                 dfs.append(df)
 
@@ -282,14 +250,14 @@ def ingest_mri_dicoms(
     sample_manifest['Sequence Variant'] = [','.join(list(s)) for s in sample_manifest['Sequence Variant'].values]
     patient_position = \
     pd.DataFrame(
-        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Image Position (Patient)'].values],
+        [np.array(list(s), dtype=np.float32) for s in sample_manifest['Image Position (Patient)'].values],
         columns=['image_position_x','image_position_y','image_position_z'],
     )
     sample_manifest = sample_manifest.drop(['Image Position (Patient)'], axis=1)
 
     patient_orientation = \
     pd.DataFrame(
-        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Image Orientation (Patient)'].values],
+        [np.array(list(s), dtype=np.float32) for s in sample_manifest['Image Orientation (Patient)'].values],
         columns=[
             'image_orientation_row_x','image_orientation_row_y','image_orientation_row_z',
             'image_orientation_col_x','image_orientation_col_y','image_orientation_col_z',
@@ -299,14 +267,14 @@ def ingest_mri_dicoms(
 
     pixel_spacing = \
     pd.DataFrame(
-        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Pixel Spacing'].values],
+        [np.array(list(s), dtype=np.float32) for s in sample_manifest['Pixel Spacing'].values],
         columns=['row_pixel_spacing_mm','col_pixel_spacing_mm'],
     )
     sample_manifest = sample_manifest.drop(['Pixel Spacing'], axis=1)
 
     acquisition_matrix = \
     pd.DataFrame(
-        [np.array(list(s),dtype=np.float32) for s in sample_manifest['Acquisition Matrix'].values],
+        [np.array(list(s), dtype=np.float32) for s in sample_manifest['Acquisition Matrix'].values],
         columns=[
             'acquisition_matrix_freq_rows','acquisition_matrix_freq_cols',
             'acquisition_matrix_phase_rows','acquisition_matrix_phase_cols',
@@ -319,7 +287,8 @@ def ingest_mri_dicoms(
     sample_manifest['ukbid'] = pd.Categorical(sample_manifest['ukbid'])
 
     # Concat new values
-    sample_manifest = pd.concat([sample_manifest,patient_position,patient_orientation,pixel_spacing,acquisition_matrix],axis=1)
+    sample_manifest = pd.concat([sample_manifest, patient_position, 
+        patient_orientation, pixel_spacing, acquisition_matrix], axis=1)
 
     # Recast --- this is *unsafe* in the general case. There are no guarantees that these fields
     # always exist.
@@ -375,7 +344,7 @@ def ingest_mri_dicoms(
     sample_manifest.to_parquet(os.path.join(destination, f"{output_name}.pq"), compression='zstd')
 
     # Open HDF5 for storing the tensors
-    series = set(SERIES_TO_SAVE).intersection(sample_manifest['series_number'])
+    series = set(series_to_save).intersection(sample_manifest['series_number'])
     if not series:
         raise ValueError('No series to save.')
     with h5py.File(os.path.join(destination,f"{output_name + file_extension}"), "a") as f:
@@ -386,8 +355,18 @@ def ingest_mri_dicoms(
             compress_and_store(f, t, hd5_path)
 
 
-def compress_and_store(hd5: h5py.File, data: np.ndarray, hd5_path: str):
-    data = data.copy(order='C')  # required for xxhash
+def compress_and_store(hd5: h5py.File, 
+        data: np.ndarray, 
+        hd5_path: str):
+    """Support function that takes arbitrary input data in the form of a Numpy array
+    and compress, store, and checksum the data in a HDF5 file.
+
+    Args:
+        hd5 (h5py.File): Target HDF5-file handle.
+        data (np.ndarray): Data to be compressed and saved.
+        hd5_path (str): HDF5 dataframe path for the stored data.
+    """
+    data = data.copy(order='C')  # Required for xxhash
     compressed_data   = blosc.compress(data.tobytes(), typesize=2, cname='zstd', clevel=9)
     hash_uncompressed = xxhash.xxh128_digest(data)
     hash_compressed   = xxhash.xxh128_digest(compressed_data)
@@ -406,3 +385,86 @@ def compress_and_store(hd5: h5py.File, data: np.ndarray, hd5_path: str):
 def read_compressed(data_set: h5py.Dataset):
     shape = data_set.attrs['shape']
     return np.frombuffer(blosc.decompress(data_set[()]), dtype=np.uint16).reshape(shape)
+
+
+def _sample_id_from_path(path: str) -> int:
+    """Helper function that retrieves the UK Biobank identification name from
+    a file assuming the following format: /path/to/file/{sample_id}_*"""
+    return int(os.path.basename(path).split('_')[0])
+
+
+def _instance_from_path(path: str) -> int:
+    """Helper function that retrieves the UK Biobank instance number from a
+    file string assuming the following format: 
+    /path/to/file/{sample_id}_xxx_{instance}_0.zip"""
+    return int(os.path.basename(path).split('_')[2])
+
+
+def _process_file(path: str, destination: str) -> Tuple[str, Optional[str]]:
+    sample_id = _sample_id_from_path(path)
+    instance  = _instance_from_path(path)
+    try:
+        ingest_mri_dicoms_zipped(sample_id, instance, path, destination)
+        return path, None
+    except Exception as e:
+        return path, str(e)
+
+
+def _process_files(files: List[str], destination: str) -> Dict[str, str]:
+    errors = {}
+    name = _sample_id_from_path(files[0])
+    process_file = partial(_process_file, destination=destination)
+
+    print(f'Starting process {name} with {len(files)} files')
+    for i, (path, error) in enumerate(map(process_file, files)):
+        if error is not None:
+            errors[path] = error
+            
+        if len(files) % max(i // 10, 1) == 0:
+            print(f'{name}: {(i + 1) / len(files):.2%} done')
+
+    return errors
+
+
+def _partition_files(files: List[str], num_partitions: int) -> List[List[str]]:
+    """Split files into num_partitions partitions of close to equal size"""
+    id_to_file = defaultdict(list)
+    for f in files:
+        id_to_file[_sample_id_from_path(f)].append(f)
+    sample_ids = np.array(list(id_to_file))
+    np.random.shuffle(sample_ids)
+    split_ids = np.array_split(sample_ids, num_partitions)
+    splits = [
+        sum((id_to_file[sample_id] for sample_id in split), [])
+        for split in split_ids
+    ]
+    return [split for split in splits if split]  # lose empty splits
+
+
+def multiprocess_ingest(
+    files: List[str],
+    destination: str,
+):
+    """Embarassingly parallel ingestion wrapper.
+
+    Args:
+        files (List[str]): Input list of files.
+        destination (str): Output destination on disk.
+
+    Returns:
+        [dict]: Returns a dictionary of encountered errors.
+    """
+    print(f'Beginning ingestion of {len(files)} MRIs.')
+    start = time.time()
+    # partition files by sample id so no race conditions across workers due to multiple instances
+    split_files = _partition_files(files, cpu_count())
+    errors = {}
+    with Pool(cpu_count()) as pool:
+        results = [pool.apply_async(_process_files, (split, destination)) for split in split_files]
+        for result in results:
+            errors.update(result.get())
+    delta = time.time() - start
+    print(f'Ingestion took {delta:.1f} seconds at {delta / len(files):.1f} s/file')
+    with open(os.path.join(destination, 'errors.json'), 'w') as f:
+        json.dump(errors, f)
+    return errors
