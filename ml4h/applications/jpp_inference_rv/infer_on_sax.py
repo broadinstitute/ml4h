@@ -70,24 +70,24 @@ def prepare_model(model_file: str, tensormap: ml4h.tensormap) -> tf.keras.Model:
     return model
 
 
-def get_files(files, batch: int):
+def split_files_for_parallel_computing(files, partition_number: int, total_partitions: int):
     """Given a list of files, return the Nth partition of files. This is
     function is used when distribution the workload across multiple machines
     in an embarrassingly parallel fashion.
 
     Args:
         files ([str]): Input list of file paths.
-        batch (int): The target batch/partition.
+        partition_number (int): The target batch/partition.
+        total_partitions (int): Total number of desired subpartitions.
 
     Returns:
-        [type]: [description]
+        [str]: Returns the subpartition of files that corresponds to this partition number
     """
-    step = len(files) // int(sys.argv[1])
-    batch = int(sys.argv[2])
-    if batch != step:
-        files = files[(step * (batch)) : (step * (batch + 1))]
+    step = len(files) // total_partitions
+    if partition_number != step:
+        files = files[(step * (partition_number)) : (step * (partition_number + 1))]
     else:
-        files = files[(step * (batch)) :]
+        files = files[(step * (partition_number)) :]
     return files
 
 
@@ -117,7 +117,10 @@ def prepare_local_tensor(i: int, tensor, names):
     return tensor_local
 
 
-def infer(files, model: tf.keras.Model, output_path: str):
+# 2 list tmaps, 1: loading data, 2: preparing inference
+# bool flag for argmax/prob
+# x = tm.rescale(x)
+def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
     """Inference loop that takes a list of prepared HDF5 files,
     a pre-trained model, and an output path, and computes the
     channel-wise argmax of the inference result. 
@@ -185,6 +188,7 @@ def infer(files, model: tf.keras.Model, output_path: str):
                     # These are no longer used. Left for legacy reasons.
                     # argmax[i,j, ...] = tf.argmax(pred, axis=-1)
 
+            # Flow condition: argmax or prob
             filename = os.path.splitext(os.path.split(s)[-1])[0]
             with h5py.File(
                 os.path.join(output_path, f"{filename}_inference__argmax.h5"), "a"
@@ -214,8 +218,3 @@ def infer(files, model: tf.keras.Model, output_path: str):
             tot += 1
 
 
-# Example usage
-# model = prepare_model("/tf/sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe.h5", ml4h.tensormap.ukb.mri.cine_segmented_sax_slice_jamesp)
-# files = glob.glob('/mnt/disks/annotated-cardiac-tensors-44k/2020-09-21/*.hd5')
-# files = get_files(files, batch=0)
-# infer(files, model, output_path='/tf/')
