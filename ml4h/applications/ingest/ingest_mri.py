@@ -53,6 +53,7 @@ from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
+
 def ingest_mri_dicoms_zipped(
     sample_id: str,
     instance: int,
@@ -370,7 +371,7 @@ def ingest_mri_dicoms(
     object_columns = sample_manifest.select_dtypes('object')  # all columns where we haven't handled the datatype must be converted to strings
     for col in object_columns:
         sample_manifest[col] = sample_manifest[col].astype('str')
-    sample_manifest.to_parquet(os.path.join(destination, f"{output_name}.pq"), compression='zstd')
+    sample_manifest.to_parquet(os.path.join(destination, f"{output_name}_{instance}.pq"), compression='zstd')
 
     # Open HDF5 for storing the tensors
     series = set(series_to_save).intersection(sample_manifest['series_number'])
@@ -484,6 +485,7 @@ def multiprocess_ingest(
         [dict]: Returns a dictionary of encountered errors.
     """
     print(f'Beginning ingestion of {len(files)} MRIs.')
+    os.makedirs(destination, exist_ok=True)
     start = time.time()
     # partition files by sample id so no race conditions across workers due to multiple instances
     split_files = _partition_files(files, cpu_count())

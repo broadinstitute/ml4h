@@ -209,71 +209,73 @@ def build_projections(
 
 
 def build_projection_hd5(
-    old_hd5_path: str,
-    old_parquet_path: str,
-    output_folder: str,
+        old_hd5_path: str,
+        pq_base_path: str,
+        output_folder: str,
 ):
-    """Subroutine for recomputing previously incorrectly reported meta data.
+    """Builds hd5 with 2d projections
 
     Args:
-        old_hd5_path (str): Existing HDF5-file of projections.
-        old_parquet_path (str): Existing meta data Parquet file.
+        old_hd5_path (str): Existing HDF5-file MRI slices.
+        pq_base_path (str): Folder of existing meta data Parquet files.
         output_folder (str): Output path.
     """
     new_path = os.path.join(output_folder, os.path.basename(old_hd5_path))
-    meta = ParquetFile(old_parquet_path).to_pandas()
-    with h5py.File(old_hd5_path, "r") as old_hd5, h5py.File(new_path, "w") as new_hd5:
-        if len(old_hd5["instance"]) != 1:
-            raise ValueError(
-                "Meta data was not stored correctly for multi-instance data."
-            )
-        for instance in old_hd5["instance"]:
+    sample_id = os.path.splitext(os.path.basename(old_hd5_path))[0]
+    with h5py.File(old_hd5_path, 'r') as old_hd5:
+        for instance in old_hd5['instance']:
             data = {
-                int(name): read_compressed(
-                    old_hd5[f"instance/{instance}/series/{name}"]
-                )
-                for name in old_hd5[f"instance/{instance}/series"]
+                int(name): read_compressed(old_hd5[f'instance/{instance}/series/{name}'])
+                for name in old_hd5[f'instance/{instance}/series']
             }
+            meta_path = os.path.join(pq_base_path, f'{sample_id}_{instance}.pq')
+            meta = ParquetFile(meta_path).to_pandas()
             projection = build_projections(data, meta)
-            for name, im in projection.items():
-                compress_and_store(new_hd5, im, f"instance/{instance}/{name}")
+            with h5py.File(new_path, 'a') as new_hd5:
+                for name, im in projection.items():
+                    compress_and_store(new_hd5, im, f'instance/{instance}/{name}')
 
 
-def _build_projection_hd5s(hd5_files: List[str], destination: str):
+def _build_projection_hd5s(hd5_files: List[str], pq_base_path: str, destination: str):
+    """
+    Applies build_projection_hd5 to a list of hd5 file paths and keeps track of errors.
+    """
     errors = {}
     name = os.getpid()
-    print(f"Starting process {name} with {len(hd5_files)} files")
+    print(f'Starting process {name} with {len(hd5_files)} files')
     for i, path in enumerate(hd5_files):
-        pq_path = path.replace(".h5", ".pq")
         try:
-            build_projection_hd5(path, pq_path, destination)
+            build_projection_hd5(path, pq_base_path, destination)
         except Exception as e:
             errors[path] = str(e)
         if len(hd5_files) % max(i // 10, 1) == 0:
-            print(f"{name}: {(i + 1) / len(hd5_files):.2%} done")
+            print(f'{name}: {(i + 1) / len(hd5_files):.2%} done')
     return errors
 
 
 def multiprocess_project(
     hd5_files: List[str],
+    pq_base_path: str,
     destination: str,
 ):
+    """Builds hd5 with 2d projections
+
+    Args:
+        hd5_files (str): Existing HDF5-files containing MRI slices.
+        pq_base_path (str): Folder of existing meta data Parquet files.
+        destination (str): Output path.
+    """
     os.makedirs(destination, exist_ok=True)
     split_files = np.array_split(hd5_files, cpu_count())
-    print(f"Beginning coronal projection of {len(hd5_files)} samples.")
+    print(f'Beginning coronal and sagittal projection of {len(hd5_files)} samples.')
     start = time.time()
     errors = {}
     with Pool(cpu_count()) as pool:
-        results = [
-            pool.apply_async(_build_projection_hd5s, (split, destination))
-            for split in split_files
-        ]
+        results = [pool.apply_async(_build_projection_hd5s, (split, pq_base_path, destination)) for split in split_files]
         for result in results:
             errors.update(result.get())
     delta = time.time() - start
-    print(
-        f"Projections took {delta:.1f} seconds at {delta / len(hd5_files):.1f} s/file"
-    )
-    with open(os.path.join(destination, "errors.json"), "w") as f:
+    print(f'Projections took {delta:.1f} seconds at {delta / len(hd5_files):.1f} s/file')
+    with open(os.path.join(destination, 'errors.json'), 'w') as f:
         json.dump(errors, f)
     return errors
