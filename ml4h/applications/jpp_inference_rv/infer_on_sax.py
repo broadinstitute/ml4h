@@ -117,9 +117,6 @@ def prepare_local_tensor(i: int, tensor, names):
     return tensor_local
 
 
-# 2 list tmaps, 1: loading data, 2: preparing inference
-# bool flag for argmax/prob
-# x = tm.rescale(x)
 def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
     """Inference loop that takes a list of prepared HDF5 files,
     a pre-trained model, and an output path, and computes the
