@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 import cv2
+import blosc
 
 from ml4h.metrics import weighted_crossentropy
 from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, Top50Normalize, ImagenetNormalizeTorch
