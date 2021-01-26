@@ -2124,7 +2124,7 @@ def mri_adiposity_uncompress_data(compressed_data: h5py.Dataset) -> np.ndarray:
     ).reshape(compressed_data.attrs["shape"]).astype(np.float32)
 
 
-def view_mixup(data: np.ndarray, alpha: float = 1.0, midpoint: int = 144) -> np.ndarray:
+def mdrk_adiposity_mri_2dprojection_view_mixup(data: np.ndarray, alpha: float = 1.0, midpoint: int = 144) -> np.ndarray:
     """Mixup on the CPU: this special version computes two separate mixup
     operations on a single input tensor where the sagittal and coronal
     2D projections are placed side-by-side. Failure to compute mixup this
