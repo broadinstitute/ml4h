@@ -9,7 +9,7 @@ import cv2
 import blosc
 
 from ml4h.metrics import weighted_crossentropy
-from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, Top50Normalize, ImagenetNormalizeTorch
+from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, TopKNormalize, ImagenetNormalizeTorch
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
 from ml4h.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES, MRI_LVOT_SEGMENTED_CHANNEL_MAP, \
@@ -2233,7 +2233,7 @@ def mdrk_projection_single_both_views_all_stationwide_normalization(
             clipLimit=clahe_clip, 
             tileGridSize=(clahe_amount, clahe_amount)
         )
-        #
+
         do_augment = False
         do_flip = False
         rand_angle = 0.0
@@ -2246,24 +2246,17 @@ def mdrk_projection_single_both_views_all_stationwide_normalization(
                 rand_angle = np.random.randint(-5, 5)
             if np.random.random() > 0.5:
                 rand_move = np.random.randint(-16, 16)
-        #
+        
         prefixes = ["w", "f", "in", "opp"]
         tensor = np.zeros((368, 174 + 224, len(prefixes)))
-        #
+        
         for p, i in zip(prefixes, range(len(prefixes))):
             # Coronal view
-            try:
-                compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
-            except Exception as e:
-                raise Exception(e)
-            #
-            try:
-                tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
-            except Exception as e:
-                raise Exception(e)
-            #
+            compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
+            tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
+            
             if stationwise_normalization:
-                tensor_coronal = Top50Normalize().normalize(tensor_coronal)
+                tensor_coronal = TopKNormalize(50).normalize(tensor_coronal)
             if normalize_histogram:
                 tensor_coronal = (
                     clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
@@ -2271,7 +2264,7 @@ def mdrk_projection_single_both_views_all_stationwide_normalization(
                     )
                     / 255.0
                 )
-            #
+            
             tensor_coronal = cv2.resize(tensor_coronal, (224, 368))
             if do_augment:
                 if do_flip:
@@ -2279,19 +2272,12 @@ def mdrk_projection_single_both_views_all_stationwide_normalization(
                 tensor_coronal = mri_adiposity_translate_image(tensor_coronal, (224, 368), rand_move)
                 tensor_coronal = mri_adiposity_rotate_image(tensor_coronal, rand_angle)
             tensor[..., 0:224, i] = tensor_coronal
-            #
-            try:
-                compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
-            except Exception as e:
-                raise Exception(e)
-            # Sagittal view
-            try:
-                tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
-            except Exception as e:
-                raise Exception(e)
-            #
+            
+            compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
+            tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
+            
             if stationwise_normalization:
-                tensor_sagittal = Top50Normalize().normalize(tensor_sagittal)
+                tensor_sagittal = TopKNormalize(50).normalize(tensor_sagittal)
             if normalize_histogram:
                 tensor_sagittal = (
                     clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
@@ -2355,7 +2341,6 @@ def mdrk_projection_both_views_pretrained(
         clahe_clip (float, optional): Clip limit for the CLAHE kernel. Defaults to 2.0.
     """
     def _mdrk_projection_both_views_pretrained(tm, hd5, dependents={}):
-        #
         do_augment = False
         do_flip = False
         rand_angle = 0.0
@@ -2370,27 +2355,20 @@ def mdrk_projection_both_views_pretrained(
             rand_move = np.random.randint(-16, 16)
             cclip = np.random.randint(0, 5)
             camount = np.random.randint(1, 10)
-        #
+        
         clahe = cv2.createCLAHE(
             clipLimit=cclip, tileGridSize=(camount, camount)
         )
         prefixes = ["w", "f"]
         tensor = np.zeros((368, 174 + 224, 3), dtype=np.float32)
-        #
+        
         for p, i in zip(prefixes, range(len(prefixes))):
             # Coronal view
-            try:
-                compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
-            except Exception as e:
-                raise Exception(e)
-            #
-            try:
-                tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
-            except Exception as e:
-                raise Exception(e)
-            #
+            compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
+            tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
+            
             if stationwise_normalization:
-                tensor_coronal = Top50Normalize().normalize(tensor_coronal)
+                tensor_coronal = TopKNormalize(50).normalize(tensor_coronal)
             if normalize_histogram:
                 tensor_coronal = (
                     clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
@@ -2398,7 +2376,7 @@ def mdrk_projection_both_views_pretrained(
                     )
                     / 255.0
                 )
-            #
+            
             tensor_coronal = cv2.resize(tensor_coronal, (224, 368))
             if do_augment:
                 if do_flip:
@@ -2406,19 +2384,13 @@ def mdrk_projection_both_views_pretrained(
                 tensor_coronal = mri_adiposity_translate_image(tensor_coronal, (224, 368), rand_move)
                 tensor_coronal = mri_adiposity_rotate_image(tensor_coronal, rand_angle)
             tensor[..., 0:224, i] = tensor_coronal
-            #
-            try:
-                compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
-            except Exception as e:
-                raise Exception(e)
+            
+            compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
             # Sagittal view
-            try:
-                tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
-            except Exception as e:
-                raise Exception(e)
-            #
+            tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
+            
             if stationwise_normalization:
-                tensor_sagittal = Top50Normalize().normalize(tensor_sagittal)
+                tensor_sagittal = TopKNormalize(50).normalize(tensor_sagittal)
             if normalize_histogram:
                 tensor_sagittal = (
                     clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
@@ -2426,7 +2398,7 @@ def mdrk_projection_both_views_pretrained(
                     )
                     / 255.0
                 )
-            #
+            
             tensor_sagittal = cv2.resize(tensor_sagittal, (174, 368))
             if do_augment:
                 tensor_sagittal = mri_adiposity_translate_image(

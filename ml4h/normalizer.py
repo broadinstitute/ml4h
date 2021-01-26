@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from ml4h.defines import EPS
+from tensorflow.python.keras.applications import imagenet_utils
 
 
 class Normalizer(ABC):
@@ -42,12 +43,13 @@ class NonZeroNormalize(Normalizer):
         return tensor
 
 
-class Top50Normalize(Normalizer):
+class TopKNormalize(Normalizer):
+    def __init__(self, n_top: int = 50):
+        self.n_top = n_top
+
     def normalize(self, tensor: np.ndarray) -> np.ndarray:
-        """Find top 50 itensity voxels are set upper range to the mean of those. Other values
-        are
-        """
-        upper = np.mean(sorted(np.max(tensor, axis=-1).flatten())[::-1][0:50])
+        """Find top K itensity voxels are set upper range to the mean of those"""
+        upper = np.mean(sorted(np.max(tensor, axis=-1).flatten())[::-1][0:self.n_top])
         tensor = np.where(tensor >= upper, upper, tensor)
         tensor /= tensor.max()
         return tensor
