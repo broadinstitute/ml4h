@@ -82,7 +82,7 @@ def normalize(projection: np.ndarray) -> np.ndarray:
 
 
 def center_pad(x: np.ndarray, width: int) -> np.ndarray:
-    """Pad an image on the left and right with 0s to a specified 
+    """Pad an image on the left and right with 0s to a specified
     target width.
 
     Args:
@@ -99,7 +99,7 @@ def center_pad(x: np.ndarray, width: int) -> np.ndarray:
 
 
 def center_pad_stack(xs: np.ndarray) -> np.ndarray:
-    """Center and pad input data and then stack the images 
+    """Center and pad input data and then stack the images
     with different widths.
 
     Args:
@@ -148,14 +148,14 @@ def build_z_slices(
         overlap_frac = overlap_size / (series_above_max_z - series_above_min_z)
         slice_ends.append(int((1 - overlap_frac) * num_slices[i]))
     slice_ends.append(
-        num_slices[-1]
+        num_slices[-1],
     )  # the last station gets nothing removed from the bottom
     # build slices
     return [slice(start, end) for start, end in zip(slice_starts, slice_ends)]
 
 
 def build_projections(
-    data: Dict[int, np.ndarray], meta_data: pd.DataFrame
+    data: Dict[int, np.ndarray], meta_data: pd.DataFrame,
 ) -> Dict[str, np.ndarray]:
     """Build coronal and sagittal projections for each series type from all of the series.
 
@@ -197,13 +197,13 @@ def build_projections(
             coronal_to_stack.append(coronal)
             sagittal = project_sagittal(data[series_num][..., station_slice])
             sagittal = zoom(
-                sagittal, (scale, 1.0), order=1
+                sagittal, (scale, 1.0), order=1,
             )  # Account for z axis scaling
             sagittal_to_stack.append(sagittal)
 
         projections[f"{series_type_name}_coronal"] = normalize(np.vstack(coronal_to_stack))
         projections[f"{series_type_name}_sagittal"] = normalize(
-            center_pad_stack(sagittal_to_stack)
+            center_pad_stack(sagittal_to_stack),
         )
     return projections
 

@@ -72,9 +72,9 @@ def ingest_mri_dicoms_zipped(
         file (str): Input path to target Zip archive
         destination (str): Output path
         output_name (str, optional): Output name prefix for HDF5 and Parquet files. Defaults to None.
-        in_memory (bool, optional): Unzip and process data entirely in memory resulting in 
+        in_memory (bool, optional): Unzip and process data entirely in memory resulting in
             considerably faster processing speeds and less disk usage. Defaults to True.
-        save_dicoms (bool, optional): Keep DICOM files in the destination directory after ingestion 
+        save_dicoms (bool, optional): Keep DICOM files in the destination directory after ingestion
             is complete. Only applicable when `in_memory` is `False`. Defaults to False.
 
     Example usage:
@@ -133,7 +133,7 @@ def ingest_mri_dicoms_zipped(
 
 
 def ingest_mri_dicoms_preloading(file, partial=None):
-    """Pre-ingestion support function that either consumes partial in-memory bytestream 
+    """Pre-ingestion support function that either consumes partial in-memory bytestream
     representation of a DICOM when operating in-memory, or a file path to a on-disk location
     where the DICOM is located.
 
@@ -181,7 +181,7 @@ def ingest_mri_dicoms_preloading(file, partial=None):
     df2['dicom_name'] = file # Store the DICOM name including file extension
     df2 = df2.drop(labels='Pixel Data',axis=1) # Drop pixel data - handled separately
     df2['pixel_data'] = [ds.pixel_array] # Store pixel array data
-    
+
     return True, df2
 
 
@@ -198,16 +198,16 @@ def ingest_mri_dicoms(
     the appropriate HDF5 and Parquet files.
 
     Args:
-        sample_id (str): UK Biobank identifier name. This information is only used 
+        sample_id (str): UK Biobank identifier name. This information is only used
             as the output file name and stored in the meta information.
-        instance (int): UK Biobank instance number. This information is used to 
+        instance (int): UK Biobank instance number. This information is used to
             deposit the resulting data in the correct HDF5 path.
         files (str, optional): List of input files to process. Defaults to None.
-        data_dictionary (dict, optional): Dictionary of files to process where the 
-            keys are file name and values are partial bytestreams of an in-memory 
+        data_dictionary (dict, optional): Dictionary of files to process where the
+            keys are file name and values are partial bytestreams of an in-memory
             representation of a DICOM. Defaults to None.
         output_name (str, optional): Output name. Defaults to None.
-        destination (str, optional): Output path string to a location on disk. 
+        destination (str, optional): Output path string to a location on disk.
             Defaults to None.
     """
     file_extension = '.h5'
@@ -317,8 +317,12 @@ def ingest_mri_dicoms(
     sample_manifest['ukbid'] = pd.Categorical(sample_manifest['ukbid'])
 
     # Concat new values
-    sample_manifest = pd.concat([sample_manifest, patient_position, 
-        patient_orientation, pixel_spacing, acquisition_matrix], axis=1)
+    sample_manifest = pd.concat(
+        [
+            sample_manifest, patient_position,
+            patient_orientation, pixel_spacing, acquisition_matrix,
+        ], axis=1,
+    )
 
     # Recast --- this is *unsafe* in the general case. There are no guarantees that these fields
     # always exist.
@@ -385,9 +389,11 @@ def ingest_mri_dicoms(
             compress_and_store(f, t, hd5_path)
 
 
-def compress_and_store(hd5: h5py.File, 
-        data: np.ndarray, 
-        hd5_path: str):
+def compress_and_store(
+    hd5: h5py.File,
+    data: np.ndarray,
+    hd5_path: str,
+):
     """Support function that takes arbitrary input data in the form of a Numpy array
     and compress, store, and checksum the data in a HDF5 file.
 
@@ -425,7 +431,7 @@ def _sample_id_from_path(path: str) -> int:
 
 def _instance_from_path(path: str) -> int:
     """Helper function that retrieves the UK Biobank instance number from a
-    file string assuming the following format: 
+    file string assuming the following format:
     /path/to/file/{sample_id}_xxx_{instance}_0.zip"""
     return int(os.path.basename(path).split('_')[2])
 
@@ -449,7 +455,7 @@ def _process_files(files: List[str], destination: str) -> Dict[str, str]:
     for i, (path, error) in enumerate(map(process_file, files)):
         if error is not None:
             errors[path] = error
-            
+
         if len(files) % max(i // 10, 1) == 0:
             print(f'{name}: {(i + 1) / len(files):.2%} done')
 
