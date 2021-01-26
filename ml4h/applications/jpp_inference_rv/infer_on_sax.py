@@ -70,7 +70,9 @@ def prepare_model(model_file: str, tensormap: ml4h.tensormap) -> tf.keras.Model:
     return model
 
 
-def split_files_for_parallel_computing(files, partition_number: int, total_partitions: int):
+def split_files_for_parallel_computing(
+    files, partition_number: int, total_partitions: int
+):
     """Given a list of files, return the Nth partition of files. This is
     function is used when distribution the workload across multiple machines
     in an embarrassingly parallel fashion.
@@ -96,8 +98,8 @@ def prepare_local_tensor(i: int, tensor, names):
     `sax_slices_jamesp_4b_hyperopted_dropout_pap_dupe`.
     """
     tensor_local = np.zeros((50, 224, 224, 4))
-    #
-    print(max(i - 2, 0), max(i - 1, 0), i, min(i + 1, len(names) - 1))
+    # Uncomment for debugging:
+    # print(max(i - 2, 0), max(i - 1, 0), i, min(i + 1, len(names) - 1))
     if i - 2 >= 0:
         tensor_local[:, :, :, 0] = tensor[(i - 2), ...]
     else:
@@ -120,7 +122,7 @@ def prepare_local_tensor(i: int, tensor, names):
 def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
     """Inference loop that takes a list of prepared HDF5 files,
     a pre-trained model, and an output path, and computes the
-    channel-wise argmax of the inference result. 
+    channel-wise argmax of the inference result.
 
     Args:
         files ([type]): [description]
@@ -213,5 +215,3 @@ def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
             stop_predict = timeit.default_timer()  # Debug timer
             print("Predict time: ", stop_predict - start_predict)  # Debug message
             tot += 1
-
-
