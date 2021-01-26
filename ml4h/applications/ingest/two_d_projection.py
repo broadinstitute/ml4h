@@ -142,7 +142,7 @@ def build_z_slices(
     # remove remaining overlaps from the bottom of each station
     slice_ends = []
     for i in range(0, len(num_slices) - 1):
-        series_below_min_z, series_below_max_z = z_pos[i + 1]
+        _, series_below_max_z = z_pos[i + 1]
         series_above_min_z, series_above_max_z = z_pos[i]
         overlap_size = series_below_max_z - series_above_min_z
         overlap_frac = overlap_size / (series_above_max_z - series_above_min_z)
@@ -157,13 +157,16 @@ def build_z_slices(
 def build_projections(
     data: Dict[int, np.ndarray], meta_data: pd.DataFrame
 ) -> Dict[str, np.ndarray]:
+    """Build coronal and sagittal projections for each series type from all of the series.
+
+    Args:
+        data (Dict[int, np.ndarray]): Input data in the form {series number: series array}.
+        meta_data (pd.DataFrame): Meta data from the Parquet files.
+
+    Returns:
+        Dict[str, np.ndarray]: Returns the dictionary {series type: projection}.
     """
-    Build coronal projections for each series type from all of the series
-    :param data: {series number: series array}
-    :param meta_data: meta data loaded from parquet file
-    :return: {series type: coronal projection}
-    """
-    # stations are differently scaled on the z-axis
+    # Stations are differently scaled on the z-axis.
     station_z_scales = 3.0, 4.5, 4.5, 4.5, 3.5, 4.0
     station_z_scales = [scale / 3 for scale in station_z_scales]
 
@@ -173,14 +176,15 @@ def build_projections(
         [z_pos.loc[i] for i in range(1, 25, 4)],
     )
 
-    # keep track of where stations are connected
+    # Keep track of where stations are connected by storing their intersection points in the
+    # HDF5 dataset `horizontal_line_idx`.
     horizontal_lines = [
         (idx.stop - idx.start) * scale for idx, scale in zip(slices, station_z_scales)
     ]
     horizontal_lines = np.cumsum(horizontal_lines).astype(np.uint16)[:-1]
     projections = {"horizontal_line_idx": horizontal_lines}
 
-    # build coronal and sagittal projections
+    # Build coronal and sagittal projections.
     for type_idx, series_type_name in zip(range(4), ("in", "opp", "f", "w")):
         coronal_to_stack = []
         sagittal_to_stack = []
@@ -194,7 +198,7 @@ def build_projections(
             sagittal = project_sagittal(data[series_num][..., station_slice])
             sagittal = zoom(
                 sagittal, (scale, 1.0), order=1
-            )  # account for z axis scaling
+            )  # Account for z axis scaling
             sagittal_to_stack.append(sagittal)
 
         projections[f"{series_type_name}_coronal"] = normalize(np.vstack(coronal_to_stack))
@@ -209,15 +213,12 @@ def build_projection_hd5(
     old_parquet_path: str,
     output_folder: str,
 ):
-    """Subroutine for producing HDF5 files with 2D projections.
+    """Subroutine for recomputing previously incorrectly reported meta data.
 
     Args:
-        old_hd5_path (str): [description]
-        old_parquet_path (str): [description]
-        output_folder (str): [description]
-
-    Raises:
-        ValueError: [description]
+        old_hd5_path (str): Existing HDF5-file of projections.
+        old_parquet_path (str): Existing meta data Parquet file.
+        output_folder (str): Output path.
     """
     new_path = os.path.join(output_folder, os.path.basename(old_hd5_path))
     meta = ParquetFile(old_parquet_path).to_pandas()
