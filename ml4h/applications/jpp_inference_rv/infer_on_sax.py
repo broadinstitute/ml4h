@@ -71,7 +71,7 @@ def prepare_model(model_file: str, tensormap: ml4h.tensormap) -> tf.keras.Model:
 
 
 def split_files_for_parallel_computing(
-    files, partition_number: int, total_partitions: int
+    files, partition_number: int, total_partitions: int,
 ):
     """Given a list of files, return the Nth partition of files. This is
     function is used when distribution the workload across multiple machines
@@ -169,9 +169,9 @@ def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
                     pad_or_crop_array_to_shape(
                         (50, 224, 224),
                         np.moveaxis(
-                            x["/ukb_cardiac_mri/"][f][instance]["instance_0"][()], 2, 0
+                            x["/ukb_cardiac_mri/"][f][instance]["instance_0"][()], 2, 0,
                         ),
-                    )
+                    ),
                 )
 
             start_predict = timeit.default_timer()  # Debug timer
@@ -190,7 +190,7 @@ def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
             # Flow condition: argmax or prob
             filename = os.path.splitext(os.path.split(s)[-1])[0]
             with h5py.File(
-                os.path.join(output_path, f"{filename}_inference__argmax.h5"), "a"
+                os.path.join(output_path, f"{filename}_inference__argmax.h5"), "a",
             ) as ff:
                 ff_in = ff.create_group(f"instance_{str(instance)}")
                 ff_in.create_dataset(
@@ -201,7 +201,7 @@ def jpp_infer_short_axis(files, model: tf.keras.Model, output_path: str):
                             typesize=2,
                             cname="zstd",
                             clevel=9,
-                        )
+                        ),
                     ),
                 )
                 ff_in.attrs["shape"] = test.shape
