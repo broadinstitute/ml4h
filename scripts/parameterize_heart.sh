@@ -16,16 +16,16 @@ cnt2=$((VMTAG*STEP+STEP-1))
 for i in $(seq $cnt1 $cnt2)
 do
     end=$((i+1))
-    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/parameterize_rv_geom.py $i $end
+    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/la_axes.py $i $end
 done
 
 cd /home/pdiachil/ml/notebooks/mri
-/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122_nochecks_flatnormals/csv/
+/snap/bin/gsutil cp *processed* gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_axes_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/csv/
 # /snap/bin/gsutil cp *hd5 gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
-cd /home/pdiachil/projects/chambers
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122_nochecks_flatnormals/xdmf/
-/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/sax_4ch/fastai_v20201202_v20201122_nochecks_flatnormals/log/
+cd /home/pdiachil/projects/la
+/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_axes_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/xdmf/
+/snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_axes_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/log/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
