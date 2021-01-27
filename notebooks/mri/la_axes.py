@@ -300,12 +300,13 @@ for i, hd5 in enumerate(hd5s):
             poisson_chambers = []
             poisson_volumes = []
             for channel, chamber, result in zip(channels, chambers, results):
-                result['sample_id'][i-start] = sample_id
+                result['sample_id'][(i-start)*2+ii] = sample_id
+                result['instance'][(i-start)*2+ii] = instance
                 atria, volumes = annotation_to_poisson(annot_datasets, channel, views, annot_time_format_string, range(MRI_FRAMES))
                 poisson_chambers.append(atria)
                 poisson_volumes.append(volumes)
                 for t, poisson_volume in enumerate(poisson_volumes[-1]):
-                    result[f'{chamber}_poisson_{t}'][i-start] = poisson_volume/1000.0
+                    result[f'{chamber}_poisson_{t}'][(i-start)*2+ii] = poisson_volume/1000.0
 
                 for t, atrium in enumerate(poisson_chambers[-1]):
                     # writer = vtk.vtkXMLPolyDataWriter()
@@ -366,7 +367,7 @@ for i, hd5 in enumerate(hd5s):
                     tree.IntersectWithLine(atrium_cog - longit_axis*1000, atrium_cog + longit_axis*1000, intersect_points, intersect_list)
                     intersect_points_np = ns.vtk_to_numpy(intersect_points.GetData())
 
-                    results[0][f'LA_z_axis_{t}'] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0])  
+                    results[0][f'LA_z_axis_{t}'][(i-start)*2+ii] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0])  
 
                     # intersect_line = vtk.vtkLineSource()
                     # intersect_line.SetPoint1(intersect_points_np[0])
@@ -385,7 +386,7 @@ for i, hd5 in enumerate(hd5s):
                     tree.IntersectWithLine(atrium_cog - towards_septum*100000, atrium_cog + towards_septum*100000, intersect_points, intersect_list)
                     intersect_points_np = ns.vtk_to_numpy(intersect_points.GetData())
 
-                    results[0][f'LA_x_axis_{t}'] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0]) 
+                    results[0][f'LA_x_axis_{t}'][(i-start)*2+ii] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0]) 
 
                     # intersect_line = vtk.vtkLineSource()
                     # intersect_line.SetPoint1(intersect_points_np[0])
@@ -402,7 +403,7 @@ for i, hd5 in enumerate(hd5s):
                     tree.IntersectWithLine(atrium_cog - orthogonal_line*1000, atrium_cog + orthogonal_line*1000, intersect_points, intersect_list)
                     intersect_points_np = ns.vtk_to_numpy(intersect_points.GetData())
 
-                    results[0][f'LA_y_axis_{t}'] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0]) 
+                    results[0][f'LA_y_axis_{t}'][(i-start)*2+ii] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0]) 
 
                     # intersect_line = vtk.vtkLineSource()
                     # intersect_line.SetPoint1(intersect_points_np[0])
