@@ -210,7 +210,7 @@ from parameterize_segmentation import msh_to_vtk, improve_mesh
 
 
 # %%
-la_hd5_file = '/home/pdiachil/projects/chambers/poisson_LA_1000107.hd5'
+la_hd5_file = '/home/pdiachil/projects/la/poisson_fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122_LA_1000107_2.hd5'
 lv_hd5_file = '/home/pdiachil/projects/chambers/poisson_LV_1000107.hd5'
 hd5_file = '/mnt/disks/segmented-sax-lax-v20200901/2020-09-01/1000107.hd5'
 with h5py.File(hd5_file) as ff_trad:

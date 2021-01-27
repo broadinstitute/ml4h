@@ -368,14 +368,14 @@ for i, hd5 in enumerate(hd5s):
 
                     results[0][f'LA_z_axis_{t}'] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0])  
 
-                    intersect_line = vtk.vtkLineSource()
-                    intersect_line.SetPoint1(intersect_points_np[0])
-                    intersect_line.SetPoint2(intersect_points_np[1])
+                    # intersect_line = vtk.vtkLineSource()
+                    # intersect_line.SetPoint1(intersect_points_np[0])
+                    # intersect_line.SetPoint2(intersect_points_np[1])
 
-                    writer = vtk.vtkXMLPolyDataWriter()
-                    writer.SetInputConnection(intersect_line.GetOutputPort())
-                    writer.SetFileName(f'/home/pdiachil/projects/la/line_longit_{sample_id}_{instance}_{t}.vtp')
-                    writer.Update()
+                    # writer = vtk.vtkXMLPolyDataWriter()
+                    # writer.SetInputConnection(intersect_line.GetOutputPort())
+                    # writer.SetFileName(f'/home/pdiachil/projects/la/line_longit_{sample_id}_{instance}_{t}.vtp')
+                    # writer.Update()
 
                     # Line 2 -- towards septum
                     towards_septum = septum_cog - atrium_cog
@@ -387,14 +387,14 @@ for i, hd5 in enumerate(hd5s):
 
                     results[0][f'LA_x_axis_{t}'] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0]) 
 
-                    intersect_line = vtk.vtkLineSource()
-                    intersect_line.SetPoint1(intersect_points_np[0])
-                    intersect_line.SetPoint2(intersect_points_np[1])
+                    # intersect_line = vtk.vtkLineSource()
+                    # intersect_line.SetPoint1(intersect_points_np[0])
+                    # intersect_line.SetPoint2(intersect_points_np[1])
 
-                    writer = vtk.vtkXMLPolyDataWriter()
-                    writer.SetInputConnection(intersect_line.GetOutputPort())
-                    writer.SetFileName(f'/home/pdiachil/projects/la/line_horiz_{sample_id}_{instance}_{t}.vtp')
-                    writer.Update()
+                    # writer = vtk.vtkXMLPolyDataWriter()
+                    # writer.SetInputConnection(intersect_line.GetOutputPort())
+                    # writer.SetFileName(f'/home/pdiachil/projects/la/line_horiz_{sample_id}_{instance}_{t}.vtp')
+                    # writer.Update()
 
                     # Line 3 -- orthogonal to line 1 and line 2
                     orthogonal_line = np.cross(longit_axis, towards_septum)
@@ -404,14 +404,14 @@ for i, hd5 in enumerate(hd5s):
 
                     results[0][f'LA_y_axis_{t}'] = np.linalg.norm(intersect_points_np[1] - intersect_points_np[0]) 
 
-                    intersect_line = vtk.vtkLineSource()
-                    intersect_line.SetPoint1(intersect_points_np[0])
-                    intersect_line.SetPoint2(intersect_points_np[1])
+                    # intersect_line = vtk.vtkLineSource()
+                    # intersect_line.SetPoint1(intersect_points_np[0])
+                    # intersect_line.SetPoint2(intersect_points_np[1])
 
-                    writer = vtk.vtkXMLPolyDataWriter()
-                    writer.SetInputConnection(intersect_line.GetOutputPort())
-                    writer.SetFileName(f'/home/pdiachil/projects/la/line_ortho_{sample_id}_{instance}_{t}.vtp')
-                    writer.Update() 
+                    # writer = vtk.vtkXMLPolyDataWriter()
+                    # writer.SetInputConnection(intersect_line.GetOutputPort())
+                    # writer.SetFileName(f'/home/pdiachil/projects/la/line_ortho_{sample_id}_{instance}_{t}.vtp')
+                    # writer.Update() 
                 except Exception as e:
                     logging.info('Failed at axis generation {sample_id}, {instance}, {t}')
                     continue             
