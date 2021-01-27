@@ -14,7 +14,7 @@ from parameterize_segmentation import annotation_to_poisson
 from ml4h.tensormap.ukb.mri_vtk import _mri_hd5_to_structured_grids, _mri_tensor_4d
 from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 
-import igl
+
 import matplotlib.pyplot as plt
 from scipy.interpolate import Rbf
 from google.cloud import storage
@@ -135,15 +135,15 @@ def reorient_chambers(atrium, dataset, normal, origin, channel_septum=5):
 
     return atrium
 # %%
-def vtk_to_igl(vtk_mesh):
-    pts = ns.vtk_to_numpy(vtk_mesh.GetPoints().GetData())
-    arr = np.zeros_like(pts, dtype=np.double)
-    arr[:] = pts
-    cells = ns.vtk_to_numpy(vtk_mesh.GetPolys().GetData())
-    cells = cells.reshape(-1, 4)[:, 1:]
-    ret = igl.write_triangle_mesh('tmp.mesh.off', pts.astype(np.double), cells)
-    v, f  = igl.read_triangle_mesh('tmp.mesh.off')
-    return v, f
+# def vtk_to_igl(vtk_mesh):
+#     pts = ns.vtk_to_numpy(vtk_mesh.GetPoints().GetData())
+#     arr = np.zeros_like(pts, dtype=np.double)
+#     arr[:] = pts
+#     cells = ns.vtk_to_numpy(vtk_mesh.GetPolys().GetData())
+#     cells = cells.reshape(-1, 4)[:, 1:]
+#     ret = igl.write_triangle_mesh('tmp.mesh.off', pts.astype(np.double), cells)
+#     v, f  = igl.read_triangle_mesh('tmp.mesh.off')
+#     return v, f
 
 
 def hd5_to_mesh(hd5_file, t):
