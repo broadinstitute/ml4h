@@ -16,7 +16,11 @@ cnt2=$((VMTAG*STEP+STEP-1))
 for i in $(seq $cnt1 $cnt2)
 do
     end=$((i+1))
-    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/la_axes.py $i $end
+    gsutil -q stat gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_axes_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/csv/LA_processed_fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122_${i}_${end}.csv
+    if [[ $? == 1 ]]
+    then
+        /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/la_axes.py $i $end
+    fi 
 done
 
 cd /home/pdiachil/ml/notebooks/mri
