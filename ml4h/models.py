@@ -9,6 +9,7 @@ import logging
 import numpy as np
 from enum import Enum, auto
 from itertools import chain
+from abc import ABC, abstractmethod
 from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
 
@@ -28,7 +29,6 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-# TODO: tf 2.3++
 #from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
@@ -357,23 +357,23 @@ Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tenso
 BottleNeck = Callable[[Dict[TensorMap, Tensor]], Dict[TensorMap, Tensor]]
 Block = Callable[[Tensor, Dict[TensorMap, List[Tensor]]], Tensor]
 
-# TODO: tf 2.3++
-# class PreprocessBlock:
-#     def __init__(
-#             self,
-#             *,
-#             augmentations: List[str],
-#             factors: List[float],
-#     ):
-#         self.preprocess = [PREPROCESS_CLASSES[augmenter](factor) for augmenter, factor in zip(augmentations, factors)]
-#
-#     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
-#         for augmentation in self.preprocess:
-#             x = augmentation(x)
-#         return x
+
+class Preprocess:
+    def __init__(
+            self,
+            *,
+            augmentations: List[str],
+            factors: List[float],
+    ):
+        self.preprocess = [PREPROCESS_CLASSES[augmenter](factor) for augmenter, factor in zip(augmentations, factors)]
+
+    def __call__(self, x: Tensor) -> Tensor:
+        for augmentation in self.preprocess:
+            x = augmentation(x)
+        return x
 
 
-class ResidualBlock:
+class Residual:
     def __init__(
             self,
             *,
@@ -418,7 +418,7 @@ class ResidualBlock:
         return x
 
 
-class DenseConvolutionalBlock:
+class DenseConvolutional:
     def __init__(
             self,
             *,
@@ -458,7 +458,7 @@ class DenseConvolutionalBlock:
         return x
 
 
-class FullyConnectedBlock:
+class FullyConnected:
     def __init__(
             self,
             *,
@@ -549,8 +549,10 @@ def l2_norm(x, axis=None):
     """
     takes an input tensor and returns the l2 norm along specified axis
     """
+
     square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
     norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
+
     return norm
 
 
@@ -563,6 +565,7 @@ def pairwise_cosine_difference(t1, t2):
 
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
+
     def __init__(self, weight, **kwargs):
         super(CosineLossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -581,6 +584,7 @@ class CosineLossLayer(Layer):
 
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
+
     def __init__(self, weight, **kwargs):
         super(L2LossLayer, self).__init__(**kwargs)
         self.weight = weight
@@ -630,7 +634,7 @@ class VariationalBottleNeck:
             regularization_rate: float,
             pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]],
     ):
-        self.fully_connected = FullyConnectedBlock(
+        self.fully_connected = FullyConnected(
             widths=fully_connected_widths,
             activation=activation,
             normalization=normalization,
@@ -676,7 +680,7 @@ class ConcatenateRestructure:
             u_connect: DefaultDict[TensorMap, Set[TensorMap]],
             bottleneck_type: BottleneckType,
     ):
-        self.fully_connected = FullyConnectedBlock(
+        self.fully_connected = FullyConnected(
             widths=widths,
             activation=activation,
             normalization=normalization,
@@ -760,7 +764,7 @@ class ConvEncoder:
         num_res = len(res_filters)
         res_x, res_y, res_z = conv_x[:num_res], conv_y[:num_res], conv_z[:num_res]
         #self.preprocess_block = PreprocessBlock(['rotate'], [0.3])
-        self.res_block = ResidualBlock(
+        self.res_block = Residual(
             dimension=dimension, filters_per_conv=res_filters, conv_layer_type=conv_layer_type, conv_x=res_x,
             conv_y=res_y, conv_z=res_z, activation=activation, normalization=normalization,
             regularization=regularization, regularization_rate=regularization_rate, dilate=dilate,
@@ -768,7 +772,7 @@ class ConvEncoder:
 
         dense_x, dense_y, dense_z = conv_x[num_res:], conv_y[num_res:], conv_z[num_res:]
         self.dense_blocks = [
-            DenseConvolutionalBlock(
+            DenseConvolutional(
                 dimension=dimension, conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size, conv_y=[y]*block_size,
                 conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
@@ -852,7 +856,7 @@ class ConvDecoder:
     ):
         dimension = tensor_map_out.axes()
         self.dense_blocks = [
-            DenseConvolutionalBlock(
+            DenseConvolutional(
                 dimension=tensor_map_out.axes(), conv_layer_type=conv_layer_type, filters=filters, conv_x=[x]*block_size,
                 conv_y=[y]*block_size, conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=normalization,
                 regularization=regularization, regularization_rate=regularization_rate,
@@ -875,7 +879,17 @@ class ConvDecoder:
         return self.conv_label(x)
 
 
-class FullyConnectedBlockBlock:
+class Block(ABC):
+    @abstractmethod
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+        pass
+
+    @abstractmethod
+    def can_apply(self):
+        return True
+
+
+class FullyConnectedBlockBlock(Block):
     def __init__(
             self,
             *,
@@ -907,7 +921,8 @@ class FullyConnectedBlockBlock:
         return x
 
 
-class ModelAsBlock:
+class ModelAsBlock(Block):
+    """Takes a serialized model and applies it, can be used to encode or decode Tensors"""
     def __init__(
             self,
             *,
@@ -924,7 +939,7 @@ class ModelAsBlock:
         return x
 
 
-class LSTMEncoderBlock:
+class LSTMEncoderBlock(Block):
     def __init__(
             self,
             tensor_map,
@@ -943,7 +958,7 @@ class LSTMEncoderBlock:
         return self.lstm(x)
 
 
-class LanguageDecoderBlock:
+class LanguageDecoderBlock(Block):
     def __init__(
             self,
             tensor_map: TensorMap,
@@ -962,7 +977,7 @@ class LanguageDecoderBlock:
         return self.dense(x)
 
 
-class ConvEncoderBlock:
+class ConvEncoderBlock(Block):
     def __init__(
             self,
             *,
@@ -1001,21 +1016,21 @@ class ConvEncoderBlock:
         z_filters = _repeat_dimension(conv_z, len(conv_layers)+len(dense_blocks))
 
         #self.preprocess_block = PreprocessBlock(['rotate'], [0.3])
-        self.res_block = ResidualBlock(
+        self.res_block = Residual(
             dimension=dimension, filters_per_conv=conv_layers, conv_layer_type=conv_type, conv_x=x_filters[:len(conv_layers)],
             conv_y=y_filters[:len(conv_layers)], conv_z=z_filters[:len(conv_layers)], activation=activation, normalization=conv_normalize,
             regularization=conv_regularize, regularization_rate=conv_regularize_rate, dilate=conv_dilate,
         )
 
         self.dense_blocks = [
-            DenseConvolutionalBlock(
+            DenseConvolutional(
                 dimension=dimension, conv_layer_type=conv_type, filters=filters, conv_x=[x] * block_size, conv_y=[y] * block_size,
                 conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=conv_normalize,
                 regularization=conv_regularize, regularization_rate=conv_regularize_rate,
             ) for filters, x, y, z in zip(dense_blocks, x_filters[len(conv_layers):], y_filters[len(conv_layers):], z_filters[len(conv_layers):])
         ]
         self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(dense_blocks) + 1, pool_x, pool_y, pool_z)
-        self.fully_connected = FullyConnectedBlock(
+        self.fully_connected = FullyConnected(
             widths=dense_layers,
             activation=activation,
             normalization=dense_normalize,
@@ -1044,7 +1059,7 @@ class ConvEncoderBlock:
         return x
 
 
-class ConvDecoderBlock:
+class ConvDecoderBlock(Block):
     def __init__(
             self,
             *,
@@ -1074,7 +1089,7 @@ class ConvDecoderBlock:
         y_filters = _repeat_dimension(conv_y, len(dense_blocks))
         z_filters = _repeat_dimension(conv_z, len(dense_blocks))
         self.dense_conv_blocks = [
-            DenseConvolutionalBlock(
+            DenseConvolutional(
                 dimension=tensor_map.axes(), conv_layer_type=conv_type, filters=filters, conv_x=[x] * block_size,
                 conv_y=[y]*block_size, conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=conv_normalize,
                 regularization=conv_regularize, regularization_rate=conv_regularize_rate,
@@ -1108,7 +1123,7 @@ class ConvDecoderBlock:
         return self.conv_label(x)
 
 
-class DenseDecoderBlock:
+class DenseDecoderBlock(Block):
     def __init__(
             self,
             tensor_map: TensorMap,
@@ -1139,31 +1154,20 @@ class DenseDecoderBlock:
         return x
 
 
-class FlatDenseBlock:
+class FlatConcatBlock(Block):
     """
-    Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
+    Flattens then concatenates all inputs
     """
-    def __init__(
-            self,
-            activation: str,
-            dense_layers: List[int],
-            **kwargs,
-    ):
-        self.activation = activation
-        self.dense_layers = dense_layers
+    def __init__(self,  **kwargs):
+        pass
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
-        for tm, x in intermediates.items():
-            if tm.axes() > 1:
-                y = Flatten()(x[-1])
-                for units in self.dense_layers:
-                    y = Dense(units=units)(y)
-                    y = _activation_layer(self.activation)(y)
-                x.append(y)
+        y = [Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()]
+        y = concatenate(y) if len(y) > 1 else y[0]
         return y
 
 
-class FlatConcatDenseBlock:
+class FlatConcatDenseBlock(Block):
     """
     Flattens then concatenates all inputs, applies a dense layer
     """
@@ -1176,7 +1180,7 @@ class FlatConcatDenseBlock:
             dense_regularize_rate: float,
             **kwargs,
     ):
-        self.fully_connected = FullyConnectedBlock(
+        self.fully_connected = FullyConnected(
             widths=dense_layers,
             activation=activation,
             normalization=dense_normalize,
@@ -1186,13 +1190,13 @@ class FlatConcatDenseBlock:
         ) if dense_layers else None
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
-        y = [Flatten()(x[-1]) for x in intermediates.values()]
+        y = [Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()]
         y = concatenate(y) if len(y) > 1 else y[0]
         y = self.fully_connected(y) if self.fully_connected else y
         return y
 
 
-class GlobalAveragePoolBlock:
+class GlobalAveragePoolBlock(Block):
     """
     GAPs then concatenates all inputs, applies a dense layer
     """
@@ -1205,7 +1209,7 @@ class GlobalAveragePoolBlock:
             dense_regularize_rate: float,
             **kwargs,
     ):
-        self.fully_connected = FullyConnectedBlock(
+        self.fully_connected = FullyConnected(
             widths=dense_layers,
             activation=activation,
             normalization=dense_normalize,
@@ -1222,7 +1226,7 @@ class GlobalAveragePoolBlock:
         return y
 
 
-class AverageBlock:
+class AverageBlock(Block):
     """
     Average the last tensors in intermediates dictionary
     """
@@ -1230,10 +1234,10 @@ class AverageBlock:
         pass
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
-        return Average()([Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()])
+        return Average()([Flatten()(x[-1]) for tm, x in intermediates.items()])
 
 
-class EncodeIdentityBlock:
+class EncodeIdentityBlock(Block):
     """
     Adds the input tensor to the intermediates dictionary, useful for TensorMaps with pretrained embeddings
     """
@@ -1246,7 +1250,7 @@ class EncodeIdentityBlock:
         return x
 
 
-class PairLossBlock:
+class PairLossBlock(Block):
     """
     Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
     """
@@ -1268,7 +1272,7 @@ class PairLossBlock:
             x = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
             intermediates[left].extend(x)
             intermediates[right].extend(x)
-        return x
+        return intermediates[left][-1]
 
 
 def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
@@ -1431,7 +1435,7 @@ def make_multimodal_multitask_model(
                 pool_z=pool_z,
             )
         else:
-            encoders[tm] = FullyConnectedBlock(
+            encoders[tm] = FullyConnected(
                 widths=[tm.annotation_units],
                 activation=activation,
                 normalization=dense_normalize,
@@ -1694,7 +1698,7 @@ def make_paired_autoencoder_model(
             )
             reconstruction = decode(restructure(latent_inputs), {}, {})
         else:
-            dense_block = FullyConnectedBlock(
+            dense_block = FullyConnected(
                 widths=kwargs['dense_layers'],
                 activation=kwargs['activation'],
                 normalization=kwargs['dense_normalize'],
@@ -1726,8 +1730,8 @@ BLOCK_CLASSES = {
     'conv_encode': ConvEncoderBlock,
     'conv_decode': ConvDecoderBlock,
     'concat': FlatConcatDenseBlock,
+    'flat': FlatConcatBlock,
     'average': AverageBlock,
-    'flat': FlatDenseBlock,
     'pair': PairLossBlock,
     'gap': GlobalAveragePoolBlock,
     'lstm_encode': LSTMEncoderBlock,
@@ -1839,7 +1843,20 @@ def _make_multimodal_multitask_model_block(
         merge: Block,
         decoder_block_functions: Dict[TensorMap, Block],  # Assumed to be topologically sorted according to parents hierarchy
         u_connect: DefaultDict[TensorMap, Set[TensorMap]],
-) -> Tuple[Model, Dict[TensorMap, Model], Dict[TensorMap, Model]]:
+) -> Tuple[Model, Dict[TensorMap, Model], Dict[TensorMap, Model], Model]:
+    """
+    Turn Blocks into Models
+    Returns full model, encoders, decoders and a merge model.
+    Blocks are specified by dictionaries for encodings, decodings and merging.
+    This function returns Models, the full model the merge model and dictionaries mapping TensorMaps to models for each encoder and decoder.
+
+    :param encoder_block_functions: Dictionary mapping input TensorMaps to Blocks, populate intermediate Dictionary
+    :param merge: A block which may use the Dictionary of intermediates to combine or add loss to a model.
+    :param decoder_block_functions: Dictionary mapping output TensorMaps to Blocks, may link with intermediates for parenting or skip connections
+    :param u_connect: Dictionary with TensorMap keys and sets of all their u_connected parents as values
+
+    :return: Full model, encoder models, decoder models and merge model
+    """
     inputs: Dict[TensorMap, Input] = {}
     encoders: Dict[TensorMap, Model] = {}
     encodings: List[Layer] = []
