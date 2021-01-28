@@ -37,6 +37,7 @@ export GROUP_NAMES GROUP_IDS
 # Create string to be called in Docker's bash shell via eval;
 # this creates a user, adds groups, adds user to groups, then calls the Python script
 CALL_DOCKER_AS_USER="
+    apt update;
     apt-get -y install sudo;
     useradd -u $(id -u) ${USER};
     GROUP_NAMES_ARR=( \${GROUP_NAMES} );
