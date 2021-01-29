@@ -206,7 +206,7 @@ from parameterize_segmentation import msh_to_vtk, improve_mesh
 
 import logging
 logging.getLogger().setLevel('INFO')
-hd5s = open('/home/pdiachil/projects/manifests/patient_list.csv', 'r')
+hd5s = open('/home/pdiachil/projects/manifests/patient_list_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122.csv', 'r')
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 
@@ -219,6 +219,7 @@ end = int(sys.argv[2])
 version='fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122'
 
 views = ['lax_4ch', 'lax_3ch', 'lax_2ch']
+views += [f'sax_b{d}' for d in range(1, 13)]
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 6, 'LV_cavity': 5, 'LV_free_wall': 3, 'interventricular_septum': 2, 'RA_cavity': 14, 'LA_cavity': 13}
 
 channels = [
@@ -234,7 +235,7 @@ channels = [
     ],
 ]
 
-# channels[0] += [[MRI_SAX_SEGMENTED_CHANNEL_MAP['RV_cavity'], MRI_SAX_SEGMENTED_CHANNEL_MAP['RA_cavity']] for d in range(1, 13)]
+channels[0] += [MRI_SAX_SEGMENTED_CHANNEL_MAP['LA_cavity'] for d in range(1, 13)]
 
 channel_septum = MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['interventricular_septum']
 
@@ -296,6 +297,17 @@ for i, hd5 in enumerate(hd5s):
                             save_path=None, order='F',
                         )[0],
                     )
+                    # orig_datasets.append(
+                    #     _mri_hd5_to_structured_grids(
+                    #         ff_trad, view_format_string.format(view=view),
+                    #         view_name=view_format_string.format(view=view),
+                    #         instance=instance,
+                    #         concatenate=False, annotation=False,
+                    #         save_path=None, order='F',
+                    #     )[0],
+                    # )
+                    # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=True)
+                    # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True)
                     
             poisson_chambers = []
             poisson_volumes = []
