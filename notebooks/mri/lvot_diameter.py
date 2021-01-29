@@ -15,11 +15,11 @@ import sys
 import os
 import pandas as pd
 
-start_id = int(sys.argv[1])
-stop_id = int(sys.argv[2])
+# start_id = int(sys.argv[1])
+# stop_id = int(sys.argv[2])
 
-# start_id = 73
-# stop_id = 80
+start_id = 1
+stop_id = 2
 
 manifest = open('/home/pdiachil/projects/manifests/lvot_diameters.csv')
 results_dic = {'sample_id': [], 'instance': [], 'nset': [], 'frame': [], 'fname': []}
@@ -78,27 +78,33 @@ for pat_i, sample_id_line in enumerate(manifest):
                     centroid = np.array(list(map(int, props[0].centroid)))
                     
                     idx = np.argmin(np.linalg.norm(arg_skeleton-centroid, axis=1))
-                    centroid = arg_skeleton[idx]
-                    
+                    centroids = [arg_skeleton[idx]]
 
-                    dist_centroid = np.linalg.norm(arg_skeleton-centroid, axis=1)                
-                    arg_dist_centroid = np.where(np.logical_and(dist_centroid<20.0, dist_centroid>0.001))[0]
+                    if col_name =='ascending_aorta':
+                        skeleton_aorta = np.argwhere((img==col)+skeleton > 1.5)
+                        centroids = []
+                        for idx in range(8, len(skeleton_aorta), 24):
+                            centroids.append(skeleton_aorta[idx])
 
-                    normals = np.zeros((len(arg_dist_centroid), 2))
-                    for i, close_pt in enumerate(arg_dist_centroid):
-                        coor = arg_skeleton[close_pt]
-                        delta = coor - centroid
-                        normals[i] = np.array([delta[1], -delta[0]]) / np.linalg.norm(delta)
-                        if normals[i, 0] < 0:
-                            normals[i] = -normals[i]
-                    normals_mask = np.min(np.abs(normals), axis=1) > 0.001
-                    normal = np.median(normals[normals_mask], axis=0)
-                    px0 = np.array(list(map(int, centroid + normal*40+1)))
-                    px1 = np.array(list(map(int, centroid - normal*40+1)))
-
-                    normal = line(px0[0], px0[1], px1[0], px1[1])
                     normal_img = np.zeros_like(skeleton)
-                    normal_img[normal[0], normal[1]] = 1
+                    for centroid in centroids:
+                        dist_centroid = np.linalg.norm(arg_skeleton-centroid, axis=1)                
+                        arg_dist_centroid = np.where(np.logical_and(dist_centroid<20.0, dist_centroid>0.001))[0]
+
+                        normals = np.zeros((len(arg_dist_centroid), 2))
+                        for i, close_pt in enumerate(arg_dist_centroid):
+                            coor = arg_skeleton[close_pt]
+                            delta = coor - centroid
+                            normals[i] = np.array([delta[1], -delta[0]]) / np.linalg.norm(delta)
+                            if normals[i, 0] < 0:
+                                normals[i] = -normals[i]
+                        normals_mask = np.min(np.abs(normals), axis=1) > 0.001
+                        normal = np.median(normals[normals_mask], axis=0)
+                        px0 = np.array(list(map(int, centroid + normal*40+1)))
+                        px1 = np.array(list(map(int, centroid - normal*40+1)))
+
+                        normal = line(px0[0], px0[1], px1[0], px1[1])                        
+                        normal_img[normal[0], normal[1]] = 1
                     normal_img = skimage.morphology.binary_dilation(normal_img, selem=np.ones((2,2),dtype=np.int))                    
                     boundary_normal = np.argwhere((boundaries.astype(int)+normal_img) > 1.5)
                     boundary_normal = boundary_normal[[0, -1]]

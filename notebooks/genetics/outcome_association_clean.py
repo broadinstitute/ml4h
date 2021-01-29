@@ -16,18 +16,21 @@ for pheno in phenos_to_binarize:
     phenotypes[f'{pheno}_binary'] = (phenotypes[pheno] > phenotypes[pheno].quantile(0.80)).apply(float)
 
 label_dic = {
-    'RVEDV_poisson_v20201102_v20201006': ['RV$_{max}$ (3-D surf v20201102_v20201006)', 'ml'],
-    'RVESV_poisson_v20201102_v20201006': ['RV$_{min}$ (3-D surf v20201102_v20201006)', 'ml'],
-    'RVEF_poisson_v20201102_v20201006': ['RVEF (3-D surf v20201102_v20201006)', ''],
-    'RVEDV_poisson_v20201124_v20201122': ['RV$_{max}$ (3-D surf v20201124_v20201122)', 'ml'],
-    'RVESV_poisson_v20201124_v20201122': ['RV$_{min}$ (3-D surf v20201124_v20201122)', 'ml'],
-    'RVEF_poisson_v20201124_v20201122': ['RVEF (3-D surf v20201124_v20201122)', ''],
+    'LAEDV_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LA$_{max}$ (3-D surf)', 'ml'],
+    'LAESV_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LA$_{min}$ (3-D surf)', 'ml'],
+    'LAEF_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF (3-D surf)', ''],
+    'LA_ED_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAED_Z ', 'mm'],
+    'LA_ES_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAES_Z', 'mm'],
+    'LA_EF_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_Z', 'mm'],
+    'LA_ED_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAED_Y', 'mm'],
+    'LA_ES_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAES_Y', 'mm'],
+    'LA_EF_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_Y', 'mm'],
     # 'RVEDV': ['RVEDV (Petersen)', 'ml'],
     # 'RVESV': ['RVESV (Petersen)', 'ml'],
     # 'RVEF': ['RVEF (Petersen)', ''],
-    # 'RVEDV': ['RVEDV (Petersen)', 'ml'],
-    # 'RVESV': ['RVESV (Petersen)', 'ml'],
-    # 'RVEF': ['RVEF (Petersen)', ''],
+    'LAEDV': ['LAEDV (Petersen)', 'ml'],
+    'LAESV': ['LAESV (Petersen)', 'ml'],
+    'LAEF': ['LAEF (Petersen)', ''],
     # 'RV_poisson_max_binary': ['enlarged RV$_{max}$ (3-D surf)', ''],
     # 'RV_poisson_min_binary': ['enlarged RV$_{min}$ (3-D surf)', ''],
     # 'RVEDV_binary': ['enlarged RVEDV (Petersen)', ''],
@@ -61,13 +64,13 @@ diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 
 disease_list = [
     ['Atrial_fibrillation_or_flutter_v2', 'atrial fibrillation'],
-    ['Heart_Failure_V2', 'heart failure'],
+    # ['Heart_Failure_V2', 'heart failure'],
     # ['Bradyarrhythmia_AV_block_or_distal_conduction_disease', 'bradyarrhythmia'],
     # ['Supraventricular_arrhythmia_General_inclusive_definition', 'supraventricular arrhythmia'],
     # ['Hypertension', 'hypertension'],
     # ['Myocardial_Infarction', 'myocardial infarction'],
-    ['Pulmonary_Hypertension', 'pulmonary hypertension'],
-    ['Tricuspid_valve_disease', 'tricuspid valve disease'],
+    # ['Pulmonary_Hypertension', 'pulmonary hypertension'],
+    # ['Tricuspid_valve_disease', 'tricuspid valve disease'],
 ]
 diseases_unpack = unpack_disease(diseases, disease_list, phenotypes)
 
@@ -113,12 +116,18 @@ plot_or_hr(hazard_ratio_univariable, label_dic, disease_list, f'hr_univariate_li
 covariates = ['age', 'male']
 
 phenotype_subset = [
-    'RVEDV_poisson_v20201102_v20201006',
-    'RVESV_poisson_v20201102_v20201006',
-    'RVEF_poisson_v20201102_v20201006',
-    'RVEDV_poisson_v20201124_v20201122',
-    'RVESV_poisson_v20201124_v20201122',
-    'RVEF_poisson_v20201124_v20201122',
+    'LAEDV_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LAESV_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LAEF_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ED_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ES_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    # 'LA_EF_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ED_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ES_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',    
+    # 'LA_EF_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122', 
+    'LAEDV',
+    'LAESV',
+    'LAEF',
     # 'RVEDV',
     # 'RVESV',
     # 'RVEF',
@@ -137,13 +146,13 @@ odds_ratio_multivariable = odds_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_all_rv_20201125', occ='prevalent', horizontal_line_y=0)
+plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_la_petersen_20210128', occ='prevalent', horizontal_line_y=0)
 
 hazard_ratio_multivariable = hazard_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_all_rv_20201125', occ='incident', horizontal_line_y=0)
+plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_la_petersen_20210128', occ='incident', horizontal_line_y=0)
 
 
 # %%
