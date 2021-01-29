@@ -16,7 +16,7 @@ from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import block_make_multimodal_multitask_model
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe, pca_on_tsv
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
