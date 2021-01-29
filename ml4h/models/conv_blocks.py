@@ -91,7 +91,7 @@ class ConvEncoderBlock(Block):
             intermediates[self.tensor_map].append(x)
         if self.fully_connected:
             x = Flatten()(x)
-            x = self.fully_connected(x)
+            x = self.fully_connected(x, intermediates)
             intermediates[self.tensor_map].append(x)
         return x
 
