@@ -25,8 +25,8 @@ from collections import defaultdict
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
-from ml4h.models import parent_sort, BottleneckType, check_no_bottleneck
-from ml4h.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES, BLOCK_CLASSES
+from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps

@@ -15,17 +15,17 @@ from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
+from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe, pca_on_tsv
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
-from ml4h.models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model, make_paired_autoencoder_model, \
-    block_make_multimodal_multitask_model
+from ml4h.models.legacy_models import make_character_model_plus, embed_model_predict, make_siamese_model, make_multimodal_multitask_model, make_paired_autoencoder_model
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4h.models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
+from ml4h.models.legacy_models import train_model_from_generators, get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, saliency_map
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_prediction_calibrations, \
-    plot_reconstruction, plot_hit_to_miss_transforms, plot_autoencoder_towards_attractor
+    plot_reconstruction, plot_hit_to_miss_transforms
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 
