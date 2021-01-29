@@ -5,7 +5,7 @@ import os
 import logging
 from itertools import chain
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Set, DefaultDict, Any
+from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
@@ -91,24 +91,79 @@ def block_make_multimodal_multitask_model(
     if kwargs.get('model_file', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
 
+    full_model, encoders, decoders, merger = multimodal_multitask_model(tensor_maps_in, tensor_maps_out,
+                                                                        encoder_blocks, decoder_blocks, merge_blocks,
+                                                                        custom_dict, u_connect, **kwargs)
+    full_model.compile(
+        optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
+        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+    )
+    full_model.summary()
+    if kwargs.get('model_layers', False):
+        full_model.load_weights(kwargs['model_layers'], by_name=True)
+        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
+
+    return full_model, encoders, decoders, merger
+
+
+def multimodal_multitask_model(
+        tensor_maps_in: List[TensorMap],
+        tensor_maps_out: List[TensorMap],
+        encoder_blocks: List[Union[Block, str]],
+        decoder_blocks: List[Union[Block, str]],
+        merge_blocks: List[Union[Block, str]],
+        custom_dict: Dict[str, Any],
+        u_connect: DefaultDict[TensorMap, Set[TensorMap]] = None,
+        **kwargs
+) -> Tuple[Model, Dict[TensorMap, Model], Dict[TensorMap, Model]]:
+    """Make multi-task, multi-modal feed forward neural network for all kinds of prediction
+
+    This model factory can be used to make networks for classification, regression, and segmentation
+    The tasks attempted are given by the output TensorMaps.
+    The modalities and the first layers in the architecture are determined by the input TensorMaps.
+    Model architectures are specified by Blocks which can encode, merge or decode TensorMaps.
+
+    Hyperparameters are exposed to the command line and passed through to Block constructors via **kwargs.
+    Model summary printed to output
+
+    :param tensor_maps_in: List of input TensorMaps
+    :param tensor_maps_out: List of output TensorMaps
+    :param encoder_blocks: One or more Blocks, BLOCK_CLASS keys or hd5 model files to encode applicable input TensorMaps
+    :param decoder_blocks: One or more Blocks, BLOCK_CLASS keys or hd5 model files to decode applicable output TensorMaps
+    :param merge_blocks: Zero or more Blocks, BLOCK_CLASS keys to construct multimodal latent space or apply loss functions based on internal activations, etc..
+    :param custom_dict: Dictionary of custom objects needed to load a serialized model
+    :param u_connect: dictionary of input TensorMap -> output TensorMaps to u connect to
+    """
     encoder_block_functions = {tm: identity for tm in tensor_maps_in}  # Dict[TensorMap, Block]
     for tm in tensor_maps_in:
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
-            if encode_block in BLOCK_CLASSES:
+            if isinstance(encode_block, Block):
+                encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))
+            elif encode_block in BLOCK_CLASSES:
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
-            elif encode_block.endswith(f'encoder_{tm.name}.h5'): # TODO: load protobuf models too
+            elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
                 break  # Don't also reconstruct from scratch if model is serialized, hd5 models must precede BLOCK_CLASS keys
 
     merge = identity
     for merge_block in merge_blocks:
-        merge = compose(merge, BLOCK_CLASSES[merge_block](**kwargs))
+        if isinstance(merge_block, Block):
+            merge = compose(merge, merge_block(**kwargs))
+        else:
+            merge = compose(merge, BLOCK_CLASSES[merge_block](**kwargs))
 
     decoder_block_functions = {tm: identity for tm in tensor_maps_out}
     for tm in tensor_maps_out:
         for decode_block in decoder_blocks:
-            if decode_block in BLOCK_CLASSES:
+            if isinstance(decode_block, Block):
+                decoder_block_functions[tm] = compose(decoder_block_functions[tm], decode_block(
+                    tensor_map=tm,
+                    u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
+                    parents=tm.parents,
+                    **kwargs,
+                ))
+            elif decode_block in BLOCK_CLASSES:
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], BLOCK_CLASSES[decode_block](
                     tensor_map=tm,
                     u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
@@ -120,17 +175,7 @@ def block_make_multimodal_multitask_model(
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
                 break
 
-    full_model, encoders, decoders, merger = _make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
-    full_model.compile(
-        optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
-        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
-    )
-    full_model.summary()
-    if kwargs.get('model_layers', False):
-        full_model.load_weights(kwargs['model_layers'], by_name=True)
-        logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
-
-    return full_model, encoders, decoders, merger
+    return _make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
 
 
 def _make_multimodal_multitask_model_block(
