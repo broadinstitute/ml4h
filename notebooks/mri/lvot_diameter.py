@@ -18,16 +18,18 @@ import pandas as pd
 # start_id = int(sys.argv[1])
 # stop_id = int(sys.argv[2])
 
-start_id = 1
-stop_id = 2
+start_id = 0
+stop_id = 5
 
 manifest = open('/home/pdiachil/projects/manifests/lvot_diameters.csv')
 results_dic = {'sample_id': [], 'instance': [], 'nset': [], 'frame': [], 'fname': []}
+region_points = {'lvot': 1, 'aortic_root': 1, 'ascending_aorta': 6}
 
-for col in ['lvot', 'aortic_root', 'ascending_aorta']:
-    for end in ['0', '1']:
-        for coor in ['r', 'c']:
-            results_dic[f'{col}_{end}_{coor}'] = []
+for region, n_centers in region_points.items():
+    for n_center in range(n_centers):
+        for end in ['0', '1']:
+            for coor in ['r', 'c']:
+                results_dic[f'{region}_{n_center}_{end}_{coor}'] = []
 
 for pat_i, sample_id_line in enumerate(manifest):
     if pat_i < start_id:
@@ -67,27 +69,51 @@ for pat_i, sample_id_line in enumerate(manifest):
             img = skimage.transform.rescale(img, 2, order=0, preserve_range=True)
             img_bin = skimage.transform.rescale(img_bin, 2, order=0, preserve_range=True)
             arg_skeleton = np.argwhere(skeleton)
+            
             boundary_normals = []
             normal_imgs = []
             centroids = []
-            for col_name, col in zip(['lvot', 'aortic_root', 'ascending_aorta'], [11, 7, 8]):
+            for col_name, col in zip(region_points, [11, 7, 8]):
+                for n_center in range(region_points[col_name]):
+                    for end in ['0', '1']:
+                        for coor in ['r', 'c']:
+                            results_dic[f'{col_name}_{n_center}_{end}_{coor}'].append(-1.0)
+            # for col_name, col in zip(['ascending_aorta'], [8]):
                 try:
+                    centroids_col = []
+                    img_lvot = np.zeros_like(img, dtype=int)
                     boundaries = find_boundaries(img==col, mode='inner')
-                    img_lvot = np.asarray(img==col, dtype=int)
+                    img_lvot[:, :] = np.asarray(img==col, dtype=int)
+                    img_lvot[:, :] = label(img_lvot)                            
+            
+                    props = regionprops(img_lvot)
+                    max_area = 0
+                    max_idarea = -1
+                    for iprop, prop in enumerate(props):
+                        if prop.area > max_area:
+                            max_area = prop.area
+                            max_idarea = iprop
+                    img_lvot[:, :] = np.asarray(img_lvot == max_idarea+1, dtype=int)
+                
                     props = regionprops(img_lvot)
                     centroid = np.array(list(map(int, props[0].centroid)))
                     
-                    idx = np.argmin(np.linalg.norm(arg_skeleton-centroid, axis=1))
-                    centroids = [arg_skeleton[idx]]
+                    idx = np.argmin(np.linalg.norm(arg_skeleton-centroid, axis=1))                    
 
-                    if col_name =='ascending_aorta':
-                        skeleton_aorta = np.argwhere((img==col)+skeleton > 1.5)
-                        centroids = []
-                        for idx in range(8, len(skeleton_aorta), 24):
-                            centroids.append(skeleton_aorta[idx])
-
-                    normal_img = np.zeros_like(skeleton)
-                    for centroid in centroids:
+                    if region_points[col_name] > 1:
+                        skeleton_aorta = np.argwhere(img_lvot+skeleton > 1.5)
+                        idxs = np.linspace(16, len(skeleton_aorta)-16, 6, dtype=np.int)
+                        for idx in idxs:
+                            centroids_col.append(skeleton_aorta[idx])
+                    else:
+                        centroids_col.append(arg_skeleton[idx])
+                          
+                    normal_img = np.zeros_like(skeleton) 
+                
+       
+                    for icentroid, centroid in enumerate(centroids_col):
+                        normal_centroid_img = np.zeros_like(skeleton)
+                
                         dist_centroid = np.linalg.norm(arg_skeleton-centroid, axis=1)                
                         arg_dist_centroid = np.where(np.logical_and(dist_centroid<20.0, dist_centroid>0.001))[0]
 
@@ -105,32 +131,32 @@ for pat_i, sample_id_line in enumerate(manifest):
 
                         normal = line(px0[0], px0[1], px1[0], px1[1])                        
                         normal_img[normal[0], normal[1]] = 1
-                    normal_img = skimage.morphology.binary_dilation(normal_img, selem=np.ones((2,2),dtype=np.int))                    
-                    boundary_normal = np.argwhere((boundaries.astype(int)+normal_img) > 1.5)
-                    boundary_normal = boundary_normal[[0, -1]]
+                        normal_centroid_img[normal[0], normal[1]] = 1
+                        normal_centroid_img = skimage.morphology.binary_dilation(normal_centroid_img, selem=np.ones((2,2),dtype=np.int))
+                        boundary_normal = np.argwhere((boundaries.astype(int)+normal_centroid_img) > 1.5)
+                        boundary_normal = boundary_normal[[0, -1]]
+                        results_dic[f'{col_name}_{icentroid}_0_r'][-1] = boundary_normal[0, 0] / 2.0
+                        results_dic[f'{col_name}_{icentroid}_0_c'][-1] = boundary_normal[0, 1] / 2.0
+                        results_dic[f'{col_name}_{icentroid}_1_r'][-1] = boundary_normal[1, 0] / 2.0
+                        results_dic[f'{col_name}_{icentroid}_1_c'][-1] = boundary_normal[1, 1] / 2.0
+                        boundary_normals.append(boundary_normal)                
                 except IndexError:
                     boundary_normal = -1.0*np.ones((2, 2))
+                    boundary_normals.append(boundary_normal)
                     centroid = -1.0*np.ones((2,))
                     normal_img = np.zeros_like(skeleton)
                 normal_imgs.append(normal_img)
-                boundary_normals.append(boundary_normal)
-                centroids.append(centroid)
-                for ib, point in enumerate(boundary_normal[[0, -1]]):
-                    results_dic[f'{col_name}_{ib}_r'].append(point[0]/2.0)
-                    results_dic[f'{col_name}_{ib}_c'].append(point[1]/2.0)
+                centroids += centroids_col
             f, ax = plt.subplots()
             f.set_size_inches(9, 9)
             ax.imshow(normal_imgs[0]*5
-                      +normal_imgs[1]*5
-                      +normal_imgs[2]*5
+                      +normal_imgs[0]*5
+                      +normal_imgs[0]*5
                       +skeleton*4+img, cmap='gray')
-                        
-            ax.plot(boundary_normals[0][:, 1], boundary_normals[0][:, 0], 'rx')            
-            ax.plot(boundary_normals[1][:, 1], boundary_normals[1][:, 0], 'rx')
-            ax.plot(boundary_normals[2][:, 1], boundary_normals[2][:, 0], 'rx')
-            ax.plot(centroids[0][1], centroids[0][0], 'rx')
-            ax.plot(centroids[1][1], centroids[1][0], 'rx')
-            ax.plot(centroids[2][1], centroids[2][0], 'rx')
+            for boundary_normal in boundary_normals:
+                ax.plot(boundary_normal[:, 1], boundary_normal[:, 0], 'rx')
+            for centroid in centroids:
+                ax.plot(centroid[1], centroid[0], 'rx')
             f.savefig(f'{img_n}.png')
             plt.close(f)
         
