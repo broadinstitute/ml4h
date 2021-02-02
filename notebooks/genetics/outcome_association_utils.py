@@ -7,6 +7,8 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
 
+import lifelines
+
 def unpack_disease(diseases, disease_list, phenotypes):
 
     diseases_unpack = pd.DataFrame()
@@ -114,26 +116,32 @@ def hazard_ratios(
             )/\
                                          np.std(tmp_data[covariates_scale].values, axis=0)
             tmp_data['intercept'] = 1.0
-            tmp_data['futime'] = (tmp_data[f'{disease}_censor_date']-tmp_data[f'instance{instance}_date']).dt.days
+            tmp_data['futime'] = (tmp_data[f'{disease}_censor_date']-tmp_data[f'instance{instance}_date']).dt.days.values.astype(float)
             tmp_data['entry'] = 0.0
             tmp_data = tmp_data[tmp_data['futime']>0]
+            
             regression_covariates = [covariate for covariate in covariates]
             if diabetes_is_covariate and disease != 'Diabetes_Type_2':
                 regression_covariates += ['Diabetes_Type_2_prevalent']
             tmp_data.to_csv('/home/pdiachil/ml/notebooks/mri/examine.csv')
-            res = sm.PHReg(
-                tmp_data['futime'], tmp_data[[pheno]+regression_covariates],
-                tmp_data[f'{disease}_incident'], tmp_data['entry'],
-            ).fit()
-            res_predict = res.predict()
-            hr_multi_dic[pheno][f'{disease}_incident']['HR'] = np.exp(res.params[0])
-            hr_multi_dic[pheno][f'{disease}_incident']['CI'] = np.exp(res.conf_int()[0])
-            hr_multi_dic[pheno][f'{disease}_incident']['p'] = res.pvalues[0]
+            # res = sm.PHReg(
+            #     tmp_data['futime'], tmp_data[[pheno]+regression_covariates],
+            #     tmp_data[f'{disease}_incident'], tmp_data['entry'],
+            # ).fit()
+            # res_predict = res.predict()
+            cox = lifelines.CoxPHFitter()
+            cox.fit(tmp_data[[pheno]+regression_covariates + ['futime', f'{disease}_incident']], 
+                    duration_col='futime', 
+                    event_col=f'{disease}_incident')            
+            hr_multi_dic[pheno][f'{disease}_incident']['HR'] = cox.summary.loc[pheno]['exp(coef)']
+            hr_multi_dic[pheno][f'{disease}_incident']['CI'] = np.array([cox.summary.loc[pheno]['exp(coef) lower 95%'],
+                                                                         cox.summary.loc[pheno]['exp(coef) upper 95%']])
+            hr_multi_dic[pheno][f'{disease}_incident']['p'] = cox.summary.loc[pheno]['p']
             hr_multi_dic[pheno][f'{disease}_incident']['n'] = np.sum(tmp_data[f'{disease}_incident'])
             hr_multi_dic[pheno][f'{disease}_incident']['ntot'] = len(tmp_data)
             hr_multi_dic[pheno][f'{disease}_incident']['std'] = std
-            hr_multi_dic[pheno][f'{disease}_incident']['auc'] = roc_auc_score(tmp_data[[f'{disease}_incident']], res_predict.predicted_values)
-            hr_multi_dic[pheno][f'{disease}_incident']['prauc'] = average_precision_score(tmp_data[[f'{disease}_incident']], res_predict.predicted_values)
+            hr_multi_dic[pheno][f'{disease}_incident']['auc'] = cox.concordance_index_
+            hr_multi_dic[pheno][f'{disease}_incident']['prauc'] = np.nan    
     return hr_multi_dic
 
 
