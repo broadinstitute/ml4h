@@ -21,10 +21,13 @@ label_dic = {
     'LAEF_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF (3-D surf)', ''],
     'LA_ED_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAED_Z ', 'mm'],
     'LA_ES_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAES_Z', 'mm'],
-    'LA_EF_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_Z', 'mm'],
+    'LA_EF_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_Z', ''],
     'LA_ED_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAED_Y', 'mm'],
     'LA_ES_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAES_Y', 'mm'],
-    'LA_EF_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_Y', 'mm'],
+    'LA_EF_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_Y', ''],
+    'LA_ED_x_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAED_X', 'mm'],
+    'LA_ES_x_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAES_X', 'mm'],
+    'LA_EF_x_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122': ['LAEF_X', ''],
     # 'RVEDV': ['RVEDV (Petersen)', 'ml'],
     # 'RVESV': ['RVESV (Petersen)', 'ml'],
     # 'RVEF': ['RVEF (Petersen)', ''],
@@ -115,16 +118,16 @@ plot_or_hr(hazard_ratio_univariable, label_dic, disease_list, f'hr_univariate_li
 # Multivariate
 covariates = ['age', 'male']
 
-phenotype_subset = [
+phenotype_subset = [        
+    'LA_ES_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ES_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ES_x_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ED_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ED_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
+    'LA_ED_x_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
     'LAEDV_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
     'LAESV_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
-    'LAEF_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
-    'LA_ED_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
-    'LA_ES_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
-    # 'LA_EF_z_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
-    'LA_ED_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',
-    'LA_ES_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',    
-    # 'LA_EF_y_axis_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122', 
+    'LAEF_poisson_fastai-2ch-v20200809-3ch-v20200603-4ch-v20201122',    
     'LAEDV',
     'LAESV',
     'LAEF',
@@ -146,14 +149,13 @@ odds_ratio_multivariable = odds_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_la_petersen_20210128', occ='prevalent', horizontal_line_y=0)
+plot_or_hr(odds_ratio_multivariable, labels, disease_list, f'or_multivariate_la_petersen_20210130', occ='prevalent', horizontal_line_y=0)
 
 hazard_ratio_multivariable = hazard_ratios(
     phenotypes, diseases_unpack, labels,
     disease_list, covariates=covariates, instance=2, dont_scale=dont_scale,
 )
-plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_la_petersen_20210128', occ='incident', horizontal_line_y=0)
-
+plot_or_hr(hazard_ratio_multivariable, labels, disease_list, f'hr_multivariate_la_petersen_20210130', occ='incident', horizontal_line_y=0)
 
 # %%
 fail_set = set(failed[0])

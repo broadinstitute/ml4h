@@ -12,7 +12,7 @@ cnt2=$((VMTAG*STEP+STEP))
 
 /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/lvot_diameter.py $cnt1 $cnt2
 
-/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.gif gs://ml4cvd/pdiachil/lvot_diameter/gif/
-/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.csv gs://ml4cvd/pdiachil/lvot_diameter/csv/
+/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.gif gs://ml4cvd/pdiachil/lvot_diameter/6points_gif/
+/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.csv gs://ml4cvd/pdiachil/lvot_diameter/6points_csv/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
