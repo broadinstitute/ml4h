@@ -219,7 +219,7 @@ end = int(sys.argv[2])
 version='fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122'
 
 views = ['lax_4ch', 'lax_3ch', 'lax_2ch']
-views += [f'sax_b{d}' for d in range(1, 13)]
+# views += [f'sax_b{d}' for d in range(1, 13)]
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {'RV_cavity': 6, 'LV_cavity': 5, 'LV_free_wall': 3, 'interventricular_septum': 2, 'RA_cavity': 14, 'LA_cavity': 13}
 
 channels = [
@@ -235,7 +235,7 @@ channels = [
     ],
 ]
 
-channels[0] += [MRI_SAX_SEGMENTED_CHANNEL_MAP['LA_cavity'] for d in range(1, 13)]
+# channels[0] += [MRI_SAX_SEGMENTED_CHANNEL_MAP['LA_cavity'] for d in range(1, 13)]
 
 channel_septum = MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['interventricular_septum']
 
