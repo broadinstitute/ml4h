@@ -16,7 +16,7 @@ _HRR_SENTINEL = -1000
 
 # BIKE ECG
 def _check_phase_full_len(hd5: h5py.File, phase: str):
-    phase_len = get_tensor_at_first_date(hd5, 'ecg_bike', f'{phase}_duration')
+    phase_len = get_tensor_at_first_date(hd5, 'ecg_bike/continuous', f'{phase}_duration')
     valid = True
     if phase == 'pretest':
         valid &= phase_len == 15
@@ -381,7 +381,7 @@ ecg_bike_recovery = TensorMap(
     tensor_from_file=_first_date_bike_recovery,
 )
 ecg_bike_pretest = TensorMap(
-    'full', shape=(500 * 15 - 4, 3), path_prefix='ecg_bike', validator=no_nans,
+    'full', shape=(500 * 15 - 4, 3), path_prefix='ecg_bike/float_array', validator=no_nans,
     normalization={
         'mean': np.array(
         [7, -7, 3.5],
