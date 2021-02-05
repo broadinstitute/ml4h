@@ -21,7 +21,7 @@ class FlatConcatBlock(Block):
     def __init__(self,  **kwargs):
         pass
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()]
         y = concatenate(y) if len(y) > 1 else y[0]
         return y
@@ -49,7 +49,7 @@ class FlatConcatDenseBlock(Block):
             name='embed',
         ) if dense_layers else None
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()]
         y = concatenate(y) if len(y) > 1 else y[0]
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
@@ -78,7 +78,7 @@ class GlobalAveragePoolBlock(Block):
             name='embed',
         ) if dense_layers else None
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items() if tm.axes() == 1]  # Flat tensors
         y += [global_average_pool(x[-2 if self.fully_connected else -1]) for tm, x in intermediates.items() if tm.axes() > 1]  # Structured tensors
         y = concatenate(y) if len(y) > 1 else y[0]
@@ -93,7 +93,7 @@ class AverageBlock(Block):
     def __init__(self, **kwargs):
         pass
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         return Average()([Flatten()(x[-1]) for tm, x in intermediates.items()])
 
 
@@ -104,7 +104,7 @@ class EncodeIdentityBlock(Block):
     def __init__(self, tensor_map, **kwargs):
         self.tensor_map = tensor_map
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if self.tensor_map.is_embedding():
             intermediates[self.tensor_map].append(x)
         return x
@@ -127,7 +127,7 @@ class PairLossBlock(Block):
         elif pair_loss == 'euclid':
             self.loss_layer = L2LossLayer(pair_loss_weight)
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         for left, right in self.pairs:
             x = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
             intermediates[left].extend(x)

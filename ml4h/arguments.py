@@ -141,7 +141,7 @@ def parse_args():
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
-    parser.add_argument('--dense_layers', nargs='*', default=[16, 64], type=int, help='List of number of hidden units in neural nets dense layers.')
+    parser.add_argument('--dense_layers', nargs='*', default=[32, 32], type=int, help='List of number of hidden units in neural nets dense layers.')
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
@@ -162,10 +162,10 @@ def parse_args():
     parser.add_argument('--pool_y', default=2, type=int, help='Pooling size in the y-axis, if 1 no pooling will be performed.')
     parser.add_argument('--pool_z', default=1, type=int, help='Pooling size in the z-axis, if 1 no pooling will be performed.')
     parser.add_argument('--padding', default='same', help='Valid or same border padding on the convolutional layers.')
-    parser.add_argument('--dense_blocks', nargs='*', default=[32, 24, 16], type=int, help='List of number of kernels in convolutional layers.')
+    parser.add_argument('--dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--encoder_blocks', nargs='*', default=['conv_encode'], help='List of encoding blocks.')
     parser.add_argument('--merge_blocks', nargs='*', default=['concat'], help='List of merge blocks.')
-    parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode'], help='List of decoding blocks.')
+    parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode', 'dense_decode'], help='List of decoding blocks.')
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
     parser.add_argument(
         '--u_connect', nargs=2, action='append',

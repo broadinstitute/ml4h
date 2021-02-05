@@ -14,7 +14,7 @@ from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
@@ -24,6 +24,8 @@ from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock
 BLOCK_CLASSES = {
     'conv_encode': ConvEncoderBlock,
     'conv_decode': ConvDecoderBlock,
+    'residual': ResidualBlock,
+    'pool': PoolBlock,
     'concat': FlatConcatDenseBlock,
     'flat': FlatConcatBlock,
     'average': AverageBlock,
@@ -31,8 +33,8 @@ BLOCK_CLASSES = {
     'gap': GlobalAveragePoolBlock,
     'lstm_encode': LSTMEncoderBlock,
     'language_decode': LanguageDecoderBlock,
-    'fc_encode': DenseEncoder,
-    'fc_decode': DenseDecoder,
+    'dense_encode': DenseEncoder,
+    'dense_decode': DenseDecoder,
     'identity': EncodeIdentityBlock,
 }
 
@@ -145,7 +147,8 @@ def multimodal_multitask_model(
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
                 break  # Don't also reconstruct from scratch if model is serialized, hd5 models must precede BLOCK_CLASS keys
-
+            else:
+                logging.warning(f'No method to handle Encoding block {encode_block}, ignoring.')
     merge = identity
     for merge_block in merge_blocks:
         if isinstance(merge_block, Block):
@@ -174,11 +177,13 @@ def multimodal_multitask_model(
                 serialized_decoder = load_model(decode_block, custom_objects=custom_dict, compile=False)
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
                 break
+            else:
+                logging.warning(f'No method to handle decoding block {decode_block}, ignoring.')
 
-    return _make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
+    return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
 
 
-def _make_multimodal_multitask_model_block(
+def make_multimodal_multitask_model_block(
         encoder_block_functions: Dict[TensorMap, Block],
         merge: Block,
         decoder_block_functions: Dict[TensorMap, Block],  # Assumed to be topologically sorted according to parents hierarchy
