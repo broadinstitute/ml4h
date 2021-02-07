@@ -139,7 +139,7 @@ def evaluate_predictions(
     elif tm.is_survival_curve():
         performance_metrics.update(plot_survival(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder))
         plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, paths=test_paths)
-        time_steps = tm.shape[-1]//2
+        time_steps = tm.shape[-1] // 2
         days_per_step = 1 + tm.days_window // time_steps
         predictions_at_end = 1 - np.cumprod(y_predictions[:, :time_steps], axis=-1)[:, -1]
         events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
@@ -567,7 +567,6 @@ def plot_survivorship(
         alive_per_step -= events[day_index]
         survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
         real_survivorship.append(real_survivorship[cur_day] * (1 - (events[day_index] / alive_per_step)))
-    logging.info(f'Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}')
     plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
     groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(events) // 2 for g in groups}
@@ -631,10 +630,10 @@ def plot_survival(
     alive_per_step = np.sum(truth[:, :intervals], axis=0)
     sick_per_step = np.sum(truth[:, intervals:], axis=0)
     survivorship = np.cumprod(1 - (sick_per_step / alive_per_step))
-    logging.info(f"Sick per step is: {sick_per_step} out of {truth.shape[0]}")
-    logging.info(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
-    logging.info(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
-    logging.info(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
+    logging.debug(f"Sick per step is: {sick_per_step} out of {truth.shape[0]}")
+    logging.debug(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
+    logging.debug(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
+    logging.debug(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
 
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
@@ -642,15 +641,16 @@ def plot_survival(
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
     plt.title(
-        f'{title}\nEnrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
+        f'{title} C-Index: {c_index:.4f}'
+        f'Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
         f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
     )
     plt.legend(loc="upper right")
 
-    figure_path = os.path.join(prefix, 'proportional_hazards_' + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, f'survivorship_{title}_c_{c_index:.3f}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info(f'Try to save survival plot at: {figure_path}')
+    logging.info(f'Survival plot: {figure_path}')
     plt.savefig(figure_path)
     return {'c_index': c_index, 'concordant': concordant, 'discordant': discordant, 'tied_risk': tied_risk, 'tied_time': tied_time}
 
