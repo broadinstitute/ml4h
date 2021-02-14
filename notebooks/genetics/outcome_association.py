@@ -45,7 +45,7 @@ diseases = pd.read_csv('bq_diseases.tsv', sep='\t')
 diseases['censor_date'] = pd.to_datetime(diseases['censor_date'])
 
 # %%
-la_volumes_petersen = pd.read_csv('/home/pdiachil/projects/la/all_LA_cleaned_petersen_fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122.csv')
+la_volumes_petersen = pd.read_csv('/home/pdiachil/projects/la_3lax/all_LA_cleaned_petersen_fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122.csv')
 
 from scipy.ndimage import median_filter
 def get_min(data, window=5):
