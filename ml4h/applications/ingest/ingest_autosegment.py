@@ -101,7 +101,7 @@ def autosegment(img):
 
 
 def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
-    meta = fp.ParquetFile(meta).to_pandas()
+    meta = ParquetFile(meta).to_pandas()
 
     with h5py.File(file, "r") as f:
         data = {
@@ -168,8 +168,10 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
     p.to_parquet(os.path.join(destination, f"{output_name + '.pq'}"))
 
     with h5py.File(os.path.join(destination, f"{output_name + '.h5'}"), "a") as f:
-        compress_and_store(f, stack, f"/instance/{instance}/series/{s}/surface")
-        compress_and_store(f, stack, f"/instance/{instance}/series/{s}/axial_stack")
+        # Save 3D surface stack
+        compress_and_store(f, stack, f"/instance/{instance}/series/surface")
+        # Save axial stack used
+        compress_and_store(f, dat, f"/instance/{instance}/series/axial_stack")
 
     return True
 
