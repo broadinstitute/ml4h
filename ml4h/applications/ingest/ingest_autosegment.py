@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 import cv2
 import blosc
 from ingest_mri import compress_and_store
-from two_d_projection import pad_center, build_z_slices
+from two_d_projection import build_z_slices
 
 
 def uncompress(t):
