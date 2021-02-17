@@ -44,8 +44,8 @@ from ingest_mri import compress_and_store
 from two_d_projection import build_z_slices
 
 
-def uncompress(t):
-    return np.frombuffer(blosc.decompress(t[()]), dtype=np.uint16).reshape(
+def uncompress(t,stored_dtype=np.uint16):
+    return np.frombuffer(blosc.decompress(t[()]), dtype=stored_dtype).reshape(
         t.attrs["shape"]
     )
 
@@ -122,20 +122,21 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
         d = zoom(d, (1.0, 1.0, s / 3.0))
         d = pad_center(d, (174, 224, d.shape[-1]))
         total.append(d)
-        print(d.shape)
 
     dat = np.concatenate(total, axis=-1)
 
-    xmm = 2.232142925262451
-    ymm = 2.232142925262451
-    zmm = 3.0
+    # X,Y,Z dimension resolution in millimeters (mm).
+    xmm = 2.232142925262451 # mm
+    ymm = 2.232142925262451 # mm
+    zmm = 3.0 # mm
 
-    # legs_observed = False
+    # Store axial data in arrays.
     stack = []
     leg_flag = []
     cubic_mm = []
     surface_area = []
 
+    # Iterate over axial slices.
     for i in range(dat.shape[-1]):
         closing, is_legs, clen = autosegment(dat[..., i])
         stack.append(closing)
@@ -143,24 +144,25 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
         cubic_mm.append((closing == 255).sum() * (xmm * ymm * zmm))
         surface_area.append(clen)
 
-    #
+    # Stack axial contour slices in 3D volume and cast to
+    # 2-byte for immediate compatibility with existing ingest
+    # code.
     stack = np.array(stack).astype(np.uint16)
 
     # Dataframe of volumes
     p = pd.DataFrame(
         {
-            "x": range(len(cubic_mm)),
-            "volume": cubic_mm,
-            "surface_area": surface_area,
-            "is_leg": leg_flag,
+            "x": range(len(cubic_mm)), # Number of axial slices
+            "volume": cubic_mm, # Volume in L
+            "surface_area": surface_area, # Area in mm2
+            "is_leg": leg_flag, # Boolean flag for whether we believe this axial slice is a leg
         }
     )
-    p["volume"] /= 1e6
+    p["volume"] /= 1e6 # Convert to L
     p["surface_area"] *= xmm * zmm  # pixel length * mm/pixel * depth of stack in mm
-    p["surface_area"] /= 1e6
-    p["x_rev"] = p["x"][::-1].values
-    p = p.loc[p.index.values[::-1]]
-    print(np.all(p.surface_area < p.volume))
+    p["surface_area"] /= 1e6 # Convert to mm2
+    p["x_rev"] = p["x"][::-1].values # Also store reverse range for plotting reasons
+    p = p.loc[p.index.values[::-1]] # Store in reverse order
 
     output_name = str(meta.ukbid.iloc[0])
     p.to_parquet(os.path.join(destination, f"{output_name + '.pq'}"))
