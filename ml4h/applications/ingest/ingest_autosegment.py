@@ -44,7 +44,7 @@ from ingest_mri import compress_and_store
 from two_d_projection import build_z_slices
 
 
-def uncompress(t,stored_dtype=np.uint16):
+def uncompress(t, stored_dtype=np.uint16):
     return np.frombuffer(blosc.decompress(t[()]), dtype=stored_dtype).reshape(
         t.attrs["shape"]
     )
@@ -64,7 +64,18 @@ def pad_center(img, shape):
     return img
 
 
-def autosegment(img):
+def autosegment_axial_slice(img):
+    """Given an input axial slice we will try to automatically segment
+    its contours using standard image processing techniques.
+
+    Args:
+        img (np.ndarray): Input axial slice.
+
+    Returns:
+        closing: 2D segmentation of dimensions equal to the input axial slice
+        is_legs: Boolean flag for whether or not the input axial slice likely contains legs
+        contour_length: Arc-length (circumference) of the 2D segmentation in pixels
+    """
     img = (img / img.max() * 255).astype(np.uint8)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     img = clahe.apply(img)
@@ -73,7 +84,7 @@ def autosegment(img):
     marker_area = [np.sum(markers == m) for m in range(np.max(markers) + 1) if m != 0]
     marker_area_rank = np.argsort(marker_area)[::-1]
     top2 = np.array(marker_area)[marker_area_rank[:2]]
-    #
+    
     countour_length = 0
     is_legs = False
     if ((top2 / top2.max()).min() >= 0.25) and (len(top2) == 2):
@@ -85,22 +96,34 @@ def autosegment(img):
     else:
         largest_component = np.argmax(marker_area) + 1
         thresh = (markers == largest_component).astype(np.uint8)
-    #
+    
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, k, iterations=1)
     contour, _ = cv2.findContours(closing, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contour:
         cv2.drawContours(closing, [cnt], 0, 255, -1)
-    #
+    
     # Recapture surface area
     contour, _ = cv2.findContours(closing, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contour:
         countour_length += cv2.arcLength(cnt, True)
-    #
+    
     return closing, is_legs, countour_length
 
 
-def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
+def autosegment(meta: str, file: str, destination: str, instance: int = 2):
+    """Given an input HDF5 file of data and Parquet file of meta data, we will 
+    try to automatically segment its contours using standard image processing techniques.
+
+    Args:
+        meta (str): Path to meta data on disk
+        file (str): Path to data on disk
+        destination (str): Output path on disk
+        instance (int, optional): UK Biobank instance number. Defaults to 2.
+
+    Returns:
+        Returns True
+    """
     meta = ParquetFile(meta).to_pandas()
 
     with h5py.File(file, "r") as f:
@@ -126,9 +149,9 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
     dat = np.concatenate(total, axis=-1)
 
     # X,Y,Z dimension resolution in millimeters (mm).
-    xmm = 2.232142925262451 # mm
-    ymm = 2.232142925262451 # mm
-    zmm = 3.0 # mm
+    xmm = 2.232142925262451  # mm
+    ymm = 2.232142925262451  # mm
+    zmm = 3.0  # mm
 
     # Store axial data in arrays.
     stack = []
@@ -138,7 +161,7 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
 
     # Iterate over axial slices.
     for i in range(dat.shape[-1]):
-        closing, is_legs, clen = autosegment(dat[..., i])
+        closing, is_legs, clen = autosegment_axial_slice(dat[..., i])
         stack.append(closing)
         leg_flag.append(is_legs)
         cubic_mm.append((closing == 255).sum() * (xmm * ymm * zmm))
@@ -152,17 +175,17 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
     # Dataframe of volumes
     p = pd.DataFrame(
         {
-            "x": range(len(cubic_mm)), # Number of axial slices
-            "volume": cubic_mm, # Volume in L
-            "surface_area": surface_area, # Area in mm2
-            "is_leg": leg_flag, # Boolean flag for whether we believe this axial slice is a leg
+            "x": range(len(cubic_mm)),  # Number of axial slices
+            "volume": cubic_mm,  # Volume in L
+            "surface_area": surface_area,  # Area in mm2
+            "is_leg": leg_flag,  # Boolean flag for whether we believe this axial slice is a leg
         }
     )
-    p["volume"] /= 1e6 # Convert to L
+    p["volume"] /= 1e6  # Convert to L
     p["surface_area"] *= xmm * zmm  # pixel length * mm/pixel * depth of stack in mm
-    p["surface_area"] /= 1e6 # Convert to mm2
-    p["x_rev"] = p["x"][::-1].values # Also store reverse range for plotting reasons
-    p = p.loc[p.index.values[::-1]] # Store in reverse order
+    p["surface_area"] /= 1e6  # Convert to mm2
+    p["x_rev"] = p["x"][::-1].values  # Also store reverse range for plotting reasons
+    p = p.loc[p.index.values[::-1]]  # Store in reverse order
 
     output_name = str(meta.ukbid.iloc[0])
     p.to_parquet(os.path.join(destination, f"{output_name + '.pq'}"))
@@ -176,13 +199,13 @@ def autosegment2(meta: str, file: str, destination: str, instance: int = 2):
     return True
 
 
-def _build_projection_hd5s(df, destination: str):
+def _build_autosegment_hd5s(df, destination: str):
     errors = {}
     name = os.getpid()
     print(f"Starting process {name} with {len(df)} files")
     for i in range(len(df)):
         try:
-            autosegment2(df.meta.iloc[i], df.file.iloc[i], destination)
+            autosegment(df.meta.iloc[i], df.file.iloc[i], destination)
         except Exception as e:
             errors[df.file.iloc[i]] = str(e)
         if len(df) % max(i // 10, 1) == 0:
@@ -201,13 +224,13 @@ def multiprocess_project(
     errors = {}
     with Pool(cpu_count()) as pool:
         results = [
-            pool.apply_async(_build_projection_hd5s, (split, destination))
+            pool.apply_async(_build_autosegment_hd5s, (split, destination))
             for split in split_files
         ]
         for result in results:
             errors.update(result.get())
     delta = time.time() - start
-    print(f"Projections took {delta:.1f} seconds at {delta / len(df):.1f} s/file")
+    print(f"Autosegmentation took {delta:.1f} seconds at {delta / len(df):.1f} s/file")
     with open(os.path.join(destination, "errors.json"), "w") as f:
         json.dump(errors, f)
     return errors
