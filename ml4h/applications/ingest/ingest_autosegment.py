@@ -30,14 +30,12 @@
 import time
 import json
 from multiprocessing import Pool, cpu_count
-from typing import Dict, List, Tuple
 import os
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.ndimage import zoom
 from fastparquet import ParquetFile
-import matplotlib.pyplot as plt
 import cv2
 import blosc
 from ingest_mri import compress_and_store
@@ -112,9 +110,13 @@ def autosegment_axial_slice(img: np.ndarray):
     return closing, is_legs, countour_length
 
 
-def autosegment(meta: str, file: str, destination: str, instance: int = 2):
+def autosegment_dixon(meta: str, file: str, destination: str, instance: int = 2):
     """Given an input HDF5 file of data and Parquet file of meta data, we will
     try to automatically segment its contours using standard image processing techniques.
+
+    This subroutine includes several constants and hardcoded hyperparameters
+    specific to the UK Biobank whole-body Dixon MRI data. No guarantees are
+    provided for other related data.
 
     Args:
         meta (str): Path to Parquet file with DICOM meta data on disk
@@ -139,6 +141,7 @@ def autosegment(meta: str, file: str, destination: str, instance: int = 2):
         [z_pos.loc[i] for i in range(1, 25, 4)],
     )
 
+    # Sample data to 3mm resolution.
     total = []
     scaling_factors = [3.0, 4.5, 4.5, 4.5, 3.5, 4.0]
     for i, s in zip(range(1, 25, 4), scaling_factors):
@@ -151,7 +154,7 @@ def autosegment(meta: str, file: str, destination: str, instance: int = 2):
 
     # X,Y,Z dimension resolution in millimeters (mm).
     xmm = meta["col_pixel_spacing_mm"].iloc[0]  # 2.232142925262451 mm
-    xmm = meta["row_pixel_spacing_mm"].iloc[0]  # 2.232142925262451 mm
+    ymm = meta["row_pixel_spacing_mm"].iloc[0]  # 2.232142925262451 mm
     zmm = 3.0  # mm
 
     # Store axial data in arrays.
@@ -202,14 +205,14 @@ def autosegment(meta: str, file: str, destination: str, instance: int = 2):
     return True
 
 
-def _build_autosegment_hd5s(df: pd.DataFrame, destination: str):
+def _build_autosegment_dixon_hd5s(df: pd.DataFrame, destination: str):
     errors = {}
     name = os.getpid()
     print(f"Starting process {name} with {len(df)} files")
 
     for i in range(len(df)):
         try:
-            autosegment(df.meta.iloc[i], df.file.iloc[i], destination)
+            autosegment_dixon(df.meta.iloc[i], df.file.iloc[i], destination)
         except Exception as e:
             errors[df.file.iloc[i]] = str(e)
         if len(df) % max(i // 10, 1) == 0:
@@ -218,14 +221,14 @@ def _build_autosegment_hd5s(df: pd.DataFrame, destination: str):
     return errors
 
 
-def multiprocess_autosegment(
+def multiprocess_autosegment_dixon(
     df: pd.DataFrame,
     destination: str,
 ):
     """Ingest autosegmentations of Dixon volumes. Takes a DataFrame with two columns
     as input:
         `file`: String path to HDF5 file on disk
-        `meta`: String path to a Parquet file with DICOM meta data.
+        `meta`: String path to a Parquet file with DICOM meta data on disk.
 
     Args:
         df (pd.DataFrame): Input DataFrame with file/meta paths.
@@ -242,7 +245,7 @@ def multiprocess_autosegment(
 
     with Pool(cpu_count()) as pool:
         results = [
-            pool.apply_async(_build_autosegment_hd5s, (split, destination))
+            pool.apply_async(_build_autosegment_dixon_hd5s, (split, destination))
             for split in split_files
         ]
         for result in results:
