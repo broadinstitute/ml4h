@@ -44,13 +44,13 @@ from ingest_mri import compress_and_store
 from two_d_projection import build_z_slices
 
 
-def uncompress(t, stored_dtype=np.uint16):
+def uncompress(t: np.ndarray, stored_dtype=np.uint16):
     return np.frombuffer(blosc.decompress(t[()]), dtype=stored_dtype).reshape(
         t.attrs["shape"]
     )
 
 
-def pad_center(img, shape):
+def pad_center(img: np.ndarray, shape):
     border_v = 0
     border_h = 0
     if (shape[0] / shape[1]) >= (img.shape[0] / img.shape[1]):
@@ -64,7 +64,7 @@ def pad_center(img, shape):
     return img
 
 
-def autosegment_axial_slice(img):
+def autosegment_axial_slice(img: np.ndarray):
     """Given an input axial slice we will try to automatically segment
     its contours using standard image processing techniques.
 
@@ -84,7 +84,7 @@ def autosegment_axial_slice(img):
     marker_area = [np.sum(markers == m) for m in range(np.max(markers) + 1) if m != 0]
     marker_area_rank = np.argsort(marker_area)[::-1]
     top2 = np.array(marker_area)[marker_area_rank[:2]]
-    
+
     countour_length = 0
     is_legs = False
     if ((top2 / top2.max()).min() >= 0.25) and (len(top2) == 2):
@@ -96,28 +96,29 @@ def autosegment_axial_slice(img):
     else:
         largest_component = np.argmax(marker_area) + 1
         thresh = (markers == largest_component).astype(np.uint8)
-    
+
+    # Fill holes
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, k, iterations=1)
     contour, _ = cv2.findContours(closing, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contour:
         cv2.drawContours(closing, [cnt], 0, 255, -1)
-    
+
     # Recapture surface area
     contour, _ = cv2.findContours(closing, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contour:
         countour_length += cv2.arcLength(cnt, True)
-    
+
     return closing, is_legs, countour_length
 
 
 def autosegment(meta: str, file: str, destination: str, instance: int = 2):
-    """Given an input HDF5 file of data and Parquet file of meta data, we will 
+    """Given an input HDF5 file of data and Parquet file of meta data, we will
     try to automatically segment its contours using standard image processing techniques.
 
     Args:
-        meta (str): Path to meta data on disk
-        file (str): Path to data on disk
+        meta (str): Path to Parquet file with DICOM meta data on disk
+        file (str): Path to HDF5 file with data on disk
         destination (str): Output path on disk
         instance (int, optional): UK Biobank instance number. Defaults to 2.
 
@@ -149,8 +150,8 @@ def autosegment(meta: str, file: str, destination: str, instance: int = 2):
     dat = np.concatenate(total, axis=-1)
 
     # X,Y,Z dimension resolution in millimeters (mm).
-    xmm = 2.232142925262451  # mm
-    ymm = 2.232142925262451  # mm
+    xmm = meta["col_pixel_spacing_mm"].iloc[0]  # 2.232142925262451 mm
+    xmm = meta["row_pixel_spacing_mm"].iloc[0]  # 2.232142925262451 mm
     zmm = 3.0  # mm
 
     # Store axial data in arrays.
@@ -176,8 +177,8 @@ def autosegment(meta: str, file: str, destination: str, instance: int = 2):
     p = pd.DataFrame(
         {
             "x": range(len(cubic_mm)),  # Number of axial slices
-            "volume": cubic_mm,  # Volume in L
-            "surface_area": surface_area,  # Area in mm2
+            "volume": cubic_mm,  # Volume in mm3
+            "surface_area": surface_area,  # Contour length in pixels
             "is_leg": leg_flag,  # Boolean flag for whether we believe this axial slice is a leg
         }
     )
@@ -187,22 +188,25 @@ def autosegment(meta: str, file: str, destination: str, instance: int = 2):
     p["x_rev"] = p["x"][::-1].values  # Also store reverse range for plotting reasons
     p = p.loc[p.index.values[::-1]]  # Store in reverse order
 
+    # Store computed results
     output_name = str(meta.ukbid.iloc[0])
     p.to_parquet(os.path.join(destination, f"{output_name + '.pq'}"))
 
+    # Store 3D surface and axial stack
     with h5py.File(os.path.join(destination, f"{output_name + '.h5'}"), "a") as f:
-        # Save 3D surface stack
+        # Save the 3D surface stack.
         compress_and_store(f, stack, f"/instance/{instance}/series/surface")
-        # Save axial stack used
+        # Save the 3D axial stack used for the surface.
         compress_and_store(f, dat, f"/instance/{instance}/series/axial_stack")
 
     return True
 
 
-def _build_autosegment_hd5s(df, destination: str):
+def _build_autosegment_hd5s(df: pd.DataFrame, destination: str):
     errors = {}
     name = os.getpid()
     print(f"Starting process {name} with {len(df)} files")
+
     for i in range(len(df)):
         try:
             autosegment(df.meta.iloc[i], df.file.iloc[i], destination)
@@ -210,18 +214,32 @@ def _build_autosegment_hd5s(df, destination: str):
             errors[df.file.iloc[i]] = str(e)
         if len(df) % max(i // 10, 1) == 0:
             print(f"{name}: {(i + 1) / len(df):.2%} done")
+
     return errors
 
 
-def multiprocess_project(
-    df,
+def multiprocess_autosegment(
+    df: pd.DataFrame,
     destination: str,
 ):
+    """Ingest autosegmentations of Dixon volumes. Takes a DataFrame with two columns
+    as input:
+        `file`: String path to HDF5 file on disk
+        `meta`: String path to a Parquet file with DICOM meta data.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame with file/meta paths.
+        destination (str): Output destination on disk
+
+    Returns:
+        dict: A dictionary of caught exceptions
+    """
     os.makedirs(destination, exist_ok=True)
     split_files = np.array_split(df, cpu_count())
     print(f"Beginning autosegmentation of {len(df)} samples.")
     start = time.time()
     errors = {}
+
     with Pool(cpu_count()) as pool:
         results = [
             pool.apply_async(_build_autosegment_hd5s, (split, destination))
@@ -229,8 +247,11 @@ def multiprocess_project(
         ]
         for result in results:
             errors.update(result.get())
+
     delta = time.time() - start
     print(f"Autosegmentation took {delta:.1f} seconds at {delta / len(df):.1f} s/file")
+
     with open(os.path.join(destination, "errors.json"), "w") as f:
         json.dump(errors, f)
+
     return errors
