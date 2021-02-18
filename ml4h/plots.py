@@ -3242,24 +3242,26 @@ def regplot(
         dataframe (pd.DataFrame): Pandas DataFrame with columns `x` and `y` and optionally `hue`
         hue (str, optional): Hue string name. Defaults to None.
         destination (str optional): Path to store output image. Defaults to None.
+
+    Returns:
+
     """
     sns.set_style("whitegrid")
-    mod = sm.OLS(df[y], sm.add_constant(df[x]))
+    mod = sm.OLS(dataframe[y], sm.add_constant(dataframe[x]))
     res = mod.fit()
 
-    test = df[x].drop_duplicates().sort_values()
+    test = dataframe[x].drop_duplicates().sort_values()
     predictions = res.get_prediction(sm.add_constant(test))
     predictions = pd.concat([test, predictions.summary_frame(alpha=0.05)], axis=1)
     predictions.head()
 
-    residuals = pd.DataFrame({x: df[x], y: res.resid})
     fig, axes = plt.subplots(1, 3, figsize=(20, 8))
 
-    res_df = pd.DataFrame({x: df[x], y: res.resid})
+    res_df = pd.DataFrame({x: dataframe[x], y: res.resid})
     if hue is not None:
-        res_df[hue] = df[hue]
-    g = sns.regplot(x=x, y=y, data=df, ax=axes[0], scatter=False)
-    sns.scatterplot(x=x, y=y, hue=hue, data=df, ax=axes[0])
+        res_df[hue] = dataframe[hue]
+
+    sns.scatterplot(x=x, y=y, hue=hue, data=dataframe, ax=axes[0])
     axes[0].plot(predictions[x], predictions["mean"], lw=2)
     axes[0].fill_between(
         x=predictions[x],
@@ -3273,5 +3275,8 @@ def regplot(
     axes[1].axhline(0, ls="--", color="k")
 
     sns.distplot(res.resid, ax=axes[2], bins=20)
+
     if destination is not None:
         fig.savefig(destination)
+
+    return res
