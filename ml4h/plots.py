@@ -16,6 +16,7 @@ from multiprocessing import Pool
 from itertools import islice, product
 from collections import Counter, OrderedDict, defaultdict
 from typing import Iterable, DefaultDict, Dict, List, Tuple, Optional, Union, Callable
+import statsmodels.api as sm
 
 import numpy as np
 import pandas as pd
@@ -3229,7 +3230,16 @@ def plot_hit_to_miss_transforms(
 
 
 def regplot(
-    x: str, y: str, dataframe: pd.DataFrame, hue: str = None, destination: str = None
+    x: str,
+    y: str,
+    dataframe: pd.DataFrame,
+    hue: str = None,
+    destination: str = None,
+    res_hue_limit: float = None,
+    sizes=(25, 25),
+    markers=["o", "o"],
+    bins: int = 50,
+    figsize=(20, 8),
 ):
     """Plots three panels of pair-wise correlation.
     1) Feature 1 vs Feature 2
@@ -3242,9 +3252,11 @@ def regplot(
         dataframe (pd.DataFrame): Pandas DataFrame with columns `x` and `y` and optionally `hue`
         hue (str, optional): Hue string name. Defaults to None.
         destination (str optional): Path to store output image. Defaults to None.
-
-    Returns:
-
+        res_hue_limit (float, optional): Threshold of residuals deemed outliers. Defaults to None.
+        sizes (tuple, optional): Tuple of integers controlling point sizes. Defaults to (25, 25).
+        markers (tuple, optional): Tuple of chars controlling point types. Defalts to ["o", "o"].
+        bins (int, optional): Number of bins in the density plot. Defaults to 50.
+        figsize (tuple, optional): Tuple of ints controlling the image size. Defaults to (20, 8).
     """
     sns.set_style("whitegrid")
     mod = sm.OLS(dataframe[y], sm.add_constant(dataframe[x]))
@@ -3255,13 +3267,25 @@ def regplot(
     predictions = pd.concat([test, predictions.summary_frame(alpha=0.05)], axis=1)
     predictions.head()
 
-    fig, axes = plt.subplots(1, 3, figsize=(20, 8))
+    # residuals = pd.DataFrame({x:dataframe[x],y:res.resid})
+    fig, axes = plt.subplots(1, 3, figsize=figsize)
 
-    res_df = pd.DataFrame({x: dataframe[x], y: res.resid})
+    res_df = pd.DataFrame({x: dataframe[x], y: dataframe[y], "resy": res.resid})
     if hue is not None:
         res_df[hue] = dataframe[hue]
 
-    sns.scatterplot(x=x, y=y, hue=hue, data=dataframe, ax=axes[0])
+    if res_hue_limit is not None:
+        res_df[hue] = (np.abs(res.resid) >= res_hue_limit).astype(np.uint8)
+
+    sns.scatterplot(
+        x=x,
+        y=y,
+        hue=hue,
+        data=res_df,
+        ax=axes[0],
+        sizes=sizes,
+        markers=markers,
+    )
     axes[0].plot(predictions[x], predictions["mean"], lw=2)
     axes[0].fill_between(
         x=predictions[x],
@@ -3271,10 +3295,18 @@ def regplot(
         alpha=0.2,
     )
 
-    sns.scatterplot(x=x, y=y, ax=axes[1], hue=hue, data=res_df)
+    sns.scatterplot(
+        x=x,
+        y="resy",
+        ax=axes[1],
+        hue=hue,
+        sizes=sizes,
+        markers=markers,
+        data=res_df,
+    )
     axes[1].axhline(0, ls="--", color="k")
 
-    sns.distplot(res.resid, ax=axes[2], bins=20)
+    sns.distplot(res.resid, ax=axes[2], bins=bins)
 
     if destination is not None:
         fig.savefig(destination)
