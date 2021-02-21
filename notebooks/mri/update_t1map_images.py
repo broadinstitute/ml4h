@@ -128,8 +128,7 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                     for v in dcm_fnames:
                         for fname in dcm_fnames[v]:
                             os.remove(fname)
-                os.remove('raw_t1.zip')
-            hd5_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map')
+                os.remove('raw_t1.zip')            
         except FutureWarning as e:
             logging.warning(f'Caught exception at {sample_id}: {e}')
             continue
