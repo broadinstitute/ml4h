@@ -110,7 +110,6 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                         slicer = pydicom.read_file(dcm_file)
                         series = slicer.SeriesDescription.lower().replace(' ', '_')
                         views[series].append(slicer)
-                        dcm_fnames[series].append(fname)
                     for v in views:
                         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
                         mri_group = 'ukb_cardiac_mri'
@@ -125,9 +124,6 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                                 if slice_index == 0:
                                     imageio.imwrite(f'{sample_id}_{instance}_{slice_index}.png', slicer.pixel_array)
                         create_tensor_in_hd5(hd5_ff, mri_group, f'{v}/{instance}', mri_data)
-                    for v in dcm_fnames:
-                        for fname in dcm_fnames[v]:
-                            os.remove(fname)
                 os.remove('raw_t1.zip')            
         except FutureWarning as e:
             logging.warning(f'Caught exception at {sample_id}: {e}')

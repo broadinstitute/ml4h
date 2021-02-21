@@ -21,10 +21,12 @@ do
     start=$i
     end=$((i+10))
     /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/update_t1map_images.py $start $end    
+    cd /home/pdiachil/ml/notebooks/mri
     /snap/bin/gsutil cp *.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/
     rm -f *.hd5
     /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs
     rm -f *.png
+    rm -f *.dcm
 done
 
 # yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
