@@ -9,7 +9,7 @@ from ml4h.defines import MRI_SEGMENTED, MRI_LAX_SEGMENTED, MRI_FRAMES, MRI_PIXEL
 from ml4h.tensormap.ukb.mri import mri_tensor_2d
 
 
-def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concatenate=False, annotation=False, dest_shape=None):
+def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concatenate=False, annotation=False, dest_shape=None, mri_frames=MRI_FRAMES):
     """
     Returns MRI image tensors from HD5 as 4-D numpy arrays. Useful for raw SAX and LAX images and segmentations.
     """
@@ -24,8 +24,8 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concate
             break
         if dest_shape is None:
             dest_shape = (max(img_shape), max(img_shape))
-        nslices = len(hd5[hd5_path]) // MRI_FRAMES
-        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
+        nslices = len(hd5[hd5_path]) // mri_frames
+        shape = (dest_shape[0], dest_shape[1], nslices, mri_frames)
         arr = np.zeros(shape)
         t = 0
         s = 0
@@ -33,7 +33,7 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concate
             img_shape = hd5[f'{hd5_path}/{img}/instance_0'].shape
             arr[:img_shape[1], :img_shape[0], s, t] = np.array(hd5[f'{hd5_path}/{img}/instance_0']).T
             t += 1
-            if t == MRI_FRAMES:
+            if t == mri_frames:
                 s += 1
                 t = 0
     elif isinstance(hd5[hd5_path], h5py.Dataset):
@@ -41,9 +41,9 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concate
         if dest_shape is None:
             dest_shape = (max(img_shape), max(img_shape))
         nslices = 1
-        shape = (dest_shape[0], dest_shape[1], nslices, MRI_FRAMES)
+        shape = (dest_shape[0], dest_shape[1], nslices, mri_frames)
         arr = np.zeros(shape)
-        for t in range(MRI_FRAMES):
+        for t in range(mri_frames):
             if concatenate:
                 hd5_path = f'{path_prefix}/{name}_{t+1}/{instance}/instance_0'
                 arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :]).T
@@ -51,17 +51,17 @@ def _mri_tensor_4d(hd5, name, path_prefix='ukb_cardiac_mri', instance=2, concate
                 try:
                     arr[:img_shape[1], :img_shape[0], 0, t] = np.array(hd5[hd5_path][:, :, t]).T
                 except ValueError:
-                    logging.warning(f'Series {name} has less than {MRI_FRAMES} frames')
+                    logging.warning(f'Series {name} has less than {mri_Frames} frames')
     else:
         raise ValueError(f'{name} is neither a HD5 Group nor a HD5 dataset')
     return arr
 
 
-def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, save_path=None, order='F'):
+def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_mri', instance=0, concatenate=False, annotation=False, save_path=None, order='F', mri_frames=MRI_FRAMES):
     """
     Returns MRI tensors as list of VTK structured grids aligned to the reference system of the patient
     """
-    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate, annotation)
+    arr = _mri_tensor_4d(hd5, name, path_prefix, instance, concatenate, annotation, mri_frames=mri_frames)
     width = hd5[f'{MRI_PIXEL_WIDTH}_{view_name}/{instance}']
     height = hd5[f'{MRI_PIXEL_HEIGHT}_{view_name}/{instance}']
     positions = mri_tensor_2d(hd5, f'{MRI_PATIENT_POSITION}_{view_name}/{instance}')
@@ -96,7 +96,7 @@ def _mri_hd5_to_structured_grids(hd5, name, view_name, path_prefix='ukb_cardiac_
         grids[-1].SetPoints(vtk_pts)
         grids[-1].SetDimensions(len(x_coors), len(y_coors), len(z_coors))
         grids[-1].SetExtent(0, len(x_coors)-1, 0, len(y_coors)-1, 0, len(z_coors)-1)
-        for t in range(MRI_FRAMES):
+        for t in range(mri_frames):
             arr_vtk = vtk.util.numpy_support.numpy_to_vtk(arr[:, :, d_idx:d_idx+d_cnt, t].ravel(order=order), deep=True)
             arr_vtk.SetName(f'{name}_{t}')
             grids[-1].GetCellData().AddArray(arr_vtk)
