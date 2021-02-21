@@ -122,7 +122,8 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                             mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
                             if 't1map' in v:
                                 if slice_index == 0:
-                                    imageio.imwrite(f'{sample_id}_{instance}_{slice_index}.png', slicer.pixel_array)
+                                    print(mri_data[..., slice_index].max())
+                                    imageio.imwrite(f'{sample_id}_{instance}_{slice_index}.png', slicer.pixel_array.astype(np.float32))
                         create_tensor_in_hd5(hd5_ff, mri_group, f'{v}/{instance}', mri_data)
                 os.remove('raw_t1.zip')            
         except FutureWarning as e:
