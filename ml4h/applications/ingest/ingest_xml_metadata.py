@@ -38,7 +38,7 @@ from typing import List, Tuple, Optional, Dict
 from collections import defaultdict
 import xml.etree.ElementTree as ET
 import string
-import random
+import uuid
 
 # Set of printable characters.
 printable = set(string.printable)
@@ -59,11 +59,6 @@ muse_ignore_elements = ['MeasurementMatrix','WaveFormData']
 HANDLERS = {
     "property": "handle_property",
 }
-
-
-def get_random_hex_value(power: int = 24) -> str:
-    return "%024x" % random.randrange(16 ** 24)
-
 
 # For the UKB ECG XMLs
 def _sample_id_from_path(path):
@@ -97,7 +92,7 @@ def generate_output_name(
     Returns:
         str: A prepared output string name.
     """
-    return f"BROAD_ML4H_mdrk_{str(source)}_{data_type}_metadata_{str(subject_id)}_i{str(instance)}_{get_random_hex_value(24)}"
+    return f"BROAD_ML4H_mdrk_{str(source)}_{data_type}_metadata_{str(subject_id)}_i{str(instance)}_{uuid.uuid4().hex}"
 
 
 def _recurseTree(root, path: str, store_dict: dict, ignore_elements: list):
