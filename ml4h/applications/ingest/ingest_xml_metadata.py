@@ -45,7 +45,7 @@ printable = set(string.printable)
 
 # Constant: ignore these keys in the XML during ingestion.
 # For the UK Biobank ECG XMLs:
-ignoreElems = [
+ukb_ignore_elements = [
     "Stripdata",
     "Fulldisclosure",
     "Mediansamples",
@@ -53,7 +53,7 @@ ignoreElems = [
     "Fulldisclosuredata",
 ]
 # For Partners (MUSE) ECG XMLs:
-# ignoreElems = ['MeasurementMatrix','WaveFormData']
+muse_ignore_elements = ['MeasurementMatrix','WaveFormData']
 
 # Magic
 HANDLERS = {
@@ -166,7 +166,7 @@ def ingest_metadata_from_xml(
     data_type: str = "ecg",
 ):
     """Extract all elements (keys) and their values from an XML through recursion. Keys
-    in the global `ignoreElems` list will be ignored and not extracted.
+    in the global `ukb_ignore_elements` list will be ignored and not extracted.
 
     Args:
         file (str): [description]
@@ -276,7 +276,7 @@ def multiprocess_ingest(
     destination: str,
     data_source: str = "ukb",
     data_type: str = "ecg",
-    ignore_elements: list = ignoreElems,
+    ignore_elements: list = ukb_ignore_elements,
 ):
     """Embarassingly parallel ingestion wrapper.
 
