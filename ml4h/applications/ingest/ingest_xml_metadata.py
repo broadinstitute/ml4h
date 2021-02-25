@@ -52,10 +52,8 @@ ignoreElems = [
     "Waveformdata",
     "Fulldisclosuredata",
 ]
-data_source = "ukb"
 # For Partners (MUSE) ECG XMLs:
 # ignoreElems = ['MeasurementMatrix','WaveFormData']
-# data_source = 'partners_muse'
 
 # Magic
 HANDLERS = {
@@ -102,9 +100,9 @@ def generate_output_name(
     return f"BROAD_ML4H_mdrk_{str(source)}_{data_type}_metadata_{str(subject_id)}_i{str(instance)}_{get_random_hex_value(24)}"
 
 
-def _recurseTree(root, path: str, store_dict: dict):
+def _recurseTree(root, path: str, store_dict: dict, ignore_elements: list):
     """Recursive function for iterating over the XML tree and extracting out all
-    keys and values for those keys that are not in the `ignoreElems` black list.
+    keys and values for those keys that are not in the `ignore_elements` black list.
     Note: All values will be stored as strings and all strings are scrubbed for
     newlines, tabs, and trailing and leading white space. Multiple elements for the
     same putative path will be stored as an array of the values for the same key.
@@ -114,9 +112,9 @@ def _recurseTree(root, path: str, store_dict: dict):
         root: Current element in the XML tree.
         path (str): Current string name for the traversed path.
         store_dict (dict): Output dictionary.
+        ignore_elements (list): List of keys to ignore
     """
-    global ignoreElems  # Not required for this application
-    if root.tag in ignoreElems:
+    if root.tag in ignore_elements or root.tag.title() in ignore_elements:
         return
 
     global HANDLERS  # Not required for this application
@@ -153,11 +151,19 @@ def _recurseTree(root, path: str, store_dict: dict):
 
         # Recurse over children.
         for elem in root.getchildren():
-            _recurseTree(elem, path + "_" + root.tag.title(), store_dict)
+            _recurseTree(
+                elem, path + "_" + root.tag.title(), store_dict, ignore_elements
+            )
 
 
 def ingest_metadata_from_xml(
-    file: str, sample_id: str, instance: str, destination: str, data_type: str = "ecg"
+    file: str,
+    sample_id: str,
+    instance: str,
+    destination: str,
+    ignore_elements: list,
+    data_source: str = "ukb",
+    data_type: str = "ecg",
 ):
     """Extract all elements (keys) and their values from an XML through recursion. Keys
     in the global `ignoreElems` list will be ignored and not extracted.
@@ -167,13 +173,15 @@ def ingest_metadata_from_xml(
         sample_id (str): [description]
         instance (str): [description]
         destination (str): [description]
+        ignore_elements (list):
+        data_source (str):
         data_type (str, optional): [description]. Defaults to 'ecg'.
     """
     tree = ET.ElementTree(file=file)  # XML tree
     root = tree.getroot()  # XML root
     path = ""  # Starting path
     store_dicter = {}  # Output dictionary
-    _recurseTree(root, path, store_dicter)
+    _recurseTree(root, path, store_dicter, ignore_elements)
 
     # Lists of values must be stored as lists of lists to be compatible
     # with Pandas.
@@ -181,7 +189,6 @@ def ingest_metadata_from_xml(
         if isinstance(store_dicter[k], list):
             store_dicter[k] = [store_dicter[k]]
 
-    global data_source  # Not required for this application
     # Convert dictionary into a Pandas DataFrame and cast all columns as strings.
     # This will also cast lists as string representation of strings.
     df = pd.DataFrame(store_dicter).astype(str)
@@ -200,22 +207,44 @@ def ingest_metadata_from_xml(
 
 
 def _process_file(
-    path: str, destination: str, data_type: str = "ecg"
+    path: str,
+    destination: str,
+    ignore_elements: list,
+    data_source: str = "ukb",
+    data_type: str = "ecg",
 ) -> Tuple[str, Optional[str]]:
     sample_id, instance = _sample_id_from_path(path)
     try:
-        ingest_metadata_from_xml(path, sample_id, instance, destination, data_type)
+        ingest_metadata_from_xml(
+            path,
+            sample_id,
+            instance,
+            destination,
+            ignore_elements,
+            data_source,
+            data_type,
+        )
         return path, None
     except Exception as e:
         return path, str(e)
 
 
 def _process_files(
-    files: List[str], destination: str, data_type: str = "ecg"
+    files: List[str],
+    destination: str,
+    ignore_elements: list,
+    data_source: str = "ukb",
+    data_type: str = "ecg",
 ) -> Dict[str, str]:
     errors = {}
     name, _ = _sample_id_from_path(files[0])
-    process_file = partial(_process_file, destination=destination, data_type=data_type)
+    process_file = partial(
+        _process_file,
+        destination=destination,
+        data_source=data_source,
+        data_type=data_type,
+        ignore_elements=ignore_elements,
+    )
 
     print(f"Starting process {name} with {len(files)} files")
     for i, (path, error) in enumerate(map(process_file, files)):
@@ -245,7 +274,9 @@ def _partition_files(files: List[str], num_partitions: int) -> List[List[str]]:
 def multiprocess_ingest(
     files: List[str],
     destination: str,
+    data_source: str = "ukb",
     data_type: str = "ecg",
+    ignore_elements: list = ignoreElems,
 ):
     """Embarassingly parallel ingestion wrapper.
 
@@ -259,6 +290,7 @@ def multiprocess_ingest(
     Args:
         files (List[str]): Input list of files.
         destination (str): Output destination on disk.
+        data_source (str): Data source (e.g. 'ukb'). Defaults to 'ukb'
         data_type (str): Data source type (e.g. 'ecg'). Defaults to 'ecg'
 
     Returns:
@@ -268,21 +300,24 @@ def multiprocess_ingest(
     os.makedirs(destination, exist_ok=True)
     # Partition files to prevent races.
     split_files = _partition_files(files, cpu_count())
-    
+
     errors = {}
     start = time.time()
     with Pool(cpu_count()) as pool:
         results = [
-            pool.apply_async(_process_files, (split, destination, data_type))
+            pool.apply_async(
+                _process_files,
+                (split, destination, ignore_elements, data_source, data_type),
+            )
             for split in split_files
         ]
         for result in results:
             errors.update(result.get())
-    
+
     delta = time.time() - start
     print(f"Ingestion took {delta:.1f} seconds at {delta / len(files):.1f} s/file")
-    
+
     with open(os.path.join(destination, "errors.json"), "w") as f:
         json.dump(errors, f)
-    
+
     return errors
