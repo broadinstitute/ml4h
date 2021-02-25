@@ -55,11 +55,6 @@ ukb_ignore_elements = [
 # For Partners (MUSE) ECG XMLs:
 muse_ignore_elements = ['MeasurementMatrix','WaveFormData']
 
-# Magic
-HANDLERS = {
-    "property": "handle_property",
-}
-
 # For the UKB ECG XMLs
 def _sample_id_from_path(path):
     # Assumes thef format UKBID_FIELDID_INSTANCE.csv
@@ -112,43 +107,37 @@ def _recurseTree(root, path: str, store_dict: dict, ignore_elements: list):
     if root.tag in ignore_elements or root.tag.title() in ignore_elements:
         return
 
-    global HANDLERS  # Not required for this application
+    data = root.attrib.get("name", root.text)
+    if data is not None:  # Not None
+        data = (
+            "".join(filter(lambda x: x in printable, data))
+            .replace("\n", "")
+            .replace("\r", "")
+            .replace("\t", "")
+            .strip()
+        )
 
-    if root.tag in HANDLERS:
-        handler = globals()[HANDLERS[root.tag]]
-        handler(root)
-    else:
-        data = root.attrib.get("name", root.text)
-        if data is not None:  # Not None
-            data = (
-                "".join(filter(lambda x: x in printable, data))
-                .replace("\n", "")
-                .replace("\r", "")
-                .replace("\t", "")
-                .strip()
-            )
+        key = path + "_" + root.tag.title()
+        if key in store_dict:  # Key exists
+            if isinstance(store_dict[key], list) == False:
+                store_dict[key] = [store_dict[key]]
+            store_dict[key] = store_dict[key] + [data]
+        else:  # Key does not exist
+            store_dict[key] = data
+    else:  # Is none
+        key = path + "_" + root.tag.title()
+        if key in store_dict:  # Key exist
+            if isinstance(store_dict[key], list) == False:
+                store_dict[key] = [store_dict[key]]
+            store_dict[key] = store_dict[key] + [""]
+        else:  # Key does not exist
+            store_dict[key] = ""
 
-            key = path + "_" + root.tag.title()
-            if key in store_dict:  # Key exists
-                if isinstance(store_dict[key], list) == False:
-                    store_dict[key] = [store_dict[key]]
-                store_dict[key] = store_dict[key] + [data]
-            else:  # Key does not exist
-                store_dict[key] = data
-        else:  # Is none
-            key = path + "_" + root.tag.title()
-            if key in store_dict:  # Key exist
-                if isinstance(store_dict[key], list) == False:
-                    store_dict[key] = [store_dict[key]]
-                store_dict[key] = store_dict[key] + [""]
-            else:  # Key does not exist
-                store_dict[key] = ""
-
-        # Recurse over children.
-        for elem in root.getchildren():
-            _recurseTree(
-                elem, path + "_" + root.tag.title(), store_dict, ignore_elements
-            )
+    # Recurse over children.
+    for elem in root.getchildren():
+        _recurseTree(
+            elem, path + "_" + root.tag.title(), store_dict, ignore_elements
+        )
 
 
 def ingest_metadata_from_xml(
