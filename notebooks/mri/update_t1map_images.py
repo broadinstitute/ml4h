@@ -30,7 +30,7 @@ logging.getLogger().setLevel('INFO')
 df_4ch = pd.read_csv('/home/pdiachil/projects/manifests/manifest_4ch.tsv', sep='\t',
                      usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 
-df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_id_list.csv', usecols=['ID'])
+df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_leftover.csv', usecols=['ID'])
 df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
 
 # %%
@@ -89,12 +89,19 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
         break
     hd5_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/{sample_id}.hd5'
     blob = bucket.blob(hd5_path)
-    blob.download_to_filename(f'{sample_id}.hd5')
+    try:
+        blob.download_to_filename(f'{sample_id}.hd5')
+    except:
+        logging.info('Creating new HD5 because it''s missing')
+        hd5_ff = h5py.File(f'{sample_id}.hd5', 'w')
+        hd5_ff.create_group('ukb_cardiac_mri')
+        hd5_ff.close()
     for j, (instance, df_hd5) in enumerate(df_sample_id.groupby('instance')):        
         try:            
             raw_t1 = f'cardiacmri/all/raw/{sample_id}_20214_{instance}_0.zip'
             blob = bulk_bucket.blob(raw_t1)
             blob.download_to_filename('raw_t1.zip')
+            blob.download_to_filename(f'{sample_id}.zip')
             with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:
                 with zipfile.ZipFile('raw_t1.zip', 'r') as zip_file:
                     files_in_zip = zip_file.namelist()
