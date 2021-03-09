@@ -1,4 +1,4 @@
-numpy==1.18.5
+git@github.com:broadinstitute/torch_ml4h.gitnumpy==1.18.5
 protobuf==3.13.0
 tensorflow==2.1.2
 h5py==2.10.0
@@ -32,5 +32,4 @@ plotnine
 vega
 ipycanvas==0.7.0
 ipyannotations==0.2.1
-https://github.com/broadinstitute/torch_ml4h.git
-git+git://github.com/broadinstitute/torch_ml4h.git@main#egg=ml4ht
+git+https://github.com/broadinstitute/torch_ml4h.git@main@egg=ml4ht
