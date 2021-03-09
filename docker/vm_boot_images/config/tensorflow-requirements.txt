@@ -32,4 +32,4 @@ plotnine
 vega
 ipycanvas==0.7.0
 ipyannotations==0.2.1
-ml4ht>=0.1
+git+https://github.com/mtai/python-gearman/tarball/master#egg=ml4ht
