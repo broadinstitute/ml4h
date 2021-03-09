@@ -1,4 +1,4 @@
-git@github.com:broadinstitute/torch_ml4h.gitnumpy==1.18.5
+numpy==1.18.5
 protobuf==3.13.0
 tensorflow==2.1.2
 h5py==2.10.0
