@@ -30,7 +30,7 @@ logging.getLogger().setLevel('INFO')
 df_4ch = pd.read_csv('/home/pdiachil/projects/manifests/manifest_4ch.tsv', sep='\t',
                      usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 
-df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_leftover.csv', usecols=['ID'])
+df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_coronal.csv', usecols=['ID'])
 df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
 
 # %%
@@ -127,7 +127,7 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                             _save_series_orientation_and_position_if_missing(slicer, v, instance, hd5_ff)
                             slice_index = slicer.InstanceNumber - 1
                             mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-                            if 't1map' in v:
+                            if ('t1map' in v) and ('sax' in v):
                                 if slice_index == 0:
                                     print(mri_data[..., slice_index].max())
                                     imageio.imwrite(f'{sample_id}_{instance}_{slice_index}.png', slicer.pixel_array.astype(np.float32))
