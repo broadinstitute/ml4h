@@ -406,6 +406,7 @@ def annotation_to_poisson(
     projection_ds_idx: int = None,
     include_projection: bool = True,
     save_path: str = None,
+    return_sphere: bool = False
 )->List[vtk.vtkPolyData]:
     ncols = 256
     ncolors = 256
@@ -422,6 +423,7 @@ def annotation_to_poisson(
         logging.info(f'Poisson surface generation: timestep {t} out of {len(times)}')
         points = []
         normals = []
+        view_areas = []
         for i, (dataset, channel, view) in enumerate(zip(datasets, channels, views)):
             # if (projection_ds_idx is not None) and (projection_ds_idx != i):
             #     projected_array = np.zeros(projection_dimensions)
@@ -454,6 +456,7 @@ def annotation_to_poisson(
             if len(areas) == 0:
                 continue
             max_index = np.argmax(areas)
+            view_areas.append(areas[max_index])
             app = cv2.drawContours(im, [contours[max_index]], 0, ncolors-1, 1)
             arr_annot[:] = app.ravel() > (ncolors//2)
 
@@ -482,30 +485,47 @@ def annotation_to_poisson(
         points_arr = np.vstack(points)
         normals_arr = np.vstack(normals)
 
-        tmp_polydata = points_normals_to_poisson(points_arr, normals_arr)
-        tmp_points = vtk.util.numpy_support.vtk_to_numpy(tmp_polydata.GetPoints().GetData())
-        tmp_cog = np.mean(tmp_points, axis=0)
+        if return_sphere:
+            centers = vtk.vtkCellCenters()
+            centers.SetInputData(dataset)
+            centers.Update()
+            dataset_centers = vtk.util.numpy_support.vtk_to_numpy(centers.GetOutput().GetPoints().GetData())
+            pixel_size = np.linalg.norm(dataset_centers[1] - dataset_centers[0], axis=0)**2.0
+            view_area = np.mean(view_areas)*pixel_size
+            radius = np.sqrt(view_area/np.pi)
+            poisson_volumes.append(np.pi*4.0/3.0*radius*radius*radius)
+            sphere = vtk.vtkSphereSource()
+            sphere.SetThetaResolution(60)
+            sphere.SetPhiResolution(60)
+            sphere.SetCenter(np.mean(points_arr, axis=0))
+            sphere.SetRadius(radius)
+            sphere.Update()
+            poisson_polydatas.append(sphere.GetOutput())
+        else:
+            tmp_polydata = points_normals_to_poisson(points_arr, normals_arr)
+            tmp_points = vtk.util.numpy_support.vtk_to_numpy(tmp_polydata.GetPoints().GetData())
+            tmp_cog = np.mean(tmp_points, axis=0)
 
-        for j, (dataset_points, dataset_normals) in enumerate(zip(points, normals)):
-            tmp_cog = np.mean(dataset_points, axis=0)
-            dataset_normals[:] = dataset_points - tmp_cog
+            for j, (dataset_points, dataset_normals) in enumerate(zip(points, normals)):
+                tmp_cog = np.mean(dataset_points, axis=0)
+                dataset_normals[:] = dataset_points - tmp_cog
 
-            if save_path:
-                polydata = vtk.vtkPolyData()
-                pts_vtk = vtk.vtkPoints()
-                pts_vtk.SetData(vtk.util.numpy_support.numpy_to_vtk(dataset_points))
-                polydata.SetPoints(pts_vtk)
-                normals_arr = vtk.util.numpy_support.numpy_to_vtk(dataset_normals)
-                normals_arr.SetName('Normals')
-                polydata.GetPointData().AddArray(normals_arr)
-                writer = vtk.vtkXMLPolyDataWriter()
-                writer.SetInputData(polydata)
-                writer.SetFileName(f'{save_path}_{j}_{t}.vtp')
-                writer.Update()
+                if save_path:
+                    polydata = vtk.vtkPolyData()
+                    pts_vtk = vtk.vtkPoints()
+                    pts_vtk.SetData(vtk.util.numpy_support.numpy_to_vtk(dataset_points))
+                    polydata.SetPoints(pts_vtk)
+                    normals_arr = vtk.util.numpy_support.numpy_to_vtk(dataset_normals)
+                    normals_arr.SetName('Normals')
+                    polydata.GetPointData().AddArray(normals_arr)
+                    writer = vtk.vtkXMLPolyDataWriter()
+                    writer.SetInputData(polydata)
+                    writer.SetFileName(f'{save_path}_{j}_{t}.vtp')
+                    writer.Update()
 
-        points_arr = np.vstack(points)
-        normals_arr = np.vstack(normals)
+            points_arr = np.vstack(points)
+            normals_arr = np.vstack(normals)
 
-        poisson_polydatas.append(points_normals_to_poisson(points_arr, normals_arr))
-        poisson_volumes.append(polydata_to_volume(poisson_polydatas[-1]))
+            poisson_polydatas.append(points_normals_to_poisson(points_arr, normals_arr))
+            poisson_volumes.append(polydata_to_volume(poisson_polydatas[-1]))
     return poisson_polydatas, poisson_volumes
