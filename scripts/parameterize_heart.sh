@@ -13,6 +13,8 @@ git pull
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
 
+mdkir -p /home/pdiachil/projects/la_sphere
+
 for i in $(seq $cnt1 $cnt2)
 do
     end=$((i+1))
