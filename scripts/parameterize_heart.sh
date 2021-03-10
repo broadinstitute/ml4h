@@ -29,7 +29,7 @@ cd /home/pdiachil/ml/notebooks/mri
 # /snap/bin/gsutil cp *xmf gs://ml4cvd/pdiachil/rightheart_boundary_images_v20201102/
 
 cd /home/pdiachil/projects/la_sphere
-/snap/bin/gsutil cp poisson* gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_sphere_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/xdmf/
+/snap/bin/gsutil cp sphere* gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_sphere_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/xdmf/
 /snap/bin/gsutil cp /home/pdiachil/out* gs://ml4cvd/pdiachil/surface_reconstruction/2ch_3ch_4ch/fastai_sphere_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/log/
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
