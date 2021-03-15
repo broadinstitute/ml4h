@@ -5,8 +5,8 @@ from typing import Dict, Tuple, Callable
 import h5py
 import numpy as np
 from tensorflow.keras.utils import to_categorical
-import cv2
-import blosc
+#import cv2
+#import blosc
 
 from ml4h.metrics import weighted_crossentropy, asymmetric_outlier_mse
 from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, TopKNormalize, ImagenetNormalizeTorch
