@@ -1,4 +1,4 @@
-model_zoo/** filter=lfs diff=lfs merge=lfs -text -md
+model_zoo/** filter=lfs diff=lfs merge=lfs -text
 *.ipynb filter=nbstripout
 notebooks/**.ipynb filter=nbstripout
 *.ipynb diff=ipynb
