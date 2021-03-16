@@ -459,7 +459,7 @@ ecg_rest_1lead = TensorMap(
 
 ecg_median_1lead_categorical = TensorMap(
     'median',  Interpretation.CATEGORICAL, shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
-    channel_map=_get_lead_cm(32)[0],  normalization=ZeroMeanStd1(),
+    channel_map=_get_lead_cm(32)[0], normalization=ZeroMeanStd1(),
     loss=weighted_crossentropy(
         np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical',
     ),
