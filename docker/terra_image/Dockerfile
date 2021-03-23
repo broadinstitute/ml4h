@@ -1,9 +1,5 @@
-FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.12
+FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.1.0
 # https://github.com/DataBiosphere/terra-docker/blob/master/terra-jupyter-gatk/CHANGELOG.md
-
-USER root
-# TODO(deflaux) remove this after https://github.com/DataBiosphere/terra-docker/issues/175
-RUN pip3 uninstall -y enum34
 
 USER $USER
 RUN pip3 install git+https://github.com/broadinstitute/ml4h.git \
