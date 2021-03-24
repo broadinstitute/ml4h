@@ -50,10 +50,10 @@ FOLDERS[Runtime.TERRA] = {
     Dataset.FAKE: {
         # If fake data is not available, put in the path to the real data.
         # Dependent code must gracefully handle 'not found' conditions.
-        DataType.EXERCISE_ECG_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/',
-        DataType.RESTING_ECG_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/',
+        DataType.EXERCISE_ECG_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/2021_03_24/ ',
+        DataType.RESTING_ECG_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/2021_03_24/ ',
         DataType.RESTING_ECG_SVG: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_resting_ecg_svgs/',
-        DataType.MRI_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/',
+        DataType.MRI_HD5: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_hd5s/2021_03_24/ ',
         DataType.BRAIN_MRI_DICOM: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_dicoms/',
         DataType.CARDIAC_MRI_DICOM: 'gs://fc-500bd872-4a53-45c9-87d3-39656bd83f85/data/fake_dicoms/',
     },

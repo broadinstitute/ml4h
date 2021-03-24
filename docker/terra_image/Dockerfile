@@ -2,9 +2,7 @@ FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.1.0
 # https://github.com/DataBiosphere/terra-docker/blob/master/terra-jupyter-gatk/CHANGELOG.md
 
 USER $USER
-# Pin to an older version of ml4h to work around a change to `ml4h.tensormap.ukb.ecg.ecg_rest`.
-# TODO(deflaux): either make use of synthetic data matching the newer TMAP format or add a TMAP for the older structure.
-RUN pip3 install git+https://github.com/broadinstitute/ml4h.git@e47402412163e085bbfd1e6ebfc0f372a8eafe04 \
+RUN pip3 install git+https://github.com/broadinstitute/ml4h.git \
   # Configure notebook extensions.
   && jupyter nbextension install --user --py vega \
   && jupyter nbextension enable --user --py vega \
