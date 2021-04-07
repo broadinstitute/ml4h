@@ -23,13 +23,16 @@ YEAR_DAYS = 365.26
 INCIDENCE_CSV = '/media/erisone_snf13/lc_outcomes.csv'
 CARDIAC_SURGERY_OUTCOMES_CSV = '/data/sts-data/mgh-preop-ecg-outcome-labels.csv'
 PARTNERS_PREFIX = 'partners_ecg_rest'
-WIDE_FILE = '/home/sam/ml/hf-wide-2020-08-18-with-lvh-and-lbbb.tsv'
+WIDE_FILE = '/home/sam/ml/hf-wide-2020-09-15-with-lvh-and-lbbb.tsv'
+#WIDE_FILE = '/home/sam/ml/mgh-wide-2020-06-25-with-mrn.tsv'
 
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
-    tensor_map_maker_fxns = [make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps, 
-                             make_mgb_ecg_measurement_matrix_global_tensor_maps, make_mgb_ecg_measurement_matrix_lead_tensor_maps,
-                             make_mgb_ecg_lvh_tensormaps]
+    tensor_map_maker_fxns = [
+        make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps,
+        make_mgb_ecg_measurement_matrix_global_tensor_maps, make_mgb_ecg_measurement_matrix_lead_tensor_maps,
+        make_mgb_ecg_lvh_tensormaps,
+    ]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
         if desired_map is not None:
@@ -513,6 +516,7 @@ def _days_to_years_float(s: str):
     except ValueError:
         return None
 
+
 def _time_to_event_tensor_from_days(tm: TensorMap, has_disease: int, follow_up_days: int):
     tensor = np.zeros(tm.shape, dtype=np.float32)
     if follow_up_days > tm.days_window:
@@ -537,7 +541,7 @@ def _survival_curve_tensor_from_dates(tm: TensorMap, has_disease: int, assessmen
 
 
 def tensor_from_wide(
-    file_name: str, patient_column: str = 'fpath', age_column: str = 'age', bmi_column: str = 'bmi',
+    file_name: str, patient_column: str = 'Mrn', age_column: str = 'age', bmi_column: str = 'bmi',
     sex_column: str = 'sex', hf_column: str = 'any_hf_age', start_column: str = 'start_fu',
     end_column: str = 'last_encounter', delimiter: str = '\t', population_normalize: int = 2000,
     target: str = 'ecg', skip_prevalent: bool = True,
@@ -564,8 +568,11 @@ def tensor_from_wide(
             try:
                 patient_key = int(float(row[patient_index]))
                 patient_data[patient_key] = {
-                    'age': _days_to_years_float(row[age_index]), 'bmi': _to_float_or_none(row[bmi_index]), 'sex': row[sex_index],
-                    'hf_age': _days_to_years_float(row[hf_index]), 'end_age': _days_to_years_float(row[end_index]),
+                    'age': _days_to_years_float(row[age_index]),
+                    'bmi': _to_float_or_none(row[bmi_index]),
+                    'sex': row[sex_index],
+                    'hf_age': _days_to_years_float(row[hf_index]),
+                    'end_age': _days_to_years_float(row[end_index]),
                     'start_date': datetime.datetime.strptime(row[start_index], CARDIAC_SURGERY_DATE_FORMAT),
                 }
 
@@ -576,7 +583,7 @@ def tensor_from_wide(
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         mrn_int = _hd5_filename_to_mrn_int(hd5.filename)
         if mrn_int not in patient_data:
-            raise KeyError(f'{tm.name} mrn not in legacy csv.')
+            raise KeyError(f'{tm.name} mrn not in csv.')
         if patient_data[mrn_int]['end_age'] is None or patient_data[mrn_int]['age'] is None:
             raise ValueError(f'{tm.name} could not find ages.')
         if patient_data[mrn_int]['end_age'] - patient_data[mrn_int]['age'] < 0:
@@ -797,12 +804,12 @@ def make_mgb_ecg_measurement_matrix_global_tensor_maps(needed_name: str):
                 path_prefix=PARTNERS_PREFIX,
                 loss='logcosh',
                 time_series_limit=0,
-                tensor_from_file=make_measurement_matrix_from_file(measure_idx)
+                tensor_from_file=make_measurement_matrix_from_file(measure_idx),
             )
 
 
 measurement_matrix_leads = {
-    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11
+    'I': 0, 'II': 1, 'V1': 2, 'V2': 3, 'V3': 4, 'V4':5, 'V5': 6, 'V6': 7, 'III': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11,
 }
 measurement_matrix_lead_measures = {
     'pona': 1,      # P Wave amplitude at P-onset
@@ -856,8 +863,9 @@ measurement_matrix_lead_measures = {
     'parea': 49,    # P wave area, includes P and P Prime
     'qrsar': 50,    # QRS area
     'tarea': 51,    # T wave area, include T and T Prime
-    'qrsint': 52    # QRS intriniscoid (see following)
+    'qrsint': 52,    # QRS intriniscoid (see following)
 }
+
 
 def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
     for lead, lead_idx in measurement_matrix_leads.items():
@@ -882,7 +890,7 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                 path_prefix=PARTNERS_PREFIX,
                 loss='logcosh',
                 time_series_limit=0,
-                tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=list(measurement_matrix_leads.values()))
+                tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=list(measurement_matrix_leads.values())),
             )
 
 def make_mgb_ecg_lvh_tensormaps(needed_name: str):
@@ -941,4 +949,3 @@ def make_mgb_ecg_lvh_tensormaps(needed_name: str):
                 shape=(None, 2),
                 time_series_limit=0,
             )
-

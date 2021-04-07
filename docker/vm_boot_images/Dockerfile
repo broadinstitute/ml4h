@@ -23,7 +23,7 @@ WORKDIR /app
 RUN ./ubuntu.sh
 
 # FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
-# understand this odd sequence of installing then uninstalling fastai before 
+# understand this odd sequence of installing then uninstalling fastai before
 # installing it from github. (Basically, to get its deps.)
 # RUN pip3 install -r fastai-requirements.txt
 # RUN pip3 uninstall -y fastai
@@ -33,8 +33,10 @@ RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
 
 # Requirements for the tensorflow project
 RUN pip3 install --upgrade pip
-RUN pip3 install -r pre_requirements.txt
+#RUN pip3 install -r pre_requirements.txt
 RUN pip3 install -r tensorflow-requirements.txt \
   # Configure notebook extensions.
+  && jupyter nbextension install --user --py vega \
+  && jupyter nbextension enable --user --py vega \
   && jupyter nbextension install --user --py ipycanvas \
   && jupyter nbextension enable --user --py ipycanvas

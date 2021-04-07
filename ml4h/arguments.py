@@ -20,17 +20,16 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional
+from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
-from ml4h.models import parent_sort, BottleneckType, check_no_bottleneck
-from ml4h.models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
+from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
-
+from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
@@ -142,12 +141,13 @@ def parse_args():
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
-    parser.add_argument('--dense_layers', nargs='*', default=[16, 64], type=int, help='List of number of hidden units in neural nets dense layers.')
+    parser.add_argument('--dense_layers', nargs='*', default=[32, 32], type=int, help='List of number of hidden units in neural nets dense layers.')
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
+    parser.add_argument('--conv_width', default=[71], nargs='*', type=int, help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_x', default=[3], nargs='*', type=int, help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_y', default=[3], nargs='*', type=int, help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_z', default=[2], nargs='*', type=int, help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
@@ -162,15 +162,24 @@ def parse_args():
     parser.add_argument('--pool_y', default=2, type=int, help='Pooling size in the y-axis, if 1 no pooling will be performed.')
     parser.add_argument('--pool_z', default=1, type=int, help='Pooling size in the z-axis, if 1 no pooling will be performed.')
     parser.add_argument('--padding', default='same', help='Valid or same border padding on the convolutional layers.')
-    parser.add_argument('--dense_blocks', nargs='*', default=[32, 24, 16], type=int, help='List of number of kernels in convolutional layers.')
+    parser.add_argument('--dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional layers.')
+    parser.add_argument('--encoder_blocks', nargs='*', default=['conv_encode'], help='List of encoding blocks.')
+    parser.add_argument('--merge_blocks', nargs='*', default=['concat'], help='List of merge blocks.')
+    parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode', 'dense_decode'], help='List of decoding blocks.')
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
     parser.add_argument(
         '--u_connect', nargs=2, action='append',
         help='U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.',
     )
-    parser.add_argument('--aligned_dimension', default=16, type=int, help='Dimensionality of aligned embedded space for multi-modal alignment models.')
     parser.add_argument(
-        '--max_parameters', default=9000000, type=int,
+        '--pairs', nargs=2, action='append',
+        help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
+    )
+    parser.add_argument('--pair_loss', default='cosine', help='Distance metric between paired embeddings', choices=['euclid', 'cosine'])
+    parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
+    parser.add_argument('--multimodal_merge', default='average', choices=['average', 'concatenate'], help='How to merge modality specific encodings.')
+    parser.add_argument(
+        '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
     parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
@@ -219,6 +228,9 @@ def parse_args():
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
     parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
+    parser.add_argument(
+        '--save_last_model', default=False, action='store_true',
+        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -231,6 +243,7 @@ def parse_args():
     parser.add_argument('--alpha', default=0.5, type=float, help='Alpha transparency for t-SNE plots must in [0.0-1.0].')
     parser.add_argument('--plot_mode', default='clinical', choices=['clinical', 'full'], help='ECG view to plot for mgb ECGs.')
     parser.add_argument("--embed_visualization", help="Method to visualize embed layer. Options: None, tsne, or umap")
+    parser.add_argument('--attractor_iterations', default=3, type=int, help='Number of iterations for autoencoder generated fixed points.')
     parser.add_argument("--explore_export_errors", default=False, action="store_true", help="Export error_type columns in tensors_all*.csv generated by explore.")
     parser.add_argument('--plot_hist', default=True, help='Plot histograms of continuous tensors in explore mode.')
 
@@ -340,6 +353,10 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
     if isinstance(tm, TensorMap) == True:
         return tm
 
+    tm = make_test_tensor_maps(module_string)
+    if isinstance(tm, TensorMap) == True:
+        return tm
+
     if isinstance(module_string, str) == False:
         raise TypeError(f"Input name must be a string. Given: {type(module_string)}")
     if len(module_string) == 0:
@@ -384,6 +401,14 @@ def _process_u_connect_args(u_connect: Optional[List[List]], tensormap_prefix) -
     return new_u_connect
 
 
+def _process_pair_args(pairs: Optional[List[List]], tensormap_prefix) -> List[Tuple[TensorMap, TensorMap]]:
+    pairs = pairs or []
+    new_pairs = []
+    for pair in pairs:
+        new_pairs.append((tensormap_lookup(pair[0], tensormap_prefix), tensormap_lookup(pair[1], tensormap_prefix)))
+    return new_pairs
+
+
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
@@ -396,6 +421,7 @@ def _process_args(args):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
     args.u_connect = _process_u_connect_args(args.u_connect, args.tensormap_prefix)
+    args.pairs = _process_pair_args(args.pairs, args.tensormap_prefix)
 
     args.tensor_maps_in = []
     args.tensor_maps_out = []
@@ -409,7 +435,7 @@ def _process_args(args):
             args.tensor_maps_in.extend([input_map, burn_in])
         args.tensor_maps_out.append(output_map)
 
-    args.tensor_maps_in = [tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors]
+    args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
         # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
@@ -422,6 +448,7 @@ def _process_args(args):
                 args.continuous_file_discretization_bounds,
             ),
         )
+
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]

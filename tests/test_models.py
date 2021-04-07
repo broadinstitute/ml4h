@@ -7,7 +7,9 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4h.TensorMap import TensorMap
-from ml4h.models import make_multimodal_multitask_model, parent_sort, BottleneckType, ACTIVATION_FUNCTIONS, MODEL_EXT, train_model_from_generators, check_no_bottleneck
+from ml4h.models.train import train_model_from_generators
+from ml4h.models.legacy_models import make_multimodal_multitask_model, parent_sort, BottleneckType
+from ml4h.models.legacy_models import ACTIVATION_FUNCTIONS, MODEL_EXT, check_no_bottleneck, make_paired_autoencoder_model
 from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
 
@@ -18,14 +20,14 @@ DEFAULT_PARAMS = {
     'dense_layers': [4, 2],
     'dense_blocks': [5, 3],
     'block_size': 3,
-    'conv_width': 3,
     'learning_rate': 1e-3,
     'optimizer': 'adam',
     'conv_type': 'conv',
     'conv_layers': [6, 5, 3],
-    'conv_x': [3],
-    'conv_y': [3],
-    'conv_z': [2],
+    'conv_width': [71]*5,
+    'conv_x': [3]*5,
+    'conv_y': [3]*5,
+    'conv_z': [2]*5,
     'padding': 'same',
     'max_pools': [],
     'pool_type': 'max',
@@ -39,6 +41,16 @@ DEFAULT_PARAMS = {
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
+    'pair_loss': 'cosine',
+    'training_steps': 12,
+    'learning_rate': 0.00001,
+    'epochs': 6,
+    'optimizer': 'adam',
+    'learning_rate_schedule': None,
+    'model_layers': None,
+    'model_file': None,
+    'hidden_layer': 'embed',
+    'u_connect': defaultdict(dict),
 }
 
 
@@ -54,19 +66,20 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
         ), ])
 
 
-def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None):
+def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None, skip_shape_check: bool = False):
     if m is None:
         m = make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
             **DEFAULT_PARAMS,
         )
-    for tmap, tensor in zip(input_tmaps, m.inputs):
-        assert tensor.shape[1:] == tmap.shape
-        assert tensor.shape[1:] == tmap.shape
-    for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
-        assert tensor.shape[1:] == tmap.shape
-        assert tensor.shape[1:] == tmap.shape
+    if not skip_shape_check:
+        for tmap, tensor in zip(input_tmaps, m.inputs):
+            assert tensor.shape[1:] == tmap.shape
+            assert tensor.shape[1:] == tmap.shape
+        for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
+            assert tensor.shape[1:] == tmap.shape
+            assert tensor.shape[1:] == tmap.shape
     data = make_training_data(input_tmaps, output_tmaps)
     history = m.fit(data, steps_per_epoch=2, epochs=2, validation_data=data, validation_steps=2)
     for tmap in output_tmaps:
@@ -128,17 +141,18 @@ class TestMakeMultimodalMultitaskModel:
         TMAPS_UP_TO_4D,
     )
     def test_load_unimodal(self, tmpdir, input_tmap, output_tmap):
+        params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
-            **DEFAULT_PARAMS,
+            **params,
         )
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params['model_file'] = path
         make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
-            model_file=path,
             **DEFAULT_PARAMS,
         )
 
@@ -158,10 +172,10 @@ class TestMakeMultimodalMultitaskModel:
         )
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params['model_file'] = path
         make_multimodal_multitask_model(
             inp,
             out,
-            model_file=path,
             **params,
         )
 
@@ -182,11 +196,12 @@ class TestMakeMultimodalMultitaskModel:
         )
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params = DEFAULT_PARAMS.copy()
+        params['model_file'] = path
         make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
-            model_file=path,
-            **DEFAULT_PARAMS,
+            **params,
         )
 
     def test_u_connect_auto_encode(self):
@@ -194,10 +209,10 @@ class TestMakeMultimodalMultitaskModel:
         params['pool_x'] = params['pool_y'] = 2
         params['conv_layers'] = [8, 8]
         params['dense_blocks'] = [4, 4, 2]
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_IN],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}}),
             **params,
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_IN], m)
@@ -205,10 +220,10 @@ class TestMakeMultimodalMultitaskModel:
     def test_u_connect_segment(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
             **params,
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
@@ -236,21 +251,21 @@ class TestMakeMultimodalMultitaskModel:
         m.save(os.path.join(tmpdir, 'vae.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
+        params['model_file'] = path
         make_multimodal_multitask_model(
             input_output_tmaps[0],
             input_output_tmaps[1],
-            model_file=path,
-            **DEFAULT_PARAMS,
+            **params,
         )
 
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
         params['bottleneck_type'] = BottleneckType.GlobalAveragePoolStructured
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
             [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
             **params,
         )
         assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
@@ -259,10 +274,10 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
         params['bottleneck_type'] = BottleneckType.NoBottleNeck
+        params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m = make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
             [SEGMENT_OUT],
-            u_connect=defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}}),
             **params,
         )
         assert_model_trains([SEGMENT_IN, TMAPS_UP_TO_4D[0]], [SEGMENT_OUT], m)
@@ -294,20 +309,86 @@ class TestMakeMultimodalMultitaskModel:
     def test_language_models(self, input_output_tmaps, tmpdir):
         params = DEFAULT_PARAMS.copy()
         m = make_multimodal_multitask_model(
-            input_output_tmaps[0],
-            input_output_tmaps[1],
+            tensor_maps_in=input_output_tmaps[0],
+            tensor_maps_out=input_output_tmaps[1],
             **params
         )
         assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
-        m.save(os.path.join(tmpdir, 'lstm.h5'))
-        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        path = os.path.join(tmpdir, f'lstm{MODEL_EXT}')
         m.save(path)
+        params['model_file'] = path
         make_multimodal_multitask_model(
             input_output_tmaps[0],
             input_output_tmaps[1],
-            model_file=path,
-            **DEFAULT_PARAMS,
+            **params,
         )
+
+    @pytest.mark.parametrize(
+        'pairs',
+        [
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1])],
+            [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[1])],
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])]
+        ],
+    )
+    def test_paired_models(self, pairs, tmpdir):
+        params = DEFAULT_PARAMS.copy()
+        pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
+        params['u_connect'] = {tm: [] for tm in pair_list}
+        m, encoders, decoders = make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list,
+            **params
+        )
+        assert_model_trains(pair_list, pair_list, m, skip_shape_check=True)
+        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list,
+            **params
+        )
+
+    @pytest.mark.parametrize(
+        'pairs',
+        [
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1])],
+            [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[1])],
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])]
+        ],
+    )
+    @pytest.mark.parametrize(
+        'output_tmaps',
+        [
+            [CONTINUOUS_TMAPS[0]],
+            [CATEGORICAL_TMAPS[0]],
+            [CONTINUOUS_TMAPS[0], CATEGORICAL_TMAPS[0]],
+        ],
+    )
+    def test_semi_supervised_paired_models(self, pairs, output_tmaps, tmpdir):
+        params = DEFAULT_PARAMS.copy()
+        pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
+        params['u_connect'] = {tm: [] for tm in pair_list}
+        m, encoders, decoders = make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list+output_tmaps,
+            **params
+        )
+        assert_model_trains(pair_list, pair_list+output_tmaps, m, skip_shape_check=True)
+        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        make_paired_autoencoder_model(
+            pairs=pairs,
+            tensor_maps_in=pair_list,
+            tensor_maps_out=pair_list+output_tmaps,
+            **params
+        )
+
 
 @pytest.mark.parametrize(
     'tmaps',

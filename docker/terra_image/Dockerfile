@@ -1,28 +1,17 @@
-FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.0.6
+FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:1.1.0
 # https://github.com/DataBiosphere/terra-docker/blob/master/terra-jupyter-gatk/CHANGELOG.md
 
-USER root
-# Address errors due to enum34 package https://stackoverflow.com/a/45716067/4138705
-RUN pip3 uninstall -y enum34
-
-# Install custom private python package from Puneet Batra's team. Enable easy
-# local edits by placing it in the home directory with write access for
-# jupyter-user.
 USER $USER
-RUN mkdir -p $HOME/ml4h_pkg
-COPY --chown=jupyter-user:users ml4h $HOME/ml4h_pkg/ml4h
-COPY --chown=jupyter-user:users config $HOME/ml4h_pkg/config
-ENV PYTHONPATH $PYTHONPATH:$HOME/ml4h_pkg
-
-RUN pip3 install --user -r $HOME/ml4h_pkg/config/tensorflow-requirements.txt \
-  # Upgrade to a newer version so that %%bigquery does not print the
-  # first few rows of the downloaded dataframe of query results.
-  # Pin version due to https://github.com/googleapis/google-cloud-python/issues/9965
-  && pip3 install --upgrade --user google-cloud-bigquery[pandas]==1.22.0 \
-  # Upgrade to a newer version. The one on the base Terra image was a bit too old.
-  && pip3 install --upgrade --user numpy \
+RUN pip3 install git+https://github.com/broadinstitute/ml4h.git \
   # Configure notebook extensions.
   && jupyter nbextension install --user --py vega \
   && jupyter nbextension enable --user --py vega \
   && jupyter nbextension install --user --py ipycanvas \
-  && jupyter nbextension enable --user --py ipycanvas
+  && jupyter nbextension enable --user --py ipycanvas \
+  # Remove this after https://broadworkbench.atlassian.net/browse/CA-1240
+  # As of release [google-cloud-bigquery 1.26.0 (2020-07-20)](https://github.com/googleapis/python-bigquery/blob/master/CHANGELOG.md#1260-2020-07-20)
+  # the BigQuery Python client uses the BigQuery Storage client by default.
+  # This currently causes an error on Terra Cloud Runtimes `the user does not have 'bigquery.readsessions.create'
+  # permission for '<Terra billing project id>'`. To work-around this uninstall the dependency so that flag
+  # `--use_rest_api` can be used with `%%bigquery` to use the older, slower mechanism for data transfer.
+  && pip3 uninstall -y google-cloud-bigquery-storage

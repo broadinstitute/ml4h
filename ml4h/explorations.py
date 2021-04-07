@@ -8,7 +8,6 @@ import copy
 import logging
 import operator
 import datetime
-from operator import itemgetter
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
@@ -24,11 +23,11 @@ import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
-from ml4h.models import make_multimodal_multitask_model
+from ml4h.models.legacy_models import make_multimodal_multitask_model
 from ml4h.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, SUBPLOT_SIZE
+from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, SUBPLOT_SIZE
 from ml4h.plots import evaluate_predictions, subplot_rocs, subplot_scatters, plot_categorical_tmap_over_time
 from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
@@ -79,6 +78,21 @@ def predictions_to_pngs(
                     ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
                     logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
+        elif tm.axes() == 2:
+            fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * 3))
+            for i in range(y.shape[0]):
+                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                title = f'{tm.name}_{sample_id}_reconstruction'
+                for j in range(tm.shape[1]):
+                    plt.subplot(tm.shape[1], 1, j + 1)
+                    plt.plot(labels[tm.output_name()][i, :, j], c='k', linestyle='--', label='original')
+                    plt.plot(y[i, :, j], c='b', label='reconstruction')
+                    if j == 0:
+                        plt.title(title)
+                        plt.legend()
+                plt.tight_layout()
+                plt.savefig(os.path.join(folder, title + IMAGE_EXT))
+                plt.clf()
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
@@ -1332,3 +1346,49 @@ def cross_reference(args):
     fpath = os.path.join(args.output_folder, args.id, 'summary_cohort_counts.csv')
     pd.DataFrame.from_dict(cohort_counts, orient='index', columns=['count']).rename_axis('description').to_csv(fpath)
     logging.info(f'Saved cohort counts to {fpath}')
+
+
+def directions_in_latent_space(stratify_column, stratify_thresh, split_column, split_thresh, latent_cols, latent_df):
+    hit = latent_df.loc[latent_df[stratify_column] >= stratify_thresh][latent_cols].to_numpy()
+    miss = latent_df.loc[latent_df[stratify_column] < stratify_thresh][latent_cols].to_numpy()
+    miss_mean_vector = np.mean(miss, axis=0)
+    hit_mean_vector = np.mean(hit, axis=0)
+    strat_vector = hit_mean_vector - miss_mean_vector
+
+    hit1 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
+                         & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
+    miss1 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
+                          & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
+    hit2 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
+                         & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
+    miss2 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
+                          & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
+    miss_mean_vector1 = np.mean(miss1, axis=0)
+    hit_mean_vector1 = np.mean(hit1, axis=0)
+    angle1 = angle_between(miss_mean_vector1, hit_mean_vector1)
+    miss_mean_vector2 = np.mean(miss2, axis=0)
+    hit_mean_vector2 = np.mean(hit2, axis=0)
+    angle2 = angle_between(miss_mean_vector2, hit_mean_vector2)
+    h1_vector = hit_mean_vector1 - miss_mean_vector1
+    h2_vector = hit_mean_vector2 - miss_mean_vector2
+    angle3 = angle_between(h1_vector, h2_vector)
+    print(f'\n Between {stratify_column}, and splits: {split_column}\n',
+          f'Angles h1 and m1: {angle1:.2f}, h2 and m2 {angle2:.2f} h1-m1 and h2-m2 {angle3:.2f} degrees.\n'
+          f'stratify threshold: {stratify_thresh}, split thresh: {split_thresh}, \n'
+          f'hit_mean_vector2 shape {miss_mean_vector1.shape}, miss1:{hit_mean_vector2.shape} \n'
+          f'Hit1 shape {hit1.shape}, miss1:{miss1.shape} threshold:{stratify_thresh}\n'
+          f'Hit2 shape {hit2.shape}, miss2:{miss2.shape}\n')
+
+    return hit_mean_vector1, miss_mean_vector1, hit_mean_vector2, miss_mean_vector2
+
+
+def latent_space_dataframe(infer_hidden_tsv, explore_csv):
+    df = pd.read_csv(explore_csv)
+    df['fpath'] = pd.to_numeric(df['fpath'], errors='coerce')
+    df2 = pd.read_csv(infer_hidden_tsv, sep='\t')
+    df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
+    latent_df = pd.merge(df, df2, left_on='fpath', right_on='sample_id', how='inner')
+    latent_df.info()
+    return latent_df
+
+
