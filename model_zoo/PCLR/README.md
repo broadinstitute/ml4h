@@ -1,3 +1,23 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d4f6bbdf0e5498cde877b660cc94d430abf3ae17d44f115fd75fa476745ad8db
-size 982
+# PCLR (Patient Contrastive Learning of Representations)
+
+PCLR is a pre-training strategy that yields a neural network that extracts representations of ECGs.
+The representations are designed to be used in linear models without finetuning the network.
+This readme shows how to load a model trained on over three million ECGs using PCLR.
+
+## Requirements
+This code was tested using python 3.7.
+It can be used using virtual env.
+```bash
+python3.7 -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+python -i get_representations.py  # test the setup worked
+>>> test_get_representations()
+```
+
+## Usage
+You can get ECG representations using [get_representations.py](./get_representations.py).
+`get_representations.get_representations` builds `N x 320` ECG representations from `N` ECGs.
+
+The model expects 10s 12-lead ECGs with a specific lead order and interpolated to be 4,096 samples long.
+[preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing.
