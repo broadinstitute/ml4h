@@ -27,8 +27,10 @@ logging.getLogger().setLevel('INFO')
 #                      usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
 # df_3ch = pd.read_csv('/home/pdiachil/projects/manifests/manifest_3ch.tsv', sep='\t',
 #                      usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
-df_4ch = pd.read_csv('/home/pdiachil/projects/manifests/manifest_4ch.tsv', sep='\t',
-                     usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'])
+df_4ch = pd.read_csv(
+    '/home/pdiachil/projects/manifests/manifest_4ch.tsv', sep='\t',
+    usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'],
+)
 
 df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_coronal.csv', usecols=['ID'])
 df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
@@ -81,6 +83,7 @@ end = int(sys.argv[2])
 bucket = storage_client.get_bucket('ml4cvd')
 bulk_bucket = storage_client.get_bucket('bulkml4cvd')
 start_time = time.time()
+print(df_manifest)
 for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
     print(sample_id)
     if i < start:
@@ -96,8 +99,8 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
         hd5_ff = h5py.File(f'{sample_id}.hd5', 'w')
         hd5_ff.create_group('ukb_cardiac_mri')
         hd5_ff.close()
-    for j, (instance, df_hd5) in enumerate(df_sample_id.groupby('instance')):        
-        try:            
+    for j, (instance, df_hd5) in enumerate(df_sample_id.groupby('instance')):
+        try:
             raw_t1 = f'cardiacmri/all/raw/{sample_id}_20214_{instance}_0.zip'
             blob = bulk_bucket.blob(raw_t1)
             blob.download_to_filename('raw_t1.zip')
@@ -117,6 +120,7 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                         slicer = pydicom.read_file(dcm_file)
                         series = slicer.SeriesDescription.lower().replace(' ', '_')
                         views[series].append(slicer)
+                    best_mean = 0
                     for v in views:
                         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
                         mri_group = 'ukb_cardiac_mri'
@@ -128,11 +132,12 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                             slice_index = slicer.InstanceNumber - 1
                             mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
                             if ('t1map' in v) and ('sax' in v):
-                                if slice_index == 0:
-                                    print(mri_data[..., slice_index].max())
-                                    imageio.imwrite(f'{sample_id}_{instance}_{slice_index}.png', slicer.pixel_array.astype(np.float32))
+                                cur_mean = np.mean(slicer.pixel_array.astype(np.float32))
+                                if cur_mean > best_mean:
+                                    best_mean = cur_mean
+                                    imageio.imwrite(f'{sample_id}_{instance}_0.png', slicer.pixel_array.astype(np.float32))
                         create_tensor_in_hd5(hd5_ff, mri_group, f'{v}/{instance}', mri_data)
-                os.remove('raw_t1.zip')            
+                os.remove('raw_t1.zip')
         except FutureWarning as e:
             logging.warning(f'Caught exception at {sample_id}: {e}')
             continue
@@ -165,7 +170,7 @@ print(end_time-start_time)
 #                 save_path=None, order='F',
 #                 mri_frames=2
 #             )[0],
-#         )        
+#         )
 #         to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=True, mri_frames=2)
 #     for iv, view in enumerate(views):
 #         annot_datasets.append(
