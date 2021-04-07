@@ -1,6 +1,7 @@
 import os
 import time
 import h5py
+import blosc
 import biosppy
 import seaborn as sns
 import logging
@@ -21,7 +22,6 @@ from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap, Interpretation, no_nans
 from ml4cvd.tensor_writer_ukbb import tensor_path, first_dataset_at_path
 from ml4cvd.normalizer import Standardize, Normalizer
-from ml4cvd.tensor_from_file import _get_tensor_at_first_date
 from ml4cvd.tensor_generators import test_train_valid_tensor_generators
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model, BottleneckType
 from ml4cvd.recipes import _infer_models
@@ -38,9 +38,10 @@ HR_SEGMENT_DUR = 10  # HR measurements in recovery coalesced across a segment of
 TREND_TRACE_DUR_DIFF = 2  # Sum of phase durations from UKBB is 2s longer than the raw traces
 LEAD_NAMES = 'lead_I', 'lead_2', 'lead_3'
 
-TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors/2019-10-10/'
+TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors-2/2021-04-01/'
 USER = 'ndiamant'
-OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results'
+LEFT_UKB = f'/home/{USER}/w7089_20210201.csv'
+OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-06'
 TRAIN_CSV_NAME = 'train_ids.csv'
 VALID_CSV_NAME = 'valid_ids.csv'
 TEST_CSV_NAME = 'test_ids.csv'
@@ -61,7 +62,7 @@ VALIDATION_SPLIT = .1
 DROPOUT = True
 BATCH_NORM = True
 AUG_RATE = .5
-OVERWRITE_MODELS = True
+OVERWRITE_MODELS = False
 
 PRETEST_MODEL_LEADS = [0]
 SEED = 217
@@ -69,15 +70,20 @@ PRETEST_INFERENCE_NAME = 'pretest_model_inference.tsv'
 K_SPLIT = 5
 
 
+def _get_tensor_at_first_instance(hd5: h5py.File, path: str):
+    key = min(hd5[path])
+    return hd5["/".join([path, key])][()]
+
+
 # Tensor from file helpers
 def _check_phase_full_len(hd5: h5py.File, phase: str):
-    phase_len = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', f'{phase}_duration')
+    phase_len = _get_tensor_at_first_instance(hd5, f'{phase}_duration')
     valid = True
-    if phase == 'pretest':
+    if phase == 'Pretest':
         valid &= phase_len == PRETEST_DUR
-    elif phase == 'exercise':
+    elif phase == 'Exercise':
         valid &= phase_len == EXERCISE_DUR
-    elif phase == 'rest':
+    elif phase == 'Rest':
         valid &= phase_len == RECOVERY_DUR
     else:
         raise ValueError(f'Phase {phase} is not a valid phase.')
@@ -85,10 +91,16 @@ def _check_phase_full_len(hd5: h5py.File, phase: str):
         raise ValueError(f'{phase} phase is not full length.')
 
 
+def read_compressed(data_set: h5py.Dataset):
+    shape = data_set.attrs['shape']
+    return np.frombuffer(blosc.decompress(data_set[()]), dtype=np.int16).reshape(shape)
+
+
 def _get_bike_ecg(hd5: h5py.File, start: int, stop: int, leads: Union[List[int], slice]):
-    path_prefix, name = 'ecg_bike/float_array', 'full'
-    ecg_dataset = first_dataset_at_path(hd5, tensor_path(path_prefix, name))
-    tensor = np.array(ecg_dataset[start: stop, leads], dtype=np.float32)
+    path_prefix = "full_disclosure"
+    key = min(hd5[path_prefix])  # first instance
+    ecg_dataset = hd5["/".join([path_prefix, key])]
+    tensor = read_compressed(ecg_dataset)[start: stop]
     return tensor
 
 
@@ -101,17 +113,17 @@ def _get_downsampled_bike_ecg(length: float, hd5: h5py.File, start: int, rate: f
 
 def _make_pretest_ecg_tff(downsample_rate: float, leads: Union[List[int], slice], random_start=True):
     def tff(tm: TensorMap, hd5: h5py.File, dependents=None):
-        _check_phase_full_len(hd5, 'pretest')
+        _check_phase_full_len(hd5, 'Pretest')
         start = np.random.randint(0, SAMPLING_RATE * PRETEST_DUR - tm.shape[0] * downsample_rate) if random_start else 0
         return _get_downsampled_bike_ecg(tm.shape[0], hd5, start, downsample_rate, leads)
     return tff
 
 
 def _get_trace_recovery_start(hd5: h5py.File) -> int:
-    _check_phase_full_len(hd5, 'rest')
-    _check_phase_full_len(hd5, 'pretest')
-    pretest_dur = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', 'pretest_duration')
-    exercise_dur = _get_tensor_at_first_date(hd5, 'ecg_bike/continuous', 'exercise_duration')
+    _check_phase_full_len(hd5, 'Rest')
+    _check_phase_full_len(hd5, 'Pretest')
+    pretest_dur = _get_tensor_at_first_instance(hd5, 'Pretest_duration')
+    exercise_dur = _get_tensor_at_first_instance(hd5, 'Exercise_duration')
     return int(SAMPLING_RATE * (pretest_dur + exercise_dur - HR_SEGMENT_DUR / 2 - TREND_TRACE_DUR_DIFF))
 
 
@@ -192,15 +204,24 @@ def _get_biosppy_hr(segment: np.ndarray) -> float:
 
 
 def _get_segments_for_biosppy(hd5: h5py.File):
-    recovery_start_idx = _get_trace_recovery_start(hd5)
-    length = (HR_MEASUREMENT_TIMES[-1] - HR_MEASUREMENT_TIMES[0] + HR_SEGMENT_DUR) * SAMPLING_RATE // BIOSPPY_DOWNSAMPLE_RATE
-    ecg = _get_downsampled_bike_ecg(length, hd5, recovery_start_idx, BIOSPPY_DOWNSAMPLE_RATE, [0, 1, 2])
-    for mid_time in HR_MEASUREMENT_TIMES:
-        yield _get_segment_for_biosppy(ecg, mid_time + HR_SEGMENT_DUR // 2)
+    ecg = _get_bike_ecg(hd5, 0, -1, leads=[0, 1, 2])
+    _check_phase_full_len(hd5, "Pretest")
+    _check_phase_full_len(hd5, "Rest")
+    recovery_start_idx = -60 * SAMPLING_RATE
+    peak_start = recovery_start_idx - HR_SEGMENT_DUR * SAMPLING_RATE // 2
+    peak_end = peak_start + HR_SEGMENT_DUR * SAMPLING_RATE
+    recovery_start = HRR_TIME * SAMPLING_RATE + peak_start
+    recovery_end = HRR_TIME * SAMPLING_RATE + peak_end
+    return (
+        ecg[peak_start: peak_end][::BIOSPPY_DOWNSAMPLE_RATE],
+        ecg[recovery_start: recovery_end][::BIOSPPY_DOWNSAMPLE_RATE],
+    )
 
 
 def _hr_and_diffs_from_segment(segment: np.ndarray) -> Tuple[float, float]:
     hr_per_lead = [_get_biosppy_hr(segment[:, i]) for i in range(segment.shape[-1])]
+    if np.any(np.isnan(hr_per_lead)):
+        raise ValueError("Biosppy returned no HR measurements")
     max_diff = max(map(lambda pair: abs(pair[0] - pair[1]), combinations(hr_per_lead, 2)))
     return float(np.median(hr_per_lead)), max_diff
 
@@ -280,16 +301,18 @@ DF_DIFF_COLS = [df_diff_col(t) for t in HR_MEASUREMENT_TIMES]
 
 def _recovery_hrs_from_path(path: str):
     sample_id = os.path.basename(path).replace(TENSOR_EXT, '')
-    if sample_id.endswith('000'):
-        logging.info(f'Processing sample_id {sample_id}.')
     hr_diff = np.full((len(HR_MEASUREMENT_TIMES), 2), np.nan)
     error = None
+    instance = None
+    protocol = None
     try:
         with h5py.File(path, 'r') as hd5:
             hr_diff = np.array(_recovery_hrs_biosppy(hd5))
+            instance = min(hd5["full_disclosure"])
+            protocol = hd5[f"protocol/{instance}"][()]
     except (ValueError, KeyError, OSError) as e:
         error = e
-    measures = {'sample_id': sample_id, 'error': error}
+    measures = {'sample_id': sample_id, 'error': error, 'instance': instance, 'protocol': protocol}
     for i, (hr_col, diff_col) in enumerate(zip(DF_HR_COLS, DF_DIFF_COLS)):
         measures[hr_col] = hr_diff[i, 0]
         measures[diff_col] = hr_diff[i, 1]
@@ -359,10 +382,14 @@ def build_hr_biosppy_measurements_csv():
     logging.info('Plotting 10 random hr measurements from biosppy.')
     for path in np.random.choice(paths, 10):
         _plot_recovery_hrs(path)
-    pool = Pool()
     logging.info('Beginning to get hr measurements from biosppy.')
     now = time.time()
-    measures = pool.map(_recovery_hrs_from_path, paths)
+    measures = []
+    with Pool() as pool:
+        for i, measure in enumerate(pool.imap_unordered(_recovery_hrs_from_path, paths)):
+            measures.append(measure)
+            if i % 100 == 0:
+                logging.info(f"Biosppy HR measures {(i + 1) / len(paths):.1%} done.")
     df = pd.DataFrame(measures)
     delta_t = time.time() - now
     logging.info(f'Getting hr measurements from biosppy took {delta_t // 60} minutes at {delta_t / len(paths):.2f}s per path.')
@@ -384,8 +411,13 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
     biosppy_labels = pd.read_csv(BIOSPPY_MEASUREMENTS_FILE)
     new_df = pd.DataFrame()
     hr_0 = biosppy_labels[df_hr_col(HR_MEASUREMENT_TIMES[0])]
-    logging.info(f'Label error counts: {biosppy_labels["error"].value_counts()}')
-    drop_idx = {'ECG missing or incomplete': biosppy_labels['error'].notnull()}
+    logging.info(f'Biosppy error counts:\n{biosppy_labels["error"].value_counts()}')
+    left_ukb = set(pd.read_csv(LEFT_UKB)["sample_id"])
+    drop_idx = {
+        'Left UKB': biosppy_labels["sample_id"].isin(left_ukb),
+        'Biosppy error': biosppy_labels['error'].notnull(),
+        'protocol in F30, M40, or R': biosppy_labels['protocol'].isin({"F30", "M40", "R"}),
+    }
     new_df['sample_id'] = biosppy_labels['sample_id']
     double_sided_quantile = (1 - PRETEST_QUANTILE_CUTOFF) / 2
     for t in HR_MEASUREMENT_TIMES:
@@ -409,9 +441,6 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
         logging.info(f'Due to filter {name}, dropping {(idx & ~all_drop).sum()} values')
         all_drop |= idx
     new_df = new_df[~all_drop]
-    unknown_errors = new_df.isna().any(axis=1)
-    logging.info(f'Dropping {unknown_errors.sum()} due to unknown biosppy errors.')
-    new_df = new_df[~unknown_errors]  # TODO: why needed?
     assert new_df.notna().all().all()
     logging.info(f'There are {len(new_df)} pretest labels after filtering hr measures.')
 
@@ -506,7 +535,7 @@ def _get_pretest_summary_stats(id_csv: str) -> Tuple[float, float]:
 ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift'])
 
 
-AUGMENTATIONS = [_warp_ecg, _random_crop_ecg, _rand_add_noise]
+AUGMENTATIONS = [_random_crop_ecg, _rand_add_noise]
 MODEL_SETTINGS = [
     ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False}),
     ModelSetting(**{'model_id': 'shift', 'downsample_rate': 1, 'augmentations': [], 'shift': True}),
@@ -576,7 +605,7 @@ def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
         activation='swish',
         learning_rate=1e-3,
         bottleneck_type=BottleneckType.GlobalAveragePoolStructured,
-        optimizer='radam',
+        optimizer='adam',
         dense_layers=[64],
         conv_layers=[32],
         dense_blocks=[16, 24, 32],
@@ -591,6 +620,8 @@ def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
         model_file=model_path if load_model else None,
         conv_regularize='spatial_dropout' if DROPOUT else None,
         conv_regularize_rate=.1 if DROPOUT else 0,
+        dense_regularize='dropout',
+        dense_regularize_rate=0.5,
     )
 
 
@@ -708,12 +739,15 @@ def _infer_models_split_idx(split_idx: int):
     model_ids = [setting.model_id for setting in MODEL_SETTINGS]
     tmaps_in = [_make_ecg_tmap(setting, split_idx) for setting in MODEL_SETTINGS]
     tmaps_out = [_make_hrr_tmap(split_idx)]
+    inference_tsv = _inference_file(split_idx)
+    if os.path.exists(inference_tsv):
+        logging.info(f"SKIPPING inference on split {split_idx} because the inference file exists.")
     _infer_models(
         models=models,
         model_ids=model_ids,
         tensor_maps_in=tmaps_in,
         tensor_maps_out=tmaps_out,
-        inference_tsv=_inference_file(split_idx), num_workers=8, batch_size=128, tensor_paths=tensor_paths,
+        inference_tsv=inference_tsv, num_workers=8, batch_size=128, tensor_paths=tensor_paths,
     )
 
 
@@ -798,6 +832,10 @@ if __name__ == '__main__':
     load_config('INFO', OUTPUT_FOLDER, 'log_' + now_string, USER)
 
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
+    if MAKE_LABELS:
+        logging.info('Making biosppy labels.')
+        build_hr_biosppy_measurements_csv()
+    plot_hr_from_biosppy_summary_stats()
     for i in range(K_SPLIT):
         os.makedirs(split_folder_name(i), exist_ok=True)
     MAKE_ECG_SUMMARY_STATS = False or not os.path.exists(PRETEST_ECG_SUMMARY_STATS_CSV)
@@ -812,11 +850,6 @@ if __name__ == '__main__':
             False or TRAIN_PRETEST_MODELS
             or not all(os.path.exists(_inference_file(split_idx)) for split_idx in range(K_SPLIT))
     )
-
-    if MAKE_LABELS:
-        logging.info('Making biosppy labels.')
-        build_hr_biosppy_measurements_csv()
-    plot_hr_from_biosppy_summary_stats()
     plt.close('all')
     make_pretest_labels(MAKE_ECG_SUMMARY_STATS)
     plot_pretest_label_summary_stats()
