@@ -766,7 +766,7 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: Un
 
 
 def make_measurement_matrix_from_file(key_idx: int, lead_idx: Union[int, List[int]] = None):
-    def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):        
+    def measurement_matrix_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}):
         ecg_dates = _get_ecg_dates(tm, hd5)
         dynamic, shape = _is_dynamic_shape(tm, len(ecg_dates))
         tensor = np.zeros(shape, dtype=float)
@@ -878,8 +878,9 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                     path_prefix=PARTNERS_PREFIX,
                     loss='logcosh',
                     time_series_limit=0,
-                    tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx)
+                    tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx),
                 )
+
     # Max values across leads
     for measure, measure_idx in measurement_matrix_lead_measures.items():
         if f'partners_ecg_measurement_matrix_max_{measure}' == needed_name:
@@ -892,6 +893,7 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                 time_series_limit=0,
                 tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=list(measurement_matrix_leads.values())),
             )
+            
 
 def make_mgb_ecg_lvh_tensormaps(needed_name: str):
     def ecg_lvh_from_file(tm: TensorMap, hd5: h5py.File, dependents={}):
