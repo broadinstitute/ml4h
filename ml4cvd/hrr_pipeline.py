@@ -573,7 +573,7 @@ def _demo_augmentations(hd5_path: str, setting: ModelSetting):
 
 # Model training
 def _make_ecg_tmap(setting: ModelSetting, split_idx: int) -> TensorMap:
-    normalizer = Standardize(*_get_pretest_summary_stats(_split_train_name(split_idx)))
+    normalizer = Standardize(0, 200)  # this converts to units of mV
     augmentations = [_apply_aug_rate(aug) for aug in setting.augmentations]
     return TensorMap(
         f'pretest_ecg_downsample_{setting.downsample_rate}',
