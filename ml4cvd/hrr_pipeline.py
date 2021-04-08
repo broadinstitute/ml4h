@@ -279,10 +279,10 @@ def _plot_recovery_hrs(path: str):
     plt.figure(figsize=(10, 3 * num_plots))
     try:
         with h5py.File(path, 'r') as hd5:
-            for name, segment in zip(
+            for i, (name, segment) in enumerate(zip(
                 ["pretest", "peak", "recovery"],
                 _get_segments_for_biosppy(hd5)
-            ):
+            )):
                 plt.subplot(num_plots, 1, i + 1).set_title(name)
                 _plot_segment(segment)
             plt.tight_layout()
@@ -311,7 +311,7 @@ PRETEST_DIFF_COL = "pretest_hr_diff"
 
 def _recovery_hrs_from_path(path: str):
     sample_id = os.path.basename(path).replace(TENSOR_EXT, '')
-    hr_diff = np.full((len(HR_MEASUREMENT_TIMES), 2), np.nan)
+    hr_diff = np.full((1 + len(HR_MEASUREMENT_TIMES), 2), np.nan)
     error = None
     instance = None
     protocol = None
@@ -352,7 +352,7 @@ def plot_hr_from_biosppy_summary_stats():
 
     # Random sample of hr trends
     plt.figure(figsize=(15, 7))
-    trend_samples = df[DF_HR_COLS].sample(1000).values
+    trend_samples = df[DF_HR_COLS].sample(1000, replace=True).values
     plt.plot(HR_MEASUREMENT_TIMES, (trend_samples - trend_samples[:, :1]).T, alpha=.2, linewidth=1, c='k')
     plt.axhline(0, c='k', linestyle='--')
     plt.savefig(os.path.join(BIOSPPY_FIGURE_FOLDER, 'biosppy_hr_trend_samples.png'))
@@ -377,7 +377,7 @@ def plot_pretest_label_summary_stats():
 
     # Random sample of hr trends
     plt.figure(figsize=(15, 7))
-    trend_samples = df[DF_HR_COLS].sample(1000).values
+    trend_samples = df[DF_HR_COLS].sample(1000, replace=True).values
     plt.plot(HR_MEASUREMENT_TIMES, (trend_samples - trend_samples[:, :1]).T, alpha=.2, linewidth=1, c='k')
     plt.axhline(0, c='k', linestyle='--')
     plt.savefig(os.path.join(PRETEST_LABEL_FIGURE_FOLDER, 'pretest_training_labels_hr_trend_samples.png'))
@@ -419,7 +419,7 @@ def build_pretest_summary_stats_csv(sample_ids: List[int]) -> pd.DataFrame:
     return df
 
 
-def _filter_biosppy(hr_col: pd.Series, diff_col: pd.Series) -> Dict[str, pd.Series]:
+def _filter_biosppy(name: str, hr_col: pd.Series, diff_col: pd.Series) -> Dict[str, pd.Series]:
     """
     Picks rows to remove according to non-physiological HRs and diffs too high
     :param hr_col: series of measured HRs
@@ -428,11 +428,11 @@ def _filter_biosppy(hr_col: pd.Series, diff_col: pd.Series) -> Dict[str, pd.Seri
     :return: filter name -> rows to remove
     """
     out = {
-        f"HR < {PHYSIOLOGICAL_HR_RANGE[0]}": hr_col < PHYSIOLOGICAL_HR_RANGE[0],
-        f"HR > {PHYSIOLOGICAL_HR_RANGE[0]}": hr_col > PHYSIOLOGICAL_HR_RANGE[1],
+        f"{name} HR < {PHYSIOLOGICAL_HR_RANGE[0]}": hr_col < PHYSIOLOGICAL_HR_RANGE[0],
+        f"{name} HR > {PHYSIOLOGICAL_HR_RANGE[1]}": hr_col > PHYSIOLOGICAL_HR_RANGE[1],
         # diff_col beats / min * 1 min / 60 s = beats / set
         # beats * seconds_in_segment / 5s = beat diff per 5s
-        f"More than 1 beat diff across leads": diff_col / 60 * 5 > 1,
+        f"{name} more than 1 beat diff per 5s across leads": (diff_col / 60) * 5 > 1,
     }
     return out
 
@@ -452,20 +452,23 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
     # fill in new_df columns and track errors
     # pretest
     pretest_hr = biosppy_labels[PRETEST_HR_COL]
-    drop_idx = {**drop_idx, **_filter_biosppy(pretest_hr, biosppy_labels[PRETEST_DIFF_COL])}
+    drop_idx = {**drop_idx, **_filter_biosppy("Pretest", pretest_hr, biosppy_labels[PRETEST_DIFF_COL])}
     new_df[PRETEST_HR_COL] = pretest_hr
     # peak hr
     hr_0 = biosppy_labels[df_hr_col(0)]
     new_df[df_hr_col(0)] = hr_0
-    drop_idx = {**drop_idx, **_filter_biosppy(hr_0, biosppy_labels[df_diff_col(0)])}
-    # hrr
+    drop_idx = {**drop_idx, **_filter_biosppy("Peak", hr_0, biosppy_labels[df_diff_col(0)])}
+    # recovery and hrr
+    recovery_hr = biosppy_labels[df_hr_col(HRR_TIME)]
+    new_df[df_hr_col(HRR_TIME)] = recovery_hr
     hrr_name = df_hrr_col(HRR_TIME)
-    new_df[hrr_name] = biosppy_labels[df_hr_col(HRR_TIME)] - hr_0
+    drop_idx = {**drop_idx, **_filter_biosppy("Recovery", recovery_hr, biosppy_labels[df_diff_col(HRR_TIME)])}
+    new_df[hrr_name] = recovery_hr - hr_0
 
     logging.info(f'Pretest labels starting at length {len(new_df)}.')
     all_drop = False
     for name, idx in drop_idx.items():
-        logging.info(f'Due to filter {name}, dropping {(idx & ~all_drop).sum()} values')
+        logging.info(f'Due to filter {name}, dropping {(idx & ~all_drop).sum()} ({(idx & ~all_drop).mean():.2%}) values')
         all_drop |= idx
     new_df = new_df[~all_drop]
     assert new_df.notna().all().all()
@@ -842,11 +845,8 @@ if __name__ == '__main__':
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     load_config('INFO', OUTPUT_FOLDER, 'log_' + now_string, USER)
 
+    # pick tasks
     MAKE_LABELS = False or not os.path.exists(BIOSPPY_MEASUREMENTS_FILE)
-    if MAKE_LABELS:
-        logging.info('Making biosppy labels.')
-        build_hr_biosppy_measurements_csv()
-    plot_hr_from_biosppy_summary_stats()
     for i in range(K_SPLIT):
         os.makedirs(split_folder_name(i), exist_ok=True)
     MAKE_ECG_SUMMARY_STATS = False or not os.path.exists(PRETEST_ECG_SUMMARY_STATS_CSV)
@@ -861,6 +861,12 @@ if __name__ == '__main__':
             False or TRAIN_PRETEST_MODELS
             or not all(os.path.exists(_inference_file(split_idx)) for split_idx in range(K_SPLIT))
     )
+
+    # run tasks
+    if MAKE_LABELS:
+        logging.info('Making biosppy labels.')
+        build_hr_biosppy_measurements_csv()
+    plot_hr_from_biosppy_summary_stats()
     plt.close('all')
     make_pretest_labels(MAKE_ECG_SUMMARY_STATS)
     plot_pretest_label_summary_stats()
