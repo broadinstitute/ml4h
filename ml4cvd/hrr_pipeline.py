@@ -12,7 +12,6 @@ from itertools import combinations
 from sklearn.model_selection import KFold, train_test_split
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
-from tensorflow.keras import Model
 from collections import namedtuple
 import datetime
 import gc
@@ -20,8 +19,7 @@ import gc
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap, Interpretation, no_nans
-from ml4cvd.tensor_writer_ukbb import tensor_path, first_dataset_at_path
-from ml4cvd.normalizer import Standardize, Normalizer
+from ml4cvd.normalizer import Standardize
 from ml4cvd.tensor_generators import test_train_valid_tensor_generators
 from ml4cvd.models import train_model_from_generators, make_multimodal_multitask_model, BottleneckType
 from ml4cvd.recipes import _infer_models
@@ -37,6 +35,7 @@ HR_MEASUREMENT_TIMES = 0, HRR_TIME  # relative to recovery start
 HR_SEGMENT_DUR = 10  # HR measurements in recovery coalesced across a segment of this length
 TREND_TRACE_DUR_DIFF = 2  # Sum of phase durations from UKBB is 2s longer than the raw traces
 LEAD_NAMES = 'lead_I', 'lead_2', 'lead_3'
+PHYSIOLOGICAL_HR_RANGE = 40, 220
 
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors-2/2021-04-01/'
 USER = 'ndiamant'
@@ -54,7 +53,6 @@ AUGMENTATION_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'augmentations')
 PRETEST_ECG_SUMMARY_STATS_CSV = os.path.join(OUTPUT_FOLDER, 'pretest_ecg_summary_stats.csv')
 
 PRETEST_LABEL_FIGURE_FOLDER = os.path.join(FIGURE_FOLDER, 'pretest_labels')
-PRETEST_QUANTILE_CUTOFF = .99
 PRETEST_LABEL_FILE = os.path.join(OUTPUT_FOLDER, f'hr_pretest_training_data.csv')
 PRETEST_TRAINING_DUR = 10  # number of seconds of pretest ECG used for prediction
 VALIDATION_SPLIT = .1
@@ -204,6 +202,9 @@ def _get_biosppy_hr(segment: np.ndarray) -> float:
 
 
 def _get_segments_for_biosppy(hd5: h5py.File):
+    """
+    Gets pretest, peak, and recovery segments
+    """
     ecg = _get_bike_ecg(hd5, 0, -1, leads=[0, 1, 2])
     _check_phase_full_len(hd5, "Pretest")
     _check_phase_full_len(hd5, "Rest")
@@ -213,6 +214,7 @@ def _get_segments_for_biosppy(hd5: h5py.File):
     recovery_start = HRR_TIME * SAMPLING_RATE + peak_start
     recovery_end = HRR_TIME * SAMPLING_RATE + peak_end
     return (
+        ecg[:PRETEST_DUR * SAMPLING_RATE][::BIOSPPY_DOWNSAMPLE_RATE],
         ecg[peak_start: peak_end][::BIOSPPY_DOWNSAMPLE_RATE],
         ecg[recovery_start: recovery_end][::BIOSPPY_DOWNSAMPLE_RATE],
     )
@@ -253,7 +255,10 @@ def plot_segment_prediction(sample_id: str, t: int, pred: float, actual: float, 
             plt.plot(x, segment[:, i], label=lead_name)
 
 
-def _recovery_hrs_biosppy(hd5: h5py.File) -> List[Tuple[float, float]]:
+def _hrs_biosppy(hd5: h5py.File) -> List[Tuple[float, float]]:
+    """
+    returns HR and max HR diff for pretest, peak, and recovery
+    """
     return list(map(_hr_and_diffs_from_segment, _get_segments_for_biosppy(hd5)))
 
 
@@ -274,8 +279,11 @@ def _plot_recovery_hrs(path: str):
     plt.figure(figsize=(10, 3 * num_plots))
     try:
         with h5py.File(path, 'r') as hd5:
-            for i, segment in enumerate(_get_segments_for_biosppy(hd5)):
-                plt.subplot(num_plots, 1, i + 1)
+            for name, segment in zip(
+                ["pretest", "peak", "recovery"],
+                _get_segments_for_biosppy(hd5)
+            ):
+                plt.subplot(num_plots, 1, i + 1).set_title(name)
                 _plot_segment(segment)
             plt.tight_layout()
             plt.savefig(os.path.join(BIOSPPY_FIGURE_FOLDER, f'biosppy_hr_recovery_measurements_{_sample_id_from_hd5(hd5)}.png'))
@@ -292,11 +300,13 @@ def df_hrr_col(t):
 
 
 def df_diff_col(t):
-    return f'{t}_diff'
+    return f'{t}_hr_diff'
 
 
 DF_HR_COLS = [df_hr_col(t) for t in HR_MEASUREMENT_TIMES]
 DF_DIFF_COLS = [df_diff_col(t) for t in HR_MEASUREMENT_TIMES]
+PRETEST_HR_COL = "pretest_hr"
+PRETEST_DIFF_COL = "pretest_hr_diff"
 
 
 def _recovery_hrs_from_path(path: str):
@@ -307,13 +317,15 @@ def _recovery_hrs_from_path(path: str):
     protocol = None
     try:
         with h5py.File(path, 'r') as hd5:
-            hr_diff = np.array(_recovery_hrs_biosppy(hd5))
+            hr_diff = np.array(_hrs_biosppy(hd5))
             instance = min(hd5["full_disclosure"])
             protocol = hd5[f"protocol/{instance}"][()]
     except (ValueError, KeyError, OSError) as e:
         error = e
     measures = {'sample_id': sample_id, 'error': error, 'instance': instance, 'protocol': protocol}
-    for i, (hr_col, diff_col) in enumerate(zip(DF_HR_COLS, DF_DIFF_COLS)):
+    for i, (hr_col, diff_col) in enumerate(
+        zip([PRETEST_HR_COL] + DF_HR_COLS, [PRETEST_DIFF_COL] + DF_DIFF_COLS)
+    ):
         measures[hr_col] = hr_diff[i, 0]
         measures[diff_col] = hr_diff[i, 1]
     return measures
@@ -407,10 +419,27 @@ def build_pretest_summary_stats_csv(sample_ids: List[int]) -> pd.DataFrame:
     return df
 
 
+def _filter_biosppy(hr_col: pd.Series, diff_col: pd.Series) -> Dict[str, pd.Series]:
+    """
+    Picks rows to remove according to non-physiological HRs and diffs too high
+    :param hr_col: series of measured HRs
+    :param diff_col: series of max hr difference measured across the 3 leads
+    :param seconds_in_segment: length of ECG segment used to get HRs
+    :return: filter name -> rows to remove
+    """
+    out = {
+        f"HR < {PHYSIOLOGICAL_HR_RANGE[0]}": hr_col < PHYSIOLOGICAL_HR_RANGE[0],
+        f"HR > {PHYSIOLOGICAL_HR_RANGE[0]}": hr_col > PHYSIOLOGICAL_HR_RANGE[1],
+        # diff_col beats / min * 1 min / 60 s = beats / set
+        # beats * seconds_in_segment / 5s = beat diff per 5s
+        f"More than 1 beat diff across leads": diff_col / 60 * 5 > 1,
+    }
+    return out
+
+
 def make_pretest_labels(make_ecg_summary_stats: bool):
     biosppy_labels = pd.read_csv(BIOSPPY_MEASUREMENTS_FILE)
     new_df = pd.DataFrame()
-    hr_0 = biosppy_labels[df_hr_col(HR_MEASUREMENT_TIMES[0])]
     logging.info(f'Biosppy error counts:\n{biosppy_labels["error"].value_counts()}')
     left_ukb = set(pd.read_csv(LEFT_UKB)["sample_id"])
     drop_idx = {
@@ -419,21 +448,19 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
         'protocol in F30, M40, or R': biosppy_labels['protocol'].isin({"F30", "M40", "R"}),
     }
     new_df['sample_id'] = biosppy_labels['sample_id']
-    double_sided_quantile = (1 - PRETEST_QUANTILE_CUTOFF) / 2
-    for t in HR_MEASUREMENT_TIMES:
-        hr_name = df_hr_col(t)
-        hr = biosppy_labels[hr_name]
-        new_df[hr_name] = hr
-        diff = biosppy_labels[df_diff_col(t)]
-        drop_idx[f'diff {t} too high'] = diff > diff.quantile(PRETEST_QUANTILE_CUTOFF)
-        drop_idx[f'hr {t} higher than {PRETEST_QUANTILE_CUTOFF:.2%}'] = (hr > hr.quantile(1 - double_sided_quantile)) | (hr < hr.quantile(double_sided_quantile))
-        new_df[hr_name] = hr
-        if t != 0:
-            hrr = hr_0 - hr
-            hrr_name = df_hrr_col(t)
-            new_df[hrr_name] = hrr
-            drop_idx[f'hrr {t} outside center {PRETEST_QUANTILE_CUTOFF:.2%}'] = (hrr > hrr.quantile(1 - double_sided_quantile)) | (hrr < hrr.quantile(double_sided_quantile))
-            new_df[hrr_name] = hrr
+
+    # fill in new_df columns and track errors
+    # pretest
+    pretest_hr = biosppy_labels[PRETEST_HR_COL]
+    drop_idx = {**drop_idx, **_filter_biosppy(pretest_hr, biosppy_labels[PRETEST_DIFF_COL])}
+    new_df[PRETEST_HR_COL] = pretest_hr
+    # peak hr
+    hr_0 = biosppy_labels[df_hr_col(0)]
+    new_df[df_hr_col(0)] = hr_0
+    drop_idx = {**drop_idx, **_filter_biosppy(hr_0, biosppy_labels[df_diff_col(0)])}
+    # hrr
+    hrr_name = df_hrr_col(HRR_TIME)
+    new_df[hrr_name] = biosppy_labels[df_hr_col(HRR_TIME)] - hr_0
 
     logging.info(f'Pretest labels starting at length {len(new_df)}.')
     all_drop = False
@@ -444,22 +471,14 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
     assert new_df.notna().all().all()
     logging.info(f'There are {len(new_df)} pretest labels after filtering hr measures.')
 
+    # make sure pretest ECG tmap works
     if make_ecg_summary_stats:
         pretest_df = build_pretest_summary_stats_csv(new_df['sample_id'])
         pretest_df.to_csv(PRETEST_ECG_SUMMARY_STATS_CSV, index=False)
     else:
         pretest_df = pd.read_csv(PRETEST_ECG_SUMMARY_STATS_CSV)
     new_df = new_df.merge(pretest_df, on='sample_id')
-
-    mean_low, mean_high = np.quantile(new_df[PRETEST_MEAN_COL], [double_sided_quantile, 1 - double_sided_quantile])
-    mean_drop = (new_df[PRETEST_MEAN_COL] < mean_high) & (new_df[PRETEST_MEAN_COL] > mean_low)
-    logging.info(f'Due to pretest mean outside center {PRETEST_QUANTILE_CUTOFF:.2%}, dropping {(~mean_drop).sum()}.')
-    new_df = new_df[mean_drop]
-    std_low, std_high = np.quantile(new_df[PRETEST_STD_COL], [double_sided_quantile, 1 - double_sided_quantile])
-    std_drop = (new_df[PRETEST_STD_COL] < std_high) & (new_df[PRETEST_STD_COL] > std_low)
-    logging.info(f'Due to pretest std outside center {PRETEST_QUANTILE_CUTOFF:.2%}, dropping {(~std_drop).sum()}.')
-    new_df = new_df[std_drop]
-    logging.info(f'There are {len(new_df)} pretest labels after filtering ecg ranges.')
+    logging.info(f'There are {len(new_df)} pretest labels after merging with pretest tmap.')
 
     new_df.to_csv(PRETEST_LABEL_FILE, index=False)
 
@@ -522,14 +541,6 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
     ids = pd.read_csv(id_csv)
     hrr = df[df_hrr_col(HRR_TIME)][df['sample_id'].isin(ids['sample_id'])]
     return hrr.mean(), hrr.std()
-
-
-def _get_pretest_summary_stats(id_csv: str) -> Tuple[float, float]:
-    df = pd.read_csv(PRETEST_LABEL_FILE)
-    ids = pd.read_csv(id_csv)
-    mean = df[PRETEST_MEAN_COL][df['sample_id'].isin(ids['sample_id'])].mean()
-    std = df[PRETEST_STD_COL][df['sample_id'].isin(ids['sample_id'])].mean()
-    return mean, std
 
 
 ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift'])
