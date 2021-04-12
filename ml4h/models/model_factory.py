@@ -13,10 +13,11 @@ from tensorflow.keras.layers import Input, Layer
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
+from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
-from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock
+from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 
@@ -29,6 +30,7 @@ BLOCK_CLASSES = {
     'concat': FlatConcatDenseBlock,
     'flat': FlatConcatBlock,
     'average': AverageBlock,
+    'mean': ReduceMean,
     'pair': PairLossBlock,
     'gap': GlobalAveragePoolBlock,
     'lstm_encode': LSTMEncoderBlock,
@@ -36,6 +38,8 @@ BLOCK_CLASSES = {
     'dense_encode': DenseEncoder,
     'dense_decode': DenseDecoder,
     'identity': EncodeIdentityBlock,
+    'transformer_encoder': TransformerEncoder,
+    'transformer_decoder': TransformerDecoder,
 }
 
 
@@ -148,7 +152,7 @@ def multimodal_multitask_model(
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
                 break  # Don't also reconstruct from scratch if model is serialized, hd5 models must precede BLOCK_CLASS keys
             else:
-                logging.warning(f'No method to handle Encoding block {encode_block}, ignoring.')
+                logging.warning(f'{tm.name} is ignoring encoding block {encode_block}.')
     merge = identity
     for merge_block in merge_blocks:
         if isinstance(merge_block, Block):
@@ -178,7 +182,7 @@ def multimodal_multitask_model(
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
                 break
             else:
-                logging.warning(f'No method to handle decoding block {decode_block}, ignoring.')
+                logging.warning(f'{tm.name} is ignoring decoding block {decode_block}.')
 
     return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
 
@@ -225,7 +229,7 @@ def make_multimodal_multitask_model_block(
     decoder_outputs = []
     for tm, decoder_block in decoder_block_functions.items():  # TODO this needs to be a topological sorted according to parents hierarchy
         # Do not save isolated decoders for UNETs because they require skip connection inputs as well as latent space
-        if len([tm_in for tm_in, _ in encoder_block_functions.items() if tm in u_connect[tm_in]]) > 0:
+        if len([tm_in for tm_in, _ in encoder_block_functions.items() if ((tm in u_connect[tm_in]) or tm.is_language())]) > 0:
             reconstruction = decoder_block(multimodal_activation, intermediates)
             decoder_outputs.append(reconstruction)
         else:
@@ -253,7 +257,7 @@ def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_ma
     m.compile(optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
               metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
     m.summary()
-    logging.info(f"Loaded encoders, decoders and model file from: {model_file}")
+    logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
 
@@ -262,7 +266,7 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer],
+            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
