@@ -228,14 +228,15 @@ def _hr_and_diffs_from_segment(segment: np.ndarray) -> Tuple[float, float]:
     return float(np.median(hr_per_lead)), max_diff
 
 
-def _plot_segment(segment: np.ndarray):
+def _plot_segment(segment: np.ndarray, title=None):
     hr, max_diff = _hr_and_diffs_from_segment(segment)
     t = np.linspace(0, HR_SEGMENT_DUR, len(segment))
     for i, lead_name in enumerate(LEAD_NAMES):
         plt.plot(t, segment[:, i], label=lead_name)
     plt.xlabel('Time (s)')
     plt.legend()
-    plt.title(f'hr: {hr:.2f}, max hr difference between leads: {max_diff:.2f}')
+    extra_info = f'hr: {hr:.2f}, max hr difference between leads: {max_diff:.2f}'
+    plt.title(title + "\n" + extra_info if title else extra_info)
 
 
 def plot_segment_prediction(sample_id: str, t: int, pred: float, actual: float, diff: float):
@@ -274,21 +275,19 @@ def _sample_id_from_path(path: str) -> int:
     return int(os.path.basename(path).replace(TENSOR_EXT, ''))
 
 
-def _plot_recovery_hrs(path: str):
-    num_plots = len(HR_MEASUREMENT_TIMES)
+def _plot_recovery_hrs(path: str, title: str = "biosppy_measurements"):
+    num_plots = len(HR_MEASUREMENT_TIMES) + 1
     plt.figure(figsize=(10, 3 * num_plots))
-    try:
-        with h5py.File(path, 'r') as hd5:
-            for i, (name, segment) in enumerate(zip(
-                ["pretest", "peak", "recovery"],
-                _get_segments_for_biosppy(hd5)
-            )):
-                plt.subplot(num_plots, 1, i + 1).set_title(name)
-                _plot_segment(segment)
-            plt.tight_layout()
-            plt.savefig(os.path.join(BIOSPPY_FIGURE_FOLDER, f'biosppy_hr_recovery_measurements_{_sample_id_from_hd5(hd5)}.png'))
-    except (ValueError, KeyError, OSError) as e:
-        logging.debug(f'Plotting failed for {path} with error {e}.')
+    plt.suptitle(title)
+    with h5py.File(path, 'r') as hd5:
+        for i, (name, segment) in enumerate(zip(
+            ["pretest", "peak", "recovery"],
+            _get_segments_for_biosppy(hd5)
+        )):
+            plt.subplot(num_plots, 1, i + 1).set_title(name)
+            _plot_segment(segment, title=name)
+        plt.tight_layout()
+        plt.savefig(os.path.join(BIOSPPY_FIGURE_FOLDER, f'{title}_{_sample_id_from_hd5(hd5)}.png'))
 
 
 def df_hr_col(t):
@@ -375,6 +374,14 @@ def plot_pretest_label_summary_stats():
     plt.legend()
     plt.savefig(os.path.join(PRETEST_LABEL_FIGURE_FOLDER, 'pretest_training_labels_summary_stats.png'))
 
+    # HRR
+    plt.figure(figsize=(15, 7))
+    hrr_col = df_hrr_col(HRR_TIME)
+    hrr = df[hrr_col]
+    plt.title(f"HRR \n mean = {hrr.mean():.2f}\n std = {hrr.std():.2f}\n top 5% = {np.quantile(hrr, .95):.2f}")
+    sns.distplot(hrr)
+    plt.savefig(os.path.join(PRETEST_LABEL_FIGURE_FOLDER, 'pretest_training_HRR_summary_stats.png'))
+
     # Random sample of hr trends
     plt.figure(figsize=(15, 7))
     trend_samples = df[DF_HR_COLS].sample(1000, replace=True).values
@@ -384,7 +391,7 @@ def plot_pretest_label_summary_stats():
 
     # correlation heat map
     plt.figure(figsize=(7, 7))
-    sns.heatmap(df[DF_HR_COLS].corr(), annot=True, cbar=False)
+    sns.heatmap(df[DF_HR_COLS + [PRETEST_HR_COL, hrr_col]].corr(), annot=True, cbar=False)
     plt.savefig(os.path.join(PRETEST_LABEL_FIGURE_FOLDER, 'biosppy_correlations.png'))
     plt.close()
 
@@ -427,12 +434,13 @@ def _filter_biosppy(name: str, hr_col: pd.Series, diff_col: pd.Series) -> Dict[s
     :param seconds_in_segment: length of ECG segment used to get HRs
     :return: filter name -> rows to remove
     """
+    T = 10  # segment length to allow at most 1 beat difference
     out = {
         f"{name} HR < {PHYSIOLOGICAL_HR_RANGE[0]}": hr_col < PHYSIOLOGICAL_HR_RANGE[0],
         f"{name} HR > {PHYSIOLOGICAL_HR_RANGE[1]}": hr_col > PHYSIOLOGICAL_HR_RANGE[1],
-        # diff_col beats / min * 1 min / 60 s = beats / set
-        # beats * seconds_in_segment / 5s = beat diff per 5s
-        f"{name} more than 1 beat diff per 5s across leads": (diff_col / 60) * 5 > 1,
+        # diff_col beats / min * 1 min / 60 s = beats / s
+        # beats * seconds_in_segment / Ts = beat diff per Ts
+        f"{name} more than 1 beat diff per {T}s across leads": (diff_col / 60) * T > 1,
     }
     return out
 
@@ -463,14 +471,35 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
     new_df[df_hr_col(HRR_TIME)] = recovery_hr
     hrr_name = df_hrr_col(HRR_TIME)
     drop_idx = {**drop_idx, **_filter_biosppy("Recovery", recovery_hr, biosppy_labels[df_diff_col(HRR_TIME)])}
-    new_df[hrr_name] = recovery_hr - hr_0
+    new_df[hrr_name] = hr_0 - recovery_hr
+    drop_idx['HRR negative'] = new_df[hrr_name] < 0
 
     logging.info(f'Pretest labels starting at length {len(new_df)}.')
     all_drop = False
     for name, idx in drop_idx.items():
-        logging.info(f'Due to filter {name}, dropping {(idx & ~all_drop).sum()} ({(idx & ~all_drop).mean():.2%}) values')
+        this_drop_idx = idx & ~all_drop
+        logging.info(f'Due to filter {name}, dropping {(this_drop_idx).sum()} ({(idx & ~all_drop).mean():.2%}) values')
+        if this_drop_idx.any():  # plot some example traces that get filtered out
+            sample_ids = new_df[this_drop_idx]["sample_id"].sample(3)
+            try:
+                for i in range(3):
+                    demo_path = _path_from_sample_id(str(sample_ids.iloc[i]))
+                    _plot_recovery_hrs(demo_path, f"Dropped by filter {name}")
+            except ValueError as e:
+                pass
         all_drop |= idx
     new_df = new_df[~all_drop]
+
+    # plot some example traces that don't get filtered out
+    hrr = new_df[hrr_name]
+    for quantile in (.02, .51, 1):
+        lo, hi = np.quantile(hrr.dropna(), [quantile - .02, quantile])
+        sample_ids = (new_df["sample_id"][hrr.between(lo, hi)]).sample(3)
+        for i in range(3):
+            demo_path = _path_from_sample_id(str(sample_ids.iloc[i]))
+            _plot_recovery_hrs(demo_path, f"HRR in quantile ({quantile - .02:.3f}, {quantile:.3f})")
+
+    # make sure no errors missed
     assert new_df.notna().all().all()
     logging.info(f'There are {len(new_df)} pretest labels after filtering hr measures.')
 
@@ -869,7 +898,9 @@ if __name__ == '__main__':
     plot_hr_from_biosppy_summary_stats()
     plt.close('all')
     make_pretest_labels(MAKE_ECG_SUMMARY_STATS)
+    plt.close('all')
     plot_pretest_label_summary_stats()
+    plt.close('all')
     if MAKE_SPLIT_CSVS:
         build_csvs()
     aug_demo_paths = np.random.choice(sorted(os.listdir(TENSOR_FOLDER)), 3)
