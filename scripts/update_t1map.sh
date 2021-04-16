@@ -25,7 +25,7 @@ do
     cd /home/pdiachil/ml/notebooks/mri
     /snap/bin/gsutil cp *.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/
     rm -f *.hd5
-    /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs
+    /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs/training/
     rm -f *.png
     rm -f *.dcm
 done
