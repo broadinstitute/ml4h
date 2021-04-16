@@ -132,6 +132,8 @@ class PairLossBlock(Block):
             self.loss_layer = L2LossLayer(pair_loss_weight)
         elif pair_loss == 'contrastive':
             self.loss_layer = ContrastiveLossLayer(pair_loss_weight, batch_size)
+        else:
+            raise ValueError(f"{pair_loss} is not a valid pair loss type")
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         for left, right in self.pairs:
