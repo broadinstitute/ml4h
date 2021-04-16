@@ -18,6 +18,19 @@ from collections import namedtuple
 import datetime
 import gc
 
+
+def set_no_gpu_growth():
+    gpus = tf.config.experimental.list_physical_devices("GPU")
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(
+            gpu,
+            True,
+        )  # do not allocate all memory right away
+
+
+set_no_gpu_growth()
+
+
 from ml4cvd.defines import TENSOR_EXT, MODEL_EXT
 from ml4cvd.logger import load_config
 from ml4cvd.TensorMap import TensorMap, Interpretation, no_nans
@@ -42,7 +55,7 @@ PHYSIOLOGICAL_HR_RANGE = 40, 220
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors-2/2021-04-01/'
 USER = 'ndiamant'
 LEFT_UKB = f'/home/{USER}/w7089_20210201.csv'
-OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-06'
+OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-15'
 TRAIN_CSV_NAME = 'train_ids.csv'
 VALID_CSV_NAME = 'valid_ids.csv'
 TEST_CSV_NAME = 'test_ids.csv'
@@ -689,18 +702,13 @@ def history_tsv(split_idx: int, model_id: str) -> str:
     return os.path.join(split_folder_name(split_idx), model_id, 'history.tsv')
 
 
-@ray.remote(num_cpus=2, num_gpus=0.5)
+@ray.remote(num_cpus=4, num_gpus=1)
 def _train_pretest_model(
         setting: ModelSetting, split_idx: int,
 ) -> Tuple[Any, Dict]:
     import tensorflow as tf  # necessary for ray
+    set_no_gpu_growth()
 
-    gpus = tf.config.experimental.list_physical_devices("GPU")
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(
-            gpu,
-            True,
-        )  # do not allocate all memory right away
     workers = 4
     patience = 5
     epochs = 200
@@ -931,8 +939,10 @@ if __name__ == '__main__':
                     logging.info(f'Skipping {setting.model_id} in split {i} since it already exists.')
                     continue
                 remotes.append(_train_pretest_model.remote(setting, i))
-        ray.get(remotes)
-        ray.shutdown()
+        try:
+            ray.get(remotes)
+        finally:
+            ray.shutdown()
     if INFER_PRETEST_MODELS:
         for i in range(K_SPLIT):
             logging.info(f'Running inference on split {i}.')
