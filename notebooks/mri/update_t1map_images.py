@@ -32,7 +32,7 @@ df_4ch = pd.read_csv(
     usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'],
 )
 
-df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_coronal.csv', usecols=['ID'])
+df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1map_training.csv', usecols=['ID'])
 df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
 
 # %%
