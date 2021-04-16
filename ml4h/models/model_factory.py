@@ -14,10 +14,10 @@ from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
-from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
+from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ContrastiveLossLayer
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 
 
@@ -262,7 +262,7 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer],
+            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
