@@ -1,4 +1,5 @@
 import os
+import ray
 import time
 import h5py
 import blosc
@@ -7,6 +8,7 @@ import seaborn as sns
 import logging
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from typing import List, Union, Tuple, Dict, Any, Callable
 from itertools import combinations
 from sklearn.model_selection import KFold, train_test_split
@@ -687,10 +689,19 @@ def history_tsv(split_idx: int, model_id: str) -> str:
     return os.path.join(split_folder_name(split_idx), model_id, 'history.tsv')
 
 
+@ray.remote(num_cpus=2, num_gpus=0.5)
 def _train_pretest_model(
         setting: ModelSetting, split_idx: int,
 ) -> Tuple[Any, Dict]:
-    workers = cpu_count() * 2
+    import tensorflow as tf  # necessary for ray
+
+    gpus = tf.config.experimental.list_physical_devices("GPU")
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(
+            gpu,
+            True,
+        )  # do not allocate all memory right away
+    workers = 4
     patience = 5
     epochs = 200
     batch_size = 256
@@ -909,13 +920,19 @@ if __name__ == '__main__':
             path = os.path.join(TENSOR_FOLDER, path)
             _demo_augmentations(path, setting)
     if TRAIN_PRETEST_MODELS:
+        ray.init(
+            num_cpus=cpu_count(),
+            num_gpus=len(tf.config.experimental.list_physical_devices("GPU")),
+        )
+        remotes = []
         for i in range(K_SPLIT):
             for setting in MODEL_SETTINGS:
                 if os.path.exists(pretest_model_file(i, setting.model_id)) and not OVERWRITE_MODELS:
                     logging.info(f'Skipping {setting.model_id} in split {i} since it already exists.')
                     continue
-                _train_pretest_model(setting, i)
-                plt.close('all')
+                remotes.append(_train_pretest_model.remote(setting, i))
+        ray.get(remotes)
+        ray.shutdown()
     if INFER_PRETEST_MODELS:
         for i in range(K_SPLIT):
             logging.info(f'Running inference on split {i}.')
