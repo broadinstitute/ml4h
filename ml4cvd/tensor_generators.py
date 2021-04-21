@@ -37,7 +37,7 @@ TENSOR_GENERATOR_TIMEOUT = 64
 TENSOR_GENERATOR_MAX_Q_SIZE = 32
 
 # TensorGenerator batch indices
-BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_SAMPLE_WEIGHTS_INDEX, BATCH_PATHS_INDEX = 0, 1, 2, 3
+BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_SAMPLE_WEIGHTS_INDEX, BATCH_PATHS_INDEX = 0, 1, "doesnt exist", 2
 
 Path = str
 PathIterator = Iterator[Path]
@@ -813,7 +813,8 @@ def _log_first_error(stats: Counter, tensor_path: str):
 
 def _identity_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
     sample_weights = [None] * len(out_batch)
-    return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weights)
+    # return (in_batch, out_batch, sample_weights, paths) if return_paths else (in_batch, out_batch, sample_weights)
+    return (in_batch, out_batch, paths) if return_paths else (in_batch, out_batch)
 
 
 def _mixup_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path], alpha: float = 1.0, permute_first: bool = False):
