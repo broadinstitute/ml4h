@@ -55,7 +55,7 @@ PHYSIOLOGICAL_HR_RANGE = 40, 220
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors-2/2021-04-01/'
 USER = 'ndiamant'
 LEFT_UKB = f'/home/{USER}/w7089_20210201.csv'
-OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-15'
+OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-19'
 TRAIN_CSV_NAME = 'train_ids.csv'
 VALID_CSV_NAME = 'valid_ids.csv'
 TEST_CSV_NAME = 'test_ids.csv'
@@ -113,7 +113,7 @@ def _get_bike_ecg(hd5: h5py.File, start: int, stop: int, leads: Union[List[int],
     path_prefix = "full_disclosure"
     key = min(hd5[path_prefix])  # first instance
     ecg_dataset = hd5["/".join([path_prefix, key])]
-    tensor = read_compressed(ecg_dataset)[start: stop]
+    tensor = read_compressed(ecg_dataset)[start: stop, leads]
     return tensor
 
 
@@ -597,7 +597,6 @@ AUGMENTATIONS = [_random_crop_ecg, _rand_add_noise]
 MODEL_SETTINGS = [
     ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False}),
     ModelSetting(**{'model_id': 'shift', 'downsample_rate': 1, 'augmentations': [], 'shift': True}),
-    ModelSetting(**{'model_id': 'shift_augment', 'downsample_rate': 1, 'augmentations': AUGMENTATIONS, 'shift': True}),
     ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [], 'shift': True}),
     ModelSetting(**{'model_id': 'downsample_augment', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': AUGMENTATIONS, 'shift': True}),
 ]
@@ -669,7 +668,7 @@ def make_pretest_model(setting: ModelSetting, split_idx: int, load_model: bool):
         dense_blocks=[16, 24, 32],
         conv_type='conv',
         conv_normalize='batch_norm' if BATCH_NORM else None,
-        conv_x=[64],
+        conv_x=[16],
         conv_y=[1],
         conv_z=[1],
         pool_type='max',
@@ -702,17 +701,17 @@ def history_tsv(split_idx: int, model_id: str) -> str:
     return os.path.join(split_folder_name(split_idx), model_id, 'history.tsv')
 
 
-@ray.remote(num_cpus=4, num_gpus=1)
+@ray.remote(num_cpus=8, num_gpus=1)
 def _train_pretest_model(
         setting: ModelSetting, split_idx: int,
 ) -> Tuple[Any, Dict]:
     import tensorflow as tf  # necessary for ray
     set_no_gpu_growth()
 
-    workers = 4
+    workers = 8
     patience = 5
-    epochs = 200
-    batch_size = 256
+    epochs = 100
+    batch_size = 128
 
     train_csv = _split_train_name(split_idx)
     valid_csv = _split_valid_name(split_idx)
@@ -755,8 +754,9 @@ def _train_pretest_model(
     finally:
         generate_train.kill_workers()
         generate_valid.kill_workers()
+        del model
         gc.collect()
-    return model, history
+    time.sleep(2)
 
 
 # Inference
@@ -935,7 +935,7 @@ if __name__ == '__main__':
         remotes = []
         for i in range(K_SPLIT):
             for setting in MODEL_SETTINGS:
-                if os.path.exists(pretest_model_file(i, setting.model_id)) and not OVERWRITE_MODELS:
+                if os.path.exists(history_tsv(i, setting.model_id)) and not OVERWRITE_MODELS:
                     logging.info(f'Skipping {setting.model_id} in split {i} since it already exists.')
                     continue
                 remotes.append(_train_pretest_model.remote(setting, i))
