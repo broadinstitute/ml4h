@@ -13,6 +13,7 @@ from typing import List, Union, Tuple, Dict, Any, Callable
 from itertools import combinations
 from sklearn.model_selection import KFold, train_test_split
 from multiprocessing import Pool, cpu_count
+from matplotlib import cm
 import matplotlib.pyplot as plt
 from collections import namedtuple
 import datetime
@@ -590,15 +591,16 @@ def _get_hrr_summary_stats(id_csv: str) -> Tuple[float, float]:
     return hrr.mean(), hrr.std()
 
 
-ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift'])
+ModelSetting = namedtuple('ModelSetting', ['model_id', 'downsample_rate', 'augmentations', 'shift', 'display_name'])
 
 
-AUGMENTATIONS = [_random_crop_ecg, _rand_add_noise]
+AUGMENTATIONS = [_warp_ecg, _random_crop_ecg, _rand_add_noise]
 MODEL_SETTINGS = [
-    ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False}),
-    ModelSetting(**{'model_id': 'shift', 'downsample_rate': 1, 'augmentations': [], 'shift': True}),
-    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [], 'shift': True}),
-    ModelSetting(**{'model_id': 'downsample_augment', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': AUGMENTATIONS, 'shift': True}),
+    ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False, 'display_name': 'Baseline CNN'}),
+    ModelSetting(**{'model_id': 'shift', 'downsample_rate': 1, 'augmentations': [], 'shift': True, 'display_name': 'Random pretest selection'}),
+    ModelSetting(**{'model_id': 'shift_augment', 'downsample_rate': 1, 'augmentations': AUGMENTATIONS, 'shift': True, 'display_name': 'Random pretest selection and augmentation'}),
+    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [], 'shift': True, 'display_name': 'Random pretest selection and downsampling'}),
+    ModelSetting(**{'model_id': 'downsample_augment', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': AUGMENTATIONS, 'shift': True, 'display_name': 'Full pipeline'}),
 ]
 
 
@@ -880,6 +882,86 @@ def _evaluate_models():
     sns.boxplot(x='model', y='R2', data=R2_df)
     plt.savefig(os.path.join(figure_folder, f'model_performance_comparison.png'))
     plt.clf()
+
+    logging.info('Beginning bootstrap performance evaluation.')
+    num_bootstraps = 10000
+    model_ids = list(R2_df['model'].unique())
+    R2_df = bootstrap_compare_models(model_ids, inference_df, num_bootstraps=num_bootstraps, bootstrap_frac=1)
+    cmap = cm.get_cmap('rainbow')
+    final_model = MODEL_SETTINGS[-1].model_id
+    final_R2 = R2_df['R2'][R2_df['model'] == final_model].values
+    plt.figure(figsize=(2 * ax_size, ax_size))
+    for i, setting in enumerate(MODEL_SETTINGS[:-1]):
+        m_id = setting.model_id
+        R2 = R2_df['R2'][R2_df['model'] == m_id].values
+        diff = R2 - final_R2
+        color = cmap(i / (K_SPLIT - 1))
+        sns.distplot(diff, color=color)
+        plt.axvline(diff.mean(), color=color, label=f'{setting.display_name} ({diff.mean():.3f}, {diff.std():.3f})', linestyle='--')
+    plt.title(f'Bootstrapped Performance Comparison\nsamples = {num_bootstraps}')
+    final_name = MODEL_SETTINGS[-1].display_name
+    plt.axvline(0, c='k', linestyle='--', label=f'{final_name}')
+    plt.xlabel(f'$R^2$ - {final_name} $R^2$')
+    plt.legend(loc="upper left")
+    plt.savefig(os.path.join(figure_folder, f'bootstrap_diff_distributions.png'))
+    plt.close('all')
+
+
+def plot_training_curves():
+    _, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(20, 10), sharey=True)
+    for setting in MODEL_SETTINGS:
+        model_id = setting.model_id
+        model_losses = []
+        model_val_losses = []
+        for split_idx in range(K_SPLIT):
+            history = pd.read_csv(history_tsv(split_idx, model_id), sep='\t')
+            model_losses.append(history['loss'])
+            model_val_losses.append(history['val_loss'])
+        max_len = max(map(len, model_losses))
+        loss_array = np.full((K_SPLIT, max_len), np.nan)
+        val_loss_array = np.full((K_SPLIT, max_len), np.nan)
+        for loss, val_loss, split_idx in zip(model_losses, model_val_losses, range(K_SPLIT)):
+            loss_array[split_idx, :len(loss)] = loss
+            val_loss_array[split_idx, :len(loss)] = val_loss
+
+        epoch = list(range(max_len))
+        ax1.plot(epoch, loss_array.mean(axis=0), label=f'{setting.model_id} mean loss')
+        ax1.fill_between(
+            epoch, loss_array.min(axis=0), loss_array.max(axis=0),
+            label=f'{setting.model_id} min and max loss', alpha=.2,
+        )
+        ax2.plot(epoch, val_loss_array.mean(axis=0), label=f'{setting.model_id} mean validation loss')
+        ax2.fill_between(
+            epoch, val_loss_array.min(axis=0), val_loss_array.max(axis=0),
+            label=f'{setting.model_id} min and max validation loss', alpha=.2,
+        )
+    ax1.legend()
+    ax2.legend()
+    ax1.set_xlabel('Epoch')
+    ax2.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss')
+    plt.tight_layout()
+    figure_folder = os.path.join(FIGURE_FOLDER, f'model_results')
+    plt.savefig(os.path.join(figure_folder, f'training_curves.png'))
+
+
+def bootstrap_compare_models(
+        model_ids: List[str], inference_result: pd.DataFrame,
+        num_bootstraps: int = 100, bootstrap_frac: float = 1.,
+) -> pd.DataFrame:
+    performance = {'model': [], 'R2': []}
+    actual_col = time_to_actual_hrr_col(HRR_TIME)
+    pred_cols = {m_id: time_to_pred_hrr_col(HRR_TIME, m_id) for m_id in model_ids}
+    for i in range(num_bootstraps):
+        df = inference_result.sample(frac=bootstrap_frac, replace=True)
+        for m_id, pred_col in pred_cols.items():
+            pred = df[pred_col]
+            R2 = coefficient_of_determination(df[actual_col], pred)
+            performance['model'].append(m_id)
+            performance['R2'].append(R2)
+        print(f'Bootstrap - {(i + 1) / num_bootstraps:.2%}', end='\r')
+    print()
+    return pd.DataFrame(performance)
 
 
 if __name__ == '__main__':
