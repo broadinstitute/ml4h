@@ -27,7 +27,7 @@ from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, A
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
-import tensorflow_probability as tfp
+#import tensorflow_probability as tfp
 
 from ml4cvd.metrics import get_metric_dict
 from ml4cvd.plots import plot_metric_history
@@ -37,7 +37,7 @@ from ml4cvd.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PART
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
-tfd = tfp.distributions
+#tfd = tfp.distributions
 
 
 class BottleneckType(Enum):
@@ -1129,7 +1129,7 @@ def _get_callbacks(
 ) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=True),
-        EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
+        EarlyStopping(monitor='val_loss', patience=patience * 2, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
     return callbacks
