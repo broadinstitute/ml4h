@@ -56,7 +56,8 @@ PHYSIOLOGICAL_HR_RANGE = 40, 220
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors-2/2021-04-01/'
 USER = 'ndiamant'
 LEFT_UKB = f'/home/{USER}/w7089_20210201.csv'
-OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-19'
+COVARIATES = f'/home/{USER}/hr_pretest_training_data_with_covariates.csv'
+OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-21'
 TRAIN_CSV_NAME = 'train_ids.csv'
 VALID_CSV_NAME = 'valid_ids.csv'
 TEST_CSV_NAME = 'test_ids.csv'
@@ -505,6 +506,10 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
                 pass
         all_drop |= idx
     new_df = new_df[~all_drop]
+    covariates = pd.read_csv(COVARIATES)
+    no_cov = ~new_df["sample_id"].isin(covariates["sample_id"])
+    logging.info(f"Dropping {no_cov.sum()} due to missing covariates.")
+    new_df = new_df[~no_cov]
 
     # plot some example traces that don't get filtered out
     hrr = new_df[hrr_name]
