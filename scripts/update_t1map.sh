@@ -30,4 +30,4 @@ do
     rm -f *.dcm
 done
 
-# yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
