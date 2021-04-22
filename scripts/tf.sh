@@ -195,6 +195,9 @@ DEV_INSTRUCTIONS="
     pip install --upgrade pip;
     pip install -e ${WORKDIR};
     pip install opencv-python-headless==4.4.0.44;
+    pip install skan;
+    pip install numba;
+    export NUMBA_CACHE_DIR=/home/pdiachil;
     cd /home/pdiachil/pypoisson;
     python setup.py install;
     cd ${WORKDIR}/notebooks/mri"

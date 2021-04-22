@@ -32,8 +32,8 @@ df_4ch = pd.read_csv(
     usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'],
 )
 
-df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1map_training.csv', usecols=['ID'])
-df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
+# df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_leftover.csv', usecols=['ID'])
+# df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
 
 # %%
 df_manifest = pd.concat([df_4ch])
@@ -83,6 +83,7 @@ end = int(sys.argv[2])
 bucket = storage_client.get_bucket('ml4cvd')
 bulk_bucket = storage_client.get_bucket('bulkml4cvd')
 start_time = time.time()
+results_dic = {'sample_id': [], 'instance': [], 'max_pixel': [], 'min_pixel': [], 'mean_pixel': []}
 print(df_manifest)
 for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
     print(sample_id)
@@ -104,7 +105,6 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
             raw_t1 = f'cardiacmri/all/raw/{sample_id}_20214_{instance}_0.zip'
             blob = bulk_bucket.blob(raw_t1)
             blob.download_to_filename('raw_t1.zip')
-            blob.download_to_filename(f'{sample_id}.zip')
             with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:
                 with zipfile.ZipFile('raw_t1.zip', 'r') as zip_file:
                     files_in_zip = zip_file.namelist()
@@ -132,13 +132,14 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                             slice_index = slicer.InstanceNumber - 1
                             mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
                             if ('t1map' in v) and ('sax' in v):
+                            # if ('t1map' in v):
                                 cur_mean = np.mean(slicer.pixel_array.astype(np.float32))
                                 if cur_mean > best_mean:
                                     best_mean = cur_mean
-                                    imageio.imwrite(f'{sample_id}_{instance}_0.png', slicer.pixel_array.astype(np.float32))
+                                    imageio.imwrite(f'/home/pdiachil/ml/notebooks/mri/{sample_id}_{instance}_0.png', slicer.pixel_array.astype(np.float32))
                         create_tensor_in_hd5(hd5_ff, mri_group, f'{v}/{instance}', mri_data)
                 os.remove('raw_t1.zip')
-        except FutureWarning as e:
+        except Exception as e:
             logging.warning(f'Caught exception at {sample_id}: {e}')
             continue
 end_time = time.time()
