@@ -13,8 +13,8 @@ git pull
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
 
-# cnt1=$1
-# cnt2=$2
+cnt1=$1
+cnt2=$2
 
 for i in $(seq $cnt1 10 $cnt2)
 do
@@ -25,7 +25,7 @@ do
     cd /home/pdiachil/ml/notebooks/mri
     /snap/bin/gsutil cp *.hd5 gs://ml4cvd/pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/
     rm -f *.hd5
-    /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs/training/
+    /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs/inference/
     rm -f *.png
     rm -f *.dcm
 done
