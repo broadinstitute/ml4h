@@ -13,8 +13,8 @@ git pull
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP-1))
 
-cnt1=$1
-cnt2=$2
+# cnt1=$1
+# cnt2=$2
 
 for i in $(seq $cnt1 10 $cnt2)
 do
