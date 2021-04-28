@@ -21,9 +21,8 @@ do
     start=$i
     end=$((i+10))
     cd /home/pdiachil/ml
-    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/update_t1map_images.py $start $end    
-    cd /home/pdiachil/ml/notebooks/mri
-    /snap/bin/gsutil cp *simpson*.csv gs://ml4cvd/pdiachil/surface_reconstruction/sax_2ch_3ch_4ch/fastai_ra_simposon_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/
+    /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/update_t1map_images.py $start $end
+    /snap/bin/gsutil cp *simpson*.csv gs://ml4cvd/pdiachil/surface_reconstruction/sax_2ch_3ch_4ch/fastai_ra_simpson_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/
 done
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
