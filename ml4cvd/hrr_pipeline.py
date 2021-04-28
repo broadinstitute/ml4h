@@ -56,8 +56,8 @@ PHYSIOLOGICAL_HR_RANGE = 40, 220
 TENSOR_FOLDER = '/mnt/disks/ecg-bike-tensors-2/2021-04-01/'
 USER = 'ndiamant'
 LEFT_UKB = f'/home/{USER}/w7089_20210201.csv'
-COVARIATES = f'/home/{USER}/hr_pretest_training_data_with_covariates.csv'
-OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-21'
+COVARIATES = f'/home/{USER}/biosppy_hr_recovery_measurements_with_covariates.csv'
+OUTPUT_FOLDER = f'/home/{USER}/ml/hrr_results_04-24'
 TRAIN_CSV_NAME = 'train_ids.csv'
 VALID_CSV_NAME = 'valid_ids.csv'
 TEST_CSV_NAME = 'test_ids.csv'
@@ -506,7 +506,9 @@ def make_pretest_labels(make_ecg_summary_stats: bool):
                 pass
         all_drop |= idx
     new_df = new_df[~all_drop]
-    covariates = pd.read_csv(COVARIATES)
+    covariates = pd.read_csv(COVARIATES).dropna(
+        subset=['age', 'male', 'race', 'bmi', 'systolic_bp', 'current_smoker', 'instance_date'],
+    )
     no_cov = ~new_df["sample_id"].isin(covariates["sample_id"])
     logging.info(f"Dropping {no_cov.sum()} due to missing covariates.")
     new_df = new_df[~no_cov]
@@ -604,8 +606,6 @@ MODEL_SETTINGS = [
     ModelSetting(**{'model_id': 'baseline_model', 'downsample_rate': 1, 'augmentations': [], 'shift': False, 'display_name': 'Baseline CNN'}),
     ModelSetting(**{'model_id': 'shift', 'downsample_rate': 1, 'augmentations': [], 'shift': True, 'display_name': 'Random pretest selection'}),
     ModelSetting(**{'model_id': 'shift_augment', 'downsample_rate': 1, 'augmentations': AUGMENTATIONS, 'shift': True, 'display_name': 'Random pretest selection and augmentation'}),
-    ModelSetting(**{'model_id': 'downsample_model', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': [], 'shift': True, 'display_name': 'Random pretest selection and downsampling'}),
-    ModelSetting(**{'model_id': 'downsample_augment', 'downsample_rate': BIOSPPY_DOWNSAMPLE_RATE, 'augmentations': AUGMENTATIONS, 'shift': True, 'display_name': 'Full pipeline'}),
 ]
 
 
@@ -716,7 +716,7 @@ def _train_pretest_model(
     set_no_gpu_growth()
 
     workers = 8
-    patience = 5
+    patience = 20
     epochs = 100
     batch_size = 128
 
@@ -1009,10 +1009,10 @@ if __name__ == '__main__':
     plt.close('all')
     if MAKE_SPLIT_CSVS:
         build_csvs()
-    aug_demo_paths = np.random.choice(sorted(os.listdir(TENSOR_FOLDER)), 3)
+    aug_demo_ids = pd.read_csv(PRETEST_LABEL_FILE)["sample_id"].astype(str).sample(3)
     for setting in MODEL_SETTINGS:
-        for path in aug_demo_paths:
-            path = os.path.join(TENSOR_FOLDER, path)
+        for sample_id in aug_demo_ids:
+            path = os.path.join(TENSOR_FOLDER, _path_from_sample_id(sample_id))
             _demo_augmentations(path, setting)
     if TRAIN_PRETEST_MODELS:
         ray.init(
@@ -1035,3 +1035,4 @@ if __name__ == '__main__':
             logging.info(f'Running inference on split {i}.')
             _infer_models_split_idx(i)
     _evaluate_models()
+    plot_training_curves()
