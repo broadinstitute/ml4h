@@ -84,6 +84,8 @@ for i, hd5 in enumerate(hd5s):
             instances = list(ff_trad['ukb_cardiac_mri/cine_segmented_sax_b1_annotated_1'].keys())
 
         for ii, instance in enumerate(instances):
+            result['sample_id'][(i-start)*2+ii] = sample_id
+            result['instance'][(i-start)*2+ii] = instance
             annot_datasets = []
             orig_datasets = []
             with h5py.File('tmp.hd5', 'r') as ff_trad:
