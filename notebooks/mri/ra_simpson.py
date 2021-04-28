@@ -74,6 +74,7 @@ for i, hd5 in enumerate(hd5s):
     if i == end:
         break    
     sample_id = hd5.split('/')[-1].replace('.hd5\n', '')
+    print(sample_id)
     segmented_path = hd5.replace('gs://ml4cvd/', '')
     segmented_path = segmented_path.replace('\n', '')
     blob = bucket.blob(segmented_path)
@@ -188,8 +189,8 @@ for i, hd5 in enumerate(hd5s):
 
                 longit_axis = (ra_cog - boundary_cog) / np.linalg.norm(ra_cog - boundary_cog)
                 # Remove component parallel to boundary line
-                # longit_axis = longit_axis - np.dot(vv[0], longit_axis)*vv[0]
-                # longit_axis = longit_axis / np.linalg.norm(longit_axis)
+                longit_axis = longit_axis - np.dot(vv[0], longit_axis)*vv[0]
+                longit_axis = longit_axis / np.linalg.norm(longit_axis)
                 longit_proj = np.dot(ra_points - boundary_cog, longit_axis)
                 point2 = ra_points[np.argmax(longit_proj)]
 
@@ -245,7 +246,7 @@ for i, hd5 in enumerate(hd5s):
                 volumes[t] = np.sum(np.array(diameters)**2.0 * np.pi / 4.0 * 2.0)
                 results[0][f'RA_simpson_{t}'][(i-start)*2+ii] = volumes[t]/1000.0
 
-    except Exception as e:
+    except FutureWarning as e:
         logging.warning(f'Exception caught at {e}')
         pass
     # print(t, volumes[t])
