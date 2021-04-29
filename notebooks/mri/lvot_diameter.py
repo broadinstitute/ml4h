@@ -51,7 +51,7 @@ for pat_i, sample_id_line in enumerate(manifest):
                      (pixels['instance']==instance)].sample(1)['px_width_mm'].values[0]
     height = anthro[(anthro['sample_id']==sample_id) & \
                     (anthro['instance']==instance)]['height_cm'].values[0]
-    # height = mean_height
+    height = mean_height
     print(pat_i, sample_id)
     start_time = time.time()
     storage_client = storage.Client('broad-ml4cvd')
@@ -186,7 +186,7 @@ for pat_i, sample_id_line in enumerate(manifest):
                         results_dic[f'{col_name}_{icentroid}_1_r'][-1] = boundary_normal[1, 0] / 2.0
                         results_dic[f'{col_name}_{icentroid}_1_c'][-1] = boundary_normal[1, 1] / 2.0
                         boundary_normals.append(boundary_normal)                
-                except FutureWarning:
+                except Exception:
                     boundary_normal = -1.0*np.ones((2, 2))
                     boundary_normals.append(boundary_normal)
                     centroid = -1.0*np.ones((2,))
