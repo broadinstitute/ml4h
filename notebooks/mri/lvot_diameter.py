@@ -16,11 +16,11 @@ import sys
 import os
 import pandas as pd
 
-# start_id = int(sys.argv[1])
-# stop_id = int(sys.argv[2])
+start_id = int(sys.argv[1])
+stop_id = int(sys.argv[2])
 
-start_id = 0
-stop_id = 6
+# start_id = 0
+# stop_id = 6
 
 manifest = open('/home/pdiachil/projects/manifests/lvot_diameters.csv')
 pixels = pd.read_csv('/home/pdiachil/projects/lvot/covariates000000000000.csv')
