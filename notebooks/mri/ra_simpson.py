@@ -246,7 +246,7 @@ for i, hd5 in enumerate(hd5s):
                 volumes[t] = np.sum(np.array(diameters)**2.0 * np.pi / 4.0 * 2.0)
                 results[0][f'RA_simpson_{t}'][(i-start)*2+ii] = volumes[t]/1000.0
 
-    except FutureWarning as e:
+    except Exception as e:
         logging.warning(f'Exception caught at {e}')
         pass
     # print(t, volumes[t])
