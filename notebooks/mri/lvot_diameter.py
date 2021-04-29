@@ -27,7 +27,7 @@ pixels = pd.read_csv('/home/pdiachil/projects/lvot/covariates000000000000.csv')
 anthro = pd.read_csv('/home/pdiachil/projects/lvot/materialized_anthropometry.csv')
 mean_height = anthro[anthro['instance']==2]['height_cm'].mean()
 results_dic = {'sample_id': [], 'instance': [], 'nset': [], 'frame': [], 'fname': []}
-region_points = {'lvot': 1, 'aortic_root': 1, 'ascending_aorta': 100}
+region_points = {'lvot': 1, 'aortic_root': 1, 'ascending_aorta': 50}
 
 # %%
 for region, n_centers in region_points.items():

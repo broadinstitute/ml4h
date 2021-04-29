@@ -10,9 +10,14 @@ git pull
 cnt1=$((VMTAG*STEP))
 cnt2=$((VMTAG*STEP+STEP))
 
-/home/pdiachil/ml/scripts/tf.sh -c -r /home/pdiachil/ml/notebooks/mri/lvot_diameter.py $cnt1 $cnt2
+for i in $(seq $cnt1 10 $cnt2)
+do
+start=$i
+end=$((i+10))
+/home/pdiachil/ml/scripts/tf.sh -c -r /home/pdiachil/ml/notebooks/mri/lvot_diameter.py $start $end
 
 /snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.gif gs://ml4cvd/pdiachil/lvot_diameter/1cm_gif/
 /snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.csv gs://ml4cvd/pdiachil/lvot_diameter/1cm_csv/
+done
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
