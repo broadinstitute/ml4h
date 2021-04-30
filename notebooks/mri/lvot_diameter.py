@@ -51,7 +51,7 @@ for pat_i, sample_id_line in enumerate(manifest):
                      (pixels['instance']==instance)].sample(1)['px_width_mm'].values[0]
     height = anthro[(anthro['sample_id']==sample_id) & \
                     (anthro['instance']==instance)]['height_cm'].values[0]
-    height = mean_height
+    # height = mean_height
     print(pat_i, sample_id)
     start_time = time.time()
     storage_client = storage.Client('broad-ml4cvd')
