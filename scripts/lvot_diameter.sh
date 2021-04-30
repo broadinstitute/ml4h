@@ -16,8 +16,8 @@ start=$i
 end=$((i+10))
 /home/pdiachil/ml/scripts/tf.sh -c -r /home/pdiachil/ml/notebooks/mri/lvot_diameter.py $start $end
 
-/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.gif gs://ml4cvd/pdiachil/lvot_diameter/1cm_gif/
-/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.csv gs://ml4cvd/pdiachil/lvot_diameter/1cm_csv/
+/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.gif gs://ml4cvd/pdiachil/lvot_diameter/1cm_height_gif/
+/snap/bin/gsutil cp /home/pdiachil/projects/chambers/*.csv gs://ml4cvd/pdiachil/lvot_diameter/1cm_height_csv/
 done
 
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
