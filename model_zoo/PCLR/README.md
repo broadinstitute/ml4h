@@ -21,3 +21,12 @@ You can get ECG representations using [get_representations.py](./get_representat
 
 The model expects 10s 12-lead ECGs with a specific lead order and interpolated to be 4,096 samples long.
 [preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing.
+
+## Lead I PCLR
+We also provide a PCLR model using only lead I of the ECG at [PCLR_lead_I.h5](./PCLR_lead_I.h5).
+It was trained with the same settings as the full 12-lead model except
+the model only takes lead I of the ECG as input.
+
+## Alternative save format
+The newer keras saved model format is available for the 12-lead and lead I models at [PCLR](./PCLR)
+and [PCLR_lead_I](./PCLR_lead_I).
