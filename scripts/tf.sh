@@ -186,4 +186,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR}; eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "pip install /home/pdiachil/ml; cd ${WORKDIR}; ${PYTHON_COMMAND} ${PYTHON_ARGS}"
