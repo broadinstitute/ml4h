@@ -7,7 +7,7 @@ import tensorflow as tf
 from notebooks.genetics.outcome_association_utils import odds_ratios, hazard_ratios, plot_or_hr, unpack_disease, regression_model, random_forest_model, plot_rsquared_covariates
 
 # %%
-df = pd.read_csv('/home/pdiachil/projects/ppgs/instance0_notch_vector_paolo_121820.csv')
+df = pd.read_csv('/home/pdiachil/projects/ppgs/iinstance0_ppg_vector&label_paolo_050321.csv')
 cols = [f't_{t:03d}' for t in range(2, 102)]
 
 x = np.asarray(df[cols].values, dtype=np.float32)
@@ -277,15 +277,13 @@ plot_or_hr(odds_ratios_age, label_dic, [['mi_cad', 'MI']], f'or', occ='prevalent
 plot_or_hr(hazard_ratios_age, label_dic, [['mi_cad', 'MI']], f'or', occ='incident', horizontal_line_y=1.5)
 # %%
 cv_dic = {}
-strat_dic = {'resnet': '', 
-             'mixup': 'mu_', 
-             'smooth': 'smooth_'}
+strat_dic = {'resnet': '',}
 for split_id in range(5):
     cv_dic[split_id] = {}
     split = np.load(f'splits_{split_id}.npz')
     test_index = split['test_index']        
     for train_strat, train_strat_str in strat_dic.items():
-        model.load_weights(f'ppg_notch_classification_042021_{train_strat_str}split{split_id}.h5')        
+        model.load_weights(f'ppg_notch_classification_050321_{train_strat_str}split{split_id}.h5')        
         cv_dic[split_id]['sample_id'] = sample_ids[test_index]
         cv_dic[split_id][f'{train_strat}_categorical'] = model.predict(x[test_index].reshape(-1, 100, 1)).ravel()
         probs = model.output.op.inputs[0]
