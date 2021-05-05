@@ -73,7 +73,7 @@ def odds_ratios(
 
 def hazard_ratios(
     phenotypes, diseases_unpack, labels, disease_labels,
-    covariates, instance, dont_scale,
+    covariates, instance, dont_scale
 ):
     diabetes_is_covariate = 'Diabetes_Type_2_prevalent' in covariates
     if diabetes_is_covariate:
@@ -87,18 +87,18 @@ def hazard_ratios(
         tmp_pheno[f'instance{instance}_date'] = pd.to_datetime(tmp_pheno[f'instance{instance}_date'])
         for disease, disease_label in disease_labels:
             hr_multi_dic[pheno][f'{disease}_incident'] = {}
-            tmp_data = tmp_pheno.merge(diseases_unpack[['sample_id', f'{disease}_censor_date', f'{disease}_prevalent', f'{disease}_incident']], on='sample_id')
+            tmp_data = tmp_pheno.merge(diseases_unpack[['sample_id', f'{disease}_censor_date', f'{disease}_prevalent', f'{disease}_incident']], on='sample_id')            
             if diabetes_is_covariate and disease != 'Diabetes_Type_2':
                 tmp_data = tmp_data.merge(diseases_unpack[['sample_id', f'Diabetes_Type_2_censor_date', f'Diabetes_Type_2_prevalent']], on='sample_id')
                 tmp_data[f'Diabetes_Type_2_prevalent'] = (tmp_data[f'instance{instance}_date'] >= tmp_data[f'Diabetes_Type_2_censor_date']).apply(float)
 
             tmp_data[f'{disease}_prevalent'] = (tmp_data[f'instance{instance}_date'] >= tmp_data[f'{disease}_censor_date']).apply(float)
-            tmp_data[f'{disease}_incident'] = (
-                np.logical_and(
-                    (tmp_data[f'instance{instance}_date'] < tmp_data[f'{disease}_censor_date']),
-                    (tmp_data[f'{disease}_censor_date'] < pd.to_datetime('2020-03-31')),
-                )
-            ).apply(float)
+            # tmp_data[f'{disease}_incident'] = (
+            #     np.logical_and(
+            #         (tmp_data[f'instance{instance}_date'] < tmp_data[f'{disease}_censor_date']),
+            #         (tmp_data[f'{disease}_censor_date'] < pd.to_datetime('2020-03-31')),
+            #     )
+            # ).apply(float)
             tmp_data = tmp_data[tmp_data[f'{disease}_prevalent']<0.5]
 
             if pheno in dont_scale:
