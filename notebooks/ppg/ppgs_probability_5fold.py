@@ -58,7 +58,8 @@ for filters in [64] * 3 + [128] * 4 + [256] * 6 + [512] * 3:
     prev_filters = filters
 model.add(keras.layers.GlobalAveragePooling1D())
 model.add(keras.layers.Flatten())
-model.add(keras.layers.Dense(1, activation='sigmoid'))
+model.add(keras.layers.Dense(1))
+model.add(keras.layers.Activation('sigmoid'))
 
 df = pd.read_csv('/home/pdiachil/projects/ppgs/instance0_ppg_vector&label_paolo_050321.csv')
 cols = [f't_{t:03d}' for t in range(2, 102)]
@@ -205,7 +206,7 @@ for split_id in range(5):
     # TRADITIONAL
     # Define callbacks.
     checkpoint_cb = keras.callbacks.ModelCheckpoint(
-        f"ppg_notch_classification_050321_split{split_id}.h5", save_best_only=True
+        f"ppg_notch_classification_050521_split{split_id}.h5", save_best_only=True
     )
     early_stopping_cb = keras.callbacks.EarlyStopping(monitor="val_acc", patience=15)
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
@@ -220,7 +221,7 @@ for split_id in range(5):
         shuffle=True,
         callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_callback],
     )
-
+    break
     # # Mixup
     # # Define callbacks.
     # checkpoint_cb = keras.callbacks.ModelCheckpoint(
