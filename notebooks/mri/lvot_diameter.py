@@ -37,10 +37,10 @@ for region, n_centers in region_points.items():
                 results_dic[f'{region}_{n_center}_{end}_{coor}'] = []
 
 for pat_i, sample_id_line in enumerate(manifest):
-    # if pat_i < start_id:
-    #     continue
-    # if pat_i == stop_id:
-    #     break
+    if pat_i < start_id:
+        continue
+    if pat_i == stop_id:
+        break
     
     sample_dir, sample_file = os.path.split(sample_id_line)
     lvot_path = sample_dir.replace('gs://ml4cvd/', '')
@@ -48,8 +48,6 @@ for pat_i, sample_id_line in enumerate(manifest):
 
     sample_id, _, instance, nset = map(int, lvot_file.split('_'))
 
-    if sample_id != 2785761:
-        continue
     px_size = pixels[(pixels['sample_id']==sample_id) & \
                      (pixels['instance']==instance)].sample(1)['px_width_mm'].values[0]
     height = anthro[(anthro['sample_id']==sample_id) & \
@@ -148,7 +146,7 @@ for pat_i, sample_id_line in enumerate(manifest):
                         close_dist = 10.0
                     else:
                         centroids_col.append(arg_skeleton[idx])
-                        close_dist = 4.0
+                        close_dist = 30.0
                           
                     normal_img = np.zeros_like(skeleton)                
        
