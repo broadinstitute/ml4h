@@ -37,16 +37,19 @@ for region, n_centers in region_points.items():
                 results_dic[f'{region}_{n_center}_{end}_{coor}'] = []
 
 for pat_i, sample_id_line in enumerate(manifest):
-    if pat_i < start_id:
-        continue
-    if pat_i == stop_id:
-        break
+    # if pat_i < start_id:
+    #     continue
+    # if pat_i == stop_id:
+    #     break
     
     sample_dir, sample_file = os.path.split(sample_id_line)
     lvot_path = sample_dir.replace('gs://ml4cvd/', '')
     lvot_file = sample_file.replace('.overlay.tar.gz\n', '')
 
     sample_id, _, instance, nset = map(int, lvot_file.split('_'))
+
+    if sample_id != 2785761:
+        continue
     px_size = pixels[(pixels['sample_id']==sample_id) & \
                      (pixels['instance']==instance)].sample(1)['px_width_mm'].values[0]
     height = anthro[(anthro['sample_id']==sample_id) & \
@@ -134,15 +137,18 @@ for pat_i, sample_id_line in enumerate(manifest):
                             arclength += graph[i+1, i]
                             arclength_array[coor_n[0], coor_n[1]] = arclength
                         path_step = 10.0 * height / mean_height
+                        path_start = path_step / 10.0 * 3.0
                         # path_step = 10.0
-                        for al in np.arange(arclength-path_step, path_step, -path_step):
+                        for al in np.arange(arclength-path_start, path_step, -path_step):
                             idx = np.unravel_index(np.argmin(np.abs(arclength_array-al)), shape=arclength_array.shape)
                             centroids_col.append(idx)
                         #idxs = np.linspace(16, len(skeleton_aorta)-16, 6, dtype=np.int)
                         #for idx in idxs:
                         #    centroids_col.append(skeleton_aorta[idx])
+                        close_dist = 10.0
                     else:
                         centroids_col.append(arg_skeleton[idx])
+                        close_dist = 4.0
                           
                     normal_img = np.zeros_like(skeleton)                
        
@@ -154,7 +160,7 @@ for pat_i, sample_id_line in enumerate(manifest):
                             dist_centroid = np.abs(arclength_array[arg_skeleton[:, 0], arg_skeleton[:, 1]]-al)
                         else:
                             dist_centroid = np.linalg.norm(arg_skeleton-centroid, axis=1)                
-                        arg_dist_centroid = np.where(np.logical_and(dist_centroid<10.0, dist_centroid>0.001))[0]
+                        arg_dist_centroid = np.where(np.logical_and(dist_centroid<close_dist, dist_centroid>0.001))[0]
 
                         normals = np.zeros((len(arg_dist_centroid), 2))
                         for i, close_pt in enumerate(arg_dist_centroid):
