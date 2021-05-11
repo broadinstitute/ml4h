@@ -32,8 +32,8 @@ df_4ch = pd.read_csv(
     usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'],
 )
 
-# df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_leftover.csv', usecols=['ID'])
-# df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
+df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_redo.csv', usecols=['ID'])
+df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
 
 # %%
 df_manifest = pd.concat([df_4ch])
@@ -124,21 +124,30 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                     for v in views:
                         mri_shape = (views[v][0].Rows, views[v][0].Columns, len(views[v]))
                         mri_group = 'ukb_cardiac_mri'
-                        mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
+                        mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, 1), dtype=np.float32)
                         for slicer in views[v]:
                             _save_pixel_dimensions_if_missing(slicer, v, instance, hd5_ff)
                             _save_slice_thickness_if_missing(slicer, v, instance, hd5_ff)
                             _save_series_orientation_and_position_if_missing(slicer, v, instance, hd5_ff)
-                            slice_index = slicer.InstanceNumber - 1
-                            mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
+                            slice_index = slicer.InstanceNumber - 1                            
                             if ('t1map' in v) and ('sax' in v):
+                                
                             # if ('t1map' in v):
                                 cur_mean = np.mean(slicer.pixel_array.astype(np.float32))
                                 if cur_mean > best_mean:
+                                    print(v)
                                     best_mean = cur_mean
                                     imageio.imwrite(f'/home/pdiachil/ml/notebooks/mri/{sample_id}_{instance}_0.png', slicer.pixel_array.astype(np.float32))
-                        create_tensor_in_hd5(hd5_ff, mri_group, f'{v}/{instance}', mri_data)
-                os.remove('raw_t1.zip')
+                                    mri_data[:, :, 0] = slicer.pixel_array.astype(np.float32)
+                                    if f'{v}' not in hd5_ff[mri_group]:
+                                        print('create', mri_data.shape)
+                                        create_tensor_in_hd5(hd5_ff, mri_group, f'{v}/{instance}', mri_data)
+                                        print(hd5_ff[f'{mri_group}/{v}/{instance}/instance_0'].shape)
+                                    else:
+                                        print('overwrite')
+                                        hd5_ff[f'{mri_group}/{v}/{instance}/instance_0'][...] = mri_data
+                        
+                # os.remove('raw_t1.zip')
         except Exception as e:
             logging.warning(f'Caught exception at {sample_id}: {e}')
             continue
