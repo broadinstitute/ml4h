@@ -3,6 +3,7 @@
 .idea/*
 *.linux
 *.log
+*.csv
 **/__pycache__/*
 trained_models/*
 recipes_output/*
@@ -11,3 +12,4 @@ ml4h.egg-info/*
 .Rproj.user
 docker/terra_image/*/**
 build/
+*.png
