@@ -49,6 +49,62 @@ class AnnotationStorage(abc.ABC):
     """
 
 
+class DataFrameAnnotationStorage(AnnotationStorage):
+  """Store annotations temporarily in a .
+
+  This is useful for demonstration purposes.
+  """
+
+  def __init__(self, filename_out='tmp.csv'):
+    self.annotations = []
+    self.filename_out = filename_out
+
+  def describe(self) -> str:
+    return f'''Annotations will be stored in a {self.filename_out}'''
+
+  def submit_annotation(
+      self, sample_id: Union[int, str], annotator: str, key: str,
+      value_numeric: Optional[Union[int, float]], value_string: Optional[str], comment: str,
+  ) -> bool:
+    """Add this annotation to our in-memory collection of annotations.
+
+    Args:
+      sample_id: Id of the sample this annotation concerns.
+      annotator: Email address or hostname associated with the person submitting the annotation.
+      key: The key of the annotation, such as a phenotype field name.
+      value_numeric: The numeric value of the field being annotated, if applicable.
+      value_string: The string value of the field being annotated, if applicable.
+      comment: The actual annotation.
+    Returns:
+      True
+    """
+    annotation = {
+        'sample_id': sample_id,
+        'annotator': annotator,
+        'annotation_timestamp': datetime.datetime.now(),
+        'key': key,
+        'value_numeric': value_numeric,
+        'value_string': value_string,
+        'comment': comment,
+    }
+    self.annotations.append(annotation)
+
+    annotations_df = pd.DataFrame(self.annotations)
+    annotations_df.to_csv(self.filename_out, index=False)
+    return True
+
+  def view_recent_submissions(self, count: int = 10) -> pd.DataFrame:
+    """View a dataframe of up to [count] most recent submissions.
+
+    Args:
+      count: The number of the most recent submissions to return.
+
+    Returns:
+      A dataframe of the most recent annotations.
+    """
+    return pd.DataFrame.from_dict(self.annotations[-1 * count :])
+
+
 class TransientAnnotationStorage(AnnotationStorage):
   """Store annotations temporarily in memory.
 

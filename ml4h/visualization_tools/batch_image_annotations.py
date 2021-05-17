@@ -2,6 +2,8 @@
 
 import json
 import os
+import glob
+import imageio
 import socket
 import tempfile
 from typing import Any, Dict, List, Tuple, Type, Union
@@ -42,6 +44,7 @@ class BatchImageAnnotator():
       self, samples: pd.DataFrame, annotation_categories: List[str] = None,
       zoom: float = 1.5, annotation_storage: AnnotationStorage = TransientAnnotationStorage(),
       annotator: Type[Annotator] = PolygonAnnotator,
+      user: str = 'ml4h',
   ):
     """Initializes an instance of BatchImageAnnotator.
 
@@ -87,6 +90,8 @@ class BatchImageAnnotator():
     self.title_widget = widgets.HTML('')
     self.results_widget = widgets.HTML('')
 
+    self.user = user
+
   def _store_annotations(self, data: Dict[Any, Any]) -> None:
     """Transfer widget state to the annotation storage and advance to the next sample."""
     if self.current_sample >= self.samples.shape[0]:
@@ -121,11 +126,12 @@ class BatchImageAnnotator():
         else:
           # Pass all other values through unchanged.
           annotation[key] = item[key]
+    annotations.append({'class': self.annotation_widget.class_selector.value})
 
     # Store the annotation using the provided annotation storage strategy.
     self.annotation_storage.submit_annotation(
         sample_id=self.samples.loc[self.current_sample, 'sample_id'],
-        annotator=os.getenv('OWNER_EMAIL') if os.getenv('OWNER_EMAIL') else socket.gethostname(),
+        annotator=self.user,
         key=self.samples.loc[self.current_sample, 'tmap_name'],
         value_numeric=self.samples.loc[self.current_sample, 'instance_number'],
         value_string=self.samples.loc[self.current_sample, 'folder'],
@@ -146,7 +152,6 @@ class BatchImageAnnotator():
         {[f'<pre>{json.dumps(x)}</pre>' for x in data]}
         <h3>source tensor coordinates</h3>
         {[f'<pre>{json.dumps(x)}</pre>' for x in annotations]}
-        <hr>
       '''
     self.results_widget.value = results
 
@@ -158,7 +163,7 @@ class BatchImageAnnotator():
     """Convert information about the current sample to an HTML table for display within the widget."""
     headings = ' '.join([f'<th>{c}</th>' for c in self.EXPECTED_COLUMN_NAMES] + ['<th>TMAP shape</th>'])
     values = ' '.join([f'<td>{self.samples.loc[self.current_sample, c]}</td>' for c in self.EXPECTED_COLUMN_NAMES]
-                      + [f'<td>{MRI_TMAPS[self.samples.loc[self.current_sample, "tmap_name"]].shape}</td>'])
+                      + [f'<td></td>'])
     return f'''
         <table style="width:100%">
         <tr>{headings}</tr>
@@ -177,7 +182,7 @@ class BatchImageAnnotator():
       return
 
     sample_id = self.samples.loc[self.current_sample, 'sample_id']
-    tmap_name = self.samples.loc[self.current_sample, 'tmap_name']
+    tmap_name = self.samples.loc[self.current_sample, 'tmap_name']    
     instance_number = self.samples.loc[self.current_sample, 'instance_number']
     folder = self.samples.loc[self.current_sample, 'folder']
 
@@ -185,8 +190,9 @@ class BatchImageAnnotator():
       sample_hd5 = str(sample_id) + '.hd5'
       local_path = os.path.join(tmpdirname, sample_hd5)
       try:
-        tf.io.gfile.copy(src=os.path.join(folder, sample_hd5), dst=local_path)
-        hd5 = h5py.File(local_path, mode='r')
+        src = glob.glob(f'{folder}/*{sample_id}*{instance_number}*png')[0]
+        tf.io.gfile.copy(src=src, dst=local_path)
+        hd5 = imageio.imread(local_path)
       except (tf.errors.NotFoundError, tf.errors.PermissionDeniedError) as e:
         self.annotation_widget.canvas.clear()
         self.title_widget.value = f'''
@@ -198,12 +204,24 @@ class BatchImageAnnotator():
             '''
         return
 
-    tensor = MRI_TMAPS[tmap_name].tensor_from_file(MRI_TMAPS[tmap_name], hd5)
-    tensor_instance = tensor[:, :, instance_number]
-    if self.zoom > 1.0:
+    # tensor = MRI_TMAPS[tmap_name].tensor_from_file(MRI_TMAPS[tmap_name], hd5)
+    # tensor_instance = tensor[:, :, instance_number]
+    tensor_instance = hd5
+    if self.zoom > 0.99:
       # TODO(deflaux) remove this after https://github.com/janfreyberg/ipyannotations/issues/11
-      img = Image.fromarray(tensor_instance)
-      zoomed_img = img.resize([int(self.zoom * s) for s in img.size], Image.LANCZOS)
+      img = Image.fromarray(hd5)
+      img = img.convert('RGB')
+      
+      white = np.array([255, 255, 255])
+      mask = np.abs(img - white).sum(axis=2) < 0.05
+      coords = np.array(np.nonzero(~mask))
+      top_left = np.min(coords, axis=1)
+      bottom_right = np.max(coords, axis=1)
+      img_arr = np.array(img)
+      out = img_arr[top_left[0]:bottom_right[0],
+                    top_left[1]:bottom_right[1]]
+      img_out = Image.fromarray(out)
+      zoomed_img = img_out.resize([int(self.zoom * s) for s in img_out.size], Image.LANCZOS)
       tensor_instance = np.asarray(zoomed_img)
 
     self.annotation_widget.display(tensor_instance)
