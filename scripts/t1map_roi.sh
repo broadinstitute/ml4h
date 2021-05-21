@@ -23,8 +23,8 @@ do
     cd /home/pdiachil/ml
     /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/t1map_inference.py $start $end    
     cd /home/pdiachil/projects/t1map/inference
-    /snap/bin/gsutil cp *.csv gs://ml4cvd/pdiachil/t1map-pngs/inference/
-    /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs/inference/
+    /snap/bin/gsutil cp *.csv gs://ml4cvd/pdiachil/t1map-pngs/inference_rois/
+    /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs/inference_rois/
     cd /home/pdiachil/ml/notebooks/mri
     rm -f *.hd5
     # /snap/bin/gsutil cp *.png gs://ml4cvd/pdiachil/t1map-pngs/inference/

@@ -136,7 +136,7 @@ for pat_i, row in enumerate(sorted(hd5)):
             ax[2].imshow(ma.masked_array(skeletons['LV Free Wall'], skeletons['LV Free Wall']<0.5))
             ax[2].imshow(ma.masked_array(skeletons['Interventricular Septum'], skeletons['Interventricular Septum']<0.5))
             
-            f.savefig(f'/home/pdiachil/projects/t1map/inference/{sample_id}.png')
+            f.savefig(f'/home/pdiachil/projects/t1map/inference/{sample_id}_{instance}.png')
             plt.close(f)
             for region, binary_model in skeletons.items():
                 mean_model = np.median(arr_data[binary_model>0.5])
