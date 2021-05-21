@@ -90,10 +90,10 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
     hd5_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/{sample_id}.hd5'
     blob = bucket.blob(hd5_path)
     try:
-        blob.download_to_filename(f'/mnt/disks/pdiachil-t1map/hdf5s/{sample_id}.hd5')
+        blob.download_to_filename(f'/home/pdiachil/ml/notebooks/mri/{sample_id}.hd5')
     except:
         logging.info('Creating new HD5 because it''s missing')
-        hd5_ff = h5py.File(f'/mnt/disks/pdiachil-t1map/hdf5s/{sample_id}.hd5', 'w')
+        hd5_ff = h5py.File(f'/home/pdiachil/ml/notebooks/mri/{sample_id}.hd5', 'w')
         hd5_ff.create_group('ukb_cardiac_mri')
         hd5_ff.close()
     for j, (instance, df_hd5) in enumerate(df_sample_id.groupby('instance')):
@@ -101,7 +101,7 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
             raw_t1 = f'cardiacmri/all/raw/{sample_id}_20214_{instance}_0.zip'
             blob = bulk_bucket.blob(raw_t1)
             blob.download_to_filename('raw_t1.zip')
-            with h5py.File(f'/mnt/disks/pdiachil-t1map/hdf5s/{sample_id}.hd5', 'a') as hd5_ff:
+            with h5py.File(f'/home/pdiachil/ml/notebooks/mri/{sample_id}.hd5', 'a') as hd5_ff:
                 with zipfile.ZipFile('raw_t1.zip', 'r') as zip_file:
                     files_in_zip = zip_file.namelist()
                     manifest_zip_name = 'manifest.csv' if 'manifest.csv' in files_in_zip else 'manifest.cvs'
