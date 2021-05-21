@@ -3,7 +3,6 @@ import h5py
 import pandas as pd
 import glob
 import imageio
-from adjustText import adjust_text
 import h5py
 import matplotlib.pyplot as plt
 from scipy.ndimage import generic_filter
