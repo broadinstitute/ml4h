@@ -32,8 +32,8 @@ df_4ch = pd.read_csv(
     usecols=['sample_id', 'instance', 'dicom_file', 'series', 'instance_number'],
 )
 
-df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_redo.csv', usecols=['ID'])
-df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
+# df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_id_list.csv', usecols=['ID'])
+# df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
 
 # %%
 df_manifest = pd.concat([df_4ch])
@@ -78,15 +78,11 @@ import numpy as np
 
 start = int(sys.argv[1])
 end = int(sys.argv[2])
-# start = 0
-# end = 10
 bucket = storage_client.get_bucket('ml4cvd')
 bulk_bucket = storage_client.get_bucket('bulkml4cvd')
 start_time = time.time()
 results_dic = {'sample_id': [], 'instance': [], 'max_pixel': [], 'min_pixel': [], 'mean_pixel': []}
-print(df_manifest)
 for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
-    print(sample_id)
     if i < start:
         continue
     if i == end:
@@ -94,10 +90,10 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
     hd5_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/{sample_id}.hd5'
     blob = bucket.blob(hd5_path)
     try:
-        blob.download_to_filename(f'{sample_id}.hd5')
+        blob.download_to_filename(f'/mnt/disks/pdiachil-t1map/hdf5s/{sample_id}.hd5')
     except:
         logging.info('Creating new HD5 because it''s missing')
-        hd5_ff = h5py.File(f'{sample_id}.hd5', 'w')
+        hd5_ff = h5py.File(f'/mnt/disks/pdiachil-t1map/hdf5s/{sample_id}.hd5', 'w')
         hd5_ff.create_group('ukb_cardiac_mri')
         hd5_ff.close()
     for j, (instance, df_hd5) in enumerate(df_sample_id.groupby('instance')):
@@ -105,7 +101,7 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
             raw_t1 = f'cardiacmri/all/raw/{sample_id}_20214_{instance}_0.zip'
             blob = bulk_bucket.blob(raw_t1)
             blob.download_to_filename('raw_t1.zip')
-            with h5py.File(f'{sample_id}.hd5', 'a') as hd5_ff:
+            with h5py.File(f'/mnt/disks/pdiachil-t1map/hdf5s/{sample_id}.hd5', 'a') as hd5_ff:
                 with zipfile.ZipFile('raw_t1.zip', 'r') as zip_file:
                     files_in_zip = zip_file.namelist()
                     manifest_zip_name = 'manifest.csv' if 'manifest.csv' in files_in_zip else 'manifest.cvs'

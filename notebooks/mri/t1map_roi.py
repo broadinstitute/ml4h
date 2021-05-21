@@ -61,7 +61,7 @@ colors_roi = {
     "RV Cavity ROI": { "id": 16, "color": "#a40b31" }	  
 }
 
-test_df = pd.read_csv('/mnt/disks/pdiachil-t1map/predictions3/evaluate_batch_dev.tsv', sep='\t')
+test_df = pd.read_csv('/mnt/disks/pdiachil-t1map/predictions3/evaluate_batch_holdout.tsv', sep='\t')
 
 skip = [
 2948608,
@@ -91,7 +91,7 @@ for i, row in test_df.iterrows():
     try:
         sample_id = int(row['ukbid'])
         sample_idx = test_df[test_df['ukbid']==sample_id].index[0]
-        hd5_model_fname = f'/mnt/disks/pdiachil-t1map/predictions3/dev_results.h5'
+        hd5_model_fname = f'/mnt/disks/pdiachil-t1map/predictions3/holdout_results.h5'
         hd5_data_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/{sample_id}.hd5'
         hd5_segmentation_fname = glob.glob(f'/mnt/disks/pdiachil-t1map/prepared3/*__{sample_id}__*.h5')[0]
         blob = bucket.blob(hd5_data_path)
@@ -147,6 +147,7 @@ for i, row in test_df.iterrows():
                                 template = np.zeros_like(skeleton)
                                 template[mycircle] = 1
                                 skeletons[color] = template
+                                skeletons[color] = skeleton
                             else:
                                 skeleton = skeletonize(binary_model, method='lee')
                                 for i in range(5):
@@ -205,14 +206,14 @@ f.set_size_inches(6, 6)
 for region in means:
     if 'sample_id' in region:
         continue
-    ax[i, j].plot(df[f'{region}_segmentation'], df[f'{region}_model'], 'ko')
+    ax[i, j].plot(df[f'{region}_segmentation'], df[f'{region}_model'], 'ko', alpha=0.1)
     ax[i, j].plot([300.0, 2000.], [300., 2000.], 'k-')
     if 'cavity' in region.lower():
         ax[i, j].set_xlim([1000.0, 2000.0])
         ax[i, j].set_ylim([1000.0, 2000.0])
     else:
-        ax[i, j].set_xlim([700, 1100.0])
-        ax[i, j].set_ylim([700, 1100.0])
+        ax[i, j].set_xlim([500, 1200.0])
+        ax[i, j].set_ylim([500, 1200.0])
 
     ax[i, j].set_xlabel('T1 segmentation')
     ax[i, j].set_ylabel('T1 model')
@@ -239,6 +240,6 @@ for region in means:
 plt.tight_layout()
 
 # %%
-df.to_csv('performance_dev.csv', index=False)
-f.savefig('performance_dev.png')
+df.to_csv('performance_holdout_4px_shape.csv', index=False)
+f.savefig('performance_holdout_4px_shape.png')
 # %%
