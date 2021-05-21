@@ -197,6 +197,8 @@ DEV_INSTRUCTIONS="
     pip install opencv-python-headless==4.4.0.44;
     pip install skan;
     pip install numba;
+    pip install blosc;
+    pip install zstandard;
     export NUMBA_CACHE_DIR=/home/pdiachil;
     cd /home/pdiachil/pypoisson;
     python setup.py install;
