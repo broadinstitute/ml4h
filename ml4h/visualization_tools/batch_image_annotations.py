@@ -142,6 +142,8 @@ class BatchImageAnnotator():
                         'bad_IV': self.annotation_widget.iv_checkbox.value,
                         'bad_LV_pool': self.annotation_widget.lv_checkbox.value,
                         'bad_RV_pool': self.annotation_widget.rv_checkbox.value,
+                        'bad_off_axis': self.annotation_widget.offaxis_checkbox.value,
+                        'bad_low_intensity': self.annotation_widget.low_intensity_checkbox.value,
     })
 
     # Store the annotation using the provided annotation storage strategy.
@@ -156,6 +158,8 @@ class BatchImageAnnotator():
         value_bad_iv = self.annotation_widget.iv_checkbox.value,
         value_bad_lv = self.annotation_widget.lv_checkbox.value,
         value_bad_rv = self.annotation_widget.rv_checkbox.value,
+        value_off_axis = self.annotation_widget.offaxis_checkbox.value,
+        value_low_intensity = self.annotation_widget.low_intensity_checkbox.value,
         comment=json.dumps(annotations),
     )
 

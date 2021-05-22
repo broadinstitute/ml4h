@@ -28,6 +28,8 @@ class AnnotationStorage(abc.ABC):
       value_bad_iv: bool,
       value_bad_lv: bool,
       value_bad_rv: bool,
+      value_low_intensity: bool,
+      value_off_axis: bool,
       value_comment: str,
   ) -> bool:
     """Add an annotation to the collection of annotations.
@@ -76,6 +78,8 @@ class DataFrameAnnotationStorage(AnnotationStorage):
       value_bad_iv: bool,
       value_bad_lv: bool,
       value_bad_rv: bool,
+      value_low_intensity: bool,
+      value_off_axis: bool,
       comment: str,
   ) -> bool:
     """Add this annotation to our in-memory collection of annotations.
@@ -102,6 +106,8 @@ class DataFrameAnnotationStorage(AnnotationStorage):
         'bad_iv': value_bad_iv,
         'bad_lv_pool': value_bad_lv,
         'bad_rv_pool': value_bad_rv,
+        'bad_low_intensity': value_low_intensity,
+        'bad_off_axis': value_off_axis,
         'comment': comment,
     }
     self.annotations.append(annotation)
