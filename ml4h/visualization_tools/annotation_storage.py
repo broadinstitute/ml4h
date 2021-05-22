@@ -22,7 +22,13 @@ class AnnotationStorage(abc.ABC):
   @abc.abstractmethod
   def submit_annotation(
       self, sample_id: Union[int, str], annotator: str, key: str,
-      value_numeric: Optional[Union[int, float]], value_string: Optional[str], comment: str,
+      value_numeric: Optional[Union[int, float]], value_string: Optional[str],
+      value_good: bool,
+      value_bad_lv_fw: bool, 
+      value_bad_iv: bool,
+      value_bad_lv: bool,
+      value_bad_rv: bool,
+      value_comment: str,
   ) -> bool:
     """Add an annotation to the collection of annotations.
 
@@ -64,7 +70,13 @@ class DataFrameAnnotationStorage(AnnotationStorage):
 
   def submit_annotation(
       self, sample_id: Union[int, str], annotator: str, key: str,
-      value_numeric: Optional[Union[int, float]], value_string: Optional[str], comment: str,
+      value_numeric: Optional[Union[int, float]], value_string: Optional[str], 
+      value_good: bool,
+      value_bad_lv_fw: bool, 
+      value_bad_iv: bool,
+      value_bad_lv: bool,
+      value_bad_rv: bool,
+      comment: str,
   ) -> bool:
     """Add this annotation to our in-memory collection of annotations.
 
@@ -80,11 +92,16 @@ class DataFrameAnnotationStorage(AnnotationStorage):
     """
     annotation = {
         'sample_id': sample_id,
+        'instance_number': value_numeric,
         'annotator': annotator,
         'annotation_timestamp': datetime.datetime.now(),
-        'key': key,
-        'value_numeric': value_numeric,
+        'key': key,        
         'value_string': value_string,
+        'good_image': value_good,
+        'bad_lv_free_wall': value_bad_lv_fw, 
+        'bad_iv': value_bad_iv,
+        'bad_lv_pool': value_bad_lv,
+        'bad_rv_pool': value_bad_rv,
         'comment': comment,
     }
     self.annotations.append(annotation)
