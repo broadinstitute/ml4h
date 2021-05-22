@@ -255,11 +255,28 @@ class T1MAPAnnotator(widgets.VBox):
           indent=False,
           layout=checkboxes_layout
         )
+        self.offaxis_checkbox = widgets.Checkbox(
+          value=False,
+          description='off axis',
+          disabled=False,
+          indent=False,
+          layout=checkboxes_layout
+        )
+
+        self.low_intensity_checkbox = widgets.Checkbox(
+          value=False,
+          description='low intensity',
+          disabled=False,
+          indent=False,
+          layout=checkboxes_layout
+        )
 
         extra_checkboxes = [self.lv_fw_checkbox,
                             self.iv_checkbox,
                             self.lv_checkbox,
                             self.rv_checkbox,
+                            self.offaxis_checkbox,
+                            self.low_intensity_checkbox,
                             ]      
 
         extra_checkboxes = widgets.HBox(
