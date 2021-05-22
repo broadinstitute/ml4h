@@ -15,6 +15,7 @@ import h5py
 from ipyannotations import PolygonAnnotator
 from ipyannotations.images.annotator import Annotator
 import ipywidgets as widgets
+from traitlets.traitlets import Bool
 from ml4h.visualization_tools.hd5_mri_plots import MRI_TMAPS
 from ml4h.visualization_tools.annotation_storage import AnnotationStorage
 from ml4h.visualization_tools.annotation_storage import TransientAnnotationStorage
@@ -76,9 +77,11 @@ class BatchImageAnnotator():
         options=annotation_categories,
         canvas_size=(900, 280 * self.zoom),
     )
-    self.annotation_widget.on_submit(self._store_annotations)
-    self.annotation_widget.submit_button.description = self.SUBMIT_BUTTON_DESCRIPTION
-    self.annotation_widget.submit_button.layout = widgets.Layout(width='300px')
+    self.annotation_widget.on_good_submit(self._good_store_annotations)
+    self.annotation_widget.on_bad_submit(self._bad_store_annotations)
+    # self.annotation_widget.submit_button.description = self.SUBMIT_BUTTON_DESCRIPTION
+    self.annotation_widget.good_button.layout = widgets.Layout(width='300px')
+    self.annotation_widget.bad_button.layout = widgets.Layout(width='300px')
 
     # Restructure the use instructions from the pydoc into a form that displays well as HTML.
     self.use_instructions = (
@@ -92,7 +95,14 @@ class BatchImageAnnotator():
 
     self.user = user
 
-  def _store_annotations(self, data: Dict[Any, Any]) -> None:
+
+  def _good_store_annotations(self, data: Dict[Any, Any]) -> None:
+      self._store_annotations(data, True)
+
+  def _bad_store_annotations(self, data: Dict[Any, Any]) -> None:
+      self._store_annotations(data, False)
+
+  def _store_annotations(self, data: Dict[Any, Any], good: Bool) -> None:
     """Transfer widget state to the annotation storage and advance to the next sample."""
     if self.current_sample >= self.samples.shape[0]:
       self.results_widget.value = '<h1>Annotation batch complete!</h1>Thank you for making the model better.'
@@ -126,7 +136,13 @@ class BatchImageAnnotator():
         else:
           # Pass all other values through unchanged.
           annotation[key] = item[key]
-    annotations.append({'class': self.annotation_widget.class_selector.value})
+    annotations.append({
+                        'good_image': good,
+                        'bad_LV_freewall': self.annotation_widget.lv_fw_checkbox.value,
+                        'bad_IV': self.annotation_widget.iv_checkbox.value,
+                        'bad_LV_pool': self.annotation_widget.lv_checkbox.value,
+                        'bad_RV_pool': self.annotation_widget.rv_checkbox.value,
+    })
 
     # Store the annotation using the provided annotation storage strategy.
     self.annotation_storage.submit_annotation(
@@ -135,6 +151,11 @@ class BatchImageAnnotator():
         key=self.samples.loc[self.current_sample, 'tmap_name'],
         value_numeric=self.samples.loc[self.current_sample, 'instance_number'],
         value_string=self.samples.loc[self.current_sample, 'folder'],
+        value_good=good,
+        value_bad_lv_fw = self.annotation_widget.lv_fw_checkbox.value,
+        value_bad_iv = self.annotation_widget.iv_checkbox.value,
+        value_bad_lv = self.annotation_widget.lv_checkbox.value,
+        value_bad_rv = self.annotation_widget.rv_checkbox.value,
         comment=json.dumps(annotations),
     )
 
@@ -147,10 +168,7 @@ class BatchImageAnnotator():
         Details: <i>{self.annotation_storage.describe()}</i>
         <h3>sample info</h3>
         {self._format_info_for_current_sample()}
-        <h3>canvas coordinates</h3>
-        image extent {image_canvas_position}
-        {[f'<pre>{json.dumps(x)}</pre>' for x in data]}
-        <h3>source tensor coordinates</h3>
+        <h3>submitted review</h3>
         {[f'<pre>{json.dumps(x)}</pre>' for x in annotations]}
       '''
     self.results_widget.value = results
