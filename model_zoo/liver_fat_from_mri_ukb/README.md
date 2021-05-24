@@ -1,7 +1,7 @@
 # Machine learning enables new insights into clinical significance of and genetic contributions to liver fat accumulation
 
 Here we host two models for estimating liver fat from abdominal MRI. 
-The liver fat percentage training data is from the returned liver fat values in the UK Biobank field ID 22402.
+The liver fat percentage training data is from the returned liver fat values in the [UK Biobank field ID 22402](https://biobank.ctsu.ox.ac.uk/crystal/field.cgi?id=22402).
 
 ## Teacher Model
 One model was trained with abdominal MRIs acquired using the echo protocol.  
