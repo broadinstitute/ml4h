@@ -26,7 +26,7 @@ import tensorflow as tf
 class BatchImageAnnotator():
   """Annotate batches of images with shapes drawn over regions of interest."""
 
-  SUBMIT_BUTTON_DESCRIPTION = 'Submit annotations, goto next sample'
+  SUBMIT_BUTTON_DESCRIPTION = 'Submit review'
   EXPECTED_COLUMN_NAMES = ['sample_id', 'tmap_name', 'instance_number', 'folder']
   DEFAULT_ANNOTATION_CLASSNAME = 'region_of_interest'
   CSS = '''
@@ -78,10 +78,10 @@ class BatchImageAnnotator():
         canvas_size=(900, 280 * self.zoom),
     )
     self.annotation_widget.on_good_submit(self._good_store_annotations)
-    self.annotation_widget.on_bad_submit(self._bad_store_annotations)
+    self.annotation_widget.on_undo(self._undo_last_annotation)
     # self.annotation_widget.submit_button.description = self.SUBMIT_BUTTON_DESCRIPTION
     self.annotation_widget.good_button.layout = widgets.Layout(width='300px')
-    self.annotation_widget.bad_button.layout = widgets.Layout(width='300px')
+    self.annotation_widget.undo_button.layout = widgets.Layout(width='300px')
 
     # Restructure the use instructions from the pydoc into a form that displays well as HTML.
     self.use_instructions = (
@@ -95,6 +95,11 @@ class BatchImageAnnotator():
 
     self.user = user
 
+  def _clear_radiobutton_and_checkboxes(self):
+    for radiobutton in self.annotation_widget.radiobuttons:
+      radiobutton.value = radiobutton.options[0]
+    self.annotation_widget.offaxis_checkbox.value = False
+    self.annotation_widget.low_intensity_checkbox.value = False
 
   def _good_store_annotations(self, data: Dict[Any, Any]) -> None:
       self._store_annotations(data, True)
@@ -136,12 +141,18 @@ class BatchImageAnnotator():
         else:
           # Pass all other values through unchanged.
           annotation[key] = item[key]
+
+    bad_radiobuttons = []
+    radiobutton_dic = {'no': 0, 'min': 1, 'maj': 2}
+    for radiobutton in self.annotation_widget.radiobuttons:
+      value = radiobutton_dic[radiobutton.value]
+      bad_radiobuttons.append(value)
     annotations.append({
                         'good_image': good,
-                        'bad_LV_freewall': self.annotation_widget.lv_fw_checkbox.value,
-                        'bad_IV': self.annotation_widget.iv_checkbox.value,
-                        'bad_LV_pool': self.annotation_widget.lv_checkbox.value,
-                        'bad_RV_pool': self.annotation_widget.rv_checkbox.value,
+                        'bad_LV_freewall': bad_radiobuttons[0],
+                        'bad_IV': bad_radiobuttons[1],
+                        'bad_LV_pool': bad_radiobuttons[2],
+                        'bad_RV_pool': bad_radiobuttons[3],
                         'bad_off_axis': self.annotation_widget.offaxis_checkbox.value,
                         'bad_low_intensity': self.annotation_widget.low_intensity_checkbox.value,
     })
@@ -154,10 +165,10 @@ class BatchImageAnnotator():
         value_numeric=self.samples.loc[self.current_sample, 'instance_number'],
         value_string=self.samples.loc[self.current_sample, 'folder'],
         value_good=good,
-        value_bad_lv_fw = self.annotation_widget.lv_fw_checkbox.value,
-        value_bad_iv = self.annotation_widget.iv_checkbox.value,
-        value_bad_lv = self.annotation_widget.lv_checkbox.value,
-        value_bad_rv = self.annotation_widget.rv_checkbox.value,
+        value_bad_lv_fw = bad_radiobuttons[0],
+        value_bad_iv = bad_radiobuttons[1],
+        value_bad_lv = bad_radiobuttons[2],
+        value_bad_rv = bad_radiobuttons[3],
         value_off_axis = self.annotation_widget.offaxis_checkbox.value,
         value_low_intensity = self.annotation_widget.low_intensity_checkbox.value,
         comment=json.dumps(annotations),
@@ -180,6 +191,13 @@ class BatchImageAnnotator():
     # Advance to the next sample.
     self.current_sample += 1
     self._annotate_image_for_current_sample()
+    self._clear_radiobutton_and_checkboxes()
+
+  def _undo_last_annotation(self):
+    self.current_sample -= 1
+    self.annotation_storage.annotations.pop()
+    self._annotate_image_for_current_sample()
+
 
   def _format_info_for_current_sample(self) -> str:
     """Convert information about the current sample to an HTML table for display within the widget."""
