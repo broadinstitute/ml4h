@@ -217,50 +217,33 @@ class T1MAPAnnotator(widgets.VBox):
         data_controls.append(self.class_selector)
 
         extra_checkboxes = []
-        checkboxes_layout = widgets.Layout(
+        radiobutton_labels = ['LV fw', 'IV sep', 'LV blood', 'RV blood']
+        radiobutton_layout = widgets.Layout(
             # width="auto",
             min_width="80px",
             flex="1 1 auto",
-            max_width="120px",
+            max_width="140px",
         )
 
-        self.lv_fw_checkbox = widgets.Checkbox(
-          value=False,
-          description='bad LV free wall',
-          disabled=False,
-          indent=False,
-          layout=checkboxes_layout
-        )
-        
-        self.iv_checkbox = widgets.Checkbox(
-          value=False,
-          description='bad IV septum',
-          disabled=False,
-          indent=False,
-          layout=checkboxes_layout
-        )
+        self.radiobuttons = []
+       
+        for radiobutton_label in radiobutton_labels:
+            self.radiobuttons.append(
+                widgets.RadioButtons(
+                    description = f'{radiobutton_label}:\n',
+                    options = ['no', 'min', 'maj'],
+                    disabled=False,
+                    indent=False,
+                    layout=radiobutton_layout
+                )
+            )
 
-        self.lv_checkbox = widgets.Checkbox(
-          value=False,
-          description='bad LV blood pool',
-          disabled=False,
-          indent=False,
-          layout=checkboxes_layout
-        )
-
-        self.rv_checkbox = widgets.Checkbox(
-          value=False,
-          description='bad RV blood pool',
-          disabled=False,
-          indent=False,
-          layout=checkboxes_layout
-        )
         self.offaxis_checkbox = widgets.Checkbox(
           value=False,
           description='off axis',
           disabled=False,
           indent=False,
-          layout=checkboxes_layout
+          layout=radiobutton_layout
         )
 
         self.low_intensity_checkbox = widgets.Checkbox(
@@ -268,16 +251,10 @@ class T1MAPAnnotator(widgets.VBox):
           description='low intensity',
           disabled=False,
           indent=False,
-          layout=checkboxes_layout
+          layout=radiobutton_layout
         )
 
-        extra_checkboxes = [self.lv_fw_checkbox,
-                            self.iv_checkbox,
-                            self.lv_checkbox,
-                            self.rv_checkbox,
-                            self.offaxis_checkbox,
-                            self.low_intensity_checkbox,
-                            ]      
+        extra_checkboxes = self.radiobuttons + [self.offaxis_checkbox, self.low_intensity_checkbox]      
 
         extra_checkboxes = widgets.HBox(
             extra_checkboxes,
@@ -289,27 +266,24 @@ class T1MAPAnnotator(widgets.VBox):
         )
 
         self.good_button = widgets.Button(
-            description="Submit good review",
+            description="Submit review",
             icon="tick",
             button_style="success",
-            layout=checkboxes_layout,
+            layout=radiobutton_layout,
         )
         self.good_button.on_click(self.good_submit)
 
-        self.bad_button = widgets.Button(
-            description="Submit bad review",
-            icon="tick",
-            button_style="danger",
-            layout=checkboxes_layout,
+        self.undo_button = widgets.Button(
+            description="Undo previous submission and repeat", icon="undo", layout=radiobutton_layout
         )
-        self.bad_button.on_click(self.bad_submit)
+        self.undo_button.on_click(self.undo)
 
         self.data_controls = widgets.VBox(
             children=(
-                widgets.HTML("Review settings"),                
+                widgets.HTML("Artifacts:"),                
                 extra_checkboxes,
                 widgets.HBox(
-                    (self.good_button, self.bad_button),
+                    (self.good_button, self.undo_button),
                     layout={"justify_content": "flex-end"},
                 ),
             ),
