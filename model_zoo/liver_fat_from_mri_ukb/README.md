@@ -18,5 +18,5 @@ The student model was trained on these individuals, using the teacher model's in
 This model takes input of shape 232 x 256 x 36 and also emits a scalar representing estimated liver fat percentage.
 The input TensorMap is defined at `tensormap.ukb.mri.lms_ideal_optimised_low_flip_6dyn`.
 The output TensorMap associated with these values is defined at `tensormap.ukb.mri.liver_fat_echo_predicted`. 
-The keras model file is at [liver_fat_from_ideal.h5](liver_fat_from_ideal.h5) and the model architecture is shown below. The "?" in the input dimension represents the batch size of the input, which can be determined at runtime.  When training the student model we used a batch size of 4.
+The keras model file is at [liver_fat_from_ideal.h5](liver_fat_from_ideal.h5) and the model architecture is shown below. The "?" in the input dimension represents the batch size of the input, which can be determined at runtime.  When training the student model we used a batch size of 5.
 ![](liver_fat_from_ideal_student_model.png)
