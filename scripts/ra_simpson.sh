@@ -21,7 +21,7 @@ do
     start=$i
     end=$((i+10))
     cd /home/pdiachil/ml
-    if ! $(/snap/bin/gsutil -q stat gs://ml4cvd/pdiachil/surface_reconstruction/sax_2ch_3ch_4ch/fastai_ra_simpson_lax_cog_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/RA_simpson_fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122_${start}_${end}.csv)
+    if ! $(/snap/bin/gsutil -q stat gs://ml4cvd/pdiachil/surface_reconstruction/sax_2ch_3ch_4ch/fastai_ra_simpson_lax_cog_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/RA_simpson_lax_cog-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122_${start}_${end}.csv)
     then
         /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/ra_simpson.py $start $end
         cd /home/pdiachil/ml/notebooks/mri
