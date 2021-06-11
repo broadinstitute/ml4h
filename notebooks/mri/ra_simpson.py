@@ -60,7 +60,9 @@ for chamber in chambers:
     results.append({'sample_id': [-1]*2*(end-start)})
     results[-1]['instance'] = [-1]*2*(end-start)
     for t in range(MRI_FRAMES):
-        results[-1][f'{chamber}_simpson_{t}'] = [-1]*2*(end-start)
+        results[-1][f'{chamber}_simpson_cog_{t}'] = [-1]*2*(end-start)
+        results[-1][f'{chamber}_lax_cog_{t}'] = [-1]*2*(end-start)
+        results[-1][f'{chamber}_lax_ortho_{t}'] = [-1]*2*(end-start)
 
 start_time = time.time()
 for i, hd5 in enumerate(hd5s):
@@ -74,7 +76,8 @@ for i, hd5 in enumerate(hd5s):
     if i == end:
         break    
     sample_id = hd5.split('/')[-1].replace('.hd5\n', '')
-    print(sample_id)
+    # sample_id = 5423502
+    # print(sample_id)
     segmented_path = hd5.replace('gs://ml4cvd/', '')
     segmented_path = segmented_path.replace('\n', '')
     blob = bucket.blob(segmented_path)
@@ -104,8 +107,22 @@ for i, hd5 in enumerate(hd5s):
                             save_path=None, order='F',
                         )[0],
                     )
+
+                    # orig_datasets.append(
+                    #     _mri_hd5_to_structured_grids(
+                    #         ff_trad, view_format_string.format(view=view),
+                    #         view_name=view_format_string.format(view=view),
+                    #         instance=instance,
+                    #         concatenate=False, annotation=False,
+                    #         save_path=None, order='F',
+                    #     )[0],
+                    # )
+                    # to_xdmf(annot_datasets[-1], f'{sample_id}_{view}_annotated', squash=False)
+                    # to_xdmf(orig_datasets[-1], f'{sample_id}_{view}_original', squash=False)
                     
             volumes = np.zeros(50)
+            lax_ortho  = np.zeros(50)
+            lax_cog = np.zeros(50)
             for t in range(50):
                 arr = f'cine_segmented_lax_4ch_annotated_{t}'
                 # Merge RA with crista terminalis
@@ -137,7 +154,7 @@ for i, hd5 in enumerate(hd5s):
 
                 # writer_rarv = vtk.vtkXMLUnstructuredGridWriter()
                 # writer_rarv.SetInputConnection(rarv_thresh.GetOutputPort())
-                # writer_rarv.SetFileName(f'rarv_{t}.vtu')
+                # writer_rarv.SetFileName(f'rarv_{sample_id}_{t}.vtu')
                 # writer_rarv.Update()
 
                 ra_thresh = vtk.vtkThreshold()
@@ -192,6 +209,13 @@ for i, hd5 in enumerate(hd5s):
                 longit_axis = longit_axis - np.dot(vv[0], longit_axis)*vv[0]
                 longit_axis = longit_axis / np.linalg.norm(longit_axis)
                 longit_proj = np.dot(ra_points - boundary_cog, longit_axis)
+                lax_ortho[t] = np.max(longit_proj)
+                longit_axis = (ra_cog - boundary_cog) / np.linalg.norm(ra_cog - boundary_cog)
+                # Remove component parallel to boundary line
+                longit_axis = longit_axis / np.linalg.norm(longit_axis)
+                longit_proj = np.dot(ra_points - boundary_cog, longit_axis)
+                lax_cog[t] = np.max(longit_proj)
+
                 point2 = ra_points[np.argmax(longit_proj)]
 
                 longit_line = vtk.vtkLineSource()
@@ -244,20 +268,23 @@ for i, hd5 in enumerate(hd5s):
                     longit_dist += 2.0
 
                 volumes[t] = np.sum(np.array(diameters)**2.0 * np.pi / 4.0 * 2.0)
-                results[0][f'RA_simpson_{t}'][(i-start)*2+ii] = volumes[t]/1000.0
+                results[0][f'RA_simpson_cog_{t}'][(i-start)*2+ii] = volumes[t]/1000.0
+                results[0][f'RA_lax_cog_{t}'][(i-start)*2+ii] = lax_cog[t]
+                results[0][f'RA_lax_ortho_{t}'][(i-start)*2+ii] = lax_ortho[t]
+                print(t, volumes[t], lax_cog[t], lax_ortho[t])
+                # writer = vtk.vtkXMLPolyDataWriter()
+                # writer.SetInputConnection(append.GetOutputPort())
+                # writer.SetFileName(f'longit_lines_{sample_id}_{instance}_{t}.vtp')
+                # writer.Update()
 
     except Exception as e:
         logging.warning(f'Exception caught at {e}')
         pass
-    # print(t, volumes[t])
-    # writer = vtk.vtkXMLPolyDataWriter()
-    # writer.SetInputConnection(append.GetOutputPort())
-    # writer.SetFileName(f'longit_lines_{t}.vtp')
-    # writer.Update()
+    
 
 for chamber, result in zip(chambers, results):
     results_df = pd.DataFrame(result)
-    results_df.to_csv(f'{chamber}_simpson_{version}_{start}_{end}.csv', index=False)
+    results_df.to_csv(f'{chamber}_simpson_lax_cog_{version}_{start}_{end}.csv', index=False)
 # # %%
 # f, ax = plt.subplots()
 # ax.plot(volumes/1000.0, label='COG')
