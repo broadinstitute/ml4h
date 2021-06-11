@@ -61,7 +61,9 @@ for chamber in chambers:
     results[-1]['instance'] = [-1]*2*(end-start)
     for t in range(MRI_FRAMES):
         results[-1][f'{chamber}_simpson_cog_{t}'] = [-1]*2*(end-start)
+    for t in range(MRI_FRAMES):
         results[-1][f'{chamber}_lax_cog_{t}'] = [-1]*2*(end-start)
+    for t in range(MRI_FRAMES):
         results[-1][f'{chamber}_lax_ortho_{t}'] = [-1]*2*(end-start)
 
 start_time = time.time()
