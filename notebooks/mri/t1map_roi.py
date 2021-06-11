@@ -17,6 +17,7 @@ from PIL import ImageColor
 import cv2
 from collections import defaultdict
 import os
+import seaborn as sns
 
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
@@ -61,7 +62,7 @@ colors_roi = {
     "RV Cavity ROI": { "id": 16, "color": "#a40b31" }	  
 }
 
-test_df = pd.read_csv('/mnt/disks/pdiachil-t1map/predictions3/evaluate_batch_holdout.tsv', sep='\t')
+test_df = pd.read_csv('/mnt/disks/pdiachil-t1map/predictions3/evaluate_batch_dev.tsv', sep='\t')
 
 skip = [
 2948608,
@@ -91,7 +92,7 @@ for i, row in test_df.iterrows():
     try:
         sample_id = int(row['ukbid'])
         sample_idx = test_df[test_df['ukbid']==sample_id].index[0]
-        hd5_model_fname = f'/mnt/disks/pdiachil-t1map/predictions3/holdout_results.h5'
+        hd5_model_fname = f'/mnt/disks/pdiachil-t1map/predictions3/dev_results.h5'
         hd5_data_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/{sample_id}.hd5'
         hd5_segmentation_fname = glob.glob(f'/mnt/disks/pdiachil-t1map/prepared3/*__{sample_id}__*.h5')[0]
         blob = bucket.blob(hd5_data_path)
@@ -147,13 +148,13 @@ for i, row in test_df.iterrows():
                                 template = np.zeros_like(skeleton)
                                 template[mycircle] = 1
                                 skeletons[color] = template
-                                skeletons[color] = skeleton
+                                # skeletons[color] = skeleton
                             else:
                                 skeleton = skeletonize(binary_model, method='lee')
                                 for i in range(5):
                                     result = generic_filter(skeleton, lineEnds, (3, 3))
                                     skeleton -= result*255
-                                kernel = np.ones((4, 4), dtype=np.uint8)
+                                kernel = np.ones((3, 3), dtype=np.uint8)
                                 skeletons[color] = np.logical_and(cv2.dilate(skeleton.astype(float), kernel, iterations=1), binary_model)
                                 # skeletons[color] = erode_until(binary_model, 300)
                                 # skeletons[color] = medial_axis(binary_model, return_distance=True)
@@ -170,14 +171,19 @@ for i, row in test_df.iterrows():
                     ax[2].imshow(ma.masked_array(skeletons['LV Free Wall'], skeletons['LV Free Wall']<0.5))
                     ax[2].imshow(ma.masked_array(skeletons['Interventricular Septum'], skeletons['Interventricular Septum']<0.5))
                     ax[0].imshow(arr_segmentation_color/255.0, alpha=0.5)
-                    f.savefig(f'/home/pdiachil/projects/t1map/postprocessing/{sample_id}.png')
+                    f.savefig(f'/home/pdiachil/projects/t1map/postprocessing/3px_circle/{sample_id}.png')
                     plt.close(f)
                     for region, binary_model in skeletons.items():
                         mean_model = np.median(arr_data[binary_model>0.5])
-                        binary_segmentation = arr_segmentation==colors[region]['id']
+                        binary_segmentation = arr_segmentation==colors[region+' ROI']['id']
                         mean_segmentation = np.median(arr_data[binary_segmentation>0.5])
                         means[region]['segmentation'].append(mean_segmentation)
                         means[region]['model'].append(mean_model)
+                        # if ('eptum' in region):
+                        #     f, ax = plt.subplots(1, 2)
+                        #     sns.distplot(arr_data[binary_model>0.5], ax=ax[0])
+                        #     sns.distplot(arr_data[binary_segmentation>0.5], ax=ax[1])
+
                     means['sample_id'].append(sample_id)
                         # print(f'Region {region}: {mean_model} {mean_segmentation}')        
     except:
@@ -240,6 +246,6 @@ for region in means:
 plt.tight_layout()
 
 # %%
-df.to_csv('performance_holdout_4px_shape.csv', index=False)
-f.savefig('performance_holdout_4px_shape.png')
+df.to_csv('performance_training_3px_circle.csv', index=False)
+f.savefig('performance_training_3px_circle.png')
 # %%
