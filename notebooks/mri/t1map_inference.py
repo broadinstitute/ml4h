@@ -66,6 +66,7 @@ def erode_until(binary, ntarget):
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 
+df_remaining = pd.read_csv('/home/pdiachil/ml/notebooks/mri/remaining_rois.csv')
 hd5 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t1_weighted__predictions__5e806c4c75fa47d59f3270711fc35106.h5', 'r')
 # %%
 means = defaultdict(list)
@@ -79,12 +80,13 @@ means['RV Cavity'] = defaultdict(list)
 start_id = int(sys.argv[1])
 stop_id = int(sys.argv[2])
 
-for pat_i, row in enumerate(sorted(hd5)):
+for pat_i, row_diff in df_remaining.iterrows():
     if pat_i < start_id:
         continue
     if pat_i == stop_id:
         break
     try:
+        row = row_diff['diff']
         sample_id, instance = map(int, row.split('_'))
         hd5_data_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/{sample_id}.hd5'
         
@@ -95,7 +97,7 @@ for pat_i, row in enumerate(sorted(hd5)):
             arr_model = read_compressed(hd5[f'{row}/pred_class'])
             for key in hd5_data['ukb_cardiac_mri']:
                 if ('t1map' in key) and ('sax' in key):
-                    arr_data = hd5_data[f'ukb_cardiac_mri/{key}/2/instance_0'][()]
+                    arr_data = hd5_data[f'ukb_cardiac_mri/{key}/{instance}/instance_0'][()]
             arr_data = arr_data[:, :-20, 0]
             arr_data = cv2.resize(arr_data, (288, 384))
             arr_model_color = np.zeros((arr_model.shape[0], arr_model.shape[1], 3))          
@@ -106,8 +108,11 @@ for pat_i, row in enumerate(sorted(hd5)):
                     arr_model_color[arr_model==color_dic["id2"], :] = ImageColor.getrgb(color_dic["color"])                    
                     binary_model = arr_model==color_dic["id2"]
                     nregions, label_model, stats, centroids = cv2.connectedComponentsWithStats(binary_model.astype(np.uint8), 4, cv2.CV_32S)
-                    order_by_area = np.argsort(stats[:, cv2.CC_STAT_AREA])
-                    binary_model = label_model==order_by_area[-2]
+                    if nregions < 2:
+                        skeletons[color] = binary_model
+                    else:
+                        order_by_area = np.argsort(stats[:, cv2.CC_STAT_AREA])
+                        binary_model = label_model==order_by_area[-2]
                     if 'cavity' in color.lower():
                         skeleton = erode_until(binary_model, 300)
                         skeletons[color] = skeleton
@@ -137,7 +142,10 @@ for pat_i, row in enumerate(sorted(hd5)):
                 mean_model = np.median(arr_data[binary_model>0.5])
                 means[region]['model'].append(mean_model)
                 percentile = 62.5 if 'Cavity' in region else 37.5
-                percentile_model = np.percentile(arr_data[binary_model>0.5], percentile)
+                if not(np.isnan(mean_model)):
+                    percentile_model = np.percentile(arr_data[binary_model>0.5], percentile)
+                else:
+                    percentile_model = np.nan
                 means[region]['model_iqr'].append(percentile_model)
             means['sample_id'].append(sample_id)
             means['instance'].append(instance)
@@ -157,4 +165,4 @@ df = pd.DataFrame(df_dic)
 df = df[~df['sample_id'].isin(skip)]
 df = df.dropna()
 
-df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_inference_{start_id}_{stop_id}.csv', index=False)
+df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_remaining_inference_{start_id}_{stop_id}.csv', index=False)

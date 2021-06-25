@@ -53,3 +53,38 @@ evaluate_batch_dev = pd.read_csv(f'/mnt/disks/pdiachil-t1map/predictions/evaluat
 evaluate_batch_holdout = pd.read_csv(f'/mnt/disks/pdiachil-t1map/predictions/evaluate_batch_holdout.tsv', sep='\t')
 evaluate_batch = pd.read_csv(f'/mnt/disks/pdiachil-t1map/predictions/evaluate_batch.tsv', sep='\t')
 # %%
+import pandas as pd
+import h5py
+# %%
+df = pd.read_csv('/home/pdiachil/projects/t1map/inference/all_t1map_inference.csv')
+hd5 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t1_weighted__predictions__5e806c4c75fa47d59f3270711fc35106.h5', 'r')
+# %%
+f, ax = plt.subplots()
+
+ax.hist(df['LV Cavity_model_iqr'], bins=range(0, 3000), color='blue', label='LV')
+ax.hist(df['RV Cavity_model_iqr'], bins=range(0, 3000), color='orange', label='RV')
+ax.set_xlim([0, 3000])
+ax.legend()
+
+# %%
+f, ax = plt.subplots()
+
+ax.hist(df['LV Cavity_model'], bins=range(0, 3000), color='blue', label='LV')
+ax.hist(df['RV Cavity_model'], bins=range(0, 3000), color='orange', label='RV')
+ax.set_xlim([0, 3000])
+ax.legend()
+
+# %%
+f, ax = plt.subplots(2, 1)
+
+ax[0].hist(df['LV Free Wall_model_iqr'], bins=range(0, 2000), color='blue', label='LV FW IQR')
+ax[0].hist(df['Interventricular Septum_model_iqr'], bins=range(0, 2000), color='orange', label='IVS IQR')
+ax[0].set_xlim([0, 2000])
+ax[0].legend()
+
+
+ax[1].hist(df['LV Free Wall_model'], bins=range(0, 2000), color='blue', label='LV FW')
+ax[1].hist(df['Interventricular Septum_model'], bins=range(0, 2000), color='orange', label='IVS')
+ax[1].set_xlim([0, 2000])
+ax[1].legend()
+# %%
