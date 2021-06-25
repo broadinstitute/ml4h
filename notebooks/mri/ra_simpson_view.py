@@ -3,13 +3,59 @@ import pandas as pd
 import glob as glob
 import os
 
-all_ra_simpson = pd.read_csv('/home/pdiachil/projects/ra_simpson/all_RA_simpson.csv')
+all_ra_simpson_lax_cog = pd.read_csv('/home/pdiachil/projects/ra_simpson/lax_cog/all_RA_lax_cog_simpson.csv')
+all_ra_simpson_ortho = pd.read_csv('/home/pdiachil/projects/ra_simpson/all_clean_RA_simpson.csv')
+
+# %%
+all_ra_simpson_lax_cog = all_ra_simpson_lax_cog[all_ra_simpson_lax_cog['sample_id']>-1]
+all_ra_simpson_lax_cog = all_ra_simpson_lax_cog.drop_duplicates()
+all_ra_simpson_lax = all_ra_simpson_lax_cog.merge(all_ra_simpson_ortho, on=['sample_id', 'instance'])
+all_ra_simpson_lax = all_ra_simpson_lax_cog
+# %%
+import numpy as np
+cols_simpson = [f'RA_simpson_cog_{i}' for i in range(50)]
+cols_lax_ortho = [f'RA_lax_ortho_{i}' for i in range(50)]
+cols_lax_cog = [f'RA_lax_cog_{i}' for i in range(50)]
+# cols_ortho_simpson = [f'RA_simpson_{i}' for i in range(50)]
+
+for cols in [cols_simpson, cols_lax_ortho, cols_lax_cog, cols_ortho_simpson]:
+    col_max = cols[0].replace('_0', '_max')
+    col_min = cols[0].replace('_0', '_min')
+    vals = all_ra_simpson_lax[cols].values
+    vals[vals<0] = np.nan
+    all_ra_simpson_lax[col_max] = np.nanmax(vals, axis=1)
+    all_ra_simpson_lax[col_min] = np.nanmin(vals, axis=1)
+    all_ra_simpson_lax = all_ra_simpson_lax.dropna(subset=[col_max, col_min])
+
+all_ra_simpson_lax = all_ra_simpson_lax[all_ra_simpson_lax['RA_lax_cog_max']>0]
+all_ra_simpson_lax = all_ra_simpson_lax[all_ra_simpson_lax['RA_lax_ortho_max']>0]
+
+# %%
+# all_ra_simpson_lax = all_ra_simpson_lax_cog.merge(all_ra_simpson_ortho, on=['sample_id', 'instance'])
+
+# %%
+import matplotlib.pyplot as plt
+import seaborn as sns
+f, ax = plt.subplots()
+sns.distplot(all_ra_simpson_lax['RA_lax_cog_max'], ax=ax)
+sns.distplot(all_ra_simpson_lax['RA_lax_ortho_max'], ax=ax)
+sns.distplot(all_ra_simpson_lax['RA_lax_cog_min'], ax=ax)
+sns.distplot(all_ra_simpson_lax['RA_lax_ortho_min'], ax=ax)
+
+f, ax = plt.subplots()
+sns.distplot(all_ra_simpson_lax['RA_simpson_max'], ax=ax)
+sns.distplot(all_ra_simpson_lax['RA_simpson_cog_max'], ax=ax)
+sns.distplot(all_ra_simpson_lax['RA_simpson_min'], ax=ax)
+sns.distplot(all_ra_simpson_lax['RA_simpson_cog_min'], ax=ax)
+
+# %%
+all_ra_simpson_lax[[col for col in all_ra_simpson_lax if ('_max' in col)]].corr()
+
 
 # %%
 all_ra_simpson[all_ra_simpson['sample_id']>0].to_csv('/home/pdiachil/projects/ra_simpson/all_cleaned_RA_simpson_fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122.csv', index=False)
 # %%
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 cols = [f'RA_simpson_{t}' for t in range(50)]
 f, ax = plt.subplots(1, 2)
 f.set_size_inches(4, 2.25)
