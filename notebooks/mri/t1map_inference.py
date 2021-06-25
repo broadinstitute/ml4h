@@ -141,7 +141,7 @@ for pat_i, row in enumerate(sorted(hd5)):
                 means[region]['model_iqr'].append(percentile_model)
             means['sample_id'].append(sample_id)
             means['instance'].append(instance)
-    except FutureWarning:
+    except:
         pass          
     os.remove(f'{sample_id}.hd5')
 
