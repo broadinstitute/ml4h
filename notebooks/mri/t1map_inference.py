@@ -105,22 +105,18 @@ for pat_i, row in enumerate(sorted(hd5)):
                 if "id2" in color_dic:
                     arr_model_color[arr_model==color_dic["id2"], :] = ImageColor.getrgb(color_dic["color"])                    
                     binary_model = arr_model==color_dic["id2"]
+                    nregions, label_model, stats, centroids = cv2.connectedComponentsWithStats(binary_model.astype(np.uint8), 4, cv2.CV_32S)
+                    order_by_area = np.argsort(stats[:, cv2.CC_STAT_AREA])
+                    binary_model = label_model==order_by_area[-2]
                     if 'cavity' in color.lower():
                         skeleton = erode_until(binary_model, 300)
-                        regions = regionprops(skeleton.astype(int))
-                        bubble = regions[0]
-                        radius = int(np.sqrt(bubble.area / np.pi))
-                        mycircle = disk(bubble.centroid, radius, shape=skeleton.shape)
-                        template = np.zeros_like(skeleton)
-                        template[mycircle] = 1
-                        skeletons[color] = template
                         skeletons[color] = skeleton
                     else:
                         skeleton = skeletonize(binary_model, method='lee')
                         for i in range(5):
                             result = generic_filter(skeleton, lineEnds, (3, 3))
                             skeleton -= result*255
-                        kernel = np.ones((4, 4), dtype=np.uint8)
+                        kernel = np.ones((3, 3), dtype=np.uint8)
                         skeletons[color] = np.logical_and(cv2.dilate(skeleton.astype(float), kernel, iterations=1), binary_model)
                         
             f, ax = plt.subplots(1, 3)
@@ -140,9 +136,12 @@ for pat_i, row in enumerate(sorted(hd5)):
             for region, binary_model in skeletons.items():
                 mean_model = np.median(arr_data[binary_model>0.5])
                 means[region]['model'].append(mean_model)
+                percentile = 62.5 if 'Cavity' in region else 37.5
+                percentile_model = np.percentile(arr_data[binary_model>0.5], percentile)
+                means[region]['model_iqr'].append(percentile_model)
             means['sample_id'].append(sample_id)
             means['instance'].append(instance)
-    except:
+    except FutureWarning:
         pass          
     os.remove(f'{sample_id}.hd5')
 
@@ -153,6 +152,7 @@ for region in means:
         df_dic[region] = means[region]
     else:
         df_dic[f'{region}_model'] = means[region]['model']
+        df_dic[f'{region}_model_iqr'] = means[region]['model_iqr']
 df = pd.DataFrame(df_dic)
 df = df[~df['sample_id'].isin(skip)]
 df = df.dropna()

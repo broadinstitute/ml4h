@@ -108,7 +108,7 @@ def hazard_ratios(
             else:
                 std = np.std(tmp_data[pheno].values)
                 tmp_data[pheno] = (tmp_data[pheno].values - np.mean(tmp_data[pheno].values))/std
-                std = f', {std:.1f}'
+                std = f', {std:.2f}'
             covariates_scale = [covariate for covariate in covariates if covariate not in dont_scale]
             tmp_data[covariates_scale] = (
                 tmp_data[covariates_scale].values \
@@ -131,7 +131,7 @@ def hazard_ratios(
             # res_predict = res.predict()
             cox = lifelines.CoxPHFitter()
             cox.fit(tmp_data[[pheno]+regression_covariates + ['futime', f'{disease}_incident']], 
-                    duration_col='futime', 
+                    duration_col='futime', step_size=0.1,
                     event_col=f'{disease}_incident')            
             hr_multi_dic[pheno][f'{disease}_incident']['HR'] = cox.summary.loc[pheno]['exp(coef)']
             hr_multi_dic[pheno][f'{disease}_incident']['CI'] = np.array([cox.summary.loc[pheno]['exp(coef) lower 95%'],
