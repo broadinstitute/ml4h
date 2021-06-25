@@ -66,7 +66,7 @@ def erode_until(binary, ntarget):
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 
-hd5 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t1_weighted__predictions__5e806c4c75fa47d59f3270711fc35106.h5')
+hd5 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t1_weighted__predictions__5e806c4c75fa47d59f3270711fc35106.h5', 'r')
 # %%
 means = defaultdict(list)
 means['LV Free Wall'] = defaultdict(list)
