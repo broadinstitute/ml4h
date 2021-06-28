@@ -18,6 +18,7 @@ import cv2
 from collections import defaultdict
 import os, sys
 import blosc
+import logging
 
 colors = {
     "Body" : { "id": 1, "color": "#4169e1" },
@@ -74,6 +75,7 @@ means['LV Free Wall'] = defaultdict(list)
 means['Interventricular Septum'] = defaultdict(list)
 means['LV Cavity'] = defaultdict(list)
 means['RV Cavity'] = defaultdict(list)
+means['Wall'] = defaultdict(list)
 
 # %%
 
@@ -94,16 +96,20 @@ for pat_i, row_diff in df_remaining.iterrows():
         blob.download_to_filename(f'{sample_id}.hd5')
         hd5_data_fname = f'{sample_id}.hd5'
         with h5py.File(hd5_data_fname, 'r') as hd5_data:
-            arr_model = read_compressed(hd5[f'{row["diff"]}/pred_class'])
+            arr_model = read_compressed(hd5[f'{row}/pred_class'])
             best_mean = 0
+            found_anything = False
             for key in hd5_data['ukb_cardiac_mri']:
-                if ('t1map' in key) and ('sax' in key):
-                    if str(instance) in hd5_data[f'ukb_cardiac_mri/{key}']:
-                        cur_data = hd5_data[f'ukb_cardiac_mri/{key}/{instance}/instance_0'][()]
-                        cur_mean = np.mean(cur_data)
-                        if cur_mean > best_mean:
-                            best_mean = cur_mean
-                            arr_data = cur_data
+                if ('t1map' in key) and ('sax' in key) and (str(instance) in hd5_data[f'ukb_cardiac_mri/{key}']):
+                    found_anything = True
+                    cur_data = hd5_data[f'ukb_cardiac_mri/{key}/{instance}/instance_0'][()]
+                    cur_mean = np.mean(cur_data)
+                    if cur_mean > best_mean:
+                        best_mean = cur_mean
+                        arr_data = cur_data
+            if not(found_anything):
+                logging.warning(f'Did not find anything for {sample_id}/{instance}')
+                continue
             arr_data = arr_data[:, :-20, 0]
             arr_data = cv2.resize(arr_data, (288, 384))
             arr_model_color = np.zeros((arr_model.shape[0], arr_model.shape[1], 3))          
@@ -129,6 +135,7 @@ for pat_i, row_diff in df_remaining.iterrows():
                             skeleton -= result*255
                         kernel = np.ones((3, 3), dtype=np.uint8)
                         skeletons[color] = np.logical_and(cv2.dilate(skeleton.astype(float), kernel, iterations=1), binary_model)
+            skeletons['Wall'] = skeletons['LV Free Wall'] + skeletons['Interventricular Septum']
                         
             f, ax = plt.subplots(1, 3)
             f.set_size_inches(16, 9)
@@ -145,14 +152,20 @@ for pat_i, row_diff in df_remaining.iterrows():
             f.savefig(f'/home/pdiachil/projects/t1map/inference/{sample_id}_{instance}.png')
             plt.close(f)
             for region, binary_model in skeletons.items():
-                mean_model = np.median(arr_data[binary_model>0.5])
+                select_data = arr_data[binary_model>0.5]
+                mean_model = np.median(select_data)
                 means[region]['model'].append(mean_model)
-                percentile = 62.5 if 'Cavity' in region else 37.5
+                iqr = np.percentile(select_data, 75) - np.percentile(select_data, 25)
+                
                 if not(np.isnan(mean_model)):
-                    percentile_model = np.percentile(arr_data[binary_model>0.5], percentile)
+                    if 'Cavity' in region:
+                        percentile_model = np.median(select_data[select_data > (np.percentile(select_data, 25) - 1.5 * iqr)])
+                    else:
+                        percentile_model = np.median(select_data[select_data < (np.percentile(select_data, 75) + 1.5 * iqr)])
                 else:
                     percentile_model = np.nan
                 means[region]['model_iqr'].append(percentile_model)
+            # Get wall
             means['sample_id'].append(sample_id)
             means['instance'].append(instance)
     except:

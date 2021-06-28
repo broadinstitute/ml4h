@@ -165,3 +165,8 @@ common_bad_cases = not_inferred.merge(bad_cases, left_on=['sample_id', 'instance
 lack_inference = not_inferred[~((not_inferred['sample_id'].isin(common_inference['sample_id']))&(not_inferred['instance_number'].isin(common_inference['instance_number'])))]
 lack_inference = not_inferred[~((not_inferred['sample_id'].isin(common_bad_cases['sample_id']))&(not_inferred['instance_number'].isin(common_bad_cases['instance_number'])))]
 # %%
+hd51 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t1_weighted__predictions__5e806c4c75fa47d59f3270711fc35106.h5', 'r')
+
+remaining = pd.DataFrame({'diff': list(hd51.keys())})
+remaining.to_csv('/home/pdiachil/ml/notebooks/mri/remaining_rois.csv', index=False)
+# %%
