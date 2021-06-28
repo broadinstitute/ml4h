@@ -171,4 +171,4 @@ df = pd.DataFrame(df_dic)
 # df = df[~df['sample_id'].isin(skip)]
 # df = df.dropna()
 
-df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_remaining_inference_{start_id}_{stop_id}.csv', index=False)
+df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_inference_{start_id}_{stop_id}.csv', index=False)
