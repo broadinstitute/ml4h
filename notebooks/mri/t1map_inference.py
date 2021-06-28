@@ -94,10 +94,16 @@ for pat_i, row_diff in df_remaining.iterrows():
         blob.download_to_filename(f'{sample_id}.hd5')
         hd5_data_fname = f'{sample_id}.hd5'
         with h5py.File(hd5_data_fname, 'r') as hd5_data:
-            arr_model = read_compressed(hd5[f'{row}/pred_class'])
+            arr_model = read_compressed(hd5[f'{row["diff"]}/pred_class'])
+            best_mean = 0
             for key in hd5_data['ukb_cardiac_mri']:
                 if ('t1map' in key) and ('sax' in key):
-                    arr_data = hd5_data[f'ukb_cardiac_mri/{key}/{instance}/instance_0'][()]
+                    if str(instance) in hd5_data[f'ukb_cardiac_mri/{key}']:
+                        cur_data = hd5_data[f'ukb_cardiac_mri/{key}/{instance}/instance_0'][()]
+                        cur_mean = np.mean(cur_data)
+                        if cur_mean > best_mean:
+                            best_mean = cur_mean
+                            arr_data = cur_data
             arr_data = arr_data[:, :-20, 0]
             arr_data = cv2.resize(arr_data, (288, 384))
             arr_model_color = np.zeros((arr_model.shape[0], arr_model.shape[1], 3))          
@@ -162,7 +168,7 @@ for region in means:
         df_dic[f'{region}_model'] = means[region]['model']
         df_dic[f'{region}_model_iqr'] = means[region]['model_iqr']
 df = pd.DataFrame(df_dic)
-df = df[~df['sample_id'].isin(skip)]
-df = df.dropna()
+# df = df[~df['sample_id'].isin(skip)]
+# df = df.dropna()
 
 df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_remaining_inference_{start_id}_{stop_id}.csv', index=False)
