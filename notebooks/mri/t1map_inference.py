@@ -77,10 +77,20 @@ means['LV Cavity'] = defaultdict(list)
 means['RV Cavity'] = defaultdict(list)
 means['Wall'] = defaultdict(list)
 
+
 # %%
 
 start_id = int(sys.argv[1])
 stop_id = int(sys.argv[2])
+
+npats = stop_id - start_id
+for key, item in means.items():
+    item['model'] = [np.nan]*npats
+    item['model_iqr'] = [np.nan]*npats
+
+means['sample_id'] = [np.nan]*npats
+means['instance'] = [np.nan]*npats
+
 
 for pat_i, row_diff in df_remaining.iterrows():
     if pat_i < start_id:
@@ -89,7 +99,9 @@ for pat_i, row_diff in df_remaining.iterrows():
         break
     try:
         row = row_diff['diff']
-        sample_id, instance = map(int, row.split('_'))
+        sample_id, instance = map(int, row.split('_'))        
+        means['sample_id'][pat_i - start_id] = sample_id
+        means['instance'][pat_i - start_id] = instance
         hd5_data_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/{sample_id}.hd5'
         
         blob = bucket.blob(hd5_data_path)
@@ -154,7 +166,7 @@ for pat_i, row_diff in df_remaining.iterrows():
             for region, binary_model in skeletons.items():
                 select_data = arr_data[binary_model>0.5]
                 mean_model = np.median(select_data)
-                means[region]['model'].append(mean_model)
+                means[region]['model'][pat_i - start_id] = mean_model
                 iqr = np.percentile(select_data, 75) - np.percentile(select_data, 25)
                 
                 if not(np.isnan(mean_model)):
@@ -164,10 +176,8 @@ for pat_i, row_diff in df_remaining.iterrows():
                         percentile_model = np.median(select_data[select_data < (np.percentile(select_data, 75) + 1.5 * iqr)])
                 else:
                     percentile_model = np.nan
-                means[region]['model_iqr'].append(percentile_model)
-            # Get wall
-            means['sample_id'].append(sample_id)
-            means['instance'].append(instance)
+                means[region]['model_iqr'][pat_i - start_id] = percentile_model
+            
     except:
         pass          
     os.remove(f'{sample_id}.hd5')
