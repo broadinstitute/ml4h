@@ -471,7 +471,7 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = False):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = True):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -483,8 +483,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    iterator = generator.as_numpy_iterator()
-    first_batch = next(iterator)
+    first_batch = next(generator)
     saved_tensors = {}
     batch_size = None
     for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
@@ -499,7 +498,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
         logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
-        next_batch = next(iterator)
+        next_batch = next(generator)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
             saved_tensors[key][s:t] = next_batch[BATCH_INPUT_INDEX][key]
@@ -746,7 +745,7 @@ def test_train_valid_tensor_generators(
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
-    keep_paths_test: bool = False,
+    keep_paths_test: bool = True,
     mixup_alpha: float = -1.0,
     sample_csv: str = None,
     valid_ratio: float = None,
@@ -755,7 +754,7 @@ def test_train_valid_tensor_generators(
     valid_csv: str = None,
     test_csv: str = None,
     siamese: bool = False,
-    wrap_with_tf_dataset: bool = True,
+    wrap_with_tf_dataset: bool = False,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
