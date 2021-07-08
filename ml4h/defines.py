@@ -1,6 +1,6 @@
-from typing import List, Iterator, Dict
+from typing import List
 from enum import Enum, auto
-from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 
 class StorageType(Enum):
@@ -183,8 +183,4 @@ def dataset_name_from_meaning(group: str, fields: List[str]) -> str:
         return joined
     return group + HD5_GROUP_CHAR + joined
 
-class TensorGeneratorABC(ABC):
-    @abstractmethod
-    def __iter__(self) -> Iterator:
-        pass
-
+TensorGeneratorABC = Iterable
