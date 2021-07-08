@@ -4,6 +4,7 @@
 import os
 import csv
 import copy
+import glob
 import logging
 import numpy as np
 from functools import reduce
@@ -266,17 +267,10 @@ def infer_multimodal_multitask(args):
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    sample_set = None
-    if args.sample_csv is not None:
-        with open(args.sample_csv, 'r') as csv_file:
-            sample_ids = [row[0] for row in csv.reader(csv_file)]
-            sample_set = set(sample_ids[1:])
-    tensor_paths = [
-        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
-    ]
+
     model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
+    tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
@@ -340,6 +334,19 @@ def infer_multimodal_multitask(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
+def _tensor_paths_from_sample_csv(tensors, sample_csv):
+    sample_set = None
+    if sample_csv is not None:
+        with open(sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    tensor_paths = [
+        file for file in glob.glob(os.path.join(tensors, f"*{TENSOR_EXT}"))
+        if sample_set is None or os.path.splitext(os.path.basename(file))[0] in sample_set
+    ]
+    return tensor_paths
+
+
 def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: str) -> str:
     return os.path.join(output_folder, id_, prefix_ + id_ + extension_)
 
@@ -349,7 +356,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     args.num_workers = 0
     inference_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
@@ -501,24 +508,16 @@ def train_paired_model(args):
 def infer_encoders_block_multimodal_multitask(args):
     args.num_workers = 0
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    sample_set = None
-    if args.sample_csv is not None:
-        with open(args.sample_csv, 'r') as csv_file:
-            sample_ids = [row[0] for row in csv.reader(csv_file)]
-            sample_set = set(sample_ids[1:])
     _, encoders, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
     latent_dimensions = args.dense_layers[-1]
-    for e in encoders:
+    for encoder in encoders:
         stats = Counter()
-        inference_tsv = _hidden_file_name(args.output_folder, e.name, args.id, '.tsv')
-        logging.info(f'Will write encodings from {e.name} to: {inference_tsv}')
+        inference_tsv = _hidden_file_name(args.output_folder, encoder.name, args.id, '.tsv')
+        logging.info(f'Will write encodings from {encoder.name} to: {inference_tsv}')
+        tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
         # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-        tensor_paths = [
-            os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
-            if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
-        ]
         generate_test = TensorGenerator(
-            1, [e], [], tensor_paths, num_workers=0,
+            1, [encoder], [], tensor_paths, num_workers=0,
             cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
         )
         generate_test.set_worker_paths(tensor_paths)
@@ -538,7 +537,7 @@ def infer_encoders_block_multimodal_multitask(args):
                     break
 
                 sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-                prediction = encoders[e].predict(input_data)
+                prediction = encoders[encoder].predict(input_data)
                 prediction = np.reshape(prediction, (latent_dimensions,))
                 csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
                 csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]

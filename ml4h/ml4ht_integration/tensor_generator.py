@@ -76,7 +76,3 @@ class TensorMapDataLoader(TensorGeneratorABC):
         except StopIteration:
             self.iter_loader = iter(self.data_loader)
         return self
-
-    def kill_workers(self):
-        """necessary for legacy compatibility"""
-        pass
