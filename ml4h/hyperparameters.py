@@ -67,7 +67,6 @@ def hyperparameter_optimizer(args, space, param_lists={}):
     args.keep_paths_test = False
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     test_data, test_labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    generate_test.kill_workers()
     histories = []
     fig_path = os.path.join(args.output_folder, args.id, 'plots')
     i = 0
@@ -98,8 +97,6 @@ def hyperparameter_optimizer(args, space, param_lists={}):
             loss_and_metrics = model.evaluate(test_data, test_labels, batch_size=args.batch_size)
             logging.info(f'Current architecture:\n{string_from_arch_dict(x)}\nCurrent model size: {model.count_params()}.')
             logging.info(f"Iteration {i} out of maximum {args.max_models}\nTest Loss: {loss_and_metrics[0]}")
-            generate_train.kill_workers()
-            generate_valid.kill_workers()
             return loss_and_metrics[0]
 
         except ValueError:

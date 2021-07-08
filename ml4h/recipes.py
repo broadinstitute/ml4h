@@ -4,6 +4,7 @@
 import os
 import csv
 import copy
+import glob
 import logging
 import numpy as np
 from functools import reduce
@@ -62,6 +63,8 @@ def run(args):
             infer_hidden_layer_multimodal_multitask(args)
         elif 'infer_pixels' == args.mode:
             infer_with_pixels(args)
+        elif 'infer_encoders' == args.mode:
+            infer_encoders_block_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'train_block' == args.mode:
@@ -131,10 +134,7 @@ def _find_learning_rate(args) -> float:
     args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
     generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
-    try:
-        lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
-    finally:
-        generate_train.kill_workers()
+    lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
     args.learning_rate_schedule = schedule
     return lr
 
@@ -144,7 +144,8 @@ def train_multimodal_multitask(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
@@ -160,7 +161,8 @@ def train_block(args):
     model, encoders, decoders, merger = block_make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -185,17 +187,20 @@ def train_block(args):
 
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+        if etm.output_name() in predictions_dict:
+            plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
             os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
             if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
+                plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
+
+
 
 
 def test_multimodal_multitask(args):
@@ -262,17 +267,10 @@ def infer_multimodal_multitask(args):
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    sample_set = None
-    if args.sample_csv is not None:
-        with open(args.sample_csv, 'r') as csv_file:
-            sample_ids = [row[0] for row in csv.reader(csv_file)]
-            sample_set = set(sample_ids[1:])
-    tensor_paths = [
-        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
-    ]
+
     model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
+    tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
@@ -336,6 +334,19 @@ def infer_multimodal_multitask(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
+def _tensor_paths_from_sample_csv(tensors, sample_csv):
+    sample_set = None
+    if sample_csv is not None:
+        with open(sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    tensor_paths = [
+        file for file in glob.glob(os.path.join(tensors, f"*{TENSOR_EXT}"))
+        if sample_set is None or os.path.splitext(os.path.basename(file))[0] in sample_set
+    ]
+    return tensor_paths
+
+
 def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: str) -> str:
     return os.path.join(output_folder, id_, prefix_ + id_ + extension_)
 
@@ -345,7 +356,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     args.num_workers = 0
     inference_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
@@ -447,10 +458,10 @@ def train_siamese_model(args):
 def train_paired_model(args):
     full_model, encoders, decoders = make_paired_autoencoder_model(**args.__dict__)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    train_model_from_generators(
-        full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-        save_last_model=args.save_last_model,
+    full_model = train_model_from_generators(
+        full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -492,6 +503,49 @@ def train_paired_model(args):
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
+
+
+def infer_encoders_block_multimodal_multitask(args):
+    args.num_workers = 0
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    _, encoders, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
+    latent_dimensions = args.dense_layers[-1]
+    for encoder in encoders:
+        stats = Counter()
+        inference_tsv = _hidden_file_name(args.output_folder, encoder.name, args.id, '.tsv')
+        logging.info(f'Will write encodings from {encoder.name} to: {inference_tsv}')
+        tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
+        # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+        generate_test = TensorGenerator(
+            1, [encoder], [], tensor_paths, num_workers=0,
+            cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+        )
+        generate_test.set_worker_paths(tensor_paths)
+        with open(inference_tsv, mode='w') as inference_file:
+            inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
+            header += [f'latent_{i}' for i in range(latent_dimensions)]
+            inference_writer.writerow(header)
+
+            while True:
+                batch = next(generate_test)
+                input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+                if tensor_paths[0] in stats:
+                    next(generate_test)  # this prints end of epoch info
+                    logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                    del stats
+                    break
+
+                sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+                prediction = encoders[encoder].predict(input_data)
+                prediction = np.reshape(prediction, (latent_dimensions,))
+                csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
+                csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
+                inference_writer.writerow(csv_row)
+                stats[tensor_paths[0]] += 1
+                stats['count'] += 1
+                if stats['count'] % 500 == 0:
+                    logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
 
 
 def inspect_paired_model(args):
@@ -600,7 +654,6 @@ def _predict_scalars_and_evaluate_from_generator(
     logging.info(f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
     embeddings = []
     test_paths = []
-
     for i in range(steps):
         batch = next(generate_test)
         input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]

@@ -29,7 +29,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-#from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
+from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
@@ -615,7 +615,7 @@ class VariationalDiagNormal(Layer):
         approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
         kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
         self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl, 'mean', name='KL_divergence')
+        self.add_metric(kl, name='KL_divergence')
         return approx_posterior.sample()
 
     def get_config(self):
@@ -918,18 +918,18 @@ def _repeat_dimension(filters: List[int], num_filters_needed: int) -> List[int]:
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
-        activation: str,
-        learning_rate: float,
-        bottleneck_type: BottleneckType,
-        optimizer: str,
+        activation: str = 'relu',
+        learning_rate: float = 1e-3,
+        bottleneck_type: BottleneckType = BottleneckType.FlattenRestructure,
+        optimizer: str = 'adam',
         dense_layers: List[int] = None,
         dense_normalize: str = None,
         dense_regularize: str = None,
         dense_regularize_rate: float = None,
         conv_layers: List[int] = None,
         dense_blocks: List[int] = None,
-        block_size: int = None,
-        conv_type: str = None,
+        block_size: int = 3,
+        conv_type: str = 'conv',
         conv_normalize: str = None,
         conv_regularize: str = None,
         conv_regularize_rate: float = None,
@@ -942,7 +942,7 @@ def make_multimodal_multitask_model(
         pool_x: int = None,
         pool_y: int = None,
         pool_z: int = None,
-        pool_type: str = None,
+        pool_type: str = 'max',
         training_steps: int = None,
         learning_rate_schedule: str = None,
         **kwargs,
@@ -1004,6 +1004,13 @@ def make_multimodal_multitask_model(
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
+
+    # set up defaults
+    dense_blocks = dense_blocks or [32, 24, 16]
+    conv_x = conv_x or [3]
+    conv_y = conv_y or [3]
+    conv_z = conv_y or [1]
+    conv_width = conv_width or [3]
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
     num_dense = len(dense_blocks)
