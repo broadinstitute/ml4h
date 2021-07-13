@@ -2,6 +2,7 @@
 
 PCLR is a pre-training strategy that yields a neural network that extracts representations of ECGs.
 The representations are designed to be used in linear models without finetuning the network.
+The pre-print is available [here](https://arxiv.org/abs/2104.04569).
 This readme shows how to load a model trained on over three million ECGs using PCLR.
 
 ## Requirements
