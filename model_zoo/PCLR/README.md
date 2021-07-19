@@ -17,11 +17,26 @@ python -i get_representations.py  # test the setup worked
 ```
 
 ## Usage
+### Getting ECG representations
 You can get ECG representations using [get_representations.py](./get_representations.py).
 `get_representations.get_representations` builds `N x 320` ECG representations from `N` ECGs.
 
 The model expects 10s 12-lead ECGs with a specific lead order and interpolated to be 4,096 samples long.
 [preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing.
+
+### Building un-trained PCLR and comparison models
+
+You can get compiled, but un-trained models with the hyperparameters selected in our training set.
+`python -i build_model.py`
+```python
+pclr_model = PCLR_model()
+clocs_model = CLOCS_model()
+CAE = CAE_model()
+ribeiro_r = ribeiro_r_model()
+```
+`build_model.py` uses code from [the google research implementation of SimCLR](https://github.com/google-research/simclr/)
+and [the official implementation](https://github.com/antonior92/automatic-ecg-diagnosis) of "Automatic diagnosis of the 12-lead ECG using a deep neural network",
+Ribeiro et al 2020.
 
 ## Lead I PCLR
 We also provide a PCLR model using only lead I of the ECG at [PCLR_lead_I.h5](./PCLR_lead_I.h5).
