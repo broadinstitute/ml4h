@@ -277,7 +277,7 @@ def infer_multimodal_multitask(args):
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
-        cache_size=0, keep_paths=True, mixup=args.mixup_alpha,
+        cache_size=0, keep_paths=True, mixup_alpha=args.mixup_alpha,
     )
     logging.info(f"Found {len(tensor_paths)} tensor paths.")
     generate_test.set_worker_paths(tensor_paths)
@@ -350,7 +350,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-        cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+        cache_size=args.cache_size, keep_paths=True, mixup_alpha=args.mixup_alpha,
     )
     generate_test.set_worker_paths(tensor_paths)
     full_model = make_multimodal_multitask_model(**args.__dict__)
@@ -516,7 +516,7 @@ def infer_encoders_block_multimodal_multitask(args):
         ]
         generate_test = TensorGenerator(
             1, [e], [], tensor_paths, num_workers=0,
-            cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+            cache_size=args.cache_size, keep_paths=True, mixup_alpha=args.mixup_alpha,
         )
         generate_test.set_worker_paths(tensor_paths)
         with open(inference_tsv, mode='w') as inference_file:

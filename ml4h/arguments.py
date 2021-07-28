@@ -182,6 +182,7 @@ def parse_args():
         '--pairs', nargs=2, action='append',
         help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
     )
+
     parser.add_argument('--pair_loss', default='euclid', help='Distance metric between paired embeddings', choices=['euclid', 'cosine', 'contrastive'])
     parser.add_argument('--pair_merge', default='average', help='Merging method for paired modality embeddings', choices=['average', 'concat', 'dropout'])
     parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')

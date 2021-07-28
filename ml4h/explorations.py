@@ -429,7 +429,7 @@ def infer_with_pixels(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
-        cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+        cache_size=args.cache_size, keep_paths=True, mixup_alpha=args.mixup_alpha,
     )
     with open(inference_tsv, mode='w') as inference_file:
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)

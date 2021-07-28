@@ -27,7 +27,7 @@ EPS = 1e-7
 DICOM_EXT = '.dcm'
 IMAGE_EXT = '.png'
 PDF_EXT = '.pdf'
-TENSOR_EXT = '.hd5'
+TENSOR_EXT = '.h5'
 MODEL_EXT = '.h5'
 XML_EXT = '.xml'
 
