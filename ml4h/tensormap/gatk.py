@@ -6,7 +6,7 @@ from typing import Dict
 from ml4h.TensorMap import TensorMap, Interpretation
 
 DNA_SYMBOLS = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-VARIANT_LABELS = {b'NOT_SNP': 0, b'NOT_INDEL': 1, b'SNP': 2, b'INDEL': 3}
+VARIANT_LABELS = {'NOT_SNP': 0, 'NOT_INDEL': 1, 'SNP': 2, 'INDEL': 3}
 
 
 
@@ -29,7 +29,7 @@ read_tensor = TensorMap('read_tensor', shape=(128, 128, 15),
 
 def variant_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     one_hot = np.zeros(tm.shape, dtype=np.float32)
-    variant_str = str(hd5['variant_label'][()])
+    variant_str = str(hd5['variant_label'][()]).decode("utf-8")
     for channel in tm.channel_map:
         logging.debug(f'Checking channel: {channel} lower: {channel.lower() } against {variant_str}   -- {variant_str.lower()}')
         if channel.lower() == variant_str.lower():
