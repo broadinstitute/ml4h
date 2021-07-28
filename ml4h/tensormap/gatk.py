@@ -29,7 +29,7 @@ read_tensor = TensorMap('read_tensor', shape=(128, 128, 15),
 
 def variant_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     one_hot = np.zeros(tm.shape, dtype=np.float32)
-    variant_str = str(hd5['variant_label'][()]).decode("utf-8")
+    variant_str = str(hd5['variant_label'][()], 'utf-8')
     for channel in tm.channel_map:
         logging.debug(f'Checking channel: {channel} lower: {channel.lower() } against {variant_str}   -- {variant_str.lower()}')
         if channel.lower() == variant_str.lower():
