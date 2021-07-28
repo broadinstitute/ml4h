@@ -6,7 +6,7 @@ from typing import Dict
 from ml4h.TensorMap import TensorMap, Interpretation
 
 DNA_SYMBOLS = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-VARIANT_LABELS = {'NOT_SNP': 0, 'NOT_INDEL': 1, 'SNP': 2, 'INDEL': 3}
+VARIANT_LABELS = {b'NOT_SNP': 0, b'NOT_INDEL': 1, b'SNP': 2, b'INDEL': 3}
 
 
 
