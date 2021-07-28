@@ -31,7 +31,6 @@ def variant_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {})
     one_hot = np.zeros(tm.shape, dtype=np.float32)
     variant_str = str(hd5['variant_label'][()], 'utf-8')
     for channel in tm.channel_map:
-        logging.debug(f'Checking channel: {channel} lower: {channel.lower() } against {variant_str}   -- {variant_str.lower()}')
         if channel.lower() == variant_str.lower():
             one_hot[tm.channel_map[channel]] = 1.0
     if one_hot.sum() != 1:
