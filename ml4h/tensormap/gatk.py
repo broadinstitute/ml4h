@@ -30,10 +30,10 @@ def variant_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {})
     one_hot = np.zeros(tm.shape, dtype=np.float32)
     variant_str = str(hd5['variant_label'][()])
     for channel in tm.channel_map:
-        if channel == variant_str:
+        if channel.lower() == variant_str.lower():
             one_hot[tm.channel_map[channel]] = 1.0
     if one_hot.sum() != 1:
-        raise ValueError(f'TensorMap {tm.name} missing or invalid label: {variant_str}')
+        raise ValueError(f'TensorMap {tm.name} missing or invalid label: {variant_str} one_hot: {one_hot}')
     return one_hot
 
 
