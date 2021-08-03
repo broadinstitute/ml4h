@@ -62,37 +62,34 @@ colors_roi = {
     "RV Cavity ROI": { "id": 16, "color": "#a40b31" }	  
 }
 
-test_df = pd.read_csv('/mnt/disks/pdiachil-t1map/predictions3/evaluate_batch_dev.tsv', sep='\t')
+test_df = pd.read_csv('/mnt/disks/pdiachil-t1map/predictions3/evaluate_batch_holdout.tsv', sep='\t')
 
-skip = [
-2948608,
-5240555,
-2186364,
-2178219,
-1390350,
-2997282,
-1573604,
-3164760,
-3791035,
-4418788,
-4594283,
-4867069,
-4868739,
-5007385,
-5204020,
-1778902]
 # %%
 means = defaultdict(list)
 means['LV Free Wall'] = defaultdict(list)
 means['Interventricular Septum'] = defaultdict(list)
 means['LV Cavity'] = defaultdict(list)
 means['RV Cavity'] = defaultdict(list)
-for i, row in test_df.iterrows():
-    print(i, row['ukbid'])
+means['Wall'] = defaultdict(list)
+
+npats = len(test_df)
+for key, item in means.items():
+    item['model'] = [np.nan]*npats
+    item['model_iqr'] = [np.nan]*npats
+
+means['sample_id'] = [np.nan]*npats
+means['instance'] = [np.nan]*npats
+
+for pat_i, row in test_df.iterrows():
+    print(pat_i, row['ukbid'])
     try:
         sample_id = int(row['ukbid'])
+        means['sample_id'][pat_i] = sample_id
+        instance = 2 
+        means['instance'][pat_i] = instance
+
         sample_idx = test_df[test_df['ukbid']==sample_id].index[0]
-        hd5_model_fname = f'/mnt/disks/pdiachil-t1map/predictions3/dev_results.h5'
+        hd5_model_fname = f'/mnt/disks/pdiachil-t1map/predictions3/holdout_results.h5'
         hd5_data_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122-t1map/{sample_id}.hd5'
         hd5_segmentation_fname = glob.glob(f'/mnt/disks/pdiachil-t1map/prepared3/*__{sample_id}__*.h5')[0]
         blob = bucket.blob(hd5_data_path)
@@ -102,9 +99,19 @@ for i, row in test_df.iterrows():
             with h5py.File(hd5_data_fname, 'r') as hd5_data:
                 with h5py.File(hd5_segmentation_fname, 'r') as hd5_segmentation:
                     arr_model = hd5_model['predictions_argmax'][()][sample_idx]
+                    best_mean = 0
+                    found_anything = False
                     for key in hd5_data['ukb_cardiac_mri']:
-                        if ('t1map' in key) and ('sax' in key):
-                            arr_data = hd5_data[f'ukb_cardiac_mri/{key}/2/instance_0'][()]
+                        if ('t1map' in key) and ('sax' in key) and (str(instance) in hd5_data[f'ukb_cardiac_mri/{key}']):
+                                found_anything = True
+                                cur_data = hd5_data[f'ukb_cardiac_mri/{key}/{instance}/instance_0'][()]
+                                cur_mean = np.mean(cur_data)
+                                if cur_mean > best_mean:
+                                    best_mean = cur_mean
+                                    arr_data = cur_data
+                    if not(found_anything):
+                        logging.warning(f'Did not find anything for {sample_id}/{instance}')
+                        continue
                     arr_data = arr_data[:, :-20, 0]
                     arr_data = cv2.resize(arr_data, (288, 384))
                     arr_segmentation = np.argmax(hd5_segmentation['segmentation_all'][()], axis=2)
@@ -139,16 +146,15 @@ for i, row in test_df.iterrows():
                         if "id2" in color_dic:
                             arr_model_color[arr_model==color_dic["id2"], :] = ImageColor.getrgb(color_dic["color"])                    
                             binary_model = arr_model==color_dic["id2"]
+                            nregions, label_model, stats, centroids = cv2.connectedComponentsWithStats(binary_model.astype(np.uint8), 4, cv2.CV_32S)
+                            if nregions < 2:
+                                skeletons[color] = binary_model
+                            else:
+                                order_by_area = np.argsort(stats[:, cv2.CC_STAT_AREA])
+                                binary_model = label_model==order_by_area[-2]
                             if 'cavity' in color.lower():
                                 skeleton = erode_until(binary_model, 300)
-                                regions = regionprops(skeleton.astype(int))
-                                bubble = regions[0]
-                                radius = int(np.sqrt(bubble.area / np.pi))
-                                mycircle = disk(bubble.centroid, radius, shape=skeleton.shape)
-                                template = np.zeros_like(skeleton)
-                                template[mycircle] = 1
-                                skeletons[color] = template
-                                # skeletons[color] = skeleton
+                                skeletons[color] = skeleton
                             else:
                                 skeleton = skeletonize(binary_model, method='lee')
                                 for i in range(5):
@@ -156,9 +162,7 @@ for i, row in test_df.iterrows():
                                     skeleton -= result*255
                                 kernel = np.ones((3, 3), dtype=np.uint8)
                                 skeletons[color] = np.logical_and(cv2.dilate(skeleton.astype(float), kernel, iterations=1), binary_model)
-                                # skeletons[color] = erode_until(binary_model, 300)
-                                # skeletons[color] = medial_axis(binary_model, return_distance=True)
-                                # skeletons[color] = skeleton
+                    skeletons['Wall'] = skeletons['LV Free Wall'] + skeletons['Interventricular Septum']
                     f, ax = plt.subplots(1, 3)
                     f.set_size_inches(16, 9)
                     ax[0].imshow(arr_data, cmap='gray')
@@ -174,18 +178,19 @@ for i, row in test_df.iterrows():
                     f.savefig(f'/home/pdiachil/projects/t1map/postprocessing/3px_circle/{sample_id}.png')
                     plt.close(f)
                     for region, binary_model in skeletons.items():
-                        mean_model = np.median(arr_data[binary_model>0.5])
-                        binary_segmentation = arr_segmentation==colors[region+' ROI']['id']
-                        mean_segmentation = np.median(arr_data[binary_segmentation>0.5])
-                        means[region]['segmentation'].append(mean_segmentation)
-                        means[region]['model'].append(mean_model)
-                        # if ('eptum' in region):
-                        #     f, ax = plt.subplots(1, 2)
-                        #     sns.distplot(arr_data[binary_model>0.5], ax=ax[0])
-                        #     sns.distplot(arr_data[binary_segmentation>0.5], ax=ax[1])
-
-                    means['sample_id'].append(sample_id)
-                        # print(f'Region {region}: {mean_model} {mean_segmentation}')        
+                        select_data = arr_data[binary_model>0.5]
+                        mean_model = np.median(select_data)
+                        means[region]['model'][pat_i] = mean_model
+                        iqr = np.percentile(select_data, 75) - np.percentile(select_data, 25)
+                        
+                        if not(np.isnan(mean_model)):
+                            if 'Cavity' in region:
+                                percentile_model = np.median(select_data[select_data > (np.percentile(select_data, 25) - 1.5 * iqr)])
+                            else:
+                                percentile_model = np.median(select_data[select_data < (np.percentile(select_data, 75) + 1.5 * iqr)])
+                        else:
+                            percentile_model = np.nan
+                        means[region]['model_iqr'][pat_i] = percentile_model        
     except:
         pass          
     os.remove(f'{sample_id}.hd5')
@@ -194,15 +199,17 @@ import scipy.stats
 
 df_dic = {}
 for region in means:
-    if 'sample_id' in region:
-        df_dic[region] = means['sample_id']
+    if ('sample_id' in region) or ('instance' in region):
+        df_dic[region] = means[region]
     else:
         df_dic[f'{region}_model'] = means[region]['model']
-        df_dic[f'{region}_segmentation'] = means[region]['segmentation']
+        df_dic[f'{region}_model_iqr'] = means[region]['model_iqr']
 df = pd.DataFrame(df_dic)
-df = df[~df['sample_id'].isin(skip)]
-df = df.dropna()
-df
+# df = df[~df['sample_id'].isin(skip)]
+# df = df.dropna()
+
+df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_inference_holdout.csv', index=False)
+
 # %%
 # df = df[df['LV Free Wall_model']>30.0]
 i = 0

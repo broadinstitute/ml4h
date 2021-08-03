@@ -16,10 +16,13 @@ hd5 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t
 df_request['sample_id'] = df_request['diff'].str.split('_').str[0].apply(int)
 df_request['instance'] = df_request['diff'].str.split('_').str[1].apply(int)
 
-common = df_request.merge(df, on=['sample_id', 'instance'])
+df2 = df[df['instance']==2]
+df_request2 = df_request[df_request['instance']==2]
 
 # %%
-df_request2 = df_request[~((df_request['sample_id'].isin(common['sample_id']))&(df_request['instance'].isin(common['instance'])))]
+common_outer = df_request2.merge(df2, on=['sample_id', 'instance'], how='outer', indicator=True)
+
+# %%
 df_request2.to_csv('/home/pdiachil/ml/notebooks/mri/remaining_rois2.csv')
 # %%
 f, ax = plt.subplots(2, 1)
