@@ -67,7 +67,7 @@ def erode_until(binary, ntarget):
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 
-df_remaining = pd.read_csv('/home/pdiachil/ml/notebooks/mri/remaining_rois2.csv')
+df_remaining = pd.read_csv('/home/pdiachil/ml/notebooks/mri/remaining_rois3_dev.csv')
 hd5 = h5py.File('/mnt/disks/pdiachil-t1map/predictions3/ML4H_mdrk_ukb__cardiac_t1_weighted__predictions__5e806c4c75fa47d59f3270711fc35106.h5', 'r')
 # %%
 means = defaultdict(list)
@@ -194,4 +194,4 @@ df = pd.DataFrame(df_dic)
 # df = df[~df['sample_id'].isin(skip)]
 # df = df.dropna()
 
-df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_inference_remaining2_{start_id}_{stop_id}.csv', index=False)
+df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_inference_remaining3_{start_id}_{stop_id}.csv', index=False)
