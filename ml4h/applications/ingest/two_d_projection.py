@@ -38,7 +38,7 @@ import pandas as pd
 from scipy.ndimage import zoom
 from fastparquet import ParquetFile
 import matplotlib.pyplot as plt
-from ingest_mri import compress_and_store, read_compressed
+from ml4h.applications.ingest.ingest_mri import compress_and_store, read_compressed
 
 
 def project_coronal(x: np.ndarray) -> np.ndarray:
@@ -65,6 +65,19 @@ def project_sagittal(x: np.ndarray) -> np.ndarray:
         np.ndarray: Mean-projected 2D projection in the coronal dimension.
     """
     return x.mean(axis=1).T
+
+
+def project_sagittal_aorta(x: np.ndarray) -> np.ndarray:
+    """Computes the mean 2D projection in the putative coronal dimension
+    given axial input data.
+
+    Args:
+        x (np.ndarray): Input 3D volume comprising of axial stacks of MRI images.
+
+    Returns:
+        np.ndarray: Mean-projected 2D projection in the coronal dimension.
+    """
+    return x[:, 100:150, :].mean(axis=1).T
 
 
 def normalize(projection: np.ndarray) -> np.ndarray:
@@ -195,7 +208,7 @@ def build_projections(
             coronal = project_coronal(data[series_num][..., station_slice])
             coronal = zoom(coronal, (scale, 1.0), order=1)  # account for z axis scaling
             coronal_to_stack.append(coronal)
-            sagittal = project_sagittal(data[series_num][..., station_slice])
+            sagittal = project_sagittal_aorta(data[series_num][..., station_slice])
             sagittal = zoom(
                 sagittal, (scale, 1.0), order=1,
             )  # Account for z axis scaling
@@ -228,7 +241,7 @@ def build_projection_hd5(
                 int(name): read_compressed(old_hd5[f'instance/{instance}/series/{name}'])
                 for name in old_hd5[f'instance/{instance}/series']
             }
-            meta_path = os.path.join(pq_base_path, f'{sample_id}_{instance}.pq')
+            meta_path = os.path.join(pq_base_path, f'{sample_id}_{instance}.pq')            
             meta = ParquetFile(meta_path).to_pandas()
             projection = build_projections(data, meta)
             with h5py.File(new_path, 'a') as new_hd5:
