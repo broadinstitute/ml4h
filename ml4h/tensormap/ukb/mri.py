@@ -1731,7 +1731,7 @@ lax_3ch_lv_cavity_bbox = TensorMap(
 )
 
 bbfc = _bounding_box_from_callable(
-    MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'], _segmented_index_slices(
+    MRI_AO_SEGMENTED_CHANNEL_MAP['ao_descending_aorta'], _segmented_index_slices(
     'cine_segmented_ao_dist_annotated_', (192, 224, 100),
     ),
 )
@@ -1741,7 +1741,7 @@ cine_segmented_ao_descending_aorta_bbox = TensorMap(
 )
 
 abbfc = _bounding_box_from_callable(
-    MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'], _segmented_index_slices(
+    MRI_AO_SEGMENTED_CHANNEL_MAP['ao_ascending_aorta'], _segmented_index_slices(
     'cine_segmented_ao_dist_annotated_', (192, 224, 100),
     ),
 )
