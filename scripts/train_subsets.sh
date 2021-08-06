@@ -9,7 +9,7 @@ do
     --tensors "$TENSORS" --input_tensors "$TENSOR_MAPS" --output_tensors "$TENSOR_MAPS" \
     --encoder_blocks /home/sam/trained_models/hypertuned_48m_16e_ecg_median_raw_10_autoencoder_256d/encoder_ecg_rest_median_raw_10.h5 \
         /home/sam/trained_models/hypertuned_64m_18e_lax_4ch_heart_center_autoencoder_256d/encoder_lax_4ch_heart_center.h5 \
-    --merge_blocks \
+    --merge_blocks pair \
     --decoder_blocks /home/sam/trained_models/hypertuned_48m_16e_ecg_median_raw_10_autoencoder_256d/decoder_ecg_rest_median_raw_10.h5 \
         /home/sam/trained_models/hypertuned_64m_18e_lax_4ch_heart_center_autoencoder_256d/decoder_lax_4ch_heart_center.h5 \
     --pairs "$TENSOR_MAPS" --pair_loss contrastive --pair_loss_weight 0.1 --pair_merge dropout \
