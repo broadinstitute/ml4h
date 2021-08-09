@@ -3,7 +3,7 @@ MODEL_FILES=
 TENSORS="/mnt/disks/annotated-cardiac-tensors-45k-2021-03-25/2020-09-21/"
 TENSOR_MAPS="ecg.ecg_rest_median_raw_10 mri.lax_4ch_heart_center "
 #array=( "drop_fuse_unsupervised_train_64.csv" "drop_fuse_unsupervised_train_128.csv" "drop_fuse_unsupervised_train_256.csv" "drop_fuse_unsupervised_train_512.csv" "drop_fuse_unsupervised_train_1024.csv" "drop_fuse_unsupervised_train_2048.csv" "drop_fuse_unsupervised_train_4096.csv")
-array=( "drop_fuse_unsupervised_train_2048.csv" "drop_fuse_unsupervised_train_4096.csv")
+array=("drop_fuse_unsupervised_train_4096.csv")
 
 for i in "${array[@]}"
 do
