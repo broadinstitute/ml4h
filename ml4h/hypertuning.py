@@ -70,6 +70,8 @@ def make_model_builder(args):
     model_count = 0
 
     def model_builder(hp):
+        conv_width = hp.Int('conv_width', 3, 81, step=4)
+        args.__dict__['conv_width'] = [conv_width]
         num_conv_layers = hp.Int('num_conv_layers', 0, 3)
         conv_layer_size = hp.Int('conv_layer_size', 8, 64, step=8)
         args.__dict__['conv_layers'] = [conv_layer_size] * num_conv_layers
