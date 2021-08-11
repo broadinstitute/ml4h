@@ -42,7 +42,7 @@ def run(args):
             seed=args.random_seed,
         )
     elif 'bayes' == tuner_type:
-        tuner = BayesianOptimization( #BayesianSearchEdit(
+        tuner = BayesianSearchEdit(
             model_builder,
             objective='val_loss', #kt.Objective("val_pearson", direction="max"),
             max_trials=args.max_models,
@@ -56,7 +56,7 @@ def run(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     stop_early = EarlyStopping(monitor='val_loss', patience=args.patience)
     tuner.search(generate_train, epochs=args.epochs, steps_per_epoch=args.training_steps,
-                 validation_data=generate_valid, validation_steps=args.validation_steps,)# callbacks=[stop_early])
+                 validation_data=generate_valid, validation_steps=args.validation_steps, callbacks=[stop_early])
     logging.info(f"Tuning done best models below!")
     end_time = timer()
     tuner.search_space_summary()
@@ -116,53 +116,53 @@ def make_model_builder_normalization(args):
     return model_builder
 
 
-# class BayesianSearchEdit(BayesianOptimization):
-#     """
-#     TO-DO: add custom max_model_size input param to class
-#     def __init__(self):
-#         pass
-#     """
-#
-#     def on_trial_end(self, trial):
-#         """A hook called after each trial is run.
-#         # Arguments:
-#             trial: A `Trial` instance.
-#         """
-#         # Send status to Logger
-#         if self.logger:
-#             self.logger.report_trial_state(trial.trial_id, trial.get_state())
-#
-#         if not trial.get_state().get("status") == trial_module.TrialStatus.INVALID:
-#             self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.COMPLETED)
-#
-#         self.oracle.update_space(trial.hyperparameters)
-#         # Display needs the updated trial scored by the Oracle.
-#         self._display.on_trial_end(self.oracle.get_trial(trial.trial_id))
-#         self.save()
-#
-#     def _build_and_fit_model(self, trial, fit_args, fit_kwargs):
-#         model = self.hypermodel.build(trial.hyperparameters)
-#         model_size = self.maybe_compute_model_size(model)
-#         print("Considering model with size: {}".format(model_size))
-#
-#         if model_size > MAX_MODEL_SIZE:
-#             #self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.INVALID)
-#
-#             dummy_history_obj = tf.keras.callbacks.History()
-#             dummy_history_obj.on_train_begin()
-#             dummy_history_obj.history.setdefault('val_loss', []).append(MAX_LOSS)
-#             return dummy_history_obj
-#
-#         return model.fit(*fit_args, **fit_kwargs)
-#
-#
-#     def maybe_compute_model_size(self, model):
-#         """Compute the size of a given model, if it has been built."""
-#         if model.built:
-#             params = [tf.keras.backend.count_params(p) for p in model.trainable_weights]
-#             return int(np.sum(params))
-#         return 0
-#
+class BayesianSearchEdit(BayesianOptimization):
+    """
+    TO-DO: add custom max_model_size input param to class
+    def __init__(self):
+        pass
+    """
+
+    def on_trial_end(self, trial):
+        """A hook called after each trial is run.
+        # Arguments:
+            trial: A `Trial` instance.
+        """
+        # Send status to Logger
+        if self.logger:
+            self.logger.report_trial_state(trial.trial_id, trial.get_state())
+
+        if not trial.get_state().get("status") == trial_module.TrialStatus.INVALID:
+            self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.COMPLETED)
+
+        self.oracle.update_space(trial.hyperparameters)
+        # Display needs the updated trial scored by the Oracle.
+        self._display.on_trial_end(self.oracle.get_trial(trial.trial_id))
+        self.save()
+
+    def _build_and_fit_model(self, trial, fit_args, fit_kwargs):
+        model = self.hypermodel.build(trial.hyperparameters)
+        model_size = self.maybe_compute_model_size(model)
+        print("Considering model with size: {}".format(model_size))
+
+        if model_size > MAX_MODEL_SIZE:
+            #self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.INVALID)
+
+            dummy_history_obj = tf.keras.callbacks.History()
+            dummy_history_obj.on_train_begin()
+            dummy_history_obj.history.setdefault('val_loss', []).append(MAX_LOSS)
+            return dummy_history_obj
+
+        return model.fit(*fit_args, **fit_kwargs)
+
+
+    def maybe_compute_model_size(self, model):
+        """Compute the size of a given model, if it has been built."""
+        if model.built:
+            params = [tf.keras.backend.count_params(p) for p in model.trainable_weights]
+            return int(np.sum(params))
+        return 0
+
 
 if __name__ == '__main__':
     args = parse_args()
