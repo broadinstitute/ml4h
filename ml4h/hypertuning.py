@@ -56,7 +56,7 @@ def run(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     stop_early = EarlyStopping(monitor='val_loss', patience=args.patience)
     tuner.search(generate_train, epochs=args.epochs, steps_per_epoch=args.training_steps,
-                 validation_data=generate_valid, validation_steps=args.validation_steps, callbacks=[stop_early])
+                 validation_data=generate_valid, validation_steps=args.validation_steps,)# callbacks=[stop_early])
     logging.info(f"Tuning done best models below!")
     end_time = timer()
     tuner.search_space_summary()
@@ -154,6 +154,7 @@ class BayesianSearchEdit(BayesianOptimization):
             return dummy_history_obj
 
         return model.fit(*fit_args, **fit_kwargs)
+
 
     def maybe_compute_model_size(self, model):
         """Compute the size of a given model, if it has been built."""
