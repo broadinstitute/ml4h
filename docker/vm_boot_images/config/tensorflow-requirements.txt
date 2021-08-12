@@ -5,13 +5,14 @@ nibabel==2.5.0
 pydicom==1.2.2
 hyperopt==0.1.2
 seaborn==0.9.0
+boto3
 scikit-image
 biosppy
-vtk==8.1.2
+#vtk==9.0.3
 imageio==2.6.1
 ipywidgets>=7.5.1
 bokeh
-Pillow==8.2.0
+Pillow==8.1.1
 notebook
 pytest
 tensorflow==2.5.0
