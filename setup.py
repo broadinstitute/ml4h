@@ -13,6 +13,6 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/broadinstitute/ml4h',
     python_requires='>=3.6',
-    install_requires=requirements + "ml4ht @ git+https://github.com/broadinstitute/torch_ml4h",
+    install_requires=requirements,
     packages=find_packages(),
 )

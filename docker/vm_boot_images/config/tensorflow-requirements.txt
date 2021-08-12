@@ -3,7 +3,6 @@ nibabel==2.5.0
 pydicom==1.2.2
 hyperopt==0.1.2
 seaborn==0.9.0
-boto3
 scikit-image
 biosppy
 vtk==8.1.2
@@ -34,3 +33,5 @@ ipyannotations>=0.2.1
 torch
 opencv-python
 blosc
+boto3
+ml4ht
