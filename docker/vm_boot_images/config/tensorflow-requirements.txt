@@ -1,18 +1,15 @@
-#numpy==1.18.5
-#protobuf==3.13.0
 pydot==1.2.4
 nibabel==2.5.0
 pydicom==1.2.2
 hyperopt==0.1.2
 seaborn==0.9.0
-boto3
 scikit-image
 biosppy
-#vtk==9.0.3
+vtk==8.1.2
 imageio==2.6.1
 ipywidgets>=7.5.1
 bokeh
-Pillow==8.1.1
+Pillow==8.2.0
 notebook
 pytest
 tensorflow==2.5.0
@@ -36,3 +33,5 @@ ipyannotations>=0.2.1
 torch
 opencv-python
 blosc
+boto3
+ml4ht
