@@ -2,6 +2,9 @@ import h5py
 import numpy as np
 import datetime
 from ml4h.TensorMap import TensorMap, Interpretation, str2date
+from ml4h.defines import StorageType
+from ml4h.metrics import weighted_crossentropy
+from ml4h.tensormap.ukb.demographics import prevalent_tensor
 
 DAYS_IN_5_YEARS = 365 * 5
 
@@ -9,24 +12,34 @@ DAYS_IN_5_YEARS = 365 * 5
 def _survival_tensor(
     start_date_key: str,
     day_window: int,
+    disease_name_override: str = None,
     incidence_only: bool = False,
+    start_date_is_attribute: bool = False,
 ):
     def _survival_tensor_from_file(
         tm: TensorMap,
         hd5: h5py.File,
         dependents=None,
     ):
-        assess_date = str2date(str(hd5[start_date_key][0]))
+        if start_date_is_attribute:
+            assess_date = datetime.datetime.utcfromtimestamp(hd5[start_date_key].attrs['date']).date()
+        else:
+            assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0  # Assume no disease if the tensor does not have the dataset
-        if tm.name in hd5['categorical']:
-            has_disease = int(hd5['categorical'][tm.name][0])
 
-        if tm.name + '_date' in hd5['dates']:
-            censor_date = str2date(str(hd5['dates'][tm.name + '_date'][0]))
+        if disease_name_override is not None:
+            disease_name = disease_name_override
+        else:
+            disease_name = tm.name
+        if disease_name in hd5['categorical']:
+            has_disease = int(hd5['categorical'][disease_name][0])
+
+        if disease_name + '_date' in hd5['dates']:
+            censor_date = str2date(str(hd5['dates'][disease_name + '_date'][0]))
         elif 'phenotype_censor' in hd5['dates']:
             censor_date = str2date(str(hd5['dates/phenotype_censor'][0]))
         else:
-            raise ValueError(f'No date found for survival {tm.name}')
+            raise ValueError(f'No date found for survival {disease_name}')
 
         intervals = int(tm.shape[0] / 2)
         days_per_interval = day_window / intervals
@@ -49,9 +62,16 @@ def _survival_tensor(
     return _survival_tensor_from_file
 
 
-def cox_tensor_from_file(start_date_key: str, incidence_only: bool = False):
+def cox_tensor_from_file(
+        start_date_key: str,
+        incidence_only: bool = False,
+        start_date_is_attribute: bool = False,
+):
     def _cox_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        assess_date = str2date(str(hd5[start_date_key][0]))
+        if start_date_is_attribute:
+            assess_date = datetime.datetime.utcfromtimestamp(hd5[start_date_key].attrs['date']).date()
+        else:
+            assess_date = str2date(str(hd5[start_date_key][0]))
         has_disease = 0  # Assume no disease if the tensor does not have the dataset
         if tm.name in hd5['categorical']:
             has_disease = int(hd5['categorical'][tm.name][0])
@@ -95,6 +115,7 @@ enroll_afib_hazard = TensorMap(
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor('dates/enroll_date', DAYS_IN_5_YEARS),
 )
+
 enroll_chol_hazard = TensorMap(
     'hypercholesterolemia',
     Interpretation.SURVIVAL_CURVE,
@@ -221,3 +242,88 @@ cox_cad_incident = TensorMap(
         'dates/enroll_date', incidence_only=True,
     ),
 )
+
+cox_afib_wrt_instance2 = TensorMap(
+    'atrial_fibrillation_or_flutter',
+    Interpretation.TIME_TO_EVENT,
+    tensor_from_file=cox_tensor_from_file(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/', start_date_is_attribute=True,
+    ),
+)
+
+survival_afib_wrt_instance2 = TensorMap(
+    'atrial_fibrillation_or_flutter',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+                                      DAYS_IN_5_YEARS, start_date_is_attribute=True),
+)
+
+mgb_afib_wrt_instance2 = TensorMap(
+    'survival_curve_af',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+                                      disease_name_override='atrial_fibrillation_or_flutter',
+                                      start_date_is_attribute=True, incidence_only=True),
+)
+mgb_afib_wrt_instance2_with_prevalent = TensorMap(
+    'survival_curve_af',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+                                      disease_name_override='atrial_fibrillation_or_flutter',
+                                      start_date_is_attribute=True, incidence_only=False),
+)
+
+
+mgb_afib_as_hf_wrt_instance2 = TensorMap(
+    'survival_curve_af',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+                                      disease_name_override='heart_failure',
+                                      start_date_is_attribute=True, incidence_only=True),
+)
+
+mgb_afib_as_stroke_wrt_instance2 = TensorMap(
+    'survival_curve_af',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+                                      disease_name_override='stroke',
+                                      start_date_is_attribute=True, incidence_only=True),
+)
+
+
+prevalent_hf_wrt_instance2 = TensorMap('heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+                                       loss=weighted_crossentropy([1.0, 58], 'heart_failure'), path_prefix='categorical',
+                                       channel_map={'no_heart_failure': 0, 'prevalent_heart_failure': 1},
+                                       tensor_from_file=prevalent_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+                                                                         'dates/heart_failure_date',
+                                                                         start_date_is_attribute=True),
+
+                                       )
+
+prevalent_af_as_hf_wrt_instance2 = TensorMap('heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+                                       loss=weighted_crossentropy([1.0, 58], 'heart_failure'), path_prefix='categorical',
+                                       channel_map={'no_atrial_fibrillation_or_flutter': 0, 'prevalent_atrial_fibrillation_or_flutter': 1},
+                                       tensor_from_file=prevalent_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+                                                                         'dates/atrial_fibrillation_or_flutter_date',
+                                                                         start_date_is_attribute=True),
+
+                                       )
+
+prevalent_cad_wrt_instance2 = TensorMap('coronary_artery_disease', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+                                       loss=weighted_crossentropy([1.0, 10], 'coronary_artery_disease'), path_prefix='categorical',
+                                       channel_map={'no_coronary_artery_disease': 0, 'prevalent_coronary_artery_disease': 1},
+                                       tensor_from_file=prevalent_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+                                                                         'dates/coronary_artery_disease_date',
+                                                                         start_date_is_attribute=True),
+
+                                       )
