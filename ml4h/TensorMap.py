@@ -370,9 +370,7 @@ def str2date(d):
     parts = d.split('-')
     if len(parts) < 2:
         raise ValueError(f'cant make date from {d}')
-    return datetime.date(int(str(parts[0], 'utf-8')),
-                         int(str(parts[1], 'utf-8')),
-                         int(str(parts[2], 'utf-8')))
+    return datetime.date(parts[0], parts[1], parts[2])
 
 
 def _is_equal_field(field1: Any, field2: Any) -> bool:
