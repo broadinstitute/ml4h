@@ -367,7 +367,7 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
 
 
 def str2date(d):
-    parts = d.split('-')
+    parts = str(d, 'utf-8').split('-')
     if len(parts) < 2:
         raise ValueError(f'cant make date from {d}')
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
