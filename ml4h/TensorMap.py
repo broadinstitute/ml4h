@@ -367,10 +367,12 @@ def _translate(val, cur_min, cur_max, new_min, new_max):
 
 
 def str2date(d):
-    parts = str(d, 'utf-8').split('-')
+    parts = d.split('-')
     if len(parts) < 2:
         raise ValueError(f'cant make date from {d}')
-    return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+    return datetime.date(int(str(parts[0], 'utf-8')),
+                         int(str(parts[1], 'utf-8')),
+                         int(str(parts[2], 'utf-8')))
 
 
 def _is_equal_field(field1: Any, field2: Any) -> bool:
