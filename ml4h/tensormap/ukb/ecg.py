@@ -7,7 +7,7 @@ from tensorflow.keras.utils import to_categorical
 from ml4h.normalizer import ZeroMeanStd1, Standardize
 from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
-from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS
+from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
 from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
 from ml4h.tensormap.ukb.demographics import age_in_years_tensor
@@ -418,11 +418,11 @@ ecg_rest = TensorMap(
 )
 ecg_rest_mgb = TensorMap(
     'ecg_5000_std', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_MGB_LEADS, normalization=ZeroMeanStd1(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
 )
 ecg_rest_mgb_2500 = TensorMap(
-    'ecg_2500_std', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_MGB_LEADS, normalization=ZeroMeanStd1(),
+    'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
 )
 ecg_rest_mgb_from_dd = TensorMap(
     'ecg', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),

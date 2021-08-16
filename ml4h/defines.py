@@ -121,6 +121,10 @@ ECG_REST_MGB_LEADS = {
     'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 11, 'strip_aVL': 10, 'strip_aVR': 9,
 }
+ECG_REST_AMP_LEADS_UKB = {
+    'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 6, 'strip_V2': 7, 'strip_V3': 8,
+    'strip_V4': 9, 'strip_V5': 10, 'strip_V6': 11, 'strip_aVF': 5, 'strip_aVL': 4, 'strip_aVR': 3,
+}
 ECG_SEGMENTED_CHANNEL_MAP = {'unknown': 0, 'TP_segment': 1, 'P_wave': 2, 'PQ_segment': 3, 'QRS_complex': 4, 'ST_segment': 5, 'T_wave': 6, 'U_wave': 7}
 
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
