@@ -1,5 +1,3 @@
-#numpy==1.18.5
-#protobuf==3.13.0
 pydot==1.2.4
 nibabel==2.5.0
 pydicom==1.2.2
@@ -35,3 +33,5 @@ ipyannotations>=0.2.1
 torch
 opencv-python
 blosc
+boto3
+ml4ht
