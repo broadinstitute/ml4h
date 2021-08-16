@@ -1489,7 +1489,7 @@ def get_model_inputs_outputs(
                 m.get_layer(output_tensor_map.output_name())
                 model_inputs_outputs[output_prefix].append(output_tensor_map)
             except ValueError:
-                logging.debug(f'Could not find {output_tensor_map.output_name()} in {model_file}. Outputs: {[l for l in m.layers if "output" in l]}')
+                logging.debug(f'Could not find {output_tensor_map.output_name()} in {model_file}. Outputs: {[l for l in m.layers if "output" in l.name]}')
         if not got_tensor_maps_for_characters:
             try:
                 m.get_layer('input_ecg_rest_text_ecg_text')
