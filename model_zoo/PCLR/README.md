@@ -43,6 +43,9 @@ We also provide a PCLR model using only lead I of the ECG at [PCLR_lead_I.h5](./
 It was trained with the same settings as the full 12-lead model except
 the model only takes lead I of the ECG as input.
 
+## Lead II PCLR
+[Lead II PCLR](./PCLR_lead_II.h5) is like lead I PCLR except it was trained with all ECGs sampled to 250Hz.
+
 ## Alternative save format
-The newer keras saved model format is available for the 12-lead and lead I models at [PCLR](./PCLR)
-and [PCLR_lead_I](./PCLR_lead_I).
+The newer keras saved model format is available for the 12-lead and single lead models at [PCLR](./PCLR)
+and [PCLR_lead_I](./PCLR_lead_I) and [PCLR_lead_II](./PCLR_lead_II).
