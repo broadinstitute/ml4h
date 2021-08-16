@@ -703,6 +703,7 @@ def _get_common_outputs(models_inputs_outputs, output_prefix):
         outputs = {k: v for (k, v) in ios.items() if k == output_prefix}
         for (_, output) in outputs.items():
             all_outputs.append(set(output))
+    logging.info(f'Finding model output intersection of {all_outputs}')
     return reduce(set.intersection, all_outputs)
 
 
