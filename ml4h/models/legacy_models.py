@@ -1483,13 +1483,13 @@ def get_model_inputs_outputs(
                 m.get_layer(input_tensor_map.input_name())
                 model_inputs_outputs[input_prefix].append(input_tensor_map)
             except ValueError:
-                pass
+                logging.debug(f'Could not find {input_tensor_map.input_name()} in {model_file}')
         for output_tensor_map in tensor_maps_out:
             try:
                 m.get_layer(output_tensor_map.output_name())
                 model_inputs_outputs[output_prefix].append(output_tensor_map)
             except ValueError:
-                pass
+                logging.debug(f'Could not find {output_tensor_map.output_name()} in {model_file}. Outputs: {[l for l in m.layers if "output" in l]}')
         if not got_tensor_maps_for_characters:
             try:
                 m.get_layer('input_ecg_rest_text_ecg_text')
