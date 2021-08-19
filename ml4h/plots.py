@@ -308,8 +308,8 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_time_to_event():
-        # from sksurv.metrics import concordance_index_censored
-        # c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
+        from sksurv.metrics import concordance_index_censored
+        c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = [
             "C-Index",
             "Concordant Pairs",
