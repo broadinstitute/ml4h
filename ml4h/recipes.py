@@ -280,23 +280,26 @@ def infer_multimodal_multitask(args):
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
         cache_size=0, keep_paths=True, mixup_alpha=args.mixup_alpha,
     )
+
     logging.info(f"Found {len(tensor_paths)} tensor paths.")
     generate_test.set_worker_paths(tensor_paths)
+    output_maps = {tm.output_name(): tm for tm in no_fail_tmaps_out}
     with open(inference_tsv, mode='w') as inference_file:
         # TODO: csv.DictWriter is much nicer for this
         inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         header = ['sample_id']
         if tsv_style_is_genetics:
             header = ['FID', 'IID']
-        for ot, otm in zip(args.output_tensors, args.tensor_maps_out):
+        for ot in model.output_names:
+            otm = output_maps[ot]
             logging.info(f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}.")
-            if len(otm.shape) == 1 and otm.is_continuous():
-                header.extend([ot+'_prediction', ot+'_actual'])
+            if (len(otm.shape) == 1 and otm.is_continuous()) or otm.is_survival_curve():
+                header.extend([otm.name + '_prediction', otm.name + '_actual'])
             elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
                 for k in otm.channel_map:
-                    channel_columns.append(ot + '_' + k + '_prediction')
-                    channel_columns.append(ot + '_' + k + '_actual')
+                    channel_columns.append(otm.name + '_' + k + '_prediction')
+                    channel_columns.append(otm.name + '_' + k + '_actual')
                 header.extend(channel_columns)
         inference_writer.writerow(header)
 
@@ -310,34 +313,42 @@ def infer_multimodal_multitask(args):
             prediction = model.predict(input_data)
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
-
+            predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             csv_row = [sample_id]
             if tsv_style_is_genetics:
                 csv_row *= 2
-            for y, tm in zip(prediction, no_fail_tmaps_out):
-                if tm.axes() == 1 and tm.is_continuous():
-                    csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
-                            or np.isnan(output_data[tm.output_name()][0][0])):
+            for ot in model.output_names:
+                y = predictions_dict[ot]
+                otm = output_maps[ot]
+                if len(otm.shape) == 1 and otm.is_continuous():
+                    csv_row.append(str(otm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
+                    if ((otm.sentinel is not None and otm.sentinel == output_data[otm.output_name()][0][0])
+                            or np.isnan(output_data[otm.output_name()][0][0])):
                         csv_row.append("NA")
                     else:
-                        csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
-                elif tm.axes() == 1 and tm.is_categorical():
-                    for k, i in tm.channel_map.items():
+                        csv_row.append(str(otm.rescale(output_data[otm.output_name()])[0][0]))
+                elif len(otm.shape) == 1 and otm.is_categorical():
+                    for k, i in otm.channel_map.items():
                         try:
-                            csv_row.append(str(y[0][tm.channel_map[k]]))
-                            actual = output_data[tm.output_name()][0][i]
+                            csv_row.append(str(y[0][otm.channel_map[k]]))
+                            actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
-                            logging.debug(f'index error at {tm.name} item {i} key {k} with cm: {tm.channel_map} y is {y.shape} y is {y}')
-                elif tm.axes() > 1:
+                            logging.debug(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
+                elif otm.is_survival_curve():
+                    intervals = otm.shape[-1] // 2
+                    # predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                    predicted_survivals = np.cumprod(y[:, :10], axis=1)
+                    csv_row.append(str(1 - predicted_survivals[0, -1]))
+                    sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
+                    csv_row.append(str(sick[0]))
+                elif otm.axes() > 1:
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}_inferred{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
-                        hd5.create_dataset(f'{tm.name}_truth', data=output_data[tm.output_name()][0], compression='gzip')
-                        hd5.create_dataset(f'{tm.name}_prediction', data=y[0], compression='gzip')
-
+                        hd5.create_dataset(f'{otm.name}_truth', data=output_data[otm.output_name()][0], compression='gzip')
+                        hd5.create_dataset(f'{otm.name}_prediction', data=y[0], compression='gzip')
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
             stats['count'] += 1
