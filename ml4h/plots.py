@@ -2439,6 +2439,8 @@ def subplot_roc_per_class(
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
     total_plots = len(protected) + 1
+    if total_plots == 1:
+        return plot_roc(prediction, truth, labels, title, prefix)
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -2450,9 +2452,9 @@ def subplot_roc_per_class(
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for key in labels:
-        labels_to_areas[key] = roc_auc[labels[key]]
         if "no_" in key and len(labels) == 2:
             continue
+        labels_to_areas[key] = roc_auc[labels[key]]
         color = _hash_string_to_color(key)
         label_text = (
             f"{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
@@ -2476,11 +2478,44 @@ def subplot_roc_per_class(
     return labels_to_areas
 
 
+def plot_roc(prediction, truth, labels, title, prefix="./figures/"):
+    lw = 2
+    labels_to_areas = {}
+    true_sums = np.sum(truth, axis=0)
+    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
+
+    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    for key in labels:
+        if "no_" in key and len(labels) == 2:
+            continue
+        color = _hash_string_to_color(key)
+        labels_to_areas[key] = roc_auc[labels[key]]
+        label_text = f"{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+        plt.plot(
+            fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+        )
+        logging.info(f"ROC Label {label_text}")
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([-0.02, 1.03])
+    plt.ylabel(RECALL_LABEL)
+    plt.xlabel(FALLOUT_LABEL)
+    plt.legend(loc="lower right")
+    plt.plot([0, 1], [0, 1], "k:", lw=0.5)
+    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}\n")
+
+    figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    logging.info(f"Saved ROC curve at: {figure_path}")
+    return labels_to_areas
+
+
 def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
     lw = 2
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
-
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
         for key in labels:
@@ -2505,7 +2540,7 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    logging.info("Saved ROC curve at: {}".format(figure_path))
+    logging.info(f"Saved ROC curve at: {figure_path}")
 
 
 def _figure_and_subplot_axes_from_total(total_plots: int):
