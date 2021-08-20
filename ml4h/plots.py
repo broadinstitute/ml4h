@@ -58,7 +58,7 @@ import ml4h.tensormap.ukb.ecg
 import ml4h.tensormap.mgb.ecg
 from ml4h.tensormap.mgb.dynamic import make_waveform_maps
 from ml4h.TensorMap import TensorMap
-from ml4h.metrics import concordance_index, coefficient_of_determination
+from ml4h.metrics import concordance_index, concordance_index_censored, coefficient_of_determination
 from ml4h.defines import (
     IMAGE_EXT,
     JOIN_CHAR,
@@ -68,7 +68,6 @@ from ml4h.defines import (
     ECG_REST_MEDIAN_LEADS,
     PARTNERS_DATETIME_FORMAT,
     PARTNERS_DATE_FORMAT,
-    HD5_GROUP_CHAR,
 )
 
 RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
@@ -308,7 +307,6 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_time_to_event():
-        from sksurv.metrics import concordance_index_censored
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = [
             "C-Index",
