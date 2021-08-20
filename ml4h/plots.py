@@ -444,7 +444,6 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
@@ -495,7 +494,6 @@ def plot_rocs(
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info(f"Saved ROC curve at: {figure_path}")
 
 
@@ -569,7 +567,6 @@ def plot_prediction_calibrations(
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save calibration comparison plot at: {figure_path}")
     plt.savefig(figure_path)
-    plt.clf()
 
 
 def plot_prediction_calibration(
@@ -652,7 +649,6 @@ def plot_prediction_calibration(
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save calibrations plot at: {figure_path}")
     plt.savefig(figure_path)
-    plt.clf()
 
 
 def plot_scatter(
@@ -715,7 +711,6 @@ def plot_scatter(
         os.makedirs(os.path.dirname(figure_path))
     logging.info("Try to save scatter plot at: {}".format(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     return {title + "_pearson": pearson}
 
 
@@ -821,7 +816,6 @@ def subplot_pearson_per_class(
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches="tight")
-    plt.clf()
     logging.info(
         f"{label_text} saved at: {figure_path}{f' with {len(protected)} protected TensorMaps.' if len(protected) else '.'}",
     )
@@ -2476,7 +2470,6 @@ def subplot_roc_per_class(
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path, bbox_inches="tight")
-    plt.clf()
     logging.info(
         f"Saved ROC curve at: {figure_path} with {len(protected)} protected TensorMaps.",
     )
@@ -2512,7 +2505,6 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/"):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info("Saved ROC curve at: {}".format(figure_path))
 
 
@@ -2633,7 +2625,6 @@ def plot_precision_recall_per_class(
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info(f"Saved Precision Recall curve at: {figure_path}")
     return labels_to_areas
 
@@ -2668,7 +2659,6 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info("Saved Precision Recall curve at: {}".format(figure_path))
 
 
@@ -2700,7 +2690,6 @@ def plot_waves(predicted_waves, true_waves, title, plot_path, rows=6, cols=6):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info("Saved waves at: {}".format(figure_path))
 
 
@@ -2788,7 +2777,6 @@ def plot_tsne(
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
     logging.info(f"Saved T-SNE plot at: {figure_path}")
 
 
@@ -2819,7 +2807,6 @@ def plot_find_learning_rate(
     plt.xlabel("Log_10 learning rate")
     plt.legend()
     plt.savefig(os.path.join(figure_path, f"find_learning_rate{IMAGE_EXT}"))
-    plt.clf()
 
 
 def plot_saliency_maps(
@@ -2948,7 +2935,6 @@ def _plot_ecgs(
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
 
 
 def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
@@ -2961,7 +2947,6 @@ def _plot_3d_tensor_slices_as_rgb(tensor, figure_path, cols=3, rows=10):
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    plt.clf()
 
 
 def _hash_string_to_color(string):
@@ -3054,7 +3039,6 @@ def plot_reconstruction(
                         yp[:, :, j, 0],
                         cmap="gray",
                     )
-        plt.clf()
 
 
 def pca_on_matrix(matrix, pca_components, prefix="./figures/"):
