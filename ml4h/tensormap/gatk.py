@@ -40,5 +40,5 @@ variant_label = TensorMap(
     'variant_label', Interpretation.CATEGORICAL,
     shape=(len(VARIANT_LABELS),),
     tensor_from_file=variant_label_from_hd5,
-    channel_map=VARIANT_LABELS
+    channel_map=VARIANT_LABELS,
 )
