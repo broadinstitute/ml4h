@@ -21,8 +21,14 @@ fs = TensorMap('fs', shape=(1,), normalization=Standardize(mean=4.03, std=7.2), 
 qd = TensorMap('qd', shape=(1,), normalization=Standardize(mean=12.8, std=6.1), tensor_from_file=tensor_from_hd5)
 mq = TensorMap('mq', shape=(1,), normalization=Standardize(mean=59.1, std=8.6), tensor_from_file=tensor_from_hd5)
 sor = TensorMap('sor', shape=(1,), normalization=Standardize(mean=1.03, std=0.8), tensor_from_file=tensor_from_hd5)
-mqranksum = TensorMap('mqranksum', shape=(1,), normalization=Standardize(mean=-0.23, std=1.1), tensor_from_file=tensor_from_hd5)
-readposranksum = TensorMap('readposranksum', shape=(1,), normalization=Standardize(mean=-0.04, std=1.2), tensor_from_file=tensor_from_hd5)
+mqranksum = TensorMap(
+    'mqranksum', shape=(1,),
+    normalization=Standardize(mean=-0.23, std=1.1), tensor_from_file=tensor_from_hd5,
+)
+readposranksum = TensorMap(
+    'readposranksum', shape=(1,),
+    normalization=Standardize(mean=-0.04, std=1.2), tensor_from_file=tensor_from_hd5,
+)
 
 
 def variant_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
