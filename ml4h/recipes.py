@@ -4,6 +4,7 @@
 import os
 import csv
 import copy
+import h5py
 import logging
 import numpy as np
 from functools import reduce
@@ -310,18 +311,19 @@ def infer_multimodal_multitask(args):
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
 
-            csv_row = [os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')]  # extract sample id
+            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+            csv_row = [sample_id]
             if tsv_style_is_genetics:
                 csv_row *= 2
             for y, tm in zip(prediction, no_fail_tmaps_out):
-                if len(tm.shape) == 1 and tm.is_continuous():
+                if tm.axes() == 1 and tm.is_continuous():
                     csv_row.append(str(tm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
                     if ((tm.sentinel is not None and tm.sentinel == output_data[tm.output_name()][0][0])
                             or np.isnan(output_data[tm.output_name()][0][0])):
                         csv_row.append("NA")
                     else:
                         csv_row.append(str(tm.rescale(output_data[tm.output_name()])[0][0]))
-                elif len(tm.shape) == 1 and tm.is_categorical():
+                elif tm.axes() == 1 and tm.is_categorical():
                     for k, i in tm.channel_map.items():
                         try:
                             csv_row.append(str(y[0][tm.channel_map[k]]))
@@ -329,6 +331,11 @@ def infer_multimodal_multitask(args):
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
                             logging.debug(f'index error at {tm.name} item {i} key {k} with cm: {tm.channel_map} y is {y.shape} y is {y}')
+                elif tm.axes() > 1:
+                    hd5_path = os.path.join(args.output_folder, 'inferred_hd5s', f'{sample_id}_inferred{TENSOR_EXT}')
+                    with h5py.File(hd5_path, 'a') as hd5:
+                        hd5.create_dataset(f'{hd5_path}/{tm.name}_truth', data=output_data[tm.output_name()][0], compression='gzip')
+                        hd5.create_dataset(f'{hd5_path}/{tm.name}_prediction', data=y[0], compression='gzip')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
