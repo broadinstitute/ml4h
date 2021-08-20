@@ -6,7 +6,24 @@
 * Tensorize: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
 * TensorMap: tag data (typically from an HD5) with an interpretation and a method for generation
 * ModelFactory: connect TensorMaps with a trainable architectures
-* Evaluate: generate plots that enable domain-driven inspection of models and results 
+* Evaluate: generate plots that enable domain-driven inspection of models and results
+
+## Citation
+If you use ml4h for research, you can use this citation format:
+```
+@misc{ml4h,
+	title = {ml4h},
+	copyright = {BSD 3-Clause License, 2021},
+	url = {https://github.com/broadinstitute/ml4h},
+	author = {{Data Sciences Platform at Broad Institute of MIT and Harvard}},
+	abstract = {ml4h is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
+	urldate = {2021-03-31},
+	publisher = {Broad Institute},
+	month = mar,
+	year = {2021},
+	note = {original-date: 2019-04-10}
+}
+```
 
 # Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
