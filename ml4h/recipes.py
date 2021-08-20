@@ -332,11 +332,11 @@ def infer_multimodal_multitask(args):
                         except IndexError:
                             logging.debug(f'index error at {tm.name} item {i} key {k} with cm: {tm.channel_map} y is {y.shape} y is {y}')
                 elif tm.axes() > 1:
-                    hd5_path = os.path.join(args.output_folder, 'inferred_hd5s', f'{sample_id}_inferred{TENSOR_EXT}')
+                    hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}_inferred{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
-                        hd5.create_dataset(f'{hd5_path}/{tm.name}_truth', data=output_data[tm.output_name()][0], compression='gzip')
-                        hd5.create_dataset(f'{hd5_path}/{tm.name}_prediction', data=y[0], compression='gzip')
+                        hd5.create_dataset(f'{tm.name}_truth', data=output_data[tm.output_name()][0], compression='gzip')
+                        hd5.create_dataset(f'{tm.name}_prediction', data=y[0], compression='gzip')
 
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
