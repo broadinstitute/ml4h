@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 from typing import List, Tuple, Dict
 from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.normalizer import Standardize
 
 
 def tensor_path(path_prefix: str, name: str) -> str:
@@ -132,13 +133,10 @@ def build_tensor_from_file(
         if error:
             raise error
         if normalization:
-            tm.normalization = {'mean': mean, 'std': std}
+            tm.normalization = Standardize(mean=mean, std=std)
         try:
             return table[
-                os.path.basename(hd5.filename).replace(
-                    '.hd5',
-                    '',
-                )
+                os.path.basename(hd5.filename).replace('.hd5', '')
             ].copy()
         except KeyError:
             raise KeyError(f'User id not in file {file_name}.')
