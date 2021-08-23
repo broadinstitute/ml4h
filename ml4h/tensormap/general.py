@@ -3,7 +3,7 @@ import csv
 import logging
 import h5py
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from ml4h.TensorMap import TensorMap, Interpretation
 
 
@@ -12,6 +12,10 @@ def tensor_path(path_prefix: str, name: str) -> str:
     In the future, TMAPs should be generated using this same function
     """
     return f'/{path_prefix}/{name}/'
+
+
+def tensor_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name])
 
 
 def all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:

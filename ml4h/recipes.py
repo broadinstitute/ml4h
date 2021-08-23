@@ -347,8 +347,8 @@ def infer_multimodal_multitask(args):
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}_inferred{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
-                        hd5.create_dataset(f'{otm.name}_truth', data=output_data[otm.output_name()][0], compression='gzip')
-                        hd5.create_dataset(f'{otm.name}_prediction', data=y[0], compression='gzip')
+                        hd5.create_dataset(f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]), compression='gzip')
+                        hd5.create_dataset(f'{otm.name}_prediction', data=otm.rescale(y[0]), compression='gzip')
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
             stats['count'] += 1

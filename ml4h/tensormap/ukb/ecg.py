@@ -1,11 +1,11 @@
 import h5py
 import numpy as np
 import scipy
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
 # from ml4h.tensor_writer_ukbb import tensor_path
 from ml4h.normalizer import ZeroMeanStd1, Standardize
-from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape
+from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
 from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
@@ -483,6 +483,15 @@ ecg_rest_median_raw_10 = TensorMap(
 ecg_rest_median = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_median_raw_10_prediction = TensorMap(
+    'ecg_rest_median_raw_10_prediction', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
+)
+ecg_rest_median_raw_10_truth = TensorMap(
+    'ecg_rest_median_raw_10_truth', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
 )
 
 ecg_rest_median_stack = TensorMap(
