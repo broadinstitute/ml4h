@@ -344,7 +344,7 @@ def infer_multimodal_multitask(args):
                     sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
                     csv_row.append(str(sick[0]))
                 elif otm.axes() > 1:
-                    hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}_inferred{TENSOR_EXT}')
+                    hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
                         hd5.create_dataset(f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]), compression='gzip')
