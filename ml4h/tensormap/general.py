@@ -97,7 +97,7 @@ def build_tensor_from_file(
     file_name: str,
     target_column: str,
     normalization: bool = False,
-    delimiter: str = '\t',
+    delimiter: str = ',',
 ):
     """
     Build a tensor_from_file function from a column in a file.
