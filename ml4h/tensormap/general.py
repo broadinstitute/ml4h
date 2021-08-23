@@ -113,7 +113,7 @@ def build_tensor_from_file(
             table = {}
             for row in reader:
                 try:
-                    table[row[0]]: np.array([float(row[index])])
+                    table[row[0]] = np.array([float(row[index])])
                 except ValueError:
                     logging.debug(f'ValueError parsing: {row[index]}')
             if normalization:
