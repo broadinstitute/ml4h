@@ -110,7 +110,12 @@ def build_tensor_from_file(
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             index = header.index(target_column)
-            table = {row[0]: np.array([float(row[index])]) for row in reader}
+            table = {}
+            for row in reader:
+                try:
+                    row[0]: np.array([float(row[index])])
+                except ValueError:
+                    logging.debug(f'ValueError parsing: {row[index]}')
             if normalization:
                 value_array = np.array(
                     [sub_array[0] for sub_array in table.values()],
