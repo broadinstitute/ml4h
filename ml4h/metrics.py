@@ -576,3 +576,94 @@ def concordance_index(prediction, truth, tied_tol=1e-8):
 
     cindex = numerator / denominator
     return cindex, concordant, discordant, tied_risk, tied_time
+
+
+def _estimate_concordance_index(event_indicator, event_time, estimate, weights, tied_tol=1e-8):
+    order = np.argsort(event_time)
+    comparable, tied_time = _get_comparable(event_indicator, event_time, order)
+    if len(comparable) == 0:
+        raise ValueError("Data has no comparable pairs, cannot estimate concordance index.")
+
+    concordant = 0
+    discordant = 0
+    tied_risk = 0
+    numerator = 0.0
+    denominator = 0.0
+    for ind, mask in comparable.items():
+        est_i = estimate[order[ind]]
+        event_i = event_indicator[order[ind]]
+        w_i = weights[order[ind]]
+
+        est = estimate[order[mask]]
+
+        assert event_i, 'got censored sample at index %d, but expected uncensored' % order[ind]
+
+        ties = np.absolute(est - est_i) <= tied_tol
+        n_ties = ties.sum()
+        # an event should have a higher score
+        con = est < est_i
+        n_con = con[~ties].sum()
+
+        numerator += w_i * n_con + 0.5 * w_i * n_ties
+        denominator += w_i * mask.sum()
+
+        tied_risk += n_ties
+        concordant += n_con
+        discordant += est.size - n_con - n_ties
+
+    cindex = numerator / denominator
+    return cindex, concordant, discordant, tied_risk, tied_time
+
+
+def concordance_index_censored(event_indicator, event_time, estimate, tied_tol=1e-8):
+    """Concordance index for right-censored data
+    The concordance index is defined as the proportion of all comparable pairs
+    in which the predictions and outcomes are concordant.
+    Two samples are comparable if (i) both of them experienced an event (at different times),
+    or (ii) the one with a shorter observed survival time experienced an event, in which case
+    the event-free subject "outlived" the other. A pair is not comparable if they experienced
+    events at the same time.
+    Concordance intuitively means that two samples were ordered correctly by the model.
+    More specifically, two samples are concordant, if the one with a higher estimated
+    risk score has a shorter actual survival time.
+    When predicted risks are identical for a pair, 0.5 rather than 1 is added to the count
+    of concordant pairs.
+    See the :ref:`User Guide </user_guide/evaluating-survival-models.ipynb>`
+    and [1]_ for further description.
+    Parameters
+    ----------
+    event_indicator : array-like, shape = (n_samples,)
+        Boolean array denotes whether an event occurred
+    event_time : array-like, shape = (n_samples,)
+        Array containing the time of an event or time of censoring
+    estimate : array-like, shape = (n_samples,)
+        Estimated risk of experiencing an event
+    tied_tol : float, optional, default: 1e-8
+        The tolerance value for considering ties.
+        If the absolute difference between risk scores is smaller
+        or equal than `tied_tol`, risk scores are considered tied.
+    Returns
+    -------
+    cindex : float
+        Concordance index
+    concordant : int
+        Number of concordant pairs
+    discordant : int
+        Number of discordant pairs
+    tied_risk : int
+        Number of pairs having tied estimated risks
+    tied_time : int
+        Number of comparable pairs sharing the same time
+    See also
+    --------
+    concordance_index_ipcw
+        Alternative estimator of the concordance index with less bias.
+    References
+    ----------
+    .. [1] Harrell, F.E., Califf, R.M., Pryor, D.B., Lee, K.L., Rosati, R.A,
+           "Multivariable prognostic models: issues in developing models,
+           evaluating assumptions and adequacy, and measuring and reducing errors",
+           Statistics in Medicine, 15(4), 361-87, 1996.
+    """
+    w = np.ones_like(estimate)
+    return _estimate_concordance_index(event_indicator, event_time, estimate, w, tied_tol)
