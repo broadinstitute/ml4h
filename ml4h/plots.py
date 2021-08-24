@@ -405,12 +405,12 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     row = 0
     col = 0
     total_plots = int(
-        len(history.history) / 2,
+        math.ceil(len(history.history) / 2)
     )  # divide by 2 because we plot validation and train histories together
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(
-        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)),
+        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE))
     )
     logging.info(f"all keys {list(sorted(history.history.keys()))}")
     for k in sorted(history.history.keys()):
@@ -440,7 +440,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                     break
 
     plt.tight_layout()
-    figure_path = os.path.join(prefix, "metric_history_" + title + IMAGE_EXT)
+    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
+    figure_path = os.path.join(prefix, f'metrics_{now_string}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
