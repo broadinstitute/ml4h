@@ -944,12 +944,8 @@ def subplot_comparison_scatters(
 
 
 def plot_survivorship(
-    events: np.ndarray,
-    days_follow_up: np.ndarray,
-    predictions: np.ndarray,
-    title: str,
-    prefix: str = "./figures/",
-    days_window: int = 1825,
+    events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
+    title: str, prefix: str = './figures/', days_window: int = 1825,
 ):
     """Plot Kaplan-Meier survivorship curves and stratify by median model prediction.
     All input arrays have the same shape: (num_samples,)
@@ -976,20 +972,10 @@ def plot_survivorship(
         sick_per_step += events[day_index]
         censored += 1 - events[day_index]
         alive_per_step -= events[day_index]
-        survivorship.append(1 - (sick_per_step / (alive_per_step + sick_per_step)))
-        real_survivorship.append(
-            real_survivorship[cur_day] * (1 - (events[day_index] / alive_per_step)),
-        )
-    logging.info(
-        f"Cur day {cur_day} totL {len(real_survivorship)} totL {len(days_sorted)} First day {days_sorted[0]} Last day, day {days_follow_up[day_index]}, censored {censored}",
-    )
-    plt.plot(
-        [0] + days_sorted[: cur_day + 1],
-        real_survivorship[: cur_day + 1],
-        marker=".",
-        label="Survivorship",
-    )
-    groups = ["High risk", "Low risk"]
+        survivorship.append(1 - (sick_per_step / (alive_per_step+sick_per_step)))
+        real_survivorship.append(real_survivorship[cur_day] * (1 - (events[day_index] / alive_per_step)))
+    plt.plot([0]+days_sorted[:cur_day+1], real_survivorship[:cur_day+1], marker='.', label='Survivorship')
+    groups = ['High risk', 'Low risk']
     predicted_alive = {g: len(events) // 2 for g in groups}
 
     predicted_sick = {g: 0 for g in groups}
@@ -999,38 +985,30 @@ def plot_survivorship(
     for cur_day, day_index in enumerate(days_sorted_index):
         if days_follow_up[day_index] > days_window:
             break
-        group = "High risk" if predictions[day_index] > threshold else "Low risk"
+        group = 'High risk' if predictions[day_index] > threshold else 'Low risk'
         predicted_sick[group] += events[day_index]
-        predicted_survival[group].append(
-            1
-            - (predicted_sick[group] / (predicted_alive[group] + predicted_sick[group])),
-        )
+        predicted_survival[group].append(1 - (predicted_sick[group] / (predicted_alive[group]+predicted_sick[group])))
         predicted_alive[group] -= events[day_index]
         predicted_days[group].append(days_follow_up[day_index])
 
     for group in groups:
         plt.plot(
-            [0] + predicted_days[group],
-            [1] + predicted_survival[group],
-            color="r" if "High" in group else "g",
-            marker="o",
-            label=f"{group} group had {predicted_sick[group]} events",
+            [0]+predicted_days[group], [1]+predicted_survival[group], color='r' if 'High' in group else 'g', marker='o',
+            label=f'{group} group had {predicted_sick[group]} events',
         )
 
     plt.title(
-        f"{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, "
-        f"{100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.",
+        f'{title}\nEnrolled: {len(events)}, Censored: {censored:.0f}, {100 * (censored / len(events)):2.1f}%, Events: {sick_per_step:.0f}, '
+        f'{100 * (sick_per_step / len(events)):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
     )
-    plt.xlabel("Follow up time (days)")
-    plt.ylabel("Proportion Surviving")
+    plt.xlabel('Follow up time (days)')
+    plt.ylabel('Proportion Surviving')
     plt.legend(loc="lower left")
 
-    figure_path = os.path.join(
-        prefix, f"survivorship_fu_{days_window}_{title}{IMAGE_EXT}",
-    )
+    figure_path = os.path.join(prefix, f'survivorship_fu_{days_window}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info(f"Try to save survival plot at: {figure_path}")
+    logging.info(f'Try to save survival plot at: {figure_path}')
     plt.savefig(figure_path)
     return {}
 
