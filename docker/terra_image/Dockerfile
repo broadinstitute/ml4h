@@ -6,6 +6,10 @@ ENV PIP_USER=false
 
 RUN pip3 install -U git+https://github.com/broadinstitute/ml4h.git
 
+# Remove the following two installs after https://github.com/DataBiosphere/terra-docker/issues/244 is addressed.
+RUN pip3 install -U tensorflow==2.4.3
+RUN pip3 install tensorflow-probability==0.12.2
+
 # Remove this after https://broadworkbench.atlassian.net/browse/CA-1240
 # As of release [google-cloud-bigquery 1.26.0 (2020-07-20)](https://github.com/googleapis/python-bigquery/blob/master/CHANGELOG.md#1260-2020-07-20)
 # the BigQuery Python client uses the BigQuery Storage client by default.
