@@ -9,3 +9,5 @@ gcloud --project YOUR-PROJECT-ID builds submit \
   --tag gcr.io/YOUR-PROJECT-ID/ml4h_terra:`date +"%Y%m%d_%H%M%S"` .
 ```
 
+This image installs `tensorflow==2.4.3` (and `tensorflow-probability==0.12.2`), overriding the TF 2.5 specification in the [tensorflow-requirements.txt](../vm_boot_images/config/tensorflow-requirements.txt). This is because the TF 2.5 installation does not allow GPUs to be used with the Terra notebook base image.
+See [this issue](https://github.com/DataBiosphere/terra-docker/issues/244) for more detail.  Once this issue is resolved, the Dockerfile will be updated to again use TF 2.5.
