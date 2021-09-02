@@ -5,6 +5,8 @@ USER root
 ENV PIP_USER=false
 
 RUN pip3 install -U git+https://github.com/broadinstitute/ml4h.git
+
+# Remove the following two installs after https://github.com/DataBiosphere/terra-docker/issues/244 is addressed.
 RUN pip3 install -U tensorflow==2.4.3
 RUN pip3 install tensorflow-probability==0.12.2
 
