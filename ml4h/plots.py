@@ -308,8 +308,8 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_time_to_event():
-        from sksurv.metrics import concordance_index_censored
-        c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
+        # from sksurv.metrics import concordance_index_censored
+        # c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = [
             "C-Index",
             "Concordant Pairs",
@@ -407,7 +407,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     row = 0
     col = 0
     total_plots = int(
-        math.ceil(len(history.history) / 2)
+        len(history.history) / 2
     )  # divide by 2 because we plot validation and train histories together
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
@@ -442,8 +442,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                     break
 
     plt.tight_layout()
-    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    figure_path = os.path.join(prefix, f'metrics_{now_string}_{title}{IMAGE_EXT}')
+    figure_path = os.path.join(prefix, "metric_history_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -3029,17 +3028,14 @@ def plot_reconstruction(
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(
-                tm.shape[1], 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
+                tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE)
             )  # , sharey=True)
             for j in range(tm.shape[1]):
                 axes[j, 0].plot(y[:, j], c="k", label="original")
                 axes[j, 1].plot(yp[:, j], c="b", label="reconstruction")
-                axes[j, 2].plot(y[:, j], c="k", label="original")
-                axes[j, 2].plot(yp[:, j], c="b", label="reconstruction")
                 axes[j, 0].set_title(f"Lead: {index2channel[j]}")
                 axes[j, 0].legend()
                 axes[j, 1].legend()
-                axes[j, 2].legend()
             plt.tight_layout()
             plt.savefig(os.path.join(folder, title + IMAGE_EXT))
         elif tm.axes() == 3:
