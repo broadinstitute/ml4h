@@ -64,6 +64,10 @@ jobs:
         gsutil cp review_model_results_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_one_sample_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
 
+        # Publish the mnist notebook
+        cd ..
+        gsutil cp mnist_survival_analysis_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
+
         # Publish the dashboard markdown.
         python << EOF
         import firecloud.api as fapi
