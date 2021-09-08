@@ -781,6 +781,8 @@ def subplot_pearson_per_class(
     alpha = 0.5
     labels_to_areas = {}
     total_plots = len(protected) + 1
+    if total_plots == 1:
+        return plot_scatter(prediction, truth, title, prefix)
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
