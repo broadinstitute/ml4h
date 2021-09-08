@@ -46,6 +46,7 @@ When you create your cloud environment, you can specify that it be [GPU-enabled]
 | CPU Minimum | 4|
 | Disk size Minimum | 50 GB |
 | Memory Minimum | 15 GB |
+| GPU | optional, but beneficial for model training|
 
 ----------------------------
 ## Next steps
