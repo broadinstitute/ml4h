@@ -5,7 +5,7 @@ In this Terra workspace we demonstrate the notebooks used by clinicians and rese
 `ml4h` is a project aimed at using machine learning to model multi-modal cardiovascular
 time series and imaging data. `ml4h` began as a set of tools to make it easy to work
 with the UK Biobank on Google Cloud Platform and has since expanded to include other data sources
-and functionality. 
+and functionality.
 
 Please see https://github.com/broadinstitute/ml4h/ for more details on the full project.
 
@@ -34,8 +34,11 @@ Please see https://github.com/broadinstitute/ml4h/ for more details on the full 
 * **review_model_results_interactive**: Use this notebook to perform interactive quality control (QC) of a simulated ECG and MRI prediction model.
 * **review_one_sample_interactive**: Use this notebook to perform interactive quality control (QC) of per-patient multi-modal data for clinical machine learning models.
 * **image_annotations_demo**: Use this notebook to annotate MRI images to create new input data for machine learning.
+* **mnist_survival_analysis_demo**: In survival analysis, the aim is to predict when an event might occur, such as a heart attack, stroke, or the onset of heart feailure. This notebook uses the MNIST dataset to develop a toy model of survival analysis using ML4H.
 
 ### Cloud Environment
+
+When you create your cloud environment, you can specify that it be [GPU-enabled](https://support.terra.bio/hc/en-us/articles/4403006001947).  While all of the notebooks above will run fine on CPUs, the `mnist_survival_analysis_demo.ipynb` notebook in particular, which trains several ML models, will benefit from using a GPU.
 
 | Option | Value |
 | --- | --- |
@@ -48,7 +51,7 @@ Please see https://github.com/broadinstitute/ml4h/ for more details on the full 
 ## Next steps
 
 * Try these notebooks on your own data.
-* Read more about the ml4h project on  https://github.com/broadinstitute/ml4h/ 
+* Read more about the ml4h project on  https://github.com/broadinstitute/ml4h/
 * Ask questions https://github.com/broadinstitute/ml4h/issues
 * Apply those resources to your own research!
 
