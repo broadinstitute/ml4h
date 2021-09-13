@@ -56,17 +56,17 @@ jobs:
         # TO REUSE THIS TEMPLATE, update the code to match your file and directory structure.
         # This particular example is based on the structure of https://github.com/verilylifesciences/metis
 
+        # Publish the mnist notebook
+        cd notebooks/
+        gsutil cp mnist_survival_analysis_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
+
         # Change to the directory holding the workspace assets.
-        cd notebooks/terra_featured_workspace/
+        cd terra_featured_workspace/
 
         # Publish the main notebooks.
         gsutil cp image_annotations_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_model_results_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_one_sample_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
-
-        # Publish the mnist notebook
-        cd ..
-        gsutil cp mnist_survival_analysis_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
 
         # Publish the dashboard markdown.
         python << EOF
