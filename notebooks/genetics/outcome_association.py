@@ -28,12 +28,12 @@ import pandas as pd
 # race.to_csv('bq_race.tsv', sep='\t')
 
 # %%
-# %%bigquery diseases
-# select disease, sample_id, incident_disease, prevalent_disease, censor_date from `ukbb7089_202006.disease`
-# where has_disease > 0.5
+%%bigquery diseases
+select * from `ukbb7089_202006.disease`
+where has_disease > 0.5 AND met_exclusion=0
 
-# # %%
-# diseases.to_csv('bq_diseases.tsv', sep='\t')
+# %%
+diseases.to_csv('bq_diseases_20210827_from_202006.tsv', sep='\t')
 # %%
 
 # %%

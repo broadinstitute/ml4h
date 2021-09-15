@@ -37,9 +37,57 @@ phenotypes['instance'] = 2
 covariates = pd.read_csv('/home/pdiachil/projects/t1map/t1map_covariate_disease_serial_mri.csv')
 phenotypes_covariates = phenotypes.merge(covariates, on=['sample_id', 'instance'], suffixes=('', '_dup'))
 phenotypes_covariates['ivs_lvbp'] = phenotypes_covariates['ivs'] / phenotypes_covariates['lvbp']
-
+outcome_analysis = pd.read_csv('outcome_analysis_file.csv')
 # df_t1 = pd.read_csv('/home/pdiachil/segmentation_t1_id_list.csv', usecols=['ID'])
 # df_4ch = df_4ch.merge(df_t1, left_on='sample_id', right_on='ID')
+
+# %%
+cols = [col for col in outcome_analysis.columns if 'incident' in col]
+interesting_outcomes = outcome_analysis[outcome_analysis['sex']==1].sort_values('ivs')[['sample_id', 'ivs', 'lvbp', 'rvbp'] + cols].dropna()
+
+# Healthy 4293714
+interesting_outcomes[interesting_outcomes[cols].max(axis=1)<0.5].iloc[50:100]
+
+# %%
+# HCM 2757672
+interesting_outcomes[interesting_outcomes['hcm_prevalent']>0.5]
+
+# %%
+# DCM 3613237
+interesting_outcomes[interesting_outcomes['dcm_prevalent']>0.5]
+
+# %%
+# HF 4651326
+interesting_outcomes[(interesting_outcomes['hf_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
+# %%
+# AF 1781863
+interesting_outcomes[(interesting_outcomes['sample_id']>0) & (interesting_outcomes['afib_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
+# %%
+# AVDCD 2272348
+interesting_outcomes[(interesting_outcomes['sample_id']>0) & (interesting_outcomes['av_dcd_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
+# %%
+# diabetes 4575767
+interesting_outcomes[(interesting_outcomes['sample_id']==4575767) & (interesting_outcomes['dm2_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
+# %%
+# htn 1656898
+interesting_outcomes[(interesting_outcomes['sample_id']>0) & (interesting_outcomes['htn_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[100:150]
+
+# %%
+# ckd 3590492
+interesting_outcomes[(interesting_outcomes['sample_id']>0) & (interesting_outcomes['ckd_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
+# %%
+# as 1485081
+interesting_outcomes[(interesting_outcomes['sample_id']>0) & (interesting_outcomes['as_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
+# %%
+# ra 5704649
+interesting_outcomes[(interesting_outcomes['sample_id']>0) & (interesting_outcomes['ra_prevalent']>0.5)][['sample_id', 'hcm_prevalent', 'dcm_prevalent', 'ivs', 'lvbp', 'rvbp']].iloc[-50:]
+
 
 # %%
 df_manifest = pd.concat([df_4ch])
@@ -84,18 +132,21 @@ import numpy as np
 
 # start = int(sys.argv[1])
 # end = int(sys.argv[2])
+my_images = {}
 start = 0
-end = 1
+end = 100
 bucket = storage_client.get_bucket('ml4cvd')
 bulk_bucket = storage_client.get_bucket('bulkml4cvd')
 start_time = time.time()
 results_dic = {'sample_id': [], 'instance': [], 'max_pixel': [], 'min_pixel': [], 'mean_pixel': []}
+diseases = {'healthy': 4293714, 'hcm': 2757672, 'as': 1485081, 'hf': 1509268, 'av_dcd': 2272348,'diabetes': 4575767, 'af': 1781863, 'htn': 1656898, 'ckd': 3590492, 'ra': 5704649}
+df_manifest = df_manifest[df_manifest['sample_id'].isin(diseases.values())]
 for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
     if i < start:
         continue
     if i == end:
         break
-    sample_id = 3448380
+    print(sample_id)
     hd5_path = f'pdiachil/segmented-sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122/{sample_id}.hd5'
     blob = bucket.blob(hd5_path)
     try:
@@ -143,6 +194,8 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
                                     print(v)
                                     best_mean = cur_mean
                                     my_image = slicer.pixel_array.astype(np.float32)
+                                    if instance == 2:
+                                        my_images[sample_id] = slicer.pixel_array.astype(np.float32)
                                     imageio.imwrite(f'/home/pdiachil/ml/notebooks/mri/{sample_id}_{instance}_0.png', slicer.pixel_array.astype(np.float32))
                                     mri_data[:, :, 0] = slicer.pixel_array.astype(np.float32)
                                     if f'{v}' not in hd5_ff[mri_group]:
@@ -160,61 +213,74 @@ for i, (sample_id, df_sample_id) in enumerate(df_manifest.groupby('sample_id')):
 end_time = time.time()
 print(end_time-start_time)
 
-# %%
-images['healthy'] = my_image
 
 # %%
-images['incident'] = my_image
-
-# %%
-images['prevalent'] = my_image
-# %%
-%matplotlib inline
-import matplotlib.pyplot as plt
-f, ax = plt.subplots(1, 2)
-
-mask_healthy = imageio.imread('healthy_mask.png')>0.5
-mask_healthy[:, -15:] = True
-
-mask_prevalent = imageio.imread('prevalent_mask.png')>0.5
-mask_prevalent[:, -15:] = True
+import imageio
+import rawpy
+from PIL import Image
+images = {}
+masks = {}
 
 
-ax[0].imshow(np.ma.masked_array(images['healthy'], mask=mask_healthy), cmap='gray', vmin=600, vmax=1500)
-ax[0].imshow(np.ma.masked_array(images['healthy'], mask=~mask_healthy), cmap='jet', vmin=600, vmax=1500)
-ax[1].imshow(np.ma.masked_array(images['prevalent'], mask=mask_prevalent), cmap='gray', vmin=600, vmax=1500)
-ax[1].imshow(np.ma.masked_array(images['prevalent'], mask=~mask_prevalent), cmap='jet', vmin=600, vmax=1500)
 
-ax[0].set_xticks([])
-ax[1].set_xticks([])
-ax[0].set_yticks([])
-ax[1].set_yticks([])
-plt.show()
-f.savefig('HCM_evolution.png', dpi=500)
+for disease, sample_id in diseases.items():
+    images[disease] = my_images[sample_id]
+    masks[disease] = imageio.imread(f'{disease}_mask.png')
+    # masks[disease] = Image.fromarray(masks[disease]).resize([images[disease].shape[1], images[disease].shape[0]])
+    # masks[disease] = np.array(masks[disease])
 
-# %%
-%matplotlib inline
-import matplotlib.pyplot as plt
-f, ax = plt.subplots()
+# # %%
+# %matplotlib inline
+# import matplotlib.pyplot as plt
+# f, ax = plt.subplots(1, 2)
 
-mask_healthy = imageio.imread('healthy_mask.png')>0.5
-mask_healthy[:, -15:] = True
+# mask_healthy = imageio.imread('healthy_mask.png')>0.5
+# mask_healthy[:, -15:] = True
 
-mask_prevalent = imageio.imread('prevalent_mask.png')>0.5
-mask_prevalent[:, -15:] = True
+# mask_prevalent = imageio.imread('prevalent_mask.png')>0.5
+# mask_prevalent[:, -15:] = True
 
 
-ax.imshow(np.ma.masked_array(images['healthy'], mask=mask_healthy), cmap='gray', vmin=600, vmax=1500)
-ax.imshow(np.ma.masked_array(images['healthy'], mask=~mask_healthy), cmap='jet', vmin=600, vmax=1500)
+# ax[0].imshow(np.ma.masked_array(images['healthy'], mask=mask_healthy), cmap='gray', vmin=600, vmax=1500)
+# ax[0].imshow(np.ma.masked_array(images['healthy'], mask=~mask_healthy), cmap='jet', vmin=600, vmax=1500)
 # ax[1].imshow(np.ma.masked_array(images['prevalent'], mask=mask_prevalent), cmap='gray', vmin=600, vmax=1500)
 # ax[1].imshow(np.ma.masked_array(images['prevalent'], mask=~mask_prevalent), cmap='jet', vmin=600, vmax=1500)
 
-ax.set_xticks([])
-ax.set_yticks([])
+# ax[0].set_xticks([])
+# ax[1].set_xticks([])
 # ax[0].set_yticks([])
 # ax[1].set_yticks([])
-plt.show()
-f.savefig('healthy_color.png', dpi=500)
+# plt.show()
+# f.savefig('HCM_evolution.png', dpi=500)
+
+# %%
+%matplotlib inline
+import matplotlib.pyplot as plt
+import numpy as np
+import rawpy
+
+for disease in diseases:
+    print(disease)
+    image = images[disease]
+    mask = masks[disease]
+
+    f, ax = plt.subplots()
+
+    mask = mask>0.5
+    mask[:, -15:] = True
+
+
+    ax.imshow(np.ma.masked_array(image, mask=mask), cmap='gray', vmin=600, vmax=1500)
+    ax.imshow(np.ma.masked_array(image, mask=~mask), cmap='jet', vmin=600, vmax=1500)
+    # ax[1].imshow(np.ma.masked_array(images['prevalent'], mask=mask_prevalent), cmap='gray', vmin=600, vmax=1500)
+    # ax[1].imshow(np.ma.masked_array(images['prevalent'], mask=~mask_prevalent), cmap='jet', vmin=600, vmax=1500)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    # ax[0].set_yticks([])
+    # ax[1].set_yticks([])
+    plt.show()
+    f.savefig(f'{disease}_color.png', dpi=500)
 
 
 # %%

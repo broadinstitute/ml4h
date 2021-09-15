@@ -76,6 +76,8 @@ npats = len(test_df)
 for key, item in means.items():
     item['model'] = [np.nan]*npats
     item['model_iqr'] = [np.nan]*npats
+    item['dice'] = [np.nan]*npats
+    item['segmentation'] = [np.nan]*npats
 
 means['sample_id'] = [np.nan]*npats
 means['instance'] = [np.nan]*npats
@@ -120,7 +122,8 @@ for pat_i, row in test_df.iterrows():
                     arr_segmentation_color = np.zeros((arr_segmentation.shape[0], arr_model.shape[1], 3))
 
                                       
-                    skeletons = {}                    
+                    skeletons = {}
+                    region_areas = {}                  
                     for color, color_dic in colors.items():
                         if 'roi' in color.lower():
                             roi_arr_segmentation = arr_segmentation==color_dic["id"]
@@ -162,6 +165,11 @@ for pat_i, row in test_df.iterrows():
                                     skeleton -= result*255
                                 kernel = np.ones((3, 3), dtype=np.uint8)
                                 skeletons[color] = np.logical_and(cv2.dilate(skeleton.astype(float), kernel, iterations=1), binary_model)
+
+                            binary_segmentation = (arr_segmentation==color_dic['id']) + (arr_segmentation==colors[color+' ROI']['id'])
+                            region_areas[color] = {}
+                            region_areas[color]['model'] = binary_model
+                            region_areas[color]['segmentation'] = binary_segmentation
                     skeletons['Wall'] = skeletons['LV Free Wall'] + skeletons['Interventricular Septum']
                     f, ax = plt.subplots(1, 3)
                     f.set_size_inches(16, 9)
@@ -177,10 +185,18 @@ for pat_i, row in test_df.iterrows():
                     ax[0].imshow(arr_segmentation_color/255.0, alpha=0.5)
                     f.savefig(f'/home/pdiachil/projects/t1map/postprocessing/3px_circle/{sample_id}.png')
                     plt.close(f)
-                    for region, binary_model in skeletons.items():
-                        select_data = arr_data[binary_model>0.5]
+                    for region, region_area in region_areas.items():
+                        select_data = arr_data[region_area['model']>0.5]
                         mean_model = np.median(select_data)
                         means[region]['model'][pat_i] = mean_model
+                        select_data_segmentation = arr_data[region_area['segmentation']>0.5]
+                        mean_segmentation = np.median(select_data_segmentation)
+                        means[region]['segmentation'][pat_i] = mean_segmentation
+                        dice = np.sum(np.logical_and(region_area['model']+region_area['model'], 
+                                                     region_area['segmentation']+region_area['segmentation'])) * 2.0
+                        dice /= np.sum(region_area['model']+region_area['model']) \
+                                + np.sum(region_area['segmentation']+region_area['segmentation'])
+                        means[region]['dice'][pat_i] = dice
                         iqr = np.percentile(select_data, 75) - np.percentile(select_data, 25)
                         
                         if not(np.isnan(mean_model)):
@@ -191,7 +207,7 @@ for pat_i, row in test_df.iterrows():
                         else:
                             percentile_model = np.nan
                         means[region]['model_iqr'][pat_i] = percentile_model        
-    except:
+    except FutureWarning:
         pass          
     os.remove(f'{sample_id}.hd5')
 # %%
@@ -207,7 +223,7 @@ for region in means:
 df = pd.DataFrame(df_dic)
 # df = df[~df['sample_id'].isin(skip)]
 # df = df.dropna()
-
+# %%
 df.to_csv(f'/home/pdiachil/projects/t1map/inference/t1map_inference_holdout.csv', index=False)
 
 # %%
