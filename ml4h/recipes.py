@@ -293,7 +293,7 @@ def infer_multimodal_multitask(args):
         for ot in model.output_names:
             otm = output_maps[ot]
             logging.info(f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}.")
-            if (len(otm.shape) == 1 and otm.is_continuous()) or otm.is_survival_curve():
+            if (len(otm.shape) == 1 and otm.is_continuous()):
                 header.extend([otm.name + '_prediction', otm.name + '_actual'])
             elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
@@ -301,6 +301,8 @@ def infer_multimodal_multitask(args):
                     channel_columns.append(otm.name + '_' + k + '_prediction')
                     channel_columns.append(otm.name + '_' + k + '_actual')
                 header.extend(channel_columns)
+            elif otm.is_survival_curve():
+                header.extend([otm.name + '_prediction', otm.name + '_actual', otm.name + '_follow_up'])
         inference_writer.writerow(header)
 
         while True:
@@ -338,11 +340,13 @@ def infer_multimodal_multitask(args):
                             logging.debug(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
+                    days_per_bin = 1 + otm.days_window // intervals
                     predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
                     #predicted_survivals = np.cumprod(y[:, :10], axis=1) 2 year probability
                     csv_row.append(str(1 - predicted_survivals[0, -1]))
                     sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
-                    csv_row.append(str(sick[0]))
+                    follow_up = np.cumsum(output_data[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
+                    csv_row.extend([str(sick[0]), str(follow_up)])
                 elif otm.axes() > 1:
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
