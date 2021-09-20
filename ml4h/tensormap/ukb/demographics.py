@@ -270,7 +270,7 @@ age_2_wide = TensorMap(
 )
 af_dummy = TensorMap('af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
                              channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1})
-sex_dummy = TensorMap('sex_from_wide', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
+sex_dummy = TensorMap('sex_from_wide', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=2,
                       channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',)
 
 brain_volume = TensorMap(
