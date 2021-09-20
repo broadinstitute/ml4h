@@ -346,7 +346,7 @@ def infer_multimodal_multitask(args):
                     csv_row.append(str(1 - predicted_survivals[0, -1]))
                     sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
                     follow_up = np.cumsum(output_data[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
-                    csv_row.extend([str(sick[0]), str(follow_up)])
+                    csv_row.extend([str(sick[0]), str(follow_up[0])])
                 elif otm.axes() > 1:
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
