@@ -4,6 +4,10 @@ FROM us.gcr.io/broad-dsp-gcr-public/terra-jupyter-gatk:2.0.2
 USER root
 ENV PIP_USER=false
 
+# Now that the Terra image is built from a TensorFlow base image, if TF is included in the
+# ML4h requirements.txt, this causes problems with the Terra 'cloud environment' launch.
+# In addition, other tensorflow-related libraries need to be unpinned so that they remain consistent
+# with the TF version used by the Terra base image.
 RUN wget --no-check-certificate https://raw.githubusercontent.com/broadinstitute/ml4h/master/docker/vm_boot_images/config/tensorflow-requirements.txt
 RUN grep -v 'tensorflow==' tensorflow-requirements.txt \
  | sed -E 's/(tensorflow-addons)(==.*)$/\1/g' \
