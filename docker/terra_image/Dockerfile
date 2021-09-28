@@ -10,7 +10,7 @@ WORKDIR /home/jupyter
 # ML4h requirements.txt, this causes problems with the Terra 'cloud environment' launch.
 # In addition, other tensorflow-related libraries need to be unpinned so that they remain consistent
 # with the TF version used by the Terra base image.
-RUN wget --no-check-certificate https://raw.githubusercontent.com/broadinstitute/ml4h/master/docker/vm_boot_images/config/tensorflow-requirements.txt
+RUN wget --no-check-certificate https://raw.githubusercontent.com/broadinstitute/ml4h/master/docker/vm_boot_images/config/tensorflow-requirements.txt -O /home/jupyter/tensorflow-requirements.txt
 RUN grep -v 'tensorflow==' /home/jupyter/tensorflow-requirements.txt \
  | sed -E 's/(tensorflow-addons)(==.*)$/\1/g' \
  | sed -E 's/(tensorflow_probability)(==.*)$/\1/g' > /home/jupyter/terra-tensorflow-requirements.txt \
