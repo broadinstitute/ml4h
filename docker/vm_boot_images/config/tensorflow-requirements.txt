@@ -29,7 +29,7 @@ facets-overview
 plotnine
 vega
 ipycanvas>=0.7.0
-ipyannotations>=0.2.1
+ipyannotations==0.2.1
 torch
 opencv-python
 blosc
