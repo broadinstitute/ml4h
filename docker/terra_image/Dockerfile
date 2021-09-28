@@ -9,10 +9,10 @@ ENV PIP_USER=false
 # In addition, other tensorflow-related libraries need to be unpinned so that they remain consistent
 # with the TF version used by the Terra base image.
 RUN wget --no-check-certificate https://raw.githubusercontent.com/broadinstitute/ml4h/master/docker/vm_boot_images/config/tensorflow-requirements.txt
-RUN grep -v 'tensorflow==' tensorflow-requirements.txt \
+RUN grep -v 'tensorflow==' /home/jupyter/tensorflow-requirements.txt \
  | sed -E 's/(tensorflow-addons)(==.*)$/\1/g' \
- | sed -E 's/(tensorflow_probability)(==.*)$/\1/g' > terra-tensorflow-requirements.txt \
-&& pip3 install --upgrade --requirement terra-tensorflow-requirements.txt \
+ | sed -E 's/(tensorflow_probability)(==.*)$/\1/g' > /home/jupyter/terra-tensorflow-requirements.txt \
+&& pip3 install --upgrade --requirement /home/jupyter/terra-tensorflow-requirements.txt \
 && pip3 install --upgrade --no-deps git+https://github.com/broadinstitute/ml4h.git
 
 
