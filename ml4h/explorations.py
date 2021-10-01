@@ -17,6 +17,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+from sklearn.decomposition import PCA
 from tensorflow.keras.models import Model
 
 import matplotlib
@@ -27,7 +28,7 @@ from ml4h.models.legacy_models import make_multimodal_multitask_model
 from ml4h.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, SUBPLOT_SIZE
+from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_reference, SUBPLOT_SIZE
 from ml4h.plots import evaluate_predictions, subplot_rocs, subplot_scatters, plot_categorical_tmap_over_time
 from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
@@ -54,9 +55,9 @@ def predictions_to_pngs(
             elif tm.shape == im.shape:
                 input_map = im
         logging.info(f"Write predictions as PNGs TensorMap:{tm.name}, y shape:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
+        vmin = np.min(data[input_map.input_name()])
+        vmax = np.max(data[input_map.input_name()])
         if tm.is_mesh():
-            vmin = np.min(data[input_map.input_name()])
-            vmax = np.max(data[input_map.input_name()])
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if input_map.axes() == 4 and input_map.shape[-1] == 1:
@@ -120,15 +121,17 @@ def predictions_to_pngs(
 def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict[str, np.ndarray], paths, folder):
     for tm in tensor_maps_in:
         tensor = data[tm.input_name()]
+        vmin = np.min(tensor)
+        vmax = np.max(tensor)
         for i in range(tensor.shape[0]):
             sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
             if len(tm.shape) not in [3, 4]:
                 continue
             for j in range(tensor.shape[3]):
                 if len(tm.shape) == 3:
-                    plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j], cmap='gray')
+                    plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(tm.shape) == 4:
-                    plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j, 0], cmap='gray')
+                    plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
 
 
 def plot_while_learning(
@@ -307,25 +310,34 @@ def str2date(d):
     return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def sample_from_language_model(
-    language_input: TensorMap, language_output: TensorMap,
-    model, test_data, max_samples=16, heat=0.7,
-):
-    burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
-    index_2_token = {v: k for k, v in language_output.channel_map.items()}
-    for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch
-        burn_in[0] = test_data[language_input.input_name()][i]
-        sentence = ''.join([index_2_token[np.argmax(one_hot)] for one_hot in burn_in[0]])
-        logging.info(f' Batch    sentence start:{sentence}                   ------- {i}')
-        for j in range(max_samples):
-            burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
-            for k, c in enumerate(sentence[j:]):
-                burn_in[0, k, language_output.channel_map[c]] = 1.0
-            cur_test = {language_input.input_name(): burn_in}
+def _softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
+
+
+def sample_from_language_model(language_input, model, test_data, max_samples):
+    cur_test = {}
+    index_2_token = {v: k for k, v in language_input.channel_map.items()}
+    for i in range(test_data[language_input.input_name()].shape[0]):  # iterate over the batch
+        for k in test_data:
+            cur_test[k] = np.expand_dims(test_data[k][i], axis=0)
+        sentence = ''.join([str(index_2_token[index]) for index in cur_test[language_input.input_name()][0]])
+        sentence_tokens = [index_2_token[index] for index in cur_test[language_input.input_name()][0]]
+        logging.info(f'Start: {sentence}')
+        for x in range(max_samples):
             prediction = model.predict(cur_test)
-            next_token = index_2_token[_sample_with_heat(prediction[0, :], heat)]
-            sentence += next_token
-        logging.info(f'Model completed sentence:{sentence}')
+            next_token = index_2_token[_sample_with_heat(_softmax(prediction[0, -1, :]), 0.5)]
+            offset = 1
+            sentence_tokens.append(next_token)
+            sentence += str(next_token)
+            for k in test_data:
+                if 'next' in k:
+                    offset = 0
+                for j in range(test_data[k].shape[1]):
+                    cur_test[k][0, -(j+1)] = language_input.channel_map[sentence_tokens[-(1+j+offset)]]
+            s = ' '.join([str(index_2_token[index]) for index in cur_test[language_input.input_name()][0]])
+        logging.info(f'Model: {sentence}             \n --- {i} --- \n')
 
 
 def sample_from_char_embed_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
@@ -687,11 +699,11 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
 
 
 def _continuous_explore_header(tm: TensorMap) -> str:
-    return tm.name
+    return tm.channel_map.items()[0][0]
 
 
 def _categorical_explore_header(tm: TensorMap, channel: str) -> str:
-    return f'{tm.name} {channel}'
+    return f'{channel}'
 
 
 class ExploreParallelWrapper():
@@ -734,11 +746,11 @@ class ExploreParallelWrapper():
 
                             error_type = ''
                             try:
-                                tensor = tm.postprocess_tensor(tensor, augment=False, hd5=hd5)
+                                tensor = tm.rescale(tm.postprocess_tensor(tensor, augment=False, hd5=hd5))
                                 # Append tensor to dict
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = tensor[tm.channel_map[cm]]
+                                        dict_of_tensor_dicts[i][f'{cm}'] = tensor[tm.channel_map[cm]]
                                 else:
                                     # If tensor is a scalar, isolate the value in the array;
                                     # otherwise, retain the value as array
@@ -749,7 +761,7 @@ class ExploreParallelWrapper():
                             except (IndexError, KeyError, ValueError, OSError, RuntimeError) as e:
                                 if tm.channel_map:
                                     for cm in tm.channel_map:
-                                        dict_of_tensor_dicts[i][f'{tm.name} {cm}'] = np.nan
+                                        dict_of_tensor_dicts[i][f'{cm}'] = np.nan
                                 else:
                                     dict_of_tensor_dicts[i][tm.name] = np.full(shape, np.nan)[0]
                                 error_type = type(e).__name__
@@ -759,13 +771,13 @@ class ExploreParallelWrapper():
                         # Most likely error came from tensor_from_file and dict_of_tensor_dicts is empty
                         if tm.channel_map:
                             for cm in tm.channel_map:
-                                dict_of_tensor_dicts[0][f'{tm.name} {cm}'] = np.nan
+                                dict_of_tensor_dicts[0][f'{cm}'] = np.nan
                         else:
                             dict_of_tensor_dicts[0][tm.name] = np.full(shape, np.nan)[0]
                         dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
 
                 for i in dict_of_tensor_dicts:
-                    dict_of_tensor_dicts[i]['fpath'] = path
+                    dict_of_tensor_dicts[i]['fpath'] = os.path.basename(path).split('.')[0]
                     dict_of_tensor_dicts[i]['generator'] = gen_name
 
                 # write tdicts to disk
@@ -896,12 +908,12 @@ def explore(args):
         categorical_tmaps = [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]
         # Iterate through 1) df, 2) df without NaN-containing rows (intersect)
         for df_cur, df_str in zip([df, df.dropna()], ["union", "intersect"]):
-            for tm in categorical_tmaps:
+            for tm in [tm for tm in tmaps if tm.interpretation is Interpretation.CATEGORICAL]:
                 counts = []
                 counts_missing = []
                 if tm.channel_map:
                     for cm in tm.channel_map:
-                        key = f'{tm.name} {cm}'
+                        key = f'{cm}'
                         counts.append(df_cur[key].sum())
                         counts_missing.append(df_cur[key].isna().sum())
                 else:
@@ -916,13 +928,13 @@ def explore(args):
                 counts.append(sum(counts))
 
                 # Create list of row names
-                cm_names = [cm for cm in tm.channel_map] + ["missing", "total"]
+                cm_names = [cm for cm in tm.channel_map] + [f"missing", f"total"]
 
                 # Transform list into dataframe indexed by channel maps
                 df_stats = pd.DataFrame(counts, index=cm_names, columns=["counts"])
 
                 # Add new column: percent of all counts
-                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc["total"]["counts"] * 100
+                df_stats["percent_of_total"] = df_stats["counts"] / df_stats.loc[f"total"]["counts"] * 100
 
                 # Save parent dataframe to CSV on disk
                 fpath = os.path.join(
@@ -978,7 +990,7 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f'{tm.name} {cm}'
+                            key = f'{cm}'
                             stats["min"] = df_cur[key].min()
                             stats["max"] = df_cur[key].max()
                             stats["mean"] = df_cur[key].mean()
@@ -990,7 +1002,7 @@ def explore(args):
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -1030,13 +1042,13 @@ def explore(args):
                     if tm.channel_map:
                         for cm in tm.channel_map:
                             stats = dict()
-                            key = f'{tm.name} {cm}'
+                            key = f'{cm}'
                             stats["count"] = df_cur[key].count()
                             stats["count_unique"] = len(df_cur[key].value_counts())
                             stats["missing"] = df_cur[key].isna().sum()
                             stats["total"] = len(df_cur[key])
                             stats["missing_percent"] = stats["missing"] / stats["total"] * 100
-                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{tm.name} {cm}'])])
+                            df_stats = pd.concat([df_stats, pd.DataFrame([stats], index=[f'{cm}'])])
                     else:
                         stats = dict()
                         key = tm.name
@@ -1069,6 +1081,7 @@ def explore(args):
                 figure_path = os.path.join(args.output_folder, args.id, f"{name}_histogram{IMAGE_EXT}")
                 plt.savefig(figure_path)
                 logging.info(f"Saved {name} histogram plot at: {figure_path}")
+
 
 
 def cross_reference(args):
@@ -1350,47 +1363,51 @@ def cross_reference(args):
     logging.info(f'Saved cohort counts to {fpath}')
 
 
-def directions_in_latent_space(stratify_column, stratify_thresh, split_column, split_thresh, latent_cols, latent_df):
-    hit = latent_df.loc[latent_df[stratify_column] >= stratify_thresh][latent_cols].to_numpy()
-    miss = latent_df.loc[latent_df[stratify_column] < stratify_thresh][latent_cols].to_numpy()
-    miss_mean_vector = np.mean(miss, axis=0)
-    hit_mean_vector = np.mean(hit, axis=0)
-    strat_vector = hit_mean_vector - miss_mean_vector
-
-    hit1 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
-                         & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
-    miss1 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
-                          & (latent_df[split_column] >= split_thresh)][latent_cols].to_numpy()
-    hit2 = latent_df.loc[(latent_df[stratify_column] >= stratify_thresh)
-                         & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
-    miss2 = latent_df.loc[(latent_df[stratify_column] < stratify_thresh)
-                          & (latent_df[split_column] < split_thresh)][latent_cols].to_numpy()
-    miss_mean_vector1 = np.mean(miss1, axis=0)
-    hit_mean_vector1 = np.mean(hit1, axis=0)
-    angle1 = angle_between(miss_mean_vector1, hit_mean_vector1)
-    miss_mean_vector2 = np.mean(miss2, axis=0)
-    hit_mean_vector2 = np.mean(hit2, axis=0)
-    angle2 = angle_between(miss_mean_vector2, hit_mean_vector2)
-    h1_vector = hit_mean_vector1 - miss_mean_vector1
-    h2_vector = hit_mean_vector2 - miss_mean_vector2
-    angle3 = angle_between(h1_vector, h2_vector)
-    print(f'\n Between {stratify_column}, and splits: {split_column}\n',
-          f'Angles h1 and m1: {angle1:.2f}, h2 and m2 {angle2:.2f} h1-m1 and h2-m2 {angle3:.2f} degrees.\n'
-          f'stratify threshold: {stratify_thresh}, split thresh: {split_thresh}, \n'
-          f'hit_mean_vector2 shape {miss_mean_vector1.shape}, miss1:{hit_mean_vector2.shape} \n'
-          f'Hit1 shape {hit1.shape}, miss1:{miss1.shape} threshold:{stratify_thresh}\n'
-          f'Hit2 shape {hit2.shape}, miss2:{miss2.shape}\n')
-
-    return hit_mean_vector1, miss_mean_vector1, hit_mean_vector2, miss_mean_vector2
-
-
 def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     df = pd.read_csv(explore_csv)
     df['fpath'] = pd.to_numeric(df['fpath'], errors='coerce')
+    df.info()
     df2 = pd.read_csv(infer_hidden_tsv, sep='\t')
     df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
+    df2.info()
     latent_df = pd.merge(df, df2, left_on='fpath', right_on='sample_id', how='inner')
     latent_df.info()
     return latent_df
+
+
+def plot_scree(pca_components, percent_explained, figure_path):
+    _ = plt.figure(figsize=(6, 4))
+    plt.plot(range(len(percent_explained)), percent_explained, 'g.-', linewidth=1)
+    plt.axvline(x=pca_components, c='r', linewidth=3)
+    label = f'{np.sum(percent_explained[:pca_components]):0.1f}% of variance explained by top {pca_components} of {len(percent_explained)} components'
+    plt.text(pca_components+0.02*len(percent_explained), percent_explained[1], label)
+    plt.title('Scree Plot')
+    plt.xlabel('Principal Components')
+    plt.ylabel('% of Variance Explained by Each Component')
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
+def pca_on_matrix(matrix, pca_components, scree_path=None):
+    pca = PCA()
+    pca.fit(matrix)
+    print(f'PCA explains {100 * np.sum(pca.explained_variance_ratio_[:pca_components]):0.1f}% of variance with {pca_components} top PCA components.')
+    matrix_reduced = pca.transform(matrix)[:, :pca_components]
+    print(f'PCA reduces matrix shape:{matrix_reduced.shape} from matrix shape: {matrix.shape}')
+    if scree_path:
+        plot_scree(pca_components, 100*pca.explained_variance_ratio_, scree_path)
+    return pca, matrix_reduced
+
+
+def pca_on_tsv(tsv_file, columns, index_column, pca_components):
+    df = pd.read_csv(tsv_file, sep='\t')
+    matrix = df[columns].to_numpy()
+    pca, reduced = pca_on_matrix(matrix, pca_components, tsv_file.replace('.tsv', f'_scree_{pca_components}.png'))
+    reduced_df = pd.DataFrame(reduced)
+    reduced_df.index = df[index_column]
+    new_tsv = tsv_file.replace('.tsv', f'_pca_{pca_components}.tsv')
+    reduced_df.to_csv(new_tsv, sep='\t')
+    logging.info(f'Wrote PCA reduced TSV to: {new_tsv}')
 
 
