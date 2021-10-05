@@ -6,12 +6,13 @@ import numpy as np
 from typing.io import TextIO
 from typing import List, Tuple
 
+from ml4h.metrics import sparse_cross_entropy
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.tensormap.general import build_tensor_from_file
 from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4h.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
-from ml4h.tensormap.text import random_text_window_tensor, token_dictionary_and_text_from_file
+from ml4h.tensormap.text import random_text_window_tensor, token_dictionary_and_text_from_file, token_dictionary_from_hd5_key, random_array_window_tensors
 from ml4h.tensorize.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
 
@@ -242,29 +243,48 @@ def generate_continuous_tensor_map_from_file(
         )
 
 
-def generate_random_text_tensor_maps(text_file: str, window_size: int, one_hot: bool = True) -> Tuple[TensorMap, TensorMap]:
+def generate_random_text_tensor_maps(text_file: str, window_size: int) -> Tuple[TensorMap, TensorMap]:
     name = os.path.basename(text_file).split('.')[0]
     text, token_dictionary = token_dictionary_and_text_from_file(text_file)
-    shape = (window_size, len(token_dictionary)) if one_hot else (window_size,)
-    burn_in = TensorMap(
-        f'next_{name}', Interpretation.LANGUAGE, shape=shape,
-        channel_map=token_dictionary,
-        cacheable=False,
-    )
+    shape = (window_size,)
+
     output_map = TensorMap(
-        f'next_next_{name}', Interpretation.LANGUAGE,
-        shape=(len(token_dictionary),) if one_hot else shape,
-        loss='categorical_crossentropy',
+        f'next_{name}', Interpretation.LANGUAGE,
+        shape=shape,
+        loss=sparse_cross_entropy(window_size),
         channel_map=token_dictionary,
         cacheable=False,
     )
     input_map = TensorMap(
         name, Interpretation.LANGUAGE, shape=shape,
-        tensor_from_file=random_text_window_tensor(text, window_size, one_hot=one_hot),
-        dependent_map=[burn_in, output_map],
+        tensor_from_file=random_text_window_tensor(text, window_size),
+        dependent_map=output_map,
         channel_map=token_dictionary,
-        annotation_units=128,
         cacheable=False,
     )
-    return input_map, burn_in, output_map
+    return input_map, output_map
 
+
+def generate_random_pixel_as_text_tensor_maps(tensors: str, path_prefix: str,
+                                              window_shape: Tuple[int]) -> Tuple[TensorMap, TensorMap]:
+    name = path_prefix.split('/')[-1]
+    path_prefix = '/'.join(path_prefix.split('/')[:-1])
+    logging.info(f'prefix {path_prefix} and name is {name}')
+    token_dictionary = token_dictionary_from_hd5_key(tensors, path_prefix, name)
+    window_size = int(np.prod(window_shape))
+    shape = (window_size,)
+    output_map = TensorMap(
+        f'next_{name}', Interpretation.LANGUAGE,
+        shape=shape,
+        loss=sparse_cross_entropy(window_size),
+        channel_map=token_dictionary,
+        cacheable=False,
+    )
+    input_map = TensorMap(
+        name, Interpretation.LANGUAGE, shape=shape, path_prefix=path_prefix,
+        tensor_from_file=random_array_window_tensors(window_shape),
+        dependent_map=output_map,
+        channel_map=token_dictionary,
+        cacheable=False,
+    )
+    return input_map, output_map

@@ -194,7 +194,13 @@ def parse_args():
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
-
+    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
+    parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
+    parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
+    parser.add_argument(
+         '--transformer_size', default=256, type=int,
+         help='Number of output neurons in Transformer encoders and decoders, '
+              'the number of internal neurons and the number of layers are set by the --dense_layers')
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
@@ -433,14 +439,15 @@ def _process_args(args):
 
     args.tensor_maps_in = []
     args.tensor_maps_out = []
-    if args.text_file is not None:
-        del args.input_tensors[:2]
+    if args.text_file is not None or args.hd5_as_text is not None:
+        del args.input_tensors[0]
         del args.output_tensors[0]
-        input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
-        if args.text_one_hot:
-            args.tensor_maps_in.append(input_map)
+        if args.hd5_as_text is not None:
+            window_shape = (int(np.sqrt(args.text_window)), int(np.sqrt(args.text_window)))
+            input_map, output_map = generate_random_pixel_as_text_tensor_maps(args.tensors, args.hd5_as_text, window_shape)
         else:
-            args.tensor_maps_in.extend([input_map, burn_in])
+            input_map, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window)
+        args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
