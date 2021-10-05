@@ -348,6 +348,7 @@ def evaluate_predictions(
     elif tm.is_language():
         prediction_1hot = make_one_hot(y_predictions.flatten()[:max_melt], len(tm.channel_map))
         truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
+        logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
             subplot_roc_per_class(
                 prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder,
