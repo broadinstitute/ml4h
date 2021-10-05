@@ -346,7 +346,7 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_language():
-        prediction_1hot = make_one_hot(y_predictions.flatten()[:max_melt], len(tm.channel_map))
+        prediction_1hot = y_predictions.reshape((y_predictions.shape[0]*y_predictions.shape[1], y_predictions.shape[2]))
         truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
         logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
