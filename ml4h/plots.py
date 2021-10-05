@@ -346,16 +346,16 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_language():
-        prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
-        truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
+        prediction_1hot = make_one_hot(y_predictions.flatten()[:max_melt], len(tm.channel_map))
+        truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
         performance_metrics.update(
             subplot_roc_per_class(
-                prediction_flat, truth_flat, tm.channel_map, protected, title, folder,
+                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                prediction_flat, truth_flat, tm.channel_map, title, folder,
+                prediction_1hot, truth_1hot, tm.channel_map, title, folder,
             ),
         )
     elif tm.axes() > 1 or tm.is_mesh():
@@ -400,6 +400,13 @@ def evaluate_predictions(
         plot_waves(y_predictions, y_truth, "median_waves_" + title, folder)
 
     return performance_metrics
+
+
+def make_one_hot(y, num_labels):
+    ohy = np.zeros((len(y), num_labels))
+    for i in range(0, len(y)):
+        ohy[i][y[i]] = 1.0
+    return ohy
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/"):
