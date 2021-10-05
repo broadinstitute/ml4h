@@ -346,17 +346,18 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_language():
+        prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
+        truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder,
+                prediction_flat, truth_flat, tm.channel_map, protected, title, folder,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                prediction_flat, truth_flat, tm.channel_map, title, folder,
             ),
         )
-        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
