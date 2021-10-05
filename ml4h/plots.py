@@ -405,7 +405,7 @@ def evaluate_predictions(
 def make_one_hot(y, num_labels):
     ohy = np.zeros((y.shape[-1], num_labels))
     for i in range(0, y.shape[-1]):
-        ohy[i, y[i]] = 1.0
+        ohy[i, int(y[i])] = 1.0
     return ohy
 
 
