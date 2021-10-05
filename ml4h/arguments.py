@@ -29,7 +29,8 @@ from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bott
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps, \
+    generate_random_pixel_as_text_tensor_maps
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
@@ -86,8 +87,6 @@ def parse_args():
     )
 
     # Data selection parameters
-    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
-    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
