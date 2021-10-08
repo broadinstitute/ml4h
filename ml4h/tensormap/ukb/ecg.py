@@ -400,6 +400,15 @@ ecg_rest_raw = TensorMap(
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=2000),
 )
 
+ecg_rest_raw_mv = TensorMap(
+    'ecg_rest_raw_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=1000),
+)
+ecg_rest_raw_mv_warp = TensorMap(
+    'ecg_rest_raw_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=1000), augmentations=[_warp_ecg],
+)
+
 ecg_rest_raw_100 = TensorMap(
     'ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=100),
