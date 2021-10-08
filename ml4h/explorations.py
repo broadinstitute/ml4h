@@ -493,10 +493,17 @@ def infer_with_pixels(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
+
 def _sample_with_heat(preds, temperature=1.0):
     # helper function to sample an index from a probability array
     preds = np.asarray(preds).astype('float64')
+    preds = softmax(preds)
     preds = np.log(preds) / temperature
+
     exp_preds = np.exp(preds)
     preds = exp_preds / np.sum(exp_preds)
     logging.info(f"sum{np.sum(exp_preds)} exp_preds:{exp_preds} Preds {preds}")
