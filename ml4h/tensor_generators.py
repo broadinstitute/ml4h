@@ -822,7 +822,7 @@ def test_train_valid_tensor_generators(
     generate_test = generator_class(
         batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out + tensor_maps_protected,
         paths=test_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
-        keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
+        keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=True,
     )
     if wrap_with_tf_dataset:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
