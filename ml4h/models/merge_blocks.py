@@ -246,4 +246,3 @@ class ContrastiveLossLayer(Layer):
         # that depends on the inputs.
         self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
         return inputs
-    
