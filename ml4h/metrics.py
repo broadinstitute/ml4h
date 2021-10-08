@@ -46,6 +46,15 @@ def weighted_crossentropy(weights, name='anonymous'):
     return loss_fxn
 
 
+def sparse_cross_entropy(window_size: int):
+    def _sparse_cross_entropy(y_true, y_pred):
+        y_true = tf.reshape(y_true, shape=(-1, window_size))
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(
+            from_logits=True, reduction='none')(y_true, y_pred)
+        return tf.reduce_mean(loss)
+    return _sparse_cross_entropy
+
+
 def angle_between_batches(tensors):
     l0 = K.sqrt(K.sum(K.square(tensors[0]), axis=-1, keepdims=True) + K.epsilon())
     l1 = K.sqrt(K.sum(K.square(tensors[1]), axis=-1, keepdims=True) + K.epsilon())
