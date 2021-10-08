@@ -1436,19 +1436,19 @@ sax_slice_both = TensorMap(
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
 sax_slice_both_sharpen = TensorMap(
-    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
+    'sax_slice_both_sharpen', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
 sax_slice_both_median = TensorMap(
-    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
+    'sax_slice_both_median', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
 sax_slice_both_gauss = TensorMap(
-    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    'sax_slice_both_gauss', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
 sax_slice_both_all = TensorMap(
-    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
+    'sax_slice_both_all', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
 )
 
