@@ -146,7 +146,7 @@ def _median_filter(img):
 
 def _rotate(img):
     angle = np.random.randint(-15, 15)
-    return rotate(img, angle=angle)
+    return rotate(img, angle=angle, reshape=False)
 
 
 def _gaussian_noise(img, mean=0, sigma=0.03):
