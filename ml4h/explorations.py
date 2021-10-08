@@ -323,7 +323,6 @@ def sample_from_language_model(
                 burn_in[0, k] = language_output.channel_map[c]
             cur_test = {language_input.input_name(): burn_in}
             prediction = model.predict(cur_test)
-            logging.info(f'prediction shape:{prediction.shape} \n1st:{prediction[0, 0]}\nlast:{prediction[0, -1]}')
             next_token = index_2_token[_sample_with_heat(prediction[0, -1, :], heat)]
             sentence += next_token
         logging.info(f'Model completed sentence:{sentence}')
