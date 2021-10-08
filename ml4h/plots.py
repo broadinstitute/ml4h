@@ -405,6 +405,13 @@ def evaluate_predictions(
     return performance_metrics
 
 
+def make_one_hot(y, num_labels):
+    ohy = np.zeros((y.shape[-1], num_labels))
+    for i in range(0, y.shape[-1]):
+        ohy[i, int(y[i])] = 1.0
+    return ohy
+
+
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/"):
     row = 0
     col = 0
