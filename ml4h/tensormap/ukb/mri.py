@@ -8,6 +8,7 @@ import h5py
 import numpy as np
 from scipy.signal import convolve2d
 from scipy.ndimage import median_filter
+from scipy.ndimage.interpolation import rotate
 from tensorflow.keras.utils import to_categorical
 
 from ml4h.metrics import weighted_crossentropy
@@ -141,6 +142,11 @@ def _sharpen(img):
 def _median_filter(img):
     window_size = np.random.randint(1, 15)
     return np.expand_dims(median_filter(img[..., 0], size=(window_size, window_size)), axis=-1)
+
+
+def _rotate(img):
+    angle = np.random.randint(-15, 15)
+    return np.expand_dims(rotate(img, angle=angle)
 
 
 def _gaussian_noise(img, mean=0, sigma=0.03):
@@ -1726,6 +1732,11 @@ lax_2ch_heart_center = TensorMap(
 lax_4ch_heart_center_4d = TensorMap(
     'lax_4ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50, 1), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
+)
+lax_4ch_heart_center_rotate = TensorMap(
+    'lax_4ch_heart_center_rotate', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
+    augmentations=[_rotate],
 )
 myocardium_mask_lax_4ch_50frame = TensorMap(
     'myocardium_mask_lax_4ch_50frame', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
