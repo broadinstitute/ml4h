@@ -226,3 +226,24 @@ class VariationalDiagNormal(Layer):
         return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}
 
 
+class ContrastiveLossLayer(Layer):
+    """Layer that creates an Cosine loss."""
+
+    def __init__(self, weight, batch_size, **kwargs):
+        super(ContrastiveLossLayer, self).__init__(**kwargs)
+        self.weight = weight
+        self.batch_size = batch_size
+        self.temperature = self.add_weight(name='contrastive_temperature',
+                                           shape=(1,), initializer="zeros", trainable=True)
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'weight': self.weight, 'batch_size': self.batch_size})
+        return config
+
+    def call(self, inputs):
+        # We use `add_loss` to create a regularization loss
+        # that depends on the inputs.
+        self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
+        return inputs
+    
