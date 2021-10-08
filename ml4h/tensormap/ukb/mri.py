@@ -1408,19 +1408,19 @@ sax_slice_jamesp = TensorMap(
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
 sax_slice_jamesp_gauss = TensorMap(
-    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    'sax_slice_jamesp_gauss', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
 sax_slice_jamesp_sharpen = TensorMap(
-    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
+    'sax_slice_jamesp_sharpen', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
 sax_slice_jamesp_median = TensorMap(
-    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
+    'sax_slice_jamesp_median', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
 sax_slice_jamesp_all = TensorMap(
-    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
+    'sax_slice_jamesp_all', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
 )
 sax_slice_jamesp_sharpen_median = TensorMap(
