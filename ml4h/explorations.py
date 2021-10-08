@@ -499,7 +499,9 @@ def _sample_with_heat(preds, temperature=1.0):
     preds = np.log(preds) / temperature
     exp_preds = np.exp(preds)
     preds = exp_preds / np.sum(exp_preds)
-    probas = np.random.multinomial(1, preds, 1)
+    logging.info(f"sum{np.sum(exp_preds)} exp_preds:{exp_preds} Preds {preds}")
+    rng = np.random.default_rng()
+    probas = rng.multinomial(1, preds, 1)
     return np.argmax(probas)
 
 
