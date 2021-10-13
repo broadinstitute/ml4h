@@ -316,28 +316,25 @@ def _softmax(x):
     return e_x / e_x.sum()
 
 
-def sample_from_language_model(language_input, model, test_data, max_samples):
-    cur_test = {}
-    index_2_token = {v: k for k, v in language_input.channel_map.items()}
-    for i in range(test_data[language_input.input_name()].shape[0]):  # iterate over the batch
-        for k in test_data:
-            cur_test[k] = np.expand_dims(test_data[k][i], axis=0)
-        sentence = ''.join([str(index_2_token[index]) for index in cur_test[language_input.input_name()][0]])
-        sentence_tokens = [index_2_token[index] for index in cur_test[language_input.input_name()][0]]
-        logging.info(f'Start: {sentence}')
-        for x in range(max_samples):
+def sample_from_language_model(
+    language_input: TensorMap, language_output: TensorMap,
+    model, test_data, max_samples=16, heat=0.7,
+):
+    burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
+    index_2_token = {v: k for k, v in language_output.channel_map.items()}
+    for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch
+        burn_in[0] = test_data[language_input.input_name()][i]
+        sentence = ''.join([index_2_token[index] for index in burn_in[0]])
+        logging.info(f' Batch    sentence start:{sentence}                   ------- {i}')
+        for j in range(max_samples):
+            burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
+            for k, c in enumerate(sentence[j:]):
+                burn_in[0, k] = language_output.channel_map[c]
+            cur_test = {language_input.input_name(): burn_in}
             prediction = model.predict(cur_test)
-            next_token = index_2_token[_sample_with_heat(_softmax(prediction[0, -1, :]), 0.5)]
-            offset = 1
-            sentence_tokens.append(next_token)
-            sentence += str(next_token)
-            for k in test_data:
-                if 'next' in k:
-                    offset = 0
-                for j in range(test_data[k].shape[1]):
-                    cur_test[k][0, -(j+1)] = language_input.channel_map[sentence_tokens[-(1+j+offset)]]
-            s = ' '.join([str(index_2_token[index]) for index in cur_test[language_input.input_name()][0]])
-        logging.info(f'Model: {sentence}             \n --- {i} --- \n')
+            next_token = index_2_token[_sample_with_heat(prediction[0, -1, :], heat)]
+            sentence += next_token
+        logging.info(f'Model completed sentence:{sentence}')
 
 
 def sample_from_char_embed_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
