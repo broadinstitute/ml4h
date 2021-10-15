@@ -364,7 +364,7 @@ def evaluate_predictions(
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
         protected_tiled = {}
         for ptm in protected:
-            protected_tiled[ptm] = np.repeat(protected[ptm], np.prod(tm.shape))
+            protected_tiled[ptm] = np.repeat(protected[ptm], np.prod(tm.shape), axis=0)
             logging.info(f'Protected TM {ptm} had shape {protected[ptm].shape} now has {protected_tiled[ptm].shape} ')
             protected_tiled[ptm] = protected_tiled[ptm][:max_melt]
         if tm.sentinel is not None:
