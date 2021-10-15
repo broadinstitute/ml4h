@@ -362,6 +362,11 @@ def evaluate_predictions(
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
+        protected_tiled = {}
+        for ptm in protected:
+            protected_tiled[ptm] = np.repeat(protected[ptm], np.prod(tm.shape))
+            logging.info(f'Protected TM {ptm} had shape {protected[ptm].shape} now has {protected_tiled[ptm].shape} ')
+            protected_tiled[ptm] = protected_tiled[ptm][:max_melt]
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel]
             y_truth = y_truth[y_truth != tm.sentinel]
@@ -372,7 +377,7 @@ def evaluate_predictions(
                     prediction_flat,
                     truth_flat,
                     tm.channel_map,
-                    protected,
+                    protected_tiled,
                     title,
                     prefix=folder,
                 ),
