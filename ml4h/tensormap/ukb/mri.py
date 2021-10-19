@@ -2412,7 +2412,8 @@ lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap('lms_ideal_optimised_low_fl
 
 shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
 shmolli_192i_liver = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-shmolli_192i_12bit = TensorMap('shmolli_192i_12bit', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
+shmolli_192i_12bit = TensorMap('shmolli_192i_12bit', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0},
+                               tensor_from_file=_pad_crop_tensor)
 shmolli_192i_fitparams = TensorMap('shmolli_192i_fitparams', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
 shmolli_192i_t1map = TensorMap('shmolli_192i_t1map', shape=(288, 384, 2), normalization={'zero_mean_std1': 1.0})
 
