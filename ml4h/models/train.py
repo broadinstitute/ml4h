@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 from ml4h.plots import plot_metric_history
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
-from ml4h.models.inspect import _inspect_model
+from ml4h.models.inspect import plot_and_time_model
 from ml4h.models.model_factory import _get_custom_objects
 
 
@@ -61,7 +61,7 @@ def train_model_from_generators(
 
     if inspect_model:
         image_p = os.path.join(output_folder, run_id, 'architecture_graph_' + run_id + IMAGE_EXT)
-        _inspect_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
+        plot_and_time_model(model, generate_train, generate_valid, batch_size, training_steps, inspect_show_labels, image_p)
 
     history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,

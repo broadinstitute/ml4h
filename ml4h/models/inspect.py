@@ -10,7 +10,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.utils import model_to_dot
 
 
-def _inspect_model(
+def plot_and_time_model(
     model: Model,
     generate_train: Iterable,
     generate_valid: Iterable,
