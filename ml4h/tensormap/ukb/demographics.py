@@ -260,14 +260,25 @@ age_1 = TensorMap(
     normalization={'mean': 61.4476555588322, 'std': 7.3992113757847005}, channel_map={'21003_Age-when-attended-assessment-centre_1_0': 0},
 )
 age_2 = TensorMap(
-    '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
-    normalization={'mean': 63.35798891483556, 'std': 7.554638350423902}, channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+    '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 
 age_2_wide = TensorMap(
-    'age_from_wide_csv', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
-    normalization={'mean': 63.35798891483556, 'std': 7.554638350423902}, channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+    'age_from_wide_csv', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
+age_2_patientage = TensorMap(
+    'patientage', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+)
+
 af_dummy = TensorMap('af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
                              channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1})
 sex_dummy = TensorMap('sex_from_wide', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=2,
