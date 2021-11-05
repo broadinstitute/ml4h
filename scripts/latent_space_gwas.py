@@ -215,7 +215,6 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
                 continue
             sample_id = int(s.name.split("_")[0])
             sample2genos[sample_id] = remap[g[0]] + remap[g[1]]
-        print(f'At SNP {rec.id} {rec.pos} with {sum(sample2genos.values())}')
         if sum(sample2genos.values()) > 1000:
             snp_id = f"snp_{rec.id.replace(':', '_')}"
             data = {'sample_id': list(sample2genos.keys()), snp_id: list(sample2genos.values())}
@@ -228,7 +227,7 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
                                                                                                   new_df, adjust_cols,
                                                                                                   optimize=optimize_genotype_vector)
 
-                if len(gv_dict['rsid']) % 10 == 0:
+                if len(gv_dict['rsid']) % 100 == 0:
                     print(f'Processed SNPs {len(gv_dict["rsid"])}, P_value: {p_value:0.4E}, pos: {rec.pos}')
 
                 gv_dict['t_stat'].append(t_stat)
@@ -247,8 +246,8 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
                 gv_dict['ref_count'].append(counts[0])
                 gv_dict['het_count'].append(counts[1])
                 gv_dict['hom_count'].append(counts[2])
-                for ii, v in enumerate(gv):
-                    gv_dict[f'gv_{ii}'].append(v)
+                # for ii, v in enumerate(gv):
+                #     gv_dict[f'gv_{ii}'].append(v)
 
     print(f'Finished with total SNPs:{len(gv_dict["rsid"])}. Now write CSV.')
     gv_df = pd.DataFrame.from_dict(gv_dict)
