@@ -205,6 +205,7 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
     gv_dict = defaultdict(list)
     #bcf_in = pysam.VariantFile(f"/mnt/disks/chr12-bcfs/latent_space_ukb_imp_chr{chrom}_v3_geno_095_maf_0005_info_03.bcf.bcf")
     bcf_in = pysam.VariantFile(input_bcf)
+    print(f'Here we go with {chrom} {start} {stop} and {input_bcf}')
     for i, rec in enumerate(bcf_in.fetch(chrom, int(start), int(stop))):
         sample2genos = {}
         for j, s in enumerate(rec.samples.values()):
@@ -213,6 +214,7 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
                 continue
             sample_id = int(s.name.split("_")[0])
             sample2genos[sample_id] = remap[g[0]] + remap[g[1]]
+        print(f'At SNP {rec.id} {rec.pos} with {sum(sample2genos.values())}')
         if sum(sample2genos.values()) > 1000:
             snp_id = f"snp_{rec.id.replace(':', '_')}"
             data = {'sample_id': list(sample2genos.keys()), snp_id: list(sample2genos.values())}
