@@ -205,7 +205,7 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
     gv_dict = defaultdict(list)
     #bcf_in = pysam.VariantFile(f"/mnt/disks/chr12-bcfs/latent_space_ukb_imp_chr{chrom}_v3_geno_095_maf_0005_info_03.bcf.bcf")
     bcf_in = pysam.VariantFile(input_bcf)
-    for i, rec in enumerate(bcf_in.fetch(chrom, start, stop)):
+    for i, rec in enumerate(bcf_in.fetch(chrom, int(start), int(stop))):
         sample2genos = {}
         for j, s in enumerate(rec.samples.values()):
             g = s.values()[0]
