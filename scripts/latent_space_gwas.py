@@ -211,7 +211,7 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
             sample_id = int(s.name.split("_")[0])
             sample2genos[sample_id] = remap[g[0]] + remap[g[1]]
         if sum(sample2genos.values()) > 1000:
-            snp_id = f"snp_{rec.id.replace(':', '_')}"
+            snp_id = f"snp_{rec.id.replace(':', '_').replace('-', '_')}"
             data = {'sample_id': list(sample2genos.keys()), snp_id: list(sample2genos.values())}
             genos = pd.DataFrame.from_dict(data)
             new_df = pd.merge(latent_df, genos, left_on='sample_id', right_on='sample_id', how='inner')
