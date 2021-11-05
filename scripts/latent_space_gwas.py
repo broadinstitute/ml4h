@@ -1,19 +1,14 @@
 import os
-import multiprocessing
 from collections import defaultdict
 
 import pysam
 import numpy as np
 import pandas as pd
-import matplotlib
-import seaborn as sns
-from scipy import stats
-import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.multivariate.manova import MANOVA
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge
 
-from scipy.stats import pearsonr
+
 LATENT_COLS=[f'new_latent_24_{i}' for i in range(86)]
 ADJUST_COLS=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11',
                'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20', 'PC21',
