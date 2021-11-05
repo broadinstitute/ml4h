@@ -21,11 +21,12 @@ ADJUST_COLS=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC1
 
 def run():
     input_bcf = os.environ['INPUT_BCF']
-    latent_df = os.environ['INPUT_LATENT']
+    latent_csv = os.environ['INPUT_LATENT']
     output_csv = os.environ['OUTPUT_CSV']
     chrom = os.environ['CHROM']
     start = os.environ['START']
     stop = os.environ['STOP']
+    latent_df = pd.read_csv(latent_csv)
     latent_space_gwas(input_bcf, chrom, start, stop, latent_df, LATENT_COLS, ADJUST_COLS, output_csv)
 
 
