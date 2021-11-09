@@ -38,7 +38,7 @@ import pandas as pd
 from scipy.ndimage import zoom
 from fastparquet import ParquetFile
 import matplotlib.pyplot as plt
-from ingest_mri import compress_and_store, read_compressed
+from ml4h.applications.ingest.ingest_mri import compress_and_store, read_compressed
 
 
 def project_coronal(x: np.ndarray) -> np.ndarray:
