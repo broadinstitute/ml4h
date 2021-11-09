@@ -9,7 +9,6 @@ from statsmodels.multivariate.manova import MANOVA
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge
 
 
-LATENT_COLS=[f'new_latent_18_{i}' for i in range(50)]
 ADJUST_COLS=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11',
              'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20', 'PC21',
              'PC22', 'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30',
@@ -22,8 +21,11 @@ def run():
     chrom = os.environ['CHROM']
     start = os.environ['START']
     stop = os.environ['STOP']
+    latent_prefix =  os.environ['LATENT_PREFIX']
+    latent_total = os.environ['LATENT_TOTAL']
+    latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, LATENT_COLS, ADJUST_COLS, output_csv)
+    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, ADJUST_COLS, output_csv)
 
 
 def unit_vector(vector):
@@ -102,7 +104,7 @@ def iterative_subspace_removal(adjust_cols, latent_df, latent_cols, r2_thresh=0.
     new_adjust_cols = adjust_cols
     space = latent_df[latent_cols].to_numpy()
     iteration = 0
-    while len(new_adjust_cols) > 0 and space.shape[-1] > len(new_adjust_cols):
+    while 0 < len(new_adjust_cols) < space.shape[-1]:
         cfm, scores = confounder_matrix(new_adjust_cols, latent_df, new_cols)
         u, s, vt = np.linalg.svd(cfm, full_matrices=True)
         nspace = np.matmul(space, vt[:, len(new_adjust_cols):])
