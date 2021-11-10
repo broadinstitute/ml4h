@@ -385,7 +385,7 @@ t1_20_slices_1 = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
         't1_p2_1mm_fov256_sag_ti_880_1', 94,
-        114,
+        114, pad_shape=(256, 256, 208)
     ),
 )
 t1_20_slices_2 = TensorMap(
@@ -395,7 +395,7 @@ t1_20_slices_2 = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
         't1_p2_1mm_fov256_sag_ti_880_2', 94,
-        114,
+        114, pad_shape=(256, 256, 208)
     ),
 )
 t2_20_slices_1 = TensorMap(
