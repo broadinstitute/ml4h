@@ -535,10 +535,11 @@ def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: d
         _save_slice_thickness_if_missing(slicer, series, hd5)
         _save_series_orientation_and_position_if_missing(slicer, series, hd5)
         slice_index = slicer.InstanceNumber - 1
-        if slicer.SeriesNumber in [5, 11]:
+        if slicer.SeriesNumber % 2 == 0:  # Assumes one series is even and one series number is odd
             mri_data1[..., slice_index] = slicer.pixel_array.astype(np.float32)
-        elif slicer.SeriesNumber in [6, 12]:
+        else:
             mri_data2[..., slice_index] = slicer.pixel_array.astype(np.float32)
+
     create_tensor_in_hd5(hd5, mri_group, series + '_1', mri_data1, date=mri_date)
     create_tensor_in_hd5(hd5, mri_group, series + '_2', mri_data2, date=mri_date)
 
