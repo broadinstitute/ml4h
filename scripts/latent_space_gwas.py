@@ -9,9 +9,6 @@ from statsmodels.multivariate.manova import MANOVA
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge
 
 
-ADJUST_COLS=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11',
-             'gt_array_axiom', 'gt_batch', 'assessment_center', 'age', 'age_squared', 'sex']
-
 def run():
     input_bcf = os.environ['INPUT_BCF']
     latent_csv = os.environ['INPUT_LATENT']
@@ -19,11 +16,13 @@ def run():
     chrom = os.environ['CHROM']
     start = os.environ['START']
     stop = os.environ['STOP']
+
     latent_prefix =  os.environ['LATENT_PREFIX']
     latent_total = os.environ['LATENT_TOTAL']
     latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, ADJUST_COLS, output_csv)
+
+    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv)
 
 
 def unit_vector(vector):
@@ -120,6 +119,15 @@ def iterative_subspace_removal(adjust_cols, latent_df, latent_cols, r2_thresh=0.
     return new_cols
 
 
+def manova_latent_space(stratify_column, latent_cols, latent_df):
+    latent_df = latent_df[[stratify_column] + latent_cols].dropna()
+    formula = f"{'+'.join(latent_cols)} ~ {stratify_column}"
+    maov = MANOVA.from_formula(formula, data=latent_df)
+    test = maov.mv_test()
+    s = test[stratify_column]['stat']
+    return s['F Value'][0], s['Pr > F'][0], s['Value'][0]
+
+
 def stratify_genotype_and_project_latent_space(stratify_column, latent_cols, latent_df, adjust_cols,
                                                manova=True, optimize=False):
     latent_df = latent_df[[stratify_column] + latent_cols + adjust_cols].dropna()
@@ -196,11 +204,10 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     return latent_df
 
 
-def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adjust_cols, output_file,
-                      optimize_genotype_vector=False):
+def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_file):
     remap = [1, 0]
     gv_dict = defaultdict(list)
-    #bcf_in = pysam.VariantFile(f"/mnt/disks/chr12-bcfs/latent_space_ukb_imp_chr{chrom}_v3_geno_095_maf_0005_info_03.bcf.bcf")
+
     bcf_in = pysam.VariantFile(input_bcf)
     print(f'Here we go with {chrom} {start} {stop} and {input_bcf}')
     for i, rec in enumerate(bcf_in.fetch(chrom, int(start), int(stop))):
@@ -211,39 +218,32 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, adj
                 continue
             sample_id = int(s.name.split("_")[0])
             sample2genos[sample_id] = remap[g[0]] + remap[g[1]]
-        if sum(sample2genos.values()) > 1000:
+        if sum(sample2genos.values()) > 100:
             snp_id = f"snp_{rec.id.replace(':', '_').replace('-', '_')}"
             data = {'sample_id': list(sample2genos.keys()), snp_id: list(sample2genos.values())}
             genos = pd.DataFrame.from_dict(data)
             new_df = pd.merge(latent_df, genos, left_on='sample_id', right_on='sample_id', how='inner')
             counts = new_df[snp_id].value_counts()
 
-            if len(counts) == 3 and counts[0] > 200:
-                t_stat, p_value, coef, se, angle, gv = stratify_genotype_and_project_latent_space(snp_id, latent_cols,
-                                                                                                  new_df, adjust_cols,
-                                                                                                  optimize=optimize_genotype_vector)
+            t_stat, p_value, coef = manova_latent_space(snp_id, latent_cols, new_df)
 
-                if len(gv_dict['rsid']) % 100 == 0:
-                    print(f'Processed SNPs {len(gv_dict["rsid"])}, P_value: {p_value:0.4E}, pos: {rec.pos}')
-
-                gv_dict['t_stat'].append(t_stat)
-                gv_dict['p_value'].append(p_value)
-                gv_dict['log10p'].append(-np.log10(p_value))
-                gv_dict['coef'].append(coef)
-                gv_dict['se'].append(se)
-                gv_dict['angle'].append(angle)
-                gv_dict['rsid'].append(rec.id)
-                gv_dict['pos'].append(rec.pos)
-                gv_dict['chrom'].append(rec.chrom)
-                gv_dict['ref'].append(rec.ref)
-                gv_dict['allele1'].append(rec.alleles[1])
-                a1freq = ((0.5 * counts[1]) + counts[2]) / (counts[0] + counts[1] + counts[2])
-                gv_dict['a1freq'].append(a1freq)
-                gv_dict['ref_count'].append(counts[0])
-                gv_dict['het_count'].append(counts[1])
-                gv_dict['hom_count'].append(counts[2])
-                # for ii, v in enumerate(gv):
-                #     gv_dict[f'gv_{ii}'].append(v)
+            gv_dict['t_stat'].append(t_stat)
+            gv_dict['p_value'].append(p_value)
+            gv_dict['log10p'].append(-np.log10(p_value))
+            gv_dict['coef'].append(coef)
+            gv_dict['se'].append(coef)
+            gv_dict['rsid'].append(rec.id)
+            gv_dict['pos'].append(rec.pos)
+            gv_dict['chrom'].append(rec.chrom)
+            gv_dict['ref'].append(rec.ref)
+            gv_dict['allele1'].append(rec.alleles[1])
+            a1freq = ((0.5 * counts[1]) + counts[2]) / (counts[0] + counts[1] + counts[2])
+            gv_dict['a1freq'].append(a1freq)
+            gv_dict['ref_count'].append(counts[0])
+            gv_dict['het_count'].append(counts[1])
+            gv_dict['hom_count'].append(counts[2])
+            if len(gv_dict['rsid']) % 100 == 0:
+                print(f'Processed SNPs {len(gv_dict["rsid"])}, P_value: {p_value:0.4E}, pos: {rec.pos}')
 
     print(f'Finished with total SNPs:{len(gv_dict["rsid"])}. Now write CSV.')
     gv_df = pd.DataFrame.from_dict(gv_dict)
