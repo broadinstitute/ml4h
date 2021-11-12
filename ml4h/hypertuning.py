@@ -87,9 +87,9 @@ def make_model_builder(args):
         dense_layer_size = hp.Int('dense_layer_size', 16, 256, sampling='log')
         args.__dict__['dense_layers'] = [dense_layer_size] * num_dense_layers
         args.__dict__['activation'] = hp.Choice('activation', ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu'])
-        dense_normalize = hp.Choice('dense_normalize', list(NORMALIZATION_CLASSES.keys()) + ['None'])
+        dense_normalize = hp.Choice('dense_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
         args.__dict__['dense_normalize'] = None if dense_normalize == 'None' else dense_normalize
-        conv_normalize = hp.Choice('conv_normalize', list(NORMALIZATION_CLASSES.keys()) + ['None'])
+        conv_normalize = hp.Choice('conv_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
         args.__dict__['conv_normalize'] = None if conv_normalize == 'None' else conv_normalize
         args.__dict__['pool_type'] = 'max' if hp.Boolean('pool_type_is_max') else 'average'
         model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
