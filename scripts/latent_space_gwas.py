@@ -1,5 +1,5 @@
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import pysam
 import numpy as np
@@ -237,11 +237,16 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, out
             gv_dict['chrom'].append(rec.chrom)
             gv_dict['ref'].append(rec.ref)
             gv_dict['allele1'].append(rec.alleles[1])
-            a1freq = ((0.5 * counts[1]) + counts[2]) / (counts[0] + counts[1] + counts[2])
+            counter = Counter()
+            for a in [0,1,2]:
+                if a in counts:
+                    counter[a] = counts[a]
+
+            a1freq = ((0.5 * counter[1]) + counter[2]) / (counter[0] + counter[1] + counter[2])
             gv_dict['a1freq'].append(a1freq)
-            gv_dict['ref_count'].append(counts[0])
-            gv_dict['het_count'].append(counts[1])
-            gv_dict['hom_count'].append(counts[2])
+            gv_dict['ref_count'].append(counter[0])
+            gv_dict['het_count'].append(counter[1])
+            gv_dict['hom_count'].append(counter[2])
             if len(gv_dict['rsid']) % 100 == 0:
                 print(f'Processed SNPs {len(gv_dict["rsid"])}, P_value: {p_value:0.4E}, pos: {rec.pos}')
 
