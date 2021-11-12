@@ -70,18 +70,22 @@ def make_model_builder(args):
     model_count = 0
 
     def model_builder(hp):
-        conv_width = hp.Int('conv_width', 3, 81, step=4)
-        args.__dict__['conv_width'] = [conv_width]
+        # conv_width = hp.Int('conv_width', 3, 81, step=4)
+        # args.__dict__['conv_width'] = [conv_width]
         num_conv_layers = hp.Int('num_conv_layers', 0, 3)
-        conv_layer_size = hp.Int('conv_layer_size', 8, 64, step=8)
+        if num_conv_layers > 0:
+            with hp.conditional_scope("num_conv_layers", [1,2,3]):
+                conv_layer_size = hp.Int('conv_layer_size', 8, 64, step=8)
+        else:
+            conv_layer_size = 0
         args.__dict__['conv_layers'] = [conv_layer_size] * num_conv_layers
         num_dense_blocks = hp.Int('num_dense_blocks', 1, 3)
         dense_block_size = hp.Int('dense_block_size', 8, 48, step=8)
         args.__dict__['dense_blocks'] = [dense_block_size] * num_dense_blocks
         args.__dict__['block_size'] = hp.Int('block_size', 1, 6)
-        #num_dense_layers = hp.Int('num_dense_layers', 1, 4)
-        #dense_layer_size = hp.Int('dense_layer_size', 16, 256, sampling='log')
-        #args.__dict__['dense_layers'] = [dense_layer_size] * num_dense_layers
+        num_dense_layers = hp.Int('num_dense_layers', 1, 4)
+        dense_layer_size = hp.Int('dense_layer_size', 16, 256, sampling='log')
+        args.__dict__['dense_layers'] = [dense_layer_size] * num_dense_layers
         args.__dict__['activation'] = hp.Choice('activation', ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu'])
         dense_normalize = hp.Choice('dense_normalize', list(NORMALIZATION_CLASSES.keys()) + ['None'])
         args.__dict__['dense_normalize'] = None if dense_normalize == 'None' else dense_normalize
