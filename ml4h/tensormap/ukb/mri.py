@@ -423,7 +423,7 @@ t1_40_slices_1 = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
         't1_p2_1mm_fov256_sag_ti_880_1', 64,
-        144, 2,
+        144, 2, pad_shape=(256, 256, 208)
     ),
 )
 t2_40_slices_1 = TensorMap(
