@@ -816,6 +816,21 @@ t1_t2_dicom_30_slices = TensorMap(
     ),
     normalization=ZeroMeanStd1(),
 )
+t1_t2_dicom_32_slices = TensorMap(
+    't1_t2_dicom_32_slices',
+    Interpretation.CONTINUOUS,
+    shape=(192, 256, 32, 2),
+    path_prefix='ukb_brain_mri',
+    tensor_from_file=_combined_subset_tensor(
+        _dicom_keys,
+        130,
+        190,
+        2,
+        pad_shape=(192, 256, 256),
+        flip_swap=True,
+    ),
+    normalization=ZeroMeanStd1(),
+)
 t1_t2_dicom_50_slices = TensorMap(
     't1_t2_dicom_50_slices',
     Interpretation.CONTINUOUS,
