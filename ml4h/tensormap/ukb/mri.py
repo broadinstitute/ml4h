@@ -432,7 +432,7 @@ t2_40_slices_1 = TensorMap(
     path_prefix='ukb_brain_mri',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2,
+        't2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2, pad_shape=(256, 256, 208),
     ),
 )
 sos_te1 = TensorMap(
