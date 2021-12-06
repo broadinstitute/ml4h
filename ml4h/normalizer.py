@@ -63,3 +63,17 @@ class ImagenetNormalizeTorch(Normalizer):
         # std = [0.229, 0.224, 0.225]
         # when mode is torch
         return imagenet_utils.preprocess_input(tensor, data_format=None, mode="torch")
+
+
+class RandomStandardize(Normalizer):
+    def __init__(self, mean: float, std: float, ratio: float = 0.5):
+        self.mean, self.std, self.ratio = mean, std, ratio
+
+    def normalize(self, tensor: np.ndarray) -> np.ndarray:
+        if np.random.rand() > self.ratio:
+            return (tensor - self.mean) / (self.std + EPS)
+        else:
+            return (tensor - np.mean(tensor)) / (np.std(tensor) + EPS)
+
+    def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
+        return tensor * self.std + self.mean
