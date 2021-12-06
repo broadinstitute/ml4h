@@ -443,6 +443,11 @@ ecg_rest = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
+ecg_rest_no_poor = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
 ecg_rest_mgb = TensorMap(
     'ecg_5000_std', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
@@ -512,6 +517,10 @@ ecg_rest_median_mv_warp = TensorMap(
 ecg_rest_median_raw_10 = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
+)
+ecg_rest_median_raw_10_no_poor = TensorMap(
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
 ecg_rest_median_raw_10_random_norm = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
