@@ -147,7 +147,6 @@ def _make_ecg_rest(
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
-                    logging.info(f'SHape is {short_time_ft.shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
@@ -489,7 +488,7 @@ ecg_rest_2500_ukb = TensorMap(
 )
 
 ecg_rest_stft = TensorMap(
-    'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+    'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(52, 72, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
     tensor_from_file=_make_ecg_rest(short_time_nperseg=103, short_time_noverlap=32), normalization=ZeroMeanStd1()
 )
 ecg_rest_stft_512 = TensorMap(
