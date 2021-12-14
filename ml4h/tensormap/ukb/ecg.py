@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 import scipy
+import logging
 from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
 # from ml4h.tensor_writer_ukbb import tensor_path
@@ -146,6 +147,7 @@ def _make_ecg_rest(
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
+                    logging.info(f'SHape is {short_time_ft.shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
@@ -488,7 +490,7 @@ ecg_rest_2500_ukb = TensorMap(
 
 ecg_rest_stft = TensorMap(
     'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=61), normalization=ZeroMeanStd1()
+    tensor_from_file=_make_ecg_rest(short_time_nperseg=99, short_time_noverlap=33), normalization=ZeroMeanStd1()
 )
 ecg_rest_stft_512 = TensorMap(
     'ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
