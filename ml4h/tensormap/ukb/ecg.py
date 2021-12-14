@@ -147,6 +147,7 @@ def _make_ecg_rest(
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
+                    logging.info(f'SHape is {short_time_ft.shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
