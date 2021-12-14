@@ -490,7 +490,7 @@ ecg_rest_2500_ukb = TensorMap(
 
 ecg_rest_stft = TensorMap(
     'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-    tensor_from_file=_make_ecg_rest(short_time_nperseg=99, short_time_noverlap=33), normalization=ZeroMeanStd1()
+    tensor_from_file=_make_ecg_rest(short_time_nperseg=101, short_time_noverlap=33), normalization=ZeroMeanStd1()
 )
 ecg_rest_stft_512 = TensorMap(
     'ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
