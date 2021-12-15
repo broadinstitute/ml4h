@@ -151,7 +151,8 @@ def _make_ecg_rest(
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
-                tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
+                else:
+                    tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
         return tensor
     return ecg_rest_from_file
 
