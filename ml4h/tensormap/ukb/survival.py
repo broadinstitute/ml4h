@@ -269,6 +269,16 @@ mgb_afib_wrt_instance2 = TensorMap(
                                       disease_name_override='atrial_fibrillation_or_flutter',
                                       start_date_is_attribute=True, incidence_only=True),
 )
+mgb_cad_wrt_instance2 = TensorMap(
+    'cad_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+                                      disease_name_override='coronary_artery_disease',
+                                      start_date_is_attribute=True, incidence_only=True),
+)
+
 mgb_afib_from_dd_wrt_instance2 = TensorMap(
     'af_age_survival',
     Interpretation.SURVIVAL_CURVE,
