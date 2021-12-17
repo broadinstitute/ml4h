@@ -143,11 +143,11 @@ def _median_filter(img):
     window_size = np.random.randint(1, 15)
     return np.expand_dims(median_filter(img[..., 0], size=(window_size, window_size)), axis=-1)
 
-
-def _rotate(img):
-    angle = np.random.randint(-15, 15)
-    return rotate(img, angle=angle, reshape=False)
-
+def _make_rotate(min: float, max: float):
+    def _rotate(img):
+        angle = np.random.randint(min, max)
+        return rotate(img, angle=angle, reshape=False)
+    return _rotate
 
 def _gaussian_noise(img, mean=0, sigma=0.03):
     img = img.copy()
@@ -972,7 +972,13 @@ lax_4ch_diastole_slice0_224_3d = TensorMap(
 
 lax_4ch_diastole_slice0_224_3d_augmented = TensorMap(
     'lax_4ch_diastole_slice0_224_3d_augmented', Interpretation.CONTINUOUS, shape=(160, 224, 1),
-    normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise, _rotate],
+    normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise, _make_rotate(-15, 15)],
+    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
+)
+
+lax_4ch_diastole_slice0_224_3d_rotated = TensorMap(
+    'lax_4ch_diastole_slice0_224_3d_rotated', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise, _make_rotate(-180, 180)],
     tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
 
@@ -1786,7 +1792,7 @@ lax_4ch_heart_center_4d = TensorMap(
 lax_4ch_heart_center_rotate = TensorMap(
     'lax_4ch_heart_center_rotate', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
-    augmentations=[_rotate],
+    augmentations=[_make_rotate(-180, 180)],
 )
 myocardium_mask_lax_4ch_50frame = TensorMap(
     'myocardium_mask_lax_4ch_50frame', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
