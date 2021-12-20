@@ -152,7 +152,7 @@ def evaluate_predictions(
     title: str,
     folder: str,
     test_paths: List[str] = None,
-    max_melt: int = 500000,
+    max_melt: int = 2500000,
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
