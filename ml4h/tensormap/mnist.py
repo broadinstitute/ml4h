@@ -11,12 +11,12 @@ import numpy as np
 from ml4h.TensorMap import TensorMap, Interpretation
 
 
-def mnist_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array(hd5['mnist_image'])
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name])
 
 
-mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=mnist_image_from_hd5)
-
+mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=image_from_hd5)
+celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), tensor_from_file=image_from_hd5)
 
 def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     one_hot = np.zeros(tm.shape, dtype=np.float32)
