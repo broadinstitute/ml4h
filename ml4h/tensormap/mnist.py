@@ -13,7 +13,7 @@ from ml4h.normalizer import ZeroMeanStd1
 
 
 def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array(hd5[tm.name])
+    return np.array(hd5[tm.name], dtype=np.float32)
 
 
 mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=image_from_hd5)
