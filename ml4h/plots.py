@@ -3038,16 +3038,26 @@ def plot_reconstruction(
                     cmap="plasma",
                 )
             else:
-                plt.imsave(
-                    f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
-                    y[:, :, 0],
-                    cmap="gray",
-                )
-                plt.imsave(
-                    f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
-                    yp[:, :, 0],
-                    cmap="gray",
-                )
+                if y.shape[-1] == 0:
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
+                        y[:, :, 0],
+                        cmap="gray",
+                    )
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
+                        yp[:, :, 0],
+                        cmap="gray",
+                    )
+                else:
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
+                        y[:, :, :],
+                    )
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
+                        yp[:, :, 0],
+                    )
         elif tm.axes() == 4:
             for j in range(y.shape[3]):
                 image_path_base = f"{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}"
