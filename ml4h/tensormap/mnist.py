@@ -13,13 +13,14 @@ from ml4h.normalizer import ZeroMeanStd1
 
 
 def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array(hd5[tm.name], dtype=np.float32)
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
 
 
 mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=image_from_hd5)
 celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), normalization=ZeroMeanStd1(),
                          tensor_from_file=image_from_hd5)
-
+celeba_image_208 = TensorMap('celeba_image', shape=(208, 168, 3), normalization=ZeroMeanStd1(),
+                         tensor_from_file=image_from_hd5)
 def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     one_hot = np.zeros(tm.shape, dtype=np.float32)
     one_hot[int(hd5['mnist_label'][0])] = 1.0
