@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 
 from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.normalizer import ZeroMeanStd1
 
 
 def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
@@ -16,7 +17,8 @@ def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.n
 
 
 mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=image_from_hd5)
-celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), tensor_from_file=image_from_hd5)
+celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), normalization=ZeroMeanStd1(),
+                         tensor_from_file=image_from_hd5)
 
 def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     one_hot = np.zeros(tm.shape, dtype=np.float32)
