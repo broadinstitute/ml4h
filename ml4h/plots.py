@@ -3052,11 +3052,11 @@ def plot_reconstruction(
                 else:
                     plt.imsave(
                         f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
-                        y[:, :, :],
+                        (y[:, :, :]-y.min() )/ (1e-6+ y.max()-y.min()),
                     )
                     plt.imsave(
                         f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
-                        yp[:, :, 0],
+                        (yp[:, :, :]-yp.min() )/ (1e-6+ yp.max()-yp.min()),
                     )
         elif tm.axes() == 4:
             for j in range(y.shape[3]):
