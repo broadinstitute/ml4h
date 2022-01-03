@@ -21,6 +21,18 @@ celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), normalization=Zero
                          tensor_from_file=image_from_hd5)
 celeba_image_208 = TensorMap('celeba_image', shape=(208, 168, 3), normalization=ZeroMeanStd1(),
                          tensor_from_file=image_from_hd5)
+
+
+def landmark_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    landmark = np.zeros(tm.shape, dtype=np.float32)
+    for channel in tm.channel_map:
+        landmark[tm.channel_map[channel]] = hd5[channel][0]
+    return landmark
+
+eye_channels = {'lefteye_x': 0, 'lefteye_y': 1, 'righteye_x': 2, 'righteye_y': 3}
+celeba_eyes = TensorMap('celeba_eyes', shape=(len(eye_channels),), tensor_from_file=landmark_from_hd5)
+
+
 def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     one_hot = np.zeros(tm.shape, dtype=np.float32)
     one_hot[int(hd5['mnist_label'][0])] = 1.0
