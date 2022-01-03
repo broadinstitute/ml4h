@@ -30,7 +30,8 @@ def landmark_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> n
     return landmark
 
 eye_channels = {'lefteye_x': 0, 'lefteye_y': 1, 'righteye_x': 2, 'righteye_y': 3}
-celeba_eyes = TensorMap('celeba_eyes', shape=(len(eye_channels),), tensor_from_file=landmark_from_hd5)
+celeba_eyes = TensorMap('celeba_eyes', shape=(len(eye_channels),), channel_map=eye_channels,
+                        tensor_from_file=landmark_from_hd5)
 
 
 def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
