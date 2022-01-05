@@ -41,7 +41,6 @@ def celeba_label(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.nda
         return np.array([1, 0])
 
 
-celeba_5_o_clock_shadow = TensorMap('5_o_clock_shadow', Interpretation.CATEGORICAL, tensor_from_file=celeba_label, channel_map={'no_5_o_clock_shadow': 0, '5_o_clock_shadow': 1})
 celeba_arched_eyebrows = TensorMap('arched_eyebrows', Interpretation.CATEGORICAL, tensor_from_file=celeba_label, channel_map={'no_arched_eyebrows': 0, 'arched_eyebrows': 1})
 celeba_attractive = TensorMap('attractive', Interpretation.CATEGORICAL, tensor_from_file=celeba_label, channel_map={'no_attractive': 0, 'attractive': 1})
 celeba_bags_under_eyes = TensorMap('bags_under_eyes', Interpretation.CATEGORICAL, tensor_from_file=celeba_label, channel_map={'no_bags_under_eyes': 0, 'bags_under_eyes': 1})
