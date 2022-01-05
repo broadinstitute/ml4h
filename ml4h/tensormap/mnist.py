@@ -38,7 +38,7 @@ def celeba_label(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.nda
     if tm.name in hd5:
         return np.array([1, 0])
     else:
-        return np.array([1, 0])
+        return np.array([0, 1])
 
 
 celeba_arched_eyebrows = TensorMap('arched_eyebrows', Interpretation.CATEGORICAL, tensor_from_file=celeba_label, channel_map={'no_arched_eyebrows': 0, 'arched_eyebrows': 1})
