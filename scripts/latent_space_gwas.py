@@ -186,7 +186,8 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, out
             genos = pd.DataFrame.from_dict(data)
             new_df = pd.merge(latent_df, genos, left_on='sample_id', right_on='sample_id', how='inner')
             counts = new_df[snp_id].value_counts()
-
+            if len(counts) != 3:
+                continue
             if manova:
                 t_stat, p_value, coef, se = manova_latent_space(snp_id, latent_cols, new_df)
             else:
