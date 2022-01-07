@@ -481,10 +481,10 @@ ecg_rest_mgb_strip_II = TensorMap(
     'ecg_strip_II', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
 )
-ecg_rest_mgb_2500 = TensorMap(
-    'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
-)
+# ecg_rest_mgb_2500 = TensorMap(
+#     'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
+#     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+# )
 ecg_rest_mgb_2500_test = TensorMap(
     'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
