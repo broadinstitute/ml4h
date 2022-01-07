@@ -125,46 +125,7 @@ def manova_latent_space(stratify_column, latent_cols, latent_df):
     maov = MANOVA.from_formula(formula, data=latent_df)
     test = maov.mv_test()
     s = test[stratify_column]['stat']
-    return s['F Value'][0], s['Pr > F'][0], s['Value'][0]
-
-
-def stratify_genotype_and_project_latent_space(stratify_column, latent_cols, latent_df, adjust_cols,
-                                               manova=True, optimize=False):
-    latent_df = latent_df[[stratify_column] + latent_cols + adjust_cols].dropna()
-    genotype_vector, angle = get_genotype_vector_and_angle(stratify_column, latent_cols, latent_df)
-    if manova:
-        formula = f"{'+'.join(latent_cols)} ~ {stratify_column}"
-        maov = MANOVA.from_formula(formula, data=latent_df)
-        test = maov.mv_test()
-        s = test[stratify_column]['stat']
-        return s['F Value'][0], s['Pr > F'][0], s['Value'][0], s['Value'][0], angle, genotype_vector
-
-    if optimize:
-        genotype_vector = optimize_genotype_vector(stratify_column, latent_df, latent_cols, verbose=True)
-    space = latent_df[latent_cols].to_numpy()
-    all_dots = np.array([np.dot(genotype_vector, v) for v in space])
-    all_genotypes = latent_df[stratify_column].to_numpy()
-
-    if len(adjust_cols) > 0:
-        all_adjustments = latent_df[adjust_cols].to_numpy()
-        all_data = np.column_stack([all_genotypes, all_adjustments, np.ones(all_dots.shape[0])])
-        clean_cols = [col.replace('22009', '').replace('21003', '').replace('-', '').replace('_', '') for col in adjust_cols]
-        formula = f'y ~ genotypes + {" + ".join(clean_cols)}'
-    else:
-        all_data = np.column_stack([all_genotypes, np.ones(all_dots.shape[0])])
-        formula = f'y ~ genotypes'
-        clean_cols = adjust_cols
-    data = {'y': all_dots, 'genotypes': all_genotypes}
-    for i, col in enumerate(clean_cols):
-        data[col] = all_adjustments[:, i]
-    df = pd.DataFrame.from_dict(data)
-
-    results = smf.ols(formula, data=df).fit()
-    p_value = float(results.summary2().tables[1]['P>|t|']['genotypes'])
-    t_stat = float(results.summary2().tables[1]['t']['genotypes'])
-    coef = float(results.summary2().tables[1]['Coef.']['genotypes'])
-    se = float(results.summary2().tables[1]['Std.Err.']['genotypes'])
-    return t_stat, p_value, coef, se, angle, genotype_vector
+    return s['F Value'][0], s['Pr > F'][0], s['Value'][0], s['Value'][0]
 
 
 def merge_snp(latent_df, snp_vcf, snp_id):
@@ -204,7 +165,8 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     return latent_df
 
 
-def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_file):
+def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_file,
+                      manova=False, optimize=False):
     remap = [1, 0]
     gv_dict = defaultdict(list)
 
@@ -225,13 +187,30 @@ def latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, out
             new_df = pd.merge(latent_df, genos, left_on='sample_id', right_on='sample_id', how='inner')
             counts = new_df[snp_id].value_counts()
 
-            t_stat, p_value, coef = manova_latent_space(snp_id, latent_cols, new_df)
+            if manova:
+                t_stat, p_value, coef, se = manova_latent_space(snp_id, latent_cols, new_df)
+            else:
+                if optimize:
+                    genotype_vector = optimize_genotype_vector(snp_id, new_df, latent_cols, verbose=True)
+                space = latent_df[latent_cols].to_numpy()
+                all_dots = np.array([np.dot(genotype_vector, v) for v in space])
+                all_genotypes = latent_df[snp_id].to_numpy()
+
+                formula = f'y ~ genotypes'
+                data = {'y': all_dots, 'genotypes': all_genotypes}
+                df = pd.DataFrame.from_dict(data)
+
+                results = smf.ols(formula, data=df).fit()
+                p_value = float(results.summary2().tables[1]['P>|t|']['genotypes'])
+                t_stat = float(results.summary2().tables[1]['t']['genotypes'])
+                coef = float(results.summary2().tables[1]['Coef.']['genotypes'])
+                se = float(results.summary2().tables[1]['Std.Err.']['genotypes'])
 
             gv_dict['t_stat'].append(t_stat)
             gv_dict['p_value'].append(p_value)
             gv_dict['log10p'].append(-np.log10(p_value))
             gv_dict['coef'].append(coef)
-            gv_dict['se'].append(coef)
+            gv_dict['se'].append(se)
             gv_dict['rsid'].append(rec.id)
             gv_dict['pos'].append(rec.pos)
             gv_dict['chrom'].append(rec.chrom)
