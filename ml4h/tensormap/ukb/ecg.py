@@ -458,7 +458,7 @@ ecg_rest_mgb = TensorMap(
 
 ecg_rest_mgb_mv = TensorMap(
     'ecg_5000_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=RandomStandardize(mean=0, std=1000),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=RandomStandardize(mean=0, std=100),
 )
 ecg_rest_mgb2 = TensorMap(
     'ecg', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
