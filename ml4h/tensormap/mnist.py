@@ -3,13 +3,14 @@ import os
 import sys
 import gzip
 import pickle
+import logging
 from typing import Dict
 
 import h5py
 import numpy as np
 
 import tensorflow as tf
-
+from skimage.transform import resize
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.normalizer import ZeroMeanStd1
 
@@ -27,8 +28,12 @@ celeba_image_208 = TensorMap('celeba_image', shape=(208, 168, 3), normalization=
 
 
 def downsampled_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    dependents[tm.dependent_map] = np.array(hd5[tm.dependent_map.name][:tm.dependent_map.shape[0], :tm.dependent_map.shape[1], :tm.dependent_map.shape[2]], dtype=np.float32)
-    return tf.image.resize(dependents[tm.dependent_map], [tm.shape[0], tm.shape[1]], method="area")
+    dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
+    dependents[tm.dependent_map][:] = np.array(hd5[tm.dependent_map.name][:tm.dependent_map.shape[0], :tm.dependent_map.shape[1], :tm.dependent_map.shape[2]], dtype=np.float32)
+    logging.info(f'GOT dependent data {tm.dependent_map} shape: {dependents[tm.dependent_map].shape}')
+    resized = resize(dependents[tm.dependent_map], (tm.shape[0], tm.shape[1]))
+    logging.info(f'GOT resize data {resized.shape}')
+    return resized
 
 
 celeba_image_208_downsample = TensorMap('celeba_image_208_downsample', shape=(26, 21, 3), normalization=ZeroMeanStd1(),
