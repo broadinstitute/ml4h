@@ -8,6 +8,8 @@ from typing import Dict
 import h5py
 import numpy as np
 
+import tensorflow as tf
+
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.normalizer import ZeroMeanStd1
 
@@ -22,6 +24,15 @@ celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), normalization=Zero
 celeba_image_208 = TensorMap('celeba_image', shape=(208, 168, 3), normalization=ZeroMeanStd1(),
                          tensor_from_file=image_from_hd5)
 
+
+
+def downsampled_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    dependents[tm.dependent_map] = np.array(hd5[tm.dependent_map.name][:tm.dependent_map.shape[0], :tm.dependent_map.shape[1], :tm.dependent_map.shape[2]], dtype=np.float32)
+    return tf.image.resize(dependents[tm.dependent_map], [tm.shape[0], tm.shape[1]], method="area")
+
+
+celeba_image_208_downsample = TensorMap('celeba_image_208_downsample', shape=(26, 21, 3), normalization=ZeroMeanStd1(),
+                         tensor_from_file=downsampled_image_from_hd5, dependent_map=celeba_image_208)
 
 def landmark_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     landmark = np.zeros(tm.shape, dtype=np.float32)
