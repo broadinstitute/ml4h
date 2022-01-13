@@ -35,7 +35,7 @@ def downsampled_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict =
     return resized
 
 
-celeba_image_208_downsample = TensorMap('celeba_image_208_downsample', shape=(26, 21, 3), normalization=ZeroMeanStd1(),
+celeba_image_208_downsample = TensorMap('celeba_image_208_downsample', shape=(104, 84, 3), normalization=ZeroMeanStd1(),
                          tensor_from_file=downsampled_image_from_hd5, dependent_map=celeba_image_208)
 
 def landmark_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
