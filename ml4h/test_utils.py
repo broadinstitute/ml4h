@@ -78,5 +78,5 @@ def build_hdf5s(path: str, tensor_maps: List[TensorMap], n=5) -> Dict[Tuple[str,
                 else:
                     raise NotImplementedError(f'Cannot automatically build hdf5 from interpretation "{tm.interpretation}"')
                 hd5.create_dataset(tm.name, data=value)
-                out[(hd5_path, tm)] = value
+                out[(hd5_path, tm.name)] = value
     return out
