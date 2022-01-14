@@ -24,7 +24,7 @@ celeba_image = TensorMap('celeba_image', shape=(218, 178, 3), normalization=Zero
                          tensor_from_file=image_from_hd5)
 celeba_image_208 = TensorMap('celeba_image', shape=(208, 168, 3), normalization=ZeroMeanStd1(),
                          tensor_from_file=image_from_hd5)
-
+celeba_image_208_raw = TensorMap('celeba_image', shape=(208, 168, 3), tensor_from_file=image_from_hd5)
 
 
 def downsampled_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
@@ -35,14 +35,21 @@ def downsampled_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict =
     return resized
 
 
-celeba_image_208_downsample = TensorMap('celeba_image_208_downsample', shape=(104, 84, 3), normalization=ZeroMeanStd1(),
-                         tensor_from_file=downsampled_image_from_hd5, dependent_map=celeba_image_208)
+celeba_image_208_downsample_2x = TensorMap('celeba_image_208_downsample_2x', shape=(104, 84, 3),
+                                        tensor_from_file=downsampled_image_from_hd5,
+                                        dependent_map=celeba_image_208_raw)
+
+celeba_image_208_downsample_4x = TensorMap('celeba_image_208_downsample_2x', shape=(104, 84, 3),
+                                        tensor_from_file=downsampled_image_from_hd5,
+                                        dependent_map=celeba_image_208_raw)
+
 
 def landmark_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     landmark = np.zeros(tm.shape, dtype=np.float32)
     for channel in tm.channel_map:
         landmark[tm.channel_map[channel]] = hd5[channel][0]
     return landmark
+
 
 eye_channels = {'lefteye_x': 0, 'lefteye_y': 1, 'righteye_x': 2, 'righteye_y': 3}
 celeba_eyes = TensorMap('celeba_eyes', shape=(len(eye_channels),), channel_map=eye_channels,
