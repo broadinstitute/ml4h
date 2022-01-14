@@ -39,7 +39,7 @@ celeba_image_208_downsample_2x = TensorMap('celeba_image_208_downsample_2x', sha
                                         tensor_from_file=downsampled_image_from_hd5,
                                         dependent_map=celeba_image_208_raw)
 
-celeba_image_208_downsample_4x = TensorMap('celeba_image_208_downsample_2x', shape=(104, 84, 3),
+celeba_image_208_downsample_4x = TensorMap('celeba_image_208_downsample_4x', shape=(52, 42, 3),
                                         tensor_from_file=downsampled_image_from_hd5,
                                         dependent_map=celeba_image_208_raw)
 
