@@ -1,5 +1,6 @@
 import os
 import pytest
+import logging
 import pandas as pd
 import numpy as np
 
@@ -69,10 +70,13 @@ class TestRecipes:
         default_arguments.num_workers = 3
         default_arguments.tensor_maps_in = tmaps
         explore(default_arguments)
+
         csv_path = os.path.join(
             default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
         )
         explore_result = pd.read_csv(csv_path)
+        logging.info(f'Tested explore {[c for c in explore_expected]}')
+        logging.info(f'Tested explore_result {[c for c in explore_result]}')
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
