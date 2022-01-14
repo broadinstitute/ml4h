@@ -616,9 +616,9 @@ class VariationalDiagNormal(Layer):
     def call(self, mu: Tensor, log_sigma: Tensor, **kwargs):
         """mu and sigma must be shape (None, latent_size)"""
         approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
-        kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
+        kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior, name='KL_divergence'))
         self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl)#, name='KL_divergence')
+        self.add_metric(kl, name='KL_divergence')
         return approx_posterior.sample()
 
     def get_config(self):
