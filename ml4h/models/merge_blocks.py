@@ -12,6 +12,8 @@ from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.models.basic_blocks import DenseBlock
 from ml4h.models.layer_wrappers import global_average_pool
+from tensorflow.keras.losses import categorical_crossentropy
+
 
 Tensor = tf.Tensor
 tfd = tfp.distributions
@@ -150,6 +152,7 @@ class PairLossBlock(Block):
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
+
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
         for left, right in self.pairs:
@@ -203,6 +206,22 @@ def pairwise_cosine_difference(t1, t2):
     t2_norm = t2 / l2_norm(t2, axis=-1)
     dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
     return K.mean(tf.acos(dot))
+
+
+def contrastive_difference(left: Tensor, right: Tensor, batch_size: int, temperature: Tensor):
+    left_normed = left / l2_norm(left, axis=-1)
+    right_normed = right / l2_norm(right, axis=-1)
+    logits_left = tf.linalg.matmul(left_normed, right_normed, transpose_b=True) * tf.math.exp(temperature)
+    logits_right = tf.linalg.matmul(right_normed, left_normed, transpose_b=True) * tf.math.exp(temperature)
+    prob_left = tf.keras.activations.softmax(logits_left, axis=-1)
+    prob_right = tf.keras.activations.softmax(logits_right, axis=-1)
+
+    # identity matrix (np.eye) matches left row modality with right column modality
+    labels = tf.convert_to_tensor(np.eye(batch_size), dtype=tf.float32)
+    loss_left = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_left, labels)
+    loss_right = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_right, labels)
+    loss = (loss_left + loss_right)/2
+    return loss / batch_size
 
 
 class CosineLossLayer(Layer):
@@ -260,6 +279,25 @@ class ContrastiveLossLayer(Layer):
     def call(self, inputs):
         # We use `add_loss` to create a regularization loss
         # that depends on the inputs.
+        self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
+        return inputs
+
+
+class ContrastiveLossLayer(Layer):
+    """Layer that creates a Contrastive between modalities"""
+
+    def __init__(self, weight, batch_size, **kwargs):
+        super(ContrastiveLossLayer, self).__init__(**kwargs)
+        self.weight = weight
+        self.batch_size = batch_size
+        self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'weight': self.weight, 'batch_size': self.batch_size})
+        return config
+
+    def call(self, inputs):
         self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
         return inputs
 

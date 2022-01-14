@@ -13,6 +13,7 @@ VARIANT_LABELS = {'NOT_SNP': 0, 'NOT_INDEL': 1, 'SNP': 2, 'INDEL': 3}
 def tensor_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     return np.array(hd5[tm.name])
 
+
 reference = TensorMap('reference', shape=(128, len(DNA_SYMBOLS)), tensor_from_file=tensor_from_hd5)
 read_tensor = TensorMap('read_tensor', shape=(128, 128, 15), tensor_from_file=tensor_from_hd5)
 dp = TensorMap('dp', shape=(1,), normalization=Standardize(mean=34, std=8.6), tensor_from_file=tensor_from_hd5)

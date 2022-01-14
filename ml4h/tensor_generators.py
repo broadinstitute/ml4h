@@ -758,6 +758,7 @@ def test_train_valid_tensor_generators(
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
+
     :param tensor_maps_in: list of TensorMaps that are input names to a model
     :param tensor_maps_out: list of TensorMaps that are output from a model
     :param tensor_maps_protected: list of TensorMaps that are sensitive to bias from a model
@@ -765,6 +766,8 @@ def test_train_valid_tensor_generators(
     :param tensors: directory containing tensors
     :param batch_size: number of examples in each mini-batch
     :param num_workers: number of processes spun off for training and testing. Validation uses half as many workers
+    :param training_steps: Number of training batches that define a fake "epoch"
+    :param validation_steps: Number of validation batches to create after each fake "epoch"
     :param cache_size: size in bytes of maximum cache for EACH worker
     :param balance_csvs: if not empty, generator will provide batches balanced amongst the Sample ID in these CSVs.
     :param keep_paths: also return the list of tensor files loaded for training and validation tensors
@@ -777,6 +780,7 @@ def test_train_valid_tensor_generators(
     :param valid_csv: CSV file of sample ids to use for validation, mutually exclusive with valid_ratio
     :param test_csv: CSV file of sample ids to use for testing, mutually exclusive with test_ratio
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
+    :param wrap_with_tf_dataset: if True will return tf.dataset objects for the 3 generators
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
@@ -822,7 +826,7 @@ def test_train_valid_tensor_generators(
     generate_test = generator_class(
         batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out + tensor_maps_protected,
         paths=test_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
-        keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=True,
+        keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
     if wrap_with_tf_dataset:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}

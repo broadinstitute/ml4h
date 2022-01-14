@@ -676,3 +676,4 @@ def concordance_index_censored(event_indicator, event_time, estimate, tied_tol=1
     """
     w = np.ones_like(estimate)
     return _estimate_concordance_index(event_indicator, event_time, estimate, w, tied_tol)
+

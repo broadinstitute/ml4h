@@ -5,6 +5,7 @@ import os
 import csv
 import copy
 import h5py
+import glob
 import logging
 import numpy as np
 from functools import reduce
@@ -161,7 +162,8 @@ def train_block(args):
     model, encoders, decoders, merger = block_make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -198,6 +200,8 @@ def train_block(args):
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
+
+
 
 
 def test_multimodal_multitask(args):
@@ -264,17 +268,10 @@ def infer_multimodal_multitask(args):
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    sample_set = None
-    if args.sample_csv is not None:
-        with open(args.sample_csv, 'r') as csv_file:
-            sample_ids = [row[0] for row in csv.reader(csv_file)]
-            sample_set = set(sample_ids[1:])
-    tensor_paths = [
-        os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
-        if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
-    ]
+
     model = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
+    tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
@@ -360,6 +357,19 @@ def infer_multimodal_multitask(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
+def _tensor_paths_from_sample_csv(tensors, sample_csv):
+    sample_set = None
+    if sample_csv is not None:
+        with open(sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    tensor_paths = [
+        file for file in glob.glob(os.path.join(tensors, f"*{TENSOR_EXT}"))
+        if sample_set is None or os.path.splitext(os.path.basename(file))[0] in sample_set
+    ]
+    return tensor_paths
+
+
 def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: str) -> str:
     return os.path.join(output_folder, id_, f'hidden_{prefix_}_{id_}{extension_}')
 
@@ -369,7 +379,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     args.num_workers = 0
     inference_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
     tsv_style_is_genetics = 'genetics' in args.tsv_style
-    tensor_paths = [os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
+    tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,

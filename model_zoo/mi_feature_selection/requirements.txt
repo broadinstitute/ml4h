@@ -1,0 +1,7 @@
+scikit_survival==0.13.1
+fastparquet==0.5.0
+xgboost==1.1.0_SNAPSHOT
+numpy==1.18.5
+pandas==1.1.5
+pyarrow==0.16.0
+scikit_learn==0.24.2
