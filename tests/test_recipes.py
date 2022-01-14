@@ -62,7 +62,7 @@ class TestRecipes:
         _find_learning_rate(default_arguments)
 
     def test_explore(self, default_arguments, tmpdir_factory):
-        temp_dir = tmpdir_factory.mktemp('explore_tensors')
+        temp_dir = tmpdir_factory.mktemp('explore_tensors2')
         default_arguments.tensors = str(temp_dir)
         tmaps = TMAPS_UP_TO_4D[:]
         tmaps.append(TensorMap(f'scalar', shape=(1,), interpretation=Interpretation.CONTINUOUS))
