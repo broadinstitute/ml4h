@@ -7,7 +7,7 @@ from ml4h.recipes import inference_file_name, _hidden_file_name
 from ml4h.recipes import train_multimodal_multitask, train_block
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
-from ml4h.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
+from ml4h.explorations import _categorical_explore_header, _should_error_detect, explore
 # Imports with test in their name
 from ml4h.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4h.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
@@ -76,13 +76,13 @@ class TestRecipes:
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
-                row_expected = explore_expected[(row['fpath'], tm)]
+                row_expected = explore_expected[(row['fpath'], tm.name)]
                 if _should_error_detect(tm):
-                    actual = getattr(row, _continuous_explore_header(tm))
+                    actual = getattr(row, tm.name)
                     assert not np.isnan(actual)
                     continue
                 if tm.is_continuous():
-                    actual = getattr(row, _continuous_explore_header(tm))
+                    actual = getattr(row, tm.name)
                     assert actual == row_expected
                     continue
                 if tm.is_categorical():

@@ -703,10 +703,6 @@ def _is_continuous_valid_scalar_hd5_dataset(obj) -> bool:
            len(obj.shape) == 1
 
 
-def _continuous_explore_header(tm: TensorMap) -> str:
-    return tm.channel_map.items()[0][0]
-
-
 def _categorical_explore_header(tm: TensorMap, channel: str) -> str:
     return f'{channel}'
 
