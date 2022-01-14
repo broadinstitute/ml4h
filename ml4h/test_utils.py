@@ -61,7 +61,7 @@ for i in range(len(CYCLE_PARENTS)):
     CYCLE_PARENTS[i].parents = [CYCLE_PARENTS[i - 1]]  # 0th tmap will be child of last
 
 
-def build_hdf5s(path: str, tensor_maps: List[TensorMap], n=5) -> Dict[Tuple[str, TensorMap], np.ndarray]:
+def build_hdf5s(path: str, tensor_maps: List[TensorMap], n=5, keys_are_paths: bool = True) -> Dict[Tuple[str, TensorMap], np.ndarray]:
     """
     Builds hdf5s at path given TensorMaps. Only works for Continuous and Categorical TensorMaps.
     """
@@ -78,5 +78,9 @@ def build_hdf5s(path: str, tensor_maps: List[TensorMap], n=5) -> Dict[Tuple[str,
                 else:
                     raise NotImplementedError(f'Cannot automatically build hdf5 from interpretation "{tm.interpretation}"')
                 hd5.create_dataset(tm.name, data=value)
-                out[(hd5_path.split('/')[-1].replace(TENSOR_EXT, ''), tm.name)] = value
+                if keys_are_paths:
+                    key = hd5_path
+                else:
+                    key = int(hd5_path.split('/')[-1].replace(TENSOR_EXT, ''))
+                out[(key, tm.name)] = value
     return out
