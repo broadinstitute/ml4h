@@ -76,7 +76,7 @@ class TestRecipes:
         )
         explore_result = pd.read_csv(csv_path)
         logging.info(f'Tested explore {[c for c in explore_expected]}')
-        logging.info(f'Tested explore_result {[c for c in explore_result]}')
+        logging.info(f'Tested explore_result {[c for c in explore_result["fpath"]]}')
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
