@@ -54,6 +54,8 @@ def run(args):
             cross_reference(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
+        elif 'train_legacy' == args.mode:
+            train_legacy(args)
         elif 'test' == args.mode:
             test_multimodal_multitask(args)
         elif 'compare' == args.mode:
@@ -68,8 +70,6 @@ def run(args):
             infer_encoders_block_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
-        elif 'train_block' == args.mode:
-            train_block(args)
         elif 'compare_scalar' == args.mode:
             compare_multimodal_scalar_task_models(args)
         elif 'plot_predictions' == args.mode:
@@ -118,7 +118,7 @@ def run(args):
             args.learning_rate = _find_learning_rate(args)
             if not args.learning_rate:
                 raise ValueError('Could not find learning rate.')
-            train_multimodal_multitask(args)
+            train_legacy(args)
         else:
             raise ValueError('Unknown mode:', args.mode)
 
@@ -140,7 +140,7 @@ def _find_learning_rate(args) -> float:
     return lr
 
 
-def train_multimodal_multitask(args):
+def train_legacy(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
@@ -157,7 +157,7 @@ def train_multimodal_multitask(args):
     )
 
 
-def train_block(args):
+def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, encoders, decoders, merger = block_make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
