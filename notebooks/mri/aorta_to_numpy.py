@@ -1,10 +1,62 @@
 # %%
 import os
-from ml4h.applications.ingest.ingest_mri import ingest_mri_dicoms_zipped, read_compressed
-from ml4h.applications.ingest.two_d_projection import build_projection_hd5, build_z_slices, normalize
+import vtk
+from vtk.util import numpy_support as ns
+import glob
 
 #%%
-patient = 1327678
+patient = 1000107
+
+vti = glob.glob(f'/home/pdiachil/projects/aorta/simvascular/{patient}/Images/*.vti')[0]
+vtp = glob.glob(f'/home/pdiachil/projects/aorta/simvascular/{patient}/Models/*.vtp')[0]
+
+images = vtk.vtkXMLImageDataReader()
+images.SetFileName(vti)
+images.Update()
+size = [
+    images.GetOutput().GetExtent()[1]+1,
+    images.GetOutput().GetExtent()[3]+1,
+    images.GetOutput().GetExtent()[5]+1
+]
+images_arr = ns.vtk_to_numpy(images.GetOutput().GetPointData().GetArray('Scalars_')).reshape(size, order='F')
+
+aorta = vtk.vtkImageData()
+aorta.DeepCopy(images.GetOutput())
+aorta_tmp = ns.vtk_to_numpy(aorta.GetPointData().GetArray('Scalars_'))
+aorta_tmp[:] = 0.0
+
+aorta_reader = vtk.vtkXMLPolyDataReader()
+aorta_reader.SetFileName(vtp)
+aorta_reader.Update()
+
+pol2stenc = vtk.vtkPolyDataToImageStencil()
+pol2stenc.SetInputConnection(aorta_reader.GetOutputPort())
+pol2stenc.SetOutputOrigin(aorta.GetOrigin())
+pol2stenc.SetOutputSpacing(aorta.GetSpacing())
+pol2stenc.SetOutputWholeExtent(aorta.GetExtent())
+
+imgstenc = vtk.vtkImageStencil()
+imgstenc.SetInputData(aorta)
+imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+imgstenc.ReverseStencilOff()
+imgstenc.SetBackgroundValue(100.0)
+imgstenc.Update()
+
+aorta_arr = ns.vtk_to_numpy(imgstenc.GetOutput().GetPointData().GetArray('Scalars_')).reshape(size, order='F')
+#aorta_arr = np.array(aorta_arr > 0.0, dtype=np.uint8)
+# %%
+import seaborn as sns
+
+sns.histplot(aorta_arr[:, :, 370].ravel())
+#%%
+import matplotlib.pyplot as plt
+import numpy as np
+
+z = 360
+f, ax = plt.subplots()
+aorta_ma = np.ma.masked_array(aorta_arr, mask=aorta_arr>50.0)
+ax.imshow(images_arr[:, :, 377], cmap='gray')
+ax.imshow(aorta_ma[:, :, 377])
 # %%
 
 ingest_mri_dicoms_zipped(
@@ -24,6 +76,31 @@ build_projection_hd5(
     f'bodymri_allraw_{patient}_2_0',
     f'bodymri_allraw_{patient}_2_0/projected'
 )
+
+# %%
+# !rm bodymri_allraw_1000107_2_0/projected/bodymri_1000107.h5
+
+
+# %%
+import h5py
+hd5 = h5py.File(f'bodymri_allraw_{patient}_2_0/projected/bodymri_{patient}.h5')
+# %%
+arr = read_compressed(hd5['instance/2/w_sagittal'])
+# %%
+import matplotlib.pyplot as plt
+plt.imshow(arr)
+# %%
+old_hd5 = h5py.File(f'bodymri_allraw_{patient}_2_0/bodymri_{patient}.h5', 'r')
+# %%
+instance = 2
+data = {
+                int(name): read_compressed(old_hd5[f'instance/{instance}/series/{name}'])
+                for name in old_hd5[f'instance/{instance}/series']
+            }
+# %%
+import matplotlib.pyplot as plt
+plt.imshow(data[4][:, 119, :])
+# %%
 
 # %%
 import h5py
@@ -108,6 +185,10 @@ for b, bb in body.items():
 
     bbt = bb.swapaxes(0, 1)
     bbt = np.flip(bbt, axis=2)
+    # bbt = bbt.reshape(*reversed(bb.shape))
+    # nslice = bbt.shape[0]*bb.shape[1]
+    # for z_slice in range(bbt.shape[2]):
+    #     arr[nslice*z_slice:nslice*(z_slice+1)] = bbt[:, :, z_slice].ravel('F')
     arr_vtk = ns.numpy_to_vtk(bbt.ravel('F'), deep=True, array_type=vtk.VTK_INT)
     arr_vtk.SetName('ImageScalars')
     img.GetPointData().SetScalars(arr_vtk)
@@ -120,3 +201,6 @@ for b, bb in body.items():
     img_writer.SetInputConnection(resize.GetOutputPort())
     img_writer.SetFileName(f'bodymri_allraw_{patient}_2_0/{b}.vti')
     img_writer.Update()
+# %%
+
+# %%

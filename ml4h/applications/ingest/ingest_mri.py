@@ -62,6 +62,7 @@ def ingest_mri_dicoms_zipped(
     output_name: str = None,
     in_memory: bool = True,
     save_dicoms: bool = False,
+    series_to_save: List[int] = list(range(1, 25))
 ):
     """Ingest UK Biobank MRI DICOMs from the provided Zip archives comprising of images (DICOMs)
     for each individual.
@@ -114,7 +115,7 @@ def ingest_mri_dicoms_zipped(
     if in_memory:
         data = {name: zfile.read(name) for name in dicom_files}
         # Ingest DICOMs.
-        ingest_mri_dicoms(sample_id, instance, data_dictionary=data, output_name=output_name, destination=destination)
+        ingest_mri_dicoms(sample_id, instance, data_dictionary=data, output_name=output_name, destination=destination, series_to_save=series_to_save)
     else:
         # Unzip and extract all payload files to disk given a directory path.
         zfile.extractall(destination)

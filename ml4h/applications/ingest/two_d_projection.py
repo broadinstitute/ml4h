@@ -171,9 +171,11 @@ def build_projections(
     station_z_scales = [scale / 3 for scale in station_z_scales]
 
     z_pos = meta_data.groupby("series_number")["image_position_z"].agg(["min", "max"])
+    min_slice = min(data.keys())
+    max_slice = max(data.keys())
     slices = build_z_slices(
-        [data[i].shape[-1] for i in range(1, 25, 4)],
-        [z_pos.loc[i] for i in range(1, 25, 4)],
+        [data[i].shape[-1] for i in range(min_slice, max_slice, 4)],
+        [z_pos.loc[i] for i in range(min_slice, max_slice, 4)],
     )
 
     # Keep track of where stations are connected by storing their intersection points in the
@@ -188,7 +190,9 @@ def build_projections(
     for type_idx, series_type_name in zip(range(4), ("in", "opp", "f", "w")):
         coronal_to_stack = []
         sagittal_to_stack = []
-        for station_idx in range(1, 25, 4):  # neck, upper ab, lower ab, legs
+        min_slice = min(data.keys())
+        max_slice = max(data.keys())
+        for station_idx in range(min_slice, max_slice+1, 4):  # neck, upper ab, lower ab, legs
             series_num = station_idx + type_idx
             station_slice = slices[station_idx // 4]
             scale = station_z_scales[station_idx // 4]
