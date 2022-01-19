@@ -466,7 +466,8 @@ def _process_args(args):
         )
 
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
-    args.tensor_maps_out = parent_sort(args.tensor_maps_out)
+    if len(args.tensor_maps_out) > 1:
+        args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
