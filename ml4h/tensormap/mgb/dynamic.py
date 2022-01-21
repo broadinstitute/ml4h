@@ -61,13 +61,11 @@ def make_waveform_maps(desired_map_name: str) -> TensorMap:
         if name == desired_map_name:
             return TensorMap(
                 name,
-                shape=(None, length, 12),
+                shape=(length, 12),
                 path_prefix=PARTNERS_PREFIX,
                 tensor_from_file=make_voltage(exact_length),
                 normalization=normalization,
                 channel_map=ECG_REST_AMP_LEADS,
-                time_series_limit=0,
-                validator=validator_not_all_zero,
             )
 
 
