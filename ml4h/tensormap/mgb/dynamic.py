@@ -29,9 +29,7 @@ WIDE_FILE = '/home/sam/ml/hf-wide-2020-09-15-with-lvh-and-lbbb.tsv'
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     tensor_map_maker_fxns = [
-        make_lead_maps, make_waveform_maps, make_partners_diagnosis_maps, make_wide_file_maps,
-        make_mgb_ecg_measurement_matrix_global_tensor_maps, make_mgb_ecg_measurement_matrix_lead_tensor_maps,
-        make_mgb_ecg_lvh_tensormaps,
+        make_waveform_maps, make_partners_diagnosis_maps
     ]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
@@ -55,7 +53,7 @@ def make_waveform_maps(desired_map_name: str) -> TensorMap:
     """
     length_options = [2500, 5000]
     exact_options = [True, False]
-    normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=2000), None]
+    normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=1000), None]
     for length, exact_length, normalization in product(length_options, exact_options, normalize_options):
         norm = '' if isinstance(normalization, ZeroMeanStd1) else '_std' if isinstance(normalization, Standardize) else '_raw'
         exact = '_exact' if exact_length else ''
@@ -396,45 +394,10 @@ def _survival_from_file(
 
 
 def make_partners_diagnosis_maps(desired_map_name: str) -> Union[TensorMap, None]:
-    diagnosis2column = {
-        'atrial_fibrillation': 'first_af', 'blood_pressure_medication': 'first_bpmed',
-        'coronary_artery_disease': 'first_cad', 'cardiovascular_disease': 'first_cvd',
-        'death': 'death_date', 'diabetes_mellitus': 'first_dm', 'heart_failure': 'first_hf',
-        'hypertension': 'first_htn', 'left_ventricular_hypertrophy': 'first_lvh',
-        'myocardial_infarction': 'first_mi', 'pulmonary_artery_disease': 'first_pad',
-        'stroke': 'first_stroke', 'valvular_disease': 'first_valvular_disease',
-    }
-    for diagnosis in diagnosis2column:
-        # Build diagnosis classification TensorMaps
-        name = f'diagnosis_{diagnosis}'
-        if name == desired_map_name:
-            tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            return TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis), tensor_from_file=tensor_from_file_fxn)
-        name = f'incident_diagnosis_{diagnosis}'
-        if name == desired_map_name:
-            tensor_from_file_fxn = build_incidence_tensor_from_file(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            return TensorMap(f'{name}_newest', Interpretation.CATEGORICAL, path_prefix=PARTNERS_PREFIX, channel_map=_diagnosis_channels(diagnosis, incidence_only=True), tensor_from_file=tensor_from_file_fxn)
-
-        # Build time to event TensorMaps
-        name = f'cox_{diagnosis}'
-        if name == desired_map_name:
-            tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-            return TensorMap(f'{name}_newest', Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff)
-        name = f'incident_cox_{diagnosis}'
-        if name == desired_map_name:
-            tff = loyalty_time_to_event(INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-            return TensorMap(f'{name}_newest', Interpretation.TIME_TO_EVENT, path_prefix=PARTNERS_PREFIX, tensor_from_file=tff)
-
+    diagnosis_columns = ['AF', 'CAD', 'DM', 'MI']
+    if desired_map_name in diagnosis_columns:
         # Build survival curve TensorMaps
-        for days_window in [1825]:
-            name = f'survival_{diagnosis}_{days_window}'
-            if name == desired_map_name:
-                tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis])
-                return TensorMap(f'{name}', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
-            name = f'incident_survival_{diagnosis}'
-            if name == desired_map_name:
-                tff = _survival_from_file(days_window, INCIDENCE_CSV, diagnosis_column=diagnosis2column[diagnosis], incidence_only=True)
-                return TensorMap(f'{name}', Interpretation.SURVIVAL_CURVE, path_prefix=PARTNERS_PREFIX, shape=(50,), days_window=days_window, tensor_from_file=tff)
+        TensorMap(f'{desired_map_name.lower()}_event', Interpretation.SURVIVAL_CURVE, (50,))
 
 
 def make_wide_file_maps(desired_map_name: str) -> Union[TensorMap, None]:
