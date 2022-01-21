@@ -40,12 +40,12 @@ def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
 def make_waveform_maps(desired_map_name: str) -> TensorMap:
     """Creates 12 possible Tensor Maps and returns the desired one or None:
 
-        partners_ecg_2500      partners_ecg_2500_exact      partners_ecg_5000      partners_ecg_5000_exact
-        partners_ecg_2500_std  partners_ecg_2500_std_exact  partners_ecg_5000_std  partners_ecg_5000_std_exact
-        partners_ecg_2500_raw  partners_ecg_2500_raw_exact  partners_ecg_5000_raw  partners_ecg_5000_raw_exact
+        mgb_ecg_2500_std    mgb_ecg_2500_std_exact   mgb_ecg_5000_std    mgb_ecg_5000_std_exact
+        mgb_ecg_2500_mv     mgb_ecg_2500_mv_exact    mgb_ecg_5000_mv     mgb_ecg_5000_mv_exact
+        mgb_ecg_2500_raw    mgb_ecg_2500_raw_exact   mgb_ecg_5000_raw    mgb_ecg_5000_raw_exact
 
-        default normalizes with ZeroMeanStd1 and resamples
-        _std normalizes with Standardize mean = 0, std = 2000
+        _std normalizes with ZeroMeanStd1 and resamples
+        _mv normalizes with Standardize mean = 0, std = 1000
         _raw does not normalize
         _exact does not resample
     :param desired_map_name: The name of the TensorMap and
@@ -55,9 +55,9 @@ def make_waveform_maps(desired_map_name: str) -> TensorMap:
     exact_options = [True, False]
     normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=1000), None]
     for length, exact_length, normalization in product(length_options, exact_options, normalize_options):
-        norm = '' if isinstance(normalization, ZeroMeanStd1) else '_std' if isinstance(normalization, Standardize) else '_raw'
+        norm = '_std' if isinstance(normalization, ZeroMeanStd1) else '_mv' if isinstance(normalization, Standardize) else '_raw'
         exact = '_exact' if exact_length else ''
-        name = f'partners_ecg_{length}{norm}{exact}'
+        name = f'mgb_ecg_{length}{norm}{exact}'
         if name == desired_map_name:
             return TensorMap(
                 name,
