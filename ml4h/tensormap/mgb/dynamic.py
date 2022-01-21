@@ -397,7 +397,7 @@ def make_partners_diagnosis_maps(desired_map_name: str) -> Union[TensorMap, None
     diagnosis_columns = ['AF', 'CAD', 'DM', 'MI']
     if desired_map_name in diagnosis_columns:
         # Build survival curve TensorMaps
-        TensorMap(f'{desired_map_name.lower()}_event', Interpretation.SURVIVAL_CURVE, (50,))
+        TensorMap(f'{desired_map_name.lower()}_event', Interpretation.SURVIVAL_CURVE, shape=(50,))
 
 
 def make_wide_file_maps(desired_map_name: str) -> Union[TensorMap, None]:
