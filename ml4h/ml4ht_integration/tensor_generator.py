@@ -98,7 +98,6 @@ class TensorMapDataLoaderFromDataset(TensorGeneratorABC):
         self.iter_loader = iter(self.data_loader)
         self.true_iterations = 0
 
-    @staticmethod
     def _collate_fn(self, batches):
         return numpy_collate_fn(batches)
 
