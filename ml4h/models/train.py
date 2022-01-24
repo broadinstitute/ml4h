@@ -72,7 +72,7 @@ def train_model_from_generators(
     logging.info('Model weights saved at: %s' % model_file)
     custom_dict = _get_custom_objects(output_tensor_maps)
     model = load_model(model_file, custom_objects=custom_dict, compile=False)
-    model.compile(optimizer='adam', loss=custom_dict['loss'])
+    model.compile(optimizer='adam', loss='mse')
     if plot:
         plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
@@ -81,7 +81,7 @@ def train_model_from_generators(
 
 
 def _get_callbacks(
-    patience: int, model_file: str, save_last_model: bool
+    patience: int, model_file: str, save_last_model: bool,
 ) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
@@ -89,4 +89,3 @@ def _get_callbacks(
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
     return callbacks
-
