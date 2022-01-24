@@ -3,19 +3,23 @@ import os
 import sys
 import gzip
 import pickle
+import logging
 from typing import Dict
 
 import h5py
 import numpy as np
 
+import tensorflow as tf
+from skimage.transform import resize
 from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.normalizer import ZeroMeanStd1
 
 
-def mnist_image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array(hd5['mnist_image'])
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
 
 
-mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=mnist_image_from_hd5)
+mnist_image = TensorMap('mnist_image', shape=(28, 28, 1), tensor_from_file=image_from_hd5)
 
 
 def mnist_label_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
