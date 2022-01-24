@@ -4,12 +4,19 @@ from abc import ABC, abstractmethod
 from ml4h.defines import EPS
 from tensorflow.python.keras.applications import imagenet_utils
 
+from torch_ml4h.ml4ht.data.defines import LoadingOption
+
 
 class Normalizer(ABC):
     @abstractmethod
     def normalize(self, tensor: np.ndarray) -> np.ndarray:
         """Shape preserving transformation"""
         pass
+
+    def normalize_loading_option(self, tensor: np.ndarray, loading_option: LoadingOption) -> np.ndarray:
+        """Shape preserving transformation for use with DataDescription.
+         Defaults to the normalize function if not defined in the descendant"""
+        return self.normalize(tensor)
 
     def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
         """The inverse of normalize if possible. Otherwise identity."""

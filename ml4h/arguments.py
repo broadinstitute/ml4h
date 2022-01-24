@@ -209,6 +209,7 @@ def parse_args():
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
     )
+
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
@@ -402,7 +403,9 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
     try:
         tm = getattr(i, path_string.split('.')[-1])
     except AttributeError:
-        raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
+        logging.warning(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
+        return None
+        #raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
 
     if isinstance(tm, TensorMap) == False:
         raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
