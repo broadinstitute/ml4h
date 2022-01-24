@@ -184,7 +184,7 @@ def train_multimodal_multitask(args):
     if len(args.tensor_maps_out) == 1:
         predictions_list = [predictions_list]
     predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
-    logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
+    logging.info(f'Predictions from dict, shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
 
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
