@@ -88,7 +88,7 @@ class TensorGenerator(TensorGeneratorABC):
     def __init__(
         self, batch_size: int, input_maps: List[TensorMap], output_maps: List[TensorMap],
         paths: Union[List[str], List[List[str]]], num_workers: int, cache_size: float, weights: List[float] = None,
-        keep_paths: bool = False, mixup: float = 0.0, name: str = 'worker', siamese: bool = False,
+        keep_paths: bool = False, mixup_alpha: float = 0.0, name: str = 'worker', siamese: bool = False,
         augment: bool = False,
     ):
         """
@@ -122,10 +122,10 @@ class TensorGenerator(TensorGeneratorABC):
             self.path_iters = [_WeightedPaths(p, weights) for p in worker_paths]
 
         self.batch_function_kwargs = {}
-        if mixup > 0:
+        if mixup_alpha > 0:
             self.batch_function = _mixup_batch
             self.batch_size *= 2
-            self.batch_function_kwargs = {'alpha': mixup}
+            self.batch_function_kwargs = {'alpha': mixup_alpha}
         elif siamese:
             self.batch_function = _make_batch_siamese
         else:
@@ -834,15 +834,18 @@ def test_train_valid_tensor_generators(
         train_dataset = tf.data.Dataset.from_generator(
             generate_train,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes))
+            output_shapes=(in_shapes, out_shapes),
+        )
         valid_dataset = tf.data.Dataset.from_generator(
             generate_valid,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes))
+            output_shapes=(in_shapes, out_shapes),
+        )
         test_dataset = tf.data.Dataset.from_generator(
             generate_test,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes))
+            output_shapes=(in_shapes, out_shapes),
+        )
         return train_dataset, valid_dataset, test_dataset
     else:
         return generate_train, generate_valid, generate_test
