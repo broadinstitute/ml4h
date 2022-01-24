@@ -142,7 +142,7 @@ def train_legacy(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model
+        save_last_model=args.save_last_model,
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
@@ -159,7 +159,7 @@ def train_multimodal_multitask(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model
+        save_last_model=args.save_last_model,
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -830,8 +830,10 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             plot_prediction_calibrations(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder)
         elif tm.is_survival_curve():
             for m in predictions[tm]:
-                plot_survival(predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}',
-                              tm.days_window, prefix=plot_folder)
+                plot_survival(
+                    predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}',
+                    tm.days_window, prefix=plot_folder,
+                )
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)

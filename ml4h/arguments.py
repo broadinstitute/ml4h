@@ -145,14 +145,22 @@ def parse_args():
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
-    parser.add_argument('--conv_width', default=[71], nargs='*', type=int,
-                        help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_x', default=[3], nargs='*', type=int,
-                        help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_y', default=[3], nargs='*', type=int,
-                        help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_z', default=[2], nargs='*', type=int,
-                        help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument(
+        '--conv_width', default=[71], nargs='*', type=int,
+        help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
+    parser.add_argument(
+        '--conv_x', default=[3], nargs='*', type=int,
+        help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
+    parser.add_argument(
+        '--conv_y', default=[3], nargs='*', type=int,
+        help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
+    parser.add_argument(
+        '--conv_z', default=[2], nargs='*', type=int,
+        help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
     parser.add_argument('--conv_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for convolutions')
@@ -199,7 +207,8 @@ def parse_args():
     parser.add_argument(
          '--transformer_size', default=256, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
-              'the number of internal neurons and the number of layers are set by the --dense_layers')
+              'the number of internal neurons and the number of layers are set by the --dense_layers',
+    )
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
@@ -243,7 +252,8 @@ def parse_args():
     parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
     parser.add_argument(
         '--save_last_model', default=False, action='store_true',
-        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.')
+        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.',
+    )
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')

@@ -268,8 +268,10 @@ class ContrastiveLossLayer(Layer):
         super(ContrastiveLossLayer, self).__init__(**kwargs)
         self.weight = weight
         self.batch_size = batch_size
-        self.temperature = self.add_weight(name='contrastive_temperature',
-                                           shape=(1,), initializer="zeros", trainable=True)
+        self.temperature = self.add_weight(
+            name='contrastive_temperature',
+            shape=(1,), initializer="zeros", trainable=True,
+        )
 
     def get_config(self):
         config = super().get_config().copy()
@@ -324,5 +326,3 @@ class VariationalDiagNormal(Layer):
 
     def get_config(self):
         return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}
-
-

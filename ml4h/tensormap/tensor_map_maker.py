@@ -24,8 +24,10 @@ def make_test_tensor_maps(desired_map_name: str) -> TensorMap:
         if desired_map_name == f'{n}d_cont':
             return TensorMap(f'{n}d_cont', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CONTINUOUS)
         if desired_map_name == f'{n}d_cat':
-            return TensorMap(f'{n}d_cat', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CATEGORICAL,
-                             channel_map={f'c_{i}': i for i in range(n + 1)},)
+            return TensorMap(
+                f'{n}d_cat', shape=tuple(range(2, n + 2)), interpretation=Interpretation.CATEGORICAL,
+                channel_map={f'c_{i}': i for i in range(n + 1)},
+            )
 
 
 def write_tensor_maps(args) -> None:
@@ -265,8 +267,10 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int) -> Tuple[
     return input_map, output_map
 
 
-def generate_random_pixel_as_text_tensor_maps(tensors: str, path_prefix: str,
-                                              window_shape: Tuple[int]) -> Tuple[TensorMap, TensorMap]:
+def generate_random_pixel_as_text_tensor_maps(
+    tensors: str, path_prefix: str,
+    window_shape: Tuple[int],
+) -> Tuple[TensorMap, TensorMap]:
     name = path_prefix.split('/')[-1]
     path_prefix = '/'.join(path_prefix.split('/')[:-1])
     logging.info(f'prefix {path_prefix} and name is {name}')

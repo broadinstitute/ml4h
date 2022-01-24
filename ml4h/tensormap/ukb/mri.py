@@ -129,7 +129,7 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
 sharp_kernel = np.c_[
     [0, -1, 0],
     [-1, 5, -1],
-    [0, -1, 0]
+    [0, -1, 0],
 ]
 
 
@@ -413,7 +413,7 @@ t1_20_slices_1 = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
         't1_p2_1mm_fov256_sag_ti_880_1', 94,
-        114, pad_shape=(256, 256, 208)
+        114, pad_shape=(256, 256, 208),
     ),
 )
 t1_20_slices_2 = TensorMap(
@@ -423,7 +423,7 @@ t1_20_slices_2 = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
         't1_p2_1mm_fov256_sag_ti_880_2', 94,
-        114, pad_shape=(256, 256, 208)
+        114, pad_shape=(256, 256, 208),
     ),
 )
 t2_20_slices_1 = TensorMap(
@@ -451,7 +451,7 @@ t1_40_slices_1 = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_subset_tensor(
         't1_p2_1mm_fov256_sag_ti_880_1', 64,
-        144, 2, pad_shape=(256, 256, 208)
+        144, 2, pad_shape=(256, 256, 208),
     ),
 )
 t2_40_slices_1 = TensorMap(
@@ -1385,7 +1385,7 @@ def sax_random_slice_tensor_maker(b_series_prefix, b_segmented_prefix, lv_tsv=No
         random_key = np.random.choice(list(hd5[f'{tm.path_prefix}/{b_series_prefix}/'].keys()))
         tensor[:, :, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/{random_key}'], dtype=np.float32))
         if lv_tsv:
-            sample_id = os.path.basename(hd5.filename).replace('.hd5', '',)
+            sample_id = os.path.basename(hd5.filename).replace('.hd5', '')
             instance = (int(random_key.replace("instance_", ""))-1) % 50
             dependents[tm.dependent_map] = tm.dependent_map.normalize(lv_table[sample_id, '2', f'{instance+1}'])
         else:
@@ -1396,7 +1396,7 @@ def sax_random_slice_tensor_maker(b_series_prefix, b_segmented_prefix, lv_tsv=No
 
 
 sax_lv_pix = TensorMap(
-    'sax_lv_pix', Interpretation.CONTINUOUS, shape=(1,), channel_map={'sax_lv_pix': 0}, normalization=Standardize(mean=100.43, std=38.57)
+    'sax_lv_pix', Interpretation.CONTINUOUS, shape=(1,), channel_map={'sax_lv_pix': 0}, normalization=Standardize(mean=100.43, std=38.57),
 )
 sax_random_slice_segmented = TensorMap(
     'sax_random_slice_segmented', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SEGMENTED_CHANNEL_MAP)), channel_map=MRI_SEGMENTED_CHANNEL_MAP,
@@ -1704,54 +1704,68 @@ def _heart_mask_instance(mri_key, segmentation_key, labels, instance_num: int = 
 
 heart_mask_lax_4ch_random_time = TensorMap(
     'heart_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(160, 224, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_HEART_LABELS,
-                                          random_instance=True),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_HEART_LABELS,
+        random_instance=True,
+    ),
     normalization=ZeroMeanStd1(), cacheable=False,
 )
 myocardium_mask_lax_4ch_random_time = TensorMap(
     'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_MYOCARDIUM_LABELS,
-                                          random_instance=True),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_MYOCARDIUM_LABELS,
+        random_instance=True,
+    ),
     normalization=ZeroMeanStd1(), cacheable=False,
 )
 myocardium_mask_diastole = TensorMap(
     'myocardium_mask_diastole', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_MYOCARDIUM_LABELS,
-                                          1),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_MYOCARDIUM_LABELS,
+        1,
+    ),
 )
 myocardium_mask_diastole_as_random_time = TensorMap(
     'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_MYOCARDIUM_LABELS,
-                                          1),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_MYOCARDIUM_LABELS,
+        1,
+    ),
 )
 myocardium_mask_systole_as_random_time = TensorMap(
     'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_MYOCARDIUM_LABELS,
-                                          15),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_MYOCARDIUM_LABELS,
+        15,
+    ),
 )
 myocardium_mask_i45_as_random_time = TensorMap(
     'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_MYOCARDIUM_LABELS,
-                                          45),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_MYOCARDIUM_LABELS,
+        45,
+    ),
 )
 myocardium_mask_systole_guess = TensorMap(
     'myocardium_mask_systole_guess', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
-                                          'cine_segmented_lax_4ch_annotated_',
-                                          LAX_4CH_MYOCARDIUM_LABELS,
-                                          8),
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_MYOCARDIUM_LABELS,
+        8,
+    ),
     normalization=ZeroMeanStd1(), cacheable=False,
 )
 
@@ -2063,11 +2077,11 @@ lvh_from_indexed_lvm_weighted = TensorMap(
 )
 big_rvedv_indexed = TensorMap(
     'big_rvedv_indexed', Interpretation.CATEGORICAL, channel_map={'no_big_rvedv_indexed': 0, 'big_rvedv_indexed': 1},
-    tensor_from_file=_make_sex_index_tensor_from_file('RVEDV', male_threshold=125, female_threshold=94)
+    tensor_from_file=_make_sex_index_tensor_from_file('RVEDV', male_threshold=125, female_threshold=94),
 )
 big_rvedv = TensorMap(
     'big_rvedv', Interpretation.CATEGORICAL, channel_map={'no_big_rvedv': 0, 'big_rvedv': 1},
-    tensor_from_file=_make_sex_index_tensor_from_file('RVEDV', index_key=None, male_threshold=248, female_threshold=168)
+    tensor_from_file=_make_sex_index_tensor_from_file('RVEDV', index_key=None, male_threshold=248, female_threshold=168),
 )
 
 adjusted_myocardium_mass = TensorMap(
@@ -2091,8 +2105,10 @@ lvh_from_indexed_lvm_parented = TensorMap(
     ],
 )
 
-mri_not_in_sinus = TensorMap('mri_not_in_sinus', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_INDEX,
-                             channel_map={'no_mri_not_in_sinus': 0, 'mri_not_in_sinus': 1}, loss=weighted_crossentropy([0.1, 10.0], 'mri_not_in_sinus'))
+mri_not_in_sinus = TensorMap(
+    'mri_not_in_sinus', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_INDEX,
+    channel_map={'no_mri_not_in_sinus': 0, 'mri_not_in_sinus': 1}, loss=weighted_crossentropy([0.1, 10.0], 'mri_not_in_sinus'),
+)
 
 shmolli_192i_both = TensorMap(
     'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
@@ -2477,8 +2493,10 @@ lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap('lms_ideal_optimised_low_fl
 
 shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
 shmolli_192i_liver = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-shmolli_192i_12bit = TensorMap('shmolli_192i_12bit', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0},
-                               tensor_from_file=_pad_crop_tensor)
+shmolli_192i_12bit = TensorMap(
+    'shmolli_192i_12bit', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0},
+    tensor_from_file=_pad_crop_tensor,
+)
 shmolli_192i_fitparams = TensorMap('shmolli_192i_fitparams', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
 shmolli_192i_t1map = TensorMap('shmolli_192i_t1map', shape=(288, 384, 2), normalization={'zero_mean_std1': 1.0})
 

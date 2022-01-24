@@ -256,8 +256,10 @@ survival_afib_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
-                                      DAYS_IN_5_YEARS, start_date_is_attribute=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+        DAYS_IN_5_YEARS, start_date_is_attribute=True,
+    ),
 )
 
 mgb_afib_wrt_instance2 = TensorMap(
@@ -265,18 +267,22 @@ mgb_afib_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='atrial_fibrillation_or_flutter',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='atrial_fibrillation_or_flutter',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 mgb_cad_wrt_instance2 = TensorMap(
     'cad_event',
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='coronary_artery_disease',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='coronary_artery_disease',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 
 mgb_mi_wrt_instance2 = TensorMap(
@@ -284,9 +290,11 @@ mgb_mi_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='myocardial_infarction',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='myocardial_infarction',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 
 mgb_afib_from_dd_wrt_instance2 = TensorMap(
@@ -294,9 +302,11 @@ mgb_afib_from_dd_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='atrial_fibrillation_or_flutter',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='atrial_fibrillation_or_flutter',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 mgb_afib_from_dd_wrt_instance2.input_name = lambda: mgb_afib_from_dd_wrt_instance2.name
 mgb_afib_from_dd_wrt_instance2.output_name = lambda: mgb_afib_from_dd_wrt_instance2.name
@@ -305,9 +315,11 @@ mgb_afib_wrt_instance2_with_prevalent = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='atrial_fibrillation_or_flutter',
-                                      start_date_is_attribute=True, incidence_only=False),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='atrial_fibrillation_or_flutter',
+        start_date_is_attribute=True, incidence_only=False,
+    ),
 )
 
 mgb_af_event_wrt_instance2 = TensorMap(
@@ -315,9 +327,11 @@ mgb_af_event_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='atrial_fibrillation_or_flutter',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='atrial_fibrillation_or_flutter',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 
 
@@ -326,9 +340,11 @@ mgb_afib_as_hf_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='heart_failure',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 
 mgb_afib_as_stroke_wrt_instance2 = TensorMap(
@@ -336,35 +352,46 @@ mgb_afib_as_stroke_wrt_instance2 = TensorMap(
     Interpretation.SURVIVAL_CURVE,
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor('ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-                                      disease_name_override='stroke',
-                                      start_date_is_attribute=True, incidence_only=True),
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='stroke',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
 )
 
 
-prevalent_hf_wrt_instance2 = TensorMap('heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
-                                       loss=weighted_crossentropy([1.0, 58], 'heart_failure'), path_prefix='categorical',
-                                       channel_map={'no_heart_failure': 0, 'prevalent_heart_failure': 1},
-                                       tensor_from_file=prevalent_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
-                                                                         'dates/heart_failure_date',
-                                                                         start_date_is_attribute=True),
+prevalent_hf_wrt_instance2 = TensorMap(
+    'heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    loss=weighted_crossentropy([1.0, 58], 'heart_failure'), path_prefix='categorical',
+    channel_map={'no_heart_failure': 0, 'prevalent_heart_failure': 1},
+    tensor_from_file=prevalent_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+        'dates/heart_failure_date',
+        start_date_is_attribute=True,
+    ),
 
-                                       )
+)
 
-prevalent_af_as_hf_wrt_instance2 = TensorMap('heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
-                                       loss=weighted_crossentropy([1.0, 58], 'heart_failure'), path_prefix='categorical',
-                                       channel_map={'no_atrial_fibrillation_or_flutter': 0, 'prevalent_atrial_fibrillation_or_flutter': 1},
-                                       tensor_from_file=prevalent_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
-                                                                         'dates/atrial_fibrillation_or_flutter_date',
-                                                                         start_date_is_attribute=True),
+prevalent_af_as_hf_wrt_instance2 = TensorMap(
+    'heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    loss=weighted_crossentropy([1.0, 58], 'heart_failure'), path_prefix='categorical',
+    channel_map={'no_atrial_fibrillation_or_flutter': 0, 'prevalent_atrial_fibrillation_or_flutter': 1},
+    tensor_from_file=prevalent_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+        'dates/atrial_fibrillation_or_flutter_date',
+        start_date_is_attribute=True,
+    ),
 
-                                       )
+)
 
-prevalent_cad_wrt_instance2 = TensorMap('coronary_artery_disease', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
-                                       loss=weighted_crossentropy([1.0, 10], 'coronary_artery_disease'), path_prefix='categorical',
-                                       channel_map={'no_coronary_artery_disease': 0, 'prevalent_coronary_artery_disease': 1},
-                                       tensor_from_file=prevalent_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
-                                                                         'dates/coronary_artery_disease_date',
-                                                                         start_date_is_attribute=True),
+prevalent_cad_wrt_instance2 = TensorMap(
+    'coronary_artery_disease', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    loss=weighted_crossentropy([1.0, 10], 'coronary_artery_disease'), path_prefix='categorical',
+    channel_map={'no_coronary_artery_disease': 0, 'prevalent_coronary_artery_disease': 1},
+    tensor_from_file=prevalent_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0/',
+        'dates/coronary_artery_disease_date',
+        start_date_is_attribute=True,
+    ),
 
-                                       )
+)

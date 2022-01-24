@@ -992,8 +992,10 @@ def make_multimodal_multitask_model(
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt, loss='mse', #[tm.loss for tm in tensor_maps_out],
-                  metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+        m.compile(
+            optimizer=opt, loss='mse', #[tm.loss for tm in tensor_maps_out],
+            metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        )
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -1190,8 +1192,10 @@ def _transfer_layers_by_name(model_layers: str, freeze_model_layers: str, custom
     logging.info(f'Loaded {"and froze " if freeze_model_layers else ""}{loaded} layers from {model_layers}.')
 
 
-def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
-                                      optimizer, model_file: str):
+def _load_model_encoders_and_decoders(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
+    optimizer, model_file: str,
+):
     encoders = {}
     decoders = {}
     merger = None
@@ -1205,8 +1209,10 @@ def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_ma
         logging.warning(f'Could not load some model modules, error: {e}')
     logging.info(f"Attempting to load model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
-    m.compile(optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
-              metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+    m.compile(
+        optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
+        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+    )
     m.summary()
     logging.info(f"Loaded encoders, decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
@@ -1275,12 +1281,16 @@ def make_paired_autoencoder_model(
     # build decoder models
     for tm in kwargs['tensor_maps_out']:
         if tm.axes() > 1:
-            shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
-                                      upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
-                                      channels=kwargs['dense_blocks'][-1])
+            shape = _calc_start_shape(
+                num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
+                upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
+                channels=kwargs['dense_blocks'][-1],
+            )
 
-            restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
-                                          normalization=kwargs['dense_normalize'])
+            restructure = FlatToStructure(
+                output_shape=shape, activation=kwargs['activation'],
+                normalization=kwargs['dense_normalize'],
+            )
 
             decode = ConvDecoder(
                 tensor_map_out=tm,

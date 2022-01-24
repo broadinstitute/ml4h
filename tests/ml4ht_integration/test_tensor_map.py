@@ -59,11 +59,11 @@ class TestTensorMapSampleGetter:
             for tmap in TMAPS_UP_TO_4D:
                 np.testing.assert_allclose(
                     in_batch[tmap.input_name()],
-                    expected_data[path, tmap.name]
+                    expected_data[path, tmap.name],
                 )
                 np.testing.assert_allclose(
                     out_batch[tmap.output_name()],
-                    expected_data[path, tmap.name]
+                    expected_data[path, tmap.name],
                 )
 
     def test_train_model(self, expected_data, model):
@@ -167,5 +167,3 @@ SAMPLE_GETTER = DataDescriptionSampleGetter(
     output_data_descriptions=[DD2],
     option_picker=DATE_OPTION_PICKER,
 )
-
-

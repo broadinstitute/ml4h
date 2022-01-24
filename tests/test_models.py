@@ -46,9 +46,9 @@ DEFAULT_PARAMS = {
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
-    'pair_loss': 'euclid',
+    'pair_loss': 'contrastive',
     'pair_loss_weight': 0.1,
-    #'pair_merge': 'dropout',
+    'pair_merge': 'dropout',
     'training_steps': 12,
     'learning_rate': 0.00001,
     'epochs': 6,
@@ -74,8 +74,18 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
         ), ])
 
 
-def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None, skip_shape_check: bool = False):
-    if m is None:
+def assert_model_trains(
+    input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
+    m: Optional[tf.keras.Model] = None, skip_shape_check: bool = False,
+    use_legacy_model: bool = False,
+):
+    if m is None and use_legacy_model:
+        m, _, _, _ = make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **DEFAULT_PARAMS,
+        )
+    elif m is None:
         m, _, _, _ = block_make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
@@ -306,7 +316,7 @@ class TestMakeMultimodalMultitaskModel:
         [_rotate(PARENT_TMAPS, i) for i in range(len(PARENT_TMAPS))],
     )
     def test_parents(self, output_tmaps):
-        assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps)
+        assert_model_trains([TMAPS_UP_TO_4D[-1]], output_tmaps, use_legacy_model=True)
 
     @pytest.mark.parametrize(
         'input_output_tmaps',
@@ -336,7 +346,7 @@ class TestMakeMultimodalMultitaskModel:
         [
             [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1])],
             [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[1])],
-            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])]
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])],
         ],
     )
     def test_paired_models(self, pairs, tmpdir):
@@ -366,7 +376,7 @@ class TestMakeMultimodalMultitaskModel:
         [
             [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1])],
             [(CATEGORICAL_TMAPS[2], CATEGORICAL_TMAPS[1])],
-            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])]
+            [(CONTINUOUS_TMAPS[2], CONTINUOUS_TMAPS[1]), (CONTINUOUS_TMAPS[2], CATEGORICAL_TMAPS[3])],
         ],
     )
     @pytest.mark.parametrize(

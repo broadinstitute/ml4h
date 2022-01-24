@@ -50,7 +50,8 @@ def sparse_cross_entropy(window_size: int):
     def _sparse_cross_entropy(y_true, y_pred):
         y_true = tf.reshape(y_true, shape=(-1, window_size))
         loss = tf.keras.losses.SparseCategoricalCrossentropy(
-            from_logits=True, reduction='none')(y_true, y_pred)
+            from_logits=True, reduction='none',
+        )(y_true, y_pred)
         return tf.reduce_mean(loss)
     return _sparse_cross_entropy
 
@@ -676,4 +677,3 @@ def concordance_index_censored(event_indicator, event_time, estimate, tied_tol=1
     """
     w = np.ones_like(estimate)
     return _estimate_concordance_index(event_indicator, event_time, estimate, w, tied_tol)
-

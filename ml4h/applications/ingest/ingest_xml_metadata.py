@@ -69,7 +69,7 @@ def _sample_id_from_path(path):
 
 
 def generate_output_name(
-    subject_id: str, instance: str, source: str = "ukb", data_type: str = "ecg"
+    subject_id: str, instance: str, source: str = "ukb", data_type: str = "ecg",
 ) -> str:
     """Helper function to generate output names. Current implementation will
     return `BROAD_ML4H_mdrk_{source}_{data_type}_metadata_{id}_i{instance}_{hash}`.
@@ -136,7 +136,7 @@ def _recurseTree(root, path: str, store_dict: dict, ignore_elements: list):
     # Recurse over children.
     for elem in root.getchildren():
         _recurseTree(
-            elem, path + "_" + root.tag.title(), store_dict, ignore_elements
+            elem, path + "_" + root.tag.title(), store_dict, ignore_elements,
         )
 
 
@@ -182,7 +182,7 @@ def ingest_metadata_from_xml(
         os.path.join(
             destination,
             generate_output_name(
-                sample_id, instance, source=data_source, data_type=data_type
+                sample_id, instance, source=data_source, data_type=data_type,
             )
             + ".pq",
         ),

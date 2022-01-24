@@ -81,7 +81,7 @@ def train_model_from_generators(
 
 
 def _get_callbacks(
-    patience: int, model_file: str, save_last_model: bool
+    patience: int, model_file: str, save_last_model: bool,
 ) -> List[Callback]:
     callbacks = [
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
@@ -89,4 +89,3 @@ def _get_callbacks(
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
     return callbacks
-
