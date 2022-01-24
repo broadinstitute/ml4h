@@ -46,7 +46,7 @@ DEFAULT_PARAMS = {
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
-    'pair_loss': 'contrastive',
+    'pair_loss': 'euclid',
     'pair_loss_weight': 0.1,
     'pair_merge': 'dropout',
     'training_steps': 12,
@@ -80,7 +80,7 @@ def assert_model_trains(
     use_legacy_model: bool = False,
 ):
     if m is None and use_legacy_model:
-        m, _, _, _ = make_multimodal_multitask_model(
+        m = make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
             **DEFAULT_PARAMS,
