@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Tuple, Iterator
 from ml4h.TensorMap import TensorMap
 from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.models.train import train_model_from_generators
-from ml4h.models.legacy_models import make_multimodal_multitask_model, parent_sort, BottleneckType
+from ml4h.models.legacy_models import block_make_multimodal_multitask_model, parent_sort, BottleneckType
 from ml4h.models.legacy_models import ACTIVATION_FUNCTIONS, MODEL_EXT, check_no_bottleneck, make_paired_autoencoder_model
 from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
@@ -76,7 +76,7 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
 
 def assert_model_trains(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap], m: Optional[tf.keras.Model] = None, skip_shape_check: bool = False):
     if m is None:
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
             **DEFAULT_PARAMS,
@@ -150,7 +150,7 @@ class TestMakeMultimodalMultitaskModel:
     )
     def test_load_unimodal(self, tmpdir, input_tmap, output_tmap):
         params = DEFAULT_PARAMS.copy()
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
             **params,
@@ -158,7 +158,7 @@ class TestMakeMultimodalMultitaskModel:
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         params['model_file'] = path
-        make_multimodal_multitask_model(
+        block_make_multimodal_multitask_model(
             [input_tmap],
             [output_tmap],
             **DEFAULT_PARAMS,
@@ -173,7 +173,7 @@ class TestMakeMultimodalMultitaskModel:
         inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
         params = DEFAULT_PARAMS.copy()
         params['activation'] = activation
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             inp,
             out,
             **params,
@@ -181,7 +181,7 @@ class TestMakeMultimodalMultitaskModel:
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         params['model_file'] = path
-        make_multimodal_multitask_model(
+        block_make_multimodal_multitask_model(
             inp,
             out,
             **params,
@@ -197,7 +197,7 @@ class TestMakeMultimodalMultitaskModel:
         MULTIMODAL_UP_TO_4D,
     )
     def test_load_multimodal(self, tmpdir, input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]):
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
             **DEFAULT_PARAMS,
@@ -206,7 +206,7 @@ class TestMakeMultimodalMultitaskModel:
         m.save(path)
         params = DEFAULT_PARAMS.copy()
         params['model_file'] = path
-        make_multimodal_multitask_model(
+        block_make_multimodal_multitask_model(
             input_tmaps,
             output_tmaps,
             **params,
@@ -218,7 +218,7 @@ class TestMakeMultimodalMultitaskModel:
         params['conv_layers'] = [8, 8]
         params['dense_blocks'] = [4, 4, 2]
         params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_IN}})
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_IN],
             **params,
@@ -229,7 +229,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
         params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             [SEGMENT_IN],
             [SEGMENT_OUT],
             **params,
@@ -250,7 +250,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         params['bottleneck_type'] = BottleneckType.Variational
         params['pool_x'] = params['pool_y'] = 2
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             input_output_tmaps[0],
             input_output_tmaps[1],
             **params
@@ -260,7 +260,7 @@ class TestMakeMultimodalMultitaskModel:
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         params['model_file'] = path
-        make_multimodal_multitask_model(
+        block_make_multimodal_multitask_model(
             input_output_tmaps[0],
             input_output_tmaps[1],
             **params,
@@ -271,7 +271,7 @@ class TestMakeMultimodalMultitaskModel:
         params['pool_x'] = params['pool_y'] = 2
         params['bottleneck_type'] = BottleneckType.GlobalAveragePoolStructured
         params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
             [SEGMENT_OUT],
             **params,
@@ -283,7 +283,7 @@ class TestMakeMultimodalMultitaskModel:
         params['pool_x'] = params['pool_y'] = 2
         params['bottleneck_type'] = BottleneckType.NoBottleNeck
         params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
             [SEGMENT_OUT],
             **params,
@@ -294,7 +294,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         params['dense_layers'] = []
         inp, out = CONTINUOUS_TMAPS[:2], CATEGORICAL_TMAPS[:2]
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             inp,
             out,
             **DEFAULT_PARAMS,
@@ -316,7 +316,7 @@ class TestMakeMultimodalMultitaskModel:
     )
     def test_language_models(self, input_output_tmaps, tmpdir):
         params = DEFAULT_PARAMS.copy()
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             tensor_maps_in=input_output_tmaps[0],
             tensor_maps_out=input_output_tmaps[1],
             **params
@@ -325,7 +325,7 @@ class TestMakeMultimodalMultitaskModel:
         path = os.path.join(tmpdir, f'lstm{MODEL_EXT}')
         m.save(path)
         params['model_file'] = path
-        make_multimodal_multitask_model(
+        block_make_multimodal_multitask_model(
             input_output_tmaps[0],
             input_output_tmaps[1],
             **params,
@@ -452,7 +452,7 @@ class TestModelPerformance:
 
         tmaps_in = [TMAPS['t1_30_slices_4d']]
         tmaps_out = [TMAPS['t1_seg_30_slices']]
-        m = make_multimodal_multitask_model(
+        m, _, _, _ = block_make_multimodal_multitask_model(
             tensor_maps_in=tmaps_in, tensor_maps_out=tmaps_out,
             activation='relu',
             learning_rate=1e-3,
