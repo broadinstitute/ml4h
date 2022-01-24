@@ -3,8 +3,9 @@ import csv
 import logging
 import h5py
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.normalizer import Standardize
 
 
 def tensor_path(path_prefix: str, name: str) -> str:
@@ -12,6 +13,10 @@ def tensor_path(path_prefix: str, name: str) -> str:
     In the future, TMAPs should be generated using this same function
     """
     return f'/{path_prefix}/{name}/'
+
+
+def tensor_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name])
 
 
 def all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:
@@ -106,7 +111,12 @@ def build_tensor_from_file(
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             index = header.index(target_column)
-            table = {row[0]: np.array([float(row[index])]) for row in reader}
+            table = {}
+            for row in reader:
+                try:
+                    table[row[0]] = np.array([float(row[index])])
+                except ValueError:
+                    logging.debug(f'ValueError parsing: {row[index]}')
             if normalization:
                 value_array = np.array(
                     [sub_array[0] for sub_array in table.values()],
@@ -123,13 +133,10 @@ def build_tensor_from_file(
         if error:
             raise error
         if normalization:
-            tm.normalization = {'mean': mean, 'std': std}
+            tm.normalization = Standardize(mean=mean, std=std)
         try:
             return table[
-                os.path.basename(hd5.filename).replace(
-                    '.hd5',
-                    '',
-                )
+                os.path.basename(hd5.filename).replace('.hd5', '')
             ].copy()
         except KeyError:
             raise KeyError(f'User id not in file {file_name}.')

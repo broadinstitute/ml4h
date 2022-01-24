@@ -86,17 +86,19 @@ dholdout = xgb.DMatrix(X_holdout, label=holdout_cox_times.time)
 dholdout.save_binary(f'holdout_data.data')
 
 # 1. ----------------------
-# Search for optimal hyperparameters. There are many, many ways this is achieved so we 
+# Search for optimal hyperparameters. There are many, many ways this is achieved so we
 # will leave this section to the reader
 
 
 # 2. ----------------------
 # Evaluate a model given the optimal hyperparameters
 # Example hyperparameters found:
-space = {'booster': 'gbtree', 'colsample_bylevel': 0.8, 'colsample_bynode': 0.9500000000000001, 
-         'colsample_bytree': 1.0, 'learning_rate': 0.13, 'max_depth': 2, 'min_child_weight': 6.0, 
-         'min_split_loss': 2.0, 'objective': 'survival:cox', 'reg_alpha': 8.5, 'reg_lambda': 3.5, 
-         'scale_pos_weight': 30.0, 'seed': 1137, 'subsample': 1.0}
+space = {
+    'booster': 'gbtree', 'colsample_bylevel': 0.8, 'colsample_bynode': 0.9500000000000001,
+    'colsample_bytree': 1.0, 'learning_rate': 0.13, 'max_depth': 2, 'min_child_weight': 6.0,
+    'min_split_loss': 2.0, 'objective': 'survival:cox', 'reg_alpha': 8.5, 'reg_lambda': 3.5,
+    'scale_pos_weight': 30.0, 'seed': 1137, 'subsample': 1.0,
+}
 
 
 # Load training data and times
@@ -129,16 +131,17 @@ for train_index, test_index in kf:
     progress = dict()
     dtrain = xgb.DMatrix(f'development_data__fold_{current_fold}__train.data')
     dtest  = xgb.DMatrix(f'development_data__fold_{current_fold}__test.data')
-    trained = xgb.train(space,
+    trained = xgb.train(
+        space,
             dtrain,
             2000,
             early_stopping_rounds=20,
             evals=[(dtrain, 'train'), (dtest, 'test')],
-            verbose_eval=True
-        )
-    
+            verbose_eval=True,
+    )
+
     best_iteration.append(trained.best_iteration + 1)
-    
+
     # Predictions are returned as exp(X^tB) rather than the linear predictor X^tB
     # Predict train data
     predictions = trained.predict(dtrain, ntree_limit=trained.best_iteration + 1, output_margin=True)
@@ -146,40 +149,40 @@ for train_index, test_index in kf:
     predictions = predictions.reset_index(drop=True)
     pred_train  = predictions[0].values.flatten()
     predictions_train.append(pred_train)
-    
+
     O = train_cox_times.iloc[train_index].outcome
     T = train_cox_times.iloc[train_index].time_original
     O = O.reset_index(drop=True)
     T = T.reset_index(drop=True)
     O_train.append(O.values)
     T_train.append(T.values)
-    
+
     # Compute the baseline hazard S_0(t) at timepoint 10*365 (10 years)
     base_haz = sksurv.linear_model.CoxPHSurvivalAnalysis()._baseline_model.fit(pred_train, O.values, T.values)
     s0_10 = base_haz.baseline_survival_(10*365)
-    
+
     # Store S_0 and compute C-statistics
     s_naughts.append(np.array([s0_10]))
     result_train = concordance_index_censored(O, T, pred_train)
     c_scores_train.append(result_train[0])
-    
+
     # Predict test data
     predictions = trained.predict(dtest, ntree_limit=trained.best_iteration + 1, output_margin=True)
     predictions = pd.DataFrame(predictions)
     predictions = predictions.reset_index(drop=True)
     pred_test   = predictions[0].values.flatten()
     predictions_test.append(pred_test)
-    
+
     O = train_cox_times.iloc[test_index].outcome
     T = train_cox_times.iloc[test_index].time_original
     O = O.reset_index(drop=True)
     T = T.reset_index(drop=True)
     O_test.append(O.values)
     T_test.append(T.values)
-    
+
     result_test = concordance_index_censored(O, T, pred_test)
     c_scores_test.append(result_test[0])
-    
+
     # 2. Compute reference E(X^T * beta)
     reference_wtb_population = np.mean(pred_train)
     abs_risk_train.append([
@@ -189,7 +192,7 @@ for train_index, test_index in kf:
         1-(s0_10**np.exp(pred_test)),
     ])
     current_fold = current_fold + 1
-    
+
     # Release memory. This may not be necessary if your dataframes are small
     del dtrain
     del dtest
@@ -261,11 +264,12 @@ best_iteration = np.array(best_iteration)
 dtrain = xgb.DMatrix('development_data.data')
 
 # Fit model
-trained_all = xgb.train(space,
+trained_all = xgb.train(
+    space,
         dtrain,
         num_boost_round=np.max(best_iteration), # Largest number of rounds from the 5-fold CV
-        verbose_eval=True
-    )
+        verbose_eval=True,
+)
 
 # Make predictions on development data
 predictions = trained_all.predict(dtrain, ntree_limit=trained_all.best_iteration + 1, output_margin=True)
@@ -301,7 +305,7 @@ y_holdout['age_under_55'] = X_holdout_unscaled['d_age']< 55
 y_holdout['age_over_55']  = X_holdout_unscaled['d_age']>=55
 y_holdout['sex']          = X_holdout_unscaled['c_sex']
 
-# Compute the C-statistic for the entire holdout and for a variety 
+# Compute the C-statistic for the entire holdout and for a variety
 # of stratifications
 c_scores = []
 c_scores_under55 = []
@@ -317,30 +321,38 @@ result = concordance_index_censored(holdout_cox_times.outcome, holdout_cox_times
 c_scores.append(result[0])
 
 # Under 55
-result = concordance_index_censored(holdout_cox_times[y_holdout['age_under_55']==True]['outcome'], 
-                                    holdout_cox_times[y_holdout['age_under_55']==True]['time_original'], 
-                                    predictions[y_holdout['age_under_55']==True])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['age_under_55']==True]['outcome'],
+    holdout_cox_times[y_holdout['age_under_55']==True]['time_original'],
+    predictions[y_holdout['age_under_55']==True],
+)
 
 c_scores_under55.append(result[0])
 
 # Over 55
-result = concordance_index_censored(holdout_cox_times[y_holdout['age_over_55']==True]['outcome'], 
-                                    holdout_cox_times[y_holdout['age_over_55']==True]['time_original'], 
-                                    predictions[y_holdout['age_over_55']==True])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['age_over_55']==True]['outcome'],
+    holdout_cox_times[y_holdout['age_over_55']==True]['time_original'],
+    predictions[y_holdout['age_over_55']==True],
+)
 
 c_scores_over55.append(result[0])
 
 # Males
-result = concordance_index_censored(holdout_cox_times[y_holdout['sex']==1.0]['outcome'], 
-                                    holdout_cox_times[y_holdout['sex']==1.0]['time_original'], 
-                                    predictions[y_holdout['sex']==1.0])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['sex']==1.0]['outcome'],
+    holdout_cox_times[y_holdout['sex']==1.0]['time_original'],
+    predictions[y_holdout['sex']==1.0],
+)
 
 c_scores_male.append(result[0])
 
 # Females
-result = concordance_index_censored(holdout_cox_times[y_holdout['sex']==0.0]['outcome'], 
-                                    holdout_cox_times[y_holdout['sex']==0.0]['time_original'], 
-                                    predictions[y_holdout['sex']==0.0])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['sex']==0.0]['outcome'],
+    holdout_cox_times[y_holdout['sex']==0.0]['time_original'],
+    predictions[y_holdout['sex']==0.0],
+)
 
 c_scores_female.append(result[0])
 
@@ -350,8 +362,8 @@ holdout_results = pd.DataFrame({
         'under55': c_scores_under55,
         'over55':  c_scores_over55,
         'male':    c_scores_male,
-        'female':  c_scores_female
-    })
+        'female':  c_scores_female,
+})
 
 holdout_results.to_csv('xgboost_cox_best_model_predictions_all_data_subgroups.txt',sep="\t")
 
@@ -359,26 +371,34 @@ holdout_results.to_csv('xgboost_cox_best_model_predictions_all_data_subgroups.tx
 # Compute statistics
 
 # Compute baseline hazard function
-base_haz = sksurv.linear_model.CoxPHSurvivalAnalysis()._baseline_model.fit(predictions_train, 
-    train_cox_times.outcome.values, 
-    train_cox_times.time_original.values)
+base_haz = sksurv.linear_model.CoxPHSurvivalAnalysis()._baseline_model.fit(
+    predictions_train,
+    train_cox_times.outcome.values,
+    train_cox_times.time_original.values,
+)
 s0_10 = base_haz.baseline_survival_(10 * 365)
 
 # Store results
-baseline_survival_data = pd.DataFrame({'time_days': base_haz.baseline_survival_.x,
-                                       'baseline_survival': base_haz.baseline_survival_.y})
+baseline_survival_data = pd.DataFrame({
+    'time_days': base_haz.baseline_survival_.x,
+    'baseline_survival': base_haz.baseline_survival_.y,
+})
 baseline_survival_data.to_csv("xgboost_cox_best_model_predictions_all_data__baseline_survival.txt")
 
 # Compute C-index for training data
-result_train = concordance_index_censored(train_cox_times.outcome.values, 
-                                          train_cox_times.time_original.values, 
-                                          predictions_train)
+result_train = concordance_index_censored(
+    train_cox_times.outcome.values,
+    train_cox_times.time_original.values,
+    predictions_train,
+)
 
 # Compute C-index for holdout data
 predictions_holdout = trained_all.predict(dholdout, ntree_limit=trained_all.best_iteration + 1, output_margin=True)
-result_test = concordance_index_censored(holdout_cox_times.outcome.values, 
-                                         holdout_cox_times.time_original.values, 
-                                         predictions_holdout)
+result_test = concordance_index_censored(
+    holdout_cox_times.outcome.values,
+    holdout_cox_times.time_original.values,
+    predictions_holdout,
+)
 
 # Prepare holdout risks
 abs_risk_holdut = pd.DataFrame({
@@ -407,4 +427,3 @@ abs_risk_train.O_T10[abs_risk_train.time > (10 * 365)] = False
 
 # Write to disk
 abs_risk_train.to_csv("xgboost_cox_best_model_predictions_all_data__absolute_risk_with_ids__development.txt")
-
